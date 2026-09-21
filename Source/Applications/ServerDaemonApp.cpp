@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -48,34 +48,34 @@ int main(int argc, char** argv)
     FO_STACK_TRACE_ENTRY();
 
 #if !FO_TESTING_APP
-    const CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
 
     try {
-        Platform::ForkProcess();
+        platform::fork_process();
 
         InitApp(args, AppInitFlags::PrebakeResources);
 
         {
             auto settings = make_ptr(&GetApp()->Settings);
-            auto server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+            auto server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
 
             while (!GetApp()->IsQuitRequested() && !server->IsStartingError()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds {10});
+                coarse_sleep(std::chrono::milliseconds {10});
             }
 
             if (server->IsStartingError()) {
-                WriteLog(LogType::Error, "Server startup failed, shutting down");
+                logging::write(logging::type::error, "Server startup failed, shutting down");
                 GetApp()->RequestQuit(false);
             }
 
             server->Shutdown();
         }
 
-        ExitApp(GetApp()->GetRequestedQuitSuccess());
+        exit_app(GetApp()->GetRequestedQuitSuccess());
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

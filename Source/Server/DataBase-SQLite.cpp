@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "DataBase.h"
 
 FO_DISABLE_WARNINGS_PUSH()
@@ -17,7 +50,7 @@ FO_BEGIN_NAMESPACE
 #if FO_HAVE_SQLITE
 
 // SQLite hands xFree/xRealloc/xSize only the pointer, so the usable size is carried in a header ahead
-// of every block. Eight bytes keeps the payload on the alignment plain malloc would have given.
+// of every block. Eight bytes keeps the payload on the alignment plain malloc would have given
 struct SqliteAllocHeader
 {
     uint64_t Size;
@@ -26,7 +59,7 @@ struct SqliteAllocHeader
 static_assert(sizeof(SqliteAllocHeader) == 8);
 static_assert(alignof(SqliteAllocHeader) <= 8);
 
-// The single place that steps back from the payload SQLite sees to the header in front of it.
+// The single place that steps back from the payload SQLite sees to the header in front of it
 [[nodiscard]] static auto SqliteAllocHeaderOf(void* payload) noexcept -> nptr<SqliteAllocHeader>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -49,7 +82,7 @@ static auto SqliteMemMalloc(int32_t size) -> void*
     }
 
     size_t total = numeric_cast<size_t>(size) + sizeof(SqliteAllocHeader);
-    auto block = SafeAlloc::MallocRaw(total).reinterpret_as<uint8_t>();
+    auto block = safe_alloc::malloc_raw(total).reinterpret_as<uint8_t>();
     auto header = block.reinterpret_as<SqliteAllocHeader>();
     header->Size = numeric_cast<uint64_t>(size);
     return block.get() + sizeof(SqliteAllocHeader);
@@ -65,7 +98,7 @@ static void SqliteMemFree(void* mem)
         return;
     }
 
-    SafeAlloc::FreeRaw(header.void_cast());
+    safe_alloc::free_raw(header.void_cast());
 }
 
 static auto SqliteMemRealloc(void* mem, int32_t size) -> void*
@@ -82,7 +115,7 @@ static auto SqliteMemRealloc(void* mem, int32_t size) -> void*
 
     auto base = SqliteAllocHeaderOf(mem);
     size_t total = numeric_cast<size_t>(size) + sizeof(SqliteAllocHeader);
-    auto moved = SafeAlloc::ReallocRaw(base.void_cast(), total).reinterpret_as<uint8_t>();
+    auto moved = safe_alloc::realloc_raw(base.void_cast(), total).reinterpret_as<uint8_t>();
     auto header = moved.reinterpret_as<SqliteAllocHeader>();
     header->Size = numeric_cast<uint64_t>(size);
     return moved.get() + sizeof(SqliteAllocHeader);
@@ -163,6 +196,9 @@ void InitializeSQLiteRuntime()
     FO_VERIFY_AND_THROW(init_result == SQLITE_OK, "Can't initialize SQLite", init_result);
 }
 
+// Ids one batch read binds to a single `key IN (...)` statement, far below SQLITE_MAX_VARIABLE_NUMBER
+static constexpr size_t SQLITE_BATCH_READ_SIZE = 1000;
+
 class DbSQLite final : public DataBaseImpl
 {
 public:
@@ -174,12 +210,12 @@ public:
 
     explicit DbSQLite(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) :
         DataBaseImpl(db_settings, std::move(panic_callback)),
-        _storageDir {storage_dir}
+        _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)}
     {
         FO_STACK_TRACE_ENTRY();
 
         InitializeSQLiteRuntime();
-        fs_create_directories(storage_dir);
+        fs::create_directories(_storageDir);
         OpenDataBase();
         StartCommitThread();
     }
@@ -188,7 +224,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        // The commit thread drives this backend, so it must be stopped before the handle closes.
+        // The commit thread drives this backend, so it must be stopped before the handle closes
         StopCommitThread();
 
         scoped_lock locker {_storageLocker};
@@ -251,6 +287,48 @@ protected:
         return GetRecordUnlocked(collection_name, id);
     }
 
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        DataBaseKeyType key_type = GetCollectionKeyType(collection_name);
+        vector<AnyData::Document> docs(ids.size());
+        unordered_map<DataBaseKey, size_t> index_by_id;
+
+        for (size_t i = 0; i < ids.size(); i++) {
+            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatSqliteDbKey(ids[i]));
+        }
+
+        scoped_lock locker {_storageLocker};
+
+        VerifyCollection(collection_name);
+
+        for (size_t chunk_start = 0; chunk_start < ids.size(); chunk_start += SQLITE_BATCH_READ_SIZE) {
+            size_t chunk_end = std::min(chunk_start + SQLITE_BATCH_READ_SIZE, ids.size());
+            string placeholders;
+
+            for (size_t i = chunk_start; i < chunk_end; i++) {
+                placeholders += i == chunk_start ? "?" : ", ?";
+            }
+
+            string sql = strex("SELECT key, value FROM {} WHERE key IN ({})", QuoteIdentifier(collection_name.as_str()), placeholders).str();
+            Statement stmt {*this, sql, collection_name};
+
+            for (size_t i = chunk_start; i < chunk_end; i++) {
+                stmt.BindBlob(numeric_cast<int32_t>(i - chunk_start + 1), MakeSqliteKey(ids[i], key_type));
+            }
+
+            while (stmt.Step()) {
+                DataBaseKey id = ParseSqliteKey(stmt.ColumnBlob(0), key_type);
+                auto it = index_by_id.find(id);
+                FO_VERIFY_AND_THROW(it != index_by_id.end(), "Batch read returned a record that was not requested", collection_name, FormatSqliteDbKey(id));
+                docs[it->second] = DecodeRecordValue(collection_name, stmt.ColumnBlob(1));
+            }
+        }
+
+        return docs;
+    }
+
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
         FO_STACK_TRACE_ENTRY();
@@ -308,7 +386,83 @@ protected:
         stmt.BindBlob(1, key);
 
         while (stmt.Step()) {
-            // No rows are produced; drain for symmetry with the other statements.
+            // No rows are produced; drain for symmetry with the other statements
+        }
+    }
+
+    auto CreateSnapshotData() -> vector<uint8_t> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
+
+        sqlite3_int64 serialized_size = 0;
+        nptr<uint8_t> serialized {sqlite3_serialize(GetHandle().get(), "main", &serialized_size, 0)};
+
+        if (!serialized) {
+            throw DataBaseException("DbSQLite sqlite3_serialize", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        auto free_serialized = scope_exit([&]() noexcept { sqlite3_free(serialized.get()); });
+
+        if (serialized_size <= 0) {
+            throw DataBaseException("DbSQLite produced an empty snapshot", serialized_size);
+        }
+
+        // The serialization is the exact page image the database would have on disk, WAL content folded in
+        return vector<uint8_t> {serialized.get(), serialized.get() + serialized_size};
+    }
+
+    void RestoreSnapshotData(const_span<uint8_t> snapshot_data) override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        // A scratch file, not a deserialized memory image: copying into a WAL destination reaches for the
+        // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
+        string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
+
+        FO_VERIFY_AND_THROW(fs::write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
+
+        auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs::remove_file(source_path); });
+
+        auto source_path_ptr = make_ptr(source_path.c_str());
+        nptr<sqlite3> source_db;
+        int32_t open = sqlite3_open_v2(source_path_ptr.get(), source_db.get_pp(), SQLITE_OPEN_READONLY | SQLITE_OPEN_FULLMUTEX, nullptr);
+
+        if (open != SQLITE_OK) {
+            string error = source_db ? string(sqlite3_errmsg(source_db.get())) : string("unknown");
+
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_open_v2", open, error);
+        }
+
+        FO_VERIFY_AND_THROW(source_db, "Opened SQLite snapshot restore handle is null");
+
+        auto close_source = scope_exit([&]() noexcept {
+            if (source_db) {
+                (void)sqlite3_close(source_db.get());
+                source_db = nullptr;
+            }
+        });
+
+        scoped_lock locker {_storageLocker};
+
+        nptr<sqlite3_backup> backup {sqlite3_backup_init(GetHandle().get(), "main", source_db.get(), "main")};
+
+        if (!backup) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_init", sqlite3_errcode(GetHandle().get()), sqlite3_errmsg(GetHandle().get()));
+        }
+
+        int32_t step = sqlite3_backup_step(backup.get(), -1);
+        int32_t finish = sqlite3_backup_finish(backup.get());
+        backup = nullptr;
+
+        if (step != SQLITE_DONE || finish != SQLITE_OK) {
+            throw DataBaseException("DbSQLite snapshot restore sqlite3_backup_step", step, finish, sqlite3_errmsg(GetHandle().get()));
         }
     }
 
@@ -320,13 +474,13 @@ protected:
             scoped_lock locker {_storageLocker};
 
             // BEGIN IMMEDIATE takes the write lock, which proves the file is still writable, and the
-            // rollback leaves nothing behind.
+            // rollback leaves nothing behind
             Execute("BEGIN IMMEDIATE", hstring());
             Execute("ROLLBACK", hstring());
             return true;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             return false;
         }
     }
@@ -372,7 +526,7 @@ private:
             FO_STACK_TRACE_ENTRY();
 
             // SQLITE_TRANSIENT makes SQLite copy the bytes, so the caller's buffer need not outlive
-            // the bind.
+            // the bind
             int32_t bind = sqlite3_bind_blob(_stmt.get(), index, data.data(), numeric_cast<int32_t>(data.size()), SQLITE_TRANSIENT);
 
             if (bind != SQLITE_OK) {
@@ -411,7 +565,7 @@ private:
         {
             FO_STACK_TRACE_ENTRY();
 
-            // The statement stays mutable for the C API even when read through a const accessor.
+            // The statement stays mutable for the C API even when read through a const accessor
             auto stmt = make_ptr(_stmt.get_no_const());
             auto data = cast_from_void<const uint8_t*>(sqlite3_column_blob(stmt.get(), index));
             int32_t size = sqlite3_column_bytes(stmt.get(), index);
@@ -452,7 +606,7 @@ private:
         int32_t open = sqlite3_open_v2(db_path_ptr.get(), db.get_pp(), SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX, nullptr);
 
         if (open != SQLITE_OK) {
-            // sqlite3_open_v2 hands back a handle even on failure so the error can be read from it.
+            // sqlite3_open_v2 hands back a handle even on failure so the error can be read from it
             string error = db ? string(sqlite3_errmsg(db.get())) : string("unknown");
 
             if (db) {
@@ -470,11 +624,10 @@ private:
             _db = nullptr;
         });
 
-        // WAL keeps readers from blocking the writer, which matches the commit-thread model.
+        // WAL keeps readers from blocking the writer, which matches the commit-thread model
         Execute("PRAGMA journal_mode = WAL", hstring());
-        // NORMAL is the recommended pairing for WAL: a crash may lose the last transactions but cannot
-        // corrupt the database. FULL only removes that last-commit window, at a real write cost, so it
-        // stays out until an actual deployment asks for it.
+        // NORMAL pairs with WAL: a crash may lose the last transactions but cannot corrupt the database, and
+        // FULL closes only that window at a real write cost
         Execute("PRAGMA synchronous = NORMAL", hstring());
         Execute("PRAGMA foreign_keys = ON", hstring());
     }
@@ -506,7 +659,7 @@ private:
         Statement stmt {*this, sql, context};
 
         while (stmt.Step()) {
-            // Drain any rows a PRAGMA may return.
+            // Drain any rows a PRAGMA may return
         }
     }
 
@@ -531,7 +684,7 @@ private:
         stmt.BindBlob(2, make_const_span(bson_data.get(), numeric_cast<size_t>(bson.len)));
 
         while (stmt.Step()) {
-            // No rows are produced by INSERT/UPDATE.
+            // No rows are produced by INSERT/UPDATE
         }
 
         if (sqlite3_changes(GetHandle().get()) == 0) {
@@ -555,7 +708,12 @@ private:
             return {};
         }
 
-        auto value = stmt.ColumnBlob(0);
+        return DecodeRecordValue(collection_name, stmt.ColumnBlob(0));
+    }
+
+    [[nodiscard]] static auto DecodeRecordValue(hstring collection_name, const_span<uint8_t> value) -> AnyData::Document
+    {
+        FO_STACK_TRACE_ENTRY();
 
         bson_t bson;
 
@@ -578,7 +736,7 @@ private:
     }
 
     // Collection names come from engine metadata rather than user input, but they still reach SQL as
-    // identifiers, so they are quoted properly instead of interpolated raw.
+    // identifiers, so they are quoted properly instead of interpolated raw
     [[nodiscard]] static auto QuoteIdentifier(string_view name) -> string
     {
         FO_STACK_TRACE_ENTRY();
@@ -614,7 +772,7 @@ private:
 
             vector<uint8_t> result(sizeof(int64_t));
             int64_t value = numeric_key->underlying_value();
-            MemCopy(result.data(), &value, sizeof(value));
+            memory::copy(result.data(), &value, sizeof(value));
             return result;
         }
 
@@ -632,7 +790,7 @@ private:
             }
 
             int64_t value {};
-            MemCopy(&value, key_data.data(), sizeof(value));
+            memory::copy(&value, key_data.data(), sizeof(value));
 
             if (value <= 0) {
                 throw DataBaseException("DbSQLite invalid numeric key", value);
@@ -675,7 +833,7 @@ private:
 auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     InitializeBsonMemory();
-    return SafeAlloc::MakeUnique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
+    return safe_alloc::make_unique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 #endif

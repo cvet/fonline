@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -131,20 +132,20 @@ namespace ServerItemsTest
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerItemsRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerItemsCritter.fopro-bin-server", critter_blob);
         runtime_source->AddFile("ServerItemsItem.fopro-bin-server", item_blob);
@@ -186,7 +187,7 @@ namespace ServerItemsTest
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -211,7 +212,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     hstring item_pid = fn("TestItem");
     REQUIRE(static_cast<bool>(server->GetProtoItem(item_pid)));
@@ -220,7 +221,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     size_t initial_entity_count = server->EntityMngr.GetEntitiesCount();
 
     // Create item
-    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, nullptr);
 
     ident_t item_id = item->GetId();
     CHECK(item->GetProtoId() == item_pid);
@@ -240,7 +241,7 @@ TEST_CASE("ServerItemCreationAndDestruction")
     CHECK(last_item_id == item_id.underlying_value());
 
     // Create second item
-    auto item2 = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item2 = server->ItemMngr.CreateItem(item_pid, nullptr);
     CHECK(item2->GetId() != item_id);
     CHECK(server->EntityMngr.GetItemsCount() == initial_item_count + 2);
 
@@ -276,7 +277,7 @@ TEST_CASE("ServerItemAddedToCritterInventory")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     hstring critter_pid = fn("TestCritter");
     hstring item_pid = fn("TestItem");
@@ -285,9 +286,8 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     auto cr = server->CreateCritter(critter_pid, false);
     CHECK_FALSE(cr->HasItems());
 
-    // Add item to critter inventory via pid
-    auto item = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
-    REQUIRE(static_cast<bool>(item));
+    // Add item to critter inventory
+    auto item = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), true);
     CHECK(cr->HasItems());
 
     vector<ptr<Item>> inv_items = cr->GetInvItems();
@@ -296,24 +296,18 @@ TEST_CASE("ServerItemAddedToCritterInventory")
     ident_t item_id = item->GetId();
     CHECK(cr->GetInvItem(item_id) == item);
 
-    // Add second item
-    auto item2 = server->ItemMngr.AddItemCritter(cr, item_pid, 1);
-    REQUIRE(static_cast<bool>(item2));
+    // A second item of the same prototype is a separate instance
+    auto item2 = server->CrMngr.AddItemToCritter(cr, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+    CHECK(item2->GetId() != item->GetId());
 
     vector<ptr<Item>> inv_items2 = cr->GetInvItems();
-    CHECK(inv_items2.size() >= 2);
+    CHECK(inv_items2.size() == 2);
 
     // Check via script
     auto cr_item_count_func = server->FindFunc<int64_t, ptr<Critter>>(fn("ServerItemsTest::GetCritterItemCount"));
     REQUIRE(cr_item_count_func);
     REQUIRE(cr_item_count_func.Call(cr));
-    CHECK(cr_item_count_func.GetResult() >= 2);
-
-    // SubItemCritter removes by pid/count
-    server->ItemMngr.SubItemCritter(cr, item_pid, 1);
-
-    // SetItemCritter sets exact count
-    server->ItemMngr.SetItemCritter(cr, item_pid, 3);
+    CHECK(cr_item_count_func.GetResult() == 2);
 
     // Destroy inventory
     server->CrMngr.DestroyInventory(cr);
@@ -322,6 +316,81 @@ TEST_CASE("ServerItemAddedToCritterInventory")
 
     // Cleanup critter
     server->CrMngr.DestroyCritter(cr);
+}
+
+TEST_CASE("ServerItemDetachedMoves")
+{
+    auto settings = MakeSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+
+    hstring critter_pid = fn("TestCritter");
+    hstring item_pid = fn("TestItem");
+
+    auto owner = server->CreateCritter(critter_pid, false);
+    auto receiver = server->CreateCritter(critter_pid, false);
+    auto source = server->CrMngr.AddItemToCritter(owner, server->ItemMngr.CreateItem(item_pid, nullptr), true);
+
+    SECTION("CloneIsDetachedCopyPlacedByMove")
+    {
+        auto clone = server->ItemMngr.CloneItem(source);
+        CHECK(clone->GetId() != source->GetId());
+        CHECK(clone->GetProtoId() == item_pid);
+        CHECK(clone->GetOwnership() == ItemOwnership::Nowhere);
+
+        auto moved = server->ItemMngr.MoveItem(clone, receiver);
+        REQUIRE(static_cast<bool>(moved));
+        CHECK(moved->GetId() == clone->GetId());
+        CHECK(clone->GetOwnership() == ItemOwnership::CritterInventory);
+        CHECK(static_cast<bool>(receiver->GetInvItem(clone->GetId())));
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+    }
+
+    SECTION("DetachedItemIsPlacedByMove")
+    {
+        auto detached = server->ItemMngr.CreateItem(item_pid, nullptr);
+        CHECK(detached->GetOwnership() == ItemOwnership::Nowhere);
+
+        auto moved = server->ItemMngr.MoveItem(detached, receiver);
+        REQUIRE(static_cast<bool>(moved));
+        CHECK(moved->GetId() == detached->GetId());
+        CHECK(static_cast<bool>(receiver->GetInvItem(detached->GetId())));
+    }
+
+    SECTION("AbandonedCloneIsDestroyedByCreator")
+    {
+        auto clone = server->ItemMngr.CloneItem(source);
+        ident_t clone_id = clone->GetId();
+        server->ItemMngr.DestroyItem(clone);
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetItem(clone_id)));
+        CHECK(static_cast<bool>(owner->GetInvItem(source->GetId())));
+    }
+
+    SECTION("ContainerWithContentsIsNotCloned")
+    {
+        (void)source->AddItemToContainer(server->ItemMngr.CreateItem(item_pid, nullptr), {});
+        CHECK_THROWS(server->ItemMngr.CloneItem(source));
+    }
+
+    server->CrMngr.DestroyCritter(receiver);
+    server->CrMngr.DestroyCritter(owner);
 }
 
 TEST_CASE("ServerCritterLifecycleOperations")
@@ -345,7 +414,7 @@ TEST_CASE("ServerCritterLifecycleOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     hstring critter_pid = fn("TestCritter");
 
@@ -430,7 +499,7 @@ TEST_CASE("ServerEntityManagerQueries")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     hstring critter_pid = fn("TestCritter");
     hstring item_pid = fn("TestItem");
@@ -448,7 +517,7 @@ TEST_CASE("ServerEntityManagerQueries")
     vector<refcount_ptr<Item>> items = server->EntityMngr.GetItems();
     auto items_before = items.size();
 
-    auto item = server->ItemMngr.CreateItem(item_pid, 1, nullptr);
+    auto item = server->ItemMngr.CreateItem(item_pid, nullptr);
     CHECK(server->EntityMngr.GetItems().size() == items_before + 1);
 
     // Critters collection access

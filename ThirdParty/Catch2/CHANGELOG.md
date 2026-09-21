@@ -2,6 +2,7 @@
 
 # Release notes
 **Contents**<br>
+[3.15.3](#3153)<br>
 [3.15.2](#3152)<br>
 [3.15.1](#3151)<br>
 [3.15.0](#3150)<br>
@@ -75,6 +76,28 @@
 [2.0.1](#201)<br>
 [Older versions](#older-versions)<br>
 [Even Older versions](#even-older-versions)<br>
+
+
+
+## 3.15.3
+
+### Fixes
+* The JSON reporter's number handling is locale-independent. (#3176)
+* Removed leftover debug message from `catch_discover_tests` (#3177)
+* Fixed typo in the "Could not jump to the Nth element" exception message (#3181)
+
+### Improvements
+* `catch_discover_tests` registers tests in deterministic (alphabetical) order.
+* `catch_discover_tests` has been rewritten to be massively faster.
+  * Preparing the actual CTest script is significantly faster.
+  * Parsing the JSON test array is significantly faster.
+  * Running without `ADD_TAGS_AS_LABELS` set is 10-15% faster (as opposed to being the same speed) (#3169)
+  * The new implementation is about 4x-5x faster, so registering 500 tests now takes ~350ms (down from 1.1s).
+* JSON writing is faster
+  * Small improvement in writing non-string values
+  * ~6-40% improvement in writing string values that do not need escaping
+  * ~1-6% improvement in writing string values that do need escaping
+* Better support for infs and NaNs in JSON output
 
 
 ## 3.15.2

@@ -2,7 +2,7 @@
 // as_tuple.hpp
 // ~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,6 +21,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 /// A @ref completion_token adapter used to specify that the completion handler
 /// arguments should be combined into a single tuple argument.
@@ -29,6 +30,8 @@ namespace asio {
  * completion handler should be combined and passed as a single tuple argument.
  * The arguments are first moved into a @c std::tuple and that tuple is then
  * passed to the completion handler.
+ *
+ * @sa @ref overview_token_adapters "Completion token adapters"
  */
 template <typename CompletionToken>
 class as_tuple_t
@@ -143,6 +146,7 @@ struct partial_as_tuple
  */
 ASIO_INLINE_VARIABLE constexpr partial_as_tuple as_tuple;
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

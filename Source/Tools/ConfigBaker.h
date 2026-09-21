@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,8 +34,6 @@
 #pragma once
 
 #include "Common.h"
-
-#if FO_ANGELSCRIPT_SCRIPTING
 
 #include "Baker.h"
 #include "FileSystem.h"
@@ -63,5 +61,3 @@ public:
 };
 
 FO_END_NAMESPACE
-
-#endif

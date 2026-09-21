@@ -31,11 +31,13 @@
 #include "ozz/animation/offline/export.h"
 #include "ozz/animation/offline/raw_animation.h"
 #include "ozz/base/containers/vector.h"
+#include "ozz/base/maths/simd_math.h"
 #include "ozz/base/maths/transform.h"
 #include "ozz/base/span.h"
 
 namespace ozz {
 namespace animation {
+class Skeleton;
 namespace offline {
 
 // Translation interpolation method.
@@ -70,9 +72,25 @@ OZZ_ANIMOFFLINE_DLL bool SampleAnimation(
     const RawAnimation& _animation, float _time,
     const span<ozz::math::Transform>& _transforms);
 
+// Samples a RawAnimation track in model space. This function shall be used for
+// offline purpose. Use ozz::animation::Animation and
+// ozz::animation::SamplingJob and ozz::animation::LocalToModel for runtime
+// purpose.
+// Returns true if valid, and pairs of keyframes as time and transformation
+// matrix.
+OZZ_ANIMOFFLINE_DLL
+std::pair<bool, ozz::vector<std::pair<float, math::Float4x4>>>
+SampleTrackModelSpace(const RawAnimation& _animation,
+                      const ozz::animation::Skeleton& _skeleton, int _joint);
+
 // Get the union of all keyframe times from a valid RawAnimation.
-OZZ_ANIMOFFLINE_DLL ozz::vector<float> ExtractTimePoints(
+OZZ_ANIMOFFLINE_DLL std::pair<bool, ozz::vector<float>> ExtractTimePoints(
     const RawAnimation& _animation);
+
+// Get the union of all keyframe times of specific joints from a valid
+// RawAnimation.
+OZZ_ANIMOFFLINE_DLL std::pair<bool, ozz::vector<float>> ExtractTimePoints(
+    const RawAnimation& _animation, const ozz::span<const int16_t>& _joints);
 
 // Implement fixed rate keyframe time iteration. This utility purpose is to
 // ensure that sampling goes strictly from 0 to duration, and that period

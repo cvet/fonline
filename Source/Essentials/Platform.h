@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -39,87 +39,66 @@
 
 FO_BEGIN_NAMESPACE
 
-struct Platform
+namespace platform
 {
-    Platform() = delete;
-
-    struct CpuUsageCoreSnapshot
+    struct cpu_usage_core_snapshot
     {
-        uint64_t IdleTime {};
-        uint64_t TotalTime {};
+        uint64_t idle_time {};
+        uint64_t total_time {};
     };
 
-    struct CpuUsageSnapshot
+    struct cpu_usage_snapshot
     {
-        vector<CpuUsageCoreSnapshot> Cores {};
-        uint64_t ProcessTimeNs {};
-        uint32_t LogicalCoreCount {};
+        vector<cpu_usage_core_snapshot> cores {};
+        uint64_t process_time_ns {};
+        uint32_t logical_core_count {};
     };
 
-    // Windows: OutputDebugStringW
-    // Android: __android_log_write ANDROID_LOG_INFO
-    // Other: none
-    static void InfoLog(const string& str) noexcept;
+    // Windows: OutputDebugStringW; Android: __android_log_write; other: no-op
+    void info_log(const string& str) noexcept;
 
     // Windows (>= 10): SetThreadDescription
     // Other: none
-    static void SetThreadName(const string& str) noexcept;
+    void set_thread_name(const string& str) noexcept;
 
-    // Windows: GetModuleFileNameW
-    // Linux: readlink /proc/self/exe
-    // Mac: proc_pidpath
-    // Other: nullopt
-    static auto GetExePath() noexcept -> optional<string>;
+    // Windows: GetModuleFileNameW; Linux: /proc/self/exe; macOS: proc_pidpath; other: nullopt
+    auto get_exe_path() noexcept -> optional<string>;
 
-    // Base directory for per-user writable application data, from environment only (no SDL/shell32).
-    // Windows: %LOCALAPPDATA% (else %APPDATA%)
-    // Mac & iOS: $HOME/Library/Application Support
-    // Linux, Android & other: $XDG_DATA_HOME (else $HOME/.local/share)
-    // Not found: empty string
-    static auto GetUserDataBase() noexcept -> string;
+    // Per-user writable data root from environment only: LOCALAPPDATA/APPDATA, Library/Application Support, or XDG_DATA_HOME.
+    // Return an empty string when no platform path is available
+    auto get_user_data_base() noexcept -> string;
 
     // Linux & Mac: fork
     // Other: warning log message
-    static auto ForkProcess() noexcept -> bool;
+    auto fork_process() noexcept -> bool;
 
-    // Windows: GetCurrentProcessId
-    // Linux & Mac: getpid
-    // Other: "0"
-    static auto GetCurrentProcessIdStr() noexcept -> string;
+    // Windows: GetCurrentProcessId; Linux and macOS: getpid; other: "0"
+    auto get_current_process_id_str() noexcept -> string;
 
-    // Resident memory of the current process in bytes.
-    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS::WorkingSetSize)
-    // Linux & Android: /proc/self/statm (RSS pages * page size)
-    // Mac: task_info MACH_TASK_BASIC_INFO (resident_size)
-    // Other: 0
-    static auto GetProcessMemoryUsage() noexcept -> size_t;
+    // Resident process bytes from WorkingSetSize, /proc/self/statm, or MACH_TASK_BASIC_INFO.
+    // Return zero when unsupported
+    auto get_process_memory_usage() noexcept -> size_t;
 
-    // Private/committed memory of the current process in bytes when the platform exposes it.
-    // Windows: GetProcessMemoryInfo (PROCESS_MEMORY_COUNTERS_EX::PrivateUsage)
-    // Linux & Android: /proc/self/status (VmData)
-    // Other: 0
-    static auto GetProcessPrivateMemoryUsage() noexcept -> size_t;
+    // Private process bytes from PrivateUsage or /proc/self/status VmData.
+    // Return zero when unsupported
+    auto get_process_private_memory_usage() noexcept -> size_t;
 
-    // Cumulative CPU counters for the current process, plus per-core counters where the OS exposes them
-    // through a documented API. Percent usage is calculated by comparing two snapshots. LogicalCoreCount is
-    // the logical-CPU count for normalization (always set, even when Cores holds only a system-wide aggregate).
-    // Windows: GetProcessTimes + GetSystemTimes (system-wide aggregate) + GetActiveProcessorCount
-    // Linux & Android: /proc/stat (per-core) + /proc/self/stat
-    // Mac: host_processor_info(PROCESSOR_CPU_LOAD_INFO) (per-core) + task_info(MACH_TASK_BASIC_INFO)
-    // Other: empty snapshot
-    static auto GetCpuUsageSnapshot() noexcept -> CpuUsageSnapshot;
+    // Cumulative process and available per-core CPU counters; compare snapshots to derive usage.
+    // logical_core_count is always populated for normalization
+    auto get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot;
 
-    // Windows: LoadLibraryW/FreeLibrary/GetProcAddress
-    // Linux & Mac: dlopen/dlclose/dlsym
-    // Other: nullptr
-    static auto LoadModule(const string& module_name) noexcept -> nptr<void>;
-    static void UnloadModule(nptr<void> module_handle) noexcept;
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
+    // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
+    auto load_module(const string& module_name) noexcept -> nptr<void>;
+    // For a module that must never be unmapped, such as an engine library: statically linked runtimes install
+    // process-wide hooks into it that cannot be withdrawn. unload_module on the handle leaves it mapped
+    auto load_pinned_module(const string& module_name) noexcept -> nptr<void>;
+    void unload_module(nptr<void> module_handle) noexcept;
+    auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
     template<typename T>
-    static auto GetFuncAddr(nptr<void> module_handle, const string& func_name) noexcept -> T
+    auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> T
     {
-        return reinterpret_cast<T>(GetFuncAddr(module_handle, func_name));
+        return reinterpret_cast<T>(get_func_addr(module_handle, func_name));
     }
-};
+}
 
 FO_END_NAMESPACE

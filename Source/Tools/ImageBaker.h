@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,7 @@ public:
         string NewName {};
     };
 
-    using LoadFunc = function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
+    using LoadFunc = copyable_function<FrameCollection(string_view, string_view, FileReader, const FileCollection&)>;
 
     explicit ImageBaker(shared_ptr<BakingContext> ctx);
     ImageBaker(const ImageBaker&) = delete;

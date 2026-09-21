@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -49,7 +49,7 @@ static auto ImGuiAlloc(size_t sz, void* user_data) -> void*
 
     ignore_unused(user_data);
 
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     ptr<uint8_t> bytes = allocator.allocate(sz);
     return bytes.get();
 }
@@ -66,8 +66,18 @@ static void ImGuiFree(void* raw_mem, void* user_data)
         return;
     }
 
-    constexpr SafeAllocator<uint8_t> allocator;
+    constexpr safe_allocator<uint8_t> allocator;
     allocator.deallocate(bytes.get(), 0);
+}
+
+static void ImGuiLogError(ImGuiContext* ctx, void* user_data, const char* msg) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(user_data);
+
+    const ImGuiWindow* window = ctx != nullptr ? ctx->CurrentWindow : nullptr;
+    logging::write(logging::type::error, "ImGui error in window '{}': {}", window != nullptr ? window->Name : "(none)", msg != nullptr ? msg : "(no message)");
 }
 
 void ImGuiExt::Init()
@@ -77,6 +87,7 @@ void ImGuiExt::Init()
     IMGUI_CHECKVERSION();
     ImGui::SetAllocatorFunctions(&ImGuiAlloc, &ImGuiFree, nullptr);
     ImGui::CreateContext();
+    ImGui::GetCurrentContext()->ErrorCallback = &ImGuiLogError;
 }
 
 auto ImGuiExt::LoadIniSettingsIfContext(std::string_view ini_data) -> bool

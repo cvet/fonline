@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "DataSerialization.h"
 #include "DataSource.h"
 #include "FileSystem.h"
+#include "MetadataRegistration.h"
 #include "Settings.h"
 #include "SpriteResource.h"
 
@@ -65,18 +66,16 @@ namespace BakerTests
 
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
-        settings.ScreenWidth = 320;
-        settings.ScreenHeight = 200;
-        settings.DisableAudio = true;
-        OverrideSetting(settings.NullRenderer, true);
-        OverrideSetting(settings.CritterStubSpriteName, string {});
-        OverrideSetting(settings.ItemStubSpriteName, string {});
+        OverrideSetting(settings.View.ScreenWidth, 320);
+        OverrideSetting(settings.View.ScreenHeight, 200);
+        OverrideSetting(settings.Audio.DisableAudio, true);
+        OverrideSetting(settings.Render.NullRenderer, true);
+        OverrideSetting(settings.Render.CritterStubSpriteName, string {});
+        OverrideSetting(settings.Render.ItemStubSpriteName, string {});
     }
 
-    // Test rigs embed tiny scripts that intentionally use mutable module-level globals as
-    // observation hooks. List every namespace those embedded scripts declare; production scripts
-    // compile through their own settings instance and stay gated. The gate-test namespace
-    // (MutableGlobal) is intentionally excluded so the gate-test still fires.
+    // Embedded test scripts use mutable module-level globals as observation hooks, so their namespaces are listed
+    // here; the gate-test namespace stays out so the gate still fires
     inline auto GetTestMutableGlobalsAllowedNamespaces() -> vector<string>
     {
         return {
@@ -113,53 +112,53 @@ namespace BakerTests
 
     inline void ApplySelfContainedServerSettings(GlobalSettings& settings)
     {
-        OverrideSetting(settings.DisableNetworking, true);
-        OverrideSetting(settings.OpLogEnabled, false);
-        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.ServerNetwork.DisableNetworking, true);
+        OverrideSetting(settings.DataBase.OpLogEnabled, false);
+        OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
     }
 
     inline auto MakeScriptCompilerSettings() -> GlobalSettings
     {
         auto settings = GlobalSettings(false);
         settings.ApplyDefaultSettings();
-        OverrideSetting(settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+        OverrideSetting(settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
         return settings;
     }
 
-    inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
-    {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-        writer.Write<uint16_t>(uint16_t {0});
-        return metadata;
-    }
+    constexpr string_view TEST_METADATA_VERSION = "testdatalayout00";
 
-    // Serializes a full metadata blob in the `Metadata.fometa-*` wire format: u16 section count, then per
-    // section { u16+name, u32 entry count, per entry { u32 token count, per token u16+text } }. Lets a test
-    // declare dynamic Entity / EntityHolder / Property / Event / FixedType metadata without hand-packing bytes.
-    inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
+    // Writes the `Metadata.fometa-*` wire format, so a test can declare dynamic metadata without hand-packing
+    // bytes
+    inline auto MakeMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections, string_view metadata_version = TEST_METADATA_VERSION) -> vector<uint8_t>
     {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
+        // Registration reads the fixed header first, so a test blob has to carry one even when the test only
+        // cares about the sections behind it
+        vector<uint8_t> metadata = MakeMetadataHeader(metadata_version);
+        auto writer = data_writer(metadata);
 
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
 
         for (const auto& [section_name, entries] : sections) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-            writer.WriteStringBytes(section_name);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
+            writer.write_string_bytes(section_name);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
 
             for (const auto& tokens : entries) {
-                writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
+                writer.write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
 
                 for (string_view token : tokens) {
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                    writer.WriteStringBytes(token);
+                    writer.write<uint16_t>(numeric_cast<uint16_t>(token.length()));
+                    writer.write_string_bytes(token);
                 }
             }
         }
 
         return metadata;
+    }
+
+    inline auto MakeEmptyMetadataBlob() -> vector<uint8_t>
+    {
+        return MakeMetadataBlob({});
     }
 
     inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
@@ -187,47 +186,44 @@ namespace BakerTests
         auto registrar = meta.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoType proto {meta.Hashes.ToHashedString(proto_name), registrar};
+        ProtoType proto {meta.Hashes.to_hashed_string(proto_name), registrar};
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
     }
 
-    // Same single-type proto resource blob as MakeSingleProtoResourceBlob, but packs several protos of
-    // the same entity type into one pack and lets the caller mutate each proto's default properties via
-    // a configure callback (invoked before properties are serialized). Matches the proto pack format read
-    // by ProtoManager::LoadFromResources: u32 hashes_count, u32 types_count, then per type
-    // { u32 protos_count, u16+type_name, per proto { u16+proto_name, u32+props_data } }.
+    // Several protos of one type in a single pack, with a configure callback invoked before serialization so a
+    // caller can vary each proto's defaults
     template<typename ProtoType>
     inline auto MakeMultiProtoResourceBlob(EngineMetadata& meta, hstring type_name, const vector<pair<string, function<void(ProtoType&)>>>& protos) -> vector<uint8_t>
     {
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(protos.size()));
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
 
         for (const auto& [proto_name, configure] : protos) {
-            ProtoType proto {meta.Hashes.ToHashedString(proto_name), meta.GetPropertyRegistrar(type_name)};
+            ProtoType proto {meta.Hashes.to_hashed_string(proto_name), meta.GetPropertyRegistrar(type_name)};
 
             if (configure) {
                 configure(proto);
@@ -238,105 +234,104 @@ namespace BakerTests
             proto.GetProperties()->StoreAllData(props_data, str_hashes);
             ignore_unused(str_hashes);
 
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-            writer.WriteStringBytes(proto_name);
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-            writer.WriteBytes(props_data);
+            writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+            writer.write_string_bytes(proto_name);
+            writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+            writer.write_bytes(props_data);
         }
 
         return protos_data;
     }
 
-    // Minimal valid baked sprite blob (the versioned single-frame format read by
-    // DefaultSpriteFactory::LoadSprite). Produces a width x height fully-opaque white image so that
-    // headless font/sprite binding succeeds under NullRenderer without shipping real baked art.
     // A baked sprite with several frames in one direction. Some runtime paths cast the loaded sprite to
-    // SpriteSheet, which a single-frame sprite never becomes, so they need this instead.
+    // SpriteSheet, which a single-frame sprite never becomes, so they need this instead
     inline auto MakeMultiFrameBakedSprite(uint16_t frame_count, uint16_t width = 2, uint16_t height = 2, uint16_t ticks = 100) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = DataWriter(sprite_data);
+        auto writer = data_writer(sprite_data);
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.Write<uint16_t>(frame_count);
-        writer.Write<uint16_t>(ticks);
-        writer.Write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint16_t>(frame_count);
+        writer.write<uint16_t>(ticks);
+        writer.write<uint8_t>(uint8_t {1}); // Directions
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (uint16_t frame = 0; frame < frame_count; frame++) {
-            writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
-            writer.Write<int16_t>(int16_t {0}); // Offset x
-            writer.Write<int16_t>(int16_t {0}); // Offset y
-            writer.Write<uint16_t>(width);
-            writer.Write<uint16_t>(height);
-            writer.Write<int16_t>(int16_t {0}); // Frame x
-            writer.Write<int16_t>(int16_t {0}); // Frame y
+            writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+            writer.write<int16_t>(int16_t {0}); // Offset x
+            writer.write<int16_t>(int16_t {0}); // Offset y
+            writer.write<uint16_t>(width);
+            writer.write<uint16_t>(height);
+            writer.write<int16_t>(int16_t {0}); // Frame x
+            writer.write<int16_t>(int16_t {0}); // Frame y
 
             for (size_t i = 0; i < pixel_count; i++) {
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
-                writer.Write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
+                writer.write<uint8_t>(uint8_t {255});
             }
 
             // The mesh descriptor belongs to the frame, so it is written per frame rather than once
-            writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
+            writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Quad));
         }
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
         return sprite_data;
     }
 
+    // A fully-opaque white image, so headless font and sprite binding succeed under NullRenderer without shipping
+    // real baked art
     inline auto MakeMinimalBakedSprite(uint16_t width = 1, uint16_t height = 1, SpriteMeshKind mesh_kind = SpriteMeshKind::Quad, const SpriteMeshData& mesh = {}) -> vector<uint8_t>
     {
         vector<uint8_t> sprite_data;
-        auto writer = DataWriter(sprite_data);
+        auto writer = data_writer(sprite_data);
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-        writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-        writer.Write<uint16_t>(uint16_t {1}); // Frames count
-        writer.Write<uint16_t>(uint16_t {0}); // Ticks
-        writer.Write<uint8_t>(uint8_t {1}); // Directions
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+        writer.write<uint16_t>(uint16_t {1}); // Frames count
+        writer.write<uint16_t>(uint16_t {0}); // Ticks
+        writer.write<uint8_t>(uint8_t {1}); // Directions
 
-        writer.Write<uint8_t>(uint8_t {0}); // Not a sprite reference
-        writer.Write<int16_t>(int16_t {0}); // Offset x
-        writer.Write<int16_t>(int16_t {0}); // Offset y
-        writer.Write<uint16_t>(width);
-        writer.Write<uint16_t>(height);
-        writer.Write<int16_t>(int16_t {0}); // Frame x
-        writer.Write<int16_t>(int16_t {0}); // Frame y
+        writer.write<uint8_t>(uint8_t {0}); // Not a sprite reference
+        writer.write<int16_t>(int16_t {0}); // Offset x
+        writer.write<int16_t>(int16_t {0}); // Offset y
+        writer.write<uint16_t>(width);
+        writer.write<uint16_t>(height);
+        writer.write<int16_t>(int16_t {0}); // Frame x
+        writer.write<int16_t>(int16_t {0}); // Frame y
 
         auto pixel_count = numeric_cast<size_t>(width) * height;
 
         for (size_t i = 0; i < pixel_count; i++) {
-            writer.Write<uint8_t>(uint8_t {255}); // R
-            writer.Write<uint8_t>(uint8_t {255}); // G
-            writer.Write<uint8_t>(uint8_t {255}); // B
-            writer.Write<uint8_t>(uint8_t {255}); // A
+            writer.write<uint8_t>(uint8_t {255}); // R
+            writer.write<uint8_t>(uint8_t {255}); // G
+            writer.write<uint8_t>(uint8_t {255}); // B
+            writer.write<uint8_t>(uint8_t {255}); // A
         }
 
-        writer.Write<uint8_t>(static_cast<uint8_t>(mesh_kind));
+        writer.write<uint8_t>(static_cast<uint8_t>(mesh_kind));
 
         if (mesh_kind == SpriteMeshKind::Mesh) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.width > 0 ? mesh.SourceSize.width : width));
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.height > 0 ? mesh.SourceSize.height : height));
-            writer.Write<int32_t>(mesh.SourceOffset.x);
-            writer.Write<int32_t>(mesh.SourceOffset.y);
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.Vertices.size()));
+            writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.width > 0 ? mesh.SourceSize.width : width));
+            writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.SourceSize.height > 0 ? mesh.SourceSize.height : height));
+            writer.write<int32_t>(mesh.SourceOffset.x);
+            writer.write<int32_t>(mesh.SourceOffset.y);
 
             for (ipos32 vertex : mesh.Vertices) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+                writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
             }
             for (uint16_t index : mesh.Indices) {
-                writer.Write<uint16_t>(index);
+                writer.write<uint16_t>(index);
             }
         }
 
-        writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+        writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
         return sprite_data;
     }
@@ -391,11 +386,11 @@ namespace BakerTests
             size = it->second.Data.size();
             write_time = it->second.WriteTime;
 
-            auto buf = SafeAlloc::MakeUniqueArr<uint8_t>(size);
+            auto buf = safe_alloc::make_unique_arr<uint8_t>(size);
 
             if (size != 0u) {
                 ptr<uint8_t> buf_ptr = buf.get();
-                MemCopy(buf_ptr, it->second.Data.data(), size);
+                memory::copy(buf_ptr, it->second.Data.data(), size);
             }
 
             return MakeMemoryDataSourceFileBufferHolder(std::move(buf));
@@ -442,7 +437,7 @@ namespace BakerTests
     public:
         explicit MemoryFileSet(string pack_name)
         {
-            auto ds = SafeAlloc::MakeUnique<MemoryDataSource>(std::move(pack_name));
+            auto ds = safe_alloc::make_unique<MemoryDataSource>(std::move(pack_name));
             _dataSource = ds.get();
             _fileSystem.AddCustomSource(std::move(ds));
         }
@@ -463,14 +458,15 @@ namespace BakerTests
     inline auto GetTestSettings() -> ptr<GlobalSettings>
     {
         // GlobalSettings holds member references back to *this (Common, Network, ...), so it can't
-        // be safely moved out of a lambda. Construct in place and initialize once via call_once.
+        // be safely moved out of a lambda. Construct in place and initialize once via call_once
         static GlobalSettings instance(true);
         static std::once_flag once;
         std::call_once(once, [] { instance.ApplyDefaultSettings(); });
         return &instance;
     }
 
-    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const ScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
+#if FO_ANGELSCRIPT_SCRIPTING
+    inline auto CompileInlineScripts(ptr<EngineMetadata> meta, const AngelScriptSettings& script_settings, string_view pack_name, const vector<pair<string, string>>& script_files, function<void(string_view)> message_callback) -> vector<uint8_t>
     {
         MemoryFileSet source_files {string(pack_name)};
         vector<File> files;
@@ -493,6 +489,7 @@ namespace BakerTests
         auto script_settings = MakeScriptCompilerSettings();
         return CompileInlineScripts(meta, script_settings, pack_name, script_files, std::move(message_callback));
     }
+#endif
 
     class TestRig final
     {
@@ -501,18 +498,19 @@ namespace BakerTests
             Settings(true)
         {
             Settings.ApplyDefaultSettings();
-            OverrideSetting(Settings.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
-            // Match MakeScriptCompilerSettings — the gate also fires at runtime when ServerEngine
-            // loads bytecode, so the runtime settings need the same allowlist as the compile-time
-            // ones. The gate-test (Test_AngelScriptBaker) intentionally bypasses this default by
-            // re-overriding the field on its TestRig instance before compiling.
-            OverrideSetting(Settings.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
 
-            auto source_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Tests");
+            // In-memory fixtures must not load assemblies or caches from the working directory
+            OverrideSetting(Settings.Baking.BakeOutput, string {});
+            OverrideSetting(Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
+            // The gate fires again when the engine loads bytecode, so the runtime settings need the same allowlist
+            // as the compile-time ones; the gate-test re-overrides this on its own rig
+            OverrideSetting(Settings.AngelScript.MutableGlobalsAllowedNamespaces, GetTestMutableGlobalsAllowedNamespaces());
+
+            auto source_ds = safe_alloc::make_unique<MemoryDataSource>("Tests");
             _sourceData = source_ds.get();
             SourceFiles.AddCustomSource(std::move(source_ds));
 
-            auto baked_ds = SafeAlloc::MakeUnique<MemoryDataSource>("Baked");
+            auto baked_ds = safe_alloc::make_unique<MemoryDataSource>("Baked");
             _bakedData = baked_ds.get();
             BakedFiles.AddCustomSource(std::move(baked_ds));
         }
@@ -540,7 +538,7 @@ namespace BakerTests
             auto settings_ptr = make_nptr(&Settings);
             auto baked_files_ptr = make_nptr(&BakedFiles);
 
-            return SafeAlloc::MakeShared<BakingContext>(BakingContext {
+            return safe_alloc::make_shared<BakingContext>(BakingContext {
                 .Settings = settings_ptr,
                 .PackName = string(pack_name),
                 .BakeChecker = std::move(bake_checker),

@@ -57,6 +57,9 @@ deliberately tracked at a branch).
    dependency. For build-critical libraries (allocator, shader toolchain,
    serialization), prefer a functional pass over the real data path — e.g. a
    full resource bake or the engine unit-test suite — not just compile-and-link.
+   A dependency with a copy outside `ThirdParty/` updates that copy in the same commit: SDL's Android Java
+   glue lives in `BuildTools/android-project/.../org/libsdl/app/` and must match the linked SDL, or the app
+   aborts in `System.loadLibrary` (`BuildTools/tests/test_android_sdl_java_glue.py` holds the two equal).
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
 
@@ -77,12 +80,17 @@ explicit product decision, not as part of a mechanical refresh.
 
 A dependency whose vendored copy carries extensive semantic `(FOnline Patch)`
 edits (the current example is AngelScript, which embeds the engine's nullable
-`T?` type system, VM stack-alignment layout, an added bytecode instruction, and
-a modern-threads mode on top of an upstream fork) is **not** covered by the
+`T?` type system, VM stack-alignment layout, native-call argument
+normalization, an added bytecode instruction, and a modern-threads mode on top
+of an upstream fork) is **not** covered by the
 mechanical copy-then-prune workflow above. Re-vendoring it means reconciling
 every patched region against the new upstream — treat that as a dedicated task
 with its own plan and full script/VM regression validation, and skip such
 dependencies during a routine refresh sweep.
+
+For a branch-tracked or WIP fork, record the exact upstream commit alongside
+the snapshot date in `ThirdParty/README.md`; the upstream version string alone
+does not identify a reproducible source tree.
 
 ## Adding A New Engine Dependency
 
@@ -101,11 +109,12 @@ For a new engine dependency:
   library use;
 - mark local vendored-file edits as `(FOnline Patch)`;
 - **check whether the library exposes an allocator hook, and either wire it to
-  `SafeAlloc` or record why not.** Libraries that allocate through C `malloc`
+  `safe_alloc` or record why not.** Libraries that allocate through C `malloc`
   land in the CRT heap rather than rpmalloc, outside the engine
   out-of-memory contract and invisible to allocator statistics and Tracy. Hooks
   come in several shapes — a runtime setter (`SDL_SetMemoryFunctions`,
-  `asSetGlobalMemoryFunctions`, `Effekseer::SetMallocFunc`), a struct passed at
+  `asSetGlobalMemoryFunctions`, `Effekseer::SetMallocFunc`,
+  `mono_set_allocator_vtable`), a struct passed at
   init (`png_create_read_struct_2`, `bson_mem_set_vtable`), or a compile-time
   symbol the consumer defines (`UFBX_EXTERNAL_MALLOC`). Read the hook's
   *implementation*, not just its declaration: LibreSSL still exports
@@ -148,4 +157,3 @@ option(ZLIB_BUILD_SHARED "Enable zlib shared library" OFF) # (FOnline Patch) eng
 
 Avoid reformatting large upstream files just to add the marker. Keep the local
 delta small enough that the next update can reapply it by inspection.
-

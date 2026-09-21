@@ -100,9 +100,10 @@ target_include_directories(bs_obj
 		../include/compat)
 
 if(BUILD_SHARED_LIBS)
-	add_library(ssl $<TARGET_OBJECTS:ssl_obj> $<TARGET_OBJECTS:compat_obj> $<TARGET_OBJECTS:bs_obj>)
+	add_library(ssl $<TARGET_OBJECTS:ssl_obj> ${COMPAT_OBJECTS} $<TARGET_OBJECTS:bs_obj>)
 else()
-	add_library(ssl $<TARGET_OBJECTS:ssl_obj> empty.c)
+	# (FOnline Patch) Object inputs already supply the library language
+	add_library(ssl $<TARGET_OBJECTS:ssl_obj>)
 endif()
 
 export_symbol(ssl ${CMAKE_CURRENT_SOURCE_DIR}/ssl.sym)

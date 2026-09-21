@@ -37,7 +37,8 @@ namespace ozz {
 namespace math {
 
 struct SoaQuaternion {
-  SimdFloat4 x, y, z, w;
+  SimdFloat4 x = simd_float4::zero(), y = simd_float4::zero(),
+             z = simd_float4::zero(), w = simd_float4::one();
 
   // Loads a quaternion from 4 SimdFloat4 values.
   static OZZ_INLINE SoaQuaternion Load(_SimdFloat4 _x, _SimdFloat4 _y,

@@ -4,6 +4,32 @@
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -20,7 +46,7 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static auto MakeConfigBakerTempDir() -> string
 {
-    return fs_path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
+    return fs::path_to_string(std::filesystem::temp_directory_path() / std::format("lf_config_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count()));
 }
 
 static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
@@ -28,31 +54,6 @@ static void AddConfigBakerMetadata(BakerTests::TestRig& rig)
     auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
-}
-
-static auto MakeConfigBakerMetadataBlob(const vector<pair<string_view, vector<vector<string_view>>>>& sections) -> vector<uint8_t>
-{
-    vector<uint8_t> metadata;
-    auto writer = DataWriter(metadata);
-
-    writer.Write<uint16_t>(numeric_cast<uint16_t>(sections.size()));
-
-    for (const auto& [section_name, entries] : sections) {
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.length()));
-        writer.WriteStringBytes(section_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(entries.size()));
-
-        for (const auto& tokens : entries) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(tokens.size()));
-
-            for (string_view token : tokens) {
-                writer.Write<uint16_t>(numeric_cast<uint16_t>(token.length()));
-                writer.WriteStringBytes(token);
-            }
-        }
-    }
-
-    return metadata;
 }
 
 template<typename T>
@@ -93,13 +94,11 @@ static auto MakeCompleteConfigBakerConfig() -> string
 {
     string config;
 
-#define FIXED_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
-#define VARIABLE_SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
+#define SETTING(type, group, name, ...) AppendConfigBakerSetting(config, #group "." #name, type {__VA_ARGS__})
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 #include "Settings.inc"
-#undef FIXED_SETTING
-#undef VARIABLE_SETTING
+#undef SETTING
 #undef SETTING_GROUP
 #undef SETTING_GROUP_END
 
@@ -148,9 +147,12 @@ TEST_CASE("ConfigBaker")
     SECTION("BakesCompleteRootConfig")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(temp_dir));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path, MakeCompleteConfigBakerConfig()));
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "[ResourcePack]\nName = Core\nInputDirs = core\n"
+                "[ResourcePack]\nName = Art\nInputDirs = art\nClientOnly = True\n"));
 
         TestRig rig;
         AddConfigBakerMetadata(rig);
@@ -163,6 +165,13 @@ TEST_CASE("ConfigBaker")
         REQUIRE(rig.Outputs.contains("(Root).fomain-client"));
         string server_config = rig.GetOutputText("(Root).fomain-server");
         string client_config = rig.GetOutputText("(Root).fomain-client");
+
+        // A packaged application has no other source for its pack list, and the sections close the config
+        string pack_declarations = "[ResourcePack]\nName=Core\n[ResourcePack]\nName=Art\nClientOnly=1\n";
+        CHECK(server_config.ends_with(pack_declarations));
+        CHECK(client_config.ends_with(pack_declarations));
+        CHECK(server_config.find("InputDirs") == string::npos);
+
         CHECK(server_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(client_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(server_config.find("ServerNetwork.ClientPingTime=10000\n") != string::npos);
@@ -171,23 +180,23 @@ TEST_CASE("ConfigBaker")
         CHECK(server_config.find("Common.AsyncLogWrite=") == string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(temp_dir, ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
-    SECTION("BakesDynamicMetadataSettings")
+    SECTION("OmitsGameOnlyMetadataSettingsFromInternalConfig")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(temp_dir));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             MakeCompleteConfigBakerConfig() +
                 "Server.CustomEnabled = true\n"
                 "Client.CustomTitle = Frontend\n"
                 "Unknown.CustomSetting = Visible\n"));
 
         TestRig rig;
-        rig.AddBakedFile("Metadata.fometa-server", MakeConfigBakerMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool"}}}}));
-        rig.AddBakedFile("Metadata.fometa-client", MakeConfigBakerMetadataBlob({{"Setting", {{"Client.CustomTitle", "string"}}}}));
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool", "True"}, {"Common.GameName", "string", "FOnline"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Frontend"}, {"Common.GameName", "string", "FOnline"}}}}));
         rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
 
         ConfigBaker baker(rig.MakeContext("ConfigPack"));
@@ -195,15 +204,157 @@ TEST_CASE("ConfigBaker")
 
         string server_config = rig.GetOutputText("(Root).fomain-server");
         string client_config = rig.GetOutputText("(Root).fomain-client");
-        CHECK(server_config.find("Server.CustomEnabled=1\n") != string::npos);
-        CHECK(server_config.find("Client.CustomTitle=Frontend\n") != string::npos);
+        CHECK(server_config.find("Server.CustomEnabled=") == string::npos);
+        CHECK(server_config.find("Client.CustomTitle=") == string::npos);
+        CHECK(server_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(server_config.find("Unknown.CustomSetting=Visible\n") != string::npos);
-        CHECK(client_config.find("Client.CustomTitle=Frontend\n") != string::npos);
+        CHECK(client_config.find("Client.CustomTitle=") == string::npos);
+        CHECK(client_config.find("Common.GameName=FOnline\n") != string::npos);
         CHECK(client_config.find("Server.CustomEnabled=") == string::npos);
         CHECK(client_config.find("Unknown.CustomSetting=") == string::npos);
 
         std::error_code ec;
-        std::filesystem::remove_all(temp_dir, ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
+    SECTION("KeepsGameOnlySubConfigDeltasInInternalConfig")
+    {
+        string temp_dir = MakeConfigBakerTempDir();
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        string config_path = strex(temp_dir).combine_path("Test.fomain");
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Frontend\n"
+                "[SubConfig]\n"
+                "Name = Override\n"
+                "Server.CustomEnabled = false\n"
+                "Client.CustomTitle = Overridden\n"));
+
+        TestRig rig;
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool", "True"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Frontend"}}}}));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+        ConfigBaker baker(rig.MakeContext("ConfigPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+
+        // The root config repeats the metadata baseline, so nothing game-only is written there
+        CHECK(rig.GetOutputText("(Root).fomain-server").find("Server.CustomEnabled=") == string::npos);
+        CHECK(rig.GetOutputText("(Root).fomain-client").find("Client.CustomTitle=") == string::npos);
+
+        // The sub-config differs from it, so the delta has to travel in the binary config, including the
+        // false one, which the metadata baseline would otherwise turn back on
+        string sub_server_config = rig.GetOutputText("Override.fomain-server");
+        string sub_client_config = rig.GetOutputText("Override.fomain-client");
+        CHECK(sub_server_config.find("Server.CustomEnabled=0\n") != string::npos);
+        CHECK(sub_client_config.find("Client.CustomTitle=Overridden\n") != string::npos);
+        CHECK(sub_server_config.find("Client.CustomTitle=Overridden\n") != string::npos);
+        CHECK(sub_client_config.find("Server.CustomEnabled=") == string::npos);
+
+        std::error_code ec;
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
+    SECTION("ComparesPackageDeltasAgainstTheActiveMetadataBakeConfig")
+    {
+        string temp_dir = MakeConfigBakerTempDir();
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        string config_path = strex(temp_dir).combine_path("Test.fomain");
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Root\n"
+                "[SubConfig]\n"
+                "Name = Public\n"
+                "Server.CustomEnabled = false\n"
+                "Client.CustomTitle = Public\n"
+                "[SubConfig]\n"
+                "Name = Staging\n"
+                "Parent = Public\n"
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Root\n"));
+
+        TestRig rig;
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool", "False"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Public"}}}}));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+        rig.Settings.ApplySubConfigSection("Public");
+
+        ConfigBaker baker(rig.MakeContext("ConfigPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+
+        string public_server_config = rig.GetOutputText("Public.fomain-server");
+        string staging_server_config = rig.GetOutputText("Staging.fomain-server");
+        string staging_client_config = rig.GetOutputText("Staging.fomain-client");
+        CHECK(public_server_config.find("Server.CustomEnabled=") == string::npos);
+        CHECK(public_server_config.find("Client.CustomTitle=") == string::npos);
+        CHECK(staging_server_config.find("Server.CustomEnabled=1\n") != string::npos);
+        CHECK(staging_server_config.find("Client.CustomTitle=Root\n") != string::npos);
+        CHECK(staging_client_config.find("Client.CustomTitle=Root\n") != string::npos);
+        CHECK(staging_client_config.find("Server.CustomEnabled=") == string::npos);
+
+        std::error_code ec;
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
+    SECTION("KeepsBootstrapGameSettingWhenSubConfigRepeatsRootValue")
+    {
+        string temp_dir = MakeConfigBakerTempDir();
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        string config_path = strex(temp_dir).combine_path("Test.fomain");
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "Baking.BootstrapGameSettings = Client.CustomTitle\n"
+                "Server.CustomEnabled = true\n"
+                "Client.CustomTitle = Frontend\n"
+                "[SubConfig]\n"
+                "Name = Override\n"
+                "Server.CustomEnabled = false\n"));
+
+        TestRig rig;
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeMetadataBlob({{"Setting", {{"Server.CustomEnabled", "bool", "True"}}}}));
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Frontend"}}}}));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+        ConfigBaker baker(rig.MakeContext("ConfigPack"));
+        REQUIRE_NOTHROW(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""));
+
+        // The listed setting is consumed before the engine applies the metadata baseline, so it has to
+        // travel in full even where it only repeats the root value and the delta rule would drop it
+        CHECK(rig.GetOutputText("(Root).fomain-server").find("Client.CustomTitle=Frontend\n") != string::npos);
+        CHECK(rig.GetOutputText("(Root).fomain-client").find("Client.CustomTitle=Frontend\n") != string::npos);
+        CHECK(rig.GetOutputText("Override.fomain-server").find("Client.CustomTitle=Frontend\n") != string::npos);
+        CHECK(rig.GetOutputText("Override.fomain-client").find("Client.CustomTitle=Frontend\n") != string::npos);
+
+        // An unlisted game setting keeps the delta form, so the exception stays an exception
+        CHECK(rig.GetOutputText("(Root).fomain-server").find("Server.CustomEnabled=") == string::npos);
+        CHECK(rig.GetOutputText("Override.fomain-server").find("Server.CustomEnabled=0\n") != string::npos);
+
+        std::error_code ec;
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
+    }
+
+    SECTION("RejectsBootstrapGameSettingThatIsNotDeclared")
+    {
+        string temp_dir = MakeConfigBakerTempDir();
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
+        string config_path = strex(temp_dir).combine_path("Test.fomain");
+        REQUIRE(fs::write_file(config_path,
+            MakeCompleteConfigBakerConfig() +
+                "Baking.BootstrapGameSettings = Client.CustomTytle\n"
+                "Client.CustomTitle = Frontend\n"));
+
+        TestRig rig;
+        rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob());
+        rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeMetadataBlob({{"Setting", {{"Client.CustomTitle", "string", "Frontend"}}}}));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", temp_dir);
+
+        ConfigBaker baker(rig.MakeContext("ConfigPack"));
+        REQUIRE_THROWS_WITH(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""), Catch::Matchers::ContainsSubstring("Bootstrap game setting is not a declared game setting"));
+
+        std::error_code ec;
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("BakingRequiresSingleAppliedRootConfig")
@@ -220,10 +371,10 @@ TEST_CASE("ConfigBaker")
         auto temp_dir = std::filesystem::temp_directory_path() / "lf-configbaker-test";
         std::filesystem::create_directories(temp_dir);
         auto fomain_path = temp_dir / "Test.fomain";
-        fs_write_file(fs_path_to_string(fomain_path), "GameName = Test\n");
+        fs::write_file(fs::path_to_string(fomain_path), "GameName = Test\n");
 
         TestRig rig;
-        rig.Settings.ApplyConfigAtPath("Test.fomain", fs_path_to_string(temp_dir));
+        rig.Settings.ApplyConfigAtPath("Test.fomain", fs::path_to_string(temp_dir));
 
         ConfigBaker baker(rig.MakeContext());
 
@@ -236,9 +387,9 @@ TEST_CASE("ConfigBaker")
     SECTION("BakingReportsIncompleteConfigSettings")
     {
         string temp_dir = MakeConfigBakerTempDir();
-        REQUIRE(std::filesystem::create_directories(temp_dir));
+        REQUIRE(std::filesystem::create_directories(fs::make_path(temp_dir)));
         string config_path = strex(temp_dir).combine_path("Test.fomain");
-        REQUIRE(fs_write_file(config_path,
+        REQUIRE(fs::write_file(config_path,
             "Common.GameName = RootGame\n"
             "[SubConfig]\n"
             "Name = Child\n"
@@ -252,7 +403,7 @@ TEST_CASE("ConfigBaker")
         CHECK_THROWS_AS(baker.BakeFiles(TestRig::MakeEmptyFiles(), ""), ConfigBakerException);
 
         std::error_code ec;
-        std::filesystem::remove_all(temp_dir, ec);
+        std::filesystem::remove_all(fs::make_path(temp_dir), ec);
     }
 
     SECTION("SetupBakersReturnsRequestedBaker")

@@ -39,10 +39,14 @@ namespace math {
 
 // Declares a 2d float vector.
 struct OZZ_BASE_DLL Float2 {
-  float x, y;
+  float x = 0.f, y = 0.f;
 
-  // Constructs an uninitialized vector.
+  // Constructs a default (0, 0) vector.
   OZZ_INLINE Float2() {}
+  OZZ_INLINE Float2(const Float2&) = default;
+  OZZ_INLINE Float2(Float2&&) = default;
+  OZZ_INLINE Float2& operator=(const Float2&) = default;
+  OZZ_INLINE Float2& operator=(Float2&&) = default;
 
   // Constructs a vector initialized with _f value.
   explicit OZZ_INLINE Float2(float _f) : x(_f), y(_f) {}
@@ -65,10 +69,14 @@ struct OZZ_BASE_DLL Float2 {
 
 // Declares a 3d float vector.
 struct OZZ_BASE_DLL Float3 {
-  float x, y, z;
+  float x = 0.f, y = 0.f, z = 0.f;
 
-  // Constructs an uninitialized vector.
+  // Constructs a default (0, 0, 0) vector.
   OZZ_INLINE Float3() {}
+  OZZ_INLINE Float3(const Float3&) = default;
+  OZZ_INLINE Float3(Float3&&) = default;
+  OZZ_INLINE Float3& operator=(const Float3&) = default;
+  OZZ_INLINE Float3& operator=(Float3&&) = default;
 
   // Constructs a vector initialized with _f value.
   explicit OZZ_INLINE Float3(float _f) : x(_f), y(_f), z(_f) {}
@@ -97,10 +105,14 @@ struct OZZ_BASE_DLL Float3 {
 
 // Declares a 4d float vector.
 struct OZZ_BASE_DLL Float4 {
-  float x, y, z, w;
+  float x = 0.f, y = 0.f, z = 0.f, w = 0.f;
 
-  // Constructs an uninitialized vector.
+  // Constructs a default (0, 0, 0, 0) vector.
   OZZ_INLINE Float4() {}
+  OZZ_INLINE Float4(const Float4&) = default;
+  OZZ_INLINE Float4(Float4&&) = default;
+  OZZ_INLINE Float4& operator=(const Float4&) = default;
+  OZZ_INLINE Float4& operator=(Float4&&) = default;
 
   // Constructs a vector initialized with _f value.
   explicit OZZ_INLINE Float4(float _f) : x(_f), y(_f), z(_f), w(_f) {}

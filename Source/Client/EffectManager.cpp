@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -58,8 +58,8 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
             return file.GetStr();
         }
 
-        BreakIntoDebugger();
-        WriteLog("Effect file '{}' not found", path2);
+        break_into_debugger();
+        logging::write("Effect file '{}' not found", path2);
         return {};
     });
 
@@ -173,12 +173,10 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
     if (effect->IsNeedRandomValueBuf()) {
         auto& random_value_buf = effect->RandomValueBuf = RenderEffect::RandomValueBuffer();
 
-        std::uniform_int_distribution<int32_t> random_distribution {0, 99999};
-
-        random_value_buf->RandomValue[0] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[1] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[2] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
-        random_value_buf->RandomValue[3] = numeric_cast<float32_t>(random_distribution(_randomGenerator)) / 100000.0f;
+        random_value_buf->RandomValue[0] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[1] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[2] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
+        random_value_buf->RandomValue[3] = numeric_cast<float32_t>(_randomGenerator.next_below(100000)) / 100000.0f;
     }
 }
 
@@ -192,7 +190,7 @@ void EffectManager::LoadMinimalEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Iface, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.FlushRenderTarget, EffectUsage::QuadSprite, "Effects/Flush_RenderTarget.fofx");
@@ -208,7 +206,7 @@ void EffectManager::LoadDefaultEffects()
 
     int32_t effect_errors = 0;
 
-    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->ImGuiDefaultEffect);
+    LOAD_DEFAULT_EFFECT(Effects.ImGui, EffectUsage::ImGui, _settings->Render.ImGuiDefaultEffect);
     LOAD_DEFAULT_EFFECT(Effects.Font, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Generic, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");
     LOAD_DEFAULT_EFFECT(Effects.Critter, EffectUsage::QuadSprite, "Effects/2D_Default.fofx");

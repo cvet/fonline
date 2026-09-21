@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -142,10 +142,12 @@ public:
     ~NetInBuffer() override = default;
 
     [[nodiscard]] auto GetReadPos() const noexcept -> size_t { return _bufReadPos; }
-    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
+    [[nodiscard]] auto GetUnreadSize() const noexcept -> size_t { return GetReadLimit() - _bufReadPos; }
+    [[nodiscard]] auto GetBufferedUnreadSize() const noexcept -> size_t { return _bufEndPos - _bufReadPos; }
     [[nodiscard]] auto NeedProcess() -> bool;
 
     void SetMaxMsgLen(size_t len) noexcept { _maxMsgLen = len; }
+    void SetMaxBufLen(size_t len) noexcept { _maxBufLen = len; }
     void AddData(const_span<uint8_t> buf);
     void SetEndPos(size_t pos);
     void ShrinkReadBuf();
@@ -184,9 +186,9 @@ public:
 
     template<typename T>
         requires(std::same_as<T, hstring>)
-    [[nodiscard]] auto Read(const HashResolver& hash_resolver) -> hstring
+    [[nodiscard]] auto Read(const hash_resolver& hashes) -> hstring
     {
-        return ReadHashedString(hash_resolver);
+        return ReadHashedString(hashes);
     }
 
     void ReadPropsData(vector<vector<uint8_t>>& props_data);
@@ -194,10 +196,14 @@ public:
     auto ReadMsg() -> NetMessage;
 
 private:
-    [[nodiscard]] auto ReadHashedString(const HashResolver& hash_resolver) -> hstring;
+    [[nodiscard]] auto ReadHashedString(const hash_resolver& hashes) -> hstring;
+    [[nodiscard]] auto GetReadLimit() const noexcept -> size_t { return _msgEndPos != 0 ? _msgEndPos : _bufEndPos; }
+    void FinishMessageRead();
 
     size_t _bufReadPos {};
+    size_t _msgEndPos {};
     size_t _maxMsgLen {};
+    size_t _maxBufLen {};
 };
 
 FO_END_NAMESPACE

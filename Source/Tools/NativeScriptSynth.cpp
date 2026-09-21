@@ -94,7 +94,7 @@ static auto EntityEngineClass(const EngineMetadata& meta, string_view entity, st
         }
         return "FO_NAMESPACE_NAME::BaseEngine";
     }
-    const auto& type_desc = meta.GetEntityType(meta.Hashes.ToHashedString(entity));
+    const auto& type_desc = meta.GetEntityType(meta.Hashes.to_hashed_string(entity));
     if (target == "Server") {
         if (type_desc.ServerClassName.empty()) {
             return string("FO_NAMESPACE_NAME::") + string(entity);
@@ -1088,7 +1088,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
             // appearing in the Client wrapper).
             const EngineMetadata* per_target = target_meta_lookup(target_name);
             const EngineMetadata& body_meta = per_target != nullptr ? *per_target : meta;
-            const auto& type_desc = body_meta.GetEntityType(body_meta.Hashes.ToHashedString(entity));
+            const auto& type_desc = body_meta.GetEntityType(body_meta.Hashes.to_hashed_string(entity));
             unordered_set<string> visible_method_names;
             for (const auto& method : type_desc.Methods) {
                 visible_method_names.insert(method.Name);
@@ -1235,7 +1235,7 @@ auto SynthesizeNativeApiSurface(const EngineMetadata& meta, const function<const
         const EngineMetadata* body_per_target = target_meta_lookup(target_name);
         const EngineMetadata& phase2_meta = body_per_target != nullptr ? *body_per_target : meta;
         for (const auto& entity : wrapper_entity_names) {
-            const auto& type_desc = phase2_meta.GetEntityType(phase2_meta.Hashes.ToHashedString(entity));
+            const auto& type_desc = phase2_meta.GetEntityType(phase2_meta.Hashes.to_hashed_string(entity));
 
             // Property bodies — unified runtime-lookup path for all
             // properties (engine + user). The Property pointer is

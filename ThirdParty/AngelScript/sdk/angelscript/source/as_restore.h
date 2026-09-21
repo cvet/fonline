@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2024 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -198,7 +198,6 @@ protected:
 
 	void CalculateAdjustmentByPos(asCScriptFunction *func);
 	int  AdjustStackPosition(int pos);
-	int  AdjustProgramPosition(int pos);
 	int  AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD programPos);
 
 	// Intermediate data used for storing that which isn't constant, function id's, pointers, etc

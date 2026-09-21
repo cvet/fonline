@@ -15,7 +15,15 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **100** `Test_*.cpp` suites.
+Current count: **113** `Test_*.cpp` suites.
+
+`Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
+retain their result across another thread's final release and that an older entity cannot unregister
+a successor with the same id.
+
+The configured executable contains the suites for its enabled scripting backends. AngelScript-only translation
+units are selected only when `FO_ANGELSCRIPT_SCRIPTING` is enabled; `Test_ManagedScriptBaker.cpp` is selected only
+when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always present.
 
 ### Essentials and low-level utilities
 
@@ -107,6 +115,7 @@ Current count: **100** `Test_*.cpp` suites.
 ### Bakers and tools
 
 - `Source/Tests/Test_AngelScriptBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_BakerSetup.cpp`
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
@@ -114,6 +123,7 @@ Current count: **100** `Test_*.cpp` suites.
 - `Source/Tests/Test_MapBaker.cpp`
 - `Source/Tests/Test_Mapper.cpp`
 - `Source/Tests/Test_MetadataBaker.cpp`
+- `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_ModelBaker.cpp`
 - `Source/Tests/Test_ModelBounds.cpp`
 - `Source/Tests/Test_ModelMeshData.cpp`
@@ -145,6 +155,10 @@ staged ahead of the atomic sampler/matrix cutover.
 
 ### Rendering/frontend smoke tests
 
+- `Source/Tests/Test_AudioManager.cpp` — pins the panning law sample by sample, and runs a real
+  baked Ogg through the mixer against a fake audio device to prove a placed sound is mixed where it
+  was placed, that `UpdateSound` moves one that is already playing, and that its handle stops
+  answering once the sound has finished.
 - `Source/Tests/Test_ImGui.cpp` — pins the backend-less widget activation and
   window-state harness used by diagnostic-panel coverage.
 - `Source/Tests/Test_EffekseerParticleRuntime.cpp` — runs cooked legacy and modern Effekseer
@@ -193,6 +207,8 @@ Header-only helpers live next to the suites and are not listed in `FO_TESTS_SOUR
   checkbox, selectable or folded section runs in a headless frame. Pinned by
   `ImGuiTestHarnessPressesWidgetsByLabel` in `Test_ImGui.cpp`; usage rules are in
   [../../Docs/Testing.md](../../Docs/Testing.md).
+- `Source/Tests/Test_DumpArtifacts.h` - records the `TexDump_*` directories present in the working
+  directory so a suite that triggers an atlas dump removes only the ones its own run wrote.
 
 ## Notes
 

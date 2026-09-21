@@ -1,7 +1,7 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
 //    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
-//   / __/ / /_/ / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
 // FOnline Engine
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,8 @@
 
 #include "Application.h"
 
-// The Vulkan loader is resolved dynamically through SDL (SDL_Vulkan_LoadLibrary +
-// SDL_Vulkan_GetVkGetInstanceProcAddr) instead of link-time against vulkan-1.lib, so a client
-// built with Vulkan support still launches on a machine without the Vulkan runtime — the loader is
-// only pulled in when the Vulkan backend is actually selected. VK_NO_PROTOTYPES suppresses the
-// header's function declarations; the entry points below are the sole definitions.
+// The loader is resolved through SDL rather than linked, so a Vulkan-capable client still launches on a
+// machine without the Vulkan runtime; VK_NO_PROTOTYPES leaves the entry points below as the definitions
 #define VK_NO_PROTOTYPES
 #include "SDL3/SDL.h"
 #include "SDL3/SDL_video.h"
@@ -54,10 +51,8 @@ static constexpr uint32_t VULKAN_MAX_TEXTURE_BINDINGS = 16;
 static constexpr uint32_t VULKAN_MAX_UNIFORM_BINDINGS = 16;
 static constexpr uint32_t VULKAN_FRAMES_IN_FLIGHT = 2;
 
-// Dynamically-loaded Vulkan entry points (mirrors the OpenGL backend's SDL_GL_GetProcAddress table).
-// vkGetInstanceProcAddr is the bootstrap obtained from SDL; global functions load with a null
-// instance before one exists; the rest load from the created instance. These file-scope pointers are
-// process-global loader dispatch, not per-engine state, and the client renderer is single-instance.
+// The bootstrap for the table below: global functions load with a null instance, the rest from the
+// created one. File-scope because loader dispatch is process-global, not per-engine state
 static PFN_vkGetInstanceProcAddr vkGetInstanceProcAddr = nullptr;
 
 #define FO_VK_GLOBAL_FUNCTIONS(X) \
@@ -173,7 +168,7 @@ static void LoadVulkanInstanceFunctions(VkInstance instance) noexcept
 }
 
 // Growable, persistently-mapped HOST_VISIBLE buffer of a ring pool; steady-state uploads
-// are pure memcpy.
+// are pure memcpy
 struct VulkanPooledBuffer
 {
     VkBuffer Buffer {};
@@ -182,7 +177,7 @@ struct VulkanPooledBuffer
     nptr<void> Mapped {};
 };
 
-// Ring of pooled buffers: one buffer per upload within a frame, index reset on frame-stamp mismatch.
+// Ring of pooled buffers: one buffer per upload within a frame, index reset on frame-stamp mismatch
 struct VulkanBufferRing
 {
     vector<VulkanPooledBuffer> Buffers {};
@@ -191,7 +186,7 @@ struct VulkanBufferRing
 };
 
 // Destroy requests of one frame slot; flushed after the slot's fence (its signal implies
-// completion of all earlier submissions too).
+// completion of all earlier submissions too)
 struct VulkanDeferredDestroyQueue
 {
     vector<VkBuffer> Buffers {};
@@ -201,7 +196,7 @@ struct VulkanDeferredDestroyQueue
     vector<VkFramebuffer> Framebuffers {};
 };
 
-// Resources of one in-flight frame slot; reused only after BeginFrame waits the slot's fence.
+// Resources of one in-flight frame slot; reused only after BeginFrame waits the slot's fence
 struct VulkanFrameSlot
 {
     VkCommandBuffer CommandBuffer {};
@@ -224,6 +219,7 @@ struct Vulkan_Renderer::Context
     }
 
     ptr<GlobalSettings> Settings;
+    nptr<const AppScreenState> Screen {};
     ptr<SDL_Window> SdlWindow;
     VkInstance Instance {};
     VkPhysicalDevice PhysicalDevice {};
@@ -244,7 +240,7 @@ struct Vulkan_Renderer::Context
     VkDeviceMemory SwapchainDepthImageMemory {};
     VkCommandPool CommandPool {};
 
-    // In-flight frame slots; draw code uses the current-slot aliases refreshed by BeginFrame.
+    // In-flight frame slots; draw code uses the current-slot aliases refreshed by BeginFrame
     VulkanFrameSlot FrameSlots[VULKAN_FRAMES_IN_FLIGHT] {};
     VkCommandBuffer CommandBuffer {}; // Current slot's command buffer
     VkSemaphore ImageAvailableSemaphore {}; // Current slot's acquire semaphore
@@ -276,7 +272,7 @@ struct Vulkan_Renderer::Context
 
     VkDebugUtilsMessengerEXT DebugMessenger {};
 
-    // Cached immutable device properties (queried once in Init) to avoid per-draw / per-allocation queries.
+    // Cached immutable device properties (queried once in Init) to avoid per-draw / per-allocation queries
     VkDeviceSize MinUniformBufferOffsetAlignment {};
     VkPhysicalDeviceMemoryProperties MemoryProperties {};
 
@@ -329,7 +325,7 @@ static VKAPI_ATTR auto VKAPI_CALL VulkanDebugCallback(VkDebugUtilsMessageSeverit
     string_view sev = severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT ? string_view {"ERROR"} : severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT ? string_view {"WARN"} : string_view {"INFO"};
     const char* message_id = data != nullptr && data->pMessageIdName != nullptr ? data->pMessageIdName : "?";
     const char* message = data != nullptr && data->pMessage != nullptr ? data->pMessage : "?";
-    WriteLog("[VkLayer/{}] {}: {}", sev, message_id, message);
+    logging::write("[VkLayer/{}] {}: {}", sev, message_id, message);
     return VK_FALSE;
 }
 
@@ -548,7 +544,7 @@ public:
     VkBuffer CurrentIndexBuffer {};
 
     // Dynamic geometry rings, one per in-flight frame slot: a fresh ring buffer per Upload keeps
-    // still-pending draws' geometry snapshots intact.
+    // still-pending draws' geometry snapshots intact
     VulkanBufferRing VertexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
     VulkanBufferRing IndexBufferRings[VULKAN_FRAMES_IN_FLIGHT] {};
 
@@ -580,7 +576,7 @@ public:
     VkShaderModule VertexShaderModule[EFFECT_MAX_PASSES] {};
     VkShaderModule FragmentShaderModule[EFFECT_MAX_PASSES] {};
     // Per-pass pipelines indexed by [pass][primitive_type][blend_disabled?]: the second variant
-    // honours RenderEffect::DisableBlending (opaque blits; alpha-blending them drops the HUD).
+    // honours RenderEffect::DisableBlending (opaque blits; alpha-blending them drops the HUD)
     VkPipeline Pipeline[EFFECT_MAX_PASSES][5][2][EFFECT_DEPTH_VARIANTS][EFFECT_CULL_MODES] {};
     VkPipelineLayout PipelineLayout {};
 
@@ -589,7 +585,7 @@ private:
 };
 
 // Submits the partially recorded frame command buffer and resumes recording; needed before an
-// immediate readback that must observe commands recorded earlier this frame.
+// immediate readback that must observe commands recorded earlier this frame
 static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
@@ -599,7 +595,7 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
     }
 
     // The frame recording is torn down below; on any throw the flag honestly reads false so a later
-    // UpdateTextureRegion takes the safe standalone-staging path instead of recording into a dead buffer.
+    // UpdateTextureRegion takes the safe standalone-staging path instead of recording into a dead buffer
     ctx->FrameCbRecording = false;
 
     VkResult vk_result = VK_SUCCESS;
@@ -608,7 +604,7 @@ static void FlushFrameCommandBufferMidFrame(ptr<Vulkan_Renderer::Context> ctx)
     EndCommandBufferRecording(ctx->CommandBuffer);
 
     // The first submit of the frame command buffer must wait for the swapchain image acquire,
-    // because the buffer starts with the acquired image's layout transition and clear.
+    // because the buffer starts with the acquired image's layout transition and clear
     constexpr VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_TRANSFER_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit_info {};
     submit_info.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
@@ -686,24 +682,24 @@ static void EnsurePooledBufferCapacity(ptr<Vulkan_Renderer::Context> ctx, Vulkan
         return;
     }
 
-    // Growth math still uses the old capacity, so compute it before invalidating the slot.
+    // Growth math still uses the old capacity, so compute it before invalidating the slot
     constexpr VkDeviceSize min_capacity = 4096;
     VkDeviceSize new_capacity = std::max({size, pooled.Capacity * 2, min_capacity});
 
-    // Growth is deferred-destroyed like any other in-flight resource; steady state never grows.
+    // Growth is deferred-destroyed like any other in-flight resource; steady state never grows
     DestroyBufferSafe(ctx, pooled.Buffer);
     DestroyMemorySafe(ctx, pooled.Memory);
     pooled.Mapped = nullptr;
-    // Invalidate capacity before the first throwing op: on throw the slot stays a consistent empty buffer.
+    // Invalidate capacity before the first throwing op: on throw the slot stays a consistent empty buffer
     pooled.Capacity = 0;
 
     AllocateBuffer(ctx, new_capacity, usage, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, pooled.Buffer, pooled.Memory);
 
-    // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy.
+    // Persistent mapping: slots stay mapped for their whole lifetime, uploads are plain memcpy
     void* mapped_raw {};
     auto vk_result = vkMapMemory(ctx->Device, pooled.Memory, 0, VK_WHOLE_SIZE, 0, &mapped_raw);
     VerifyVkResult(vk_result);
-    // No-throw commit tail.
+    // No-throw commit tail
     pooled.Capacity = new_capacity;
     pooled.Mapped = mapped_raw;
 }
@@ -839,7 +835,7 @@ Vulkan_Texture::Vulkan_Texture(isize32 size, bool linear_filtered, bool with_dep
     }
 
     // Put texture into a valid sampling layout immediately.
-    // Some textures are sampled before any UpdateTextureRegion call.
+    // Some textures are sampled before any UpdateTextureRegion call
     BeginCommandBufferRecording(_ctx->StagingCommandBuffer);
 
     TransitionColorImage(_ctx->StagingCommandBuffer, TextureImage, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
@@ -923,7 +919,7 @@ auto Vulkan_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     auto map_data = make_nptr(map_data_raw);
     FO_VERIFY_AND_THROW(map_data, "Mapped memory data pointer is null");
     tex_region.resize(size.square());
-    MemCopy(tex_region.data(), map_data, region_data_size);
+    memory::copy(tex_region.data(), map_data, region_data_size);
     vkUnmapMemory(_ctx->Device, staging_mem);
 
     // Swizzle B↔R: VK_FORMAT_B8G8R8A8_UNORM stores {B,G,R,A} but ucolor expects {R,G,B,A}
@@ -969,10 +965,8 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     FO_VERIFY_AND_THROW(source_data, "Texture update source data is null");
     auto source_bytes = source_data.reinterpret_as<uint8_t>();
 
-    // Fills staging with the region pixels swizzled R<->B for VK_FORMAT_B8G8R8A8_UNORM. Compose
-    // from the source so the write-combined staging memory is never read back (an in-place swap
-    // costs milliseconds per large region); inter-row gaps on the use_dest_pitch path are skipped
-    // by the copy via bufferRowLength.
+    // Swizzles R<->B for VK_FORMAT_B8G8R8A8_UNORM while composing from the source, because reading back
+    // write-combined staging memory for an in-place swap costs milliseconds per large region
     auto fill_staging = [&](ptr<uint8_t> mapped_bytes) {
         size_t pixels_per_row = numeric_cast<size_t>(size.width);
 
@@ -995,7 +989,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
     // Create GPU texture image if needed
     if (TextureImage == VK_NULL_HANDLE) {
         // Build every image/view into locals first; on any throw the members stay null so the whole
-        // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind.
+        // block re-runs cleanly next call instead of leaving TextureImage set with a null view behind
         VkImage tex_image {};
         VkDeviceMemory tex_image_memory {};
         AllocateImage(_ctx, numeric_cast<uint32_t>(Size.width), numeric_cast<uint32_t>(Size.height), VK_FORMAT_B8G8R8A8_UNORM, VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, tex_image, tex_image_memory);
@@ -1040,7 +1034,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
             VerifyVkResult(vk_result);
         }
 
-        // No-throw commit tail.
+        // No-throw commit tail
         TextureImage = tex_image;
         TextureImageMemory = tex_image_memory;
         TextureImageView = tex_image_view;
@@ -1065,7 +1059,7 @@ void Vulkan_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<uc
 
     if (_ctx->FrameCbRecording) {
         // Record the upload into the frame command buffer: program order preserves the engine's
-        // immediate-mode ordering (e.g. an earlier atlas clear) with no mid-frame submit or wait.
+        // immediate-mode ordering (e.g. an earlier atlas clear) with no mid-frame submit or wait
         auto& staging = AcquireRingBuffer(_ctx, _ctx->CurrentFrameSlot().TextureStagingRing, total_data_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT);
         FO_VERIFY_AND_THROW(staging.Mapped, "Mapped memory data pointer is null");
         fill_staging(staging.Mapped.reinterpret_as<uint8_t>());
@@ -1164,13 +1158,12 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             // pending draws' snapshots intact)
             auto& pooled = AcquireRingBuffer(_ctx, VertexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], vert_size, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT);
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, vert_data.get(), vert_size);
+            memory::copy(pooled.Mapped, vert_data.get(), vert_size);
             CurrentVertexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static vertex buffer valid and StaticDataChanged still true for a clean retry.
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_vert_buf {};
             VkDeviceMemory staging_vert_mem {};
 
@@ -1181,7 +1174,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             VerifyVkResult(vk_result);
             auto mapped_data = make_nptr(mapped_data_raw);
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, vert_data.get(), vert_size);
+            memory::copy(mapped_data, vert_data.get(), vert_size);
             vkUnmapMemory(_ctx->Device, staging_vert_mem);
 
             VkBuffer new_static_buf {};
@@ -1203,7 +1196,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            // No-throw commit tail: retire the old buffers and swap in the new ones
             DestroyBufferSafe(_ctx, StaticVertexBuffer);
             DestroyMemorySafe(_ctx, StaticVertexBufferMemory);
             StaticVertexBuffer = new_static_buf;
@@ -1217,13 +1210,12 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             // Dynamic geometry: same ring scheme as the vertex path
             auto& pooled = AcquireRingBuffer(_ctx, IndexBufferRings[_ctx->FrameIndex % VULKAN_FRAMES_IN_FLIGHT], idx_size, VK_BUFFER_USAGE_INDEX_BUFFER_BIT);
             FO_VERIFY_AND_THROW(pooled.Mapped, "Mapped memory data pointer is null");
-            MemCopy(pooled.Mapped, Indices.data(), idx_size);
+            memory::copy(pooled.Mapped, Indices.data(), idx_size);
             CurrentIndexBuffer = pooled.Buffer;
         }
         else {
-            // Static buffers: use staging copy to GPU-local memory. Build into locals and keep the old
-            // static buffers alive/referenced until the copy succeeds, so a throw leaves the current
-            // static index buffer valid and StaticDataChanged still true for a clean retry.
+            // Built into locals that only replace the live static buffers once the staging copy succeeds,
+            // so a throw leaves the current buffers valid and StaticDataChanged set for a clean retry
             VkBuffer staging_idx_buf {};
             VkDeviceMemory staging_idx_mem {};
             AllocateBuffer(_ctx, idx_size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, staging_idx_buf, staging_idx_mem);
@@ -1233,7 +1225,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
             VerifyVkResult(vk_result);
             auto mapped_data = make_nptr(mapped_data_raw);
             FO_VERIFY_AND_THROW(mapped_data, "Mapped memory data pointer is null");
-            MemCopy(mapped_data, Indices.data(), idx_size);
+            memory::copy(mapped_data, Indices.data(), idx_size);
             vkUnmapMemory(_ctx->Device, staging_idx_mem);
 
             VkBuffer new_static_buf {};
@@ -1255,7 +1247,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
 
             ResetCommandBufferRecording(_ctx->StagingCommandBuffer);
 
-            // No-throw commit tail: retire the old buffers and swap in the new ones.
+            // No-throw commit tail: retire the old buffers and swap in the new ones
             DestroyBufferSafe(_ctx, StaticIndexBuffer);
             DestroyMemorySafe(_ctx, StaticIndexBufferMemory);
             StaticIndexBuffer = new_static_buf;
@@ -1264,7 +1256,7 @@ void Vulkan_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertic
         }
     }
 
-    // All static builds succeeded: mark the static data uploaded (no-throw commit).
+    // All static builds succeeded: mark the static data uploaded (no-throw commit)
     StaticDataChanged = false;
 }
 
@@ -1330,19 +1322,19 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         auto& proj_buf = ProjBuf = ProjBuffer();
         auto projection_matrix = proj_buf->ProjMatrix;
         auto projection_matrix_values = make_ptr(glm::value_ptr(_ctx->ProjMatrix));
-        MemCopy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
+        memory::copy(projection_matrix, projection_matrix_values, 16 * sizeof(float32_t));
     }
 
     if (_needMainTexBuf && !MainTexBuf.has_value()) {
         auto& main_tex_buf = MainTexBuf = MainTexBuffer();
         auto main_texture_size = main_tex_buf->MainTexSize;
         auto main_texture_size_data = main_tex->SizeData;
-        MemCopy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
+        memory::copy(main_texture_size, main_texture_size_data, 4 * sizeof(float32_t));
     }
 
     // Default-initialize every required-but-unset uniform: descriptor sets are fresh per draw,
     // so an unwritten binding is undefined and the shader reads garbage (e.g. random egg-cutout
-    // alpha collapse in 2D_Default.fofx).
+    // alpha collapse in 2D_Default.fofx)
     if (_needEggBuf && !EggBuf.has_value()) {
         EggBuf = EggBuffer();
     }
@@ -1397,7 +1389,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
         FO_VERIFY_AND_THROW(prim_index < 5, "Invalid render primitive type");
 
         // Bind pipeline for current pass — pick the variant that matches the current
-        // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise).
+        // DisableBlending flag (opaque writes for the blit-style flushes, alpha-blend otherwise)
         size_t blend_variant = DisableBlending ? 1 : 0;
         size_t depth_slot = ResolveDepthVariantSlot(pass);
         size_t cull_variant = static_cast<size_t>(ResolveCullMode());
@@ -1518,7 +1510,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
                 // Copy data
                 FO_VERIFY_AND_THROW(_ctx->FrameUniformBufferMapped, "Mapped memory data pointer is null");
                 auto mapped_bytes = _ctx->FrameUniformBufferMapped.reinterpret_as<uint8_t>();
-                MemCopy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
+                memory::copy(mapped_bytes.offset(_ctx->FrameUniformOffset), src_data.data(), src_size);
 
                 auto& buffer_info = buffer_infos[write_count];
                 buffer_info.buffer = _ctx->FrameUniformBuffer;
@@ -1614,7 +1606,7 @@ void Vulkan_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, o
     RandomValueBuf.reset();
     CameraBuf.reset();
     // ScriptValueBuf intentionally not reset: it persists across draws and is re-uploaded each
-    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false).
+    // draw, matching the OpenGL/D3D backends (D3D uploads it with reset_buf=false)
 #if FO_ENABLE_3D
     ModelBuf.reset();
     ModelTexBuf.reset();
@@ -1773,7 +1765,7 @@ Vulkan_Renderer::~Vulkan_Renderer()
         _ctx->Instance = VK_NULL_HANDLE;
     }
 
-    // Balance the SDL_Vulkan_LoadLibrary from Init (SDL ref-counts the loader).
+    // Balance the SDL_Vulkan_LoadLibrary from Init (SDL ref-counts the loader)
     SDL_Vulkan_UnloadLibrary();
 
     _ctx.reset();
@@ -1784,7 +1776,7 @@ auto Vulkan_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool wit
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto tex = SafeAlloc::MakeUnique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx);
+    auto tex = safe_alloc::make_unique<Vulkan_Texture>(size, linear_filtered, with_depth, _ctx);
 
     return std::move(tex);
 }
@@ -1794,7 +1786,7 @@ auto Vulkan_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawB
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto dbuf = SafeAlloc::MakeUnique<Vulkan_DrawBuffer>(is_static, _ctx);
+    auto dbuf = safe_alloc::make_unique<Vulkan_DrawBuffer>(is_static, _ctx);
 
     return std::move(dbuf);
 }
@@ -1804,7 +1796,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
-    auto vk_effect = SafeAlloc::MakeUnique<Vulkan_Effect>(usage, name, loader, _ctx);
+    auto vk_effect = safe_alloc::make_unique<Vulkan_Effect>(usage, name, loader, _ctx);
 
     for (size_t pass = 0; pass < vk_effect->_passCount; pass++) {
         // Load vertex shader SPIR-V
@@ -1960,9 +1952,8 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
         rasterization_ci.depthClampEnable = VK_FALSE;
         rasterization_ci.rasterizerDiscardEnable = VK_FALSE;
         rasterization_ci.polygonMode = VK_POLYGON_MODE_FILL;
-        // The negative-height viewport flips screen-space winding exactly like the previously used Y-negated projection
-        // did, so counter-clockwise is the front face here, matching the other backends. The cull mode itself is a
-        // per-pipeline variant filled in below.
+        // The negative-height viewport flips screen-space winding, so counter-clockwise is the front face
+        // here as on every other backend
         rasterization_ci.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE;
         rasterization_ci.depthBiasEnable = VK_FALSE;
         rasterization_ci.lineWidth = 1.0f;
@@ -2024,7 +2015,7 @@ auto Vulkan_Renderer::CreateEffect(EffectUsage usage, string_view name, const Re
             input_assembly_ci.primitiveRestartEnable = prim_type == RenderPrimitiveType::LineStrip || prim_type == RenderPrimitiveType::TriangleStrip ? VK_TRUE : VK_FALSE;
 
             // Two blend variants per (pass, prim): 0 = alpha-blend, 1 = blending disabled. Times the depth variant
-            // slots the effect can resolve to - one for an ordinary effect, all of them when it declares variants.
+            // slots the effect can resolve to - one for an ordinary effect, all of them when it declares variants
             for (size_t blend_variant = 0; blend_variant < 2; blend_variant++) {
                 VkPipelineColorBlendAttachmentState variant_blend_attachment = blend_attachment;
                 if (blend_variant == 1) {
@@ -2134,21 +2125,22 @@ auto Vulkan_Renderer::GetViewPort() const -> irect32
     return _ctx->ViewPort;
 }
 
-void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> window)
+void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
-    _ctx = SafeAlloc::MakeUnique<Context>(&settings, window.reinterpret_as<SDL_Window>());
+    _ctx = safe_alloc::make_unique<Context>(&settings, window.reinterpret_as<SDL_Window>());
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
+    _ctx->Screen = screen;
 
-    WriteLog("Used Vulkan rendering");
+    logging::write("Used Vulkan rendering");
 
-    WriteLog("[VkInit] FO_DEBUG={} settings.RenderDebug={}", FO_DEBUG, settings.RenderDebug ? "Y" : "n");
+    logging::write("[VkInit] FO_DEBUG={} settings.Render.RenderDebug={}", FO_DEBUG, settings.Render.RenderDebug ? "Y" : "n");
 
     // Load the Vulkan loader through SDL (dynamic, at selection time) instead of a link-time
-    // vulkan-1.dll import, then bootstrap the entry-point table from it.
+    // vulkan-1.dll import, then bootstrap the entry-point table from it
     if (!SDL_Vulkan_LoadLibrary(nullptr)) {
         throw RenderingException("SDL_Vulkan_LoadLibrary failed", SDL_GetError());
     }
@@ -2175,7 +2167,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         exts_list.emplace_back(sdl_exts[i]);
     }
 
-    bool want_validation = settings.RenderDebug || FO_DEBUG;
+    bool want_validation = settings.Render.RenderDebug || FO_DEBUG;
 
     if (want_validation) {
         exts_list.emplace_back("VK_EXT_debug_utils");
@@ -2197,7 +2189,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     app_info.pEngineName = "FOnline Engine";
     app_info.engineVersion = VK_MAKE_VERSION(1, 0, 0);
     // 1.1 is required for negative-viewport-height rendering (VK_KHR_maintenance1 in core), which
-    // this backend uses to keep its projection matrices identical to the other backends.
+    // this backend uses to keep its projection matrices identical to the other backends
     app_info.apiVersion = VK_API_VERSION_1_1;
 
     VkInstanceCreateInfo create_info {};
@@ -2222,12 +2214,12 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             }
         }
 
-        WriteLog("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
+        logging::write("[VkInit] validation layer probe: count={} available={}", layer_count, validation_available ? "Y" : "n");
 
         if (validation_available) {
             create_info.enabledLayerCount = 1;
             create_info.ppEnabledLayerNames = validation_layers;
-            WriteLog("[VkInit] Vulkan validation layers enabled");
+            logging::write("[VkInit] Vulkan validation layers enabled");
         }
     }
 
@@ -2237,7 +2229,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         throw RenderingException("vkCreateInstance failed", vk_result);
     }
 
-    // Resolve the remaining entry points now that an instance exists.
+    // Resolve the remaining entry points now that an instance exists
     LoadVulkanInstanceFunctions(_ctx->Instance);
 
     if (want_validation) {
@@ -2251,14 +2243,14 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
             vk_result = vkCreateDebugUtilsMessengerEXT_fn(_ctx->Instance, &msg_ci, nullptr, &_ctx->DebugMessenger);
 
             if (vk_result == VK_SUCCESS) {
-                WriteLog("[VkLayer] debug messenger attached");
+                logging::write("[VkLayer] debug messenger attached");
             }
             else {
-                WriteLog("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
+                logging::write("[VkLayer] vkCreateDebugUtilsMessengerEXT failed: {}", static_cast<int32_t>(vk_result));
             }
         }
         else {
-            WriteLog("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
+            logging::write("[VkLayer] VK_EXT_debug_utils not available — layer messages will be silenced");
         }
     }
 
@@ -2331,7 +2323,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     VkPhysicalDeviceProperties gpu_props {};
     vkGetPhysicalDeviceProperties(_ctx->PhysicalDevice, &gpu_props);
 
-    // Cache immutable device properties once so the hot paths don't re-query them.
+    // Cache immutable device properties once so the hot paths don't re-query them
     _ctx->MinUniformBufferOffsetAlignment = gpu_props.limits.minUniformBufferOffsetAlignment;
     vkGetPhysicalDeviceMemoryProperties(_ctx->PhysicalDevice, &_ctx->MemoryProperties);
 
@@ -2382,7 +2374,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     dci.ppEnabledExtensionNames = device_extensions;
 
     // Device layers are deprecated since Vulkan 1.0 (VUID-VkDeviceCreateInfo-enabledLayerCount-12384);
-    // validation layers are enabled on the instance only.
+    // validation layers are enabled on the instance only
     dci.enabledLayerCount = 0;
     dci.ppEnabledLayerNames = nullptr;
 
@@ -2408,7 +2400,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     ApplySwapchainTargetMetrics(_ctx, _ctx->SwapchainSize);
 
     // Allocate one command buffer per in-flight frame slot plus per-slot acquire semaphores and
-    // in-flight fences (created signaled so the first wait on each slot passes immediately).
+    // in-flight fences (created signaled so the first wait on each slot passes immediately)
     {
         VkCommandBufferAllocateInfo cbai {};
         cbai.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -2481,9 +2473,8 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
     vk_result = vkCreateDescriptorSetLayout(_ctx->Device, &ubo_layout_ci, nullptr, &_ctx->UniformDescriptorSetLayout);
     VerifyVkResult(vk_result);
 
-    // Create per-slot descriptor pools and uniform bump buffers. Each per-draw set consumes the
-    // full fixed-width VULKAN_MAX_*_BINDINGS descriptor count; an undersized pool silently starves
-    // the frame-final ImGui pass (UI vanishes), so provision per-type counts to cover maxSets.
+    // Every per-draw set consumes the full fixed-width VULKAN_MAX_*_BINDINGS count, and an undersized
+    // pool starves the frame-final ImGui pass silently, so the per-type counts must cover maxSets
     {
         constexpr uint32_t kMaxFrameSets = 20000;
         VkDescriptorPoolSize frame_pool_sizes[2] {};
@@ -2509,7 +2500,7 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, nptr<WindowInternalHandle> 
         }
     }
 
-    // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them.
+    // Point the current-slot aliases at the initial slot; the first BeginFrame refreshes them
     {
         auto& initial_slot = _ctx->CurrentFrameSlot();
         _ctx->CommandBuffer = initial_slot.CommandBuffer;
@@ -2613,7 +2604,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     }
 
     // The backend assumes VK_FORMAT_B8G8R8A8_UNORM everywhere (one render pass shared by all
-    // framebuffers), so require it rather than silently substituting an incompatible format.
+    // framebuffers), so require it rather than silently substituting an incompatible format
     {
         uint32_t format_count = 0;
         vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, nullptr);
@@ -2623,7 +2614,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         vk_result = vkGetPhysicalDeviceSurfaceFormatsKHR(ctx->PhysicalDevice, ctx->Surface, &format_count, surface_formats.data());
         VerifyVkResult(vk_result);
 
-        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction.
+        // A lone VK_FORMAT_UNDEFINED entry means the surface imposes no format restriction
         bool format_supported = surface_formats.size() == 1 && surface_formats.front().format == VK_FORMAT_UNDEFINED;
 
         for (const auto& sf : surface_formats) {
@@ -2639,7 +2630,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
     // FIFO is vsync-locked and the only guaranteed mode; with VSync off prefer IMMEDIATE, then MAILBOX
     VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR;
 
-    if (!ctx->Settings->VSync) {
+    if (!ctx->Settings->Render.VSync) {
         uint32_t present_mode_count = 0;
         vk_result = vkGetPhysicalDeviceSurfacePresentModesKHR(ctx->PhysicalDevice, ctx->Surface, &present_mode_count, nullptr);
         VerifyVkResult(vk_result);
@@ -2663,7 +2654,7 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
         }
     }
 
-    WriteLog("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
+    logging::write("Vulkan swapchain present mode: {}", present_mode == VK_PRESENT_MODE_IMMEDIATE_KHR ? "immediate" : (present_mode == VK_PRESENT_MODE_MAILBOX_KHR ? "mailbox" : "fifo (vsync)"));
 
     VkSwapchainCreateInfoKHR sci {};
     sci.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
@@ -2748,9 +2739,8 @@ static void RecreateSwapchain(ptr<Vulkan_Renderer::Context> ctx, isize32 size)
 
         const VkAttachmentDescription attachments[] = {color_attachment, depth_attachment};
 
-        // Explicit external dependencies: the pass LOADs prior color and re-clears depth stored by
-        // the previous pass instance; implicit dependencies carry no memory scope, and the races
-        // manifest as render targets losing accumulated content between passes.
+        // Spelled out because implicit dependencies carry no memory scope, and this pass loads color and
+        // depth left by the previous instance: the race shows up as targets losing accumulated content
         VkSubpassDependency dependencies[2] {};
         dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
         dependencies[0].dstSubpass = 0;
@@ -2838,7 +2828,7 @@ static void RecreateFrameSyncObjects(ptr<Vulkan_Renderer::Context> ctx)
     FO_STACK_TRACE_ENTRY();
 
     // Requires an idle device. Recreating semaphores clears stale signals left by a failed
-    // present/deferred resize; fences are recreated signaled (caller re-resets its slot's fence).
+    // present/deferred resize; fences are recreated signaled (caller re-resets its slot's fence)
     VkResult vk_result = VK_SUCCESS;
 
     VkSemaphoreCreateInfo sem_ci {};
@@ -3010,9 +3000,8 @@ static void EndFrame(ptr<Vulkan_Renderer::Context> ctx)
 
     ctx->FrameCbRecording = false;
 
-    // Wait the acquire semaphore only on the frame's first submit (a mid-frame flush may have
-    // consumed it), at the stages of the image's first use (TRANSFER clear + attachment writes);
-    // signal the acquired image's render-complete semaphore and the slot's in-flight fence.
+    // The acquire semaphore is waited on the frame's first submit only, since a mid-frame flush may
+    // already have consumed it
     FO_VERIFY_AND_THROW(ctx->CurrentSwapchainImageIndex < ctx->RenderCompleteSemaphores.size(), "Swapchain image index out of render-complete semaphore range");
     VkSemaphore render_complete_semaphore = ctx->RenderCompleteSemaphores[ctx->CurrentSwapchainImageIndex];
 
@@ -3206,9 +3195,8 @@ static void ApplyViewportAndScissor(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Negative-height viewport (core since Vulkan 1.1): flips Vulkan's Y-down clip space so the
-    // same Y-up projection matrices as OpenGL/Direct3D produce top-left-origin output. Winding is
-    // flipped by the negative height, which the pipeline frontFace settings account for.
+    // The negative height flips Vulkan's Y-down clip space, so the same Y-up projections as the other
+    // backends give top-left-origin output; the pipelines account for the flipped winding
     VkViewport viewport {};
     viewport.x = numeric_cast<float32_t>(ctx->ViewPort.x);
     viewport.y = numeric_cast<float32_t>(ctx->ViewPort.y + ctx->ViewPort.height);
@@ -3282,7 +3270,7 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
 
     if (vk_tex->DepthImage == VK_NULL_HANDLE) {
         // Build depth image + view into locals; on throw all three members stay null so the whole
-        // block re-runs cleanly instead of leaving DepthImage set with a null DepthImageView behind.
+        // block re-runs cleanly instead of leaving DepthImage set with a null DepthImageView behind
         VkImage depth_image {};
         VkDeviceMemory depth_image_memory {};
         AllocateImage(ctx, numeric_cast<uint32_t>(vk_tex->Size.width), numeric_cast<uint32_t>(vk_tex->Size.height), VK_FORMAT_D32_SFLOAT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, depth_image, depth_image_memory);
@@ -3302,7 +3290,7 @@ static void EnsureTextureRenderTargetResources(ptr<Vulkan_Renderer::Context> ctx
         vk_result = vkCreateImageView(ctx->Device, &depth_view_ci, nullptr, &depth_image_view);
         VerifyVkResult(vk_result);
 
-        // No-throw commit tail.
+        // No-throw commit tail
         vk_tex->DepthImage = depth_image;
         vk_tex->DepthImageMemory = depth_image_memory;
         vk_tex->DepthImageView = depth_image_view;
@@ -3335,20 +3323,20 @@ void Vulkan_Renderer::Present()
 
 // Recomputes the letterboxed viewport, target size and projection for back-buffer rendering;
 // called on back-buffer select and on size changes while it is active (the server host UI never
-// calls SetRenderTarget, so resizes must refresh these here).
+// calls SetRenderTarget, so resizes must refresh these here)
 static void ApplySwapchainTargetMetrics(ptr<Vulkan_Renderer::Context> ctx, isize32 back_buf_size)
 {
     FO_STACK_TRACE_ENTRY();
 
     float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Settings->ScreenWidth), numeric_cast<float32_t>(ctx->Settings->ScreenHeight));
+    float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(ctx->Screen->Size.width), numeric_cast<float32_t>(ctx->Screen->Size.height));
     int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
     int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
 
     int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
     int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
     ctx->ViewPort = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-    ctx->TargetSize = {ctx->Settings->ScreenWidth, ctx->Settings->ScreenHeight};
+    ctx->TargetSize = ctx->Screen->Size;
     ctx->ProjMatrix = BuildOrthoMatrix(0.0f, numeric_cast<float32_t>(ctx->TargetSize.width), numeric_cast<float32_t>(ctx->TargetSize.height), 0.0f, ctx->OrthoNear, ctx->OrthoFar);
 }
 
@@ -3362,25 +3350,23 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         return;
     }
 
-    // Resolve every fallible value (new-target validation + new viewport/target-size/projection) into
-    // locals BEFORE closing the render pass, so a throw here leaves the current pass open and the frame
-    // consistent. Only the no-throw member commit and the pass close/reopen touch pass state below.
+    // Every fallible value is resolved into locals before the pass closes, so a throw here leaves the
+    // current pass open and the frame consistent
     irect32 new_viewport {};
     isize32 new_target_size {};
 
     if (!tex) {
-        // Back-buffer target: letterbox the configured screen size into the swapchain. Mirror of
-        // ApplySwapchainTargetMetrics, computed into locals (its own ProjMatrix write is redundant here
-        // because the projection is rebuilt below from the resolved target size).
+        // Letterboxes like ApplySwapchainTargetMetrics, but into locals: the projection is rebuilt below
+        // from the resolved target size
         isize32 back_buf_size = _ctx->SwapchainSize;
         float32_t back_buf_aspect = checked_div<float32_t>(numeric_cast<float32_t>(back_buf_size.width), numeric_cast<float32_t>(back_buf_size.height));
-        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Settings->ScreenWidth), numeric_cast<float32_t>(_ctx->Settings->ScreenHeight));
+        float32_t screen_aspect = checked_div<float32_t>(numeric_cast<float32_t>(_ctx->Screen->Size.width), numeric_cast<float32_t>(_ctx->Screen->Size.height));
         int32_t fit_width = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.height) * screen_aspect : numeric_cast<float32_t>(back_buf_size.height) * back_buf_aspect);
         int32_t fit_height = iround<int32_t>(screen_aspect <= back_buf_aspect ? numeric_cast<float32_t>(back_buf_size.width) / back_buf_aspect : numeric_cast<float32_t>(back_buf_size.width) / screen_aspect);
         int32_t vp_ox = (back_buf_size.width - fit_width) / 2;
         int32_t vp_oy = (back_buf_size.height - fit_height) / 2;
         new_viewport = irect32 {vp_ox, vp_oy, fit_width, fit_height};
-        new_target_size = {_ctx->Settings->ScreenWidth, _ctx->Settings->ScreenHeight};
+        new_target_size = _ctx->Screen->Size;
     }
     else {
         auto vk_tex = tex.dyn_cast<const Vulkan_Texture>();
@@ -3400,7 +3386,7 @@ void Vulkan_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
         prev_tex->TextureImageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
     }
 
-    // No-throw commit tail: switch the target and metrics, then reopen the pass.
+    // No-throw commit tail: switch the target and metrics, then reopen the pass
     _ctx->CurrentRenderTarget = tex;
     _ctx->ViewPort = new_viewport;
     _ctx->TargetSize = new_target_size;
@@ -3501,7 +3487,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
 
     if (!_ctx->CurrentRenderTarget) {
         // The back buffer stays the active target across the resize (the server host UI never calls
-        // SetRenderTarget), so refresh the letterbox/projection here against the new size.
+        // SetRenderTarget), so refresh the letterbox/projection here against the new size
         ApplySwapchainTargetMetrics(_ctx, clamped_size);
     }
     else {
@@ -3509,7 +3495,7 @@ void Vulkan_Renderer::OnResizeWindow(isize32 size)
     }
 }
 
-// Destroys enqueue into the current slot's queue; its fence wait covers both in-flight frames.
+// Destroys enqueue into the current slot's queue; its fence wait covers both in-flight frames
 static void DestroyBufferSafe(ptr<Vulkan_Renderer::Context> ctx, VkBuffer& buffer)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3605,7 +3591,7 @@ static void FlushDeferredDestroyQueue(ptr<Vulkan_Renderer::Context> ctx, VulkanD
     queue.Memories.clear();
 }
 
-// Flush every slot's queue; the caller must have proven the device idle (vkDeviceWaitIdle).
+// Flush every slot's queue; the caller must have proven the device idle (vkDeviceWaitIdle)
 static void FlushAllDeferredDestroyQueues(ptr<Vulkan_Renderer::Context> ctx)
 {
     FO_STACK_TRACE_ENTRY();

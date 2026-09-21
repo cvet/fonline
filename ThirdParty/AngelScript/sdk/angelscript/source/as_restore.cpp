@@ -49,7 +49,7 @@ BEGIN_AS_NAMESPACE
 #define LOAD_FROM_BIT(dst, val, bit) ((dst) = ((val) >> (bit)) & 1)
 
 asCReader::asCReader(asCModule* _module, asIBinaryStream* _stream, asCScriptEngine* _engine)
-	: module(_module), stream(_stream), engine(_engine), error(false), bytesRead(0), lastCompositeProp(0), noDebugInfo(false)
+	: module(_module), stream(_stream), engine(_engine), noDebugInfo(false), error(false), bytesRead(0), lastCompositeProp(0)
 {
 }
 
@@ -2117,9 +2117,9 @@ asQWORD asCReader::ReadEncodedUInt64()
 		ReadData(&b, 1); i += asQWORD(b) << 48;
 		ReadData(&b, 1); i += asQWORD(b) << 40;
 		ReadData(&b, 1); i += asQWORD(b) << 32;
-		ReadData(&b, 1); i += asUINT(b) << 24;
-		ReadData(&b, 1); i += asUINT(b) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		ReadData(&b, 1); i += asQWORD(b) << 24;
+		ReadData(&b, 1); i += asQWORD(b) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x7E) == 0x7E )
@@ -2127,44 +2127,44 @@ asQWORD asCReader::ReadEncodedUInt64()
 		i = asQWORD(b & 0x01) << 48;
 		ReadData(&b, 1); i += asQWORD(b) << 40;
 		ReadData(&b, 1); i += asQWORD(b) << 32;
-		ReadData(&b, 1); i += asUINT(b) << 24;
-		ReadData(&b, 1); i += asUINT(b) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		ReadData(&b, 1); i += asQWORD(b) << 24;
+		ReadData(&b, 1); i += asQWORD(b) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x7C) == 0x7C )
 	{
 		i = asQWORD(b & 0x03) << 40;
 		ReadData(&b, 1); i += asQWORD(b) << 32;
-		ReadData(&b, 1); i += asUINT(b) << 24;
-		ReadData(&b, 1); i += asUINT(b) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		ReadData(&b, 1); i += asQWORD(b) << 24;
+		ReadData(&b, 1); i += asQWORD(b) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x78) == 0x78 )
 	{
 		i = asQWORD(b & 0x07) << 32;
-		ReadData(&b, 1); i += asUINT(b) << 24;
-		ReadData(&b, 1); i += asUINT(b) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		ReadData(&b, 1); i += asQWORD(b) << 24;
+		ReadData(&b, 1); i += asQWORD(b) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x70) == 0x70 )
 	{
-		i = asUINT(b & 0x0F) << 24;
-		ReadData(&b, 1); i += asUINT(b) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		i = asQWORD(b & 0x0F) << 24;
+		ReadData(&b, 1); i += asQWORD(b) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x60) == 0x60 )
 	{
-		i = asUINT(b & 0x1F) << 16;
-		ReadData(&b, 1); i += asUINT(b) << 8;
+		i = asQWORD(b & 0x1F) << 16;
+		ReadData(&b, 1); i += asQWORD(b) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else if( (b & 0x40) == 0x40 )
 	{
-		i = asUINT(b & 0x3F) << 8;
+		i = asQWORD(b & 0x3F) << 8;
 		ReadData(&b, 1); i += b;
 	}
 	else
@@ -3394,7 +3394,7 @@ void asCReader::TranslateFunction(asCScriptFunction *func)
 }
 
 asCReader::SListAdjuster::SListAdjuster(asCReader* rd, asDWORD* bc, asCObjectType* listType) :
-	reader(rd), allocMemBC(bc), maxOffset(0), patternType(listType), repeatCount(0), lastOffset(-1), nextOffset(0), patternNode(0), nextTypeId(-1)
+	reader(rd), allocMemBC(bc), maxOffset(0), patternType(listType), repeatCount(0), lastOffset(-1), nextOffset(0), lastAdjustedOffset(0), patternNode(0), nextTypeId(-1)
 {
 	asASSERT( patternType && (patternType->flags & asOBJ_LIST_PATTERN) );
 
@@ -3989,10 +3989,19 @@ int asCReader::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			calledFunc = func->GetCalledFunction(n);
 			break;
 		}
-		else if( (bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY) && offset == 1 ) // (FOnline Patch)
+		else if( bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY ) // (FOnline Patch)
 		{
-			// Simple case: exactly 1 pointer on the stack above
-			return offset - (1 - AS_PTR_SIZE);
+			if( offset == 1 )
+			{
+				// In this case we know there is only 1 pointer on the stack above
+				return offset - (1 - AS_PTR_SIZE);
+			}
+			else
+			{
+				// Since these instructions only take 2 pointers on the stack, we know
+				// the offset that adjusted isn't related to the instruction, hence skip over it
+				// and find the next function after it
+			}
 		}
 		// (FOnline Patch) When offset > 1, there are multiple items on the stack.
 		// Fall through to scan for the actual CALL and count all pointer slots.
@@ -5353,10 +5362,19 @@ int asCWriter::AdjustGetOffset(int offset, asCScriptFunction *func, asDWORD prog
 			}
 			break;
 		}
-		else if( (bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY) && offset == AS_PTR_SIZE ) // (FOnline Patch)
+		else if( bc == asBC_REFCPY || bc == asBC_RefCpyChk || bc == asBC_COPY ) // (FOnline Patch)
 		{
-			// Simple case: exactly 1 pointer on the stack above
-			return offset + (1 - AS_PTR_SIZE);
+			if( offset == AS_PTR_SIZE )
+			{
+				// In this case we know there is only 1 pointer on the stack above
+				return offset + (1 - AS_PTR_SIZE);
+			}
+			else
+			{
+				// Since these instructions only take 2 pointers on the stack, we know
+				// the offset that adjusted isn't related to the instruction, hence skip over it
+				// and find the next function after it
+			}
 		}
 		// (FOnline Patch) When offset > AS_PTR_SIZE, there are multiple items on
 		// the stack. Fall through to scan for the actual CALL and count all slots.
@@ -5578,7 +5596,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 			{
 				// Translate global variable pointers into indices
 				// Flag the first bit to signal global property
-				*(asPWORD*)(tmpBC + 1) = (FindGlobalPropPtrIndex(*(void**)(tmpBC + 1)) << 1) + 1;
+				*(asPWORD*)(tmpBC + 1) = (asPWORD(FindGlobalPropPtrIndex(*(void**)(tmpBC + 1))) << 1) + 1;
 			}
 			else
 			{
@@ -5587,7 +5605,7 @@ void asCWriter::WriteByteCode(asCScriptFunction *func)
 
 				// Translate string constants into indices
 				// Leave the first bit clear to signal string constant
-				*(asPWORD*)(tmpBC + 1) = FindStringConstantIndex(*(void**)(tmpBC + 1)) << 1;
+				*(asPWORD*)(tmpBC + 1) = asPWORD(FindStringConstantIndex(*(void**)(tmpBC + 1))) << 1;
 			}
 		}
 		else if( c == asBC_JMP    ||	// DW_ARG
@@ -6243,6 +6261,9 @@ int asCWriter::FindObjectPropIndex(short offset, int typeId, asDWORD *bc)
 		{
 			// This is a potential composite property. Need to check the following instructions to be sure
 			objProp = objType->properties[n];
+			asASSERT(objProp);
+			if (objProp == 0)
+				continue;
 			asDWORD *bcTemp = bc;
 			bcTemp += asBCTypeSize[asBCInfo[*(asBYTE*)bcTemp].type];
 			if (objProp->isCompositeIndirect)
@@ -6338,4 +6359,3 @@ int asCWriter::FindTypeInfoIdx(asCTypeInfo *obj)
 #endif // AS_NO_COMPILER
 
 END_AS_NAMESPACE
-

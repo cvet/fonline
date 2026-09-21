@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "ClientRuntimeApi.h"
+#include "ClientSessionMarker.h"
 #include "Settings.h"
 #include "Updater.h"
 
@@ -56,6 +57,30 @@ static auto FailUnexpectedRuntimePromotion(string_view) -> bool
 
 TEST_CASE("ClientRuntimeApi")
 {
+    SECTION("NativeModuleSelfUpdateSupportMatchesPlatformLifecycle")
+    {
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::Windows));
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::Linux));
+        CHECK(CanSelfUpdateNativeModules(UpdatePlatform::MacOS));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Android));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::IOS));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Web));
+        CHECK_FALSE(CanSelfUpdateNativeModules(UpdatePlatform::Unknown));
+    }
+
+    SECTION("OnlyClientSideUpdaterFailuresAreReported")
+    {
+        // A server that is down, restarting or unreachable is the one terminal result that says nothing
+        // about this client, so it must never reach the crash reporter - one event per player per restart
+        CHECK_FALSE(IsUpdaterFailureReportable(UpdaterResult::ConnectionFailed));
+
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::Failed));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::MetadataMismatch));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::UpdaterOutdated));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::PlatformUnsupported));
+        CHECK(IsUpdaterFailureReportable(UpdaterResult::ServerMissingNativeUpdate));
+    }
+
     SECTION("CurrentHostAbiIsSupported")
     {
         CHECK(IsSupportedClientRuntimeAbi(FO_CLIENT_RUNTIME_HOST_ABI_VERSION));
@@ -117,19 +142,19 @@ TEST_CASE("ClientRuntimeApi")
         result.ResultKind = ClientRuntimeResultKind::ReloadRequested;
         result.Success = true;
 
-        // ReloadRequested without a path is a contract violation.
+        // ReloadRequested without a path is a contract violation
         result.RequestedRuntimePath = nullptr;
         CHECK_FALSE(IsValidClientRuntimeResult(result));
 
-        // Empty string is treated the same way — host has nothing to reload from.
+        // Empty string is treated the same way — host has nothing to reload from
         result.RequestedRuntimePath = "";
         CHECK_FALSE(IsValidClientRuntimeResult(result));
 
-        // Any non-empty path is accepted; the host promotes it and exits for a clean next launch.
+        // Any non-empty path is accepted; the host promotes it and exits for a clean next launch
         result.RequestedRuntimePath = "runtime";
         CHECK(IsValidClientRuntimeResult(result));
 
-        // Other result kinds do not require a path.
+        // Other result kinds do not require a path
         result.ResultKind = ClientRuntimeResultKind::Shutdown;
         result.RequestedRuntimePath = nullptr;
         CHECK(IsValidClientRuntimeResult(result));
@@ -167,6 +192,38 @@ TEST_CASE("ClientRuntimeApi")
         CHECK_FALSE(IsClientRuntimeCompatibilityMatch(result, "compat-b"));
     }
 
+    SECTION("CapturedResultStringsOutliveTheirSource")
+    {
+        // The runtime frees the data its result strings came from before the host reads them, so the capture
+        // must own copies. Longer than the inline string buffer, so a freed source would really be heap
+        ClientRuntimeResult result {};
+        string runtime_path;
+        string compatibility_version;
+        string_view expected_path = "C:/Games/LastFrontier/Staged/LF_Client.runtime.staged.dll";
+
+        {
+            string source_path {expected_path};
+            string source_compatibility = "compatibility-version-of-the-staged-runtime";
+            result.RequestedRuntimePath = source_path.c_str();
+            result.RequestedCompatibilityVersion = source_compatibility.c_str();
+            CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        }
+
+        REQUIRE(result.RequestedRuntimePath == runtime_path.c_str());
+        CHECK(string_view(result.RequestedRuntimePath) == expected_path);
+        CHECK(string_view(result.RequestedCompatibilityVersion) == "compatibility-version-of-the-staged-runtime");
+
+        // The host captures what the runtime already captured: the second pass must keep the text
+        CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        CHECK(string_view(result.RequestedRuntimePath) == expected_path);
+
+        // An absent string stays absent and leaves nothing behind
+        result.RequestedCompatibilityVersion = nullptr;
+        CaptureClientRuntimeResultStrings(result, runtime_path, compatibility_version);
+        CHECK(result.RequestedCompatibilityVersion == nullptr);
+        CHECK(compatibility_version.empty());
+    }
+
     SECTION("ReloadRequestPromotesAndExitsForRestart")
     {
         optional<ClientRuntimeHostResult> runtime_result {std::in_place};
@@ -196,8 +253,8 @@ TEST_CASE("ClientRuntimeApi")
 
     SECTION("StagingPathDerivesFromLivePath")
     {
-        // Both helpers depend on Platform::GetExePath, so the test only validates the
-        // structural contract: staging is the live path with a non-empty suffix appended.
+        // Both helpers depend on Platform::get_exe_path, so the test only validates the
+        // structural contract: staging is the live path with a non-empty suffix appended
         string live = GetClientRuntimeLivePath();
         string staging = MakeClientRuntimeStagingPath(live);
 
@@ -213,19 +270,38 @@ TEST_CASE("ClientRuntimeApi")
         string name = GetCurrentClientRuntimeLibraryName();
 
         CHECK_FALSE(name.empty());
-        // Library name must not contain a path separator — it is a basename, not a path.
+        // Library name must not contain a path separator — it is a basename, not a path
         CHECK(name.find('/') == string::npos);
         CHECK(name.find('\\') == string::npos);
+    }
+
+    SECTION("ClientBinaryPathsFollowTheWritableRoot")
+    {
+        // One rule for both halves of the client: a writable root holds the modules it may replace and the
+        // selector that names them, and without one they sit beside the exe with nothing to select
+        string root = fs::resolve_path(fs::path_to_string(std::filesystem::temp_directory_path() / "lf_client_binary_root"));
+
+        CHECK(GetClientBinaryDir(root) == root);
+        CHECK(string_view(GetClientRuntimeLivePath()).starts_with(GetClientBinaryDir("")));
+        CHECK_FALSE(MakeClientRuntimeBootstrapPath("").has_value());
+
+        auto bootstrap_path = MakeClientRuntimeBootstrapPath(root);
+        string selector_name = strex("{}{}.path", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
+
+        REQUIRE(bootstrap_path.has_value());
+        CHECK(fs::is_absolute_path(bootstrap_path.value()));
+        CHECK(string_view(bootstrap_path.value()).starts_with(root));
+        CHECK(string_view(bootstrap_path.value()).ends_with(selector_name));
     }
 
     SECTION("InstalledRuntimeBootstrapRoundTrip")
     {
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs_path_to_string(base);
+        string temp_dir = fs::path_to_string(base);
         string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        string runtime_path = fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
+        string bootstrap_path = fs::resolve_path(strex(temp_dir).combine_path("selector/runtime.path").str());
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
         REQUIRE(WriteClientRuntimeBootstrapTarget(bootstrap_path, runtime_path, runtime_file_name));
 
@@ -233,39 +309,92 @@ TEST_CASE("ClientRuntimeApi")
         REQUIRE(restored_path.has_value());
         CHECK(restored_path.value() == runtime_path);
 
-        string fallback_path = fs_resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
+        string fallback_path = fs::resolve_path(strex(temp_dir).combine_path("BaseRuntime").str());
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == fallback_path);
 
-        REQUIRE(fs_write_file(MakeClientRuntimeStagingPath(runtime_path), "staged"));
+        REQUIRE(fs::write_file(MakeClientRuntimeStagingPath(runtime_path), "staged"));
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == runtime_path);
 
-        REQUIRE(fs_write_file(runtime_path, "live"));
-        REQUIRE(fs_remove_file(MakeClientRuntimeStagingPath(runtime_path)));
+        REQUIRE(fs::write_file(runtime_path, "live"));
+        REQUIRE(fs::remove_file(MakeClientRuntimeStagingPath(runtime_path)));
         CHECK(ResolveClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name, fallback_path) == runtime_path);
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
 
     SECTION("InstalledRuntimeBootstrapRejectsUnsafeTargets")
     {
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_runtime_bootstrap_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
-        string temp_dir = fs_path_to_string(base);
+        string temp_dir = fs::path_to_string(base);
         string runtime_file_name = strex("Runtime{}", GetClientRuntimeLibraryExtension()).str();
-        string bootstrap_path = fs_resolve_path(strex(temp_dir).combine_path("runtime.path").str());
-        ignore_unused(fs_remove_dir_tree(temp_dir));
+        string bootstrap_path = fs::resolve_path(strex(temp_dir).combine_path("runtime.path").str());
+        ignore_unused(fs::remove_dir_tree(temp_dir));
 
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, "relative/Runtime.dll", runtime_file_name));
 
-        string wrong_runtime_path = fs_resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
+        string wrong_runtime_path = fs::resolve_path(strex(temp_dir).combine_path("OtherRuntime.dll").str());
         CHECK_FALSE(WriteClientRuntimeBootstrapTarget(bootstrap_path, wrong_runtime_path, runtime_file_name));
 
-        string valid_runtime_path = fs_resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
-        REQUIRE(fs_write_file(bootstrap_path, strex("{}\n{}", valid_runtime_path, valid_runtime_path).str()));
+        string valid_runtime_path = fs::resolve_path(strex(temp_dir).combine_path(runtime_file_name).str());
+        REQUIRE(fs::write_file(bootstrap_path, strex("{}\n{}", valid_runtime_path, valid_runtime_path).str()));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
 
-        REQUIRE(fs_write_file(bootstrap_path, string(4097, 'x')));
+        REQUIRE(fs::write_file(bootstrap_path, string(4097, 'x')));
         CHECK_FALSE(ReadClientRuntimeBootstrapTarget(bootstrap_path, runtime_file_name).has_value());
-        CHECK(fs_remove_dir_tree(temp_dir));
+        CHECK(fs::remove_dir_tree(temp_dir));
     }
+}
+
+TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
+{
+    CHECK(fs::is_absolute_path(MakeClientSessionMarkerPath("")));
+
+    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string temp_dir = fs::path_to_string(base);
+    // An absolute path stands for the resolved writable root: fs::make_writable_path leaves it as given
+    string marker = MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
+
+    // A run that never started leaves nothing to report
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    BeginClientSession(marker);
+    REQUIRE(fs::exists(marker));
+
+    // Every stage the shutdown reaches replaces the one before it, so the file always states how far it got
+    SetClientShutdownStage(marker, ClientShutdownStage::MainLoopExited);
+    SetClientShutdownStage(marker, ClientShutdownStage::ShutdownHookDone);
+
+    auto interrupted = TakePreviousClientSession(marker);
+    REQUIRE(interrupted.has_value());
+    CHECK(interrupted->Stage == ClientShutdownStage::ShutdownHookDone);
+    CHECK(interrupted->StageName == "ShutdownHookDone");
+    CHECK(interrupted->BuildHash == string(FO_BUILD_HASH));
+    CHECK(!interrupted->StartedAt.empty());
+
+    // Taking it consumes it: the same interrupted run must not be reported by every later launch
+    CHECK(!fs::exists(marker));
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    // A clean exit leaves nothing for the next run to find
+    BeginClientSession(marker);
+    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
+    EndClientSession(marker);
+    CHECK(!fs::exists(marker));
+    CHECK(!TakePreviousClientSession(marker).has_value());
+
+    // Staging a marker that was never begun writes nothing: the host records stages after the runtime
+    // returned, and by then a clean exit may already have cleared the file
+    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
+    CHECK(!fs::exists(marker));
+
+    // An unreadable marker is consumed rather than reported for ever
+    REQUIRE(fs::write_file(marker, "not a marker"));
+    auto unparsable = TakePreviousClientSession(marker);
+    REQUIRE(unparsable.has_value());
+    CHECK(unparsable->Stage == ClientShutdownStage::Running);
+    CHECK(!fs::exists(marker));
+
+    CHECK(fs::remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

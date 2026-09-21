@@ -2,7 +2,7 @@
 // basic_io_object.hpp
 // ~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -25,6 +25,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 namespace detail
 {
@@ -60,7 +61,8 @@ template <typename IoObjectService>
 template <typename IoObjectService,
     bool Movable = detail::service_has_move<IoObjectService>::value>
 #endif
-class basic_io_object
+class ASIO_DEPRECATED_MSG("Deprecated without replacement")
+  basic_io_object
 {
 public:
   /// The type of the service that will be used to provide I/O operations.
@@ -190,7 +192,8 @@ private:
 
 // Specialisation for movable objects.
 template <typename IoObjectService>
-class basic_io_object<IoObjectService, true>
+class ASIO_DEPRECATED_MSG("Deprecated without replacement")
+  basic_io_object<IoObjectService, true>
 {
 public:
   typedef IoObjectService service_type;
@@ -277,6 +280,7 @@ private:
   implementation_type implementation_;
 };
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -421,7 +421,7 @@ public:
 
     [[nodiscard]] virtual auto IsEnabled() const -> bool = 0;
 
-    virtual auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
+    virtual auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool = 0;
     virtual void SetSource(AudioStreamCallback stream_callback) = 0;
     virtual void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) = 0;
     virtual void LockDevice() = 0;
@@ -471,7 +471,7 @@ class AppWindow final : public IAppWindow
 {
     friend class Application;
     friend class AppInput;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     [[nodiscard]] auto GetSize() const -> isize32 override;
@@ -605,14 +605,11 @@ class AppAudio final : public IAppAudio
     friend class Application;
 
 public:
-    static const int32_t AUDIO_FORMAT_U8;
-    static const int32_t AUDIO_FORMAT_S16;
-
     using AudioStreamCallback = IAppAudio::AudioStreamCallback;
 
     [[nodiscard]] auto IsEnabled() const -> bool override;
 
-    auto ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
+    auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override;
     void SetSource(AudioStreamCallback stream_callback) override;
     void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override;
     void LockDevice() override;
@@ -640,7 +637,7 @@ enum class AppInitFlags : uint8_t
 class Application final
 {
     friend void InitApp(CommandLineArgs args, AppInitFlags flags);
-    friend class SafeAlloc;
+    friend class safe_alloc;
     friend class AppWindow;
     friend class AppRender;
     friend class AppInput;
@@ -705,6 +702,7 @@ public:
     EventObserver<> OnQuit {};
 
     AppWindow MainWindow;
+    AppScreenState ScreenState {};
     AppRender Render;
     AppInput Input;
     AppAudio Audio;
@@ -833,15 +831,17 @@ inline auto AppWindow::GetWindowHandleForInput() const -> nptr<WindowInternalHan
     return _windowHandle;
 }
 
-extern auto IsAppInitialized() noexcept -> bool;
-extern auto GetApp() noexcept -> ptr<Application>;
-extern void ResetApp() noexcept;
-extern auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
-extern void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
-extern void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
-extern auto GetExeLogFileName() -> string;
-extern void ResolveUserWritablePath(GlobalSettings& settings);
-extern auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
-extern auto IsQuitSignalReceived() noexcept -> bool;
+auto IsAppInitialized() noexcept -> bool;
+auto GetApp() noexcept -> ptr<Application>;
+void ResetApp() noexcept;
+auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings;
+void InitApp(CommandLineArgs args, AppInitFlags flags = AppInitFlags::None);
+void InitAppForTesting(AppInitFlags flags = AppInitFlags::None);
+auto GetExeLogFileName() -> string;
+// The one answer to "where may this process write": the command line, else the installer marker beside
+// the executable, else the working directory - settings-free, so it holds before anything is read
+auto ResolveWritableRoot(CommandLineArgs args) -> string;
+auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
+auto IsQuitSignalReceived() noexcept -> bool;
 
 FO_END_NAMESPACE

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,7 +46,7 @@
 
 FO_BEGIN_NAMESPACE
 
-static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_resolver) -> unique_ptr<ModelBone>;
+static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hashes) -> unique_ptr<ModelBone>;
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone);
 
 static_assert(std::same_as<ModelMeshIndexData, vindex_t>);
@@ -69,14 +69,14 @@ auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_mod
 
     if (!direct_scene_draw) {
         // A direct model still renders an auxiliary atlas frame for preview/hit testing. Its distortion attachments
-        // must survive that offscreen pass and retry when the real scene draw follows.
+        // must survive that offscreen pass and retry when the real scene draw follows
         return direct_model_draw && scene_background_provider ? ParticleSceneBackgroundResult {.State = ParticleSceneBackgroundState::Deferred} : ParticleSceneBackgroundResult {};
     }
 
     return scene_background_provider ? scene_background_provider() : ParticleSceneBackgroundResult {};
 }
 
-ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
+ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resources, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver, TextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
     _settings {settings},
     _resources {resources},
     _engineMetadata {engine_metadata},
@@ -86,20 +86,20 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _animNameResolver {anim_name_resolver},
     _textureLoader {tex_loader},
     _sceneBackgroundProvider {std::move(scene_background_provider)},
-    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->ModelDirectDraw, _sceneBackgroundProvider); })
+    _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
     FO_STACK_TRACE_ENTRY();
 
-    _moveTransitionTime = numeric_cast<float32_t>(_settings->Animation3dSmoothTime) / 1000.0f;
+    _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
     _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
-    if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
+    if (_settings->Render.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
     }
 
-    _headBone = GetBoneHashedString(settings->HeadBone);
+    _headBone = GetBoneHashedString(settings->Render.HeadBone);
 
-    for (const auto& bone_name : settings->LegBones) {
+    for (const auto& bone_name : settings->Render.LegBones) {
         _legBones.emplace(GetBoneHashedString(bone_name));
     }
 }
@@ -110,7 +110,7 @@ auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
     FO_STACK_TRACE_ENTRY();
 
-    return _engineMetadata->Hashes.ToHashedString(name);
+    return _engineMetadata->Hashes.to_hashed_string(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
@@ -118,7 +118,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_STACK_TRACE_ENTRY();
 
     // Find already loaded
-    hstring name_hashed = _engineMetadata->Hashes.ToHashedString(fname);
+    hstring name_hashed = _engineMetadata->Hashes.to_hashed_string(fname);
 
     for (size_t i = 0; i != _loadedModels.size(); ++i) {
         auto root_bone = _loadedModels[i].as_ptr();
@@ -145,7 +145,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
     FO_VERIFY_AND_THROW(file, "3D model loader could not read model resource", fname);
 
     // Load bones
-    auto reader = DataReader(file.GetDataSpan());
+    auto reader = data_reader(file.GetDataSpan());
     auto root_bone = [&]() -> unique_ptr<ModelBone> {
         try {
             ModelMeshData mesh_data = ReadModelMeshData(reader, fname);
@@ -185,7 +185,7 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
         auto bone = model_info->_hierarchy->_allDrawBones[i];
         auto mesh = bone->AttachedMesh ? make_nptr(&*bone->AttachedMesh) : nullptr;
         FO_VERIFY_AND_THROW(mesh, "Mesh is null");
-        auto new_mesh_instance = SafeAlloc::MakeUnique<MeshInstance>(mesh);
+        auto new_mesh_instance = safe_alloc::make_unique<MeshInstance>(mesh);
         string_view tex_name = mesh->DiffuseTexture;
         new_mesh_instance->CurTexures[0] = new_mesh_instance->DefaultTexures[0] = !tex_name.empty() ? nptr<MeshTexture>(model_info->_hierarchy->GetTexture(tex_name)) : nullptr;
         new_mesh_instance->CurEffect = new_mesh_instance->DefaultEffect = !mesh->EffectName.empty() ? nptr<RenderEffect>(model_info->_hierarchy->GetEffect(mesh->EffectName)) : nullptr;
@@ -219,7 +219,7 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
     }
 
     // Create new instance
-    auto model_info = SafeAlloc::MakeUnique<ModelInformation>(this);
+    auto model_info = safe_alloc::make_unique<ModelInformation>(this);
 
     if (!model_info->Load(name)) {
         return nullptr;
@@ -245,18 +245,18 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
     auto root_bone = LoadModel(name);
 
     if (!root_bone) {
-        WriteLog("Unable to load model hierarchy file '{}'", name);
+        logging::write("Unable to load model hierarchy file '{}'", name);
         return nullptr;
     }
 
-    auto model_hierarchy = SafeAlloc::MakeUnique<ModelHierarchy>(this, string {name}, root_bone);
+    auto model_hierarchy = safe_alloc::make_unique<ModelHierarchy>(this, string {name}, root_bone);
     model_hierarchy->SetupBones();
 
     _hierarchyFiles.emplace_back(std::move(model_hierarchy));
     return _hierarchyFiles.back();
 }
 
-static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, HashResolver& hash_resolver, ptr<ModelBone> owner) -> MeshData
+static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, hash_resolver& hashes, ptr<ModelBone> owner) -> MeshData
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -285,19 +285,19 @@ static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, HashResolve
     mesh.SkinBoneNames.reserve(source.SkinBoneNames.size());
 
     for (const string& skin_bone_name : source.SkinBoneNames) {
-        mesh.SkinBoneNames.emplace_back(hash_resolver.ToHashedString(skin_bone_name));
+        mesh.SkinBoneNames.emplace_back(hashes.to_hashed_string(skin_bone_name));
     }
 
     mesh.SkinBoneOffsets = std::move(source.SkinBoneOffsets);
     return mesh;
 }
 
-static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_resolver) -> unique_ptr<ModelBone>
+static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hashes) -> unique_ptr<ModelBone>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto bone = SafeAlloc::MakeUnique<ModelBone>();
-    hstring source_name = hash_resolver.ToHashedString(source.Name);
+    auto bone = safe_alloc::make_unique<ModelBone>();
+    hstring source_name = hashes.to_hashed_string(source.Name);
     bone->Name = source_name;
     bone->SourceName = source_name;
     bone->RestLocalTransform = source.TransformationMatrix;
@@ -305,13 +305,13 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, HashResolver& hash_
     bone->GlobalTransformationMatrix = source.GlobalTransformationMatrix;
 
     if (source.AttachedMesh) {
-        bone->AttachedMesh.emplace(ConvertModelMeshGeometry(std::move(*source.AttachedMesh), hash_resolver, bone));
+        bone->AttachedMesh.emplace(ConvertModelMeshGeometry(std::move(*source.AttachedMesh), hashes, bone));
     }
 
     bone->Children.reserve(source.Children.size());
 
     for (auto& child : source.Children) {
-        bone->Children.emplace_back(ConvertModelMeshBone(std::move(*child), hash_resolver));
+        bone->Children.emplace_back(ConvertModelMeshBone(std::move(*child), hashes));
     }
 
     bone->CombinedTransformationMatrix = mat44();

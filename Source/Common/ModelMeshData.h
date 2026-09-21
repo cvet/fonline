@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #pragma once
 
@@ -91,12 +92,12 @@ struct ModelMeshData
     unique_nptr<ModelMeshBoneData> RootBone {};
 };
 
-// Schema 1 wire order: header, then one recursive root bone with its optional drawable mesh.
-void WriteModelMeshHeader(DataWriter& writer);
-void ReadModelMeshHeader(DataReader& reader, string_view context);
+// Schema 1 wire order: header, then one recursive root bone with its optional drawable mesh
+void WriteModelMeshHeader(data_writer& writer);
+void ReadModelMeshHeader(data_reader& reader, string_view context);
 void ValidateModelMeshData(const ModelMeshData& data, string_view context);
-void WriteModelMeshData(DataWriter& writer, const ModelMeshData& data, string_view context);
-auto ReadModelMeshData(DataReader& reader, string_view context) -> ModelMeshData;
+void WriteModelMeshData(data_writer& writer, const ModelMeshData& data, string_view context);
+auto ReadModelMeshData(data_reader& reader, string_view context) -> ModelMeshData;
 
 FO_END_NAMESPACE
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -73,7 +73,7 @@ enum class LightFlag : uint16_t
 };
 
 ///@ ExportRefType Client RefCounted Export = Finished, EveryHex, InteractWithRoof, CheckTileProperty, TileProperty, ExpectedTilePropertyValue, Finish
-class SpritePattern : public RefCounted<SpritePattern>
+class SpritePattern : public refcounted<SpritePattern>
 {
 public:
     void Finish();
@@ -88,7 +88,7 @@ public:
 };
 
 ///@ ExportRefType Client RefCounted Export = Enabled, Distance, Radius, ExtraLength, TransitionDuration, OvalRoundness, EdgeNoise, Depth, ClearRadius, TintColor, OverlayColor, CenterColor, Traced, CheckShootBlocks, OriginHex, Disposed, Dispose
-class FogLayer : public RefCounted<FogLayer>
+class FogLayer : public refcounted<FogLayer>
 {
 public:
     void Dispose() noexcept;
@@ -199,7 +199,10 @@ public:
     [[nodiscard]] auto IsHexToDraw(mpos hex) const noexcept -> bool { return _hexField->GetCellForReading(hex).IsView; }
     [[nodiscard]] auto GetHiddenRoofNum() const noexcept -> int32_t { return _hiddenRoofNum; }
     [[nodiscard]] auto GetLightData() noexcept -> ptr<ucolor> { return make_ptr(_hexLight.data()); }
-    [[nodiscard]] auto IsManualScrolling() const noexcept -> bool;
+    [[nodiscard]] auto IsManualScrolling() const noexcept -> bool { return _manualScroll != ScrollDirection::None; }
+    [[nodiscard]] auto GetManualScroll() const noexcept -> ScrollDirection { return _manualScroll; }
+    [[nodiscard]] auto GetVisibleLayers() const noexcept -> MapLayers { return _visibleLayers; }
+    [[nodiscard]] auto IsLayerVisible(MapLayers layer) const noexcept -> bool { return is_enum_set(_visibleLayers, layer); }
     [[nodiscard]] auto IsAutoScrolling() const noexcept -> bool { return _autoScrollActive; }
     [[nodiscard]] auto GetHexContentSize(mpos hex) -> isize32;
     [[nodiscard]] auto GenTempEntityId() -> ident_t;
@@ -208,6 +211,7 @@ public:
     void SetScrollCheck(bool enabled);
     void LoadFromFile(string_view map_name, string_view file_name, const string& str);
     void LoadStaticData();
+    void ApplyStaticItemRemovals();
     void Process();
 
     void DrawMap();
@@ -247,8 +251,10 @@ public:
     void ScrollToHex(mpos hex, ipos16 hex_offset, int32_t speed, bool can_stop);
     void ApplyScrollOffset(ipos32 offset, int32_t speed, bool can_stop);
     void SetExtraScrollOffset(fpos32 offset);
+    void SetManualScroll(ScrollDirection dirs) noexcept { _manualScroll = dirs; }
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
+    void SetVisibleLayers(MapLayers layers) noexcept;
 
     // Critters
     auto AddReceivedCritter(ident_t id, hstring pid, mpos hex, mdir dir, const vector<vector<uint8_t>>& data, bool fade_in) -> ptr<CritterHexView>;
@@ -295,7 +301,7 @@ public:
     void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
-    auto AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int32_t draw_order_hy_offset, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>;
+    auto AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int8_t draw_order_sub_layer, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>;
 
     auto RunSpritePattern(string_view name, size_t count) -> nptr<SpritePattern>;
 
@@ -330,6 +336,8 @@ private:
     void SetMultihexCritter(ptr<CritterHexView> cr, bool set);
     void DrawHexCritter(ptr<CritterHexView> cr, ptr<Field> field, mpos hex);
 
+    [[nodiscard]] auto CollectRemovedStaticItemIds() const -> unordered_set<ident_t>;
+
     auto AddItemInternal(ptr<ItemHexView> item) -> ptr<ItemHexView>;
     void AddItemToField(ptr<ItemHexView> item);
     void RemoveItemFromField(ptr<ItemHexView> item);
@@ -346,6 +354,7 @@ private:
     void HideHex(const ViewField& vf);
 
     auto GetViewSize() const -> isize32;
+    auto CalculateMapRenderTargetSize() const noexcept -> isize32;
     void InitView();
 
     void AddSpriteToChain(ptr<Field> field, ptr<MapSprite> mspr);
@@ -408,6 +417,8 @@ private:
     fpos32 _extraScrollOffset {};
     timespan _scrollDtAccum {};
 
+    ScrollDirection _manualScroll {};
+    MapLayers _visibleLayers {MapLayers::All};
     bool _autoScrollActive {};
     bool _autoScrollCanStop {};
     fpos32 _autoScrollOffset {};

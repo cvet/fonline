@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -501,16 +501,16 @@ void BinaryWriter::WriteUtf16(string_view value)
     FO_STACK_TRACE_ENTRY();
 
     // Decode the UTF-8 input directly rather than through a platform wide string: strex::to_wide_char is
-    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way.
+    // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way
     vector<uint16_t> units;
     units.reserve(value.length());
 
     for (size_t i = 0; i < value.length();) {
         size_t length = value.length() - i;
         auto text_pos = make_ptr(value.data() + i);
-        uint32_t codepoint = utf8::Decode(text_pos, length);
+        uint32_t codepoint = utf8::decode(text_pos, length);
 
-        if (!utf8::IsValid(codepoint)) {
+        if (!utf8::is_valid(codepoint)) {
             throw EffekseerCompilerException("Effekseer dependency path is not valid UTF-8", value);
         }
 
@@ -1534,15 +1534,15 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::filesystem::path resolved = (std::filesystem::path {fs_make_path(context.ProjectDirectory)} / std::filesystem::path {fs_make_path(strex(path).normalize_path_slashes())}).lexically_normal();
-    return fs_path_to_string(resolved);
+    std::filesystem::path resolved = (std::filesystem::path {fs::make_path(context.ProjectDirectory)} / std::filesystem::path {fs::make_path(strex(path).normalize_path_slashes())}).lexically_normal();
+    return fs::path_to_string(resolved);
 }
 
 [[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
     FO_STACK_TRACE_ENTRY();
 
-    optional<string> bytes = fs_read_file(ResolveDependencyPath(context, path));
+    optional<string> bytes = fs::read_file(ResolveDependencyPath(context, path));
 
     if (!bytes || bytes->size() < 18) {
         return std::nullopt;
@@ -1704,7 +1704,7 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
     WriteBasicUv(writer, renderer, context, color_path);
 
     // No advanced renderer values are emitted by the fixed 1.80.5 source profile. Their
-    // runtime representation is still present and consists of default UV commands.
+    // runtime representation is still present and consists of default UV commands
     writer.WriteInt32(0);
     writer.WriteInt32(0);
     writer.WriteFloat(0.0f);
@@ -2360,7 +2360,7 @@ static void WriteNode(BinaryWriter& writer, nptr<const XmlNode> node, const Comp
     WriteRendererValues(data, node, context, renderer_exported);
     writer.WriteBytes(data.GetData());
     WriteSoundValues(writer, node, context);
-    writer.WriteInt32(0); // GPU particles are disabled in the fixed project profile.
+    writer.WriteInt32(0); // GPU particles are disabled in the fixed project profile
 
     vector<nptr<const XmlNode>> children;
     nptr<const XmlNode> child_container = Child(node, "Children");
@@ -2443,7 +2443,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     }
 
     CompilerContext context;
-    context.ProjectDirectory = fs_path_to_string(std::filesystem::path {fs_make_path(project_path)}.parent_path());
+    context.ProjectDirectory = fs::path_to_string(std::filesystem::path {fs::make_path(project_path)}.parent_path());
     nptr<const XmlNode> root = Find(&project, "Root");
 
     if (!root) {
@@ -2473,9 +2473,9 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
     WriteResourceTable(writer, context.DistortionTextures);
     WriteResourceTable(writer, context.Waves);
     WriteResourceTable(writer, context.Models);
-    writer.WriteInt32(0); // Material files are excluded by the fixed project profile.
+    writer.WriteInt32(0); // Material files are excluded by the fixed project profile
     WriteResourceTable(writer, context.Curves);
-    writer.WriteInt32(0); // Procedural models are excluded by the fixed project profile.
+    writer.WriteInt32(0); // Procedural models are excluded by the fixed project profile
 
     nptr<const XmlNode> inputs = Find(&project, "Dynamic/Inputs");
     writer.WriteInt32(inputs ? numeric_cast<int32_t>(inputs->Children.size()) : 0);

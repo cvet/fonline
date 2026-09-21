@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -229,7 +229,7 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
     }
 
     using AssetPtr = shared_ptr<const ModelSourceAsset>;
-    auto promise = SafeAlloc::MakeShared<std::promise<AssetPtr>>();
+    auto promise = safe_alloc::make_shared<std::promise<AssetPtr>>();
     PendingAsset pending = promise->get_future().share();
     PendingAsset load;
     bool owner = false;
@@ -259,7 +259,7 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
             }
 
             ValidateModelSourceAsset(asset);
-            promise->set_value(SafeAlloc::MakeShared<ModelSourceAsset>(std::move(asset)));
+            promise->set_value(safe_alloc::make_shared<ModelSourceAsset>(std::move(asset)));
         }
         catch (...) {
             promise->set_exception(std::current_exception());

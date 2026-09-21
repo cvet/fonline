@@ -12,6 +12,9 @@ Engine/BuildTools/validate.sh unit-tests
 Engine/BuildTools/validate.sh android-arm64-client linux-client linux-server
 ```
 
+The ordinary `unit-tests` validation target selects the native host toolchain: MSVC on Windows,
+Xcode on macOS, and Clang on Linux. Sanitizer validators remain explicitly platform-specific.
+
 BuildTools Python regression tests live under `Engine/BuildTools/tests/` and can be run directly:
 
 ```bash
@@ -124,6 +127,7 @@ At the moment the shared flow covers:
 - `android-ndk`
 - `dotnet`
 - `xwin`
+- `wix`
 - `msan-libcxx`
 
 Linux system package installation is explicit and separate from workspace preparation:
@@ -136,13 +140,34 @@ Linux system package installation is explicit and separate from workspace prepar
 - `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
+Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
 
 Host prerequisite checks are also available through the main tool:
 
 - `buildtools.py host-check linux`
 - `buildtools.py host-check macos`
 - `buildtools.py host-check windows`
+
+Apple builds use Xcode: `buildtools.py build mac client Release` builds the
+embedding project's macOS client, and `buildtools.py build ios client Release`
+selects the `SIMULATOR64` iOS toolchain. That toolchain defaults to `x86_64`;
+Mono's `iossimulator` architecture follows the normalized native target processor
+(`x64`), independently of the build host. The `OS64` device target uses
+`ios/arm64`. Simulator builds do not validate device signing or execution.
+
+For the managed backend, run `buildtools.py validate managed-mac-client`,
+`managed-ios-simulator-client`, or `managed-ios-device-client` on an Apple host.
+These explicit Release scenarios enable managed scripting and disable AngelScript
+in the engine-owned validation scaffold. The device scenario selects `OS64` and
+disables code signing; the simulator scenario retains `SIMULATOR64`/x64. They
+build the pinned Mono runtime and link the native client, but do not install or
+execute an application. The manual `validate` workflow's `managed-apple` selection
+covers macOS x64/arm64 and both iOS scenarios without embedding-project inputs.
+
+`tests/test_apple_managed_architecture.py` configures the real Init stage with
+managed scripting enabled and checks both simulator and device runtime identities
+without requiring an Apple SDK. Native linking and managed execution still need
+the corresponding Apple host build and runtime checks.
 
 Host wrapper scripts now delegate to the unified workspace preparation command:
 
@@ -151,6 +176,8 @@ Host wrapper scripts now delegate to the unified workspace preparation command:
 - `buildtools.py prepare-host-workspace macos ...`
 
 Emscripten version is pinned by `Engine/ThirdParty/emscripten` and installed into `Workspace/emsdk`.
+On Windows, BuildTools runs `emsdk.py` with its own `sys.executable`; a different legacy `python` earlier
+on `PATH` must not decide whether the pinned SDK can be prepared.
 
 Examples:
 
@@ -158,10 +185,22 @@ Examples:
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset
 python3 Engine/BuildTools/buildtools.py prepare-workspace emscripten
 python3 Engine/BuildTools/buildtools.py prepare-workspace android-ndk dotnet
+python3 Engine/BuildTools/buildtools.py prepare-workspace wix
 python3 Engine/BuildTools/buildtools.py prepare-workspace msan-libcxx
 python3 Engine/BuildTools/buildtools.py prepare-workspace toolset emscripten android-ndk dotnet --check
 python3 Engine/BuildTools/buildtools.py prepare-host-workspace linux web-packages web dotnet
 ```
+
+The `toolset` workspace always enables the baker and disables runtime applications and tests. It leaves
+`FO_BUILD_ASCOMPILER` to the embedding project's `SetOptionValues` default, so AngelScript projects can
+prepare their compiler while managed-only projects do not receive an incompatible forced override.
+
+`wix` is Windows-only and prepares the portable WiX v3 release pinned by
+`Engine/ThirdParty/wix` under `Workspace/wix3`. Downloads use
+`FO_DOWNLOAD_MIRROR` like other workspace archives, and the SHA-256 is checked
+before extraction. `package.py` discovers this directory from its output input,
+so no global installation or persistent `PATH` mutation is required. POSIX
+package hosts continue to use the provisioned `wixl` command.
 
 `msan-libcxx` is Linux-only and intentionally excluded from the default `all`
 workspace feature because it downloads matching LLVM sources and builds
@@ -170,7 +209,15 @@ runtime build also passes `BuildTools/sanitizers/msan-runtime-ignorelist.txt` so
 libunwind does not self-report on ABI register snapshots during C++ exception or
 sanitizer-report unwinding. The `unit-tests-san-memory` validator prepares it
 automatically before configuring `San_Memory`; use the explicit workspace command
-only when pre-warming a CI host or debugging the runtime build.
+only when pre-warming a CI host or debugging the runtime build. Linux Mono source setup
+also initializes each POSIX signal-action object and publishes its bytes through MSan's
+weak runtime hook for bounded diagnostics. This does not make the uninstrumented runtime
+or generated JIT code compatible with MSan, so managed-script builds reject `San_Memory*`.
+Managed-script builds reject `San_Thread` too: Mono's signal-based stop-the-world protocol
+does not create happens-before edges in the host TSan runtime, so valid nursery collection
+reports false races even when SGen's concurrent sweeper is disabled. The managed-disabled
+unit validators retain blocking native MSan and TSan coverage.
+The Linux source marker invalidates already prepared runtimes when that patch changes.
 
 Linux hosts can prepare the Windows cross-compilation SDK/CRT through the same wrapper:
 
@@ -185,6 +232,26 @@ python3 Engine/BuildTools/buildtools.py build win32 client Release
 The `windows-cross-packages` feature installs/checks Linux prerequisites. The `windows-cross` wrapper feature and direct `prepare-workspace xwin` command are workspace-only: they use the xwin version pinned in `Engine/ThirdParty/xwin`, prepare both `x86` and `x86_64` SDK/CRT trees into `Workspace/xwin`, and intentionally skip system package installation for pre-provisioned CI hosts. `buildtools.py` splats the primary architecture first, then merges secondary architecture library directories from isolated splats to avoid the `xwin 0.6.6-rc.2` shared-symlink race in one multi-arch invocation. Each splat passes `--http-retry 5` so transient Microsoft CDN body-read failures are retried before failing the workspace preparation.
 
 For `win32`, `buildtools.py` passes `CMAKE_SYSTEM_PROCESSOR=x86`; the toolchain keeps the xwin `x86` library paths and forces `clang-cl --target=i686-pc-windows-msvc` so CMake compiler probes do not emit x64 objects for an x86 link.
+
+## Checkout case repair
+
+```bash
+python3 Engine/BuildTools/buildtools.py repair-checkout-case
+python3 Engine/BuildTools/buildtools.py repair-checkout-case --check
+```
+
+Renames working-tree entries whose on-disk spelling differs from the name git tracks, recursing into
+submodules. A case-only rename is recorded correctly in the index, but on a case-insensitive
+filesystem git only rewrites file names — an existing directory keeps its old spelling forever — so a
+reused checkout keeps serving the stale name while resource and include lookups stay case-sensitive.
+The symptom appears far from the cause: a file that plainly sits on disk is reported as missing while
+baking. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone never
+reproduces it, which is why CI jobs on such runners should run this right after checkout.
+
+`--check` reports the drift and exits non-zero without touching the working tree. If the index holds
+the same path under two spellings at once, the command names both and refuses to repair anything —
+that is a repository defect (the two paths are distinct on Linux and one entry on Windows) and only a
+commit can decide which spelling is correct.
 
 ## Windows web debug workflow
 
@@ -239,16 +306,41 @@ python3 Engine/BuildTools/android_device.py --workspace-root Workspace launch-ga
 At runtime, `FOnlineActivity` stages `assets/Resources` into the app files directory on first launch after install or update and then starts the engine with absolute `Baking.ClientResources` and `Baking.CacheResources` overrides that point to that runtime location.
 
 Android SDK command-line tools version is pinned by `Engine/ThirdParty/android-sdk` and installed into `Workspace/android-sdk`.
+BuildTools uses the package's `android sdk install` interface with metrics
+disabled; the deprecated `sdkmanager` path is not used.
 
 Android NDK version is pinned by `Engine/ThirdParty/android-ndk` and installed into `Workspace/android-ndk`.
 
-The Gradle project template lives in `Engine/BuildTools/android-project/` and uses `$PLACEHOLDER$` tokens patched by `package.py` during packaging. Android configuration values come from the baked target config for the selected package config, so `SubConfig` overrides affect APK metadata. Android SDKs that require application manifest metadata can use `Android.ManifestMetaData.<android:name> = <android:value>` settings; the packager emits them as `<meta-data>` entries inside `<application>`. SDK Gradle setup can use `Android.GradleMavenRepository.<name> = <url>` and `Android.GradleDependency.<name> = <Gradle dependency statement>` to add package-config-specific Maven repositories and `dependencies { ... }` entries. Package-specific Java sources can use `Android.JavaSource.<name> = <path/to/File.java>`; the packager copies each non-empty source into the generated app package namespace and patches `$PACKAGE$` / `$CONFIG$`.
+The Gradle project template lives in `Engine/BuildTools/android-project/`, pins
+Android Gradle Plugin 9.3.0 with Gradle 9.5.0, compiles Java sources at language
+level 17, and uses `$PLACEHOLDER$` tokens patched by `package.py` during
+packaging. Android configuration values come from the baked target config for the selected package config, so `SubConfig` overrides affect APK metadata. Android SDKs that require application manifest metadata can use `Android.ManifestMetaData.<android:name> = <android:value>` settings; the packager emits them as `<meta-data>` entries inside `<application>`. SDK Gradle setup can use `Android.GradleMavenRepository.<name> = <url>` and `Android.GradleDependency.<name> = <Gradle dependency statement>` to add package-config-specific Maven repositories and `dependencies { ... }` entries. Package-specific Java sources can use `Android.JavaSource.<name> = <path/to/File.java>`; the packager copies each non-empty source into the generated app package namespace and patches `$PACKAGE$` / `$CONFIG$`.
 
 Android release APK packaging signs the artifact. Configure signing through `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, and `Android.KeyPassword` in the project main config. `package.py` passes `Android.KeystorePassword` and `Android.KeyPassword` to Gradle through `FO_ANDROID_RELEASE_STORE_PASSWORD` and `FO_ANDROID_RELEASE_KEY_PASSWORD` environment variables instead of writing them into the generated Gradle project. If you build the generated Gradle project manually, set those variables before `./gradlew assembleRelease`; if the signing settings are empty, packaging falls back to the Gradle debug signing key so generated package APKs remain installable on development devices. If needed, these settings can use `$ENV{...}` expressions.
 
 APK packaging runs Gradle with `GRADLE_USER_HOME` under the current workspace output tree instead of the shared `~/.gradle`, so parallel CI package jobs do not contend for global Gradle caches.
 
 `android_device.py` first tries `adb mdns services`, shows any discovered Android Wi-Fi endpoints as a numbered list, caches the selected endpoint in `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` entry when discovery returns nothing.
+
+Every client/server resource pack is reopened after it is built — the zips written to disk and the in-memory pack embedded into the executable alike. Packaging verifies the exact entry list and streams every entry through the CRC-checking zip reader, so a damaged resource archive stops the package before it reaches either the downloadable client or the server updater source.
+
+MSI compiler/linker failures leave their native file, ICE, or Windows Installer diagnostic in the build log
+before packaging exits. Windows `candle` and `light` promote warnings to errors. The generator suppresses
+ICE91 only: every emitted MSI is explicitly per-user under `LocalAppDataFolder`, which is the exact package
+shape for which that mixed-scope warning is inapplicable. On Windows, the first `light` run keeps its output
+buffered while ICE validation is classified. A successful validated link or a terminal failure then emits that
+output. If and only if the first attempt reports the exact Windows Installer service-unavailable diagnostic,
+the creator retries the same link with `-sval`; a successful retry suppresses the superseded `error` lines so
+MSBuild does not classify the otherwise successful custom target as failed. Any authoring, linker, or ordinary
+ICE error still fails immediately, and failure of the fallback link is also fatal.
+
+An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing
+`restore|store|release --key <sha256> --archive <path>`. Before deflate, `package.py` hashes the stable entry
+names and contents plus compression level. Exit code 0 from `restore` supplies a ready archive, while 2 is a
+miss; after a miss the validated archive is passed to `store`, and an interrupted write calls `release`. Exit
+code 3 reports an unavailable optional cache and disables later helper calls in the same package process.
+Regardless of origin, the normal entry-list and CRC validation remains mandatory. Identical archives needed
+twice by one package process are copied from its first validated result without another helper call.
 
 ## Packaging: post-build binary patching
 
@@ -262,7 +354,7 @@ change. Patched regions, all transparent identity/config **text** (never code):
 - `PACKAGED_BUILD_NAME` — marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
   each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
-  `FO_INTERNAL_CONFIG_CAPACITY` (40000). The baked internal config blob.
+  fixed by the engine at 10000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
 - Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.

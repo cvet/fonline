@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,10 +29,15 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelAnimation.h"
 
 #if FO_ENABLE_3D
+
+// Ozz's SimdFloat4 is an attributed GCC vector type. GCC warns that the attribute is ignored when the
+// type is named as a span/vector template argument even though its intrinsic vector alignment is retained
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 #include "ModelAnimationData.h"
 #include "ModelBakedData.h"
@@ -78,7 +83,7 @@ ModelAnimationController::ModelAnimationController(int32_t track_count)
     FO_VERIFY_AND_THROW(track_count >= 0, "Track count is negative", track_count);
 
     if (track_count != 0) {
-        _animationBindings = SafeAlloc::MakeShared<vector<AnimationBinding>>();
+        _animationBindings = safe_alloc::make_shared<vector<AnimationBinding>>();
         _tracks.resize(track_count);
     }
 }
@@ -492,7 +497,7 @@ public:
     {
         FO_STACK_TRACE_ENTRY();
 
-        return ModelAnimationRuntimeClip {SafeAlloc::MakeUnique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))};
+        return ModelAnimationRuntimeClip {safe_alloc::make_unique<ModelAnimationRuntimeClip::Impl>(std::move(source_file), std::move(clip_name), source_signature, std::move(animation), std::move(joint_remap))};
     }
 
     [[nodiscard]] static auto CreateRig(uint64_t rig_signature, uint64_t cache_signature, ozz::animation::Skeleton skeleton, ModelAnimationJointRemap base_joint_remap, vector<ModelAnimationRuntimeClip> clips, vector<ModelAnimationRigBinding> bindings) -> unique_ptr<ModelAnimationRuntimeRig>
@@ -500,7 +505,7 @@ public:
         FO_STACK_TRACE_ENTRY();
 
         ValidateModelAnimationRuntimeSkeleton(skeleton, "runtime rig");
-        auto rig = SafeAlloc::MakeUnique<ModelAnimationRuntimeRig>(SafeAlloc::MakeUnique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
+        auto rig = safe_alloc::make_unique<ModelAnimationRuntimeRig>(safe_alloc::make_unique<ModelAnimationRuntimeRig::Impl>(rig_signature, cache_signature, std::move(skeleton), std::move(base_joint_remap), std::move(clips), std::move(bindings)));
         ValidateModelAnimationRuntimePoseRig(*rig);
         return rig;
     }
@@ -804,7 +809,7 @@ auto ModelAnimationRuntimeRig::FindBinding(int32_t state_anim, int32_t action_an
 }
 
 ModelAnimationRuntimePose::ModelAnimationRuntimePose(ptr<const ModelAnimationRuntimeRig> rig) :
-    _impl {SafeAlloc::MakeUnique<Impl>(rig)}
+    _impl {safe_alloc::make_unique<Impl>(rig)}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1157,7 +1162,7 @@ static void ValidateModelAnimationRuntimeSkeleton(const ozz::animation::Skeleton
             throw ModelAnimationRuntimeException("Ozz skeleton has an invalid name for joint", context, joint);
         }
 
-        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, joint), numeric_cast<size_t>(joint), context);
+        ValidateModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, joint), numeric_cast<size_t>(joint), context);
     }
 }
 
@@ -1199,7 +1204,7 @@ static void ValidateModelAnimationRuntimeRestPose(const ModelAnimationRuntimeJoi
 {
     FO_STACK_TRACE_ENTRY();
 
-    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointLocalRestPose(skeleton, numeric_cast<int>(canonical_index)));
+    mat44 canonical_rest = ComposeModelAnimationRuntimeTransform(ozz::animation::GetJointRestPoseLocalSpace(skeleton, numeric_cast<int>(canonical_index)));
 
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
@@ -1262,9 +1267,8 @@ static void ValidateModelAnimationRuntimeMatrix(const mat44& matrix, string_view
     }
 }
 
-// Per-joint variant: the index travels as a trailing context argument instead of being formatted into the
-// message. This runs per joint per model per frame, so an eager strex label would build millions of
-// strings a minute that only a throw would ever read.
+// The index travels as a context argument rather than a formatted message, because this runs per joint per
+// model per frame and an eager label would build strings only a throw would read
 static void ValidateModelAnimationRuntimeJointMatrix(const mat44& matrix, string_view context, size_t joint_index)
 {
     FO_STACK_TRACE_ENTRY();
@@ -1703,5 +1707,7 @@ static auto ConvertModelAnimationRuntimeMatrix(const ozz::math::Float4x4& matrix
 }
 
 FO_END_NAMESPACE
+
+FO_GCC_IGNORE_WARNINGS_POP()
 
 #endif

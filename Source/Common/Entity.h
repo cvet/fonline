@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -68,7 +68,7 @@ FO_BEGIN_NAMESPACE
         FO_VALIDATE_ENTITY_ACCESS_VALUE(_propsRef->GetEntity()); \
         return _propsRef->GetRawDataSize(GetProperty##prop()) != 0; \
     } \
-    static uint16_t prop##_RegIndex
+    static const uint16_t prop##_RegIndex
 
 #define FO_ENTITY_EVENT(event_name, ...) \
     EntityEventWrapper<fixed_string(#event_name) __VA_OPT__(, ) __VA_ARGS__> event_name \
@@ -154,7 +154,7 @@ public:
         StopChain,
     };
 
-    using EventCallback = function<EventResult(FuncCallData&)>;
+    using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
     ///@ ExportEnum
     enum class EventPriority : int32_t
@@ -170,6 +170,8 @@ public:
     {
         EventCallback Callback {};
         uintptr_t SubscriptionPtr {};
+        // Who issued SubscriptionPtr: a script backend finds its own subscriptions by it among foreign ones
+        uintptr_t SubscriptionOwner {};
         EventPriority Priority {EventPriority::Normal};
         bool HasExplicitResult {};
     };
@@ -215,6 +217,7 @@ public:
     [[nodiscard]] auto GetInnerEntities(hstring entry) const noexcept -> nptr<const vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto GetInnerEntities(hstring entry) noexcept -> nptr<vector<refcount_ptr<Entity>>>;
     [[nodiscard]] auto HasEventCallbacks(string_view event_name) const noexcept -> bool;
+    [[nodiscard]] auto GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>;
     [[nodiscard]] auto GetTimeEvents() const noexcept -> nptr<const TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto GetTimeEvents() noexcept -> nptr<TimeEventList> { return _timeEvents ? make_nptr(&*_timeEvents) : nullptr; }
     [[nodiscard]] auto HasTimeEvents() const noexcept -> bool;
@@ -263,7 +266,7 @@ protected:
 private:
     auto FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>;
     auto EnsureEventCallbacks(string_view event_name) -> ptr<vector<EventCallbackData>>;
-    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback);
+    void SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name);
     void UnsubscribeEvent(ptr<vector<EventCallbackData>> callbacks, uintptr_t subscription_ptr) noexcept;
 
     Properties _props;
@@ -353,7 +356,7 @@ public:
     virtual ~EntityManagerApi() = default;
 };
 
-// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`.
+// Null-tolerant convenience wrapper around `Entity::ValidateAccess()`
 inline void ValidateEntityAccess(nptr<const Entity> entity)
 {
     if (entity) {

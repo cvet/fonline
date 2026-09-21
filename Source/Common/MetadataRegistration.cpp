@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,31 +46,79 @@ static void RegisterDynamicMetadataEvents(ptr<EngineMetadata> meta, const vector
 static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
 static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data);
+static auto ReadMetadataHeader(data_reader& reader) -> string_view;
+static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector<vector<string_view>>>;
 
 void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metadata_bin)
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Read data
+    auto reader = data_reader(metadata_bin);
+
+    meta->RegisterMetadataVersion(ReadMetadataHeader(reader));
+
+    map<string_view, vector<vector<string_view>>> engine_data = ReadMetadataSections(reader);
+
+    RegisterDynamicMetadataEnums(meta, engine_data[METADATA_ENUM_SECTION]);
+    RegisterDynamicMetadataEntities(meta, engine_data[METADATA_ENTITY_SECTION]);
+    RegisterDynamicMetadataEntityHolders(meta, engine_data[METADATA_ENTITY_HOLDER_SECTION]);
+    RegisterDynamicMetadataFixedTypes(meta, engine_data[METADATA_FIXED_TYPE_SECTION]);
+    RegisterDynamicMetadataValueTypes(meta, engine_data[METADATA_VALUE_TYPE_SECTION]);
+    RegisterDynamicMetadataRefTypes(meta, engine_data[METADATA_REF_TYPE_SECTION]);
+    RegisterDynamicMetadataProperties(meta, engine_data[METADATA_PROPERTY_SECTION]);
+    RegisterDynamicMetadataEvents(meta, engine_data[METADATA_EVENT_SECTION]);
+    RegisterDynamicMetadataRemoteCalls(meta, engine_data[METADATA_REMOTE_CALL_SECTION]);
+    RegisterDynamicMetadataSettings(meta, engine_data[METADATA_SETTING_SECTION]);
+    RegisterDynamicMetadataMigrationRules(meta, engine_data[METADATA_MIGRATION_RULE_SECTION]);
+}
+
+static auto ReadMetadataHeader(data_reader& reader) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto magic = reader.read<uint32_t>();
+    FO_VERIFY_AND_THROW(magic == METADATA_FILE_MAGIC, "Baked metadata does not start with the metadata file marker", magic, METADATA_FILE_MAGIC);
+
+    // A bake of another file version cannot be trusted field by field, and a bake with no layout version cannot be
+    // verified against a peer at all - both mean the resources have to be rebaked
+    auto file_version = reader.read<uint16_t>();
+
+    if (file_version != METADATA_FILE_VERSION) {
+        throw MetadataOutdatedException("Baked metadata file version does not match the engine, resources must be rebaked", file_version, METADATA_FILE_VERSION);
+    }
+
+    auto metadata_version_size = reader.read<uint16_t>();
+    string_view metadata_version = reader.read_string_view(metadata_version_size);
+
+    if (metadata_version.empty()) {
+        throw MetadataOutdatedException("Baked metadata carries no version, resources must be rebaked");
+    }
+
+    return metadata_version;
+}
+
+static auto ReadMetadataSections(data_reader& reader) -> map<string_view, vector<vector<string_view>>>
+{
+    FO_STACK_TRACE_ENTRY();
+
     map<string_view, vector<vector<string_view>>> engine_data;
-    auto reader = DataReader(metadata_bin);
-    auto sections_count = reader.Read<uint16_t>();
+    auto sections_count = reader.read<uint16_t>();
 
     for (uint16_t i = 0; i < sections_count; i++) {
-        auto section_name_size = reader.Read<uint16_t>();
-        string_view section_name = reader.ReadStringView(section_name_size);
+        auto section_name_size = reader.read<uint16_t>();
+        string_view section_name = reader.read_string_view(section_name_size);
 
-        auto entries_count = reader.Read<uint32_t>();
+        auto entries_count = reader.read<uint32_t>();
         vector<vector<string_view>> entries;
         entries.reserve(entries_count);
 
         for (uint32_t j = 0; j < entries_count; j++) {
             auto& cur_entry = entries.emplace_back();
-            auto tokens_count = reader.Read<uint32_t>();
+            auto tokens_count = reader.read<uint32_t>();
 
             for (uint32_t k = 0; k < tokens_count; k++) {
-                auto token_size = reader.Read<uint16_t>();
-                string_view token = reader.ReadStringView(token_size);
+                auto token_size = reader.read<uint16_t>();
+                string_view token = reader.read_string_view(token_size);
 
                 cur_entry.emplace_back(token);
             }
@@ -79,19 +127,9 @@ void RegisterDynamicMetadata(ptr<EngineMetadata> meta, const_span<uint8_t> metad
         engine_data.emplace(section_name, std::move(entries));
     }
 
-    reader.VerifyEnd();
+    reader.verify_end();
 
-    RegisterDynamicMetadataEnums(meta, engine_data["Enum"]);
-    RegisterDynamicMetadataEntities(meta, engine_data["Entity"]);
-    RegisterDynamicMetadataEntityHolders(meta, engine_data["EntityHolder"]);
-    RegisterDynamicMetadataFixedTypes(meta, engine_data["FixedType"]);
-    RegisterDynamicMetadataValueTypes(meta, engine_data["ValueType"]);
-    RegisterDynamicMetadataRefTypes(meta, engine_data["RefType"]);
-    RegisterDynamicMetadataProperties(meta, engine_data["Property"]);
-    RegisterDynamicMetadataEvents(meta, engine_data["Event"]);
-    RegisterDynamicMetadataRemoteCalls(meta, engine_data["RemoteCall"]);
-    RegisterDynamicMetadataSettings(meta, engine_data["Setting"]);
-    RegisterDynamicMetadataMigrationRules(meta, engine_data["MigrationRule"]);
+    return engine_data;
 }
 
 static void RegisterDynamicMetadataEnums(ptr<EngineMetadata> meta, const vector<vector<string_view>>& engine_data)
@@ -304,14 +342,18 @@ static void RegisterDynamicMetadataRemoteCalls(ptr<EngineMetadata> meta, const v
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 3, "RemoteCall metadata record is missing call name, subsystem hint or direction", tokens.size());
-        FO_VERIFY_AND_THROW((tokens.size() - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() >= 6, "RemoteCall metadata record is missing call name, subsystem hint, direction or structural limits", tokens.size());
+        FO_VERIFY_AND_THROW(tokens[tokens.size() - 3] == "Limits", "RemoteCall metadata record must end with the structural limits triple", tokens[0], tokens[tokens.size() - 3]);
+        size_t args_end = tokens.size() - 3;
+        FO_VERIFY_AND_THROW((args_end - 3) % 3 == 0, "RemoteCall metadata arguments must be encoded as type/nullability/name triples", tokens[0], tokens[1], tokens[2], tokens.size());
         RemoteCallDesc remote_call;
-        remote_call.Name = meta->Hashes.ToHashedString(tokens[0]);
+        remote_call.Name = meta->Hashes.to_hashed_string(tokens[0]);
         remote_call.SubsystemHint = tokens[1];
+        remote_call.MaxPayloadSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 2]).to_int64());
+        remote_call.MaxCollectionSize = numeric_cast<size_t>(strvex(tokens[tokens.size() - 1]).to_int64());
         bool inbound = tokens[2] == "In";
 
-        for (size_t i = 3; i + 3 <= tokens.size(); i += 3) {
+        for (size_t i = 3; i + 3 <= args_end; i += 3) {
             auto arg_type = meta->ResolveComplexType(tokens[i]);
             bool arg_nullable = tokens[i + 1] == "?";
             string arg_name = string(tokens[i + 2]);
@@ -332,11 +374,12 @@ static void RegisterDynamicMetadataSettings(ptr<EngineMetadata> meta, const vect
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 2, "Setting metadata record is missing setting name or value type", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() == 3, "Setting metadata record must contain setting name, value type, and initial value", tokens.size());
         auto name = tokens[0];
         const auto& type = meta->GetBaseType(tokens[1]);
+        auto initial_value = tokens[2];
 
-        meta->RegisterGameSetting(name, type);
+        meta->RegisterGameSetting(name, type, initial_value);
     }
 }
 
@@ -345,7 +388,7 @@ static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, cons
     FO_STACK_TRACE_ENTRY();
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() >= 4, "MigrationRule metadata record is missing rule scope, version or target fields", tokens.size());
+        FO_VERIFY_AND_THROW(tokens.size() == 4, "Invalid MigrationRule metadata record", tokens.size());
 
         meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
     }
@@ -356,13 +399,42 @@ auto ReadMetadataBin(ptr<const FileSystem> resources, string_view target) -> vec
     FO_STACK_TRACE_ENTRY();
 
     string target_lower = strex(target).lower();
+    string metadata_file_name = strex("Metadata.fometa-{}", target_lower).str();
 
-    if (auto restore_info = resources->ReadFile(strex("Metadata.fometa-{}", target_lower))) {
+    if (auto restore_info = resources->ReadFile(metadata_file_name)) {
         return restore_info.GetData();
     }
     else {
-        throw MetadataNotFoundException(FO_LINE_STR);
+        throw MetadataNotFoundException("Baked metadata file is not present in the resources", metadata_file_name);
     }
+}
+
+auto ReadMetadataVersion(const_span<uint8_t> metadata_bin) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Header only: the updater compares its own resource pack against the server before any engine exists, and it
+    // has no reason to walk the sections to do that
+    auto reader = data_reader(metadata_bin);
+
+    return string(ReadMetadataHeader(reader));
+}
+
+auto MakeMetadataHeader(string_view metadata_version) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!metadata_version.empty(), "Metadata version is empty");
+
+    vector<uint8_t> metadata_bin;
+    auto writer = data_writer(metadata_bin);
+
+    writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    writer.write<uint16_t>(METADATA_FILE_VERSION);
+    writer.write<uint16_t>(numeric_cast<uint16_t>(metadata_version.length()));
+    writer.write_string_bytes(metadata_version);
+
+    return metadata_bin;
 }
 
 FO_END_NAMESPACE

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -84,6 +84,8 @@ struct ModelAnimationData
     vector<tuple<string, hstring, int32_t>> TextureInfo {}; // Name, mesh, num
     vector<tuple<string, hstring>> EffectInfo {}; // Name, mesh
     vector<ptr<ModelCutData>> CutInfo {};
+    optional<ModelBounds3D> Bounds {};
+    vector<optional<ModelBounds3D>> ClipBounds {}; // Indexed by animation clip, empty entries fall back to Bounds
 };
 
 struct MeshData;
@@ -126,6 +128,7 @@ private:
     {
         ModelAnimationData Data {};
         vector<BakedModelDescriptionCutInfo> CutInfo {};
+        vector<tuple<int32_t, int32_t, ModelBounds3D>> AnimationBounds {};
     };
 
     struct BakedModelDescriptionAnimationEntry
@@ -145,11 +148,11 @@ private:
     };
 
     [[nodiscard]] auto Load(string_view name) -> bool;
-    [[nodiscard]] auto LoadBaked(string_view name, DataReader& reader) -> bool;
-    [[nodiscard]] auto ReadBakedModelDescriptionLink(DataReader& reader, string_view context) const -> BakedModelDescriptionLink;
-    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(DataReader& reader) const -> BakedModelDescriptionCutInfo;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(DataReader& reader) const -> BakedModelDescriptionAnimationEntry;
-    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(DataReader& reader) const -> BakedModelDescriptionAnimLayerValue;
+    [[nodiscard]] auto LoadBaked(string_view name, data_reader& reader) -> bool;
+    [[nodiscard]] auto ReadBakedModelDescriptionLink(data_reader& reader, string_view context) const -> BakedModelDescriptionLink;
+    [[nodiscard]] auto ReadBakedModelDescriptionCutInfo(data_reader& reader) const -> BakedModelDescriptionCutInfo;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimationEntry(data_reader& reader) const -> BakedModelDescriptionAnimationEntry;
+    [[nodiscard]] auto ReadBakedModelDescriptionAnimLayerValue(data_reader& reader) const -> BakedModelDescriptionAnimLayerValue;
 
     void IndexDirectPoseJoints();
     void IndexAnimationPoseJoints(const ModelAnimationRuntimeRig& rig);
@@ -166,9 +169,9 @@ private:
     nptr<ModelHierarchy> _hierarchy {};
     optional<ModelAnimationController> _animController {};
     unique_nptr<ModelAnimationRuntimeRig> _animationRuntimeRig {};
-    vector<nptr<const ModelBone>> _poseBones {}; // Physical base bones; null for animation-contributed canonical joints.
-    vector<hstring> _poseJointCanonicalNames {}; // Immutable canonical source identity.
-    vector<hstring> _poseJointRuntimeNames {}; // Exact legacy lookup identity; the base root uses its file alias.
+    vector<nptr<const ModelBone>> _poseBones {}; // Physical base bones; null for animation-contributed canonical joints
+    vector<hstring> _poseJointCanonicalNames {}; // Immutable canonical source identity
+    vector<hstring> _poseJointRuntimeNames {}; // Exact legacy lookup identity; the base root uses its file alias
     unordered_map<hstring, uint32_t> _poseJointIndexes {};
     unordered_map<ptr<const ModelBone>, uint32_t> _poseBoneJointIndexes {};
     vector<ModelPoseJoint> _restPoseJoints {};

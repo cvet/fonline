@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -71,9 +71,7 @@ public:
     auto operator=(NetworkServerConnection_WebSockets&&) noexcept = delete;
     ~NetworkServerConnection_WebSockets() override;
 
-    // Wire the websocketpp connection handlers to this wrapper. Must run after the shared_ptr owning
-    // this object exists (weak_from_this() is unusable in the constructor), so it is called from OnOpen
-    // right after allocation - mirrors the Asio transport's post-construction StartAsyncRead().
+    // Runs after the owning shared_ptr exists, because weak_from_this() is unusable in the constructor
     void Start();
 
 private:
@@ -87,10 +85,8 @@ private:
     void DispatchImpl() override;
     void DisconnectImpl() override;
 
-    // Held weak, never strong: the websocketpp endpoint owns the connection for its whole life and destroys
-    // it (with its io_context-bound asio timers) on the io thread. If this wrapper kept a strong ref it
-    // could outlive the server and destroy the connection after the io_context is gone - a heap use-after-
-    // free on shutdown. Locking the weak ref for each use touches the connection only while it is still alive.
+    // Weak because the endpoint owns the connection and destroys it on the io thread: a strong ref here could
+    // outlive the io_context and destroy it afterwards
     connection_weak_ptr _connection {};
 };
 
@@ -126,17 +122,17 @@ auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, N
 {
     FO_STACK_TRACE_ENTRY();
 
-    uint16_t ws_port = numeric_cast<uint16_t>(settings->WebSocketPort);
+    uint16_t ws_port = numeric_cast<uint16_t>(settings->Network.WebSocketPort);
 
-    if (settings->SecuredWebSockets) {
-        WriteLog("Listen WebSockets (with TLS) connections on port {}", ws_port);
+    if (settings->Network.SecuredWebSockets) {
+        logging::write("Listen WebSockets (with TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<true>>(settings, std::move(callback));
     }
     else {
-        WriteLog("Listen WebSockets (no TLS) connections on port {}", ws_port);
+        logging::write("Listen WebSockets (no TLS) connections on port {}", ws_port);
 
-        return SafeAlloc::MakeUnique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_WebSockets<false>>(settings, std::move(callback));
     }
 }
 
@@ -161,7 +157,7 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
         _port = 0;
     }
 
-    if (settings->DisableTcpNagle) {
+    if (settings->Network.DisableTcpNagle) {
         std::error_code no_delay_error;
         raw_socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
@@ -173,11 +169,8 @@ void NetworkServerConnection_WebSockets<Secured>::Start()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // The websocketpp connection outlives this wrapper's owning shared_ptr on the io thread (the endpoint
-    // keeps the connection registered until it finishes closing), so the handlers must not touch a raw
-    // dangling 'this'. Hold the wrapper alive for the duration of each handler via a weak_from_this() lock -
-    // the same lifetime discipline the Asio transport gets from its shared_from_this() read/write handlers.
-    // If the lock fails the wrapper is already gone and the callback is a no-op.
+    // The connection outlives this wrapper, so each handler locks the weak ref to keep it alive; a failed lock
+    // means the wrapper is gone and the callback is a no-op
     auto connection = _connection.lock();
 
     if (!connection) {
@@ -224,10 +217,10 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "WebSocket socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        WriteLog(LogType::Warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "WebSocket socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -237,10 +230,8 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
     FO_STACK_TRACE_ENTRY();
 
     try {
-        // close() is the thread-safe teardown (it posts to the endpoint's io service); terminate() is the
-        // internal io-thread-only path and must never be called from the engine thread that destroys this
-        // wrapper - doing so races the websocketpp run loop and corrupts connection state / crashes. If the
-        // weak ref no longer locks the endpoint already destroyed the connection - nothing to close.
+        // close() posts to the io service and is the only thread-safe teardown: terminate() is io-thread-only
+        // and would race the run loop from here
         if (auto connection = _connection.lock()) {
             std::error_code close_error;
             connection->close(websocketpp::close::status::going_away, "", close_error);
@@ -248,7 +239,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -315,7 +306,7 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
             DispatchImpl();
         }
         else {
-            WriteLog(LogType::Warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
+            logging::write(logging::type::warning, "WebSocket send failed to {}:{}: {}", _host, _port, GetAsioErrorText(error));
             Disconnect();
         }
     }
@@ -326,9 +317,8 @@ void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Runs on the engine thread, not the websocketpp io thread: use the thread-safe close() (posts to the
-    // io service) rather than the io-thread-only terminate(), which would race the run loop. A dead weak ref
-    // means the endpoint already tore the connection down - nothing to do.
+    // Runs on the engine thread, so teardown goes through the thread-safe close() rather than the io-thread-only
+    // terminate(), which would race the run loop
     if (auto connection = _connection.lock()) {
         std::error_code close_error;
         connection->close(websocketpp::close::status::going_away, "", close_error);
@@ -343,10 +333,10 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     FO_STACK_TRACE_ENTRY();
 
     if constexpr (Secured) {
-        if (_settings->WssPrivateKey.empty()) {
+        if (_settings->ServerNetwork.WssPrivateKey.empty()) {
             throw GenericException("'WssPrivateKey' not provided");
         }
-        if (_settings->WssCertificate.empty()) {
+        if (_settings->ServerNetwork.WssCertificate.empty()) {
             throw GenericException("'WssCertificate' not provided");
         }
     }
@@ -366,10 +356,10 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
     }
 
     websocketpp::lib::error_code listen_error;
-    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->WebSocketPort), listen_error);
+    _server.listen(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.WebSocketPort), listen_error);
 
     if (listen_error) {
-        throw NetworkServerException("Can't listen for WebSocket connections", settings->WebSocketPort, GetAsioErrorText(listen_error));
+        throw NetworkServerException("Can't listen for WebSocket connections", settings->Network.WebSocketPort, GetAsioErrorText(listen_error));
     }
 
     _server.start_accept();
@@ -397,7 +387,7 @@ void NetworkServer_WebSockets<Secured>::Run()
             break;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -411,7 +401,7 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
         auto connection = _server.get_con_from_hdl(hdl);
 
         try {
-            auto ws_connection = SafeAlloc::MakeShared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
+            auto ws_connection = safe_alloc::make_shared<NetworkServerConnection_WebSockets<Secured>>(_settings, connection);
             ws_connection->Start();
 
             if (TrackConnection(ws_connection)) {
@@ -419,14 +409,14 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
 
             asio::error_code terminate_error;
             connection->terminate(terminate_error);
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -438,7 +428,7 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     auto remote_endpoint = connection->get_remote_endpoint();
-    WriteLog(LogType::Warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
+    logging::write(logging::type::warning, "WebSocket handshake failed from {}: {}", string_view(remote_endpoint), GetAsioErrorText(ec));
 }
 
 template<bool Secured>
@@ -447,6 +437,11 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
     FO_STACK_TRACE_ENTRY();
 
     auto&& connection = _server.get_con_from_hdl(hdl);
+
+    if (_settings->ServerNetwork.MaxBufferedInputSize > 0) {
+        connection->set_max_message_size(numeric_cast<size_t>(_settings->ServerNetwork.MaxBufferedInputSize));
+    }
+
     connection->select_subprotocol("binary");
     return true;
 }
@@ -461,8 +456,8 @@ auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_
     websocketpp::lib::shared_ptr<ssl_context> ctx = websocketpp::lib::make_shared<ssl_context>(ssl_context::tls_server);
     ctx->set_options(ssl_context::default_workarounds | ssl_context::no_sslv2 | ssl_context::no_sslv3 | ssl_context::no_tlsv1 | ssl_context::no_tlsv1_1 | ssl_context::single_dh_use);
     SSL_CTX_set_ecdh_auto(ctx->native_handle(), 1);
-    ctx->use_certificate_chain_file(std::string(_settings->WssCertificate));
-    ctx->use_private_key_file(std::string(_settings->WssPrivateKey), ssl_context::pem);
+    ctx->use_certificate_chain_file(std::string(_settings->ServerNetwork.WssCertificate));
+    ctx->use_private_key_file(std::string(_settings->ServerNetwork.WssPrivateKey), ssl_context::pem);
     return ctx;
 }
 

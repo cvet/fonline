@@ -383,7 +383,7 @@ static auto BuildCommonAllowlist(const EngineMetadata& server, const EngineMetad
     for (const auto& [srv_hname, srv_desc] : server.GetEntityTypes()) {
         const string entity_name {srv_hname.as_str()};
         const auto& cli_types = client.GetEntityTypes();
-        const auto cli_it = cli_types.find(client.Hashes.ToHashedString(entity_name));
+        const auto cli_it = cli_types.find(client.Hashes.to_hashed_string(entity_name));
         if (cli_it == cli_types.end()) {
             continue;
         }

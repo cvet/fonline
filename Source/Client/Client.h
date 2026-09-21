@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "Common.h"
 
 #include "Application.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "CritterHexView.h"
@@ -58,7 +59,6 @@
 #include "ResourceManager.h"
 #include "ScriptSystem.h"
 #include "Settings.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 #include "VideoClip.h"
@@ -74,18 +74,19 @@ struct VideoPlaybackResources
 };
 
 ///@ ExportRefType Client RefCounted Export = Stopped
-class VideoPlayback : public RefCounted<VideoPlayback>
+class VideoPlayback : public refcounted<VideoPlayback>
 {
 public:
     optional<VideoPlaybackResources> PlaybackResources {};
     bool Stopped {};
 };
 
-auto GetClientResources(GlobalSettings& settings) -> FileSystem;
+auto GetClientResources(const ClientSettings& settings) -> FileSystem;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
 {
     friend class ClientScriptSystem;
+    friend class ClientEntity;
 
 public:
     explicit ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window); // For client
@@ -117,7 +118,6 @@ public:
     [[nodiscard]] auto GetCurLocation() noexcept -> nptr<LocationView> { return _curLocation; }
     [[nodiscard]] auto GetCurMap() noexcept -> nptr<MapView> { return _curMap; }
     [[nodiscard]] auto GetCurMap() const noexcept -> nptr<const MapView> { return _curMap; }
-    void Shutdown() override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
     void ProcessScheduledCallbacks();
@@ -142,11 +142,13 @@ public:
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
-    auto GetEntity(ident_t id) -> nptr<ClientEntity>;
+    auto GetEntity(ident_t id) -> refcount_nptr<ClientEntity>;
     void RegisterEntity(ptr<ClientEntity> entity);
     void UnregisterEntity(ptr<ClientEntity> entity);
 
     void DrawMiniMap(int32_t zoom, int32_t x, int32_t y, int32_t w, int32_t h);
+
+    void Shutdown() override;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnStart);
@@ -273,7 +275,7 @@ public:
     SpriteManager SprMngr;
     FontManager FontMngr;
     ResourceManager ResMngr;
-    SoundManager SndMngr;
+    AudioManager AudioMngr;
     CacheStorage Cache;
 
     ipos32 MousePos {};
@@ -307,6 +309,7 @@ protected:
 
     void ProcessInputEvents();
     void ProcessVideo();
+    void ReleaseAbandonedOffscreenSurfaces() noexcept;
 
     void UnloadMap();
     void LmapPrepareMap();
@@ -352,6 +355,7 @@ protected:
     void Net_OnAddCustomEntity();
     void Net_OnRemoveCustomEntity();
 
+    auto ReceiveDetachedItem() -> refcount_ptr<ItemView>;
     void ReceiveCustomEntities(nptr<Entity> holder);
     auto CreateCustomEntityView(ptr<Entity> holder, hstring entry, ident_t id, hstring pid, const vector<vector<uint8_t>>& data) -> ptr<CustomEntityView>;
     void ReceiveCritterMoving(nptr<CritterHexView> cr);
@@ -363,6 +367,7 @@ protected:
     void OnSendMapValue(ptr<Entity> entity, ptr<const Property> prop);
     void OnSendLocationValue(ptr<Entity> entity, ptr<const Property> prop);
 
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterModelName(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetCritterHideSprite(ptr<Entity> entity, ptr<const Property> prop);
@@ -381,7 +386,9 @@ protected:
     TextPack _curLang {make_ptr(&Hashes)};
     vector<pair<string, TextPack>> _langPackCache {};
 
-    unordered_map<ident_t, ptr<ClientEntity>> _allEntities {};
+    atomic_mutex _allEntitiesLocker {};
+    unordered_map<ident_t, ptr<ClientEntity>> _allEntities FO_TSA_GUARDED_BY(_allEntitiesLocker) {};
+    std::atomic<int32_t> _liveEntityCount {};
     vector<refcount_ptr<CritterView>> _globalMapCritters {};
     refcount_nptr<PlayerView> _curPlayer {};
     refcount_nptr<LocationView> _curLocation {};
@@ -423,7 +430,7 @@ protected:
     vector<tuple<string, bool>> _videoQueue {};
 
     // Sorted ascending by `FireTime`. Per-frame dispatch in `MainLoop` only needs to peek
-    // the front and pop entries whose deadline passed; nothing scanned every frame.
+    // the front and pop entries whose deadline passed; nothing scanned every frame
     struct ScheduledCallback
     {
         nanotime FireTime {};

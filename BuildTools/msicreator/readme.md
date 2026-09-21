@@ -74,6 +74,25 @@ python createmsi.py myprog.json
 Once the script finishes the installer will be written into
 `myprog-1.0.0-64.msi` (when run on a 64 bit machine).
 
+## Installation directory UI and defaults
+
+Generated installers always show an editable installation-directory field and a folder browser. The UI is authored by this generator and is therefore present both when the package is linked with WiX `candle`/`light` on Windows and with `wixl --ext ui` on another host. The latter requires `wixl` 0.102 or newer.
+
+The optional `install_location_registry` object remembers and rediscovers the full selected path. An explicit public `INSTALLDIR` property always wins. For example:
+
+```json
+{
+    "install_location_registry": {
+        "root": "HKCU",
+        "key": "Software\\MyProg",
+        "name": "InstallLocation",
+        "win64": "yes"
+    }
+}
+```
+
+The embedding packager must also write `[INSTALLDIR]` to the configured `InstallLocation` registry value. Searches use MSI `AppSearch` and type-51 property actions only; the generator does not run executable or script custom actions.
+
 ## Adding multiple parts to the installer
 
 Each entry in the `parts` array defines a subpart in the installer

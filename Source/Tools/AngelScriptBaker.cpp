@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -99,7 +99,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
         }
 
         messages.emplace(message);
-        WriteLog(message);
+        logging::write(message);
     };
 
     if (bake_server) {
@@ -131,7 +131,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
             file_baking.get();
         }
         catch (const ScriptCompilerException& ex) {
-            WriteLog("AngelScript compile error: {}", ex.what());
+            logging::write("AngelScript compile error: {}", ex.what());
             errors++;
         }
         catch (const std::exception& ex) {
@@ -139,7 +139,7 @@ void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target
                 throw;
             }
 
-            WriteLog("AngelScript error: {}", ex.what());
+            logging::write("AngelScript error: {}", ex.what());
             errors++;
         }
     }

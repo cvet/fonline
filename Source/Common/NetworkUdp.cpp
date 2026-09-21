@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,7 +50,7 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
         static_assert(std::is_trivially_copyable_v<decltype(scalar)>);
         array<uint8_t, sizeof(scalar)> scalar_bytes {};
         auto source = make_ptr(&scalar).template reinterpret_as<const uint8_t>();
-        MemCopy(scalar_bytes.data(), source, sizeof(scalar));
+        memory::copy(scalar_bytes.data(), source, sizeof(scalar));
         data.insert(data.end(), scalar_bytes.begin(), scalar_bytes.end());
     };
 
@@ -204,9 +204,8 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
         return;
     }
 
-    // A duplicate Payload still arms an ack so the sender can drop it from its pending list,
-    // but ack-only KeepAlive packets must not arm one — otherwise both peers would ping-pong
-    // ack-only packets forever once any payload has been acknowledged.
+    // Duplicate payloads still need acknowledgements so the sender can retire them.
+    // KeepAlive acknowledgements must not arm another acknowledgement or peers will ping-pong forever
     _ackPending = true;
 
     if (packet.Sequence < _nextIncomingSequence) {
@@ -233,9 +232,8 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
         return;
     }
 
-    // Bound the out-of-order reorder window: drop payloads too far ahead of the next expected
-    // sequence so a peer that never sends the in-order packet cannot grow _receivedPackets without
-    // limit. The sender retransmits dropped packets, so an in-window gap still reassembles.
+    // Bound the reorder window so a missing in-order packet cannot grow _receivedPackets indefinitely.
+    // The sender retransmits dropped payloads, preserving in-window reassembly
     if (_options.MaxReorderAhead != 0 && packet.Sequence - _nextIncomingSequence > _options.MaxReorderAhead) {
         return;
     }
@@ -387,7 +385,7 @@ auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
         auto scalar_ptr = make_ptr(&scalar);
         auto target = scalar_ptr.template reinterpret_as<uint8_t>();
         auto source = make_ptr(data.data() + pos);
-        MemCopy(target, source, sizeof(ScalarType));
+        memory::copy(target, source, sizeof(ScalarType));
         pos += sizeof(ScalarType);
         return true;
     };

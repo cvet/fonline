@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,7 +40,7 @@ NetworkClientConnection::NetworkClientConnection(ptr<ClientNetworkSettings> sett
 {
     FO_STACK_TRACE_ENTRY();
 
-    _incomeBuf.resize(_settings->NetBufferSize);
+    _incomeBuf.resize(_settings->Network.NetBufferSize);
     _isConnecting = true;
 }
 
@@ -115,13 +115,13 @@ void NetworkClientConnection::Disconnect() noexcept
     }
 
     if (_isConnecting) {
-        WriteLog("Can't connect to the server");
+        logging::write("Can't connect to the server");
 
         _isConnecting = false;
     }
 
     if (_isConnected) {
-        WriteLog("Disconnect from the server");
+        logging::write("Disconnect from the server");
 
         _isConnected = false;
     }

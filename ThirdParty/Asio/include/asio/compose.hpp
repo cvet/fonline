@@ -2,7 +2,7 @@
 // compose.hpp
 // ~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -21,6 +21,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 /// Launch an asynchronous operation with a stateful implementation.
 /**
@@ -103,6 +104,8 @@ namespace asio {
  *         async_echo_implementation::starting},
  *       token, socket);
  * } @endcode
+ *
+ * @sa @ref overview_compose "Compositions as asynchronous operations"
  */
 template <typename CompletionToken, typename Signature,
     typename Implementation, typename... IoObjectsOrExecutors>
@@ -121,6 +124,7 @@ inline auto async_compose(Implementation&& implementation,
       token);
 }
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

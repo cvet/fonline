@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -145,9 +145,9 @@ FO_SCRIPT_API bool Client_Critter_IsAnimAvailable(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self, CritterStateAnim stateAnim, CritterActionAnim actionAnim)
 {
-#if FO_ENABLE_3D
     auto hex_cr = RequireHexCritter(self);
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return {};
     }
@@ -158,11 +158,11 @@ FO_SCRIPT_API timespan Client_Critter_GetModelAnimDuration(ptr<CritterView> self
     return model->GetAnimDuration(stateAnim, actionAnim);
 
 #else
-    ignore_unused(self);
+    ignore_unused(hex_cr);
     ignore_unused(stateAnim);
     ignore_unused(actionAnim);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return {};
 #endif
 }
 
@@ -201,40 +201,6 @@ FO_SCRIPT_API void Client_Critter_RefreshView(ptr<CritterView> self)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, hstring protoId)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (!protoId || item->GetProtoId() == protoId) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
-FO_SCRIPT_API int32_t Client_Critter_CountItem(ptr<CritterView> self, ptr<ProtoItem> proto)
-{
-    auto inv_items = self->GetInvItems();
-    int32_t result = 0;
-
-    for (size_t i = 0; i < inv_items.size(); i++) {
-        auto item = inv_items[i].as_ptr();
-
-        if (item->GetProtoId() == proto->GetProtoId()) {
-            result += item->GetCount();
-        }
-    }
-
-    return result;
-}
-
-///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ident_t itemId)
 {
     auto item = self->GetInvItem(itemId);
@@ -251,70 +217,42 @@ FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, hstri
     }
 
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == protoId) {
+        if (item->GetProtoId() == protoId) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == protoId) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 ///@ ExportMethod
 FO_SCRIPT_API nptr<ItemView> Client_Critter_GetItem(ptr<CritterView> self, ptr<ProtoItem> proto)
 {
     auto inv_items = self->GetInvItems();
+    nptr<ItemView> another_slot;
 
-    if (proto->GetStackable()) {
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
+    for (size_t i = 0; i < inv_items.size(); i++) {
+        auto item = inv_items[i].as_ptr();
 
-            if (item->GetProtoId() == proto->GetProtoId()) {
+        if (item->GetProtoId() == proto->GetProtoId()) {
+            if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
                 return item;
             }
+
+            another_slot = item;
         }
     }
-    else {
-        nptr<ItemView> another_slot;
 
-        for (size_t i = 0; i < inv_items.size(); i++) {
-            auto item = inv_items[i].as_ptr();
-
-            if (item->GetProtoId() == proto->GetProtoId()) {
-                if (item->GetCritterSlot() == CritterItemSlot::Inventory) {
-                    return item;
-                }
-
-                another_slot = item;
-            }
-        }
-
-        return another_slot;
-    }
-
-    return nullptr;
+    return another_slot;
 }
 
 ///@ ExportMethod
@@ -408,7 +346,7 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
         anim_callback.StateAnim = stateAnim;
         anim_callback.ActionAnim = actionAnim;
         anim_callback.NormalizedTime = std::clamp(normalizedTime, 0.0f, 1.0f);
-        anim_callback.Callback = [self, animCallback = SafeAlloc::MakeShared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
+        anim_callback.Callback = [self, animCallback = safe_alloc::make_shared<ScriptFunc<void, ptr<CritterView>>>(std::move(animCallback))]() mutable FO_DEFERRED {
             if (!self->IsDestroyed()) {
                 animCallback->Call(self);
             }
@@ -430,10 +368,10 @@ FO_SCRIPT_API void Client_Critter_AddAnimCallback(ptr<CritterView> self, Critter
 ///@ ExportMethod
 FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring boneName, ipos32& boneOffset)
 {
-#if FO_ENABLE_3D
     auto hex_cr = RequireHexCritter(self);
     boneOffset = hex_cr->GetSpriteOffset();
 
+#if FO_ENABLE_3D
     if (!hex_cr->IsModel()) {
         return false;
     }
@@ -451,11 +389,9 @@ FO_SCRIPT_API bool Client_Critter_GetBonePos(ptr<CritterView> self, hstring bone
     return true;
 
 #else
-    ignore_unused(self);
     ignore_unused(boneName);
-    ignore_unused(boneOffset);
 
-    throw NotEnabled3DException("3D submodule not enabled");
+    return false;
 #endif
 }
 
@@ -466,7 +402,7 @@ FO_SCRIPT_API nptr<MovingContext> Client_Critter_MoveToHex(ptr<CritterView> self
     int16_t ox = numeric_cast<int16_t>(std::clamp(hexOffset.x, -GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_WIDTH / 2));
     int16_t oy = numeric_cast<int16_t>(std::clamp(hexOffset.y, -GameSettings::MAP_HEX_HEIGHT / 2, GameSettings::MAP_HEX_HEIGHT / 2));
 
-    // No cut: move exactly onto the hex and stand at the requested sub-hex offset.
+    // No cut: move exactly onto the hex and stand at the requested sub-hex offset
     auto engine = self->GetEngine();
     engine->CritterMoveTo(hex_cr, tuple {hex, ipos16 {ox, oy}, 0}, speed);
     auto moving = hex_cr->GetMoving();
@@ -558,7 +494,7 @@ FO_SCRIPT_API void Client_Critter_SetAlpha(ptr<CritterView> self, uint8_t alpha)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, int32_t itemCount, ident_t swapItemId, CritterItemSlot toSlot)
+FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t itemId, ident_t swapItemId, CritterItemSlot toSlot)
 {
     auto item = self->GetInvItem(itemId);
     auto swap_item = swapItemId ? self->GetInvItem(swapItemId) : nullptr;
@@ -579,12 +515,7 @@ FO_SCRIPT_API void Client_Critter_MoveItemLocally(ptr<CritterView> self, ident_t
             map_cr->Action(CritterAction::DropItem, static_cast<int32_t>(from_slot), item, true);
         }
 
-        if (item->GetStackable() && itemCount < item->GetCount()) {
-            item->SetCount(item->GetCount() - itemCount);
-        }
-        else {
-            self->DeleteInvItem(item);
-        }
+        self->DeleteInvItem(item);
     }
     else {
         item->SetCritterSlot(toSlot);

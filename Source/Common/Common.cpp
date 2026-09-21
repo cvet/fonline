@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,12 @@
 
 FO_BEGIN_NAMESPACE
 
-mutex InterthreadListenersLocker;
-map<uint16_t, function<InterthreadDataCallback(InterthreadDataCallback)>> InterthreadListeners;
+struct InterthreadData
+{
+    mutex ListenersLocker {};
+    map<uint16_t, InterthreadListener> Listeners FO_TSA_GUARDED_BY(ListenersLocker) {};
+};
+FO_GLOBAL_DATA(InterthreadData, Interthread);
 
 FO_KEEP_DATA_SYMBOL char PACKAGED_BUILD_NAME[128] = "###NotPackaged###"
                                                     "##############################################################################################################";
@@ -57,6 +61,48 @@ auto GetPackagedRuntimeName() -> string
     FO_STACK_TRACE_ENTRY();
 
     return PackagedBuildName;
+}
+
+auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.emplace(port, std::move(listener)).second;
+}
+
+auto RemoveInterthreadListener(uint16_t port) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.erase(port) != 0;
+}
+
+auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    auto it = Interthread->Listeners.find(port);
+
+    if (it == Interthread->Listeners.end()) {
+        return std::nullopt;
+    }
+
+    return it->second;
+}
+
+auto HasInterthreadListener(uint16_t port) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {Interthread->ListenersLocker};
+
+    return Interthread->Listeners.contains(port);
 }
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
@@ -139,7 +185,7 @@ void FrameBalancer::EndLoop()
             std::this_thread::yield();
         }
         else {
-            std::this_thread::sleep_for(std::chrono::milliseconds(_sleep));
+            coarse_sleep(std::chrono::milliseconds(_sleep));
         }
     }
     else if (_fixedFps > 0) {
@@ -149,7 +195,7 @@ void FrameBalancer::EndLoop()
         if (idle_time > timespan::zero) {
             nanotime sleep_start = nanotime::now();
 
-            std::this_thread::sleep_for(idle_time.value());
+            precise_sleep(idle_time.value());
 
             timespan sleep_duration = nanotime::now() - sleep_start;
 
@@ -164,63 +210,5 @@ void FrameBalancer::EndLoop()
         }
     }
 }
-
-auto MakeSeededRandomGenerator() -> std::mt19937
-{
-    FO_STACK_TRACE_ENTRY();
-
-    std::random_device random_device;
-    return std::mt19937 {random_device()};
-}
-
-void WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    string dir = strex(fname).extract_dir().str();
-
-    if (!dir.empty()) {
-        bool dir_ok = fs_create_directories(dir);
-        FO_VERIFY_AND_THROW(dir_ok, "Failed to create output directory for TGA image", dir, fname);
-    }
-
-    std::ofstream file {std::filesystem::path {fs_make_path(fname)}, std::ios::binary | std::ios::trunc};
-    FO_VERIFY_AND_THROW(file, "Failed to open TGA image file for writing", fname, size, data.size());
-
-    // ucolor keeps pixels in R, G, B, A byte order, but a TrueColor TGA stores them as B, G, R, A
-    // (matching the engine's own TgaLoad reader), so swap red and blue before writing the payload
-    for (auto& pixel : data) {
-        std::swap(pixel.comp.r, pixel.comp.b);
-    }
-
-    const uint8_t header[18] = {0, 0, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, //
-        numeric_cast<uint8_t>(size.width % 256), numeric_cast<uint8_t>(size.width / 256), //
-        numeric_cast<uint8_t>(size.height % 256), numeric_cast<uint8_t>(size.height / 256), 4 * 8, 0x20};
-    ptr<const uint8_t> header_bytes = header;
-    file.write(header_bytes.reinterpret_as<char>().get(), static_cast<std::streamsize>(sizeof(header)));
-
-    if (!data.empty()) {
-        auto pixels = make_nptr(data.data());
-        file.write(pixels.reinterpret_as<char>().get(), static_cast<std::streamsize>(data.size() * sizeof(uint32_t)));
-    }
-
-    FO_VERIFY_AND_THROW(file, "Failed while writing TGA image file", fname, size, data.size());
-}
-
-// Dummy symbols for web build to avoid linker errors
-#if FO_WEB
-
-FO_END_NAMESPACE
-
-void emscripten_sleep(unsigned int ms)
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_UNREACHABLE_PLACE();
-}
-
-FO_BEGIN_NAMESPACE
-
-#endif
 
 FO_END_NAMESPACE

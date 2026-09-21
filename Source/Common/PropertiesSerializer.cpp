@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,9 @@
 FO_BEGIN_NAMESPACE
 
 static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> bool;
+static auto ParseStrictIntText(string_view text) -> int64_t;
 
-auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Document
+auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -83,20 +84,21 @@ auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<cons
             }
         }
 
-        auto value = SavePropertyToValue(props, prop, hash_resolver, name_resolver);
+        auto value = SavePropertyToValue(props, prop, hashes, name_resolver);
         doc.Emplace(string {prop->GetName()}, std::move(value));
     }
 
     return doc;
 }
 
-auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, HashResolver& hash_resolver, NameResolver& name_resolver) noexcept -> bool
+auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(props.get(), "Missing required properties to load into");
 
     bool is_error = false;
+    unordered_set<ptr<const Property>> seen_properties;
 
     for (auto&& [doc_key, doc_value] : doc) {
         // Skip technical fields
@@ -105,18 +107,20 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
         }
 
         try {
-            // Find property
-            auto prop = props->GetRegistrar()->FindProperty(doc_key);
+            auto prop = props->GetRegistrar()->FindPersistedProperty(doc_key);
 
             if (prop && !prop->IsDisabled() && prop->IsPersistent()) {
-                LoadPropertyFromValue(props, prop, doc_value, hash_resolver, name_resolver);
-            }
-            else {
-                // WriteLog(LogType::Warning, "Skip unknown property {}", key);
+                // The database writes a document key by key and keeps an obsolete key, so the current name is the later write
+                if (prop->GetName() != doc_key && doc.Contains(prop->GetName())) {
+                    continue;
+                }
+
+                FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
+                LoadPropertyFromValue(props, prop, doc_value, hashes, name_resolver);
             }
         }
         catch (const std::exception& ex) {
-            WriteLog(LogType::Warning, "Unable to load property {}: {}", doc_key, ex.what());
+            logging::write(logging::type::warning, "Unable to load property {}: {}", doc_key, ex.what());
             is_error = true;
         }
     }
@@ -124,7 +128,7 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
     return !is_error;
 }
 
-auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -135,7 +139,7 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Properties> props, ptr<
 
     auto raw_data = props->GetRawData(prop);
 
-    return SavePropertyToValue(prop, raw_data, hash_resolver, name_resolver);
+    return SavePropertyToValue(prop, raw_data, hashes, name_resolver);
 }
 
 static auto NormalizeTopLevelCodedString(string str) -> string
@@ -160,8 +164,8 @@ static auto ReadTextTokenView(ptr<const char> str, string_view& result) -> nptr<
     }
 
     auto decode_char = [str](size_t char_pos, size_t& char_len) {
-        char_len = utf8::DecodeStrNtLen(&str[char_pos]);
-        utf8::Decode(&str[char_pos], char_len);
+        char_len = utf8::decode_str_nt_len(&str[char_pos]);
+        utf8::decode(&str[char_pos], char_len);
     };
 
     size_t pos = 0;
@@ -292,7 +296,7 @@ static auto RawBytesEqual(span<const uint8_t> lhs, span<const uint8_t> rhs) -> b
 
     auto lhs_data = RawBytesPtr(lhs);
     auto rhs_data = RawBytesPtr(rhs);
-    return MemCompare(lhs_data, rhs_data, lhs.size());
+    return memory::compare(lhs_data, rhs_data, lhs.size());
 }
 
 template<typename T>
@@ -305,7 +309,7 @@ static auto ReadRawValue(span<const uint8_t> data) -> T
     T value {};
     auto source = RawBytesPtr(data);
     auto target = RawMutableObjectBytes(value);
-    MemCopy(target, source, sizeof(value));
+    memory::copy(target, source, sizeof(value));
     return value;
 }
 
@@ -391,7 +395,7 @@ static auto ReadCursorEnumValue(RawReadCursor& cursor, size_t size) -> int32_t
     if (!bytes.empty()) {
         auto bytes_ptr = RawBytesPtr(bytes);
         auto enum_value_ptr = RawMutableObjectBytes(enum_value);
-        MemCopy(enum_value_ptr, bytes_ptr, bytes.size());
+        memory::copy(enum_value_ptr, bytes_ptr, bytes.size());
     }
 
     return enum_value;
@@ -435,7 +439,7 @@ static void WriteRawBytes(ptr<uint8_t> target, size_t& data_pos, nptr<const void
     if (size != 0) {
         FO_VERIFY_AND_THROW(source, "Raw write source is null for a non-empty copy");
         auto target_pos = RawWritePtrAt(target, data_pos);
-        MemCopy(target_pos, source, size);
+        memory::copy(target_pos, source, size);
     }
 
     data_pos += size;
@@ -727,7 +731,7 @@ static auto ParseStrictBoolText(string_view text) -> bool
     return int_value != 0.0;
 }
 
-static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver);
+static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver);
 
 template<typename T>
 static auto ConvertFloat64ToNumber(float64_t value) -> T;
@@ -781,7 +785,7 @@ static void AppendPrimitiveFromText(vector<uint8_t>& data, const BaseTypeDesc& p
     }
 }
 
-static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -796,7 +800,7 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Propert
             throw PropertySerializationException("Wrong struct size (from text)");
         }
 
-        AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
+        AppendBaseTypeFromText(data, prop, field.Type, token, hashes, name_resolver);
     }
 
     if (ReadTextTokenView(s, token)) {
@@ -804,7 +808,7 @@ static void AppendComplexStructFromText(vector<uint8_t>& data, ptr<const Propert
     }
 }
 
-static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, string_view value_name) -> int32_t
+static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, string_view value_name) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -816,15 +820,31 @@ static auto ResolveEnumValueWithMigration(const BaseTypeDesc& base_type, HashRes
     }
 
     // Removed or renamed enum value in persisted data: migrate it via ///@ MigrationRule Enum <EnumName> <Old> <New>.
-    if (auto migrated = name_resolver.CheckMigrationRule(hash_resolver.ToHashedString("Enum"), hash_resolver.ToHashedString(base_type.Name), hash_resolver.ToHashedString(value_name)); migrated.has_value()) {
+    if (auto migrated = name_resolver.CheckMigrationRule(hashes.to_hashed_string("Enum"), hashes.to_hashed_string(base_type.Name), hashes.to_hashed_string(value_name)); migrated.has_value()) {
         return name_resolver.ResolveEnumValue(base_type.Name, migrated.value().as_str());
     }
 
-    // No migration rule: keep the original throwing behavior for genuinely unknown values.
+    // No migration rule: keep the original throwing behavior for genuinely unknown values
     return name_resolver.ResolveEnumValue(base_type.Name, value_name);
 }
 
-static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+static auto IsProtoReferenceRemovedByMigration(const BaseTypeDesc& base_type, hstring proto_id, hash_resolver& hashes, NameResolver& name_resolver) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string_view migration_type_name = base_type.Name;
+
+    if (base_type.IsEntityProto) {
+        constexpr string_view proto_prefix = "Proto";
+        FO_VERIFY_AND_THROW(migration_type_name.starts_with(proto_prefix), "Entity proto type has no Proto prefix", migration_type_name);
+        migration_type_name.remove_prefix(proto_prefix.size());
+    }
+
+    optional<hstring> migrated = name_resolver.CheckMigrationRule(hashes.to_hashed_string("Proto"), hashes.to_hashed_string(migration_type_name), proto_id);
+    return migrated.has_value() && !migrated.value();
+}
+
+static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> prop, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -834,13 +854,13 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
     }
     else if (base_type.IsHashedString) {
         string decoded_storage;
-        hstring resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        hstring resolved_value = hashes.to_hashed_string(DecodeTextIfNeeded(text, decoded_storage));
         auto hash = resolved_value.as_hash();
         AppendRawScalarBytes(data, &hash, sizeof(hash));
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
         string decoded_storage;
-        hstring resolved_value = hash_resolver.ToHashedString(DecodeTextIfNeeded(text, decoded_storage));
+        hstring resolved_value = hashes.to_hashed_string(DecodeTextIfNeeded(text, decoded_storage));
         auto proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
 
         if (proto) {
@@ -853,7 +873,14 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
             }
         }
         else if (!proto) {
-            throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+            if (!IsProtoReferenceRemovedByMigration(base_type, resolved_value, hashes, name_resolver)) {
+                throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+            }
+            if (!prop->IsNullable()) {
+                throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+            }
+
+            resolved_value = {};
         }
 
         auto hash = resolved_value.as_hash();
@@ -879,7 +906,7 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
             (void)name_resolver.ResolveEnumValueName(base_type.Name, enum_value);
         }
         else {
-            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, decoded);
+            enum_value = ResolveEnumValueWithMigration(base_type, hashes, name_resolver, decoded);
         }
 
         if (base_type.Size == sizeof(uint8_t)) {
@@ -899,14 +926,14 @@ static void AppendBaseTypeFromText(vector<uint8_t>& data, ptr<const Property> pr
         AppendPrimitiveFromText(data, primitive_type, text);
     }
     else if (base_type.IsComplexStruct) {
-        AppendComplexStructFromText(data, prop, base_type, text, hash_resolver, name_resolver);
+        AppendComplexStructFromText(data, prop, base_type, text, hashes, name_resolver);
     }
     else {
         FO_UNREACHABLE_PLACE();
     }
 }
 
-static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
+static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& base_type, bool is_array_of_string, string_view text, bool encoded_text, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -922,7 +949,7 @@ static auto ParseArrayFromText(ptr<const Property> prop, const BaseTypeDesc& bas
     }
 
     while ((s = ReadTextTokenView(s, token))) {
-        AppendBaseTypeFromText(data, prop, base_type, token, hash_resolver, name_resolver);
+        AppendBaseTypeFromText(data, prop, base_type, token, hashes, name_resolver);
         arr_size++;
     }
 
@@ -975,7 +1002,7 @@ static void AppendPrimitiveToCodedString(string& result, const BaseTypeDesc& pri
     }
 }
 
-static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, RawReadCursor& cursor)
+static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, RawReadCursor& cursor)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -985,11 +1012,11 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
     }
     else if (base_type.IsHashedString) {
         auto hash = ReadCursorValue<hstring::hash_t>(cursor);
-        StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
+        StringEscaping::AppendCodeString(result, hashes.resolve_hash(hash).as_str());
     }
     else if (base_type.IsFixedType || base_type.IsEntityProto) {
         auto hash = ReadCursorValue<hstring::hash_t>(cursor);
-        StringEscaping::AppendCodeString(result, hash_resolver.ResolveHash(hash).as_str());
+        StringEscaping::AppendCodeString(result, hashes.resolve_hash(hash).as_str());
     }
     else if (base_type.IsEnum) {
         int32_t enum_value = ReadCursorEnumValue(cursor, base_type.Size);
@@ -1012,7 +1039,7 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
                 next_iteration = true;
             }
 
-            AppendBaseTypeToCodedString(struct_str, field.Type, hash_resolver, name_resolver, cursor);
+            AppendBaseTypeToCodedString(struct_str, field.Type, hashes, name_resolver, cursor);
         }
 
         StringEscaping::AppendCodeString(result, struct_str);
@@ -1022,16 +1049,16 @@ static void AppendBaseTypeToCodedString(string& result, const BaseTypeDesc& base
     }
 }
 
-static void AppendBaseTypeToCodedStringAt(string& result, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos)
+static void AppendBaseTypeToCodedStringAt(string& result, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos)
 {
     FO_STACK_TRACE_ENTRY();
 
     RawReadCursor cursor {raw_data, data_pos};
-    AppendBaseTypeToCodedString(result, base_type, hash_resolver, name_resolver, cursor);
+    AppendBaseTypeToCodedString(result, base_type, hashes, name_resolver, cursor);
     data_pos = cursor.Pos;
 }
 
-static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, RawReadCursor& cursor) -> AnyData::Value
+static auto RawDataToValue(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, RawReadCursor& cursor) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1041,7 +1068,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
     }
     else if (base_type.IsHashedString || base_type.IsFixedType || base_type.IsEntityProto) {
         auto hash = ReadCursorValue<hstring::hash_t>(cursor);
-        return string(hash_resolver.ResolveHash(hash).as_str());
+        return string(hashes.resolve_hash(hash).as_str());
     }
     else if (base_type.IsEnum) {
         int32_t enum_value = ReadCursorEnumValue(cursor, base_type.Size);
@@ -1091,7 +1118,7 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
         struct_value.Reserve(struct_layout->Fields.size());
 
         for (const auto& field : struct_layout->Fields) {
-            auto field_value = RawDataToValue(field.Type, hash_resolver, name_resolver, cursor);
+            auto field_value = RawDataToValue(field.Type, hashes, name_resolver, cursor);
             struct_value.EmplaceBack(std::move(field_value));
         }
 
@@ -1102,12 +1129,12 @@ static auto RawDataToValue(const BaseTypeDesc& base_type, HashResolver& hash_res
     }
 }
 
-static auto RawDataToValueAt(const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos) -> AnyData::Value
+static auto RawDataToValueAt(const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, span<const uint8_t> raw_data, size_t& data_pos) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
     RawReadCursor cursor {raw_data, data_pos};
-    auto value = RawDataToValue(base_type, hash_resolver, name_resolver, cursor);
+    auto value = RawDataToValue(base_type, hashes, name_resolver, cursor);
     data_pos = cursor.Pos;
     return value;
 }
@@ -1137,8 +1164,8 @@ static auto GetRefTypeFieldsRegistrar(const BaseTypeDesc& base_type) -> ptr<cons
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
-    FO_VERIFY_AND_THROW(base_type.RefType != nullptr, "Reference type descriptor is null");
-    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar != nullptr, "Reference type has no fields registrar");
+    FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
+    FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
     return base_type.RefType->FieldsRegistrar;
 }
 
@@ -1241,25 +1268,25 @@ static auto BuildRefTypePropertyData(const BaseTypeDesc& base_type, const Proper
     return data;
 }
 
-static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+static auto SaveRefTypeToValue(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
     AnyData::Dict dict;
 
-    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&dict, &hash_resolver, &name_resolver](ptr<const Property> field_prop, span<const uint8_t> field_raw_data) {
+    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&dict, &hashes, &name_resolver](ptr<const Property> field_prop, span<const uint8_t> field_raw_data) {
         if (field_raw_data.empty()) {
             return;
         }
 
-        auto field_value = PropertiesSerializer::SavePropertyToValue(field_prop, field_raw_data, hash_resolver, name_resolver);
+        auto field_value = PropertiesSerializer::SavePropertyToValue(field_prop, field_raw_data, hashes, name_resolver);
         dict.Emplace(string {field_prop->GetNameWithoutComponent()}, std::move(field_value));
     });
 
     return std::move(dict);
 }
 
-static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1268,7 +1295,7 @@ static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_t
     string ref_str;
     bool next_iteration = false;
 
-    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&ref_str, &next_iteration, &hash_resolver, &name_resolver](ptr<const Property> field_prop, span<const uint8_t> field_raw_data) {
+    ForEachRefTypeFieldRawData(owner_name, base_type, raw_data, [&ref_str, &next_iteration, &hashes, &name_resolver](ptr<const Property> field_prop, span<const uint8_t> field_raw_data) {
         if (field_raw_data.empty()) {
             return;
         }
@@ -1283,14 +1310,14 @@ static auto SaveRefTypeToText(string_view owner_name, const BaseTypeDesc& base_t
         ref_str.append(field_prop->GetNameWithoutComponent());
         ref_str.append(" ");
 
-        string field_text = PropertiesSerializer::SavePropertyToText(field_prop, field_raw_data, hash_resolver, name_resolver);
+        string field_text = PropertiesSerializer::SavePropertyToText(field_prop, field_raw_data, hashes, name_resolver);
         StringEscaping::AppendCodeString(ref_str, field_text);
     });
 
     return ref_str;
 }
 
-static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& base_type, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
+static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& base_type, const AnyData::Value& value, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1301,21 +1328,26 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     auto fields_registrar = GetRefTypeFieldsRegistrar(base_type);
     const auto& dict = value.AsDict();
     Properties field_props(fields_registrar);
+    unordered_set<ptr<const Property>> seen_fields;
 
     for (auto&& [field_name, field_value] : dict) {
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
 
-        PropertiesSerializer::LoadPropertyFromValue(&field_props, field_prop, field_value, hash_resolver, name_resolver);
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
+            throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
+        }
+
+        PropertiesSerializer::LoadPropertyFromValue(&field_props, field_prop, field_value, hashes, name_resolver);
     }
 
     return BuildRefTypePropertyData(base_type, field_props);
 }
 
-static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base_type, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver) -> vector<uint8_t>
+static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base_type, string_view text, hash_resolver& hashes, NameResolver& name_resolver) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1332,26 +1364,26 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
     }
 
     Properties field_props(fields_registrar);
-    unordered_set<string> seen_fields;
+    unordered_set<ptr<const Property>> seen_fields;
 
     for (size_t i = 0; i < fields_arr.Size(); i += 2) {
         string_view field_name = fields_arr[i].AsString();
-        auto field_prop = fields_registrar->FindProperty(field_name);
+        auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
-        if (!seen_fields.emplace(field_name).second) {
+        if (!seen_fields.emplace(field_prop.as_ptr()).second) {
             throw PropertySerializationException("Duplicate ref type field", owner_name, field_name);
         }
 
-        PropertiesSerializer::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hash_resolver, name_resolver);
+        PropertiesSerializer::LoadPropertyFromText(&field_props, field_prop, fields_arr[i + 1].AsString(), hashes, name_resolver);
     }
 
     return BuildRefTypePropertyData(base_type, field_props);
 }
 
-auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> AnyData::Value
+auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1368,13 +1400,13 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
     auto align_dict_pos = [&](size_t alignment) { AlignPropertyRawPos(prop, "Corrupted dict property data", raw_data, data_pos, alignment); };
 
     if (prop->IsPlainData()) {
-        auto value = RawDataToValueAt(*base_type, hash_resolver, name_resolver, raw_data, data_pos);
+        auto value = RawDataToValueAt(*base_type, hashes, name_resolver, raw_data, data_pos);
 
         FO_VERIFY_AND_THROW(data_pos == raw_data.size(), "Plain property deserialization did not consume the full raw payload", prop->GetName(), data_pos, raw_data.size());
         return value;
     }
     else if (base_type->IsRefType && !prop->IsArray() && !prop->IsDict()) {
-        return SaveRefTypeToValue(prop->GetName(), *base_type, raw_data, hash_resolver, name_resolver);
+        return SaveRefTypeToValue(prop->GetName(), *base_type, raw_data, hashes, name_resolver);
     }
     else if (prop->IsString()) {
         string value = string {span_to_string(raw_data)};
@@ -1407,11 +1439,11 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
                     }
 
                     auto ref_data = take_array_data(ref_data_size);
-                    auto arr_entry = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver);
+                    auto arr_entry = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hashes, name_resolver);
                     arr.EmplaceBack(std::move(arr_entry));
                 }
                 else {
-                    auto arr_entry = RawDataToValueAt(*base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                    auto arr_entry = RawDataToValueAt(*base_type, hashes, name_resolver, raw_data, data_pos);
                     arr.EmplaceBack(std::move(arr_entry));
                 }
             }
@@ -1430,14 +1462,14 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
                 dict_key_type = &dict_key_type->StructLayout->Fields.front().Type;
             }
 
-            auto get_key_string = [&dict_key_type, &hash_resolver, &name_resolver](span<const uint8_t> key_data) -> string {
+            auto get_key_string = [&dict_key_type, &hashes, &name_resolver](span<const uint8_t> key_data) -> string {
                 if (dict_key_type->IsString) {
                     uint32_t str_len = ReadRawValue<uint32_t>(key_data.first(sizeof(uint32_t)));
                     return string {span_to_string(key_data.subspan(sizeof(uint32_t), str_len))};
                 }
                 else if (dict_key_type->IsHashedString) {
                     auto hash = ReadRawValue<hstring::hash_t>(key_data.first(sizeof(hstring::hash_t)));
-                    return string(hash_resolver.ResolveHash(hash).as_str());
+                    return string(hashes.resolve_hash(hash).as_str());
                 }
                 else if (dict_key_type->IsEnum) {
                     int32_t enum_value = 0;
@@ -1532,11 +1564,11 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
                             }
 
                             auto ref_data = take_dict_data(ref_data_size);
-                            auto arr_entry = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver);
+                            auto arr_entry = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hashes, name_resolver);
                             arr.EmplaceBack(std::move(arr_entry));
                         }
                         else {
-                            auto arr_entry = RawDataToValueAt(*base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                            auto arr_entry = RawDataToValueAt(*base_type, hashes, name_resolver, raw_data, data_pos);
                             arr.EmplaceBack(std::move(arr_entry));
                         }
                     }
@@ -1559,7 +1591,7 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
                         }
 
                         auto ref_data = take_dict_data(ref_data_size);
-                        auto dict_value = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver);
+                        auto dict_value = SaveRefTypeToValue(prop->GetName(), *base_type, ref_data, hashes, name_resolver);
                         dict.Emplace(std::move(key_str), std::move(dict_value));
                     }
                     else {
@@ -1567,7 +1599,7 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
                             align_dict_pos(alignment_for_size(base_type->Size));
                         }
 
-                        auto dict_value = RawDataToValueAt(*base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                        auto dict_value = RawDataToValueAt(*base_type, hashes, name_resolver, raw_data, data_pos);
                         dict.Emplace(std::move(key_str), std::move(dict_value));
                     }
                 }
@@ -1581,16 +1613,35 @@ auto PropertiesSerializer::SavePropertyToValue(ptr<const Property> prop, span<co
     FO_UNREACHABLE_PLACE();
 }
 
-void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, HashResolver& hash_resolver, NameResolver& name_resolver)
+// A range-checked property clamps on every write, so a deserialized value is brought into range
+// before it reaches storage, exactly like a typed property assignment does
+static void SetRawDataInValueRange(ptr<Properties> props, ptr<const Property> prop, span<const uint8_t> raw_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (!prop->HasValueRange() || raw_data.empty()) {
+        props->SetRawData(prop, raw_data);
+        return;
+    }
+
+    PropertyRawData clamped_data;
+    clamped_data.Set(raw_data.data(), raw_data.size());
+    auto clamped_raw_data = span<uint8_t>(clamped_data.GetPtrAs<uint8_t>().get(), clamped_data.GetSize());
+
+    prop->ClampRawDataToValueRange(clamped_raw_data);
+    props->SetRawData(prop, clamped_raw_data);
+}
+
+void PropertiesSerializer::LoadPropertyFromValue(ptr<Properties> props, ptr<const Property> prop, const AnyData::Value& value, hash_resolver& hashes, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { props->SetRawData(prop, raw_data); };
+    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { SetRawDataInValueRange(props, prop, raw_data); };
 
-    return LoadPropertyFromValue(prop, value, set_data, hash_resolver, name_resolver);
+    return LoadPropertyFromValue(prop, value, set_data, hashes, name_resolver);
 }
 
 static auto ConvertToString(const AnyData::Value& value, string& buf) -> string_view
@@ -1711,7 +1762,7 @@ static void ConvertToNumber(const AnyData::Value& value, T& result_value)
     }
 }
 
-auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1720,10 +1771,10 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Properties> props, ptr<c
 
     props->ValidateForRawData(prop);
 
-    return SavePropertyToText(prop, props->GetRawData(prop), hash_resolver, name_resolver);
+    return SavePropertyToText(prop, props->GetRawData(prop), hashes, name_resolver);
 }
 
-auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<const uint8_t> raw_data, HashResolver& hash_resolver, NameResolver& name_resolver) -> string
+auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<const uint8_t> raw_data, hash_resolver& hashes, NameResolver& name_resolver) -> string
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1746,10 +1797,10 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
         data_pos = raw_data.size();
     }
     else if (prop->IsPlainData()) {
-        AppendBaseTypeToCodedStringAt(result, *base_type, hash_resolver, name_resolver, raw_data, data_pos);
+        AppendBaseTypeToCodedStringAt(result, *base_type, hashes, name_resolver, raw_data, data_pos);
     }
     else if (base_type->IsRefType && !prop->IsArray() && !prop->IsDict()) {
-        StringEscaping::AppendCodeString(result, SaveRefTypeToText(prop->GetName(), *base_type, raw_data, hash_resolver, name_resolver));
+        StringEscaping::AppendCodeString(result, SaveRefTypeToText(prop->GetName(), *base_type, raw_data, hashes, name_resolver));
         data_pos = raw_data.size();
     }
     else if (prop->IsArray()) {
@@ -1783,10 +1834,10 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
                     }
 
                     auto ref_data = take_array_data(ref_data_size);
-                    StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver));
+                    StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hashes, name_resolver));
                 }
                 else {
-                    AppendBaseTypeToCodedStringAt(arr_str, *base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                    AppendBaseTypeToCodedStringAt(arr_str, *base_type, hashes, name_resolver, raw_data, data_pos);
                 }
             }
         }
@@ -1831,7 +1882,7 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
             size_t key_len = get_key_len(raw_data.subspan(data_pos));
             auto key_data = take_dict_data(key_len);
             size_t key_pos = 0;
-            AppendBaseTypeToCodedStringAt(dict_str, *dict_key_type, hash_resolver, name_resolver, key_data, key_pos);
+            AppendBaseTypeToCodedStringAt(dict_str, *dict_key_type, hashes, name_resolver, key_data, key_pos);
             FO_VERIFY_AND_THROW(key_pos == key_data.size(), "Dict key serialization did not consume the full key payload");
             dict_str.append(" ");
 
@@ -1858,10 +1909,10 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
                         }
 
                         auto ref_data = take_dict_data(ref_data_size);
-                        StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver));
+                        StringEscaping::AppendCodeString(arr_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hashes, name_resolver));
                     }
                     else {
-                        AppendBaseTypeToCodedStringAt(arr_str, *base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                        AppendBaseTypeToCodedStringAt(arr_str, *base_type, hashes, name_resolver, raw_data, data_pos);
                     }
                 }
 
@@ -1876,14 +1927,14 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
                     }
 
                     auto ref_data = take_dict_data(ref_data_size);
-                    StringEscaping::AppendCodeString(dict_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hash_resolver, name_resolver));
+                    StringEscaping::AppendCodeString(dict_str, SaveRefTypeToText(prop->GetName(), *base_type, ref_data, hashes, name_resolver));
                 }
                 else {
                     if (!base_type->IsString) {
                         align_dict_pos(alignment_for_size(base_type->Size));
                     }
 
-                    AppendBaseTypeToCodedStringAt(dict_str, *base_type, hash_resolver, name_resolver, raw_data, data_pos);
+                    AppendBaseTypeToCodedStringAt(dict_str, *base_type, hashes, name_resolver, raw_data, data_pos);
                 }
             }
         }
@@ -1898,7 +1949,7 @@ auto PropertiesSerializer::SavePropertyToText(ptr<const Property> prop, span<con
     return NormalizeTopLevelCodedString(std::move(result));
 }
 
-static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, RawWriteCursor& cursor)
+static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, const AnyData::Value& value, RawWriteCursor& cursor)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1906,7 +1957,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         hstring::hash_t hash = {};
 
         if (value.Type() == AnyData::ValueType::String) {
-            hstring resolved_value = hash_resolver.ToHashedString(value.AsString());
+            hstring resolved_value = hashes.to_hashed_string(value.AsString());
             hash = resolved_value.as_hash();
         }
         else {
@@ -1919,7 +1970,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         hstring::hash_t hash = {};
 
         if (value.Type() == AnyData::ValueType::String) {
-            hstring resolved_value = hash_resolver.ToHashedString(value.AsString());
+            hstring resolved_value = hashes.to_hashed_string(value.AsString());
             auto proto = name_resolver.GetProtoEntity(base_type.HashedName, resolved_value);
 
             if (proto) {
@@ -1932,7 +1983,14 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
                 }
             }
             else if (!proto) {
-                throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                if (!IsProtoReferenceRemovedByMigration(base_type, resolved_value, hashes, name_resolver)) {
+                    throw PropertySerializationException("Proto reference does not exist, add explicit Proto MigrationRule for deletion", base_type.Name, resolved_value);
+                }
+                if (!prop->IsNullable()) {
+                    throw PropertySerializationException("Proto reference property requires non-null proto, add Nullable or explicit Proto MigrationRule to valid target", prop->GetName(), base_type.Name);
+                }
+
+                resolved_value = {};
             }
 
             hash = resolved_value.as_hash();
@@ -1947,7 +2005,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
         int32_t enum_value = 0;
 
         if (value.Type() == AnyData::ValueType::String) {
-            enum_value = ResolveEnumValueWithMigration(base_type, hash_resolver, name_resolver, value.AsString());
+            enum_value = ResolveEnumValueWithMigration(base_type, hashes, name_resolver, value.AsString());
         }
         else if (value.Type() == AnyData::ValueType::Int64) {
             enum_value = numeric_cast<int32_t>(value.AsInt64());
@@ -2031,7 +2089,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
             for (size_t i = 0; i < struct_layout->Fields.size(); i++) {
                 const auto& field = struct_layout->Fields[i];
                 const auto& field_value = struct_value[i];
-                ConvertFixedValue(prop, field.Type, hash_resolver, name_resolver, field_value, cursor);
+                ConvertFixedValue(prop, field.Type, hashes, name_resolver, field_value, cursor);
             }
         }
         else if (value.Type() == AnyData::ValueType::String) {
@@ -2045,7 +2103,7 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
             for (size_t i = 0; i < struct_layout->Fields.size(); i++) {
                 const auto& field = struct_layout->Fields[i];
                 const auto& field_value = struct_value[i];
-                ConvertFixedValue(prop, field.Type, hash_resolver, name_resolver, field_value, cursor);
+                ConvertFixedValue(prop, field.Type, hashes, name_resolver, field_value, cursor);
             }
         }
         else {
@@ -2057,12 +2115,12 @@ static void ConvertFixedValue(ptr<const Property> prop, const BaseTypeDesc& base
     }
 }
 
-static void ConvertFixedValueAt(ptr<const Property> prop, const BaseTypeDesc& base_type, HashResolver& hash_resolver, NameResolver& name_resolver, const AnyData::Value& value, ptr<uint8_t> data, size_t& data_pos)
+static void ConvertFixedValueAt(ptr<const Property> prop, const BaseTypeDesc& base_type, hash_resolver& hashes, NameResolver& name_resolver, const AnyData::Value& value, ptr<uint8_t> data, size_t& data_pos)
 {
     FO_STACK_TRACE_ENTRY();
 
     RawWriteCursor cursor {data, data_pos};
-    ConvertFixedValue(prop, base_type, hash_resolver, name_resolver, value, cursor);
+    ConvertFixedValue(prop, base_type, hashes, name_resolver, value, cursor);
     data_pos = cursor.Pos;
 }
 
@@ -2090,7 +2148,7 @@ static void SetDataFromString(const function<void(span<const uint8_t>)>& set_dat
     set_data(make_const_span(str));
 }
 
-void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const AnyData::Value& value, const function<void(span<const uint8_t>)>& set_data, hash_resolver& hashes, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2107,7 +2165,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
             auto data = struct_data.GetPtrAs<uint8_t>();
             size_t data_pos = 0;
 
-            ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, value, data, data_pos);
+            ConvertFixedValueAt(prop, *base_type, hashes, name_resolver, value, data, data_pos);
 
             FO_VERIFY_AND_THROW(data_pos == base_type->Size, "Converted plain value did not fill the full base type size");
             SetDataFromBuffer(set_data, data, base_type->Size);
@@ -2117,14 +2175,14 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
             auto data = make_ptr(primitive_data);
             size_t data_pos = 0;
 
-            ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, value, data, data_pos);
+            ConvertFixedValueAt(prop, *base_type, hashes, name_resolver, value, data, data_pos);
 
             FO_VERIFY_AND_THROW(data_pos == base_type->Size, "Converted plain value did not fill the full base type size");
             SetDataFromBuffer(set_data, data, base_type->Size);
         }
     }
     else if (base_type->IsRefType && !prop->IsArray() && !prop->IsDict()) {
-        auto data = LoadRefTypeFromValue(prop->GetName(), *base_type, value, hash_resolver, name_resolver);
+        auto data = LoadRefTypeFromValue(prop->GetName(), *base_type, value, hashes, name_resolver);
         set_data(data);
     }
     else if (prop->IsString()) {
@@ -2156,7 +2214,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 data_size += sizeof(uint32_t) + str.length();
             }
 
-            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = safe_alloc::make_unique_arr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
 
@@ -2179,7 +2237,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
             size_t data_size = sizeof(uint32_t);
 
             for (const auto& arr_entry : arr) {
-                auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hash_resolver, name_resolver);
+                auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hashes, name_resolver);
                 data_size = align_up(data_size, sizeof(uint32_t));
                 data_size += sizeof(uint32_t);
 
@@ -2191,7 +2249,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 ref_entries.emplace_back(std::move(ref_data));
             }
 
-            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = safe_alloc::make_unique_arr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
             auto arr_size = numeric_cast<uint32_t>(arr.Size());
@@ -2212,12 +2270,12 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
         }
         else {
             size_t data_size = arr.Size() * base_type->Size;
-            auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+            auto data = safe_alloc::make_unique_arr<uint8_t>(data_size);
             ptr<uint8_t> data_ptr = data.get();
             size_t data_pos = 0;
 
             for (const auto& arr_entry : arr) {
-                ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, arr_entry, data_ptr, data_pos);
+                ConvertFixedValueAt(prop, *base_type, hashes, name_resolver, arr_entry, data_ptr, data_pos);
             }
 
             FO_VERIFY_AND_THROW(data_pos == data_size, "Plain array property buffer size does not match bytes written", prop->GetName(), data_pos, data_size);
@@ -2277,7 +2335,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                         data_size = align_up(data_size, sizeof(uint32_t));
                         data_size += sizeof(uint32_t);
 
-                        size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hash_resolver, name_resolver).size();
+                        size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hashes, name_resolver).size();
 
                         if (ref_data_size != 0) {
                             data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
@@ -2300,7 +2358,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 data_size = align_up(data_size, sizeof(uint32_t));
                 data_size += sizeof(uint32_t);
 
-                size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, dict_value, hash_resolver, name_resolver).size();
+                size_t ref_data_size = LoadRefTypeFromValue(prop->GetName(), *base_type, dict_value, hashes, name_resolver).size();
 
                 if (ref_data_size != 0) {
                     data_size = align_up(data_size, MAX_SERIALIZED_ALIGNMENT);
@@ -2314,7 +2372,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
         }
 
         // Write data
-        auto data = SafeAlloc::MakeUniqueArr<uint8_t>(data_size);
+        auto data = safe_alloc::make_unique_arr<uint8_t>(data_size);
         ptr<uint8_t> data_ptr = data.get();
         size_t data_pos = 0;
         auto write_key_data = [&](nptr<const void> source, size_t size) {
@@ -2331,11 +2389,11 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 WriteRawString(data_ptr, data_pos, dict_key);
             }
             else if (dict_key_type->IsHashedString) {
-                auto hash = hash_resolver.ToHashedString(dict_key).as_hash();
+                auto hash = hashes.to_hashed_string(dict_key).as_hash();
                 write_key_data(&hash, sizeof(hash));
             }
             else if (dict_key_type->IsEnum) {
-                int32_t enum_value = ResolveEnumValueWithMigration(*dict_key_type, hash_resolver, name_resolver, dict_key);
+                int32_t enum_value = ResolveEnumValueWithMigration(*dict_key_type, hashes, name_resolver, dict_key);
 
                 if (dict_key_type->Size == sizeof(uint8_t)) {
                     auto converted_value = numeric_cast<uint8_t>(enum_value);
@@ -2408,7 +2466,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 }
                 else if (base_type->IsRefType) {
                     for (const auto& arr_entry : arr) {
-                        auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hash_resolver, name_resolver);
+                        auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, arr_entry, hashes, name_resolver);
                         auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
                         write_uint32(ref_data_size);
 
@@ -2424,7 +2482,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                     }
 
                     for (const auto& arr_entry : arr) {
-                        ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, arr_entry, data_ptr, data_pos);
+                        ConvertFixedValueAt(prop, *base_type, hashes, name_resolver, arr_entry, data_ptr, data_pos);
                     }
                 }
             }
@@ -2434,7 +2492,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
                 WriteRawString(data_ptr, data_pos, str);
             }
             else if (base_type->IsRefType) {
-                auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, dict_value, hash_resolver, name_resolver);
+                auto ref_data = LoadRefTypeFromValue(prop->GetName(), *base_type, dict_value, hashes, name_resolver);
                 auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
                 write_uint32(ref_data_size);
 
@@ -2445,7 +2503,7 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
             }
             else {
                 data_pos = align_up(data_pos, alignment_for_size(base_type->Size));
-                ConvertFixedValueAt(prop, *base_type, hash_resolver, name_resolver, dict_value, data_ptr, data_pos);
+                ConvertFixedValueAt(prop, *base_type, hashes, name_resolver, dict_value, data_ptr, data_pos);
             }
         }
 
@@ -2457,14 +2515,14 @@ void PropertiesSerializer::LoadPropertyFromValue(ptr<const Property> prop, const
     }
 }
 
-void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, HashResolver& hash_resolver, NameResolver& name_resolver)
+void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const Property> prop, string_view text, hash_resolver& hashes, NameResolver& name_resolver)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     FO_VERIFY_AND_THROW(!prop->IsVirtual(), "Property is virtual");
 
-    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { props->SetRawData(prop, raw_data); };
+    auto set_data = [props, prop](span<const uint8_t> raw_data) mutable { SetRawDataInValueRange(props, prop, raw_data); };
     vector<uint8_t> data;
 
     if (prop->IsString()) {
@@ -2484,7 +2542,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
                     throw PropertySerializationException("Wrong struct size (from text)");
                 }
 
-                AppendBaseTypeFromText(data, prop, field.Type, token, hash_resolver, name_resolver);
+                AppendBaseTypeFromText(data, prop, field.Type, token, hashes, name_resolver);
             }
 
             if (ReadTextTokenView(s, token)) {
@@ -2493,7 +2551,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
         }
         else {
             data.reserve(prop->GetBaseSize());
-            AppendBaseTypeFromText(data, prop, prop->GetBaseType(), text, hash_resolver, name_resolver);
+            AppendBaseTypeFromText(data, prop, prop->GetBaseType(), text, hashes, name_resolver);
         }
     }
     else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
@@ -2502,7 +2560,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
             return;
         }
 
-        data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), text, hash_resolver, name_resolver);
+        data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), text, hashes, name_resolver);
     }
     else if (prop->IsArray()) {
         if (prop->IsBaseTypeRefType()) {
@@ -2515,7 +2573,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
                 AppendRawScalarBytes(data, &arr_count, sizeof(arr_count));
 
                 for (const auto& arr_entry : arr) {
-                    auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hash_resolver, name_resolver);
+                    auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hashes, name_resolver);
                     auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
                     AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
@@ -2527,7 +2585,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
             }
         }
         else {
-            data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsArrayOfString(), text, false, hash_resolver, name_resolver);
+            data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsArrayOfString(), text, false, hashes, name_resolver);
         }
     }
     else if (prop->IsDict()) {
@@ -2538,7 +2596,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
         data.reserve(std::max<size_t>(text.length() * 2, 64));
 
         while ((s = ReadTextTokenView(s, key_token)) && (s = ReadTextTokenView(s, value_token))) {
-            AppendBaseTypeFromText(data, prop, prop->GetDictKeyType(), key_token, hash_resolver, name_resolver);
+            AppendBaseTypeFromText(data, prop, prop->GetDictKeyType(), key_token, hashes, name_resolver);
 
             if (prop->IsDictOfArray()) {
                 if (prop->IsBaseTypeRefType()) {
@@ -2555,7 +2613,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
                         AppendRawScalarBytes(data, &arr_count, sizeof(arr_count));
 
                         for (const auto& arr_entry : arr) {
-                            auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hash_resolver, name_resolver);
+                            auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), arr_entry.AsString(), hashes, name_resolver);
                             auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
                             AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
@@ -2567,7 +2625,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
                     }
                 }
                 else {
-                    auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hash_resolver, name_resolver);
+                    auto arr_data = ParseArrayFromText(prop, prop->GetBaseType(), prop->IsDictOfArrayOfString(), value_token, true, hashes, name_resolver);
 
                     if (prop->IsDictOfArrayOfString()) {
                         auto arr_data_span = span<const uint8_t> {arr_data};
@@ -2592,7 +2650,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
             else {
                 if (prop->IsBaseTypeRefType()) {
                     string decoded_value = StringEscaping::DecodeString(value_token);
-                    auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), decoded_value, hash_resolver, name_resolver);
+                    auto ref_data = LoadRefTypeFromText(prop->GetName(), prop->GetBaseType(), decoded_value, hashes, name_resolver);
                     auto ref_data_size = numeric_cast<uint32_t>(ref_data.size());
                     AppendRawScalarBytes(data, &ref_data_size, sizeof(ref_data_size));
 
@@ -2606,7 +2664,7 @@ void PropertiesSerializer::LoadPropertyFromText(ptr<Properties> props, ptr<const
                         AlignRawBuffer(data, alignment_for_size(prop->GetBaseSize()));
                     }
 
-                    AppendBaseTypeFromText(data, prop, prop->GetBaseType(), value_token, hash_resolver, name_resolver);
+                    AppendBaseTypeFromText(data, prop, prop->GetBaseType(), value_token, hashes, name_resolver);
                 }
             }
         }

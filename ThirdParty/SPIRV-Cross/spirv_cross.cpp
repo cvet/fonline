@@ -709,8 +709,9 @@ bool Compiler::is_hidden_variable(const SPIRVariable &var, bool include_builtins
 	}
 
 	// In SPIR-V 1.4 and up we must also use the active variable interface to disable global variables
-	// which are not part of the entry point.
-	if (ir.get_spirv_version() >= 0x10400 && var.storage != StorageClassGeneric &&
+	// which are not part of the entry point. Library modules have no real entry point so the filter
+	// would hide every global so skip it in that case.
+	if (ir.get_spirv_version() >= 0x10400 && !ir.is_library_module && var.storage != StorageClassGeneric &&
 	    var.storage != StorageClassFunction && !interface_variable_exists_in_entry_point(var.self))
 	{
 		return true;
@@ -4840,6 +4841,18 @@ void Compiler::build_function_control_flow_graphs_and_analyze()
 	CFGBuilder handler(*this);
 	handler.function_cfgs[ir.default_entry_point].reset(new CFG(*this, get<SPIRFunction>(ir.default_entry_point)));
 	traverse_all_reachable_opcodes(get<SPIRFunction>(ir.default_entry_point), handler);
+	if (ir.is_library_module)
+	{
+		// In library mode, default_entry_point is just the first exported
+		// function. Build a CFG for every other exported function (and its
+		// callees) so per-function analyses below cover all of them.
+		for (auto export_id : ir.library_exported_functions)
+		{
+			auto &func = get<SPIRFunction>(export_id);
+			if (handler.follow_function_call(func))
+				traverse_all_reachable_opcodes(func, handler);
+		}
+	}
 	function_cfgs = std::move(handler.function_cfgs);
 	bool single_function = function_cfgs.size() <= 1;
 

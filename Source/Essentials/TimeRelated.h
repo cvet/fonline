@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -287,13 +287,13 @@ struct std::formatter<FO_NAMESPACE steady_time_point::duration> : formatter<FO_N
             std::format_to(std::back_inserter(buf), "{}.{:03} sec", sec, ms);
         }
         else if (value < std::chrono::hours {24}) {
-            int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
+            int64_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count();
             int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
             std::format_to(std::back_inserter(buf), "{:02}:{:02}:{:02} sec", hour, min, sec);
         }
         else {
-            int32_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
+            int64_t day = std::chrono::duration_cast<std::chrono::hours>(value).count() / 24;
             int32_t hour = std::chrono::duration_cast<std::chrono::hours>(value).count() % 24;
             int32_t min = std::chrono::duration_cast<std::chrono::minutes>(value).count() % 60;
             auto sec = std::chrono::duration_cast<std::chrono::seconds>(value).count() % 60;
@@ -359,19 +359,19 @@ struct std::formatter<FO_NAMESPACE synctime> : formatter<FO_NAMESPACE timespan>
 FO_BEGIN_NAMESPACE
 
 // Time measuring
-class [[nodiscard]] TimeMeter
+class [[nodiscard]] time_meter
 {
 public:
-    TimeMeter() noexcept;
+    time_meter() noexcept;
 
-    [[nodiscard]] auto GetDuration() const noexcept -> timespan { return _paused ? _pausedDuration : nanotime::now() - _startTime; }
+    [[nodiscard]] auto get_duration() const noexcept -> timespan { return _paused ? _paused_duration : nanotime::now() - _start_time; }
 
-    void Pause() noexcept;
-    void Resume() noexcept;
+    void pause() noexcept;
+    void resume() noexcept;
 
 private:
-    nanotime _startTime;
-    timespan _pausedDuration {};
+    nanotime _start_time;
+    timespan _paused_duration {};
     bool _paused {};
 };
 

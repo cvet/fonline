@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -95,6 +95,25 @@ auto Entity::HasEventCallbacks(string_view event_name) const noexcept -> bool
     return false;
 }
 
+auto Entity::GetEventSubscriptions(string_view event_name, uintptr_t subscription_owner) const -> small_vector<uintptr_t, 4>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    small_vector<uintptr_t, 4> subscriptions;
+
+    if (_events) {
+        if (auto it = _events->find(event_name); it != _events->end()) {
+            for (const EventCallbackData& cb : it->second) {
+                if (cb.SubscriptionOwner == subscription_owner) {
+                    subscriptions.emplace_back(cb.SubscriptionPtr);
+                }
+            }
+        }
+    }
+
+    return subscriptions;
+}
+
 auto Entity::FindEventCallbacks(string_view event_name) noexcept -> nptr<vector<EventCallbackData>>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -132,7 +151,7 @@ void Entity::SubscribeEvent(string_view event_name, EventCallbackData&& callback
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     auto callbacks = EnsureEventCallbacks(event_name);
-    SubscribeEvent(callbacks, std::move(callback));
+    SubscribeEvent(callbacks, std::move(callback), event_name);
 }
 
 void Entity::UnsubscribeEvent(string_view event_name, uintptr_t subscription_ptr) noexcept
@@ -186,18 +205,18 @@ auto Entity::FireEvent(string_view event_name, FuncCallData& call) noexcept -> E
     return EventResult::ContinueChain;
 }
 
-void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback)
+void Entity::SubscribeEvent(ptr<vector<EventCallbackData>> callbacks, EventCallbackData&& callback, string_view event_name)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Object is already destroyed");
 
     if (callback.Priority >= EventPriority::Highest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority >= EventPriority::Highest; }) != callbacks->end()) {
-        throw GenericException("Highest callback already added");
+        throw GenericException("Highest callback already added", GetName(), event_name);
     }
 
     if (callback.Priority <= EventPriority::Lowest && std::ranges::find_if(*callbacks, [](const EventCallbackData& cb) { return cb.Priority <= EventPriority::Lowest; }) != callbacks->end()) {
-        throw GenericException("Lowest callback already added");
+        throw GenericException("Lowest callback already added", GetName(), event_name);
     }
 
     callbacks->emplace_back(std::move(callback));
@@ -238,7 +257,7 @@ auto Entity::FireEvent(const vector<EventCallbackData>& callbacks, FuncCallData&
             result = cb.Callback(call);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             had_exception = true;
 
             // If callback has explicit result, then exception means that it failed to process event, so we should stop chain

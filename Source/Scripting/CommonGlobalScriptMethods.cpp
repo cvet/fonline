@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -44,12 +44,133 @@
 
 FO_BEGIN_NAMESPACE
 
+// Build, platform and geometry facts, read where they are produced (a build macro or a GameSettings constant) rather
+// than copied into a setting first: nothing configures them, so a setting would be a fact wearing a knob's clothes
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WebBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WEB != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_WindowsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_LinuxBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_LINUX != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MacOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_MAC != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_AndroidBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_IOsBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_IOS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DesktopBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_WINDOWS != 0 || FO_LINUX != 0 || FO_MAC != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_TabletBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_ANDROID != 0 || FO_IOS != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapHexagonal(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::HEXAGONAL_GEOMETRY;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_MapSquare(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::SQUARE_GEOMETRY;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API int32_t Common_Game_MapDirCount(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return GameSettings::MAP_DIR_COUNT;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API bool Common_Game_DebugBuild(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return FO_DEBUG != 0;
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_CurrentLanguage(ptr<BaseEngine> engine)
+{
+    return engine->GetCurLangName();
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitBranch(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_GIT_BRANCH);
+}
+
+///@ ExportMethod GlobalGetter
+FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+
+    return string(FO_BUILD_HASH);
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_BreakIntoDebugger(ptr<BaseEngine> engine)
 {
     ignore_unused(engine);
 
-    BreakIntoDebugger();
+    break_into_debugger();
 }
 
 ///@ ExportMethod
@@ -57,7 +178,7 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 {
     ignore_unused(engine);
 
-    WriteLog("{}", text);
+    logging::write("{}", text);
 }
 
 ///@ ExportMethod
@@ -134,7 +255,7 @@ FO_SCRIPT_API uint32_t Common_Game_DecodeUtf8(ptr<BaseEngine> engine, string_vie
     ignore_unused(engine);
 
     size_t decode_length = text.length();
-    uint32_t ch = utf8::Decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
+    uint32_t ch = utf8::decode(text.data(), decode_length); // NOLINT(bugprone-suspicious-stringview-data-usage)
 
     length = numeric_cast<int32_t>(decode_length);
     return ch;
@@ -146,7 +267,7 @@ FO_SCRIPT_API string Common_Game_EncodeUtf8(ptr<BaseEngine> engine, uint32_t ucs
     ignore_unused(engine);
 
     char buf[4];
-    size_t len = utf8::Encode(ucs, buf);
+    size_t len = utf8::encode(ucs, buf);
     return {buf, len};
 }
 
@@ -589,6 +710,17 @@ FO_SCRIPT_API void Common_Game_UnpackSynchronizedTime(ptr<BaseEngine> engine, sy
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API int32_t Common_Game_DivRem(ptr<BaseEngine> engine, int32_t dividend, int32_t divisor, int32_t& remainder)
+{
+    ignore_unused(engine);
+
+    FO_VERIFY_AND_THROW(divisor != 0, "Division by zero");
+
+    remainder = dividend % divisor;
+    return dividend / divisor;
+}
+
+///@ ExportMethod
 FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timespan delay, ScriptFunc<void> func)
 {
     return engine->TimeEventMngr.StartTimeEvent(engine, std::move(func), delay, {}, {});
@@ -627,7 +759,7 @@ FO_SCRIPT_API uint32_t Common_Game_StartTimeEvent(ptr<BaseEngine> engine, timesp
 ///@ ExportMethod
 FO_SCRIPT_API LanguageName Common_Game_GetLanguage(ptr<BaseEngine> engine)
 {
-    return LanguageName {engine->Hashes.ToHashedString(engine->Settings->Language)};
+    return LanguageName {engine->Hashes.to_hashed_string(engine->GetCurLangName())};
 }
 
 ///@ ExportMethod

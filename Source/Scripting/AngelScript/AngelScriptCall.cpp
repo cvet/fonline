@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +90,7 @@ auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<Sc
     if (func) {
         auto func_desc = IndexScriptFunc(func);
         FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
-        return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get()));
+        return MakeAngelScriptFuncDescBorrow(func_desc, refcount_ptr<AngelScript::asIScriptFunction>::from_addref(func.get()));
     }
 
     return nullptr;
@@ -254,7 +254,7 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
     auto meta = GetEngineMetadata(as_engine);
 
     hstring func_name = GetScriptFuncName(func, meta->Hashes);
-    auto func_desc = SafeAlloc::MakeUnique<ScriptFuncDesc>();
+    auto func_desc = safe_alloc::make_unique<ScriptFuncDesc>();
 
     func_desc->Name = func_name;
     func_desc->AttributeChecker = [func](string_view attribute) -> bool { return HasFunctionAttribute(func, attribute); };
@@ -307,13 +307,8 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
     return stored_func_desc;
 }
 
-// AngelScript passes reference parameters as a pointer on the stack: GetAddressOfArg() returns the
-// address of that stack slot (T**), while the unified FuncCallData slot contract (shared with the
-// managed backend and consumed by NativeDataCaller) is "address of the caller's variable" - the value
-// itself for primitives/enums/value types (T*) and the handle cell for object handles ('Type@&').
-// Mutability comes from the registration-time descriptor, which produced the declaration in the first
-// place (MakeScriptArgName emits '&'/'@&' exactly for mutable args), so no per-call type interrogation
-// is needed: mutable args resolve through GetArgAddress(), which returns the pointer held on the stack.
+// FuncCallData mutable slots address the caller's value or object-handle cell, not AngelScript's stack slot.
+// Registration descriptors identify mutable arguments, whose pointee comes from GetArgAddress
 static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index, const ComplexTypeDesc& arg_type) -> ptr<void>
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -393,7 +388,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
             }
         }
         else {
-            MemFill(call.RetData, 0, as_engine->GetSizeOfPrimitiveType(ret_type_id));
+            memory::fill(call.RetData, 0, as_engine->GetSizeOfPrimitiveType(ret_type_id));
         }
     }
 
@@ -431,7 +426,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(call.ArgsData.size() == func->GetParamCount(), "Script function call argument storage does not match function signature", func->GetDeclaration(), call.ArgsData.size(), func->GetParamCount());
-    FO_VERIFY_AND_THROW((call.RetData != nullptr) == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID), "Script call return storage does not match function return type", call.RetData != nullptr, func->GetReturnTypeId());
+    FO_VERIFY_AND_THROW(!!call.RetData == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID), "Script call return storage does not match function return type", !!call.RetData, func->GetReturnTypeId());
 
     int32_t as_result = 0;
     ptr<AngelScript::asIScriptEngine> as_engine = func->GetEngine();
@@ -525,7 +520,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else if (base_type->IsEnum || base_type->IsPrimitive) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest, arg_data, base_type->Size);
+                    memory::copy(arg_dest, arg_data, base_type->Size);
                 }
                 else {
                     throw NotSupportedException("Invalid script func call - invalid simple type", base_type->Name);
@@ -536,7 +531,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
@@ -564,7 +561,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else {
                     auto ret_value = GetContextAddressOfReturnValue(ctx);
-                    MemCopy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
+                    memory::copy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
                 }
             }
         }
@@ -582,7 +579,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 if (arg_type->IsMutable) {
                     if (base_type->IsEnum && base_type->EnumUnderlyingType->Size != sizeof(int32_t)) {
                         mutable_data[i] = make_nptr(&enum_mutable_data[i]).void_cast();
-                        MemCopy(mutable_data[i], arg_data, base_type->Size);
+                        memory::copy(mutable_data[i], arg_data, base_type->Size);
                         FO_AS_VERIFY(ctx->SetArgAddress(i, mutable_data[i].get()));
                     }
                     else {
@@ -597,11 +594,11 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 }
                 else if (base_type->IsEnum) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest, arg_data, base_type->Size);
+                    memory::copy(arg_dest, arg_data, base_type->Size);
                 }
                 else if (base_type->IsPrimitive) {
                     auto arg_dest = GetContextAddressOfArg(ctx, i);
-                    MemCopy(arg_dest, arg_data, base_type->Size);
+                    memory::copy(arg_dest, arg_data, base_type->Size);
                 }
                 else {
                     throw NotSupportedException("Invalid script func call - invalid simple type", base_type->Name);
@@ -649,7 +646,9 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
             }
         }
 
-        if (context_mngr->RunContext(ctx, !func_desc->Ret)) {
+        bool can_suspend = !func_desc->Ret && std::ranges::none_of(func_desc->Args, [](const ArgDesc& arg) { return arg.Type.IsMutable; });
+
+        if (context_mngr->RunContext(ctx, can_suspend)) {
             if (func_desc->Ret) {
                 FO_VERIFY_AND_THROW(call.RetData, "Missing required call ret data");
                 int32_t ret_type_id = func->GetReturnTypeId();
@@ -688,7 +687,14 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                         }
 
                         NativeDataProvider::WriteHandleSlot(call.RetData, ret_obj);
-                        as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                        if (ret_obj) {
+                            as_engine->AddRefScriptObject(ret_obj.get(), as_ret_type.get());
+
+                            if (call.Accessor->GetBackendIndex() == ScriptSystemBackend::MANAGED_BACKEND_INDEX) {
+                                call.RetValueOwner.Reset([as_engine, as_ret_type, ret_obj]() mutable noexcept { as_engine->ReleaseScriptObject(ret_obj.get_no_const(), as_ret_type.get()); });
+                            }
+                        }
                     }
                     else {
                         FO_VERIFY_AND_THROW(ret_obj, "Missing AngelScript return object");
@@ -698,7 +704,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                 else {
                     FO_VERIFY_AND_THROW(as_engine->GetSizeOfPrimitiveType(ret_type_id) == numeric_cast<int32_t>(func_desc->Ret.BaseType.Size), "AngelScript primitive return size does not match registered function descriptor", as_engine->GetSizeOfPrimitiveType(ret_type_id), func_desc->Ret.BaseType.Size);
                     auto ret_value = GetContextAddressOfReturnValue(ctx);
-                    MemCopy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
+                    memory::copy(call.RetData, ret_value, func_desc->Ret.BaseType.Size);
                 }
             }
 
@@ -713,7 +719,7 @@ void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call
                     if (arg_type->Kind == ComplexTypeKind::Simple) {
                         auto base_type = make_ptr(&arg_type->BaseType);
                         FO_VERIFY_AND_THROW(base_type->IsEnum, "Mutable AngelScript argument base type is not enum");
-                        MemCopy(arg_data, mutable_entry, base_type->Size);
+                        memory::copy(arg_data, mutable_entry, base_type->Size);
                     }
                     else if (arg_type->Kind == ComplexTypeKind::Array) {
                         auto arr = cast_from_void<ScriptArray*>(mutable_entry);

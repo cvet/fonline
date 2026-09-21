@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -84,13 +84,14 @@ struct ClientRuntimeExports
 
 using QueryClientRuntimeExportsFunc = bool (*)(uint32_t host_abi_version, ClientRuntimeExports* exports) noexcept;
 
-extern auto IsSupportedClientRuntimeAbi(uint32_t host_abi_version) noexcept -> bool;
-extern auto IsValidClientRuntimeMetadata(const ClientRuntimeMetadata& metadata) noexcept -> bool;
-extern auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexcept -> bool;
-extern auto IsValidClientRuntimeExports(const ClientRuntimeExports& exports) noexcept -> bool;
-extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeMetadata& metadata, string_view compatibility_version) noexcept -> bool;
-extern auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string_view compatibility_version) noexcept -> bool;
-extern auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_result, ClientRuntimeHostPromoteFunc promote_runtime) -> optional<bool>;
-extern auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view;
+auto IsSupportedClientRuntimeAbi(uint32_t host_abi_version) noexcept -> bool;
+auto IsValidClientRuntimeMetadata(const ClientRuntimeMetadata& metadata) noexcept -> bool;
+auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexcept -> bool;
+auto IsValidClientRuntimeExports(const ClientRuntimeExports& exports) noexcept -> bool;
+auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeMetadata& metadata, string_view compatibility_version) noexcept -> bool;
+auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string_view compatibility_version) noexcept -> bool;
+auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_result, ClientRuntimeHostPromoteFunc promote_runtime) -> optional<bool>;
+void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runtime_path, string& compatibility_version);
+auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view;
 
 FO_END_NAMESPACE

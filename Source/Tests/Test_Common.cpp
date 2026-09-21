@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,84 @@
 
 #include "Common.h"
 #include "DataSerialization.h"
+#include "EngineBase.h"
 #include "FileSystem.h"
+#include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "SpriteResource.h"
 
 FO_BEGIN_NAMESPACE
+
+class FramePumpTestBackend final : public ScriptSystemBackend
+{
+public:
+    explicit FramePumpTestBackend(function<void()> callback) :
+        _callback {std::move(callback)}
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+
+    void Process() override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        _callback();
+    }
+
+private:
+    function<void()> _callback;
+};
+
+class FramePumpTestEngine final : public BaseEngine
+{
+public:
+    FramePumpTestEngine(ptr<GlobalSettings> settings, EngineSideKind side) :
+        BaseEngine(settings, FileSystem {}, [this, side] {
+            if (side == EngineSideKind::ServerSide) {
+                RegisterServerStubMetadata(this, nullptr);
+            }
+            else if (side == EngineSideKind::ClientSide) {
+                RegisterClientStubMetadata(this, nullptr);
+            }
+            else {
+                RegisterMapperStubMetadata(this, nullptr);
+            }
+        })
+    {
+        FO_STACK_TRACE_ENTRY();
+    }
+};
+
+TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
+{
+    GlobalSettings settings {false};
+    settings.ApplyDefaultSettings();
+
+    for (EngineSideKind side : {EngineSideKind::ServerSide, EngineSideKind::ClientSide, EngineSideKind::MapperSide}) {
+        FramePumpTestEngine first {&settings, side};
+        FramePumpTestEngine second {&settings, side};
+        int32_t first_calls = 0;
+        int32_t second_calls = 0;
+        first.RegisterBackend(7, safe_alloc::make_unique<FramePumpTestBackend>([&] {
+            first_calls++;
+            CHECK(first.GetFrameTime() == first.GameTime.GetFrameTime());
+        }));
+        second.RegisterBackend(7, safe_alloc::make_unique<FramePumpTestBackend>([&] { second_calls++; }));
+
+        first.FrameAdvance();
+        CHECK(first_calls == 1);
+        CHECK(second_calls == 0);
+        second.FrameAdvance();
+        CHECK(first_calls == 1);
+        CHECK(second_calls == 1);
+
+        first.ShutdownBackends();
+        first.FrameAdvance();
+        CHECK(first_calls == 1);
+        second.FrameAdvance();
+        CHECK(second_calls == 2);
+    }
+}
 
 TEST_CASE("CommonEvents")
 {
@@ -121,84 +195,6 @@ TEST_CASE("CommonEvents")
 
 TEST_CASE("CommonUtilities")
 {
-    SECTION("WriteSimpleTgaCreatesFileWithExpectedHeader")
-    {
-        auto temp_root = std::filesystem::temp_directory_path() / "lf_common_tests" / std::to_string(std::random_device {}());
-        auto file_path = temp_root / "nested" / "sample.tga";
-
-        isize32 image_size {2, 1};
-        vector<ucolor> pixels;
-        pixels.emplace_back(ucolor {1, 2, 3, 4});
-        pixels.emplace_back(ucolor {5, 6, 7, 8});
-
-        WriteSimpleTga(string(file_path.string()), image_size, pixels);
-
-        REQUIRE(std::filesystem::exists(file_path));
-        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
-
-        std::ifstream input(file_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::array<uint8_t, 18> header {};
-        input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
-
-        CHECK(header[2] == 2);
-        CHECK(header[12] == 2);
-        CHECK(header[13] == 0);
-        CHECK(header[14] == 1);
-        CHECK(header[15] == 0);
-        CHECK(header[16] == 32);
-        CHECK(header[17] == 0x20);
-
-        std::array<uint32_t, 2> stored_pixels {};
-        input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
-
-        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
-        auto to_bgra = [](ucolor c) -> uint32_t {
-            std::swap(c.comp.r, c.comp.b);
-            return c.rgba;
-        };
-
-        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
-        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
-
-        input.close();
-
-        uintmax_t removed = std::filesystem::remove_all(temp_root);
-        CHECK(removed > 0);
-    }
-
-    SECTION("SeededRandomGeneratorProducesValues")
-    {
-        auto generator = MakeSeededRandomGenerator();
-
-        // std::random_device is allowed to be deterministic, so two generators are not required to differ
-        // and comparing them is a flaky assertion. What the helper does owe its callers is that the engine
-        // came back seeded rather than default-constructed: mt19937's default seed is a fixed constant, so
-        // walking the default sequence would mean random_device() was never consulted.
-        std::mt19937 default_seeded;
-        bool matches_default_sequence = true;
-
-        for (int32_t i = 0; i < 4; i++) {
-            if (generator() != default_seeded()) {
-                matches_default_sequence = false;
-            }
-        }
-
-        CHECK_FALSE(matches_default_sequence);
-
-        // And that it is immediately usable by its consumers
-        std::uniform_int_distribution<int32_t> distribution {10, 20};
-
-        for (int32_t i = 0; i < 8; i++) {
-            int32_t value = distribution(generator);
-            CHECK(value >= 10);
-            CHECK(value <= 20);
-        }
-    }
-
     SECTION("PackagedBuildAccessorsAreConsistent")
     {
         // An unpackaged test build reports no runtime name; a packaged one must name it
@@ -292,7 +288,7 @@ TEST_CASE("CommonRemoteCallWireSizes")
 
     SECTION("StructSizesAreTheSumOfTheirFields")
     {
-        auto layout = SafeAlloc::MakeShared<StructLayoutDesc>();
+        auto layout = safe_alloc::make_shared<StructLayoutDesc>();
         layout->Fields.emplace_back();
         layout->Fields.back().Type = make_primitive("int32", sizeof(int32_t));
         layout->Fields.emplace_back();
@@ -327,43 +323,43 @@ TEST_CASE("CommonRemoteCallWireSizes")
 TEST_CASE("SpriteResourceDecoderReadsCompleteResource")
 {
     vector<uint8_t> data;
-    DataWriter writer {data};
+    data_writer writer {data};
     vector<ucolor> pixels {ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}};
 
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {75});
-    writer.Write<uint8_t>(uint8_t {1});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {75});
+    writer.write<uint8_t>(uint8_t {1});
 
-    writer.Write<uint8_t>(uint8_t {0});
-    writer.Write<int16_t>(int16_t {-3});
-    writer.Write<int16_t>(int16_t {4});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<int16_t>(int16_t {5});
-    writer.Write<int16_t>(int16_t {-6});
-    writer.WriteObjectVector(pixels);
-    writer.Write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
-    writer.Write<uint16_t>(uint16_t {3});
-    writer.Write<uint32_t>(uint32_t {3});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<int32_t>(int32_t {0});
-    writer.Write<int32_t>(int32_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {2});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint16_t>(uint16_t {1});
-    writer.Write<uint16_t>(uint16_t {2});
+    writer.write<uint8_t>(uint8_t {0});
+    writer.write<int16_t>(int16_t {-3});
+    writer.write<int16_t>(int16_t {4});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int16_t>(int16_t {5});
+    writer.write<int16_t>(int16_t {-6});
+    writer.write_object_vector(pixels);
+    writer.write<uint8_t>(static_cast<uint8_t>(SpriteMeshKind::Mesh));
+    writer.write<uint16_t>(uint16_t {3});
+    writer.write<uint32_t>(uint32_t {3});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<int32_t>(int32_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {2});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint16_t>(uint16_t {1});
+    writer.write<uint16_t>(uint16_t {2});
 
-    writer.Write<uint8_t>(uint8_t {1});
-    writer.Write<uint16_t>(uint16_t {0});
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(uint8_t {1});
+    writer.write<uint16_t>(uint16_t {0});
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
     vector<uint8_t> containing_data {0xAA, 0xBB, 0xCC};
     containing_data.insert(containing_data.end(), data.begin(), data.end());

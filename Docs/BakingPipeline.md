@@ -22,6 +22,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tools/RawCopyBaker.cpp`
 - `Source/Tools/ImageBaker.h`
 - `Source/Tools/ImageBaker.cpp`
+- `Source/Tools/AudioBaker.h`
+- `Source/Tools/AudioBaker.cpp`
 - `Source/Tools/SpriteMeshing.h`
 - `Source/Tools/SpriteMeshing.cpp`
 - `Source/Common/SpriteResource.h`
@@ -63,6 +65,7 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 - `Source/Tests/Test_ConfigBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
 - `Source/Tests/Test_ImageBaker.cpp`
+- `Source/Tests/Test_AudioBaker.cpp`
 - `Source/Tests/Test_EffectBaker.cpp`
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
@@ -89,14 +92,27 @@ At runtime/source level, baking is owned by:
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 - `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
+### Output names are reconciled with the names bakers addressed
+
+`MasterBaker::BakeAllInternal()` reconciles the output tree with the names the bakers actually addressed, in two steps around the outdated-output sweep:
+
+1. `ReconcileStaleCasedOutputDirs()` walks the expected output directories shallowest first and renames any that differ from the expected spelling by letter case only, logging `Rename stale-cased dir <from> to <to>`. Directories go first because renaming a file into a differently-cased parent resolves straight back to the existing directory and leaves its name untouched, and shallowest-first means every rename lands inside a parent whose own name is already correct.
+2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
+
+This exists because a case-only rename of an input is invisible to everything else in the pipeline. On a case-insensitive filesystem (Windows, default macOS) an output stream opened on the new name reuses the pre-rename directory entry and keeps its name; creating a directory that differs only by case reuses the existing one the same way; the outdated sweep compares through `exclude_all_ext`, which folds to lower case, so the stale entry still matches an expected resource and is kept; and incremental baking then skips the file entirely once it looks up to date. The runtime resolves baked packs by exact name, so the stale entry becomes an unresolvable resource — reported far from the rename, and only for the content that happens to use it.
+
+The reconciliation runs once per bake over the set the bakers already produced, so it costs no per-write work, never deletes and recreates a file, and — unlike a check on the write path — also repairs outputs that the current bake skipped as up to date. On a case-sensitive filesystem the pre-rename name does not collide with the new one, the outdated sweep removes it normally, and both steps find nothing to do.
+
+Covered by `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename` and `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` in `Source/Tests/Test_BakerSetup.cpp`. The underlying per-primitive behavior — `fs::rename()` establishes the requested spelling, `fs::write_file()` and `fs::create_directories()` keep whatever is already there — is pinned on both filesystem kinds by `DiskFileSystemNameCase` in `Source/Tests/Test_DiskFileSystem.cpp`.
+
 ## CMake entry points
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` creates baking commands after application targets are available.
 
 Current target responsibilities:
 
-- `BakeResources` runs the project baker with `-ForceBaking False`.
-- `ForceBakeResources` runs the project baker with `-ForceBaking True`.
+- `BakeResources` runs the project baker with `-Baking.ForceBaking False`.
+- `ForceBakeResources` runs the project baker with `-Baking.ForceBaking True`.
 - Both apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and `-ApplySubConfig NONE`.
 - Both work from `FO_OUTPUT_PATH`.
 - Resource build-hash state is written through `BuildTools/cmake/helpers/WriteBuildHash.cmake` using `Baking/Resources.build-hash`.
@@ -175,8 +191,7 @@ events to it.
 
 ### `BakerDataSource`
 
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans.
-`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report.
+`BakerDataSource` adapts resource inputs/outputs to the engine `DataSource` interface. It tracks input resource packs, output resources, cache checks, and output path construction. `Reindex()` reconstructs its input mounts, baker instances, file collections, and output index, returning whether the indexed paths or source write times changed. Long-running tools can therefore discover and on-demand bake added or changed resources without replacing cached directory lookup with repeated disk scans. Its output-discovery dry runs and later lazy, per-file baking do not attach the master-bake report collector and are therefore deliberately absent from the report. During lazy output discovery it walks resource packs in the same order as `MasterBaker`, so cross-pack dependencies such as `ManagedScriptBaker` reading `Metadata.fometa-*` see earlier pack outputs; runtime file lookup still searches pack outputs in reverse order for normal resource precedence.
 
 ## Master bake report
 
@@ -201,8 +216,16 @@ bake pass has its matching report.
 
 Incremental and failed passes never overwrite `Baking.full.report.json`. The
 full snapshot therefore remains available for corpus analysis after ordinary
-incremental development bakes. Both report names are excluded from outdated
-runtime-resource cleanup.
+incremental development bakes.
+
+Outdated runtime-resource cleanup skips any file named `*.report.json` sitting
+directly in the `BakeOutput` root (`REPORT_FILE_SUFFIX` in `Baker.h`), which
+covers both reports above. The rule is a suffix rather than a list of known
+names because a baker in an embedding project may write its own diagnostic
+artifact beside them — such a file is nobody's registered output, so without the
+rule the sweep would delete it in the same pass that produced it. Baked
+resources always live under a pack directory, so restricting the rule to the
+root cannot spare a genuinely stale resource.
 
 The report is written directly into the `BakeOutput` root after runtime-resource
 cleanup finishes. It is never mounted in the baked `FileSystem`, registered as
@@ -360,6 +383,7 @@ During output discovery it visits resource packs in configured order so a later 
 - `ConfigBaker` — `Source/Tools/ConfigBaker.*`, name `Config`, order `2`
 - `RawCopyBaker` — `Source/Tools/RawCopyBaker.*`, name `RawCopy`, order `4`
 - `ImageBaker` — `Source/Tools/ImageBaker.*`
+- `AudioBaker` — `Source/Tools/AudioBaker.*`, name `Audio`, order `4`
 - `EffectBaker` — `Source/Tools/EffectBaker.*`
 - `ParticleBaker` — `Source/Tools/ParticleBaker.*`, name `Particle`, order `5`
 - `ProtoBaker` — `Source/Tools/ProtoBaker.*`, name `Proto`, order `7`
@@ -368,11 +392,53 @@ During output discovery it visits resource packs in configured order so a later 
 - `ProtoTextBaker` — `Source/Tools/ProtoTextBaker.*`
 - `ModelMeshBaker` — `Source/Tools/ModelMeshBaker.*`, enabled when `FO_ENABLE_3D` is active
 - `ModelInfoBaker` — `Source/Tools/ModelInfoBaker.*`, order `6`, enabled when `FO_ENABLE_3D` is active
-- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `AngelScriptBaker` — `Source/Tools/AngelScriptBaker.*`, order `4`, enabled when `FO_ANGELSCRIPT_SCRIPTING` is active
+- `ManagedScriptBaker` — `Source/Tools/ManagedScriptBaker.*`, name `Managed`, order `3`, enabled when `FO_MANAGED_SCRIPTING` is active. It runs before the `Proto` (7), `Map` (8), and dialog validators so the compiled managed assemblies exist when those bakers restore the managed script subsystem and resolve `[DialogDemand]`/`[DialogResult]` and other script funcs through `ScriptSystem::FindFunc`.
 
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
+### Prototype inheritance merge order
+
+`ProtoBaker` and `ProtoTextBaker` resolve `$Parent` over the same algorithm, differing only in which
+keys they merge: `ProtoBaker` takes every key that does not start with `$`, `ProtoTextBaker` takes
+every `$Text*` key, and neither inherits `$Name` or `$Parent`. `$Parent` holds a space-separated list,
+looked up across all prototypes of that entity type rather than per file, with each name passed
+through the `Proto` migration rules first.
+
+The walk applies each parent's own ancestors before the parent itself, left to right, and the
+prototype's own fields last. So the **rightmost** parent wins a contested field, a parent beats its
+own ancestors, and the prototype beats everything. Values are whole strings, so a list-valued field is
+replaced rather than merged.
+
+Reaching one ancestor through two parents is the one case where that order would become surprising, so
+a repeated ancestor contributes its fields **only where it is first reached**. Walking it again would
+override whatever the earlier parent had customized, with nothing in the source to hint at it.
+
+`Baking.AllowRepeatedProtoParents` (default `true`) decides whether such a prototype is allowed at
+all: when `false` it fails baking with `Proto reaches the same parent through several inheritance
+paths`, so a game that wants each facet stated once gets the diagnostic rather than a merge to reason
+about.
+
+A `$Parent` cycle is rejected regardless of that setting (`Proto parent chain contains a cycle`);
+without that guard the walk recurses until the stack is exhausted.
+
+The setting, the first-reach merge and the cycle guard are pinned for each baker by the
+`RejectsRepeatedProtoParent*`, `AppliesRepeatedProtoParentOnce` and `RejectsProtoParentCycle*`
+sections of `Source/Tests/Test_ProtoBaker.cpp` and `Source/Tests/Test_ProtoTextBaker.cpp`.
+
+Prototype output follows the resolved prototype set alone: types and ids are collected into ordered
+maps, so which file carries a proto and the order the files arrive in do not reach the bytes. That
+makes `Protos.fopro-bin-server` / `-client` / `-mapper` byte-comparable across bakes to prove a content
+refactor changed nothing, including one that moves prototypes between files. Pinned by the
+`BakesIdenticalBytesWhateverFileCarriesEachProto` section of `Source/Tests/Test_ProtoBaker.cpp`.
+
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+### Text-language fallback overlays
+
+`TextPack::ParseBakeLanguages(...)` accepts `Baking.BakeLanguages` declarations in either `language` or `child:parent` form. It validates uniqueness and requires each parent to precede its child, then exposes bare language ids to filenames, output packs, and runtime consumers. `TextPack::FixPacks(...)` uses the first declaration to define the legal pack and key domain. A plain later language inherits missing packs and keys from that first language; an inline parent selects another family. For example, `russ engl ru18:russ en18:engl` supports sparse derived editions without forcing adult English to inherit Russian text.
+
+An authored child key replaces the parent's complete variant set for that key; an omitted key inherits it. Extra child-only packs or keys remain invalid and are removed during normalization. `TextBaker`, `ProtoTextBaker`, and external dialog-text bakers parse the same declaration list, so `.fotxt`, prototype `$Text`, and dialog `[Text]` sources obey one contract. The generic behavior and invalid configurations are pinned in `Source/Tests/Test_TextPack.cpp`.
 
 Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic
 record contains a `SpriteInfo` payload for 2D frame count, duration, directions,
@@ -410,10 +476,33 @@ required root-space contracts to every model section:
   `BoundsMax*` arrays store the individual animation AABBs used by the runtime
   tight-crop predictor.
 
-The baker samples animation keys, their midpoints, and a uniform timeline to
-build deterministic envelopes independent of camera angle, projection factor,
-model-sprite resolution, and renderer backend. Missing or invalid aggregate or
-animation bounds are baking errors in the version 2 contract. In
+The baker samples every animation key, the midpoint between neighbouring keys, and a 60 Hz grid,
+building deterministic envelopes independent of camera angle, projection factor, model-sprite
+resolution, and renderer backend. That timeline is the same in both measurement modes: a coarser
+one misses the extreme of a fast arc, which would clip a model rather than over-size it.
+
+`Baking.PreciseModelBounds` selects how the posed geometry is measured at each sample:
+
+- `ModelBoundsMeasurement::PerVertex` (`True`) transforms every skinned vertex. This is the exact
+  envelope, and `PublicGame` turns it on so `BakePublicResources` ships it;
+- `ModelBoundsMeasurement::PerBoneEnvelope` (`False`, the default) transforms one envelope box per
+  bone slot instead. A blended vertex is a convex combination of its bones' transformed positions,
+  so the union of the transformed boxes always contains it: the mode can only over-size an
+  envelope, never clip a model. That makes it the right default for a working bake, while the
+  exact mode stays reserved for the shipped one.
+
+`ModelBoundsSampler` prepares one baked model - hierarchy, the geometry selected by one
+disabled-mesh set, and the per-bone envelopes - once, and answers every clip of that model from it.
+A rigid attachment reads only where its link bone travels, so one sampled bone track per clip
+answers every attachment on that bone instead of re-walking the parent hierarchy per attachment,
+and each model section of `ModelAnimationInfo.foinfo` is produced independently and concatenated in
+sorted file order. Missing or invalid aggregate or animation bounds are baking errors in the
+version 2 contract. Each binary link
+contains an explicit `hasGeometry` discriminator before the optional geometry
+payload. The discriminator must match the link type: a non-empty `ChildName`
+with `IsParticles == false` writes `1` followed by the required min/max AABB;
+the default link and particle links write `0` and no geometry AABB. Readers
+reject discriminator values outside `0` and `1`. In
 `FO_ENABLE_3D` builds, the common `EngineMetadata` loader reads the companion
 once at startup and strictly
 validates its version, required bounds, and every parallel duration/bounds
@@ -425,9 +514,11 @@ neither group; a present companion with no model sections is malformed.
 Enabled animation bounds size
 the logical scratch frame, the dedicated view bound seeds the stable body/name
 rectangle, and aggregate bounds seed the horizontal-lighting reference. Runtime
-layer/child-model envelopes extend both contracts, while exact weighted
-current-pose geometry selects the atlas crop and expands/rerenders the scratch
-frame when sampled bounds are insufficient.
+layer/child-model envelopes extend both contracts. Each selected geometry link
+contributes its baked absolute AABB; runtime projects only envelope corners and
+does not read or skin mesh vertices to determine dimensions. Live particles can
+still expand and rerender the scratch frame when their measured bounds exceed the
+baked geometry envelope.
 
 `Source/Common/ModelBounds.h/.cpp`, guarded by `FO_ENABLE_3D`, owns the shared
 root-space AABB contract used by the baker and client: finite/ordered validation, non-point extent checks,
@@ -469,6 +560,47 @@ common scripts query its duration table through
 returns a `timespan`, or zero when the resource, model, or resolved tuple is
 absent. The config representation is an internal baker/runtime contract and
 should not be parsed by embedding-project code.
+
+## Audio baking architecture
+
+Ogg Vorbis is the only audio format the client decodes, and `AudioBaker` is what
+makes that true. Every authored source it accepts is converted to Vorbis, so a
+runtime that once carried a RIFF parser and an ACM decoder now carries one
+decoder, one exception-safety surface, and one streaming path. Vorbis is also
+what lets a long track stay compressed in memory: the client decodes it in
+portions rather than holding decoded PCM, which a multi-megabyte WAV would force.
+
+**The baked file keeps the authored path.** `Sfx/Shot.wav` is written as
+`Sfx/Shot.wav` holding Vorbis bytes, the same way `ImageBaker` writes sprite
+resources under their source `.png` name. The extension therefore names the
+source format and never the payload. Keeping the path is what lets prototype
+`Resource` properties, persisted world values, and script literals go on
+resolving with no content sweep and no migration rule.
+
+Sources already in the runtime format pass through untouched. A `.ogg` input is
+verified as a Vorbis stream with `ov_test_callbacks` and written byte for byte;
+re-encoding lossy audio would only lose more of it, and a non-Vorbis `.ogg`
+(Opus, for instance) is a baking error rather than a silent copy.
+
+The built-in loader reads RIFF/WAVE. It walks the chunk list rather than
+assuming a layout, so `fmt ` may follow a `JUNK` block and editor metadata
+(`LIST`, `bext`, `iXML`, `id3 `) may sit anywhere; `WAVE_FORMAT_PCM` at 8, 16,
+24 or 32 bits and `WAVE_FORMAT_IEEE_FLOAT` at 32 bits are converted to
+interleaved signed 16-bit, and `WAVE_FORMAT_EXTENSIBLE` is resolved through its
+sub-format tag. Any other encoding fails the bake naming the file and the tag.
+
+`AudioBaker::AddLoader(LoadFunc, extensions)` registers further converters, the
+way `ImageBaker::AddLoader` does. A `LoadFunc` receives the path and a
+`FileReader` and returns `PcmAudio` (channels, sample rate, interleaved S16);
+the baker owns the encoding from there. Embedding projects register their own
+formats from `SetupBakersHook()`, and add the same extensions to
+`Audio.SoundFileExtensions` so the client's sound-name index still finds the
+baked files.
+
+Encoding is VBR at `Baking.AudioVorbisQuality` (default `0.5`, valid `-0.1` to
+`1.0`, checked before any file is read). The stream carries a fixed serial
+number and an empty comment block, so baking the same source twice produces
+identical bytes.
 
 ## 3D model baking architecture
 
@@ -658,6 +790,17 @@ that an existing image output was baked with the same mesh settings.
 
 `MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
 
+Both blobs open with a format header - `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION` from
+`Source/Common/MapLoader.h` - which `MapLoader::ReadBakedFileHeader` validates before
+`MapManager::LoadStaticMaps` and `MapView::LoadStaticData` read anything else. Without it a stale output
+would be read as element counts, because the rest of the layout is bare numbers. The hash table is written and read through the
+`data_writer::WriteString` / `data_reader::ReadString` pair, whose length check cannot be skipped at a call
+site, and every remaining count and size is preflighted with `data_reader::VerifyPayloadCount` before it
+drives an allocation or a loop, so a damaged file raises `DataReadingException` instead of reserving
+whatever the bytes happened to say. When the
+layout changes, bump `BAKED_MAP_FILE_VERSION` and run `ForceBakeResources` in the same change: source-file
+timestamps alone cannot prove that an existing map output was baked with the current layout.
+
 `ParticleBaker` exposes only the formats whose backend is enabled at build time.
 `FO_SPARK_PARTICLES` enables text `.spark` input and generated `.spk` output;
 `FO_EFFEKSEER_PARTICLES` enables text `.efkproj` input and generated `.efk`
@@ -736,7 +879,41 @@ baker, `ModelInfoBaker`, source loader, and client all enforce the applicable
 limits. Malformed resources therefore fail with contextual
 `DataReadingException` instead of allocation, out-of-bounds palette access, or
 recursive-stack failure.
-Schema 1 keeps the existing `DataWriter` native-endian mesh payload; all current
+
+`ModelMeshBaker` also rejects a mesh node whose `geometry_to_world` determinant
+is negative. That is a node exported with a negative scale — a mirrored object —
+and the reflection flips surface orientation: stored normals point into the model
+and triangles wind the other way, so the shader lights the mesh from its inside
+while back-face culling drops the front faces, and the model renders flat black.
+The baker does not compensate for it. Flipping normals and winding at bake time
+would leave the broken source in the repository, where the next export and every
+other tool reading that file keep the reflection; the exporter is where a mirrored
+object has to be frozen back to a positive scale.
+
+`ModelInfoBaker` gates the size of a directly attached model — an `Attach` link
+pointing at a bare `.fbx` rather than a `.fo3d` description. Such a model is
+drawn on the parent skeleton, so an export authored in foreign units looks
+correct in the render and only shows up through the model's own bounds, which
+size its client sprite frame: a centimetre export asks for a frame two orders of
+magnitude too large, and `CalculateModelSpriteLayout` cannot build it at all.
+The bake fails when the model's static bounds leave the band
+`Baking.ModelAttachmentMinExtent` .. `Baking.ModelAttachmentMaxExtent`, naming
+the file, the measured extent and the limit.
+
+The same band also gates each `.fo3d` section's aggregate `ModelBounds` (the
+union of animation envelopes, or static geometry when the model has no
+mappings). That envelope sizes the client lighting frame independently of the
+current clip. A full bake checks it while writing `ModelAnimationInfo.foinfo`;
+a targeted `.fo3d` bake (which does not rebuild that companion) runs the same
+check before writing the description. A `.fo3d` `Scale` token does not change
+the baked envelope, so a centimetre-space root model is not exempt. Baker code
+does not read `AppRender::MAX_ATLAS_WIDTH` / `HEIGHT`: those are the bake
+host's GPU, not the game device. Portable layout math uses
+`AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` instead. Runtime preview zoom can
+still push a valid in-band envelope past `Render.ModelSpriteMaxTextureWidth` /
+`Height`; `RefreshFrameLayout` clamps that scratch texture and draws cropped
+instead of terminating.
+Schema 1 keeps the existing `data_writer` native-endian mesh payload; all current
 engine targets are little-endian. Unlike the explicitly little-endian Ozz
 envelopes below, a future big-endian mesh consumer requires a converted wire
 format and a new schema rather than interpreting schema 1 in place.
@@ -762,7 +939,7 @@ write temporary buffers. The baker verifies triangle-list shape and index ranges
 before the library call, requires fetch optimization to retain every vertex
 produced by `ufbx`, validates the resulting indices again, and only then commits
 the buffers and narrows indices to `vindex_t`. The library's temporary allocator
-is installed once before parallel mesh jobs and uses `SafeAllocator`, preserving
+is installed once before parallel mesh jobs and uses `safe_allocator`, preserving
 the engine rpmalloc, backup-pool retry, and fail-fast OOM policy.
 
 These passes are lossless reorderings, so `LFMODMSH` remains schema `1`; existing
@@ -876,7 +1053,7 @@ cache keys.
 Before any runtime or offline codec object is constructed,
 `InitializeModelAnimationMemory()` installs a private engine allocator for the
 statically linked Ozz state in that module. It provides arbitrary power-of-two
-alignment over `SafeAllocator<uint8_t>`, so codec allocations use the same
+alignment over `safe_allocator<uint8_t>`, so codec allocations use the same
 rpmalloc backend, backup-memory retry, OOM diagnostics, and fail-fast policy as
 engine containers. No Ozz allocator type is exposed through a public model API,
 and the vendored allocator source remains byte-identical to upstream 0.16.0.
@@ -909,7 +1086,7 @@ animation-only tracks are identity, while a separate presence byte remains
 zero.
 
 The baked `.fo3d` contract is now explicitly versioned. Every description starts
-with `LFMODINF`, schema `1`, and zero flags, followed by the existing positional
+with `LFMODINF`, schema `2`, and zero flags, followed by the existing positional
 description and one required length-prefixed `LFOZZRIG` schema-1 payload. The rig
 payload stores the canonical rig/cache signatures, canonical skeleton, base
 remap, each unique resolved animation/remap pair, and a sorted
@@ -917,6 +1094,26 @@ remap, each unique resolved animation/remap pair, and a sorted
 the actual baker-resolved source/name, so `Base`, case-insensitive authored
 names, relative paths, and multiple animation pairs sharing one clip do not need
 to be resolved again by the client.
+
+Schema 2 appends an optional union AABB to every serialized link. A non-particle link
+with a child model must carry a finite, non-degenerate bound; default/root-edit and
+particle links must not. For an empty `Link` bone, `ModelInfoBaker` skins the child
+mesh with the parent description's static pose and every unique mapped animation.
+For a named bone, it sweeps the child aggregate AABB through that parent's bone in
+the static pose and every unique mapped animation. The child-default plus outer-link
+T/R/S and both child-default and outer-link `DisableMesh` selections are included. These
+calculations are submitted as bounded nested jobs from the ordinary per-description
+bake task. They reuse the bake pool and fall back to inline execution when it is
+full, so changing one attachment invalidates and recalculates its owning `.fo3d` without serially
+rebuilding a global equipment-configuration table.
+
+Schema 3 extends every geometry-link payload after that union AABB with a counted,
+`(StateAnim, ActionAnim)`-keyed set of per-animation AABBs. The client maps those keys
+to runtime clip indices and uses the active clip's envelope instead of keeping the
+union envelope for every pose. This is an incompatible binary layout: any future
+field added to `LFMODINF` must bump `MODEL_DESCRIPTION_SCHEMA_VERSION` in the same
+change. The schema-3 transition also uses compatibility marker `0.0.46`, forcing a
+new runtime and a full resource bake to travel together.
 
 Each rig archive manifest repeats the caller-owned source signature and
 source/object identity before its nested `LFOZZARC`. The reader constructs its
@@ -943,7 +1140,22 @@ memory results.
 `ScriptsAndBaking.cmake` also creates script compilation commands:
 
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
-- `CompileMonoScripts` runs `BuildTools/compile-mono-scripts.py` when `FO_MONO_SCRIPTING` is enabled.
+- `CompileManagedScripts` runs the standalone `ManagedScriptBakerApp` (built as `<FO_DEV_NAME>_ManagedScriptBaker`) when `FO_MANAGED_SCRIPTING` is enabled, so the managed project environment can be regenerated and rebuilt without a full resource bake. The `Managed` baker compiles `.cs` sources in place from every directory listed in `ManagedScript.Dirs` (engine core scripts and project scripts alike) and writes target API C# files as `*.gen.cs` (including `*Abi.gen.cs`), one generated `.gen.csproj`, and a matching `.gen.sln` under the `ManagedScript.GeneratedDir` directory (empty targets the build `GeneratedSource/Managed` tree). Generated files include an auto-generated disclaimer, are rewritten only when their content changes, and stale `.gen.*` files in that directory are removed when they are no longer produced. The bake stamp is computed after generation and includes those generated API files, so a generator-only change cannot ship new C# with a skipped DLL. The project and solution are named from the `ManagedScript.ProjectName` setting (default `FOnline`; embedding projects set their own name in the main config), so they get readable names such as `Scripts/<ManagedScript.ProjectName>.gen.csproj` and `Scripts/<ManagedScript.ProjectName>.gen.sln`. Managed assemblies are built into the baking pack under `Baking/<Pack>/Assemblies/Assemblies-<target>/`, using the standard lowercase `-server` / `-client` / `-mapper` resource-role suffix, so packaging consumes and filters them through the regular resource path. For a `Scripts` pack the entry assemblies are `Scripts.Server.dll`, `Scripts.Client.dll`, and `Scripts.Mapper.dll`, and any copied helper dlls from the MSBuild output are packed beside them for runtime dependency resolution. Managed builds run MSBuild at quiet verbosity and do not echo the command on success; compiler errors still reach the baker output. Node reuse is disabled to avoid stale project-file locks during later prebake passes. Managed builds also depend on `PrepareManagedRuntimePayload`, which filters the `SetupManagedRuntime` publish tree to managed class-library assemblies plus `runtime.manifest`; the Managed baker writes the part of that payload the pack needs under `ManagedRuntime/` in the same pack (see below), and package targets consume it through the ordinary resource path.
+
+### Managed runtime payload selection
+
+The `ManagedRuntime/` tree of a managed pack holds `System.Private.CoreLib` and the class libraries the pack's own assemblies reach through assembly references, not the whole published `lib/netcoreapp` tree. Mono resolves a class library by name only when a reference names it (`mono_set_assemblies_path`), so a library no reference reaches is never opened. On the Last Frontier bake of 2026-09-15 that is 25 of 172 assemblies, 13.1 of 49.7 MB (5.0 of 22.3 MB deflated).
+
+- **Roots.** Every `.dll` the baker packs under `Assemblies/Assemblies-<target>/` for all three targets, so the baked tree serves Server, Client and Mapper alike. A target that is up to date contributes the assemblies its previous bake left in the pack output on disk; that is also where discovery (`BakerDataSource`, used by the Mapper and the viewers) reads them, and where nothing is baked yet discovery declares CoreLib alone.
+- **Closure.** `Source/Tools/ManagedAssemblyReferences.*` reads the `Assembly` and `AssemblyRef` tables of each PE image (ECMA-335 partition II) and follows references transitively through the files the source `runtime.manifest` lists. A reference to a pack assembly is satisfied by the pack. Every pack and selected runtime DLL must define the assembly named by its file stem; CoreLib is parsed even when it is the only selected file, so a malformed or misnamed payload fails during baking or packaging instead of at Mono startup.
+- **Unresolved references.** A pack assembly referencing a name that neither the pack nor the runtime holds fails the bake, naming both. A class library referencing a name the runtime does not publish is skipped: compatibility facades such as `mscorlib`, `System` and `System.Data` forward into out-of-band packages (`System.Security.Permissions`, `System.Data.SqlClient`, ...) that the full payload never carried either.
+- **Manifest.** The baked `runtime.manifest` lists exactly the shipped files, lines copied from the source manifest. Digests use the canonical lowercase SHA-256 spelling, and duplicate assembly-name entries are rejected. The selection follows the compiled assemblies rather than the write time of any single input, so the manifest is registered with the bake checker and rewritten from content on every bake; file outputs keep the per-file write-time check.
+- **What the engine's own managed code keeps out of the closure.** CoreScripts and the load-context host are compiled into every pack, so each class library they reference ships with every game. They build `Action<...>` / `Func<...>` delegate types by parameter count instead of through `System.Linq.Expressions` (which brings `System.Reflection.Emit*` and `System.ObjectModel`), take an assembly's simple name from its file name instead of reading it with `System.Reflection.Metadata`, and reach CoreLib's `StackTrace` through reflection instead of naming it, because the `System.Diagnostics.StackTrace` facade references `System.Reflection.Metadata` (which brings `System.Collections.Immutable`, `System.IO.Compression`, `System.IO.MemoryMappedFiles` and more). On the Last Frontier bake of 2026-09-16 that took the payload from 25 assemblies, 7.1 MB raw and 2.50 MB deflated, to 12 assemblies, 5.5 MB raw and 1.85 MB deflated. An embedding project can hold the line with a banned-API list; Last Frontier bans those namespaces and types for its scripts.
+- **What a static closure cannot see** is a load by string name. The engine's native code loads no class library by name (Mono's own lookups all target CoreLib), and a script or engine module that adds `Type.GetType("..., Assembly")` or `Assembly.Load` against a class library must also reference that library statically, or the library is not shipped.
+
+`package.py` repeats the same selection when it replaces the baked payload with a target binary's own `ManagedRuntime/` (see [BuildToolsPipeline.md](BuildToolsPipeline.md)), over that target's class libraries and the assemblies of the pack it is writing, through `BuildTools/managed_runtime_payload.py`.
+
+The generated managed project also supports direct IDE/MSBuild builds. A relative `Baking.BakeOutput` stays relative to `FOnlineBakeRoot` (by default the generated project directory's parent), so callers can relocate it with `-p:FOnlineBakeRoot=...`. An absolute `Baking.BakeOutput` remains absolute and is not prefixed by that property. The baker's own compilation supplies an explicit absolute `OutputPath` for each target.
 
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
@@ -954,8 +1166,10 @@ Baker behavior is covered by focused tests in `Source/Tests/`:
 - `Test_BakerSetup.cpp`
 - `Test_ConfigBaker.cpp`
 - `Test_MetadataBaker.cpp`
+- `Test_ManagedScriptBaker.cpp`
 - `Test_RawCopyBaker.cpp`
 - `Test_ImageBaker.cpp`
+- `Test_AudioBaker.cpp`
 - `Test_EffectBaker.cpp`
 - `Test_ProtoBaker.cpp`
 - `Test_ProtoTextBaker.cpp`

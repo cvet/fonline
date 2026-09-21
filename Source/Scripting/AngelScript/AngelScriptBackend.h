@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,12 +45,12 @@ class ScriptArray;
 
 FO_BEGIN_NAMESPACE
 
-struct ScriptSettings;
+struct AngelScriptSettings;
 
 class AngelScriptBackend : public ScriptSystemBackend
 {
 public:
-    explicit AngelScriptBackend(ptr<const ScriptSettings> settings);
+    explicit AngelScriptBackend(ptr<const AngelScriptSettings> settings);
     AngelScriptBackend(const AngelScriptBackend&) noexcept = delete;
     auto operator=(const AngelScriptBackend&) noexcept -> AngelScriptBackend& = delete;
     AngelScriptBackend(AngelScriptBackend&&) noexcept = delete;
@@ -77,11 +77,12 @@ public:
     void AddCleanupCallback(function<void()> callback);
     void AddPostCleanupCallback(function<void()> callback);
     void IncreaseExceptionCounter() { _exceptionCounter.fetch_add(1); }
+    auto InternUserString(string_view name) -> ptr<const string>;
 
 private:
     static auto TryParseModuleFuncPriority(string_view raw_attribute, string_view attribute_name, int32_t& priority) noexcept -> bool;
 
-    ptr<const ScriptSettings> _settings;
+    ptr<const AngelScriptSettings> _settings;
     nptr<EngineMetadata> _meta {};
     nptr<ScriptSystem> _scriptSys {}; // Maybe null
     nptr<BaseEngine> _engine {}; // Maybe null
@@ -93,6 +94,7 @@ private:
     vector<function<void()>> _postCleanupCallbacks {};
     optional<DebuggerEndpointServer> _debuggerEndpointServer {};
     std::atomic_int32_t _exceptionCounter {};
+    set<string> _userStrings {};
 };
 
 FO_END_NAMESPACE

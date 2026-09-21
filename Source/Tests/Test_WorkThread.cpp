@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -54,31 +55,31 @@ TEST_CASE("WorkThread")
 
     SECTION("ExecutesQueuedJobsAndWaitsForCompletion")
     {
-        WorkThread worker {"TestWorker"};
+        work_thread worker {"TestWorker"};
         std::atomic_int32_t counter = 0;
 
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             counter.fetch_add(1);
             return std::nullopt;
         });
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             counter.fetch_add(2);
             return std::nullopt;
         });
 
-        worker.Wait();
+        worker.wait();
 
         CHECK(counter.load() == 3);
-        CHECK(worker.GetJobsCount() == 0);
+        CHECK(worker.get_jobs_count() == 0);
     }
 
     SECTION("PauseBlocksJobsUntilResume")
     {
-        WorkThread worker {"PauseWorker"};
+        work_thread worker {"PauseWorker"};
         std::atomic_bool executed = false;
 
-        worker.Pause();
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.pause();
+        worker.add_job([&]() -> optional<timespan> {
             executed = true;
             return std::nullopt;
         });
@@ -86,187 +87,192 @@ TEST_CASE("WorkThread")
         std::this_thread::sleep_for(std::chrono::milliseconds(30));
         CHECK_FALSE(executed.load());
 
-        worker.Resume();
-        worker.Wait();
+        worker.resume();
+        worker.wait();
 
         CHECK(executed.load());
     }
 
     SECTION("RepeatedJobReschedulesUntilItStops")
     {
-        WorkThread worker {"RepeatWorker"};
+        work_thread worker {"RepeatWorker"};
         std::atomic_int32_t runs = 0;
 
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             int32_t next_run = ++runs;
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
-        worker.Wait();
+        worker.wait();
 
         CHECK(runs.load() == 3);
     }
 
     SECTION("ExceptionHandlerCanClearRemainingJobs")
     {
-        WorkThread worker {"ExceptionWorker"};
+        work_thread worker {"ExceptionWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool second_job_called = false;
         std::atomic_bool jobs_enqueued = false;
 
-        worker.SetExceptionHandler([&](const std::exception&) {
+        worker.set_exception_handler([&](const std::exception&) {
             handler_called = true;
             return true;
         });
 
-        // The throwing job must not run until the second job is queued. Otherwise the worker can pick
-        // up the first job, throw, and let the handler clear an empty queue before the second job is
-        // even added - the second job is then enqueued after the clear and runs normally (flaky).
-        worker.AddJob([&]() -> optional<timespan> {
+        // Queue the second job before releasing the thrower so exception cleanup must clear it
+        worker.add_job([&]() -> optional<timespan> {
             jobs_enqueued.wait(false);
             throw std::runtime_error("boom");
         });
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             second_job_called = true;
             return std::nullopt;
         });
         jobs_enqueued = true;
         jobs_enqueued.notify_one();
 
-        worker.Wait();
+        worker.wait();
 
         CHECK(handler_called.load());
         CHECK_FALSE(second_job_called.load());
-        CHECK(worker.GetJobsCount() == 0);
+        CHECK(worker.get_jobs_count() == 0);
     }
 
-    SECTION("ExceptionHandlerRunsBeforeGlobalExceptionReport")
+    SECTION("AnExceptionHandlerTakesOverTheReporting")
     {
-        auto prev_callback = GetExceptionCallback();
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        // The handler knows what the failure means to its owner and when to say so. Reporting here as
+        // well would print the same exception twice, the second copy behind everything the handler started
+        auto prev_callback = exceptions::get_callback();
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
-        WorkThread worker {"ExceptionOrderWorker"};
+        work_thread worker {"ExceptionHandlerWorker"};
         std::atomic_bool handler_called = false;
         std::atomic_bool report_called = false;
-        std::atomic_bool report_saw_handler = false;
 
-        SetExceptionCallback([&](string_view, const CatchedStackTraceData&, bool) {
-            report_saw_handler = handler_called.load();
-            report_called = true;
-        });
+        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
 
-        worker.SetExceptionHandler([&](const std::exception&) {
+        worker.set_exception_handler([&](const std::exception&) {
             handler_called = true;
             return true;
         });
 
-        worker.AddJob([]() -> optional<timespan> { throw std::runtime_error("boom"); });
+        worker.add_job([]() -> optional<timespan> { throw std::runtime_error("boom"); });
 
-        worker.Wait();
+        worker.wait();
 
         CHECK(handler_called.load());
+        CHECK_FALSE(report_called.load());
+    }
+
+    SECTION("WithoutAHandlerTheExceptionIsStillReported")
+    {
+        auto prev_callback = exceptions::get_callback();
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
+
+        work_thread worker {"ExceptionReportWorker"};
+        std::atomic_bool report_called = false;
+
+        exceptions::set_callback([&](string_view, const stack_trace::catched_data&, bool) { report_called = true; });
+
+        worker.add_job([]() -> optional<timespan> { throw std::runtime_error("boom"); });
+
+        worker.wait();
+
         CHECK(report_called.load());
-        CHECK(report_saw_handler.load());
     }
 
     SECTION("ClearRemovesQueuedJobsWhilePaused")
     {
-        WorkThread worker {"ClearWorker"};
+        work_thread worker {"ClearWorker"};
         std::atomic_bool executed = false;
 
-        worker.Pause();
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.pause();
+        worker.add_job([&]() -> optional<timespan> {
             executed = true;
             return std::nullopt;
         });
 
-        CHECK(worker.GetJobsCount() == 1);
+        CHECK(worker.get_jobs_count() == 1);
 
-        worker.Clear();
-        CHECK(worker.GetJobsCount() == 0);
+        worker.clear();
+        CHECK(worker.get_jobs_count() == 0);
 
-        worker.Resume();
-        worker.Wait();
+        worker.resume();
+        worker.wait();
 
         CHECK_FALSE(executed.load());
     }
 
     SECTION("DiagnosticsTrackCompletedJobs")
     {
-        WorkThread worker {"DiagnosticsWorker"};
+        work_thread worker {"DiagnosticsWorker"};
 
-        worker.AddJob([]() -> optional<timespan> { return std::nullopt; });
-        worker.AddJob([]() -> optional<timespan> { return std::nullopt; });
+        worker.add_job([]() -> optional<timespan> { return std::nullopt; });
+        worker.add_job([]() -> optional<timespan> { return std::nullopt; });
 
-        worker.Wait();
+        worker.wait();
 
-        WorkThread::Diagnostics diagnostics = worker.GetDiagnostics();
-        CHECK(diagnostics.CompletedJobs == 2);
-        CHECK(diagnostics.QueuedJobs == 0);
-        CHECK_FALSE(diagnostics.JobActive);
+        work_thread::diagnostics diagnostics = worker.get_diagnostics();
+        CHECK(diagnostics.completed_jobs == 2);
+        CHECK(diagnostics.queued_jobs == 0);
+        CHECK_FALSE(diagnostics.job_active);
     }
 
     SECTION("DiagnosticsCountEveryRescheduledRun")
     {
-        WorkThread worker {"RepeatDiagnosticsWorker"};
+        work_thread worker {"RepeatDiagnosticsWorker"};
         std::atomic_int32_t runs = 0;
 
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             int32_t next_run = ++runs;
             return next_run < 3 ? optional<timespan> {std::chrono::milliseconds {1}} : std::nullopt;
         });
 
-        worker.Wait();
+        worker.wait();
 
         // Each execution of the self-rescheduling job is counted, so the server's job-throughput
-        // stats reflect every body run rather than the number of distinct submissions.
-        CHECK(worker.GetDiagnostics().CompletedJobs == 3);
+        // stats reflect every body run rather than the number of distinct submissions
+        CHECK(worker.get_diagnostics().completed_jobs == 3);
     }
 
-    // Regression for a Pause() deadlock: the worker only signalled _doneSignal when its queue drained, so
-    // a Pause() waiting on _jobActive was never woken while jobs were still queued behind the in-flight
-    // one — hanging the pauser forever. Pause() must return as soon as the active job finishes, regardless
-    // of how many jobs remain queued.
+    // Pause must wake when the active job finishes even while later jobs remain queued
     SECTION("PauseReturnsWhileJobsRemainQueued")
     {
-        WorkThread worker {"PauseDrainWorker"};
+        work_thread worker {"PauseDrainWorker"};
         std::atomic_bool gate {false};
         std::atomic_bool a_started {false};
 
-        worker.AddJob([&]() -> optional<timespan> {
+        worker.add_job([&]() -> optional<timespan> {
             a_started.store(true);
             while (!gate.load()) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
             }
             return std::nullopt;
         });
-        worker.AddJob([&]() -> optional<timespan> { return std::nullopt; }); // stays queued behind the gated job
+        worker.add_job([&]() -> optional<timespan> { return std::nullopt; }); // stays queued behind the gated job
 
         while (!a_started.load()) {
             std::this_thread::sleep_for(std::chrono::milliseconds {1});
         }
 
-        // Pause from a helper thread while the first job is in flight and the second is still queued.
-        thread pauser = run_thread("Pauser", [&]() { worker.Pause(); });
+        // Pause from a helper thread while the first job is in flight and the second is still queued
+        thread pauser = run_thread("Pauser", [&]() { worker.pause(); });
         gate.store(true); // let the in-flight job finish
 
         pauser.join(); // pre-fix: deadlocks here (the in-flight job cleared _jobActive but never signalled)
-        CHECK_FALSE(worker.GetDiagnostics().JobActive);
+        CHECK_FALSE(worker.get_diagnostics().job_active);
 
-        worker.Resume();
-        worker.Wait();
-        CHECK(worker.GetJobsCount() == 0);
+        worker.resume();
+        worker.wait();
+        CHECK(worker.get_jobs_count() == 0);
     }
 
-    // Faithful to production cross-thread use (e.g. `_healthWriter.AddJob` is called from the
-    // `_mainWorker` thread while the control thread also drives the worker): several producer threads
-    // hammer AddJob concurrently while a controller churns Pause/Resume/Clear and the worker runs the
-    // bodies. The `_dataLocker`-guarded state machine must stay race-free (TSan), never use freed job
-    // state (ASan), never deadlock, and remain functional afterwards. Bodies don't self-reschedule, so
-    // Pause (which waits for the active job) can never block forever.
+    // Race concurrent producers against Pause, Resume, and Clear across the guarded state machine.
+    // Bodies never self-reschedule, so Pause must still converge
     SECTION("ConcurrentProducersHammerAddJobClearPauseResume")
     {
-        WorkThread worker {"ChaosWorker"};
+        work_thread worker {"ChaosWorker"};
         std::atomic_int64_t body_runs {0};
         std::atomic_bool stop {false};
 
@@ -279,7 +285,7 @@ TEST_CASE("WorkThread")
         for (int p = 0; p < producer_count; p++) {
             producers.emplace_back(run_thread("ChaosProducer", [&]() {
                 for (int i = 0; i < jobs_per_producer; i++) {
-                    worker.AddJob([&body_runs]() -> optional<timespan> {
+                    worker.add_job([&body_runs]() -> optional<timespan> {
                         body_runs.fetch_add(1, std::memory_order_relaxed);
                         return std::nullopt;
                     });
@@ -297,11 +303,11 @@ TEST_CASE("WorkThread")
             while (!stop.load(std::memory_order_acquire)) {
                 switch (next() % 3) {
                 case 0:
-                    worker.Pause();
-                    worker.Resume();
+                    worker.pause();
+                    worker.resume();
                     break;
                 case 1:
-                    worker.Clear();
+                    worker.clear();
                     break;
                 default:
                     std::this_thread::sleep_for(std::chrono::microseconds {50});
@@ -317,18 +323,18 @@ TEST_CASE("WorkThread")
         stop.store(true, std::memory_order_release);
         controller.join();
 
-        // Ensure the worker is not left paused, then drain whatever survived the Clear churn.
-        worker.Resume();
-        worker.Wait();
-        CHECK(worker.GetJobsCount() == 0);
+        // Ensure the worker is not left paused, then drain whatever survived the Clear churn
+        worker.resume();
+        worker.wait();
+        CHECK(worker.get_jobs_count() == 0);
 
-        // The worker must still be fully functional after the chaos — a fresh job runs to completion.
+        // The worker must still be fully functional after the chaos — a fresh job runs to completion
         std::atomic_bool final_ran {false};
-        worker.AddJob([&final_ran]() -> optional<timespan> {
+        worker.add_job([&final_ran]() -> optional<timespan> {
             final_ran.store(true);
             return std::nullopt;
         });
-        worker.Wait();
+        worker.wait();
         CHECK(final_ran.load());
     }
 }

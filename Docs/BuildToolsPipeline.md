@@ -37,6 +37,29 @@ Important consequences:
 - Prefer stage responsibilities and option names over hard-coded generated target names.
 - Validate build changes through an embedding project preset whenever possible.
 
+## Apple deployment target
+
+`ThirdParty/iOS-sdk` supplies the minimum iOS deployment version through
+`buildtools.py` and the iOS toolchain; it does not select the installed Xcode SDK.
+The canonical minimum is `26.0`, matching the effective target that modern Clang
+already derives from the obsolete `19.0` version name. LLVM's
+[Darwin version alignment](https://github.com/llvm/llvm-project/commit/88f041f3e05e26617856cc096d2e2864dfaa1c7b)
+remaps iOS 19 to 26. Using the canonical name avoids the deployment override
+diagnostic without changing that effective minimum. Supporting an older iOS
+release requires a separate product compatibility decision.
+
+Apple static archives retain guarded translation units and module anchors even
+when they contain no symbols. `CMAKE_STATIC_LINKER_FLAGS` passes only
+`-no_warning_for_no_symbols` to Xcode's `OTHER_LIBTOOLFLAGS` for static and
+object libraries. The iOS toolchain puts the same option directly into its
+explicit libtool archive commands for Ninja and Makefiles. Other generators
+using `ar` or `llvm-ar` receive no libtool-only option. This diagnostic
+policy leaves source inventories intact and does not suppress compiler warnings,
+other archive diagnostics, or invalid-input errors. Linux and dynamic-linker
+flags are unchanged. `test_apple_archive_diagnostics.py` configures the actual
+stage and checks real Mach-O archives with empty and callable members, plus
+missing and malformed input failures.
+
 ## Stage files
 
 The staged pipeline lives in `BuildTools/cmake/stages/`. Canonical stage order is defined by `BuildTools/Init.cmake`: `Init`, `ProjectOptions`, `ThirdParty`, `EngineSources`, `Codegen`, `CoreLibs`, `Applications`, `ScriptsAndBaking`, `Packages`, `Finalize`.
@@ -62,6 +85,12 @@ extensions, or baker implementation.
 
 It also establishes build hash and common generation context. Start here when a build option is missing or validated too early/late.
 
+MSVC compiles with `/MP`, and MSBuild builds up to `/m` projects at once, so on its own a cold Visual Studio
+generator build runs cores x cores `cl.exe` processes and exhausts memory on a runner with less than about
+2 GiB per core (`C1060` compiler heap and `LNK1102` failures). `Init.cmake` therefore adds
+`UseMultiToolTask=true` and `EnforceProcessCountAcrossBuilds=true` to `CMAKE_VS_GLOBALS` for Visual Studio
+generators, which makes MSBuild cap the compiler processes of the whole build at the core count.
+
 ### `ProjectOptions.cmake`
 
 Normalizes and validates project-level option combinations. Examples from the current stage include checks around code coverage, build mode combinations, and scripting/tool compatibility such as `FO_BUILD_ASCOMPILER` requiring AngelScript support.
@@ -74,11 +103,269 @@ Adds bundled engine third-party libraries. The stage comment notes that it insta
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
+LibreSSL enables generic assembly only on non-MSVC toolchains; its existing
+MSVC x64 path selects `ASM_MASM`. MongoDB's AWS authentication is explicitly
+disabled alongside its TLS support, matching the driver's effective feature
+set without requesting an authentication mode that requires TLS.
+
+Vendored archive inputs follow their implementations: LibreSSL omits empty
+archive fillers, compatibility objects without platform shims, and the generic
+AES core when amd64 assembly
+provides all of its entry points. Glslang includes its SPIRV-Tools bridge only
+with the optimizer enabled. This avoids empty archive members on Apple;
+engine-owned source inventories remain unconditional.
+
+MongoDB selects its crypto, TLS, encryption and OS implementation sources from
+the enabled features. Its protocol flag/opcode consistency assertions remain
+mandatory parts of its RPC and cluster translation units. The checks produce
+no standalone empty archive members, including with Xcode's object libraries.
+`BuildTools/tests/test_mongoc_archive_inputs.py` checks enabled backend selection,
+client/BSON operations, and rejection of deliberately mismatched protocol flags
+and opcodes.
+
+`FO_DOTNET_DIR` is a configuration input, so temporary stage-state resets must
+preserve its CMake cache value. A nonempty cache override takes precedence over
+the environment; otherwise the environment value is used, then the default
+`${CMAKE_CURRENT_BINARY_DIR}/dotnet`. Paths containing spaces follow the same
+rules. `test_managed_runtime_directory.py` checks the real state initialization
+and directory-resolution block without starting a runtime build.
+
+`setup-mono` and CMake's ready marker include the normalized pinned `ThirdParty/dotnet-runtime` revision and
+runtime triplet. Changing the pin invalidates both the native build and published runtime. Publication validates
+the runtime output, SDK shared-framework directory and Mono core library before replacing the output tree,
+so removed files cannot survive a successful republish. Shared-framework versions sort numerically, with a
+prerelease ordered before the corresponding release.
+
+The ready-marker command declares the published static archives as CMake `BYPRODUCTS`, using
+the same configuration-specific runtime paths as the linker. Ninja requires a file-producing
+rule for these archives before it can schedule a clean build; a target dependency on
+`SetupManagedRuntime` alone cannot supply that rule. `test_managed_runtime_byproducts.py`
+reproduces the missing-rule failure and builds a real shared-library consumer with Ninja and
+Ninja Multi-Config in Debug and Release, then verifies that a repeated build reuses the runtime.
+
+Windows targets with managed scripting use the static MSVC runtime (`/MT`, or
+`/MTd` for Debug configurations), matching the published Mono and minipal
+archives even when no client target is built. Client builds also retain the
+static CRT; builds with neither client nor managed scripting retain `/MD` or
+`/MDd`. Existing Mono caches already use this contract and need no rebuild.
+
+Nested runtime builds remove Xcode's legacy `TARGETNAME` environment variable before invoking
+MSBuild. MSBuild treats environment property names case-insensitively and otherwise names every
+task and generator output `SetupManagedRuntime.dll`, causing duplicate publish files and failed
+generator loads. The BuildTools
+regression publishes two actual SDK projects under a poisoned target name and verifies distinct
+assemblies; successful runtime caches retain their identity.
+
+For iOS device and simulator runtimes, the nested build also removes inherited
+`SDKROOT`. Mono supplies the target SDK in its CMake arguments, while its cross-AOT
+compiler runs on macOS and must discover the macOS SDK. Otherwise CMake initializes
+the host compiler's sysroot from Xcode's iOS environment and rejects host APIs such
+as `system()`. `DEVELOPER_DIR` and other toolchain inputs remain available; ordinary
+macOS runtime builds retain an explicitly selected `SDKROOT`. The regression runs
+actual Darwin/iOS CMake configuration with SDK-discovery fixtures, checks the wrong
+host sysroot before isolation, and verifies both the corrected host SDK and the
+unchanged target SDK. It does not replace a managed Apple build with installed SDKs.
+Retry a failed build from this environment error with a fresh runtime object tree:
+an existing CMake cache retains its previously selected SDK even after the parent
+environment is corrected. Successful runtime caches remain valid.
+
+On Windows, the nested runtime also removes the outer generator's `INCLUDE`, `LIB`, and `LIBPATH`.
+The runtime initializes its own host toolchain, while a pinned outer toolset can advertise optional
+ATL/MFC directories that are not installed. Roslyn rejects those missing search paths before the
+runtime reaches its own Visual Studio initialization. The environment regression poisons all three
+variables and verifies that unrelated host settings still reach the runtime wrapper.
+
+Managed Apple targets link Foundation, CoreFoundation, and the Objective-C runtime
+through the common managed dependency set. These dependencies belong to Mono and
+its static native shims, including headless targets that do not link SDL. Runtime
+archives use full paths on Apple: Xcode otherwise adds a configuration subdirectory
+to library search paths, although Mono publishes directly under the triplet's
+`lib` directory. The regression builds and links actual Mach-O shared libraries for
+macOS arm64/x64, iOS arm64, and the x64 simulator with SDK symbol fixtures; installed
+Apple SDK builds remain the platform acceptance check.
+
+iOS device and simulator targets also link `icucore`: their hybrid globalization
+shim calls ICU directly, so the system library must follow the published static
+archive into the final executable. macOS uses the runtime's dynamic ICU lookup.
+The Apple link regression includes an iOS ICU symbol and verifies that removing
+the dependency makes the actual Mach-O link fail.
+
+Source-built Apple runtimes receive narrowly anchored patches to the pinned Mono
+sources before compilation. JIT-only locals and tables follow the existing JIT
+guards; fixed EventPipe array bounds use C integer constant expressions. Native
+PAL conversions are explicit and cleanup jumps do not cross initialized locals.
+The `getdomainname` configure probe checks the function's parameter type with a
+compile-time array bound: a mismatch is a compiler error even if warning
+diagnostics are disabled or demoted. Its separate CMake cache result also replaces
+values produced by the former warning-based probe. CMake policies CMP0156 and CMP0179, when available,
+deduplicate static archives for linkers that support rescanning them. Diagnostics
+remain enabled. These patches preserve the published runtime layout and are
+idempotent; an unexpected upstream source shape stops setup for review.
+
+iOS source builds preserve signed collation option masks when calling the native
+helpers and initialize the sendfile fallback's buffer bound before cleanup jumps.
+Vector I/O checks API availability at runtime before using `preadv` and `pwritev`
+(iOS 14 or newer); older supported systems use the existing `pread`/`pwrite`
+loops. This preserves the deployment minimum, positional offsets, partial I/O,
+and interrupted-call retry behavior. The regression compiles availability
+annotations for device and simulator targets, then executes both paths with
+real file I/O on the host. The `_apple_sources_v2` cache marker covers
+these corrections together with the common Apple source patches, and forces one
+rebuild and republication of runtimes with the former signature probe. Setup
+upgrades an already patched source checkout without recloning it; subsequent
+invocations reuse the corrected runtime. Other platforms keep their cache keys.
+
+Android source builds also match the native elliptic-curve diagnostic's variadic
+format to an explicit unsigned enum conversion. The source patch preserves the
+reported curve values and keeps format diagnostics enabled. Its regression
+compiles the diagnostic for all three Android architectures and executes it on
+the host, including rejection of ambiguous or changed upstream source anchors.
+
+Android x86 Mono builds use `lock cmpxchg8b` for 64-bit atomics and derive the
+other operations from CAS observations. This preserves the ABI's four-byte
+alignment of `gint64`, including fields exposed through managed `Interlocked`,
+without assuming eight-byte alignment or introducing a library mutex that could
+deadlock during GC suspension. The locked instruction and compiler memory
+clobber preserve Mono's full ordering; other architectures retain their upstream
+implementation. Regression coverage compiles the Android x86 PIC path and, when
+a Linux i386 loader and libc are installed, executes concurrent operations at
+both four- and eight-byte alignment.
+
+Browser Mono inherits its ASM compiler ID, version, and target from the already
+identified Emscripten C compiler before enabling generic ASM. CMake defines generic
+ASM as assembly handled by the C compiler, but `emcc --version` does not match its
+standalone Clang assembler probe; without the inherited ID, configure reports an
+unknown compiler and looks for `Compiler/-ASM`. The source patch leaves the compiler
+driver and `.S` build command unchanged, and rejects a moved upstream anchor.
+
+Windows runtime objects embed their debug information: C and C++ sources compile with
+`/Z7` instead of the upstream `/Zi`, in every configuration, while MASM keeps `/Zi`,
+which already embeds it. A `/Zi` object records only a reference to a compiler PDB
+beside it in the runtime's object tree. That PDB is not part of the published tree,
+so each engine link that consumed the archives reported `LNK4099` once per object
+and dropped the runtime's native symbols. `/Z7` makes the archives larger. The patch
+rewrites the shared `eng/native/configurecompiler.cmake` and Mono's own
+`src/mono/CMakeLists.txt`, which does not include it. It also rewrites the per-configuration
+flag variables, because CMake's MSVC defaults put `/Zi` into Debug. Every anchor is
+checked before either file is written. The regression configures both project shapes
+in Debug and Release and requires `/Z7` alone on every C command line.
+
+Windows and Android runtimes also answer `IsSupported` of every hardware intrinsic class the JIT does not
+implement with a constant `false`. Mono routes `System.Runtime.Intrinsics.X86`, `.Arm` and `.Wasm` classes to
+its SIMD emitter only on AMD64, ARM64 and WASM (the x86 branch is an upstream TODO). Elsewhere nothing replaces
+the property, so CoreLib's own body, `IsSupported => IsSupported`, runs and recurses until the stack overflows on
+the first vectorized call: the Windows x86 client died that way before its first frame, in the tree before the
+interop work too. The patch adds the answer to the fallback in `src/mono/mono/mini/intrinsics.c` beside the
+existing `IsHardwareAccelerated` one, looks through nested classes such as `Sse2.X64`, and rejects a moved
+anchor. On AMD64 and ARM64 the fallback is only reached with SIMD optimization disabled, where `false` is the
+right answer as well.
+
+Before every runtime build the tree's repo-local tasks mark (`artifacts/obj/tasks/<Config>/build-semaphore.txt`)
+is discarded. dotnet builds those MSBuild tasks once per tree behind that mark, but which task projects the set holds
+depends on the target: the Android ones (`AndroidAppBuilder` and friends) join it only for mobile targets. A tree whose
+first build was for Linux therefore never built them, and the Android native build failed with `MSB4062`
+(`AndroidLibBuilderTask could not be loaded`). Without the mark the task projects rebuild, incrementally.
+
+Browser, Android, Apple, Linux, and Windows source-patch contracts have separate `BUILT` and
+`READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
+target. Existing browser caches ending in `_wasmglue` rebuild and republish once
+with the ASM identification patch; Windows caches without `_embedded_debug_info`
+rebuild and republish once with embedded debug information, and Windows and Android caches
+without `_isa_fallback` once with the `IsSupported` fallback. All keep the cloned source.
+A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
+on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
+so a ready cache cannot bypass new source edits.
+
+Runtime source builds also set `UseSharedCompilation=false`. A shared Roslyn server can retain an
+interop generator's dependency path from a completed runtime checkout. Deleting that checkout then
+makes another build fail with CS8784 even though its own `Microsoft.Interop.SourceGeneration.dll`
+exists. A private compiler loads the current checkout's generator companions, so completed
+workspaces can be cleaned without invalidating another build's analyzer context.
+Windows passes the property with MSBuild's `/p:` spelling through `build.cmd` and
+PowerShell; `-p:` is ambiguous with the runtime script's named parameters. Unix
+builds retain `-p:`. The regression exercises PowerShell parameter binding with
+the conflicting runtime parameter names and preserves unrelated properties.
+
+Runtime source builds also pass `RunAnalyzers=false` and `EnableXlfLocalization=false`. Analyzers
+(NetAnalyzers, CodeStyle, StyleCop and the runtime's own) only report; they never change emitted IL,
+and the runtime's source build turns them off the same way. Xlf localization only produces satellite
+assemblies for the build-time source generators, which the published tree does not contain. Measured
+on Windows x64 from a fresh `v10.0.11` clone: `libs.sfx` 25.6 min before and 17.1 min after, and
+`mono.corelib` 2.9 min before and 1.2 min after. `Csc` is the bulk of `libs.sfx` either way (52.6
+CPU-minutes before, 36.6 after), then `ILLinkTrimAssembly` at about 5 CPU-minutes, which stays because
+it shapes the shipped libraries. All 171 class libraries of the runtime pack and
+`System.Private.CoreLib` build byte-identical with and without the properties (SHA-256 compared).
+
+Runtime source builds pass `NuGetAudit=false` as well. The audit reads a live advisory feed, and the
+runtime builds with warnings as errors, so an advisory published after a tag was cut fails the restore
+of that tag from then on: `v10.0.12` stopped restoring on `NU1904` for
+`Microsoft.Native.Quic.MsQuic.Schannel` 2.5.9 (GHSA-92f5-vc22-8j33), a package the tag names and a
+pinned checkout cannot change. The audit guards the runtime repository's own dependency hygiene, not
+what the engine ships: the published tree holds the managed `System.Net.Quic.dll` and never the native
+MsQuic library, and `managed_runtime_payload.py` copies CLR assemblies only.
+
+Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
+target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
+zlib-ng retains its own `/W3`, additional diagnostics and `/WX`; this prevents
+conflicting warning-level options without suppressing diagnostics. The patch
+also applies when rebuilding an existing clone. Already built or published
+runtime caches remain valid because the effective warning level and binary
+behavior are unchanged.
+
+The managed setup command calls the absolute host Python interpreter selected
+by CMake (Python 3.11 or newer). It retains that interpreter when a build tool
+changes `PATH`, as Xcode does for script phases. `Python3_EXECUTABLE` can select
+an explicit interpreter at configure time; the standalone `setup-mono` wrappers
+remain convenience entry points for an interactive shell.
+
+#### Managed runtime workspace cache
+
+With `FO_WORKSPACE_CACHE` set, `setup-mono` takes the published `output/mono/<triplet>` tree from the cache
+before building anything, and a build that had to run publishes its tree there afterwards. The source build
+is most of a CI build job's time, and its output depends on nothing the cache name leaves out:
+
+- the pinned `ThirdParty/dotnet-runtime` revision, the triplet, the subset and the marker suffix;
+- the code that clones, patches, builds and publishes the runtime: every module-level function, class and
+  constant `build_mono` reaches by name in `buildtools.py`, comments excluded. A patch edit therefore changes
+  the key even when nobody changes the marker suffix, while an unrelated edit to `buildtools.py` does not;
+- the target toolchain pins the archives are compiled with (Emscripten for browser; NDK, SDK and API level for
+  Android; the iOS SDK for iOS);
+- the host toolchain, because the archives are linked by another toolchain on another machine: on Windows the
+  default MSVC toolset of every Visual Studio installation with C++ tools and the newest Windows SDK (MSVC's
+  linker must be at least as new as the compiler); elsewhere the distribution, the C library, `CC`/`CXX`/
+  `CLR_CC`/`CLR_CXX` and the version of every `clang`/`clang-<N>` on `PATH`.
+
+Every key part is printed on the job log, so two jobs that unexpectedly miss each other's tree can be compared.
+A part that might matter goes in: a spurious miss costs one runtime build, a stale hit ships a runtime built some
+other way. A restored tree is extracted in isolation and adopted only if it holds `include/mono-2.0` and
+`lib/netcoreapp/System.Private.CoreLib.dll`; anything else is a miss. On a miss the clone and build markers are
+reset first, so a tree published to the cache always comes from a fresh clone rather than from source or objects
+a persistent workspace kept under markers that do not record the current build code. An already ready workspace
+does not consult the cache, and `FO_DOTNET_RUNTIME_ROOT` (a local source tree, not the pinned revision) disables
+it. Concurrent jobs that miss together each build and publish, as they would without the cache; the host's idle
+retention removes a tree nobody has read for its retention period. Before a build on a persistent workspace,
+`setup-mono` also removes a bootstrap `.dotnet` whose `sdk/<version>` directory exists without a shared runtime:
+Arcade installs the SDK only while that directory is absent, so an install a cancelled job cut short would
+otherwise fail every later build on the tree with `You must install or update .NET`.
+
+A miss, a failed store and a failed download retry are reported, never raised, and the report must not read as a
+compiler diagnostic. `setup-mono` runs as a Visual Studio custom build step, and MSBuild fails such a step on any
+output line shaped `... error <code>: ...` whatever the command returns — which is exactly how urllib renders a
+missing entry (`HTTP Error 404: Not Found`). The first cold miss on Windows therefore built and published the
+runtime and then failed the step with exit code `-1`. `describe_failure` prints the exception with that colon
+replaced (`HTTPError - HTTP Error 404 - Not Found`); `tests/test_managed_runtime_workspace_cache.py` checks the
+fetch and store lines against MSBuild's own expression.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.
 
 Start here when a new hand-authored source file must become part of a core engine library.
+
+`AddEngineSource(COMMON ...)` also forwards contributed `.h` files to codegen.
+Header classification requires the literal `.h` suffix; its bracketed-dot regex
+retains that meaning across CMake macro argument policies without backslash
+re-interpretation.
 
 ### `Codegen.cmake`
 
@@ -107,7 +394,8 @@ Start here when source grouping, library dependencies, or runtime layer boundari
 Creates custom targets for script compilation and resource baking. Current responsibilities include:
 
 - AngelScript compilation through the project AS compiler target when AngelScript scripting is enabled.
-- Mono script compilation through `BuildTools/compile-mono-scripts.py` when Mono scripting is enabled.
+- Managed script generation and compilation through the `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`, wired to the `CompileManagedScripts` target) when Managed scripting is enabled, with `SetupManagedRuntime` preparing Mono, Mono corelib, and the managed .NET class libraries under the CMake build tree before managed-linked applications are built. The runtime subset is `mono.runtime+mono.corelib+libs.native+libs.sfx`: `libs.sfx` builds the class libraries for the target OS from the pinned dotnet/runtime revision, and setup publishes them from that build's runtime pack (`artifacts/bin/microsoft.netcore.app.runtime.<rid>/<config>/runtimes/<rid>/lib/<tfm>`, the RID spelling Windows as `win`). The shared framework of the SDK dotnet/runtime downloads to build itself is never published: it matches the build host's OS instead of the target and another release than CoreLib. `PrepareManagedRuntimePayload` filters that publish tree down to managed PE assemblies from `lib/netcoreapp`, requires `System.Private.CoreLib.dll`, rejects any class library whose `AssemblyInformationalVersion` differs from CoreLib's (which is how a tree carrying another build's libraries, such as a prebuilt runtime published before this rule, is caught), and writes a SHA-256 manifest. The Managed baker places the part of this clean payload its pack's assemblies reach by reference under `ManagedRuntime/` in its resource pack ([BakingPipeline.md](BakingPipeline.md#managed-runtime-payload-selection)); native Mono/JIT files, headers, import libraries, symbols, and other build products never enter the resource output. The payload is target-platform-specific: CoreLib compiles different OS interop implementations, and 41 of the 172 class libraries (`System.Net.Http`, `System.Console`, `System.IO.MemoryMappedFiles`, ...) have Windows, Unix, browser or mobile variants. A client package therefore replaces the baker target's copy with `Binaries/Client-<platform>-<arch>/ManagedRuntime`, and a server package emits the same rebuilt pack under each distributed client's `PlatformBinaries/<target>/` directory. Setup also builds and publishes the interop shims (`libs.native`) and `libminipal`, which CoreLib reaches the OS through on every non-Windows platform — `Interop.Sys` is `libSystem.Native`, and the first managed call already needs it. The shims are linked statically and resolved at run time from a generated entry-point table (`BuildTools/generate_pinvoke_table.py`) served through a Mono dl fallback, because Windows and WebAssembly cannot load them as shared libraries. For the browser the subset additionally carries `mono.wasmruntime`, whose JavaScript glue is published beside the runtime and passed to the Emscripten link as `--pre-js` / `--js-library` / `--extern-post-js`.
+  The runtime is built with the **host's** toolchain, so `SetupManagedRuntime` follows the host and not the target: CMake invokes `buildtools.py setup-mono` with its configured Python interpreter; that helper invokes the runtime's `build.cmd` on Windows and `build.sh` elsewhere. Native configure receives `-DENABLE_OVERRIDABLE_ALLOCATORS=1` so `mono_set_allocator_vtable` actually stores the host vtable; without that flag the setter is a no-op that still returns success. One target is out of reach that way — `dotnet/runtime` has no Windows cross-target, so a non-Windows host cannot produce `windows.<arch>.<config>` at all. For that case the runtime is built once on Windows and handed over: point **`FO_MANAGED_RUNTIME_PREBUILT`** at a directory holding published `output/mono/<triplet>` trees (or at a single triplet's tree) and `setup-mono` adopts it in place of the source build, writing the same ready marker. Without it, a Windows target on a non-Windows host is refused at configure time with the reason rather than failing later inside `dotnet/runtime`.
 - Resource baking through the project baker target.
 - Build-hash/write-hash support for baked resources.
 - Normal and forced bake targets.
@@ -137,7 +425,9 @@ Examples of entry points wired here include client, client runtime library, clie
 Effekseer Editor is intentionally absent from this stage and from the
 application target graph. Its standalone `BuildTools/EffekseerEditor/build.ps1`
 entry point configures and builds upstream sources independently of an
-embedding project's FOnline CMake configuration.
+embedding project's FOnline CMake configuration. It reads CMake capabilities
+and supplies `CMAKE_POLICY_VERSION_MINIMUM` only with CMake 4 or newer, where
+that option is supported.
 
 See [Applications.md](Applications.md).
 
@@ -145,28 +435,78 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-`package.py` owns the reusable package payload layout and optional post-processing. For a Windows Client package that includes the `Wix` pack, it invokes `msicreator/createmsi.py` to build an MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, and creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` on POSIX hosts — on Debian/Ubuntu it ships in its own `wixl` apt package, not in `msitools`; WiX `candle`/`light` on Windows) or a generator/build error fails the package (it is not a silent best-effort step). All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+`package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `candle` and `light` promote warnings to errors. ICE91 alone is suppressed because every generated package has `InstallScope=perUser` and lives below `LocalAppDataFolder`, the package-only-per-user case for which ICE91 is inapplicable; the conditional ICE61 suppression remains limited to the declared same-version major-upgrade policy. Windows `light` normally runs the remaining ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)
 - deep-link URI scheme ← `Auth.UriScheme`
 - stable WiX `UpgradeCode` ← `Packaging.MsiUpgradeCode` (required; must never change once an MSI has shipped)
 - Add/Remove Programs icon ← `Packaging.AppIcon` (optional)
-- install directory and MSI base name ← the package nice name
+- install directory name and MSI base name ← the package nice name
+
+An explicit `INSTALLDIR` passed to `msiexec` has highest priority. Otherwise, a first-time interactive install prefers the path remembered by an earlier MSI, then the per-user writable `%LOCALAPPDATA%\<Common.GameName>` fallback. The selected path is stored under `HKCU\Software\<nice-name>\InstallLocation` and the directory screen always permits direct editing or browsing, including an explicit `Program Files` choice. The standalone MSI does not inspect or target Steam or another store's installation infrastructure.
+
+An MSI upgrade deliberately keeps a remembered `Program Files` path instead of moving an existing tree. The refreshed `INSTALLED` marker still routes cache, logs, resources, and native runtime updates to the per-user writable overlay described in [ClientUpdater.md](ClientUpdater.md), so the retained executable location does not block later self-updates.
 
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
+
+Native client hosts and runtime libraries share a platform/architecture binary
+directory. The packager copies ordinary runtime dependencies from that directory,
+but treats every engine-owned `Client`/`ClientLib` and
+`ClientHeadless`/`ClientLibHeadless` library name as an application binary rather
+than a companion dependency. It then adds only each explicitly requested client
+variant under its packaged basename. Consequently a stale or separately built
+headless runtime remains available as a build artifact without leaking into a
+normal Raw/Zip payload or the MSI derived from it; a package carrying the
+`Headless` token still receives the renamed headless host/runtime pair.
+
+Managed class libraries are not binary companions. The Managed baker writes a
+filtered payload into the managed resource pack, but CoreLib and the OS-variant class libraries are platform-specific.
+Its output directories carry the ordinary resource-role suffixes, for example
+`Assemblies/Assemblies-client/`. Resource packaging applies
+`-server`/`-client`/`-mapper` filtering to every path component, so it can reject
+a complete target directory and a Client pack never carries Server or Mapper
+assemblies.
+For a Client or Server part, `package.py` rebuilds that target's own resource
+pack with the corresponding binary directory's clean `ManagedRuntime` payload;
+this keeps the class libraries paired with the Mono runtime statically linked
+into the packaged application even when baking and native compilation ran in
+independent jobs or on different operating systems. It does not copy that
+payload whole: `managed_runtime_payload.select_payload` keeps CoreLib and the
+class libraries reachable by assembly reference from the `Assemblies/` entries
+of the pack being written, resolved against that target's own libraries, and
+writes a `runtime.manifest` listing exactly those files. A Client pack is
+therefore selected from client assemblies only, and a script reference neither
+the pack nor the target runtime satisfies fails packaging. For a Server part, it also
+stages one client pack at `PlatformBinaries/<target>/<pack>.zip` for every
+distributed client target. Native variants of one target share that updater
+path; their independently
+built CoreLib files need not be byte-identical, so the packager deterministically
+prefers the least-qualified binary entry (normally the default Release build).
+It never copies a side-by-side `ManagedRuntime` directory or hoists Mono
+DLLs into a package root. Native, Web, and Android packages retain the same
+resource paths while carrying target-appropriate contents; the backend restores
+them into the writable runtime cache.
 
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate
-ZIP names.
+ZIP names. Applications sharing a package root must therefore agree on every
+common file they emit. Each Client package part owns its target-specific managed
+resource pack; server-side updater copies live below distinct target directories.
+`buildtools.py build <platform> full
+<config>` builds the client, server and tools in one CMake tree with one
+`SetupManagedRuntime` output. Both `full` and `toolset` leave
+`FO_BUILD_ASCOMPILER` to the embedding project's default so a managed-only
+project does not enable AngelScript tools.
 
 The universal package schema has no `EffekseerEditor` binary role. Separately
 built tools are declared alongside `BINARY` parts with
 `INCLUDE <source-path-glob> <target-path-in-pack>`. The source glob is relative
 to `FO_OUTPUT_PATH`. After the ordinary binary parts are assembled, the generic
 packager replaces the included target tree and updates an existing `SingleZip`
-without duplicate or stale entries. This path is covered by
+at `<output>/<devname>-<package>/<devname>-<package>.zip`, alongside the staged
+package payload, without duplicate or stale entries. This path is covered by
 `BuildTools/tests/test_package_include.py`.
 
 Start here when platform package layout, package target naming, package script arguments, or package-time installer metadata changes.

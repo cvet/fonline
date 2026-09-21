@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,8 +45,6 @@ struct Application::Context
 int32_t AppRender::MAX_ATLAS_WIDTH {8192};
 int32_t AppRender::MAX_ATLAS_HEIGHT {8192};
 int32_t AppRender::MAX_BONES {32};
-const int32_t AppAudio::AUDIO_FORMAT_U8 = 0;
-const int32_t AppAudio::AUDIO_FORMAT_S16 = 1;
 
 Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Settings {std::move(settings)},
@@ -54,7 +52,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     Render {make_ptr(this)},
     Input {make_ptr(this)},
     Audio {make_ptr(this)},
-    _ctx {SafeAlloc::MakeUnique<Context>()}
+    _ctx {safe_alloc::make_unique<Context>()}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -69,11 +67,14 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     ignore_unused(_imguiEffect);
     ignore_unused(MainWindow._grabbed);
 
-    _ctx->HeadlessRenderer.Init(Settings, nullptr);
-    MainWindow._windowHandle = CreateInternalWindow({Settings.ScreenWidth, Settings.ScreenHeight});
-    MainWindow._title = Settings.GameName;
-    MainWindow._virtualSize = {Settings.ScreenWidth, Settings.ScreenHeight};
-    MainWindow._virtualScreenSize = {Settings.ScreenWidth, Settings.ScreenHeight};
+    ScreenState.Size = {Settings.View.ScreenWidth, Settings.View.ScreenHeight};
+    ScreenState.Fullscreen = Settings.Render.Fullscreen;
+
+    _ctx->HeadlessRenderer.Init(Settings, &ScreenState, nullptr);
+    MainWindow._windowHandle = CreateInternalWindow(ScreenState.Size);
+    MainWindow._title = Settings.Common.GameName;
+    MainWindow._virtualSize = ScreenState.Size;
+    MainWindow._virtualScreenSize = ScreenState.Size;
     auto main_window = make_ptr(&MainWindow);
     _allWindows.emplace_back(main_window);
     _activeWindow = main_window;
@@ -122,10 +123,10 @@ auto Application::CreateChildWindow(isize32 size, string_view title) -> ptr<AppW
     FO_STACK_TRACE_ENTRY();
 
     if (size.width <= 0 || size.height <= 0) {
-        size = {Settings.ScreenWidth, Settings.ScreenHeight};
+        size = ScreenState.Size;
     }
 
-    auto window = SafeAlloc::MakeUnique<AppWindow>(this);
+    auto window = safe_alloc::make_unique<AppWindow>(this);
     window->_isVirtual = true;
     window->_virtualSize = size;
     window->_virtualScreenSize = size;
@@ -226,7 +227,7 @@ auto Application::GetMainWindowBackbufferSize() const -> isize32
 {
     FO_STACK_TRACE_ENTRY();
 
-    return {Settings.ScreenWidth, Settings.ScreenHeight};
+    return ScreenState.Size;
 }
 
 void Application::SyncMainWindowBackbufferSize()
@@ -268,11 +269,11 @@ void Application::BeginWindowRender(ptr<AppWindow> window)
     isize32 screen_size = window->GetScreenSize();
 
     if (screen_size.width > 0 && screen_size.height > 0) {
-        _hostScreenWidthSaved = Settings.ScreenWidth;
-        _hostScreenHeightSaved = Settings.ScreenHeight;
+        _hostScreenWidthSaved = ScreenState.Size.width;
+        _hostScreenHeightSaved = ScreenState.Size.height;
         _hostScreenSizeSaved = true;
-        Settings.ScreenWidth = screen_size.width;
-        Settings.ScreenHeight = screen_size.height;
+        ScreenState.Size.width = screen_size.width;
+        ScreenState.Size.height = screen_size.height;
     }
 }
 
@@ -292,8 +293,8 @@ void Application::EndWindowRender()
 
     if (was_virtual) {
         if (_hostScreenSizeSaved) {
-            Settings.ScreenWidth = _hostScreenWidthSaved;
-            Settings.ScreenHeight = _hostScreenHeightSaved;
+            ScreenState.Size.width = _hostScreenWidthSaved;
+            ScreenState.Size.height = _hostScreenHeightSaved;
             _hostScreenSizeSaved = false;
         }
 
@@ -326,7 +327,7 @@ auto Application::CreateInternalWindow(isize32 size) -> ptr<WindowInternalHandle
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto handle = SafeAlloc::MakeUnique<HeadlessWindowStub>();
+    auto handle = safe_alloc::make_unique<HeadlessWindowStub>();
     handle->Size = size;
 
     auto headless_window = handle.as_ptr();
@@ -495,7 +496,7 @@ void Application::RequestQuit(bool success) noexcept
     }
 
     if (bool expected = false; _quit.compare_exchange_strong(expected, true)) {
-        WriteLog("Quit requested");
+        logging::write("Quit requested");
 
         _quitEvent.notify_all();
     }
@@ -521,7 +522,7 @@ auto AppWindow::GetSize() const -> isize32
     FO_STACK_TRACE_ENTRY();
 
     if (_isVirtual) {
-        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : isize32 {_app->Settings.ScreenWidth, _app->Settings.ScreenHeight};
+        return _virtualSize.width > 0 && _virtualSize.height > 0 ? _virtualSize : _app->ScreenState.Size;
     }
 
     return ResolveWindowStub()->Size;
@@ -549,7 +550,7 @@ auto AppWindow::GetScreenSize() const -> isize32
         return _virtualScreenSize.width > 0 && _virtualScreenSize.height > 0 ? _virtualScreenSize : GetSize();
     }
 
-    return {GetApp()->Settings.ScreenWidth, GetApp()->Settings.ScreenHeight};
+    return {GetApp()->ScreenState.Size.width, GetApp()->ScreenState.Size.height};
 }
 
 void AppWindow::SetScreenSize(isize32 size)
@@ -563,9 +564,9 @@ void AppWindow::SetScreenSize(isize32 size)
         }
     }
     else {
-        if (size.width != GetApp()->Settings.ScreenWidth || size.height != GetApp()->Settings.ScreenHeight) {
-            GetApp()->Settings.ScreenWidth = size.width;
-            GetApp()->Settings.ScreenHeight = size.height;
+        if (size.width != GetApp()->ScreenState.Size.width || size.height != GetApp()->ScreenState.Size.height) {
+            GetApp()->ScreenState.Size.width = size.width;
+            GetApp()->ScreenState.Size.height = size.height;
             _onScreenSizeChangedDispatcher();
         }
     }
@@ -639,7 +640,7 @@ auto AppWindow::ToggleFullscreen(bool enable) -> bool
     auto window = ResolveWindowStub();
     bool changed = window->Fullscreen != enable;
     window->Fullscreen = enable;
-    _app->Settings.Fullscreen = enable;
+    _app->ScreenState.Fullscreen = enable;
     _app->_mainWindowFullscreenBackbufferMode = enable;
 
     return changed;
@@ -881,11 +882,10 @@ void AppAudio::SetSource(AudioStreamCallback stream_callback)
     FO_VERIFY_AND_THROW(IsEnabled(), "Application subsystem is not enabled");
 }
 
-auto AppAudio::ConvertAudio(int32_t format, int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
+auto AppAudio::ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    ignore_unused(format);
     ignore_unused(channels);
     ignore_unused(rate);
     ignore_unused(buf);
@@ -965,7 +965,7 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
     std::cout << "Type numbers separated by space: ";
 
     string str;
-    std::getline(std::cin, str);
+    getline(std::cin, str);
 
     auto in_selected = strex(str).split_to_int32(' ');
 

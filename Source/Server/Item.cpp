@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,9 +56,16 @@ Item::~Item()
 
     FO_VALIDATE_ENTITY(NONE);
 
-    if (!_engine->IsShutdownInProgress()) {
-        FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
-    }
+    FO_VERIFY_AND_CONTINUE(!_innerItems || _innerItems->empty(), "Server item has inner items during destruction", GetId());
+}
+
+void Item::ClearAllAssociations() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(NONE);
+
+    _innerItems.reset();
 }
 
 auto Item::GetName() const noexcept -> string_view
@@ -101,6 +108,27 @@ auto Item::GetOwnedLock() noexcept -> ptr<EntityLock>
     return &_ownedLock;
 }
 
+auto Item::IsInsideContainer(ptr<const Item> container) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    for (auto current = make_nptr(this).try_hold_ref(); current;) {
+        if (current == container.get()) {
+            return true;
+        }
+
+        if (current->GetOwnership() != ItemOwnership::ItemContainer) {
+            break;
+        }
+
+        current = current->GetParent<Item>();
+    }
+
+    return false;
+}
+
 auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 {
     FO_STACK_TRACE_ENTRY();
@@ -113,25 +141,6 @@ auto Item::GetInnerItem(ident_t item_id) noexcept -> nptr<Item>
 
     for (auto& item : *_innerItems) {
         if (item->GetId() == item_id) {
-            return item;
-        }
-    }
-
-    return nullptr;
-}
-
-auto Item::GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>
-{
-    FO_STACK_TRACE_ENTRY();
-
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
-
-    if (!_innerItems) {
-        return nullptr;
-    }
-
-    for (auto& item : *_innerItems) {
-        if (item->GetProtoId() == pid && (stack_id.empty() || item->GetContainerStack() == stack_id)) {
             return item;
         }
     }
@@ -241,20 +250,9 @@ auto Item::AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     EnsureEntitySynced(item);
 
-    if (item->GetStackable()) {
-        auto item_already = GetInnerItemByPid(item->GetProtoId(), stack_id);
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
-        }
-    }
+    // A container moved into its own subtree tears that branch off the world and makes every holder walk endless,
+    // so the cycle is refused before any ownership is written
+    FO_VERIFY_AND_THROW(!IsInsideContainer(item), "Container cannot be placed inside itself", GetId(), item->GetId());
 
     if (!_innerItems) {
         _innerItems.emplace();
@@ -313,12 +311,12 @@ auto Item::CanSendItem(bool as_public) const noexcept -> bool
         auto slot = GetCritterSlot();
         size_t slot_num = static_cast<size_t>(slot);
 
-        if (slot_num >= _engine->Settings->CritterSlotEnabled.size() || !_engine->Settings->CritterSlotEnabled[slot_num]) {
+        if (slot_num >= _engine->Settings->Critter.CritterSlotEnabled.size() || !_engine->Settings->Critter.CritterSlotEnabled[slot_num]) {
             return false;
         }
 
         if (as_public) {
-            if (slot_num >= _engine->Settings->CritterSlotSendData.size() || !_engine->Settings->CritterSlotSendData[slot_num]) {
+            if (slot_num >= _engine->Settings->Critter.CritterSlotSendData.size() || !_engine->Settings->Critter.CritterSlotSendData[slot_num]) {
                 return false;
             }
         }

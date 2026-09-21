@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -377,7 +377,7 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
     auto pid = GetGenericAddressArgAs<const hstring>(gen, 0);
-    hstring entity_hname = engine->Hashes.ToHashedString(*entity_name);
+    hstring entity_hname = engine->Hashes.to_hashed_string(*entity_name);
     nptr<const ProtoEntity> proto = engine->GetProtoEntity(entity_hname, *pid);
 
     if (!proto) {
@@ -398,7 +398,7 @@ static void Game_CheckProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
     auto pid = GetGenericAddressArgAs<const hstring>(gen, 0);
-    hstring entity_hname = engine->Hashes.ToHashedString(*entity_name);
+    hstring entity_hname = engine->Hashes.to_hashed_string(*entity_name);
     nptr<const ProtoEntity> proto = engine->GetProtoEntity(entity_hname, *pid);
 
     new (gen->GetAddressOfReturnLocation()) bool(proto);
@@ -411,7 +411,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
-    hstring entity_type = engine->Hashes.ToHashedString(*entity_name);
+    hstring entity_type = engine->Hashes.to_hashed_string(*entity_name);
     const auto& protos = engine->GetProtoEntities(entity_type);
     bool is_fixed_type = engine->IsFixedType(entity_type);
 
@@ -435,7 +435,7 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
-    hstring entity_type = engine->Hashes.ToHashedString(*entity_name);
+    hstring entity_type = engine->Hashes.to_hashed_string(*entity_name);
     int32_t prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
     auto prop_value = GetGenericAddressArgAs<const any_t>(gen, 1);
     auto registrar = engine->GetPropertyRegistrar(*entity_name);
@@ -479,7 +479,7 @@ static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto backend = GetScriptBackend(as_engine);
     auto id = GetGenericAddressArgAs<const ident_t>(gen, 0);
-    hstring entity_hname = backend->GetMetadata()->Hashes.ToHashedString(*entity_name);
+    hstring entity_hname = backend->GetMetadata()->Hashes.to_hashed_string(*entity_name);
     auto entity_mngr = backend->GetEntityMngr();
 
     auto custom_entity = entity_mngr->GetCustomEntity(entity_hname, *id);
@@ -813,7 +813,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     }
 
     if (has_value_ref) {
-        // Value-transforming setter: runs before the value is stored so it can rewrite prop_data.
+        // Value-transforming setter: runs before the value is stored so it can rewrite prop_data
         prop->AddSetter([=](nptr<Entity> entity, ptr<const Property>, PropertyRawData& prop_data) mutable FO_DEFERRED {
             int32_t as_result = 0;
             FO_VERIFY_AND_THROW(entity, "Property setter target entity is null");
@@ -846,7 +846,7 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
     }
     else {
         // React-only setter: runs after the value is committed (post-setter), so the callback sees the new value
-        // and executes inside the writing caller's lock cover.
+        // and executes inside the writing caller's lock cover
         prop->AddPostSetter([=](nptr<Entity> entity, ptr<const Property>) mutable FO_DEFERRED {
             int32_t as_result = 0;
             FO_VERIFY_AND_THROW(entity, "Property setter target entity is null");
@@ -934,7 +934,7 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
     FO_VERIFY_AND_THROW(method->Call, "Method call binding is null");
 
     ScriptGenericCall(gen, false, method->Args, [&](FuncCallData& base_call) {
-        FuncCallData call = base_call;
+        FuncCallData call {.Accessor = base_call.Accessor, .ArgsData = base_call.ArgsData, .RetData = base_call.RetData};
         nptr<Entity> engine_arg = engine;
         small_vector<ptr<void>, 2> args_data;
         args_data.reserve(base_call.ArgsData.size() + 1);
@@ -995,7 +995,7 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
     Entity::EventCallbackData event_data;
 
-    event_data.Callback = [func_ = refcount_ptr<AngelScript::asIScriptFunction>::from_add_ref(func.get())](FuncCallData& call) mutable -> Entity::EventResult FO_DEFERRED {
+    event_data.Callback = [func_ = refcount_ptr<AngelScript::asIScriptFunction>::from_addref(func.get())](FuncCallData& call) mutable -> Entity::EventResult FO_DEFERRED {
         bool event_has_result = func_->GetReturnTypeId() != AngelScript::asTYPEID_VOID;
         Entity::EventResult event_result = Entity::EventResult::ContinueChain;
         call.RetData = event_has_result ? make_nptr(&event_result).void_cast() : nullptr;
@@ -1146,9 +1146,8 @@ void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
     FO_VERIFY_AND_THROW(meta, "Missing engine metadata");
 
     // Register entities
-    auto const_name = [&](const char* name) -> ptr<const string> {
-        hstring hname = meta->Hashes.ToHashedString(name);
-        return hname.as_str_ptr();
+    auto const_name = [&](const char* name) -> ptr<const string> { //
+        return backend->InternUserString(name);
     };
 
     auto register_base_entity = [&](const char* name) {

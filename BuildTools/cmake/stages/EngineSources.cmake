@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.22)
 
-# === Stage: EngineSources ===
-# Auto-extracted from FinalizeGeneration.cmake by the staged-pipeline refactor.
-# Add or override behaviour via AddStageHook(EngineSources Pre|Post <macro-name>).
+# Register engine sources and extend through AddStageHook(EngineSources Pre|Post <macro-name>)
 
 # App icon
 SetValue(FO_RC_FILE "${CMAKE_CURRENT_BINARY_DIR}/${FO_DEV_NAME}.rc")
@@ -25,10 +23,20 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/BaseLogging.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FatalError.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FunctionObjects.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/FunctionObjects.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/SmartPointers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/MemorySystem.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StringObject.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DequeObject.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/DequeObject.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/RandomGenerator.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/RandomGenerator.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/StringObject.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/Containers.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/StringUtils.cpp"
@@ -36,6 +44,10 @@ AppendList(FO_ESSENTIALS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Essentials/UcsTables.inc"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/DiskFileSystem.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/WinApi.cpp"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Posix.h"
+    "${FO_ENGINE_ROOT}/Source/Essentials/Posix.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Essentials/Platform.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/ExceptionHandling.h"
@@ -102,6 +114,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/FileSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/Geometry.h"
+    "${FO_ENGINE_ROOT}/Source/Common/ImageWriter.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/ImageWriter.h"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/LineTracer.h"
     "${FO_ENGINE_ROOT}/Source/Common/Movement.cpp"
@@ -124,6 +138,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/PropertiesSerializer.h"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ProtoManager.h"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/RemoteCallWire.h"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ScriptSystem.h"
     "${FO_ENGINE_ROOT}/Source/Common/Settings.cpp"
@@ -148,6 +164,22 @@ AppendList(FO_COMMON_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/GenericCode-Common.gen.cpp"
     "$<$<BOOL:${MSVC}>:${FO_ENGINE_ROOT}/BuildTools/natvis/fonline.natjmc>")
+
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_COMMON_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedInteropAbi.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedInteropAbi.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedPInvokeTable.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedPInvokeTable.cpp"
+        "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/ManagedPInvokeTable.gen.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedHost/ManagedLoadContextHost.cs")
+endif()
 
 AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ClientDataValidation.cpp"
@@ -190,6 +222,8 @@ AppendList(FO_SERVER_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/ServerEntity.h"
+    "${FO_ENGINE_ROOT}/Source/Server/StaticMap.cpp"
+    "${FO_ENGINE_ROOT}/Source/Server/StaticMap.h"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Server/UpdaterBackend.h"
     "${FO_ENGINE_ROOT}/Source/Server/WorkerPool.cpp"
@@ -211,6 +245,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/ClientEntity.h"
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ClientRuntimeApi.h"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/ClientSessionMarker.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/CritterHexView.h"
     "${FO_ENGINE_ROOT}/Source/Client/CritterView.cpp"
@@ -268,8 +304,8 @@ AppendList(FO_CLIENT_BASE_SOURCE
     "${FO_ENGINE_ROOT}/Source/Client/RenderTarget.h"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/ResourceManager.h"
-    "${FO_ENGINE_ROOT}/Source/Client/SoundManager.cpp"
-    "${FO_ENGINE_ROOT}/Source/Client/SoundManager.h"
+    "${FO_ENGINE_ROOT}/Source/Client/AudioManager.cpp"
+    "${FO_ENGINE_ROOT}/Source/Client/AudioManager.h"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.cpp"
     "${FO_ENGINE_ROOT}/Source/Client/SparkExtension.h"
     "${FO_ENGINE_ROOT}/Source/Client/SpriteManager.cpp"
@@ -324,6 +360,8 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/Baker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.h"
     "${FO_ENGINE_ROOT}/Source/Tools/BakingReport.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
@@ -362,6 +400,14 @@ AppendList(FO_BAKER_SOURCE
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-ClientStub.gen.cpp"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/MetadataRegistration-MapperStub.gen.cpp")
 
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_BAKER_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"
+        "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.cpp")
+endif()
+
 AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Essentials/ExtendedTypes.h"
     "${FO_ENGINE_ROOT}/Source/Essentials/TimeRelated.h"
@@ -391,6 +437,7 @@ AppendList(FO_SOURCE_META_FILES
     "${FO_ENGINE_ROOT}/Source/Server/Map.h"
     "${FO_ENGINE_ROOT}/Source/Server/Player.h"
     "${FO_ENGINE_ROOT}/Source/Server/Server.h"
+    "${FO_ENGINE_ROOT}/Source/Server/ServerConnection.h"
     "${FO_ENGINE_ROOT}/Source/Tools/Mapper.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerEntityScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Scripting/ServerGlobalScriptMethods.cpp"
@@ -454,21 +501,16 @@ if(FO_NATIVE_SCRIPTING AND FO_NATIVE_SCRIPTS_DIR)
 endif()
 
 AppendList(FO_TESTS_SOURCE
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_AnyData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ApplicationHeadless.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_AudioManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BaseLogging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BasicCore.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonHelpers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_BakerSetup.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_CacheStorage.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SettingsStorage.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ConfigBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Compressor.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Common.cpp"
@@ -476,6 +518,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientRuntimeApi.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Containers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataBase.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_DequeObject.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSerialization.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DataSource.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_DiskFileSystem.cpp"
@@ -484,12 +527,15 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EngineMetadata.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExceptionHandling.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FileSystem.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ImageWriter.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_FogOfWar.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Rendering.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Settings.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SmartPointers.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StackTrace.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ExtendedTypes.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_FunctionObjects.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_StringObject.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GenericUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Geometry.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_GlobalData.cpp"
@@ -500,7 +546,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Logging.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapSprite.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
@@ -528,29 +574,53 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoManager.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ProtoTextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Properties.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_RandomGenerator.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Platform.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_RawCopyBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientDataValidation.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEntityLifetime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientUpdater.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_SafeArithmetics.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLifetime.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEntityLoading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEventContracts.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
-    "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StrongType.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_StringUtils.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextureAtlas.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_Threading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TwoDimensionalGrid.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_UpdaterBackend.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkerPool.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_EntitySync.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_WorkThread.cpp")
+
+if(FO_ANGELSCRIPT_SCRIPTING)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAlignment.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptAttributes.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_EntityLifecycle.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_LocationAndEntityMgmt.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_Mapper.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptBuiltins.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ScriptEntityOps.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerAdvancedOps.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerEngine.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerItems.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerMapOperations.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ServerScriptMethods.cpp")
+endif()
+
+if(FO_MANAGED_SCRIPTING)
+    AppendList(FO_TESTS_SOURCE
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_ManagedScriptBaker.cpp")
+endif()

@@ -3,15 +3,24 @@
 from __future__ import annotations
 
 import argparse
+import ast
+import hashlib
+import io
+import json
 import os
+import platform
 import re
 import shlex
 import shutil
+import ssl
 import stat
 import subprocess
 import sys
 import tarfile
 import tempfile
+import time
+import tokenize
+import urllib.parse
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -30,6 +39,7 @@ class ValidationTarget(TypedDict):
 	run_target: NotRequired[str]
 	workspace_parts: NotRequired[tuple[str, ...]]
 	msan_libcxx: NotRequired[bool]
+	cmake_args: NotRequired[tuple[str, ...]]
 
 
 def make_flag_map(*enabled_flag_names: str) -> FlagMap:
@@ -44,6 +54,7 @@ def make_validation_target(
 	run_target_name: str | None = None,
 	workspace_parts: Sequence[str] = (),
 	msan_libcxx: bool = False,
+	cmake_args: Sequence[str] = (),
 ) -> ValidationTarget:
 	validation_target: ValidationTarget = {
 		'platform': platform_name,
@@ -58,6 +69,8 @@ def make_validation_target(
 		validation_target['workspace_parts'] = tuple(workspace_parts)
 	if msan_libcxx:
 		validation_target['msan_libcxx'] = True
+	if cmake_args:
+		validation_target['cmake_args'] = tuple(cmake_args)
 	return validation_target
 
 
@@ -126,6 +139,8 @@ BUILD_TARGETS: dict[str, FlagMap] = {
 
 AUXILIARY_BUILD_TARGETS = ('effekseer-editor',)
 
+MANAGED_VALIDATION_CMAKE_ARGS = ('-DFO_MANAGED_SCRIPTING=ON', '-DFO_ANGELSCRIPT_SCRIPTING=OFF')
+
 VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('linux', 'linux', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('linux-gcc', 'linux', COMMON_VALIDATION_TARGET_NAMES, compiler_name='gcc'),
@@ -135,7 +150,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	},
 	**make_validation_target_set('win64', 'win64', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
-	'unit-tests': make_validation_target('linux', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
+	'unit-tests': make_validation_target('native', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
 	'unit-tests-san-address': make_validation_target('linux', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'unit-tests-san-memory': make_validation_target('linux', 'unit-tests', 'San_Memory', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
@@ -143,6 +158,9 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	'unit-tests-san-thread': make_validation_target('linux', 'unit-tests', 'San_Thread', run_target_name='RunUnitTests'),
 	'win64-unit-tests-san-address': make_validation_target('win64', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'code-coverage': make_validation_target('linux', 'code-coverage', 'Debug', compiler_name='gcc', run_target_name='RunCodeCoverage'),
+	'managed-mac-client': make_validation_target('mac', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
+	'managed-ios-simulator-client': make_validation_target('ios', 'client', 'Release', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
+	'managed-ios-device-client': make_validation_target('ios', 'client', 'Release', cmake_args=(*MANAGED_VALIDATION_CMAKE_ARGS, '-DPLATFORM=OS64', '-DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO')),
 }
 
 ANDROID_PLATFORMS = ('android-arm32', 'android-arm64', 'android-x86')
@@ -173,7 +191,7 @@ WINDOWS_BUILD_BY_PLATFORM = {
 FORMAT_PATTERNS = [
 	'**/*.cpp',
 	'**/*.h',
-	'**/*.fos',
+	'**/*.cs',
 ]
 UTF8_BOM = b'\xef\xbb\xbf'
 CLANG_FORMAT_VERSION_RE = re.compile(r'clang-format version (\d+)(?:\.|\b)')
@@ -181,6 +199,21 @@ CLANG_VERSION_RE = re.compile(r'\bversion\s+(\d+\.\d+\.\d+)\b')
 XWIN_SPLAT_ARCHES = ('x86', 'x86_64')
 XWIN_ARCH_LIB_PARENT_DIRS = (Path('crt/lib'), Path('sdk/lib/um'), Path('sdk/lib/ucrt'))
 XWIN_HTTP_RETRY_COUNT = '5'
+
+DOWNLOAD_RETRY_COUNT = 5
+DOWNLOAD_RETRY_DELAY_SEC = 3
+DOWNLOAD_TIMEOUT_SEC = 900
+
+# Every archive here comes from a machine somebody else runs, and a dropped connection costs the job that
+# is waiting on it. A deployment may put a host of its own in front of them all; the engine only needs to
+# know where it is, so the addresses stay out of the engine and travel in the environment.
+# `FO_DOWNLOAD_MIRROR` mirrors an upstream file as `<mirror>/<host>/<path>`; `FO_WORKSPACE_CACHE` holds
+# prepared workspaces, which are built once and then downloaded whole
+DOWNLOAD_MIRROR_VAR = 'FO_DOWNLOAD_MIRROR'
+WORKSPACE_CACHE_VAR = 'FO_WORKSPACE_CACHE'
+WORKSPACE_CACHE_GZIP_LEVEL = 1
+CI_TOKEN_VAR = 'FO_CI_TOKEN'
+CI_CA_VAR = 'FO_CI_CA'
 
 # clang-format treats `?` as a binary operator and inserts whitespace around
 # it: `Critter? cr` becomes `Critter ? cr`. AngelScript uses `T?` as a
@@ -192,7 +225,7 @@ XWIN_HTTP_RETRY_COUNT = '5'
 # and optional `[]` (covers `Critter`, `Critter[]`, `TutorialSystem::Point`,
 # etc.) or a lowercase primitive followed by `[]` (covers `hstring[]`,
 # `int[]`, `string[]` â€" array-of-primitive is itself a handle and can carry
-# `?`, but the bare primitive cannot, so the `[]` is mandatory here).
+# `?`, but the bare primitive cannot, so the `[]` is mandatory here)
 _FOS_NULLABLE_TYPE = r'(?:[A-Z][\w:]*(?:\[\])?|[a-z][\w]*\[\])'
 FOS_NULLABLE_SUFFIX_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*(?:[(,)=;]|\[\]))'
@@ -200,7 +233,7 @@ FOS_NULLABLE_SUFFIX_RE = re.compile(
 # Inside function bodies we also need to repair uninitialized declarations
 # `Critter ? targetCr;` â€" the trailing `;` (no `=`) form. A ternary always
 # carries `:` between its branches and never `;` directly after the candidate
-# identifier, so adding `;` here doesn't collide with ternary parsing.
+# identifier, so adding `;` here doesn't collide with ternary parsing
 FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 	r'(?<![.\w])(' + _FOS_NULLABLE_TYPE + r')\s+\?\s+([A-Za-z_]\w*)(\s*[=;])'
 )
@@ -212,7 +245,7 @@ FOS_NULLABLE_SUFFIX_BODY_RE = re.compile(
 # `[]`, and a `:` whose left side is an argument-position identifier, are all
 # unambiguous markers, so the inserted spacing is collapsed back. String / char
 # literals and comments are masked first so literal text is never rewritten. Kept
-# in sync with `Tools/Formatter/format_project.py` in the embedding project.
+# in sync with `Tools/Formatter/format_project.py` in the embedding project
 _FOS_ANGLE_NAME = r'(?:cast|[A-Za-z_]\w*)'
 _FOS_ANGLE_SUBTYPE = r'[\w:]+(?:\s*\[\s*\])?'
 FOS_NULLABLE_ANGLE_CALL_RE = re.compile(
@@ -233,7 +266,7 @@ def _fos_collapse_nullable_angle(match: 're.Match[str]', suffix: str) -> str:
 
 LINUX_PACKAGE_GROUPS = {
 	'common-packages': (
-		'12',
+		'13',
 		[
 			'clang-20',
 			'clang-format-20',
@@ -245,6 +278,7 @@ LINUX_PACKAGE_GROUPS = {
 			'cmake',
 			'python3',
 			'python3-pytest',
+			'php-cli',
 			'wget',
 			'unzip',
 			'binutils-dev',
@@ -270,20 +304,29 @@ LINUX_PACKAGE_GROUPS = {
 		'1',
 		# wixl builds the Windows MSI installer (Wix pack) on the Linux package runner. On
 		# Debian/Ubuntu it ships in its own "wixl" package — the "msitools" package only carries
-		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl.
+		# msiinfo/msibuild/msidiff/msiextract and does NOT include wixl
 		['wixl'],
 	),
 }
 
 ANDROID_REQUIRED_SDK_PACKAGES = (
 	'platform-tools',
-	'build-tools;34.0.0',
-	'platforms;android-35',
+	'build-tools/36.0.0',
+	'platforms/android-35',
 )
+
+
+MSBUILD_DIAGNOSTIC_SHAPE = re.compile(r'\b(error|warning)((?:\s+[^:\s]*)?)\s*:', re.IGNORECASE)
 
 
 def log(*parts: object) -> None:
 	print('[BuildTools]', *parts, flush=True)
+
+
+def describe_failure(ex: BaseException) -> str:
+	# MSBuild fails a custom build step on any output line shaped '... error <code>: ...' whatever the command returns, and
+	# urllib renders a missing cache entry exactly so ('HTTP Error 404: Not Found'), so that colon is never printed
+	return MSBUILD_DIAGNOSTIC_SHAPE.sub(r'\1\2 -', f'{type(ex).__name__} - {ex}')
 
 
 class TerminalProgress:
@@ -406,7 +449,7 @@ def make_cmake_build_cmd(
 		command.extend(['--target', target_name])
 	# CMake `--parallel` without a value translates to `make -j` (unbounded) for the Unix Makefiles
 	# generator and ignores CMAKE_BUILD_PARALLEL_LEVEL. Always pick an explicit number so callers
-	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env.
+	# that need a memory-safe cap (e.g. GCC Debug on small CI runners) can set it via env
 	env_for_lookup = env if env is not None else os.environ
 	parallel_jobs = env_for_lookup.get('CMAKE_BUILD_PARALLEL_LEVEL')
 	if not parallel_jobs:
@@ -520,6 +563,7 @@ def resolve_env() -> EnvMap:
 		'FO_DOTNET_RUNTIME': read_first_line(third_party / 'dotnet-runtime'),
 		'FO_IOS_SDK': read_first_line(third_party / 'iOS-sdk'),
 		'FO_XWIN_VERSION': read_first_line(third_party / 'xwin'),
+		'FO_WIX_VERSION': read_first_line(third_party / 'wix'),
 	}
 
 	xwin_root = workspace / 'xwin'
@@ -540,6 +584,7 @@ def resolve_env() -> EnvMap:
 	dotnet_runtime_root = workspace / 'dotnet' / 'runtime'
 	env['FO_ANDROID_NDK_ROOT'] = str(ndk_root) if ndk_root.is_dir() else os.environ.get('FO_ANDROID_NDK_ROOT', '')
 	env['FO_DOTNET_RUNTIME_ROOT'] = os.environ.get('FO_DOTNET_RUNTIME_ROOT') or (str(dotnet_runtime_root) if dotnet_runtime_root.is_dir() else '')
+	env['FO_MANAGED_RUNTIME_PREBUILT'] = os.environ.get('FO_MANAGED_RUNTIME_PREBUILT', '')
 	return env
 
 
@@ -574,9 +619,11 @@ def print_env_summary(env: Mapping[str, str]) -> None:
 		'FO_ANDROID_NDK_ROOT',
 		'FO_DOTNET_RUNTIME',
 		'FO_DOTNET_RUNTIME_ROOT',
+		'FO_MANAGED_RUNTIME_PREBUILT',
 		'FO_IOS_SDK',
 		'FO_XWIN_VERSION',
 		'FO_XWIN_ROOT',
+		'FO_WIX_VERSION',
 	]:
 		log('-', f'{key}={env.get(key, "")}')
 
@@ -684,6 +731,9 @@ def build_flag_args(target_name: str, config: str | None = None) -> list[str]:
 		raise SystemExit(f'Unknown build target: {target_name}')
 	flags = {name: 0 for name in FLAG_NAMES}
 	flags.update(BUILD_TARGETS[target_name])
+	# Aggregate builds follow the embedding project's scripting backend selection
+	if target_name in ('full', 'toolset'):
+		flags.pop('FO_BUILD_ASCOMPILER')
 	args = [f'-D{name}={value}' for name, value in flags.items()]
 	if config:
 		args.append(f'-DCMAKE_BUILD_TYPE={config}')
@@ -724,23 +774,283 @@ def copy_directory(source_path: str | Path, target_path: str | Path, dirs_exist_
 	shutil.copytree(source_path, target_path, dirs_exist_ok=dirs_exist_ok)
 
 
+def download_mirror() -> str:
+	return os.environ.get(DOWNLOAD_MIRROR_VAR, '').rstrip('/')
+
+
+def mirrored_url(url: str) -> str:
+	"""The same file behind the configured mirror, or the URL unchanged when no mirror is configured.
+
+	A query is passed through rather than dropped: none of these downloads carry one, and a mirror that
+	refuses it is a visible failure, while silently fetching upstream instead would hide the day one appears.
+	"""
+	mirror = download_mirror()
+	if not mirror:
+		return url
+
+	parts = urllib.parse.urlsplit(url)
+	if parts.scheme not in ('http', 'https') or not parts.hostname:
+		return url
+
+	query = f'?{parts.query}' if parts.query else ''
+	return f'{mirror}/{parts.hostname}{parts.path}{query}'
+
+
+def ci_origins() -> set[str]:
+	"""The scheme and host of every configured CI address; nothing else may be handed the credential."""
+	found = set()
+
+	for name in (DOWNLOAD_MIRROR_VAR, WORKSPACE_CACHE_VAR):
+		parts = urllib.parse.urlsplit(os.environ.get(name, ''))
+
+		if parts.scheme and parts.netloc:
+			found.add(f'{parts.scheme}://{parts.netloc}')
+
+	return found
+
+
+def ci_request(url: str, data=None, method: str | None = None) -> urllib.request.Request:
+	request = urllib.request.Request(url, data=data, method=method)
+	token = os.environ.get(CI_TOKEN_VAR, '')
+	parts = urllib.parse.urlsplit(url)
+
+	# The credential belongs to our own host; an upstream address must never be handed it, whether it
+	# arrived by configuration or by a redirect
+	if token and f'{parts.scheme}://{parts.netloc}' in ci_origins():
+		request.add_header('Authorization', f'Bearer {token}')
+
+	return request
+
+
+def ci_ssl_context() -> ssl.SSLContext | None:
+	bundle = os.environ.get(CI_CA_VAR, '')
+
+	# Repairing a runner's own root store needs rights a build machine does not always grant, so a
+	# deployment may ship the anchors its host chains to. They are added to the system store, not swapped in
+	if not bundle or not Path(bundle).is_file():
+		return None
+
+	context = ssl.create_default_context()
+	context.load_verify_locations(cafile=bundle)
+	return context
+
+
+def fetch_url(url: str, target_path: Path) -> None:
+	request = ci_request(url)
+	context = ci_ssl_context()
+
+	with urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SEC, context=context) as response:
+		declared = response.headers.get('Content-Length')
+		written = 0
+
+		with target_path.open('wb') as handle:
+			while True:
+				chunk = response.read(1024 * 1024)
+				if not chunk:
+					break
+
+				handle.write(chunk)
+				written += len(chunk)
+
+		# A dropped connection ends the read instead of raising, and an archive cut in half unpacks into a
+		# failure far from its cause
+		if declared is not None and declared.isdigit() and written != int(declared):
+			raise OSError(f'received {written} of {declared} bytes')
+
+
+def file_digest(path: Path) -> str:
+	digest = hashlib.sha256()
+
+	with path.open('rb') as handle:
+		for chunk in iter(lambda: handle.read(1024 * 1024), b''):
+			digest.update(chunk)
+
+	return digest.hexdigest()
+
+
+def upload_url(url: str, source_path: Path) -> None:
+	"""Send a file with its length and digest, so a store that checks them refuses a truncated upload."""
+	checksum = file_digest(source_path)
+
+	# The body streams from the open file, so it has to be passed at construction: a `data` attached to a
+	# finished request is not read, and the upload silently stores nothing
+	with source_path.open('rb') as handle:
+		request = ci_request(url, data=handle, method='PUT')
+		request.add_header('Content-Type', 'application/octet-stream')
+		request.add_header('Content-Length', str(source_path.stat().st_size))
+		request.add_header('X-Content-SHA256', checksum)
+		urllib.request.urlopen(request, timeout=DOWNLOAD_TIMEOUT_SEC, context=ci_ssl_context()).close()
+
+
+def workspace_cache_url(name: str) -> str:
+	base = os.environ.get(WORKSPACE_CACHE_VAR, '').rstrip('/')
+	return f'{base}/{name}' if base else ''
+
+
+def workspace_cache_fetch(name: str, target_path: Path) -> bool:
+	"""Take a prepared workspace from the cache, or report that it has to be built.
+
+	A cache that is empty, unreachable or refusing must not fail the job: it exists to make the build
+	faster and independent of other people's servers, not to become another way for it to die.
+	"""
+	url = workspace_cache_url(name)
+
+	if not url:
+		return False
+
+	try:
+		fetch_url(url, target_path)
+		log('Workspace cache hit:', name)
+		return True
+	except OSError as ex:
+		log(f'Workspace cache miss for {name} ({describe_failure(ex)})')
+		remove_path_if_exists(target_path)
+		return False
+
+
+def workspace_cache_store(name: str, source_path: Path) -> None:
+	url = workspace_cache_url(name)
+
+	if not url:
+		return
+
+	try:
+		upload_url(url, source_path)
+		log('Workspace cache filled:', name)
+	except OSError as ex:
+		log(f'Workspace cache store failed for {name} ({describe_failure(ex)})')
+
+
+def workspace_cache_store_tree(name: str, archive_path: Path, source_path: Path, label: str) -> None:
+	if not workspace_cache_url(name):
+		return
+
+	try:
+		log(f'Pack {label} for the workspace cache:', archive_path)
+		with tarfile.open(archive_path, 'w:gz', compresslevel=WORKSPACE_CACHE_GZIP_LEVEL) as archive:
+			archive.add(source_path, arcname=source_path.name)
+		workspace_cache_store(name, archive_path)
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Workspace cache pack failed for {name} ({describe_failure(ex)})')
+	finally:
+		remove_path_if_exists(archive_path)
+
+
 def download_file(url: str, target_path: Path, label: str) -> None:
-	log(f'Download {label}:', url)
-	urllib.request.urlretrieve(url, target_path)
+	source = mirrored_url(url)
+	log(f'Download {label}:', source)
+
+	# Release CDNs drop connections when several jobs start at once and every caller here fetches an archive the
+	# rest of the job depends on; xwin retries its own downloads, this covers fetching xwin and the Android archives
+	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
+		try:
+			fetch_url(source, target_path)
+			return
+		except OSError as ex:
+			if attempt == DOWNLOAD_RETRY_COUNT:
+				raise
+
+			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
+			log(f'Download {label} failed ({describe_failure(ex)}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			remove_path_if_exists(target_path)
+			time.sleep(delay)
 
 
-def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None) -> None:
-	command: list[object] = ['git', 'clone', repo_url]
+def clone_git_repo(target_path: Path, repo_url: str, branch_name: str | None = None, depth: int | None = None, long_paths: bool = False) -> None:
+	command: list[object] = ['git']
+	if long_paths:
+		command.extend(['-c', 'core.longpaths=true'])
+	command.extend(['clone', repo_url])
 	if depth is not None:
 		command.extend(['--depth', str(depth)])
 	if branch_name is not None:
 		command.extend(['--branch', branch_name])
 	command.append(str(target_path))
-	run(command)
+	# A reset connection mid-clone leaves a partial checkout that git refuses to clone into, so drop it before retrying
+	run_with_retry(command, label=f'Clone {repo_url}', on_retry=lambda: remove_path_if_exists(target_path))
 
 
-def resolve_runtime_build_script() -> str:
-	return 'build.cmd' if os.name == 'nt' else './build.sh'
+def resolve_visual_studio_2022_dev_cmd() -> Path | None:
+	if os.name != 'nt':
+		return None
+
+	program_files_x86 = os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')
+	vswhere = Path(program_files_x86) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+	if not vswhere.exists():
+		return None
+
+	try:
+		output = subprocess.check_output(
+			[
+				str(vswhere),
+				'-latest',
+				'-products',
+				'*',
+				'-version',
+				'[17.0,18.0)',
+				'-requires',
+				'Microsoft.VisualStudio.Component.VC.Tools.x86.x64',
+				'-property',
+				'installationPath',
+			],
+			text=True,
+			encoding='utf-8',
+			errors='replace',
+		).strip()
+	except (OSError, subprocess.CalledProcessError):
+		return None
+
+	if not output:
+		return None
+
+	dev_cmd = Path(output) / 'Common7' / 'Tools' / 'VsDevCmd.bat'
+	return dev_cmd if dev_cmd.exists() else None
+
+
+def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: str) -> None:
+	# Private compilers avoid generator dependency paths retained from deleted runtime checkouts.
+	# PowerShell treats -p as an ambiguous script parameter; /p passes through to MSBuild
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	# Analyzers and generator translations change nothing the runtime publishes, which builds byte-identical without
+	# them, and they are much of the library compile time; the runtime's own source build turns analyzers off the same way
+	# NuGet audit reads a live advisory feed, so an advisory published after a tag was cut fails the restore of that
+	# tag for ever; a pinned tag cannot change the package it names, and the published tree holds CLR assemblies only
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false', f'{property_prefix}NuGetAudit=false']
+	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
+	# unrelated runtime projects the same output filename, breaking generators and task publishing
+	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
+	# components absent from that toolchain, and Roslyn rejects invalid LIB entries
+	outer_build_variables = {'include', 'lib', 'libpath', 'makeflags', 'mflags', 'targetname'}
+	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in outer_build_variables}
+	if target_os in ('ios', 'iossimulator'):
+		# Mono supplies the target SDK explicitly; its macOS cross-AOT tools must not inherit that SDK
+		build_env.pop('SDKROOT', None)
+
+	if os.name != 'nt':
+		# The outer CMake build passes down a make jobserver its nested make cannot join, and the browser
+		# subset turns that into a hard error, so the inherited job-control flags are dropped here
+		run(['./build.sh', *build_args], cwd=runtime_root, env=build_env)
+		return
+
+	wrapper = runtime_root / 'fo-build-runtime.cmd'
+	wrapper_lines = ['@echo off']
+	vs_dev_cmd = resolve_visual_studio_2022_dev_cmd()
+	if vs_dev_cmd is not None:
+		wrapper_lines.extend([
+			f'call "{vs_dev_cmd}" -no_logo',
+			'if errorlevel 1 exit /b %ERRORLEVEL%',
+		])
+	wrapper_lines.extend([
+		f'call "{runtime_root / "build.cmd"}" %*',
+		'if errorlevel 1 exit /b %ERRORLEVEL%',
+	])
+	wrapper.write_text('\n'.join(wrapper_lines) + '\n', encoding='utf-8')
+
+	# Absolute paths, not bare names resolved against the current directory: cmd.exe drops the implicit
+	# leading "." from its search path when NoDefaultCurrentDirectoryInExePath is set in the environment
+	# (a common Windows hardening setting), and the bare name then fails with "not recognized as an
+	# internal or external command" even though cwd is correct
+	run(['cmd', '/d', '/c', str(wrapper), *build_args], cwd=runtime_root, env=build_env)
 
 
 def extract_zip_with_permissions(archive_path: Path, output_dir: Path) -> None:
@@ -777,13 +1087,70 @@ def extract_tar_safely(archive_path: Path, output_dir: Path) -> None:
 		for member in archive.getmembers():
 			member_path = (output_dir / member.name).resolve()
 			if member_path != output_root and output_root not in member_path.parents:
-				raise SystemExit(f'Archive member escapes output directory: {member.name}')
-		archive.extractall(output_dir)
+				raise tarfile.ExtractError(f'Archive member escapes output directory: {member.name}')
+		if hasattr(tarfile, 'data_filter'):
+			archive.extractall(output_dir, filter='data')
+		else:
+			archive.extractall(output_dir)
+
+
+def restore_workspace_cache_tree(
+	cached_path: Path,
+	workspace: Path,
+	directory_name: str,
+	label: str,
+	is_complete: Callable[[Path], bool],
+) -> bool:
+	"""Extract one cache tree in isolation and promote only its expected complete directory."""
+	ensure_dir(workspace)
+	staging = Path(tempfile.mkdtemp(prefix=f'.{directory_name}-cache-', dir=workspace))
+	destination = workspace / directory_name
+
+	try:
+		extract_tar_safely(cached_path, staging)
+		source = staging / directory_name
+		if source.is_symlink() or not is_complete(source):
+			log(f'Cached {label} tree is incomplete; preparing it locally')
+			return False
+		remove_path_if_exists(destination)
+		shutil.move(str(source), str(destination))
+		return True
+	except (OSError, tarfile.TarError) as ex:
+		log(f'Cached {label} archive is unusable ({describe_failure(ex)})')
+		remove_path_if_exists(destination)
+		return False
+	finally:
+		remove_path_if_exists(cached_path)
+		remove_path_if_exists(staging)
 
 
 def run(cmd: Sequence[object], cwd: str | Path | None = None, env: Mapping[str, str] | None = None) -> None:
 	log('Run:', ' '.join(str(part) for part in cmd))
 	subprocess.check_call([str(part) for part in cmd], cwd=cwd, env=dict(env) if env is not None else None)
+
+
+def run_with_retry(
+	cmd: Sequence[object],
+	cwd: str | Path | None = None,
+	env: Mapping[str, str] | None = None,
+	*,
+	label: str,
+	on_retry: Callable[[], None] | None = None,
+) -> None:
+	# sdkmanager fetches platform zips from the same CDN as download_file and has no retry of its own
+	for attempt in range(1, DOWNLOAD_RETRY_COUNT + 1):
+		try:
+			run(cmd, cwd=cwd, env=env)
+			return
+		except subprocess.CalledProcessError as ex:
+			if attempt == DOWNLOAD_RETRY_COUNT:
+				raise
+
+			delay = DOWNLOAD_RETRY_DELAY_SEC * attempt
+			log(f'{label} failed (exit {ex.returncode}), attempt {attempt}/{DOWNLOAD_RETRY_COUNT}, retry in {delay}s')
+			if on_retry is not None:
+				on_retry()
+			time.sleep(delay)
 
 
 def run_capture_text(
@@ -890,7 +1257,10 @@ def run_in_emsdk_env(command: Sequence[str], workspace: Path, cwd: str | Path | 
 
 
 def build_toolset_version() -> str:
-	return f'v1-{os.name}'
+	# Derived from the configure flags so a tree prepared before a flag change is invalidated: a stale
+	# cache value the project no longer produces (FO_BUILD_ASCOMPILER before the managed switch) breaks configure
+	digest = hashlib.sha256('\n'.join(toolset_flag_args()).encode('utf-8')).hexdigest()[:8]
+	return f'v2-{os.name}-{digest}'
 
 
 def build_emscripten_version(env: Mapping[str, str]) -> str:
@@ -898,6 +1268,12 @@ def build_emscripten_version(env: Mapping[str, str]) -> str:
 	if not version:
 		raise SystemExit('FO_EMSCRIPTEN_VERSION is not configured')
 	return version
+
+
+def build_emscripten_workspace_cache_name(env: Mapping[str, str]) -> str:
+	identity = f'{build_emscripten_version(env)}-{sys.platform}-{platform.machine()}'.lower()
+	safe_identity = re.sub(r'[^a-z0-9._-]+', '-', identity)
+	return f'emscripten-{safe_identity}.tar.gz'
 
 
 def build_android_ndk_version(env: Mapping[str, str]) -> str:
@@ -943,6 +1319,25 @@ def build_xwin_version(env: Mapping[str, str]) -> str:
 
 def build_xwin_workspace_version(env: Mapping[str, str]) -> str:
 	return f'{build_xwin_version(env)}-{"-".join(XWIN_SPLAT_ARCHES)}'
+
+
+def build_wix_version(env: Mapping[str, str]) -> str:
+	version = env.get('FO_WIX_VERSION', '')
+	if not re.fullmatch(r'\d+\.\d+\.\d+', version):
+		raise SystemExit('FO_WIX_VERSION is not configured (Engine/ThirdParty/wix missing or invalid)')
+	return version
+
+
+def build_wix_workspace_version(env: Mapping[str, str]) -> str:
+	return build_wix_version(env)
+
+
+def build_wix_download_spec(env: Mapping[str, str]) -> tuple[str, str]:
+	version = build_wix_version(env)
+	major, minor, patch = version.split('.')
+	tag = f'wix{major}{minor}{patch}rtm'
+	archive_name = f'wix{major}{minor}-binaries.zip'
+	return archive_name, f'https://github.com/wixtoolset/wix3/releases/download/{tag}/{archive_name}'
 
 
 def discover_clang_version(executable: str = 'clang++-20') -> str:
@@ -1027,7 +1422,7 @@ def upload_codecov(build_dir: Path, token: str) -> None:
 def ensure_llvm_apt_source(workspace: Path, check_only: bool) -> None:
 	# Pin the LLVM apt.llvm.org repository to the same major as the project's
 	# minimum-required Clang (currently 20). Idempotent — llvm.sh detects an
-	# existing sources.list entry and reuses it.
+	# existing sources.list entry and reuses it
 	marker_version = '20-1'
 	if is_workspace_part_ready(workspace, 'llvm-apt-source', marker_version):
 		return
@@ -1078,7 +1473,7 @@ _LLVM_VERSIONED_RE = re.compile(r'-(\d+)$')
 
 def _pkg_needs_llvm_apt_source(package_name: str) -> bool:
 	# Any package ending in -<digits> coming from LLVM-versioned apt set
-	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org.
+	# (clang-20, llvm-20, lld-20, clang-tools-20, ...) needs apt.llvm.org
 	match = _LLVM_VERSIONED_RE.search(package_name)
 	if not match:
 		return False
@@ -1099,8 +1494,12 @@ def make_output_path_cmake_args(output_path: str, binary_output_postfix: str = '
 	return args
 
 
+def toolset_flag_args(config_name: str | None = None) -> list[str]:
+	return build_flag_args('toolset', config=config_name)
+
+
 def make_toolset_cmake_args(output_path: str, config_name: str | None = None, binary_output_postfix: str = '') -> list[str]:
-	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *build_flag_args('toolset', config=config_name)]
+	return [*make_output_path_cmake_args(output_path, binary_output_postfix), *toolset_flag_args(config_name)]
 
 
 def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
@@ -1112,7 +1511,7 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 	if os.name == 'nt':
 		# No explicit -G: let CMake pick the newest installed Visual Studio (same as
-		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version.
+		# make_windows_configure_cmd), so the toolset workspace follows the box's VS version
 		run([
 			'cmake',
 			'-A',
@@ -1129,22 +1528,52 @@ def prepare_toolset_workspace(env: Mapping[str, str]) -> None:
 
 def run_emsdk_command(emsdk_root: Path, *args: str) -> None:
 	if os.name == 'nt':
-		command = ['cmd', '/d', '/s', '/c', str(emsdk_root / 'emsdk.bat'), *args]
+		command = [sys.executable, emsdk_root / 'emsdk.py', *args]
 		run(command, cwd=emsdk_root)
 	else:
 		run([emsdk_root / 'emsdk', *args], cwd=emsdk_root)
+
+
+def is_emscripten_workspace_complete(emsdk_root: Path) -> bool:
+	environment_script = 'emsdk_env.bat' if os.name == 'nt' else 'emsdk_env.sh'
+	return all(path.is_file() for path in (
+		emsdk_root / '.emscripten',
+		emsdk_root / environment_script,
+		emsdk_root / 'upstream' / 'emscripten' / 'emcc.py',
+	))
+
+
+def restore_emscripten_workspace_cache(cached_path: Path, workspace: Path, emsdk_root: Path) -> bool:
+	return restore_workspace_cache_tree(
+		cached_path,
+		workspace,
+		emsdk_root.name,
+		'Emscripten SDK',
+		is_emscripten_workspace_complete,
+	)
 
 
 def prepare_emscripten_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	emsdk_root = workspace / 'emsdk'
 	remove_path_if_exists(emsdk_root)
+	ensure_dir(workspace)
+	cached_name = build_emscripten_workspace_cache_name(env)
+	cached_path = workspace / cached_name
+
+	if workspace_cache_fetch(cached_name, cached_path):
+		log('Unpack cached Emscripten SDK:', cached_path)
+		if restore_emscripten_workspace_cache(cached_path, workspace, emsdk_root):
+			return
 
 	clone_git_repo(emsdk_root, 'https://github.com/emscripten-core/emsdk.git')
 	run_emsdk_command(emsdk_root, 'list')
 	version = build_emscripten_version(env)
 	run_emsdk_command(emsdk_root, 'install', '--build=Release', '--shallow', version)
 	run_emsdk_command(emsdk_root, 'activate', '--build=Release', version)
+	if not is_emscripten_workspace_complete(emsdk_root):
+		raise SystemExit(f'Emscripten workspace is incomplete after activation: {emsdk_root}')
+	workspace_cache_store_tree(cached_name, cached_path, emsdk_root, 'Emscripten SDK')
 
 
 def prepare_android_ndk_workspace(env: Mapping[str, str]) -> None:
@@ -1190,32 +1619,36 @@ def prepare_android_sdk_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(extract_root)
 	remove_path_if_exists(archive_path)
 
-	sdkmanager = resolve_android_sdkmanager(cmdline_tools_latest)
+	android_cli = resolve_android_cli(cmdline_tools_latest)
 
 	sdk_env = os.environ.copy()
 	sdk_env['ANDROID_HOME'] = str(android_sdk_root)
 	sdk_env['ANDROID_SDK_ROOT'] = str(android_sdk_root)
 
-	run_with_input([sdkmanager, f'--sdk_root={android_sdk_root}', '--licenses'], 'y\n' * 256, env=sdk_env)
-	run(
+	run_with_retry(
 		[
-			sdkmanager,
-			f'--sdk_root={android_sdk_root}',
+			android_cli,
+			'--no-metrics',
+			f'--sdk={android_sdk_root}',
+			'sdk',
+			'install',
 			*ANDROID_REQUIRED_SDK_PACKAGES,
 		],
 		env=sdk_env,
+		label='Android SDK packages',
+		on_retry=lambda: remove_path_if_exists(android_sdk_root / '.temp'),
 	)
 
 
-def resolve_android_sdkmanager(cmdline_tools_latest: Path) -> Path:
+def resolve_android_cli(cmdline_tools_latest: Path) -> Path:
 	bin_dir = cmdline_tools_latest / 'bin'
-	candidates = [bin_dir / 'sdkmanager']
+	candidates = [bin_dir / 'android']
 	if os.name == 'nt':
-		candidates.insert(0, bin_dir / 'sdkmanager.bat')
+		candidates.insert(0, bin_dir / 'android.exe')
 	for candidate in candidates:
 		if candidate.is_file():
 			return candidate
-	raise SystemExit('sdkmanager not found after extraction: ' + ', '.join(str(candidate) for candidate in candidates))
+	raise SystemExit('Android CLI not found after extraction: ' + ', '.join(str(candidate) for candidate in candidates))
 
 
 def prepare_dotnet_workspace(env: Mapping[str, str]) -> None:
@@ -1249,6 +1682,10 @@ def copy_xwin_arch_libraries(source_root: Path, target_root: Path, arch: str) ->
 		shutil.copytree(source_dir, target_dir, symlinks=True)
 
 
+def is_xwin_workspace_complete(xwin_root: Path) -> bool:
+	return (xwin_root / 'crt').is_dir() and (xwin_root / 'sdk').is_dir()
+
+
 def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	workspace = Path(env['FO_WORKSPACE'])
 	version = build_xwin_version(env)
@@ -1265,6 +1702,22 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 	remove_path_if_exists(xwin_splat_dir)
 	remove_path_if_exists(xwin_extra_splat_dir)
 	ensure_dir(workspace)
+
+	# xwin fetches the SDK packages from Microsoft itself, so mirroring our own downloads does not cover it.
+	# What is cached instead is its result: the splat tree, keyed by the tool version and the arches in it
+	cached_name = f'xwin-{build_xwin_workspace_version(env)}.tar.gz'
+	cached_path = workspace / cached_name
+
+	if workspace_cache_fetch(cached_name, cached_path):
+		log('Unpack cached MSVC SDK:', cached_path)
+		if restore_workspace_cache_tree(
+			cached_path,
+			workspace,
+			xwin_splat_dir.name,
+			'MSVC SDK',
+			is_xwin_workspace_complete,
+		):
+			return
 
 	url = f'https://github.com/Jake-Shadle/xwin/releases/download/{version}/{archive_name}'
 	download_file(url, archive_path, 'xwin')
@@ -1287,6 +1740,32 @@ def prepare_xwin_workspace(env: Mapping[str, str]) -> None:
 		run_xwin_splat(xwin_binary, arch, arch_splat_dir)
 		copy_xwin_arch_libraries(arch_splat_dir, xwin_splat_dir, arch)
 	remove_path_if_exists(xwin_extra_splat_dir)
+
+	workspace_cache_store_tree(cached_name, cached_path, xwin_splat_dir, 'MSVC SDK')
+
+
+def prepare_wix_workspace(env: Mapping[str, str]) -> None:
+	if os.name != 'nt':
+		raise SystemExit('The workspace-local WiX v3 toolset is only used on Windows hosts; POSIX packaging uses wixl')
+
+	workspace = Path(env['FO_WORKSPACE'])
+	wix_root = workspace / 'wix3'
+	archive_name, url = build_wix_download_spec(env)
+	archive_path = workspace / archive_name
+
+	remove_path_if_exists(archive_path)
+	remove_path_if_exists(wix_root)
+	ensure_dir(workspace)
+	download_file(url, archive_path, 'WiX Toolset v3')
+
+	log('Unpack WiX Toolset v3:', archive_path)
+	extract_zip_with_permissions(archive_path, wix_root)
+	remove_path_if_exists(archive_path)
+
+	missing = [name for name in ('candle.exe', 'light.exe', 'WixUIExtension.dll') if not (wix_root / name).is_file()]
+	if missing:
+		remove_path_if_exists(wix_root)
+		raise SystemExit('Unexpected WiX Toolset archive layout; missing: ' + ', '.join(missing))
 
 
 def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
@@ -1332,7 +1811,6 @@ def prepare_msan_libcxx_workspace(env: Mapping[str, str]) -> None:
 		'-DLLVM_ENABLE_RUNTIMES=libcxx;libcxxabi;libunwind',
 		'-DLLVM_USE_SANITIZER=Memory',
 		'-DLLVM_ENABLE_ASSERTIONS=OFF',
-		'-DLLVM_INCLUDE_BENCHMARKS=OFF',
 		'-DLLVM_INCLUDE_DOCS=OFF',
 		'-DLLVM_INCLUDE_TESTS=OFF',
 		'-DLIBCXX_ENABLE_SHARED=ON',
@@ -1363,6 +1841,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': lambda: build_android_ndk_workspace_version(env),
 		'dotnet': lambda: build_dotnet_version(env),
 		'xwin': lambda: build_xwin_workspace_version(env),
+		'wix': lambda: build_wix_workspace_version(env),
 		'msan-libcxx': lambda: build_msan_libcxx_version(env),
 	}
 	part_actions = {
@@ -1372,6 +1851,7 @@ def prepare_workspace(parts: Sequence[str], check_only: bool, env: Mapping[str, 
 		'android-ndk': prepare_android_ndk_workspace,
 		'dotnet': prepare_dotnet_workspace,
 		'xwin': prepare_xwin_workspace,
+		'wix': prepare_wix_workspace,
 		'msan-libcxx': prepare_msan_libcxx_workspace,
 	}
 
@@ -1414,7 +1894,8 @@ HOST_FEATURE_WORKSPACE_PARTS = {
 	'windows': {
 		'toolset': ['toolset'],
 		'web': ['emscripten'],
-		'all': ['toolset', 'emscripten'],
+		'wix': ['wix'],
+		'all': ['toolset', 'emscripten', 'wix'],
 	},
 	'macos': {},
 }
@@ -1492,6 +1973,89 @@ def prepare_host_workspace(host_name: str, features: Sequence[str], check_only: 
 	if host_preparer is None:
 		raise SystemExit(f'Unsupported host workspace preparation: {host_name}')
 	host_preparer(selected, workspace, check_only, env)
+
+
+def repair_checkout_case(check_only: bool, env: Mapping[str, str]) -> None:
+	"""Realign working-tree entry names with the names git tracks.
+
+	A case-only rename is recorded correctly in the index, but on a case-insensitive filesystem git
+	only rewrites file names - an already existing directory keeps its old spelling forever. Every
+	reused checkout therefore serves the stale name, while resource and include lookups are
+	case-sensitive, so the drift surfaces much later as a file that sits on disk yet is reported as
+	missing. Long-lived checkouts on self-hosted Windows runners are the usual victim; a fresh clone
+	never reproduces it.
+	"""
+	project_root = Path(env['FO_PROJECT_ROOT'])
+	expected_names, conflicts = collect_tracked_entry_names(list_git_tracked_paths(project_root))
+
+	if conflicts:
+		for conflict in conflicts:
+			log('Tracked path is checked in under more than one spelling:', conflict)
+
+		raise SystemExit('Case-conflicting tracked paths have to be fixed in the repository')
+
+	drifted = realign_entry_names(project_root, expected_names, check_only)
+
+	if drifted == 0:
+		log('Checkout entry names match the git index')
+		return
+
+	if check_only:
+		raise SystemExit(f'Checkout case drifted from the git index in {drifted} entries')
+
+	log(f'Realigned {drifted} checkout entries with the git index')
+
+
+def list_git_tracked_paths(repo_root: Path) -> list[str]:
+	output = run_capture_text(['git', 'ls-files', '-z', '--recurse-submodules'], cwd=repo_root, log_command=False)
+	return [tracked_path for tracked_path in output.split('\0') if tracked_path]
+
+
+def collect_tracked_entry_names(tracked_paths: Sequence[str]) -> tuple[dict[str, dict[str, str]], list[str]]:
+	expected_names: dict[str, dict[str, str]] = {}
+	conflicts: list[str] = []
+
+	for tracked_path in tracked_paths:
+		parts = tracked_path.split('/')
+
+		for index, part in enumerate(parts):
+			parent = '/'.join(parts[:index])
+			siblings = expected_names.setdefault(parent, {})
+			tracked_name = siblings.setdefault(part.lower(), part)
+
+			if tracked_name != part:
+				conflict = f'{parent}/{tracked_name} and {parent}/{part}' if parent else f'{tracked_name} and {part}'
+
+				if conflict not in conflicts:
+					conflicts.append(conflict)
+
+	return expected_names, conflicts
+
+
+def realign_entry_names(repo_root: Path, expected_names: Mapping[str, Mapping[str, str]], check_only: bool) -> int:
+	drifted = 0
+
+	for parent in sorted(expected_names, key=lambda path: (path.count('/'), path)):
+		parent_dir = repo_root / parent if parent else repo_root
+
+		if not parent_dir.is_dir():
+			continue
+
+		siblings = expected_names[parent]
+
+		for entry_name in sorted(os.listdir(parent_dir)):
+			tracked_name = siblings.get(entry_name.lower())
+
+			if tracked_name is None or tracked_name == entry_name:
+				continue
+
+			log('Checkout case drift:', f'{parent}/{entry_name}' if parent else entry_name, '->', tracked_name)
+			drifted += 1
+
+			if not check_only:
+				os.rename(parent_dir / entry_name, parent_dir / tracked_name)
+
+	return drifted
 
 
 def resolve_build_hash(env: Mapping[str, str]) -> str:
@@ -1625,6 +2189,18 @@ def resolve_android_abi(platform_name: str) -> str:
 	return android_abi
 
 
+def resolve_validation_platform(platform_name: str) -> str:
+	if platform_name != 'native':
+		return platform_name
+	if os.name == 'nt':
+		return 'win64'
+	if sys.platform == 'darwin':
+		return 'mac'
+	if sys.platform.startswith('linux'):
+		return 'linux'
+	raise SystemExit(f'Unsupported native validation host: {sys.platform}')
+
+
 def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	build_env = os.environ.copy()
 	if compiler_name == 'gcc':
@@ -1637,7 +2213,7 @@ def make_linux_build_env(compiler_name: str = 'clang') -> EnvMap:
 	# multi-GB link step; on the GitHub-hosted Linux runner (4 vCPU, 16 GB RAM) the full-parallel
 	# value trips the cgroup OOM killer for the heavier targets (all linux-gcc-*
 	# heavy variants, code-coverage). Cap concurrency on GitHub Actions only — local boxes have
-	# plenty of headroom and benefit from full parallelism.
+	# plenty of headroom and benefit from full parallelism
 	if build_env.get('GITHUB_ACTIONS') == 'true':
 		build_env.setdefault('CMAKE_BUILD_PARALLEL_LEVEL', '2')
 	return build_env
@@ -1672,7 +2248,7 @@ def make_platform_build_flag_args(platform_name: str, target_name: str, config: 
 		return build_flag_args(target_name, config=config)
 	if platform_name.startswith('win') and os.name != 'nt':
 		# Cross-compile path uses the Ninja single-config generator; CMAKE_BUILD_TYPE
-		# must be set at configure time.
+		# must be set at configure time
 		return build_flag_args(target_name, config=config)
 	return build_flag_args(target_name)
 
@@ -1797,7 +2373,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# Wipe stale CMake state when the cached compiler no longer matches what
 	# make_platform_configure_env wants to inject; otherwise CMake silently keeps
 	# the old compiler (e.g. a previously-cached clang-18 after the project bumps
-	# to clang-20) and the version gate trips at configure time.
+	# to clang-20) and the version gate trips at configure time
 	build_env = make_platform_configure_env(platform_name, 'clang')
 	if _cached_compiler_mismatch(build_dir, build_env):
 		log(f'Reset stale build dir {build_dir} (cached compiler differs from current toolchain)')
@@ -1808,7 +2384,7 @@ def configure_build(platform_name: str, target_name: str, config: str, env: Mapp
 	# San_Memory needs the MSan-instrumented libc++ prefix at configure time (the build embeds an
 	# rpath to it, so the resulting binary needs no runtime LD_LIBRARY_PATH). The workspace part is
 	# prepared separately (prepare-workspace msan-libcxx); mirror what run_validation() passes so
-	# `build <platform> <target> San_Memory*` works the same as the validate path.
+	# `build <platform> <target> San_Memory*` works the same as the validate path
 	if config.startswith('San_Memory'):
 		extra_cmake_args.append(f'-DFO_MSAN_LIBCXX_ROOT={to_cmake_path(resolve_msan_libcxx_root(env))}')
 
@@ -1861,7 +2437,8 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 		if part == '-G' and index + 1 < len(configure_cmd):
 			expected_generator = configure_cmd[index + 1]
 			break
-	if expected_generator is None:
+	requires_visual_studio = expected_generator is None and '-A' in configure_cmd
+	if expected_generator is None and not requires_visual_studio:
 		return False
 
 	cache_file = build_dir / 'CMakeCache.txt'
@@ -1872,7 +2449,12 @@ def _cached_generator_mismatch(build_dir: Path, configure_cmd: Sequence[str]) ->
 	except OSError:
 		return False
 	match = _CMAKE_CACHE_GENERATOR_RE.search(text)
-	return bool(match and match.group(1).strip() != expected_generator)
+	if match is None:
+		return False
+	cached_generator = match.group(1).strip()
+	if expected_generator is not None:
+		return cached_generator != expected_generator
+	return not cached_generator.startswith('Visual Studio ')
 
 
 def prepare_validation_project(env: Mapping[str, str]) -> Path:
@@ -1895,11 +2477,11 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 		prepare_workspace(workspace_parts, False, env)
 
 	validation_root = prepare_validation_project(env)
-	platform_name = validation['platform']
+	platform_name = resolve_validation_platform(validation['platform'])
 	target_name = validation['target']
 	config = validation['config']
 	compiler_name = validation.get('compiler', 'clang')
-	extra_cmake_args: list[str] = []
+	extra_cmake_args = list(validation.get('cmake_args', ()))
 	run_env = make_platform_configure_env(platform_name, compiler_name)
 
 	if validation.get('msan_libcxx'):
@@ -1934,17 +2516,726 @@ def run_validation(name: str, env: Mapping[str, str]) -> None:
 			upload_codecov(build_dir, os.environ['CODECOV_TOKEN'])
 
 
+# CoreLib reaches the OS through libs.native on every non-Windows platform, and libs.sfx builds the class libraries
+# for the target from CoreLib's revision: the SDK's own shared framework matches the build host and another release
+MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
+
+# Keep in sync with FO_MONO_READY_MARKER in cmake/stages/ThirdParty.cmake, and change both whenever the
+# subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
+MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
+MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
+MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
+MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
+MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback'
+MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
+
+# Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
+MONO_WORKSPACE_CACHE_FORMAT = 1
+
+# Target toolchains the runtime build compiles the published archives with, beyond the host's own
+MONO_TARGET_TOOLCHAIN_PINS = {
+	'browser': ('FO_EMSCRIPTEN_VERSION',),
+	'android': ('FO_ANDROID_NDK_VERSION', 'FO_ANDROID_SDK_VERSION', 'FO_ANDROID_NATIVE_API_LEVEL_NUMBER'),
+	'ios': ('FO_IOS_SDK',),
+	'iossimulator': ('FO_IOS_SDK',),
+}
+
+
+class MonoLayout(NamedTuple):
+	dotnet_runtime_arch: str
+	runtime_triplet: str
+	publish_triplet: str
+	workspace: Path
+	runtime_root: Path
+	output_dir: Path
+	clone_marker: Path
+	built_marker: Path
+	ready_marker: Path
+
+
+def resolve_mono_runtime_subset(os_name: str) -> str:
+	# Passing an explicit subset overrides the dotnet default, which for browser carries mono.wasmruntime
+	# — the piece that builds the JavaScript glue Mono imports (scheduling, crypto, startup)
+	if os_name == 'browser':
+		return f'{MONO_RUNTIME_SUBSET}+mono.wasmruntime'
+
+	return MONO_RUNTIME_SUBSET
+
+
+def resolve_mono_marker_suffix(os_name: str) -> str:
+	if os_name == 'browser':
+		return MONO_BROWSER_SUBSET_MARKER_SUFFIX
+
+	if os_name == 'android':
+		return MONO_ANDROID_SOURCE_MARKER_SUFFIX
+
+	if os_name in ('osx', 'ios', 'iossimulator'):
+		return MONO_APPLE_SOURCE_MARKER_SUFFIX
+
+	if os_name == 'linux':
+		return MONO_LINUX_SOURCE_MARKER_SUFFIX
+
+	if os_name == 'windows':
+		return MONO_WINDOWS_SOURCE_MARKER_SUFFIX
+
+	return MONO_SUBSET_MARKER_SUFFIX
+
+
+def resolve_mono_cmake_args() -> list[str]:
+	# Without ENABLE_OVERRIDABLE_ALLOCATORS, mono_set_allocator_vtable still returns TRUE and is a no-op
+	property_prefix = '/p:' if os.name == 'nt' else '-p:'
+	return [f'{property_prefix}CMakeArgs={MONO_OVERRIDABLE_ALLOCATORS_CMAKE}']
+
+
+PATCH_MARKER = '(FOnline Patch) /GL dropped: the published archive is linked by other toolsets and by lld-link'
+MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER = '(FOnline Patch) Keep signal actions initialized across an uninstrumented sanitizer boundary'
+
+
+def patch_runtime_sources(runtime_root: Path) -> None:
+	# dotnet/runtime builds the Windows mono runtime with /GL, and a static archive carrying MSVC
+	# whole-program IL can be consumed by exactly one linker build: link.exe rejects IL produced by a
+	# different toolset (C1900) and lld-link cannot read it at all ("is not a native COFF file").
+	# This archive is published and linked on other machines and by clang-cl, so the flag is dropped
+	# at the source rather than worked around per consumer
+	path = runtime_root / 'src' / 'mono' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+
+	if PATCH_MARKER in text:
+		log('Already patched', path)
+		return
+
+	patches = (
+		('    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/GL>) # whole program optimization\n', f'    # {PATCH_MARKER}\n'),
+		('    add_link_options(/LTCG)    # link-time code generation\n', ''),
+	)
+
+	for needle, replacement in patches:
+		if needle not in text:
+			raise SystemExit(f'Cannot patch the mono whole-program-optimization flags, anchor not found in {path}: {needle.strip()}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched', path, '- dropped /GL and /LTCG')
+
+
+def patch_runtime_linux_signal_actions(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'mini' / 'mini-posix.c'
+	text = path.read_text(encoding='utf-8')
+
+	if MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER in text:
+		log('Already patched', path)
+		return
+
+	helper_anchor = 'static GHashTable *mono_saved_signal_handlers = NULL;\n'
+	helper = f'''#if defined(__GNUC__)
+/* {MONO_LINUX_SIGNAL_ACTION_PATCH_MARKER} */
+extern void __msan_unpoison (const volatile void *address, size_t size) __attribute__((weak));
+#endif
+
+static void
+initialize_signal_action (struct sigaction *action)
+{{
+	memset (action, 0, sizeof (*action));
+#if defined(__GNUC__)
+	if (__msan_unpoison)
+		__msan_unpoison (action, sizeof (*action));
+#endif
+}}
+
+{helper_anchor}'''
+	initialization_anchors = (
+		(
+			'struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));\n',
+			'struct sigaction *handler_to_save = (struct sigaction *)g_malloc (sizeof (struct sigaction));\n\n'
+			'\tinitialize_signal_action (handler_to_save);\n',
+		),
+		(
+			'\tstruct sigaction previous_sa;\n\n#ifdef MONO_ARCH_USE_SIGACTION\n',
+			'\tstruct sigaction previous_sa;\n\n\tinitialize_signal_action (&sa);\n\n#ifdef MONO_ARCH_USE_SIGACTION\n',
+		),
+		(
+			'\tstruct sigaction *saved_action = get_saved_signal_handler (signo);\n\n\tif (!saved_action) {\n',
+			'\tstruct sigaction *saved_action = get_saved_signal_handler (signo);\n\n'
+			'\tinitialize_signal_action (&sa);\n\n\tif (!saved_action) {\n',
+		),
+	)
+	patches = ((helper_anchor, helper), *initialization_anchors)
+
+	for needle, replacement in patches:
+		if text.count(needle) != 1:
+			raise SystemExit(f'Cannot patch Mono POSIX signal actions, unique anchor not found in {path}: {needle.splitlines()[0]}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched Linux Mono POSIX signal actions:', path)
+
+
+def patch_runtime_zlib_warning_level(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'native' / 'external' / 'zlib-ng.cmake'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Keep zlib-ng /W3 without the inherited Mono /W4'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'FetchContent_MakeAvailable(fetchzlibng)\n'
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the zlib-ng warning level, unique anchor not found in {path}: {anchor.strip()}')
+
+	patch = (
+		f'\n# {marker}\n'
+		'if(MSVC)\n'
+		'  get_target_property(fo_zlib_compile_options zlib COMPILE_OPTIONS)\n'
+		'  list(REMOVE_ITEM fo_zlib_compile_options "$<$<COMPILE_LANGUAGE:C,CXX>:/W4>")\n'
+		'  set_property(TARGET zlib PROPERTY COMPILE_OPTIONS "${fo_zlib_compile_options}")\n'
+		'endif()\n'
+	)
+	path.write_text(text.replace(anchor, anchor + patch, 1), encoding='utf-8')
+	log('Patched', path, '- preserved the zlib-ng warning level')
+
+
+MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER = '(FOnline Patch) C and C++ objects embed their debug info (/Z7)'
+
+
+def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
+	# /Zi leaves debug info in a compiler PDB that the published static archives do not carry, so every consumer
+	# link reports LNK4099 per object and loses the runtime's symbols. MASM keeps /Zi, which embeds it already
+	marker = MONO_WINDOWS_DEBUG_INFO_PATCH_MARKER
+	config_flags = (
+		f'  # {marker}\n'
+		'  foreach(fo_flags_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG CMAKE_C_FLAGS_RELWITHDEBINFO CMAKE_CXX_FLAGS_RELWITHDEBINFO)\n'
+		'    string(REPLACE "/Zi" "/Z7" ${fo_flags_var} "${${fo_flags_var}}")\n'
+		'  endforeach()\n'
+	)
+	patches = (
+		(runtime_root / 'eng' / 'native' / 'configurecompiler.cmake', (
+			(
+				'  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX,ASM_MASM>:/Zi>) # enable debugging information\n',
+				config_flags
+				+ '  add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n'
+				'  add_compile_options($<$<COMPILE_LANGUAGE:ASM_MASM>:/Zi>)\n',
+			),
+		)),
+		(runtime_root / 'src' / 'mono' / 'CMakeLists.txt', (
+			('  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n', config_flags + '  if(CMAKE_BUILD_TYPE STREQUAL "Release")\n'),
+			(
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Zi>) # enable debugging information\n',
+				'    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:/Z7>) # enable debugging information\n',
+			),
+		)),
+	)
+	patched_texts = []
+
+	# Every anchor is proven before any file is written, so a moved upstream source leaves both files untouched
+	for path, replacements in patches:
+		text = path.read_text(encoding='utf-8')
+
+		if marker in text:
+			log('Already patched', path)
+			continue
+
+		for needle, replacement in replacements:
+			if text.count(needle) != 1:
+				raise SystemExit(f'Cannot patch the Windows runtime debug information format, unique anchor not found in {path}: {needle.strip()}')
+
+			text = text.replace(needle, replacement, 1)
+
+		patched_texts.append((path, text))
+
+	for path, text in patched_texts:
+		path.write_text(text, encoding='utf-8')
+		log('Patched', path, '- C and C++ objects embed their debug info')
+
+
+MONO_ISA_FALLBACK_PATCH_MARKER = '(FOnline Patch) An ISA class the JIT does not implement reports IsSupported as false'
+
+
+def patch_runtime_isa_is_supported_fallback(runtime_root: Path) -> None:
+	# The JIT emits ISA classes only on AMD64, ARM64 and WASM; elsewhere CoreLib's recursive `IsSupported => IsSupported`
+	# body runs and overflows the stack on the first vectorized call, which killed the Windows x86 client at startup
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'mini' / 'intrinsics.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_ISA_FALLBACK_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = '\t/* Fallback if SIMD is disabled */\n'
+	patch = (
+		f'\t/* {marker} */\n'
+		'\tif (in_corlib && !strcmp (cmethod->name, "get_IsSupported")) {\n'
+		'\t\tMonoClass *isa_klass = cmethod->klass;\n'
+		'\t\twhile (m_class_get_nested_in (isa_klass))\n'
+		'\t\t\tisa_klass = m_class_get_nested_in (isa_klass);\n'
+		'\t\tconst char *isa_ns = m_class_get_name_space (isa_klass);\n'
+		'\t\tif (!strcmp (isa_ns, "System.Runtime.Intrinsics.X86") || !strcmp (isa_ns, "System.Runtime.Intrinsics.Arm") || !strcmp (isa_ns, "System.Runtime.Intrinsics.Wasm")) {\n'
+		'\t\t\tEMIT_NEW_ICONST (cfg, ins, 0);\n'
+		'\t\t\tins->type = STACK_I4;\n'
+		'\t\t\treturn ins;\n'
+		'\t\t}\n'
+		'\t}\n'
+		'\n'
+	)
+
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the ISA IsSupported fallback, unique anchor not found in {path}: {anchor.strip()}')
+
+	path.write_text(text.replace(anchor, patch + anchor, 1), encoding='utf-8')
+	log('Patched', path, '- unimplemented ISA classes report IsSupported as false')
+
+
+def discard_runtime_local_tasks_semaphore(runtime_root: Path) -> None:
+	# dotnet's Build.proj builds the repo-local MSBuild tasks once per tree and marks them done with this file, but
+	# which task projects the set holds depends on the target: one tree built for Linux first never got AndroidAppBuilder,
+	# and the Android native build then failed with MSB4062. Without the mark the tasks rebuild incrementally
+	for semaphore in (runtime_root / 'artifacts' / 'obj' / 'tasks').glob('*/build-semaphore.txt'):
+		semaphore.unlink()
+		log('Discarded local tasks mark', semaphore)
+
+
+def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'CMakeLists.txt'
+	text = path.read_text(encoding='utf-8')
+	marker = '(FOnline Patch) Generic ASM uses the already identified Emscripten C compiler'
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = 'elseif(HOST_WASM)\n    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	patch = (
+		'elseif(HOST_WASM)\n'
+		f'    # {marker}\n'
+		'    set (CMAKE_ASM_COMPILER_ID "${CMAKE_C_COMPILER_ID}")\n'
+		'    set (CMAKE_ASM_COMPILER_VERSION "${CMAKE_C_COMPILER_VERSION}")\n'
+	)
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the browser Mono ASM compiler ID, unique anchor not found in {path}')
+
+	path.write_text(text.replace(anchor, patch, 1), encoding='utf-8')
+	log('Patched', path, '- inherited the Emscripten C compiler ID for ASM')
+
+
+def patch_runtime_android_sources(runtime_root: Path) -> None:
+	path = runtime_root / 'src/native/libs/System.Security.Cryptography.Native.Android/pal_ecc_import_export.c'
+	text = path.read_text(encoding='utf-8')
+	original = 'LOG_ERROR("Unuspported curve type specified: %d", curveType);'
+	replacement = ('// (FOnline Patch) Match the enum argument to the unsigned variadic format\n'
+		'        LOG_ERROR("Unuspported curve type specified: %u", (unsigned int)curveType);')
+
+	if replacement in text:
+		return
+
+	if text.count(original) != 1:
+		raise SystemExit(f'Cannot patch Android runtime enum format, unique anchor not found in {path}')
+
+	path.write_text(text.replace(original, replacement, 1), encoding='utf-8')
+	log('Patched Android runtime enum format:', path)
+
+
+def patch_runtime_apple_sources(runtime_root: Path) -> None:
+	patches = {
+		'src/mono/CMakeLists.txt': (
+			('cmake_minimum_required(VERSION 3.20)\n',
+			 'cmake_minimum_required(VERSION 3.20)\n\n'
+			 '# (FOnline Patch) Apple linkers rescan static archives; emit each dependency once\n'
+			 'if(POLICY CMP0156)\n  cmake_policy(SET CMP0156 NEW)\nendif()\n'
+			 'if(POLICY CMP0179)\n  cmake_policy(SET CMP0179 NEW)\nendif()\n'),
+		),
+		'src/mono/mono/mini/mini-generic-sharing.c': (
+			('\tgint16 pindex;\n\tint args_start;\n\tstatic GHashTable *cache;',
+			 '\tgint16 pindex;\n#ifndef DISABLE_JIT // (FOnline Patch) The argument offset is only consumed by JIT emission\n\tint args_start;\n#endif\n\tstatic GHashTable *cache;'),
+			('\targs_start = pindex;\n\tif (sig->hasthis)\n\t\targs_start ++;',
+			 '#ifndef DISABLE_JIT\n\targs_start = pindex;\n\tif (sig->hasthis)\n\t\targs_start ++;\n#endif'),
+		),
+		'src/mono/mono/mini/mini-arm64.c': (
+			('static char opcode_simd_status[OP_LAST - OP_START];',
+			 '#ifndef DISABLE_JIT // (FOnline Patch) The SIMD opcode table is only used by the JIT\nstatic char opcode_simd_status[OP_LAST - OP_START];\n#endif'),
+		),
+		'src/native/eventpipe/ep-session.c': (
+			('const int max_static_io_capacity = 30;',
+			 'enum { max_static_io_capacity = 30 }; // (FOnline Patch) A C array bound requires an integer constant expression'),
+			('const int extension_activity_ids_max_len = 2 * (1 + EP_ACTIVITY_ID_SIZE);',
+			 'enum { extension_activity_ids_max_len = 2 * (1 + EP_ACTIVITY_ID_SIZE) }; // (FOnline Patch) Keep the activity buffer a fixed-size C array'),
+		),
+		'src/native/libs/System.Native/pal_interfaceaddresses.c': (
+			('uint8_t* buffer = malloc(byteCount);',
+			 'uint8_t* buffer = (uint8_t*)malloc(byteCount); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+			('        buffer = malloc(byteCount);',
+			 '        buffer = (uint8_t*)malloc(byteCount); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+		),
+		'src/native/libs/System.Native/pal_process.c': (
+			('getGroupsBuffer = malloc(sizeof(uint32_t) * Int32ToSizeT(groupsLength));',
+			 'getGroupsBuffer = (uint32_t*)malloc(sizeof(uint32_t) * Int32ToSizeT(groupsLength)); // (FOnline Patch) Explicit C/C++ pointer conversion'),
+		),
+		'src/native/libs/System.Native/pal_signal.c': (
+			('*posixSignal = signalCode;',
+			 '*posixSignal = (PosixSignal)signalCode; // (FOnline Patch) Preserve the unrecognized native signal in the enum storage'),
+		),
+		'src/native/libs/System.Net.Security.Native/pal_gssapi.c': (
+			("char* ptrSlash = memchr(inputName, '/', inputNameLen);",
+			 "char* ptrSlash = (char*)memchr(inputName, '/', inputNameLen); // (FOnline Patch) Explicit C/C++ pointer conversion"),
+		),
+		'src/native/libs/System.Native/pal_networking.c': (
+			('    struct ifaddrs* addrs = NULL;\n#endif',
+			 '    struct ifaddrs* addrs = NULL;\n'
+			 '    // (FOnline Patch) Declare cleanup-scope locals before any jump to cleanup\n'
+			 '    char name[_POSIX_HOST_NAME_MAX];\n    bool includeIPv4Loopback = true;\n    bool includeIPv6Loopback = true;\n#endif'),
+			('    char name[_POSIX_HOST_NAME_MAX];\n    result = gethostname((char*)name, _POSIX_HOST_NAME_MAX);\n\n    bool includeIPv4Loopback = true;\n    bool includeIPv6Loopback = true;',
+			 '    // (FOnline Patch) Loopback flags are initialized before cleanup jumps\n    result = gethostname((char*)name, _POSIX_HOST_NAME_MAX);'),
+		),
+		'src/native/libs/configure.cmake': (
+			('        int dummy = getdomainname(name, namelen);',
+			 '        // (FOnline Patch) A signature mismatch must fail even when warnings are disabled\n'
+			 '        char signature_matches[__builtin_types_compatible_p(__typeof__(&getdomainname), int (*)(char*, size_t)) ? 1 : -1];\n'
+			 '        int dummy = getdomainname(name, namelen);\n'
+			 '        (void)signature_matches;'),
+			('HAVE_GETDOMAINNAME_SIZET)',
+			 'HAVE_GETDOMAINNAME_SIZET_EXACT)\n'
+			 '# (FOnline Patch) Recheck caches populated by the former warning-based probe\n'
+			 'set(HAVE_GETDOMAINNAME_SIZET "${HAVE_GETDOMAINNAME_SIZET_EXACT}")'),
+		),
+	}
+
+	for relative, replacements in patches.items():
+		path = runtime_root / relative
+		text = path.read_text(encoding='utf-8')
+		if relative == 'src/native/libs/configure.cmake':
+			legacy_probe = ('        // (FOnline Patch) Compare the parameter type; a constant length can hide narrowing\n'
+				'        int (*getdomainname_sizet)(char*, size_t) = getdomainname;\n'
+				'        int dummy = getdomainname_sizet(name, namelen);')
+			if legacy_probe in text:
+				if text.count(legacy_probe) != 1:
+					raise SystemExit(f'Cannot upgrade the Apple runtime signature probe, unique anchor not found in {path}')
+
+				text = text.replace(legacy_probe, '        int dummy = getdomainname(name, namelen);', 1)
+
+		for anchor, replacement in replacements:
+			if replacement in text:
+				continue
+
+			if text.count(anchor) != 1:
+				raise SystemExit(f'Cannot patch the Apple runtime source, unique anchor not found in {path}: {anchor.strip()}')
+
+			text = text.replace(anchor, replacement, 1)
+
+		path.write_text(text, encoding='utf-8')
+		log('Patched Apple runtime source:', path)
+
+
+def patch_runtime_ios_sources(runtime_root: Path) -> None:
+	path = runtime_root / 'src/native/libs/System.Globalization.Native/pal_collation.m'
+	text = path.read_text(encoding='utf-8')
+	marker = '// (FOnline Patch) Collation helpers consume signed option masks without an enum round trip'
+	if marker not in text:
+		if text.count('(CompareOptions)comparisonOptions') != 9 or text.count('(CompareOptions)options') != 2:
+			raise SystemExit(f'Cannot patch iOS collation option casts, expected anchors not found in {path}')
+
+		text = text.replace('(CompareOptions)comparisonOptions', 'comparisonOptions').replace('(CompareOptions)options', 'options')
+		text = text.replace('        if (!IsComparisonOptionSupported(', '        ' + marker + '\n        if (!IsComparisonOptionSupported(')
+		path.write_text(text, encoding='utf-8')
+		log('Patched iOS collation option casts:', path)
+
+	path = runtime_root / 'src/native/libs/System.Native/pal_networking.c'
+	text = path.read_text(encoding='utf-8')
+	original = '    size_t bufferLength = Min((size_t)count, 80 * 1024 * sizeof(char));'
+	replacement = '    // (FOnline Patch) The buffer bound is initialized before any jump to error'
+	if replacement not in text:
+		anchor = '    char* buffer = NULL;\n\n    // Save the original input file position'
+		if text.count(anchor) != 1 or text.count(original) != 1:
+			raise SystemExit(f'Cannot patch iOS sendfile cleanup, unique anchors not found in {path}')
+
+		text = text.replace(original, replacement, 1)
+		text = text.replace(anchor, '    char* buffer = NULL;\n' + original + '\n\n    // Save the original input file position', 1)
+		path.write_text(text, encoding='utf-8')
+		log('Patched iOS sendfile cleanup:', path)
+
+	path = runtime_root / 'src/native/libs/System.Native/pal_io.c'
+	text = path.read_text(encoding='utf-8')
+	marker = '// (FOnline Patch) SDK declarations do not guarantee availability on the running Apple OS'
+	for operation in ('Read', 'Write'):
+		signature = f'int64_t SystemNative_P{operation}V('
+		if text.count(signature) != 1:
+			raise SystemExit(f'Cannot patch iOS vector I/O, unique signature not found in {path}: {signature}')
+
+		start = text.index(signature)
+		end = text.index('\n}\n', start) + len('\n}\n')
+		original = text[start:end]
+		if marker in original:
+			continue
+
+		condition = f'#if HAVE_P{operation.upper()}V && !defined(TARGET_WASM)'
+		parts = original.split(condition, 1)
+		if len(parts) != 2 or parts[1].count('\n#else\n') != 1 or parts[1].count('\n#endif\n') != 1:
+			raise SystemExit(f'Cannot patch iOS vector I/O, expected native/fallback branches not found in {path}: {signature}')
+
+		branch, remainder = parts[1].split('\n#else\n', 1)
+		fallback, footer = remainder.split('\n#endif\n', 1)
+		branch_comment, branch = branch.split('\n', 1)
+		indent = lambda block: '\n'.join('    ' + line if line else '' for line in block.split('\n'))
+		replacement = (parts[0] + condition + branch_comment + '\n'
+			'#if defined(TARGET_APPLE)\n    ' + marker + '\n'
+			'    if (__builtin_available(macOS 11.0, iOS 14.0, tvOS 14.0, watchOS 7.0, *))\n#endif\n'
+			'    {\n' + indent(branch) + '\n    }\n'
+			'#if defined(TARGET_APPLE)\n    else\n#endif\n#endif\n'
+			f'#if !HAVE_P{operation.upper()}V || defined(TARGET_WASM) || defined(TARGET_APPLE)\n'
+			'    {\n' + indent(fallback) + '\n    }\n#endif\n' + footer)
+		text = text.replace(original, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched iOS vector I/O availability:', path)
+
+
+def patch_runtime_android_x86_atomics(runtime_root: Path) -> None:
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'atomic.h'
+	text = path.read_text(encoding='utf-8')
+	anchor = '#if !defined (BROKEN_64BIT_ATOMICS_INTRINSIC)\n'
+	atomics = '''#if defined (HOST_ANDROID) && defined (HOST_X86)
+/* (FOnline Patch) Android x86 permits four-byte-aligned gint64 storage; cmpxchg8b preserves that ABI without a GC-unsafe library lock */
+static inline gint64 mono_atomic_cas_i64(volatile gint64 *dest, gint64 exch, gint64 comp)
+{
+	__asm__ __volatile__ ("lock; cmpxchg8b %1"
+		: "+A" (comp), "+m" (*dest)
+		: "b" ((guint32)exch), "c" ((guint32)((guint64)exch >> 32))
+		: "memory", "cc");
+	return comp;
+}
+
+static inline gint64 mono_atomic_fetch_add_i64(volatile gint64 *dest, gint64 add)
+{
+	gint64 old_val = 0, expected;
+	do {
+		expected = old_val;
+		old_val = mono_atomic_cas_i64 (dest, (gint64)((guint64)expected + (guint64)add), expected);
+	} while (old_val != expected);
+	return old_val;
+}
+
+static inline gint64 mono_atomic_add_i64(volatile gint64 *dest, gint64 add)
+{
+	return (gint64)((guint64)mono_atomic_fetch_add_i64 (dest, add) + (guint64)add);
+}
+
+static inline gint64 mono_atomic_inc_i64(volatile gint64 *dest)
+{
+	return mono_atomic_add_i64 (dest, 1);
+}
+
+static inline gint64 mono_atomic_dec_i64(volatile gint64 *dest)
+{
+	return mono_atomic_add_i64 (dest, -1);
+}
+
+static inline gint64 mono_atomic_load_i64(volatile gint64 *src)
+{
+	return mono_atomic_cas_i64 (src, 0, 0);
+}
+
+#elif !defined (BROKEN_64BIT_ATOMICS_INTRINSIC)
+'''
+	exchange_anchor = '''static inline gint64 mono_atomic_xchg_i64(volatile gint64 *val, gint64 new_val)
+{
+	gint64 old_val;
+	do {
+		old_val = *val;
+	} while (mono_atomic_cas_i64 (val, new_val, old_val) != old_val);
+	return old_val;
+}'''
+	exchange = '''static inline gint64 mono_atomic_xchg_i64(volatile gint64 *val, gint64 new_val)
+{
+#if defined (HOST_ANDROID) && defined (HOST_X86)
+	/* (FOnline Patch) Seed retries from CAS observations instead of a potentially torn plain load */
+	gint64 old_val = 0, expected;
+	do {
+		expected = old_val;
+		old_val = mono_atomic_cas_i64 (val, new_val, expected);
+	} while (old_val != expected);
+#else
+	gint64 old_val;
+	do {
+		old_val = *val;
+	} while (mono_atomic_cas_i64 (val, new_val, old_val) != old_val);
+#endif
+	return old_val;
+}'''
+
+	for original, replacement in ((anchor, atomics), (exchange_anchor, exchange)):
+		if replacement in text:
+			continue
+
+		if text.count(original) != 1:
+			raise SystemExit(f'Cannot patch Android x86 Mono atomics, unique anchor not found in {path}: {original.splitlines()[0]}')
+
+		text = text.replace(original, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched Android x86 runtime atomics:', path)
+
+
+def resolve_interop_shim_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	native_root = runtime_root / 'artifacts' / 'bin' / 'native'
+	candidates = sorted(native_root.glob(f'*-{os_name}-{config}-{arch}'))
+
+	if not candidates:
+		raise SystemExit(f'Interop shim libraries not found: {native_root}/*-{os_name}-{config}-{arch}')
+
+	return candidates[-1]
+
+
+def resolve_minipal_libraries(runtime_root: Path, os_name: str, arch: str, config: str) -> list[Path]:
+	# The shims call into minipal (SystemNative_GetTimestamp needs minipal_hires_ticks), and it is only
+	# ever produced under the intermediate obj tree, so it is picked up separately from the shims.
+	# The file name follows the target toolchain rather than the host: libminipal.a where CMake applies
+	# the Unix prefix, minipal.lib on MSVC. aotminipal is a different library and stays out
+	obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+	return sorted(path
+		for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}')
+		for path in (parent / 'minipal').rglob('*')
+		if path.suffix.lower() in ('.a', '.lib') and path.stem.lower() in ('minipal', 'libminipal'))
+
+
+def copy_browser_runtime_glue(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	# Mono's browser runtime imports its scheduler, crypto and startup helpers from JavaScript, so the
+	# Emscripten link needs these next to the archives; the rsp files carry dotnet's own link options
+	native_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	glue_dir = native_dir / 'src' / 'es6'
+	glue_paths = sorted(glue_dir.glob('dotnet.es6.*.js'))
+
+	if not glue_paths:
+		raise SystemExit(f'Browser runtime glue not found: {glue_dir}')
+
+	target_dir = output_lib_dir / 'es6'
+	ensure_dir(target_dir)
+
+	for glue_path in glue_paths:
+		log('Copy browser runtime glue', glue_path.name)
+		shutil.copy2(glue_path, target_dir / glue_path.name)
+
+	for rsp_path in sorted((native_dir / 'src').glob('emcc-*.rsp')):
+		log('Copy browser link options', rsp_path.name)
+		shutil.copy2(rsp_path, output_lib_dir / rsp_path.name)
+
+
+def copy_interop_shim_libraries(runtime_root: Path, output_lib_dir: Path, os_name: str, arch: str, config: str) -> None:
+	shim_dir = resolve_interop_shim_dir(runtime_root, os_name, arch, config)
+	# Static archives only: the shims are linked into the host binary and reached through the engine's
+	# Mono dl fallback, because Windows and WebAssembly cannot resolve them as shared libraries
+	shim_paths = sorted(path for pattern in ('*.a', '*.lib') for path in shim_dir.glob(pattern))
+
+	if not shim_paths:
+		raise SystemExit(f'Interop shim libraries not found: {shim_dir}')
+
+	minipal_paths = resolve_minipal_libraries(runtime_root, os_name, arch, config)
+
+	if not minipal_paths:
+		obj_root = runtime_root / 'artifacts' / 'obj' / 'native'
+		seen = sorted(str(path.relative_to(obj_root)) for parent in obj_root.glob(f'*-{os_name}-{config}-{arch}') for path in (parent / 'minipal').rglob('*') if path.is_file())
+		raise SystemExit(f'Interop shim dependency minipal not found under: {obj_root}/*-{os_name}-{config}-{arch}/minipal (found: {", ".join(seen) if seen else "nothing"})')
+
+	shim_paths.extend(minipal_paths)
+
+	ensure_dir(output_lib_dir)
+
+	for shim_path in shim_paths:
+		log('Copy interop shim', shim_path.name)
+		shutil.copy2(shim_path, output_lib_dir / shim_path.name)
+
+
 def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
+	layout = resolve_mono_layout(os_name, arch, config, env)
+
+	# A published runtime tree stands in for the source build. It is what makes a Windows target
+	# reachable from a Linux host at all: dotnet/runtime builds with the host's own toolchain and has
+	# no Windows cross-target, so that combination has to be produced on Windows and carried over
+	prebuilt_root = env.get('FO_MANAGED_RUNTIME_PREBUILT', '')
+
+	if prebuilt_root:
+		adopt_prebuilt_mono(Path(prebuilt_root), layout.workspace, layout.publish_triplet, layout.ready_marker)
+		log(f'Runtime {layout.publish_triplet} is ready (prebuilt)!')
+		return
+
+	if os_name == 'windows' and os.name != 'nt':
+		raise SystemExit(
+			f'Managed runtime for {layout.publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
+			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
+
+	# The runtime build takes most of a CI build job and nothing the cache name leaves out changes its output, so a job
+	# takes a tree another job published. A local FO_DOTNET_RUNTIME_ROOT is not the pinned source and is never shared
+	cache_name = ''
+
+	if not layout.ready_marker.exists() and os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
+		cache_name = build_mono_workspace_cache_name(os_name, arch, config, env)
+
+		if restore_mono_workspace_cache(cache_name, layout):
+			layout.ready_marker.touch()
+			log(f'Runtime {layout.publish_triplet} is ready (cached)!')
+			return
+
+		# What is published to the cache comes from a fresh clone and build, never from a source or object tree an
+		# earlier build left under markers that do not record the current build code
+		reset_marker(layout.clone_marker)
+		reset_marker(layout.built_marker)
+
+	remove_incomplete_runtime_bootstrap(layout.runtime_root)
+	build_mono(os_name, arch, config, env)
+
+	if cache_name:
+		workspace_cache_store_tree(cache_name, layout.workspace / cache_name, layout.output_dir, 'managed runtime')
+
+	log(f'Runtime {layout.publish_triplet} is ready!')
+
+
+def remove_incomplete_runtime_bootstrap(runtime_root: Path) -> None:
+	# Arcade installs its bootstrap SDK only while .dotnet/sdk/<version> is absent, so an install a cancelled job cut
+	# short - the SDK directory there, the shared runtime it needs missing - would fail every build on this tree
+	bootstrap_root = runtime_root / '.dotnet'
+	sdk_dir = bootstrap_root / 'sdk'
+	shared_dir = bootstrap_root / 'shared' / 'Microsoft.NETCore.App'
+
+	if not sdk_dir.is_dir() or not any(path.is_dir() for path in sdk_dir.iterdir()):
+		return
+
+	if shared_dir.is_dir() and any(path.is_dir() for path in shared_dir.iterdir()):
+		return
+
+	log('Remove incomplete runtime bootstrap SDK:', bootstrap_root)
+	remove_path_if_exists(bootstrap_root)
+
+
+def resolve_mono_layout(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> MonoLayout:
 	# dotnet/runtime build expects ARMv7 32-bit as 'arm', but our project-wide arch
 	# convention uses 'arm32' to make bit-width explicit (Common.h GetCurrentBinaryUpdateTargetName,
-	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent.
+	# packager mapping). Translate at this single boundary so the rest of the codebase stays consistent
 	dotnet_runtime_arch = 'arm' if arch == 'arm32' else arch
-	triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	runtime_triplet = f'{os_name}.{dotnet_runtime_arch}.{config}'
+	publish_triplet = f'{os_name}.{arch}.{config}'
 	workspace = Path(env['FO_WORKSPACE'])
-	runtime_root = workspace / 'runtime'
-	clone_marker = workspace / 'CLONED'
-	built_marker = workspace / f'BUILT_{triplet}'
-	ready_marker = workspace / f'READY_{triplet}'
+	runtime_version = env['FO_DOTNET_RUNTIME'].replace('/', '_').replace('\\', '_')
+	marker_suffix = resolve_mono_marker_suffix(os_name)
+
+	return MonoLayout(
+		dotnet_runtime_arch=dotnet_runtime_arch,
+		runtime_triplet=runtime_triplet,
+		publish_triplet=publish_triplet,
+		workspace=workspace,
+		runtime_root=workspace / 'runtime',
+		output_dir=workspace / 'output' / 'mono' / publish_triplet,
+		clone_marker=workspace / f'CLONED_{runtime_version}',
+		built_marker=workspace / f'BUILT_{runtime_version}_{runtime_triplet}{marker_suffix}',
+		ready_marker=workspace / f'READY_{runtime_version}_{publish_triplet}{marker_suffix}',
+	)
+
+
+def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> None:
+	# Everything reachable from here is part of the workspace cache key (resolve_mono_workspace_cache_identity), so
+	# code that shapes the published tree belongs here and code that does not stays out
+	layout = resolve_mono_layout(os_name, arch, config, env)
+	runtime_root = layout.runtime_root
 
 	def clone_runtime() -> None:
 		if runtime_root.exists():
@@ -1956,34 +3247,294 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 			copy_directory(dotnet_runtime_root, runtime_root)
 		else:
 			log('Clone runtime')
-			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1)
+			clone_git_repo(runtime_root, 'https://github.com/dotnet/runtime.git', branch_name=env['FO_DOTNET_RUNTIME'], depth=1, long_paths=True)
 
-	run_marker_step(clone_marker, 'Prepare runtime source', clone_runtime)
+		patch_runtime_sources(runtime_root)
+
+	run_marker_step(layout.clone_marker, 'Prepare runtime source', clone_runtime)
 
 	def build_runtime() -> None:
-		build_script = resolve_runtime_build_script()
-		run([build_script, '-os', os_name, '-arch', dotnet_runtime_arch, '-c', config, '-subset', 'mono.runtime'], cwd=runtime_root)
+		patch_runtime_zlib_warning_level(runtime_root)
 
-	run_marker_step(built_marker, 'Build runtime', build_runtime)
+		if os_name == 'browser':
+			patch_runtime_browser_asm_compiler(runtime_root)
+
+		if os_name == 'linux':
+			patch_runtime_linux_signal_actions(runtime_root)
+
+		if os_name in ('osx', 'ios', 'iossimulator'):
+			patch_runtime_apple_sources(runtime_root)
+
+		if os_name in ('ios', 'iossimulator'):
+			patch_runtime_ios_sources(runtime_root)
+
+		if os_name == 'android':
+			patch_runtime_android_sources(runtime_root)
+			patch_runtime_android_x86_atomics(runtime_root)
+
+		if os_name == 'windows':
+			patch_runtime_windows_embedded_debug_info(runtime_root)
+
+		# The targets with a 32-bit architecture, where the JIT implements no hardware intrinsic class
+		if os_name in ('windows', 'android'):
+			patch_runtime_isa_is_supported_fallback(runtime_root)
+
+		discard_runtime_local_tasks_semaphore(runtime_root)
+		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name), *resolve_mono_cmake_args()], runtime_root, target_os=os_name)
+
+	run_marker_step(layout.built_marker, 'Build runtime', build_runtime)
 
 	def publish_runtime() -> None:
-		output_dir = workspace / 'output' / 'mono' / triplet
-		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / triplet / 'out'
+		output_dir = layout.output_dir
+		input_dir = runtime_root / 'artifacts' / 'obj' / 'mono' / layout.runtime_triplet / 'out'
 		if not input_dir.is_dir():
 			raise SystemExit(f'Files not found: {input_dir}')
+		class_library_dir = resolve_runtime_pack_class_library_dir(runtime_root, os_name, layout.dotnet_runtime_arch, config)
+		class_libraries = sorted(path for path in class_library_dir.glob('*.dll') if path.name != 'System.Private.CoreLib.dll')
+		if not class_libraries:
+			raise SystemExit(f'Target class libraries not found: {class_library_dir}')
+		corelib_path = runtime_root / 'artifacts' / 'bin' / 'mono' / layout.runtime_triplet / 'IL' / 'System.Private.CoreLib.dll'
+		if not corelib_path.is_file():
+			raise SystemExit(f'Mono System.Private.CoreLib not found: {corelib_path}')
+
+		ensure_empty_dir(output_dir)
 		log('Copy from', input_dir, 'to', output_dir)
 		copy_directory(input_dir, output_dir, dirs_exist_ok=True)
 
-	run_marker_step(ready_marker, f'Publish runtime {triplet}', publish_runtime)
+		netcoreapp_dir = output_dir / 'lib' / 'netcoreapp'
+		ensure_empty_dir(netcoreapp_dir)
+		log('Copy class libraries from', class_library_dir)
+		for assembly_path in class_libraries:
+			shutil.copy2(assembly_path, netcoreapp_dir / assembly_path.name)
+		shutil.copy2(corelib_path, netcoreapp_dir / corelib_path.name)
 
-	log(f'Runtime {triplet} is ready!')
+		copy_interop_shim_libraries(runtime_root, output_dir / 'lib', os_name, layout.dotnet_runtime_arch, config)
 
+		if os_name == 'browser':
+			copy_browser_runtime_glue(runtime_root, output_dir / 'lib', os_name, layout.dotnet_runtime_arch, config)
+
+	run_marker_step(layout.ready_marker, f'Publish runtime {layout.publish_triplet}', publish_runtime)
+
+
+def resolve_runtime_pack_class_library_dir(runtime_root: Path, os_name: str, arch: str, config: str) -> Path:
+	# libs.sfx places the target's class libraries in its runtime pack, named by dotnet's portable RID
+	# (eng/RuntimeIdentifier.props spells the Windows OS 'win'); the target framework folder is the only one
+	rid = f'{"win" if os_name == "windows" else os_name}-{arch}'
+	lib_root = runtime_root / 'artifacts' / 'bin' / f'microsoft.netcore.app.runtime.{rid}' / config / 'runtimes' / rid / 'lib'
+	framework_dirs = sorted(path for path in lib_root.glob('net*') if path.is_dir()) if lib_root.is_dir() else []
+	if len(framework_dirs) != 1:
+		raise SystemExit(f'Expected one target framework folder of the {rid} runtime pack, found {len(framework_dirs)}: {lib_root}')
+	return framework_dirs[0]
+
+
+def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: str, ready_marker: Path) -> None:
+	# The tree is named by its triplet so one published archive can hold several; a caller that points
+	# straight at a single triplet's directory is accepted as well
+	source_dir = prebuilt_root / publish_triplet if (prebuilt_root / publish_triplet).is_dir() else prebuilt_root
+
+	if not (source_dir / 'lib').is_dir() or not (source_dir / 'include').is_dir():
+		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir}')
+
+	output_dir = workspace / 'output' / 'mono' / publish_triplet
+	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
+	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
+	ready_marker.touch()
+
+
+def build_mono_workspace_cache_name(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> str:
+	identity = resolve_mono_workspace_cache_identity(os_name, arch, config, env)
+
+	# Printed because a key that differs between two jobs otherwise shows up only as a silent rebuild
+	for part in identity:
+		log('- managed runtime cache key part:', part)
+
+	digest = hashlib.sha256('\n'.join(identity).encode('utf-8')).hexdigest()
+	runtime_version = re.sub(r'[^A-Za-z0-9._-]+', '-', env['FO_DOTNET_RUNTIME'])
+	return f'managed-runtime-{runtime_version}-{os_name}.{arch}.{config}-{digest[:32]}.tar.gz'
+
+
+def resolve_mono_workspace_cache_identity(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> list[str]:
+	# Anything that might change the published tree is a part: a spurious miss costs one runtime build, while a stale
+	# hit ships a runtime built some other way
+	build_code = fingerprint_module_functions(Path(__file__).read_text(encoding='utf-8'), ('build_mono',))
+	identity = [
+		f'format={MONO_WORKSPACE_CACHE_FORMAT}',
+		f'runtime={env["FO_DOTNET_RUNTIME"]}',
+		f'target={os_name}.{arch}.{config}',
+		f'subset={resolve_mono_runtime_subset(os_name)}',
+		f'marker={resolve_mono_marker_suffix(os_name)}',
+		f'build-code={build_code}',
+	]
+	identity.extend(f'{name}={env.get(name, "")}' for name in MONO_TARGET_TOOLCHAIN_PINS.get(os_name, ()))
+	identity.extend(describe_mono_host_toolchain())
+	return identity
+
+
+def describe_mono_host_toolchain() -> list[str]:
+	# dotnet/runtime compiles the archives with the host's toolchain and an engine link consumes them with its own:
+	# MSVC's linker has to be at least as new as the compiler, and a Linux archive references its glibc's symbol versions
+	identity = [f'host={sys.platform}-{platform.machine().lower()}']
+
+	if os.name == 'nt':
+		identity.append(f'msvc={resolve_msvc_tools_version()}')
+		identity.append(f'windows-sdk={resolve_windows_sdk_version()}')
+		return identity
+
+	if sys.platform.startswith('linux'):
+		try:
+			os_release = platform.freedesktop_os_release()
+			identity.append(f'os={os_release.get("ID", "")}-{os_release.get("VERSION_ID", "")}')
+		except OSError:
+			identity.append('os=unknown')
+
+		identity.append('libc=' + '-'.join(platform.libc_ver()))
+
+	if sys.platform == 'darwin':
+		identity.append(f'xcode={describe_host_command(["xcodebuild", "-version"])}')
+
+	identity.extend(f'{name}={os.environ[name]}' for name in ('CC', 'CXX', 'CLR_CC', 'CLR_CXX') if os.environ.get(name))
+
+	# The runtime's init-compiler picks a clang by version among those on PATH, so every candidate is recorded
+	identity.extend(f'{compiler}={describe_host_command([compiler, "--version"])}' for compiler in find_host_clang_compilers())
+	return identity
+
+
+def resolve_msvc_tools_version() -> str:
+	# Which installation compiles the runtime depends on the VS 2022 environment and on the runtime's own vswhere query,
+	# so the default toolset of every installation with C++ tools is recorded
+	program_files_x86 = os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')
+	vswhere = Path(program_files_x86) / 'Microsoft Visual Studio' / 'Installer' / 'vswhere.exe'
+	query = [str(vswhere), '-all', '-prerelease', '-products', '*', '-requires', 'Microsoft.VisualStudio.Component.VC.Tools.x86.x64', '-format', 'json']
+
+	try:
+		installations = json.loads(subprocess.run(query, capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=True).stdout)
+	except (OSError, subprocess.SubprocessError, ValueError):
+		return 'unknown'
+
+	toolsets = sorted(
+		f'{installation.get("installationVersion", "")}:'
+		f'{read_first_line(Path(installation.get("installationPath", "")) / "VC" / "Auxiliary" / "Build" / "Microsoft.VCToolsVersion.default.txt")}'
+		for installation in installations if isinstance(installation, dict))
+	return ','.join(toolsets) or 'unknown'
+
+
+def resolve_windows_sdk_version() -> str:
+	include_root = Path(os.environ.get('ProgramFiles(x86)', r'C:\Program Files (x86)')) / 'Windows Kits' / '10' / 'Include'
+	versions = [path.name for path in include_root.glob('10.*') if path.is_dir()] if include_root.is_dir() else []
+	return max(versions, key=lambda name: tuple(int(part) for part in name.split('.') if part.isdigit()), default='unknown')
+
+
+def find_host_clang_compilers() -> list[str]:
+	names: set[str] = set()
+
+	for directory in os.environ.get('PATH', '').split(os.pathsep):
+		try:
+			entries = os.listdir(directory) if directory else []
+		except OSError:
+			continue
+
+		names.update(entry for entry in entries if re.fullmatch(r'clang(-\d+)?', entry) and shutil.which(entry))
+
+	return sorted(names)
+
+
+def describe_host_command(command: Sequence[str]) -> str:
+	try:
+		result = subprocess.run(list(command), capture_output=True, text=True, encoding='utf-8', errors='replace', timeout=60, check=False)
+	except (OSError, subprocess.SubprocessError):
+		return 'unavailable'
+
+	lines = result.stdout.strip().splitlines()
+	return lines[0].strip() if result.returncode == 0 and lines else 'unavailable'
+
+
+def fingerprint_module_functions(source: str, roots: Sequence[str]) -> str:
+	digest = hashlib.sha256()
+
+	for name, code in collect_module_dependencies(source, roots).items():
+		digest.update(name.encode('utf-8') + b'\0' + code.encode('utf-8') + b'\0')
+
+	return digest.hexdigest()
+
+
+def collect_module_dependencies(source: str, roots: Sequence[str]) -> dict[str, str]:
+	# Every module-level function, class and constant the roots reach by name, with its code: an edit there changes the
+	# result and an edit anywhere else in the module does not. Comments are dropped, since they change no behaviour
+	module = ast.parse(source)
+	definitions: dict[str, ast.stmt] = {}
+
+	for node in module.body:
+		if isinstance(node, (ast.FunctionDef, ast.ClassDef)):
+			definitions[node.name] = node
+		elif isinstance(node, ast.Assign):
+			definitions.update((target.id, node) for target in node.targets if isinstance(target, ast.Name))
+		elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+			definitions[node.target.id] = node
+
+	missing = [root for root in roots if root not in definitions]
+	assert not missing, f'Module does not define {missing}'
+
+	reached: set[str] = set()
+	pending = list(roots)
+
+	while pending:
+		name = pending.pop()
+
+		if name in reached or name not in definitions:
+			continue
+
+		reached.add(name)
+		pending.extend(child.id for child in ast.walk(definitions[name]) if isinstance(child, ast.Name))
+
+	comment_columns = {
+		token.start[0]: token.start[1]
+		for token in tokenize.generate_tokens(io.StringIO(source).readline)
+		if token.type == tokenize.COMMENT
+	}
+	lines = source.splitlines()
+	result: dict[str, str] = {}
+
+	for name in sorted(reached):
+		node = definitions[name]
+		decorators = getattr(node, 'decorator_list', [])
+		first_row = min([node.lineno, *(decorator.lineno for decorator in decorators)])
+		code_lines = []
+
+		for row in range(first_row, (node.end_lineno or node.lineno) + 1):
+			line = lines[row - 1]
+
+			if row in comment_columns:
+				line = line[:comment_columns[row]]
+
+				if not line.strip():
+					continue
+
+			code_lines.append(line.rstrip())
+
+		result[name] = '\n'.join(code_lines)
+
+	return result
+
+
+def restore_mono_workspace_cache(cache_name: str, layout: MonoLayout) -> bool:
+	cached_path = layout.workspace / cache_name
+	ensure_dir(layout.workspace)
+
+	if not workspace_cache_fetch(cache_name, cached_path):
+		return False
+
+	log('Unpack cached managed runtime:', cached_path)
+	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', is_published_mono_tree)
+
+
+def is_published_mono_tree(tree: Path) -> bool:
+	return (tree / 'include' / 'mono-2.0').is_dir() and (tree / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').is_file()
 
 
 def discover_clang_format() -> str:
 	# An embedding project can point BuildTools at a specific clang-format binary
 	# (e.g. a bundled one) through FO_CLANG_FORMAT; it still has to satisfy the
-	# version-20 gate below. When unset, fall back to the system PATH lookup.
+	# version-20 gate below. When unset, fall back to the system PATH lookup
 	override = os.environ.get('FO_CLANG_FORMAT', '').strip()
 	candidates = [override] if override else []
 	candidates.extend(shutil.which(executable) for executable in ('clang-format-20', 'clang-format'))
@@ -2135,7 +3686,7 @@ def _split_outside_function_bodies(text: str) -> list[tuple[int, int, bool]]:
 
 def fix_fos_nullable_suffix(text: str) -> str:
 	# Mask string/char literals and comments so none of the repairs below touch
-	# literal text (e.g. a UI string that happens to contain `(name : value)`).
+	# literal text (e.g. a UI string that happens to contain `(name : value)`)
 	stash: list[str] = []
 
 	def _stash(match: 're.Match[str]') -> str:
@@ -2155,14 +3706,14 @@ def fix_fos_nullable_suffix(text: str) -> str:
 		out.append(chunk)
 	result = ''.join(out)
 	# Repair nullable markers inside template / cast angle brackets (call form first
-	# so the space before a call's `(` is removed, then the bare declaration form).
+	# so the space before a call's `(` is removed, then the bare declaration form)
 	result = FOS_NULLABLE_ANGLE_CALL_RE.sub(lambda m: _fos_collapse_nullable_angle(m, '('), result)
 	result = FOS_NULLABLE_ANGLE_RE.sub(lambda m: _fos_collapse_nullable_angle(m, ''), result)
-	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`).
+	# Reattach the bracket nullable-element array marker (`Item ? []` -> `Item?[]`)
 	result = FOS_NULLABLE_BRACKET_RE.sub(r'\1?[]', result)
-	# Drop the space clang-format inserts before a named call argument's `:`.
+	# Drop the space clang-format inserts before a named call argument's `:`
 	result = FOS_NAMED_ARG_RE.sub(r'\1:', result)
-	# Restore the masked literals/comments.
+	# Restore the masked literals/comments
 	result = FOS_STASH_RE.sub(lambda m: stash[int(m.group(1))], result)
 	return result
 
@@ -2247,7 +3798,7 @@ def build_auxiliary(target: str, config: str, env: Mapping[str, str]) -> None:
 			'-BuildRoot',
 			# Kept deliberately short: Effekseer nests its own ExternalProject trees (ThirdParty/Build/<lib>/src/
 			# ExternalProject_<lib>-build/CMakeFiles/CMakeScratch/TryCompile-*/...) under this root, and with a
-			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit.
+			# descriptive name the deepest MSBuild tracker log exceeded the 260-character Windows path limit
 			workspace / 'aux-builds' / 'efk',
 			'-OutputPath',
 			output / 'Binaries' / 'EffekseerEditor-Windows-win64',
@@ -2291,8 +3842,11 @@ def create_parser() -> argparse.ArgumentParser:
 	auxiliary_parser.add_argument('config', nargs='?', choices=['Debug', 'Release'], default='Release')
 
 	prepare_parser = subparsers.add_parser('prepare-workspace', help='prepare shared workspace parts')
-	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'msan-libcxx'])
+	prepare_parser.add_argument('parts', nargs='+', choices=['toolset', 'emscripten', 'android-sdk', 'android-ndk', 'dotnet', 'xwin', 'wix', 'msan-libcxx'])
 	prepare_parser.add_argument('--check', action='store_true')
+
+	repair_case_parser = subparsers.add_parser('repair-checkout-case', help='realign working-tree entry names with the git index')
+	repair_case_parser.add_argument('--check', action='store_true')
 
 	package_web_parser = subparsers.add_parser('package-web-debug', help='package the local web debug client')
 	package_web_parser.add_argument('devname', help='short project name for binary/directory naming (e.g. LF)')
@@ -2327,6 +3881,7 @@ def create_parser() -> argparse.ArgumentParser:
 			'toolset',
 			'dotnet',
 			'windows-cross',
+			'wix',
 			'msan-libcxx',
 			'all',
 		],
@@ -2373,6 +3928,9 @@ def main() -> None:
 		return
 	if args.command == 'prepare-workspace':
 		prepare_workspace(args.parts, args.check, env)
+		return
+	if args.command == 'repair-checkout-case':
+		repair_checkout_case(args.check, env)
 		return
 	if args.command == 'package-web-debug':
 		package_web_debug(env, args.devname, args.configs)

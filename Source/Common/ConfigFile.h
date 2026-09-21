@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,11 +37,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Section names are stored verbatim. A name containing '/' is a nested section: the parser only
-// recognizes the nesting syntax, never what a prefix means - resolving a prefix against the section
-// it belongs to is the consuming format's rule, and GetOrderedSections() exposes the file order it
-// needs for that. ConfigFileOption::SkipNestedSections parses only non-nested sections and skips
-// nested section bodies, which keeps header enumeration cheap on files with large nested payloads.
+// Section names are stored verbatim: a '/' marks nesting syntactically, but what a prefix means is the
+// consuming format's rule, which is why GetOrderedSections() exposes file order
 
 enum class ConfigFileOption : uint8_t
 {
@@ -77,6 +74,7 @@ private:
     auto ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool;
     void TrimConfigRange(string_view line, size_t& begin, size_t& end);
     auto IsConfigSpace(char ch) -> bool;
+    auto FindFirstSection(string_view section_name) const noexcept -> multimap<string_view, map<string_view, string_view>>::const_iterator;
     auto GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>;
     auto StoreOwnedString(string_view value) -> string_view;
     auto StoreOwnedString(string&& value) -> string_view;

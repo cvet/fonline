@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,13 +43,13 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(NetworkServerException);
 
 #if FO_HAVE_ASIO
-extern auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
+auto GetAsioErrorText(const std::error_code& error) noexcept -> string;
 #endif
 
 class NetworkServerConnection : public enable_shared_from_this<NetworkServerConnection>
 {
 public:
-    using AsyncSendCallback = function<const_span<uint8_t>()>;
+    using AsyncSendCallback = function<vector<uint8_t>()>;
     using AsyncReceiveCallback = function<void(const_span<uint8_t>)>;
     using DisconnectCallback = function<void()>;
 
@@ -61,6 +61,7 @@ public:
 
     [[nodiscard]] virtual auto GetHost() const noexcept -> string_view { return _host; }
     [[nodiscard]] virtual auto GetPort() const noexcept -> uint16_t { return _port; }
+    [[nodiscard]] virtual auto NeedsPingWatchdog() const noexcept -> bool { return true; }
     [[nodiscard]] auto IsDisconnected() const noexcept -> bool { return _isDisconnected; }
 
     void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);
@@ -73,7 +74,7 @@ protected:
     virtual void DispatchImpl() = 0;
     virtual void DisconnectImpl() = 0;
 
-    auto SendCallback() -> const_span<uint8_t>;
+    auto SendCallback() -> vector<uint8_t>;
     void ReceiveCallback(const_span<uint8_t> buf);
 
     ptr<ServerNetworkSettings> _settings;
@@ -81,13 +82,12 @@ protected:
     uint16_t _port {};
 
 private:
-    AsyncSendCallback _sendCallback {};
-    std::atomic_bool _sendCallbackSet {};
+    mutex _sendLocker {};
+    AsyncSendCallback _sendCallback FO_TSA_GUARDED_BY(_sendLocker) {};
     mutex _receiveLocker {};
     AsyncReceiveCallback _receiveCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
     vector<uint8_t> _initReceiveBuf FO_TSA_GUARDED_BY(_receiveLocker) {};
-    DisconnectCallback _disconnectCallback {};
-    std::atomic_bool _disconnectCallbackSet {};
+    DisconnectCallback _disconnectCallback FO_TSA_GUARDED_BY(_receiveLocker) {};
     std::atomic_bool _isDisconnected {};
 };
 

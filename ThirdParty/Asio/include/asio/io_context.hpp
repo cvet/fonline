@@ -2,7 +2,7 @@
 // io_context.hpp
 // ~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -28,7 +28,7 @@
 #include "asio/execution.hpp"
 #include "asio/execution_context.hpp"
 
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(ASIO_WINDOWS) || defined(ASIO_CYGWIN_W32_SOCKETS)
 # include "asio/detail/winsock_init.hpp"
 #elif defined(__sun) || defined(__QNX__) || defined(__hpux) || defined(_AIX) \
   || defined(__osf__)
@@ -44,6 +44,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 namespace detail {
 #if defined(ASIO_HAS_IOCP)
@@ -498,6 +499,7 @@ public:
    *     boost::bind(f, a1, ... an)); @endcode
    */
   template <typename Handler>
+  ASIO_DEPRECATED_MSG("Use asio::bind_executor()")
 #if defined(GENERATING_DOCUMENTATION)
   unspecified
 #else
@@ -515,7 +517,7 @@ private:
   template <typename Service>
   friend Service& use_service(io_context& ioc);
 
-#if defined(ASIO_WINDOWS) || defined(__CYGWIN__)
+#if defined(ASIO_WINDOWS) || defined(ASIO_CYGWIN_W32_SOCKETS)
   detail::winsock_init<> init_;
 #elif defined(__sun) || defined(__QNX__) || defined(__hpux) || defined(_AIX) \
   || defined(__osf__)
@@ -567,8 +569,8 @@ public:
 
 #if !defined(GENERATING_DOCUMENTATION)
 private:
-  friend struct asio_require_fn::impl;
-  friend struct asio_prefer_fn::impl;
+  friend struct ASIO_VERSIONED_NAME(require_fn)::impl;
+  friend struct ASIO_VERSIONED_NAME(prefer_fn)::impl;
 #endif // !defined(GENERATING_DOCUMENTATION)
 
   /// Obtain an executor with the @c blocking.possibly property.
@@ -709,8 +711,9 @@ private:
 
 #if !defined(GENERATING_DOCUMENTATION)
 private:
-  friend struct asio_query_fn::impl;
+  friend struct ASIO_VERSIONED_NAME(query_fn)::impl;
   friend struct asio::execution::detail::mapping_t<0>;
+  friend struct asio::execution::detail::inline_exception_handling_t<0>;
   friend struct asio::execution::detail::outstanding_work_t<0>;
 #endif // !defined(GENERATING_DOCUMENTATION)
 
@@ -728,6 +731,24 @@ private:
   static constexpr execution::mapping_t query(execution::mapping_t) noexcept
   {
     return execution::mapping.thread;
+  }
+
+  /// Query the current value of the @c inline_exception_handling property.
+  /**
+   * Do not call this function directly. It is intended for use with the
+   * asio::query customisation point.
+   *
+   * For example:
+   * @code auto ex = my_io_context.get_executor();
+   * if (asio::query(ex,
+   *       asio::execution::inline_exception_handling)
+   *     == asio::execution::inline_exception_handling.capture)
+   *   ... @endcode
+   */
+  static constexpr execution::inline_exception_handling_t query(
+      execution::inline_exception_handling_t) noexcept
+  {
+    return execution::inline_exception_handling.capture;
   }
 
   /// Query the current value of the @c context property.
@@ -1215,6 +1236,29 @@ struct query_static_constexpr_member<
   }
 };
 
+template <typename Allocator, uintptr_t Bits, typename Property>
+struct query_static_constexpr_member<
+    asio::io_context::basic_executor_type<Allocator, Bits>,
+    Property,
+    typename asio::enable_if<
+      asio::is_convertible<
+        Property,
+        asio::execution::inline_exception_handling_t
+      >::value
+    >::type
+  >
+{
+  static constexpr bool is_valid = true;
+  static constexpr bool is_noexcept = true;
+  typedef asio::execution::inline_exception_handling_t::capture_t
+    result_type;
+
+  static constexpr result_type value() noexcept
+  {
+    return result_type();
+  }
+};
+
 #endif // !defined(ASIO_HAS_DEDUCED_QUERY_STATIC_CONSTEXPR_MEMBER_TRAIT)
 
 #if !defined(ASIO_HAS_DEDUCED_QUERY_MEMBER_TRAIT)
@@ -1301,6 +1345,7 @@ struct is_executor<io_context> : false_type
 
 #endif // !defined(GENERATING_DOCUMENTATION)
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

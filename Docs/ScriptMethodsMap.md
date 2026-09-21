@@ -34,7 +34,7 @@ All current native script method files were inspected:
 - `Source/Scripting/ServerMapScriptMethods.cpp`
 - `Source/Scripting/ServerPlayerScriptMethods.cpp`
 
-The current set contains **932** `///@ ExportMethod` declarations across these files.
+The current set contains **983** `///@ ExportMethod` declarations across these files.
 
 ## Naming and ownership conventions
 
@@ -93,11 +93,12 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerEntityScriptMethods.cpp`
 
-- Exported methods: 35
+- Exported methods: 36
 - Prefix: `Server_Entity_*`
 - Ownership: server-side base entity operations.
 - Typical responsibilities:
   - persistence toggles such as `IsPersistent` / `MakePersistent`;
+  - the `GetRefCount` reference-leak diagnostic, meaningful only as a difference around a controlled sequence of calls;
   - entity time-event start/count/stop/repeat/data helpers.
 - These operations are server-only because persistence and authoritative entity scheduling belong to the server runtime.
 
@@ -116,13 +117,15 @@ The prefix is part of the ownership contract. Do not move a method to a more con
 
 ### `Source/Scripting/ServerMapScriptMethods.cpp`
 
-- Exported methods: 73
+- Exported methods: 79
 - Prefix: `Server_Map_*`
 - Ownership: authoritative map operations.
 - Typical responsibilities:
   - script setup and location lookup;
   - item creation/query by id, hex, radius, or collection;
   - static item lookup;
+  - one-way static item removal on the map instance (`RemoveStaticItem`; the removed ids are read back
+    through the `RemovedStaticItemIds` property) — see [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal);
   - critter lookup by id, hex, radius, path, and visibility conditions;
   - map geometry, path, and movement-related queries.
 - Keep state-changing world operations here rather than in common/client helpers.

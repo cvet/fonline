@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -97,7 +98,7 @@ namespace
         new (obj) ArrayNoDefaultValue(value);
     }
 
-    static void ArrayNoDefaultValueDestruct(void* obj) noexcept
+    static void ArrayNoDefaultValueDestruct(void* obj)
     {
         cast_from_void<ArrayNoDefaultValue*>(obj)->~ArrayNoDefaultValue();
     }
@@ -142,7 +143,7 @@ namespace
     static auto MakeAngelScriptEngine(ScriptMessages& messages) -> AngelScript::asIScriptEngine*
     {
         auto engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
-        REQUIRE(engine != nullptr);
+        REQUIRE(engine);
 
         REQUIRE(engine->SetEngineProperty(AngelScript::asEP_OPTIMIZE_BYTECODE, false) >= 0);
         REQUIRE(engine->SetMessageCallback(asFUNCTION(ScriptMessages::Callback), &messages, AngelScript::asCALL_CDECL) >= 0);
@@ -198,13 +199,13 @@ namespace
         FO_STACK_TRACE_ENTRY();
 
         auto ctx = make_nptr(AngelScript::asGetActiveContext());
-        FO_VERIFY_AND_THROW(ctx != nullptr, "Missing active AngelScript context");
+        FO_VERIFY_AND_THROW(ctx, "Missing active AngelScript context");
 
         nptr<AngelScript::asIScriptEngine> engine = ctx->GetEngine();
-        FO_VERIFY_AND_THROW(engine != nullptr, "Missing AngelScript engine");
+        FO_VERIFY_AND_THROW(engine, "Missing AngelScript engine");
 
         nptr<AngelScript::asITypeInfo> array_type = engine->GetTypeInfoByDecl("array<ArrayCmpOnlyNativeValue>");
-        FO_VERIFY_AND_THROW(array_type != nullptr, "Missing array<ArrayCmpOnlyNativeValue> type");
+        FO_VERIFY_AND_THROW(array_type, "Missing array<ArrayCmpOnlyNativeValue> type");
 
         auto values = ScriptArray::Create(array_type.get(), 2);
 
@@ -238,7 +239,7 @@ namespace
     static auto BuildAngelScriptModule(AngelScript::asIScriptEngine* engine, string_view module_name, string_view source) -> int32_t
     {
         auto module = make_nptr(engine->GetModule(string(module_name).c_str(), AngelScript::asGM_ALWAYS_CREATE));
-        REQUIRE(module != nullptr);
+        REQUIRE(module);
         REQUIRE(module->AddScriptSection("InlineArrayTemplateCheck", source.data(), source.size()) >= 0);
         return module->Build();
     }
@@ -266,7 +267,7 @@ namespace
         REQUIRE(build_result >= 0);
 
         nptr<AngelScript::asIScriptModule> module = engine->GetModule(string {module_name}.c_str(), AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(module != nullptr);
+        REQUIRE(module);
         return module;
     }
 
@@ -275,10 +276,10 @@ namespace
         FO_STACK_TRACE_ENTRY();
 
         nptr<AngelScript::asIScriptFunction> func = module->GetFunctionByDecl(string {declaration}.c_str());
-        REQUIRE(func != nullptr);
+        REQUIRE(func);
 
         nptr<AngelScript::asIScriptContext> ctx = engine->CreateContext();
-        REQUIRE(ctx != nullptr);
+        REQUIRE(ctx);
         REQUIRE(ctx->Prepare(func.get()) >= 0);
         int32_t exec_result = ctx->Execute();
         UNSCOPED_INFO(strex("Script execution result: {}, exception: {}", exec_result, ctx->GetExceptionString()).str());
@@ -302,7 +303,7 @@ namespace
     {
         FO_STACK_TRACE_ENTRY();
 
-        REQUIRE(engine != nullptr);
+        REQUIRE(engine);
         CHECK(engine->ShutDownAndRelease() >= 0);
         ReportScriptMessages(messages);
         CHECK_FALSE(HasScriptMessage(messages, "GC cannot destroy an object"));
@@ -330,7 +331,7 @@ namespace
     {
         string array_type_decl = strex("array<{}>", type_decl).str();
         auto array_type = make_nptr(engine->GetTypeInfoByDecl(array_type_decl.c_str()));
-        REQUIRE(array_type != nullptr);
+        REQUIRE(array_type);
 
         auto values = ScriptArray::Create(array_type.get(), 2);
 
@@ -732,7 +733,7 @@ namespace ScriptBuiltins
         if (target[0].Id != cr2.Id) return -16;
 
         // The int index occupies a padded VM argument slot. The following handle must still be
-        // passed as the second dense native x86 argument to array<T>::insertAt.
+        // passed as the second dense native x86 argument to array<T>::insertAt
         target.insertAt(1, cr1);
         if (target.length() != 2) return -17;
         if (target[0].Id != cr2.Id || target[1].Id != cr1.Id) return -18;
@@ -1616,7 +1617,7 @@ namespace ScriptBuiltins
     {
         dict<string, int> d = {};
 )"
-R"(        int value = d.get("missing");
+                    R"(        int value = d.get("missing");
     }
 
     void DictKeyIndexOutOfBoundsThrows()
@@ -2015,7 +2016,7 @@ R"(        int value = d.get("missing");
         if (text.findFirstNotOf("one") != 3) return -8;
 
 )"
-R"(        if (text.findLastOf(",") != 13) return -9;
+                    R"(        if (text.findLastOf(",") != 13) return -9;
         if (text.findLastOf(",", 6) != 3) return -90;
         if (text.findLastNotOf("otw") != 13) return -10;
         if (text.findLastNotOf(",", 3) != 2) return -91;
@@ -2427,7 +2428,7 @@ R"(        if (text.findLastOf(",") != 13) return -9;
         mpos[] angled = Game.TraceHexLine(mapSize, fromHex, 0.0f, 5, ZERO_IPOS, ZERO_IPOS, targetHex);
         if (angled.isEmpty()) return -8;
 )"
-R"(        if (targetHex == fromHex) return -9;
+                    R"(        if (targetHex == fromHex) return -9;
 
         return 1;
     }
@@ -2524,26 +2525,20 @@ R"(        if (targetHex == fromHex) return -9;
         if (Settings.Common.GameName.isEmpty()) return -1;
         if (Settings.Network.ServerPort <= 0) return -2;
 
-        bool debugBuild = Settings.Common.DebugBuild;
+        bool debugBuild = DebugBuild;
         bool packaged = Settings.Common.Packaged;
         if (debugBuild && packaged) return -3;
 
-        // Writable engine settings round-trip through the setter
-        int oldVolume = Settings.Audio.SoundVolume;
-        Settings.Audio.SoundVolume = 42;
-        if (Settings.Audio.SoundVolume != 42) return -4;
-        Settings.Audio.SoundVolume = oldVolume;
-        if (Settings.Audio.SoundVolume != oldVolume) return -5;
+        // Scalar settings of every kind are readable; none of them is writable, so the surface carries
+        // getters only and a script cannot change a configured value behind the configuration's back
+        int volume = Settings.Audio.SoundVolume;
+        if (volume < 0) return -4;
 
-        string oldProxy = Settings.ClientNetwork.ProxyHost;
-        Settings.ClientNetwork.ProxyHost = "unit-test-proxy";
-        if (Settings.ClientNetwork.ProxyHost != "unit-test-proxy") return -6;
-        Settings.ClientNetwork.ProxyHost = oldProxy;
+        string proxy = Settings.ClientNetwork.ProxyHost;
+        if (proxy != proxy) return -5;
 
-        bool oldUdp = Settings.ClientNetwork.UseUdp;
-        Settings.ClientNetwork.UseUdp = !oldUdp;
-        if (Settings.ClientNetwork.UseUdp == oldUdp) return -7;
-        Settings.ClientNetwork.UseUdp = oldUdp;
+        bool useUdp = Settings.ClientNetwork.UseUdp;
+        if (useUdp && !useUdp) return -6;
 
         // Vector settings are exposed as arrays
         array<int> dayColorTime = Settings.View.GlobalDayColorTime;
@@ -2627,6 +2622,12 @@ R"(        if (targetHex == fromHex) return -9;
     void GlobalThrowTenArgsThrows()
     {
         throw("Global throw with ten contexts", 1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
+    }
+
+    void GlobalThrowEntityArgThrows()
+    {
+        Critter critter = Game.CreateCritter("UnitTestCr".hstr(), false);
+        throw("Global throw with entity context", critter);
     }
 
     void GlobalNameOfNonFunctionThrows()
@@ -2835,7 +2836,7 @@ R"(        if (targetHex == fromHex) return -9;
         string[] modules = {};
         string[] names = {};
 )"
-R"(        int[] lines = {};
+                    R"(        int[] lines = {};
         int[] columns = {};
 
         int count = reflection::getCallstack(modules, names, lines, columns);
@@ -3231,76 +3232,48 @@ R"(        int[] lines = {};
 
     static auto MakeMetadataWithGenderEnum() -> vector<uint8_t>
     {
-        vector<uint8_t> metadata;
-        auto writer = DataWriter(metadata);
-
-        writer.Write<uint16_t>(uint16_t {3}); // 3 sections
-
-        auto write_token = [&](string_view token) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(token.size()));
-            writer.WriteStringBytes(token);
-        };
-        auto write_section_header = [&](string_view section_name, uint32_t entries_count) {
-            writer.Write<uint16_t>(numeric_cast<uint16_t>(section_name.size()));
-            writer.WriteStringBytes(section_name);
-            writer.Write<uint32_t>(entries_count);
-        };
-        auto write_enum = [&](string_view name, string_view underlying_type, string_view first_name, string_view first_value, string_view second_name, string_view second_value) {
-            writer.Write<uint32_t>(uint32_t {6}); // 6 tokens
-            write_token(name);
-            write_token(underlying_type);
-            write_token(first_name);
-            write_token(first_value);
-            write_token(second_name);
-            write_token(second_value);
+        vector<vector<string_view>> enums = {
+            {"GenderType", "uint8", "Male", "0", "Female", "1"},
+            {"WideEnum", "uint16", "Low", "12", "High", "650"},
         };
 
-        write_section_header("Enum", uint32_t {2});
-        write_enum("GenderType", "uint8", "Male", "0", "Female", "1");
-        write_enum("WideEnum", "uint16", "Low", "12", "High", "650");
-
-        write_section_header("Setting", numeric_cast<uint32_t>(GAME_SETTING_TYPES.size()));
+        vector<vector<string_view>> settings;
+        settings.reserve(GAME_SETTING_TYPES.size());
 
         for (const auto& [setting_name, setting_type] : GAME_SETTING_TYPES) {
-            writer.Write<uint32_t>(uint32_t {2}); // 2 tokens
-            write_token(setting_name);
-            write_token(setting_type);
+            settings.emplace_back(vector<string_view> {setting_name, setting_type, "0"});
         }
 
-        write_section_header("Property", numeric_cast<uint32_t>(GAME_PROPERTY_TYPES.size()));
+        vector<vector<string_view>> properties;
+        properties.reserve(GAME_PROPERTY_TYPES.size());
 
         for (const auto& [property_type, property_name] : GAME_PROPERTY_TYPES) {
             // Sync tags are only legal on Common properties, so a server-only property carries none
-            writer.Write<uint32_t>(uint32_t {5}); // 5 tokens
-            write_token("Critter");
-            write_token("Server");
-            write_token(property_type);
-            write_token(property_name);
-            write_token("Mutable");
+            properties.emplace_back(vector<string_view> {"Critter", "Server", property_type, property_name, "Mutable"});
         }
 
-        return metadata;
+        return BakerTests::MakeMetadataBlob({{"Enum", enums}, {"Setting", settings}, {"Property", properties}});
     }
 
     static auto MakeResources() -> FileSystem
     {
         auto metadata_blob = MakeMetadataWithGenderEnum();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptBuiltinsCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         auto critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestCr");
         auto script_blob = MakeScriptBinary(compiler_resources);
 
         string_view config_text = "[TestSection]\nFirstKey=FirstValue\nSecondKey=SecondValue\n";
         vector<uint8_t> config_blob(config_text.begin(), config_text.end());
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ScriptBuiltinsRuntimeResources");
         runtime_source->AddFile("ScriptBuiltinsTest.focfg", config_blob);
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ScriptBuiltins.fopro-bin-server", critter_blob);
@@ -3330,7 +3303,7 @@ R"(        int[] lines = {};
 
     static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources());
     }
 }
 
@@ -3355,7 +3328,7 @@ TEST_CASE("ScriptBuiltinsStringOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // StringLength
     {
@@ -3547,16 +3520,16 @@ TEST_CASE("ScriptBuiltinsStringOperations")
         auto func = server->FindFunc<void>(fn("ScriptBuiltins::InvalidIntConversionFromAny"));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
         string traceback;
         bool fatal = true;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData& st, bool is_fatal) {
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data& st, bool is_fatal) {
             message = string(msg);
-            traceback = FormatStackTrace(st);
+            traceback = stack_trace::format(st);
             fatal = is_fatal;
         });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         CHECK(message.find("Invalid int value for any conversion") != string::npos);
@@ -3792,15 +3765,15 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -3977,64 +3950,64 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         RegisterAngelScriptArray(as_engine.get());
 
         nptr<AngelScript::asITypeInfo> int_type = as_engine->GetTypeInfoByDecl("array<int>");
-        REQUIRE(int_type != nullptr);
+        REQUIRE(int_type);
         nptr<AngelScript::asITypeInfo> uint_type = as_engine->GetTypeInfoByDecl("array<uint>");
-        REQUIRE(uint_type != nullptr);
+        REQUIRE(uint_type);
 
         RegisterArrayDummyRef(as_engine.get());
         nptr<AngelScript::asITypeInfo> dummy_ref_handle_type = as_engine->GetTypeInfoByDecl("array<ArrayDummyRef@>");
-        REQUIRE(dummy_ref_handle_type != nullptr);
+        REQUIRE(dummy_ref_handle_type);
 
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayGcNodeModule", "class ArrayGcNode { ArrayGcNode@ Next; }\n") >= 0);
         nptr<AngelScript::asIScriptModule> gc_module = as_engine->GetModule("ArrayGcNodeModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(gc_module != nullptr);
+        REQUIRE(gc_module);
         nptr<AngelScript::asITypeInfo> gc_node_type = gc_module->GetTypeInfoByDecl("ArrayGcNode");
-        REQUIRE(gc_node_type != nullptr);
+        REQUIRE(gc_node_type);
         nptr<AngelScript::asITypeInfo> gc_node_handle_type = gc_module->GetTypeInfoByDecl("array<ArrayGcNode@>");
-        REQUIRE(gc_node_handle_type != nullptr);
+        REQUIRE(gc_node_handle_type);
         CHECK((gc_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) != 0);
 
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayFinalNodeModule", "final class ArrayFinalNode { int Value; }\n") >= 0);
         nptr<AngelScript::asIScriptModule> final_module = as_engine->GetModule("ArrayFinalNodeModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(final_module != nullptr);
+        REQUIRE(final_module);
         nptr<AngelScript::asITypeInfo> final_node_type = final_module->GetTypeInfoByDecl("ArrayFinalNode");
-        REQUIRE(final_node_type != nullptr);
+        REQUIRE(final_node_type);
         CHECK((final_node_type->GetFlags() & AngelScript::asOBJ_NOINHERIT) != 0);
         nptr<AngelScript::asITypeInfo> final_node_handle_type = final_module->GetTypeInfoByDecl("array<ArrayFinalNode@>");
-        REQUIRE(final_node_handle_type != nullptr);
+        REQUIRE(final_node_handle_type);
         CHECK((final_node_handle_type->GetFlags() & AngelScript::asOBJ_GC) == 0);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayNoCompareValue", false, false);
         nptr<AngelScript::asITypeInfo> no_compare_value_type = as_engine->GetTypeInfoByDecl("array<ArrayNoCompareValue>");
-        REQUIRE(no_compare_value_type != nullptr);
+        REQUIRE(no_compare_value_type);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayMultiEqualsValue", true, false);
         nptr<AngelScript::asITypeInfo> multi_equals_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiEqualsValue>");
-        REQUIRE(multi_equals_value_type != nullptr);
+        REQUIRE(multi_equals_value_type);
 
         RegisterArrayComparableValue(as_engine.get(), "ArrayMultiCmpValue", false, true);
         nptr<AngelScript::asITypeInfo> multi_cmp_value_type = as_engine->GetTypeInfoByDecl("array<ArrayMultiCmpValue>");
-        REQUIRE(multi_cmp_value_type != nullptr);
+        REQUIRE(multi_cmp_value_type);
 
         RegisterArrayCmpOnlyValue(as_engine.get(), "ArrayCmpOnlyNativeValue");
         REQUIRE(as_engine->RegisterGlobalFunction("bool CheckArrayCmpOnlyValueOps()", FO_SCRIPT_FUNC(CheckArrayCmpOnlyValueOps), FO_SCRIPT_FUNC_CONV) >= 0);
         REQUIRE(BuildAngelScriptModule(as_engine.get(), "ArrayCmpOnlyValueOpsModule", "bool RunArrayCmpOnlyValueOps() { return CheckArrayCmpOnlyValueOps(); }\n") >= 0);
         nptr<AngelScript::asIScriptModule> cmp_only_module = as_engine->GetModule("ArrayCmpOnlyValueOpsModule", AngelScript::asGM_ONLY_IF_EXISTS);
-        REQUIRE(cmp_only_module != nullptr);
+        REQUIRE(cmp_only_module);
         nptr<AngelScript::asIScriptFunction> cmp_only_func = cmp_only_module->GetFunctionByDecl("bool RunArrayCmpOnlyValueOps()");
-        REQUIRE(cmp_only_func != nullptr);
+        REQUIRE(cmp_only_func);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpParamMismatchValue", "int opCmp(const ArrayCmpOnlyNativeValue &in) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmp));
         nptr<AngelScript::asITypeInfo> param_mismatch_value_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpParamMismatchValue>");
-        REQUIRE(param_mismatch_value_type != nullptr);
+        REQUIRE(param_mismatch_value_type);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpByValueParamValue", "int opCmp(ArrayCmpByValueParamValue) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpByValue));
         nptr<AngelScript::asITypeInfo> by_value_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpByValueParamValue>");
-        REQUIRE(by_value_param_type != nullptr);
+        REQUIRE(by_value_param_type);
 
         RegisterArrayComparatorFilterValue(as_engine.get(), "ArrayCmpOutRefParamValue", "int opCmp(ArrayCmpOutRefParamValue &out) const", FO_SCRIPT_FUNC_THIS(ArrayComparableValueCmpMutable));
         nptr<AngelScript::asITypeInfo> out_ref_param_type = as_engine->GetTypeInfoByDecl("array<ArrayCmpOutRefParamValue>");
-        REQUIRE(out_ref_param_type != nullptr);
+        REQUIRE(out_ref_param_type);
 
         auto int_arr = ScriptArray::Create(int_type.get(), 2);
 
@@ -4060,7 +4033,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         int_arr->SetValue(0, &first_int_value);
         int_arr->SetValue(1, &second_int_value);
         {
-            auto copied_int_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*int_arr);
+            auto copied_int_arr = safe_alloc::make_refcounted<ScriptArray>(*int_arr);
             CHECK(copied_int_arr->GetSize() == int_arr->GetSize());
             CHECK(*copied_int_arr->AtAs<int32_t>(0) == first_int_value);
             CHECK(*copied_int_arr->AtAs<int32_t>(1) == second_int_value);
@@ -4086,7 +4059,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         dummy_ref_arr->SetValue(0, &first_dummy_ref_handle);
         CHECK(first_dummy_ref.RefCount == 1);
         {
-            auto copied_dummy_ref_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*dummy_ref_arr);
+            auto copied_dummy_ref_arr = safe_alloc::make_refcounted<ScriptArray>(*dummy_ref_arr);
             CHECK(copied_dummy_ref_arr->GetSize() == dummy_ref_arr->GetSize());
             CHECK(first_dummy_ref.RefCount == 2);
             CHECK(copied_dummy_ref_arr->FindByRef(&first_dummy_ref_handle) == 0);
@@ -4109,7 +4082,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
         {
             auto defaulted_gc_handle_arr = ScriptArray::Create(gc_node_handle_type.get(), 1, &gc_node_handle);
 
-            auto copied_gc_handle_arr = SafeAlloc::MakeRefCounted<ScriptArray>(*defaulted_gc_handle_arr);
+            auto copied_gc_handle_arr = safe_alloc::make_refcounted<ScriptArray>(*defaulted_gc_handle_arr);
             CHECK(copied_gc_handle_arr->GetSize() == defaulted_gc_handle_arr->GetSize());
             CHECK(copied_gc_handle_arr->FindByRef(&gc_node_handle) == 0);
         }
@@ -4176,7 +4149,7 @@ TEST_CASE("ScriptBuiltinsArrayOperations")
 
         {
             nptr<AngelScript::asIScriptContext> ctx = as_engine->CreateContext();
-            REQUIRE(ctx != nullptr);
+            REQUIRE(ctx);
             auto release_ctx = scope_exit([&ctx]() noexcept { safe_call([&ctx] { ctx->Release(); }); });
 
             REQUIRE(ctx->Prepare(cmp_only_func.get()) >= 0);
@@ -4274,7 +4247,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // DictLength
     {
@@ -4343,10 +4316,10 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4380,9 +4353,9 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         RegisterAngelScriptDict(as_engine.get());
 
         nptr<AngelScript::asITypeInfo> int_dict_type = as_engine->GetTypeInfoByDecl("dict<int,int>");
-        REQUIRE(int_dict_type != nullptr);
+        REQUIRE(int_dict_type);
         nptr<AngelScript::asITypeInfo> string_key_dict_type = as_engine->GetTypeInfoByDecl("dict<int64,int64>");
-        REQUIRE(string_key_dict_type != nullptr);
+        REQUIRE(string_key_dict_type);
 
         auto dict = ScriptDict::Create(int_dict_type.get());
 
@@ -4456,7 +4429,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         CHECK(*values->AtAs<int32_t>(0) == replacement_value);
         CHECK(*values->AtAs<int32_t>(1) == second_value);
 
-        auto copy = SafeAlloc::MakeRefCounted<ScriptDict>(*dict);
+        auto copy = safe_alloc::make_refcounted<ScriptDict>(*dict);
         CHECK(copy->GetSize() == 2);
         CHECK(*copy == *dict);
         CHECK(*dict == *dict);
@@ -4540,7 +4513,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
 
         auto check_value_comparator_throw = [&as_engine](string_view dict_decl, string_view expected_message) {
             nptr<AngelScript::asITypeInfo> dict_type = as_engine->GetTypeInfoByDecl(string {dict_decl}.c_str());
-            REQUIRE(dict_type != nullptr);
+            REQUIRE(dict_type);
 
             auto dict = ScriptDict::Create(dict_type.get());
             int32_t key = 1;
@@ -4562,7 +4535,7 @@ TEST_CASE("ScriptBuiltinsDictOperations")
         check_value_comparator_throw("dict<int,DictMultiEqualsNativeValue>", "Type has multiple matching opEquals or opCmp methods");
 
         nptr<AngelScript::asITypeInfo> multi_cmp_key_dict_type = as_engine->GetTypeInfoByDecl("dict<DictMultiCmpNativeValue,int>");
-        REQUIRE(multi_cmp_key_dict_type != nullptr);
+        REQUIRE(multi_cmp_key_dict_type);
 
         auto multi_cmp_key_dict = ScriptDict::Create(multi_cmp_key_dict_type.get());
         ArrayComparableValue low_key {1};
@@ -4601,7 +4574,7 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_success_func = [&server, &fn](string_view func_name) {
         auto func = server->FindFunc<int32_t>(fn(func_name));
         REQUIRE(func);
@@ -4609,19 +4582,20 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
         INFO(func_name);
         CHECK(func.GetResult() == 1);
     };
-    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) {
+    auto run_throwing_func = [&server, &fn](string_view func_name, string_view expected_message) -> string {
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
         INFO(message);
         CHECK(message.find(expected_message) != string::npos);
+        return message;
     };
 
     run_success_func("ScriptBuiltins::PropertyScalarConversionOps");
@@ -4660,9 +4634,45 @@ TEST_CASE("ScriptBuiltinsGlobalBindings")
     run_throwing_func("ScriptBuiltins::GlobalThrowOneArgThrows", "Global throw with one context");
     run_throwing_func("ScriptBuiltins::GlobalThrowThreeArgsThrows", "Global throw with three contexts");
     run_throwing_func("ScriptBuiltins::GlobalThrowTenArgsThrows", "Global throw with ten contexts");
+    string entity_throw_message = run_throwing_func("ScriptBuiltins::GlobalThrowEntityArgThrows", "Critter: name UnitTestCr id ");
+    CHECK(entity_throw_message.find(" proto UnitTestCr") != string::npos);
     run_throwing_func("ScriptBuiltins::GlobalNameOfNonFunctionThrows", "argument must be a function reference");
     run_throwing_func("ScriptBuiltins::GlobalNameOfNullThrows", "function reference is null");
     run_throwing_func("ScriptBuiltins::GlobalInvokeMissingFuncThrows", "Script function not found");
+}
+
+// Lives here because this rig is the one that declares game settings in its metadata blob. Pins
+// BaseEngine's own precedence rule, so dropping the guard in its constructor fails a test
+TEST_CASE("EngineAppliesGameSettingMetadataOnlyToUnconfiguredValues")
+{
+    auto settings = MakeSettings();
+
+    ConfigFile runtime_config {"TestSettings.Int32Value = 7\nUngroupedTestSetting = 9\n"};
+    settings.ApplyConfigFile(runtime_config, "");
+
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // The configuration named these before the engine existed, so the metadata baseline of "0" must not
+    // have replaced them; the ungrouped one proves the bare spelling matches the same way
+    CHECK(settings.GetCustomSetting("TestSettings.Int32Value") == "7");
+    CHECK(settings.GetCustomSetting("UngroupedTestSetting") == "9");
+
+    // The configuration never named these, so they arrive from the metadata baseline
+    CHECK(settings.GetCustomSetting("TestSettings.Int64Value") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.StringValue") == "0");
+    CHECK(settings.GetCustomSetting("TestSettings.BoolValue") == "0");
 }
 
 TEST_CASE("ScriptBuiltinsReflectionOperations")
@@ -4686,7 +4696,7 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
     auto run_success_func = [&server, &fn](string_view func_name) {
         auto func = server->FindFunc<int32_t>(fn(func_name));
         REQUIRE(func);
@@ -4698,10 +4708,10 @@ TEST_CASE("ScriptBuiltinsReflectionOperations")
         auto func = server->FindFunc<void>(fn(func_name));
         REQUIRE(func);
 
-        auto prev_callback = GetExceptionCallback();
+        auto prev_callback = exceptions::get_callback();
         string message;
-        SetExceptionCallback([&](string_view msg, const CatchedStackTraceData&, bool) { message = string(msg); });
-        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { SetExceptionCallback(std::move(prev)); });
+        exceptions::set_callback([&](string_view msg, const stack_trace::catched_data&, bool) { message = string(msg); });
+        auto restore_callback = scope_exit([prev = std::move(prev_callback)]() mutable noexcept { exceptions::set_callback(std::move(prev)); });
 
         CHECK_FALSE(func.Call());
         INFO(func_name);
@@ -4746,7 +4756,7 @@ TEST_CASE("ScriptBuiltinsMathAndTypeOperations")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // ComprehensiveMathTest
     {

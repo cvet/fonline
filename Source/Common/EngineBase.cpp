@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -139,7 +139,8 @@ struct EngineBaseData
              }}};
     }
 
-    unordered_map<string_view, function<void(BaseTypeDesc&)>> BuiltinTypes {};
+    // Plain function pointers: every entry is a captureless initializer, so the table needs no wrapper
+    unordered_map<string_view, void (*)(BaseTypeDesc&)> BuiltinTypes {};
 };
 FO_GLOBAL_DATA(EngineBaseData, Data);
 
@@ -167,13 +168,24 @@ void EngineMetadata::RegisterSide(EngineSideKind side)
     _side = side;
 }
 
+void EngineMetadata::RegisterMetadataVersion(string_view version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    FO_VERIFY_AND_THROW(!version.empty(), "Metadata version is empty");
+    FO_VERIFY_AND_THROW(_metadataVersion.empty() || _metadataVersion == version, "Metadata version differs between metadata targets", _metadataVersion, version);
+
+    _metadataVersion = version;
+}
+
 auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    auto it = _entityTypes.find(Hashes.ToHashedString(name));
+    auto it = _entityTypes.find(Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(it == _entityTypes.end(), "Unexpected entry found in entity types");
     FO_VERIFY_AND_THROW(!_fixedTypesByStr.contains(name), "Entity type name conflicts with an already registered fixed type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Entity type name conflicts with an already registered base type", name);
@@ -183,7 +195,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     FO_VERIFY_AND_THROW(exported || _enums.count(strex("{}Property", name)) == 0, "Entity property enum type is already registered", name);
     FO_VERIFY_AND_THROW(exported || !_baseTypes.contains(strex("{}Property", name)), "Entity property type name conflicts with an already registered base type", name);
 
-    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
+    auto registrar = safe_alloc::make_unique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -194,7 +206,7 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
         .PropRegistrar = std::move(registrar),
     };
 
-    auto entry = _entityTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _entityTypes.emplace(Hashes.to_hashed_string(name), std::move(desc));
     _entityTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     if (has_protos) {
@@ -209,7 +221,8 @@ auto EngineMetadata::RegisterEntityType(string_view name, bool exported, bool is
     }
     if (has_abstract) {
         _entityRelatives.emplace(strex("Abstract{}", name), &entry.first->second);
-        RegisterBaseType(strex("Abstract{}", name));
+        auto abstract_type = RegisterBaseType(strex("Abstract{}", name));
+        abstract_type->IsAbstractEntity = true;
     }
 
     if (!exported) {
@@ -234,7 +247,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    auto it = _fixedTypes.find(Hashes.ToHashedString(name));
+    auto it = _fixedTypes.find(Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(it == _fixedTypes.end(), "Unexpected entry found in fixed types");
     FO_VERIFY_AND_THROW(!_entityTypesByStr.contains(name), "Fixed type name conflicts with an already registered entity type", name);
     FO_VERIFY_AND_THROW(!_baseTypes.contains(name), "Fixed type name conflicts with an already registered base type", name);
@@ -243,7 +256,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         RegisterEnumGroup(strex("{}Property", name), "uint16", {{"None", 0}});
     }
 
-    auto registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(name, _side, &Hashes, this);
+    auto registrar = safe_alloc::make_unique<PropertyRegistrar>(name, _side, &Hashes, this);
 
     EntityTypeDesc desc {
         .Exported = exported,
@@ -254,7 +267,7 @@ auto EngineMetadata::RegisterFixedType(string_view name, bool exported) -> ptr<P
         .PropRegistrar = std::move(registrar),
     };
 
-    auto entry = _fixedTypes.emplace(Hashes.ToHashedString(name), std::move(desc));
+    auto entry = _fixedTypes.emplace(Hashes.to_hashed_string(name), std::move(desc));
     _fixedTypesByStr.emplace(entry.first->first.as_str(), &entry.first->second);
 
     RegisterBaseType(name);
@@ -270,7 +283,7 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
 
     auto it = _entityTypesByStr.find(holder_type);
     FO_VERIFY_AND_THROW(it != _entityTypesByStr.end(), "Holder entry registration references an unknown holder entity type", holder_type, target_type, entry);
-    FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.ToHashedString(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
+    FO_VERIFY_AND_THROW(it->second->HolderEntries.count(Hashes.to_hashed_string(entry)) == 0, "Holder entity type already has an entry with this name", holder_type, target_type, entry);
 
     auto registrar = GetPropertyRegistrarForEdit(holder_type);
     ptr<const Property> prop = persistent ? //
@@ -278,7 +291,7 @@ void EngineMetadata::RegsiterEntityHolderEntry(string_view holder_type, string_v
         registrar->RegisterProperty({"Server", "ident[]", strex("{}Ids", entry), "CoreProperty"});
     RegisterEnumEntry(strex("{}Property", holder_type), strex("{}Ids", entry), numeric_cast<int32_t>(prop->GetRegIndex()));
 
-    it->second->HolderEntries.emplace(Hashes.ToHashedString(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.ToHashedString(target_type), .Sync = sync, .Persistent = persistent});
+    it->second->HolderEntries.emplace(Hashes.to_hashed_string(entry), EntityTypeDesc::HolderEntryDesc {.TargetType = Hashes.to_hashed_string(target_type), .Sync = sync, .Persistent = persistent});
 }
 
 void EngineMetadata::RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values)
@@ -345,6 +358,18 @@ void EngineMetadata::RegisterValueType(string_view name)
     RegisterBaseType(name);
 }
 
+void EngineMetadata::RegisterValueType(string_view name, size_t native_size)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(native_size != 0, "Native value type has zero size", name);
+
+    RegisterValueType(name);
+
+    StructLayoutDesc& layout_desc = _structLayouts.at(string(name));
+    layout_desc.NativeSize = native_size;
+}
+
 void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
 {
     FO_STACK_TRACE_ENTRY();
@@ -360,8 +385,11 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
     auto& layout_desc = _structLayouts.at(name_str);
     FO_VERIFY_AND_THROW(layout_desc.Size == 0, "Struct layout size must be zero before field registration");
 
+    // This is where IsStruct becomes an invariant: a value type is plain data, packed with no padding, equal in size
+    // to its native twin, so every consumer may memcpy it. Data that is not plain belongs in a ref type
     vector<FieldDesc> fields;
     size_t total_size = 0;
+    size_t max_field_size = 0;
 
     for (const auto& [field_name, field_type] : layout) {
         FO_VERIFY_AND_THROW(!field_name.empty(), "Value type layout contains a field with an empty name", name, field_type, layout.size());
@@ -374,9 +402,13 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
         FO_VERIFY_AND_THROW(total_size % field.Type.Size == 0, "Value type layout data is not aligned", name, field.Name);
         field.Offset = total_size;
         total_size += field.Type.Size;
+        max_field_size = std::max(max_field_size, field.Type.Size);
     }
 
     FO_VERIFY_AND_THROW(total_size != 0, "Registered type has zero size");
+    // Without a tail check C++ and C# would both round the size up past what the layout records
+    FO_VERIFY_AND_THROW(total_size % max_field_size == 0, "Value type layout ends with padding", name, total_size, max_field_size);
+    FO_VERIFY_AND_THROW(layout_desc.NativeSize == 0 || layout_desc.NativeSize == total_size, "Native value size does not match its registered layout", name, layout_desc.NativeSize, total_size);
 
     layout_desc.Fields = std::move(fields);
     layout_desc.Size = total_size;
@@ -414,7 +446,7 @@ void EngineMetadata::SetEntityClassNames(string_view name, string_view server_cl
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
-    const auto it = _entityTypes.find(Hashes.ToHashedString(name));
+    const auto it = _entityTypes.find(Hashes.to_hashed_string(name));
     FO_VERIFY_AND_THROW(it != _entityTypes.end(), "Entity class-name registration cannot find the entity type", name);
     it->second.ServerClassName = server_class;
     it->second.ClientClassName = client_class;
@@ -441,10 +473,10 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType layout registration conflicts with already registered methods", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType layout is already registered", name, layout.size());
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType layout registration found an existing fields registrar", name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType layout registration found an existing fields registrar", name);
     FO_VERIFY_AND_THROW(_dynamicRefTypeRegistrars.count(string(name)) == 0, "Dynamic RefType registrar is already registered", name);
 
-    auto fields_registrar = SafeAlloc::MakeUnique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
+    auto fields_registrar = safe_alloc::make_unique<PropertyRegistrar>(strex("{}RefType", name), _side, &Hashes, this);
 
     for (const auto& field_tokens : layout) {
         FO_VERIFY_AND_THROW(field_tokens.size() >= 2, "RefType field needs at least name and type tokens", name);
@@ -456,7 +488,8 @@ void EngineMetadata::RegisterRefTypeLayout(string_view name, const vector<vector
         tokens.emplace_back(field_tokens[0]); // Name
         tokens.insert(tokens.end(), field_tokens.begin() + 2, field_tokens.end());
 
-        fields_registrar->RegisterProperty(tokens);
+        auto field = fields_registrar->RegisterProperty(tokens);
+        FO_VERIFY_AND_THROW(!field->IsVirtual(), "RefType fields must have stored values", name, field->GetName());
     }
 
     ref_type.FieldsRegistrar = fields_registrar;
@@ -474,7 +507,7 @@ void EngineMetadata::RegisterRefTypeMethods(string_view name, vector<MethodDesc>
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType methods are already registered", name, ref_type.Methods.size());
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType methods registration conflicts with a dynamic field layout", name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType methods registration found an existing fields registrar", name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType methods registration found an existing fields registrar", name);
 
     ref_type.Methods = std::move(methods);
 }
@@ -489,7 +522,7 @@ void EngineMetadata::RegisterRefTypeMethod(string_view name, MethodDesc&& method
     auto& ref_type = _refTypes[string(name)];
     FO_VERIFY_AND_THROW(ref_type.Methods.empty(), "RefType single-method registration conflicts with already registered methods", name, ref_type.Methods.size(), method.Name);
     FO_VERIFY_AND_THROW(!ref_type.IsDynamicLayout, "RefType single-method registration conflicts with a dynamic field layout", name, method.Name);
-    FO_VERIFY_AND_THROW(ref_type.FieldsRegistrar == nullptr, "RefType single-method registration found an existing fields registrar", name, method.Name);
+    FO_VERIFY_AND_THROW(!ref_type.FieldsRegistrar, "RefType single-method registration found an existing fields registrar", name, method.Name);
 
     ref_type.Methods.emplace_back(std::move(method));
 }
@@ -568,7 +601,7 @@ void EngineMetadata::RegisterInboundRemoteCall(RemoteCallDesc&& remote_call)
     _inboundRemoteCalls.emplace(remote_call.Name, std::move(remote_call));
 }
 
-void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type)
+void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -576,6 +609,7 @@ void EngineMetadata::RegisterGameSetting(string_view name, const BaseTypeDesc& t
     FO_VERIFY_AND_THROW(!_gameSettings.contains(name), "Game setting is already registered", name);
 
     _gameSettings.emplace(name, &type);
+    _gameSettingsInitialValues.emplace(name, initial_value);
 }
 
 void EngineMetadata::MarkGameSettingAsExported(string_view name)
@@ -657,10 +691,10 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
 
-    hstring hrule_name = Hashes.ToHashedString(rule_name);
-    hstring hextra_info = Hashes.ToHashedString(extra_info);
-    hstring htarget = Hashes.ToHashedString(target);
-    hstring hreplacement = Hashes.ToHashedString(replacement);
+    hstring hrule_name = Hashes.to_hashed_string(rule_name);
+    hstring hextra_info = Hashes.to_hashed_string(extra_info);
+    hstring htarget = Hashes.to_hashed_string(target);
+    hstring hreplacement = Hashes.to_hashed_string(replacement);
 
     auto& rules = _migrationRules[hrule_name][hextra_info];
 
@@ -705,7 +739,7 @@ auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 
     BaseTypeDesc type;
     type.Name = type_str;
-    type.HashedName = Hashes.ToHashedString(type_str);
+    type.HashedName = Hashes.to_hashed_string(type_str);
 
     if (auto it = Data->BuiltinTypes.find(type_str); it != Data->BuiltinTypes.end()) {
         it->second(type);
@@ -753,7 +787,41 @@ void EngineMetadata::FinalizeRegistration()
 
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
     FO_VERIFY_AND_THROW(!std::ranges::any_of(_structLayouts, [](auto&& e) { return e.second.Fields.empty(); }), "Registered struct layout has no fields");
-    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && e.second.FieldsRegistrar == nullptr; }), "Registered reference type has no methods or field registrar");
+    FO_VERIFY_AND_THROW(!std::ranges::any_of(_refTypes, [](auto&& e) { return e.second.Methods.empty() && !e.second.FieldsRegistrar; }), "Registered reference type has no methods or field registrar");
+
+    // A name leaves circulation for good: stored data under a migrated name must never meet a registered one
+    for (const auto& [rule_name, rules_by_scope] : _migrationRules) {
+        for (const auto& [scope_name, rules] : rules_by_scope) {
+            for (hstring target : rules | std::views::keys) {
+                bool registered = false;
+
+                if (rule_name.as_str() == "Property") {
+                    nptr<const PropertyRegistrar> registrar = GetPropertyRegistrar(scope_name);
+
+                    for (const RefTypeDesc& ref_type : _refTypes | std::views::values) {
+                        if (!registrar && ref_type.FieldsRegistrar && ref_type.FieldsRegistrar->GetTypeName() == scope_name) {
+                            registrar = ref_type.FieldsRegistrar;
+                        }
+                    }
+
+                    registered = registrar && registrar->FindProperty(target.as_str());
+                }
+                else if (rule_name.as_str() == "Proto") {
+                    // Prototype lookup always applies the rule, so a registered prototype under the old id would be unreachable
+                    const auto& protos = _protoMngr.GetAllProtos();
+                    auto it = protos.find(scope_name);
+                    registered = it != protos.end() && it->second.contains(target);
+                }
+                else if (rule_name.as_str() == "Enum") {
+                    // Enum resolution consults the rule only for an unknown name, so a registered entry would take the old stored meaning
+                    auto it = _enums.find(scope_name.as_str());
+                    registered = it != _enums.end() && it->second.contains(target.as_str());
+                }
+
+                FO_VERIFY_AND_THROW(!registered, "Migration rule retires a name that is still registered", rule_name, scope_name, target);
+            }
+        }
+    }
 
     _registrationFinalized = true;
 }
@@ -781,7 +849,7 @@ auto EngineMetadata::GetPropertyRegistrar(string_view type_name) const noexcept 
 {
     FO_STACK_TRACE_ENTRY();
 
-    hstring type_name_hashed = Hashes.ToHashedString(type_name);
+    hstring type_name_hashed = Hashes.to_hashed_string(type_name);
 
     return GetPropertyRegistrar(type_name_hashed);
 }
@@ -876,7 +944,7 @@ auto EngineMetadata::GetEntityHolderIdsProp(ptr<Entity> holder, hstring entry) c
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto prop_name = Hashes.ToHashedString(strex("{}Ids", entry));
+    hstring prop_name = Hashes.to_hashed_string(strex("{}Ids", entry));
     auto holder_prop = holder->GetProperties()->GetRegistrar()->FindProperty(prop_name);
     FO_VERIFY_AND_THROW(holder_prop, "Missing required holder property");
 
@@ -971,7 +1039,7 @@ auto EngineMetadata::ResolveComplexType(span<const string_view> tokens) const ->
         }
 
         tokens_len += 2;
-        auto args = SafeAlloc::MakeShared<vector<ComplexTypeDesc>>();
+        auto args = safe_alloc::make_shared<vector<ComplexTypeDesc>>();
 
         while (true) {
             bool is_first_arg = tokens_len == 2; // First argument is return type
@@ -1147,7 +1215,7 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
         result = it_target2->second;
     }
 
-    return result;
+    return result.as_str() != "__remove__" ? result : hstring {};
 }
 
 auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>
@@ -1249,9 +1317,19 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     Resources {std::move(resources)},
     GameTime(Settings),
     TimeEventMngr(make_ptr(this)),
-    _imgui {SafeAlloc::MakeRefCounted<ScriptImGui>(make_ptr(this))}
+    _imgui {safe_alloc::make_refcounted<ScriptImGui>(make_ptr(this))}
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Metadata is the baseline for game settings: it fills only what the applied configuration never set,
+    // so a config, sub-config or command-line override, all applied before the engine exists, still wins.
+    // A native-declared setting carries no baseline (the baker bakes values for script modules only), so
+    // its empty entry is skipped rather than written as an empty value
+    for (const auto& [name, value] : GetGameSettingsInitialValues()) {
+        if (!value.empty() && !Settings->FindSettingValue(name)) {
+            Settings->SetSettingValue(name, value);
+        }
+    }
 
     RegisterProtos(Resources);
     RegisterAnimationInfo(Resources);
@@ -1262,18 +1340,22 @@ void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
 
-    GameTime.FrameAdvance(IsRunInDebugger() || Settings->DisableNetworking);
+    GameTime.FrameAdvance(is_run_in_debugger() || Settings->ServerNetwork.DisableNetworking);
 
-    LockForPropertyAccess();
-    auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
+    {
+        LockForPropertyAccess();
+        auto unlock = scope_exit([this]() noexcept { UnlockForPropertyAccess(); });
 
-    SetFrameTime(GameTime.GetFrameTime());
-    SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
-    SetFramesPerSecond(GameTime.GetFramesPerSecond());
+        SetFrameTime(GameTime.GetFrameTime());
+        SetFrameDeltaTime(GameTime.GetFrameDeltaTime());
+        SetFramesPerSecond(GameTime.GetFramesPerSecond());
 
-    if (GameTime.IsTimeSynchronized()) {
-        SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        if (GameTime.IsTimeSynchronized()) {
+            SetSynchronizedTime(GameTime.GetSynchronizedTime());
+        }
     }
+
+    ProcessBackends();
 }
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
@@ -1284,7 +1366,25 @@ auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t
 
     scoped_lock locker {_randomGeneratorLocker};
 
-    return std::uniform_int_distribution<int32_t> {min_value, max_value}(_randomGenerator);
+    return _randomGenerator.next_between(min_value, max_value);
+}
+
+auto BaseEngine::CaptureRandomState() const -> random_generator::state_data
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_randomGeneratorLocker};
+
+    return _randomGenerator.capture_state();
+}
+
+void BaseEngine::RestoreRandomState(const random_generator::state_data& state)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_randomGeneratorLocker};
+
+    _randomGenerator.restore_state(state);
 }
 
 void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
@@ -1296,11 +1396,12 @@ void BaseEngine::ScheduleDelayedCallback(timespan delay, function<void()> body)
     throw InvalidCallException("ScheduleDelayedCallback not supported on this engine");
 }
 
-void BaseEngine::RunScriptContext(const function<void()>& callback)
+auto BaseEngine::RunScriptContext(const function<void()>& callback) -> timespan
 {
     FO_STACK_TRACE_ENTRY();
 
     callback();
+    return timespan::zero;
 }
 
 void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data)
@@ -1310,6 +1411,13 @@ void BaseEngine::SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uin
     FO_VERIFY_AND_THROW(caller.get(), "Remote call requires a non-null caller entity");
 
     HandleOutboundRemoteCall(name, caller, data);
+}
+
+auto BaseEngine::HasRemoteCallHandler(hstring name) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return _inboundRemoteCallHandlers.contains(name);
 }
 
 void BaseEngine::SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode)

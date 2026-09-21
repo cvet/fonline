@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -98,31 +98,31 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseResume")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto paused = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto paused = meter.get_duration().milliseconds();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto paused_after_wait = meter.GetDuration().milliseconds();
+        auto paused_after_wait = meter.get_duration().milliseconds();
         CHECK(paused_after_wait == paused);
 
-        meter.Resume();
+        meter.resume();
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        CHECK(meter.GetDuration().milliseconds() >= paused);
+        CHECK(meter.get_duration().milliseconds() >= paused);
     }
 
     SECTION("TimeMeterResumeWithoutPause")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        auto before_resume = meter.GetDuration().milliseconds();
-        meter.Resume();
+        auto before_resume = meter.get_duration().milliseconds();
+        meter.resume();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        auto after_resume = meter.GetDuration().milliseconds();
+        auto after_resume = meter.get_duration().milliseconds();
 
         CHECK(before_resume >= 1);
         CHECK(after_resume >= before_resume);
@@ -130,15 +130,15 @@ TEST_CASE("TimeRelated")
 
     SECTION("TimeMeterPauseIsIdempotent")
     {
-        TimeMeter meter;
+        time_meter meter;
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
 
-        meter.Pause();
-        auto first_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto first_pause = meter.get_duration().milliseconds();
 
         std::this_thread::sleep_for(std::chrono::milliseconds {5});
-        meter.Pause();
-        auto second_pause = meter.GetDuration().milliseconds();
+        meter.pause();
+        auto second_pause = meter.get_duration().milliseconds();
 
         CHECK(second_pause == first_pause);
     }
@@ -159,6 +159,17 @@ TEST_CASE("TimeRelated")
 
         auto day_text = std::format("{}", timespan {std::chrono::hours {49}});
         CHECK(day_text == "2 days 01:00:00 sec");
+    }
+
+    SECTION("DurationFormatterMinuteAndDayBoundaries")
+    {
+        CHECK(std::format("{}", timespan {}) == "0.000 us");
+        CHECK(std::format("{}", timespan {std::chrono::milliseconds {59999}}) == "59.999 sec");
+        CHECK(std::format("{}", timespan {std::chrono::minutes {1}}) == "00:01:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::seconds {86399}}) == "23:59:59 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {24}}) == "1 day 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::chrono::hours {48}}) == "2 days 00:00:00 sec");
+        CHECK(std::format("{}", timespan {std::numeric_limits<int64_t>::max()}) == "106751 days 23:47:16 sec");
     }
 
     SECTION("TimespanAndSynctimeFormatter")

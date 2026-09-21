@@ -104,7 +104,7 @@ Results:
 - Added a `Source paths inspected` section to `Docs/ClientUpdater.md`.
 - Replaced obsolete package-entry wording with the current `build_runtime_update_target_name` owner in `BuildTools/package.py`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs_make_writable_path`, `Platform::GetUserDataBase`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
+- Symbol spot checks found the documented owners and APIs in current source, including `UpdaterBackend`, `LoadFromClientResources`, `ProcessUpdateFile`, `GetUpdateDescriptor`, `FO_CLIENT_RUNTIME_HOST_ABI_VERSION`, `ClientRuntimeMetadata`, `ClientRuntimeExports`, `ClientRuntimeResult`, `FO_QueryClientRuntimeExports`, `ApplyStagedBinaryUpdate`, `GetClientRuntimeLivePath`, `MakeClientRuntimeStagingPath`, `RunClientFromLibrary`, `RunEmbeddedOrLoadedClient`, `ResolveRequestedClientRuntime`, `ResolveUserWritablePath`, `fs::make_writable_path`, `platform::get_user_data_base`, `CanSelfUpdateNativeModules`, `FO_UPDATER_VERSION`, `UpdateFileTarget`, `ClientBinaries`, `ClientResources`, `GetCurrentBinaryUpdateTargetName`, `UpdateFileMaxPortionSize`, `UpdateFilesInMemory`, `PlatformBinaries`, and `build_runtime_update_target_name`.
 - Promoted in `Docs/DocumentationBacklog.md`: `ClientUpdater.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -129,11 +129,11 @@ Source areas checked:
 Results:
 
 - Added `Source paths inspected` sections to the web, Android, and native debugging docs.
-- Corrected stale stack/exception documentation from the previous context-object / deferred-log callback model to the current `CatchedStackTraceData`, `FormatStackTrace(const CatchedStackTraceData&)`, `WriteLogMessage`, and `SafeWriteStackTrace` model.
+- Corrected stale stack/exception documentation from the previous context-object / deferred-log callback model to the current `stack_trace::catched_data`, `stack_trace::format(const stack_trace::catched_data&)`, `logging::write_message`, and `logging::safe_write_stack_trace` model.
 - Corrected the AngelScript provider name from the old stack-frame wording to current `CollectScriptStackLayers` / script-layer behavior.
 - Corrected web preset references to the parent `../../CMakePresets.json` path.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source/config, including `package-web-debug`, `prepare-host-workspace`, `Workspace/web-debug`, `package-android-debug`, `android-arm64`, `launch-game`, `FOnlineActivity`, `ClientNetwork.ServerHost`, `FO_STACK_TRACE_ENTRY`, `StackTraceData`, `CatchedStackTraceData`, `SetScriptStackTraceProvider`, `CollectScriptStackLayers`, `ResolveStackTrace`, `FormatStackTrace`, `SafeWriteStackTrace`, `GetStackTraceEntry`, `BaseEngineException`, `WriteLogMessage`, and `SetAsyncLogWriting`.
+- Symbol spot checks found the documented owners and APIs in current source/config, including `package-web-debug`, `prepare-host-workspace`, `Workspace/web-debug`, `package-android-debug`, `android-arm64`, `launch-game`, `FOnlineActivity`, `ClientNetwork.ServerHost`, `FO_STACK_TRACE_ENTRY`, `stack_trace::data`, `stack_trace::catched_data`, `stack_trace::set_script_provider`, `CollectScriptStackLayers`, `stack_trace::resolve`, `stack_trace::format`, `logging::safe_write_stack_trace`, `stack_trace::get_entry`, `BaseEngineException`, `logging::write_message`, and `logging::set_async_writing`.
 - Promoted in `Docs/DocumentationBacklog.md`: `WebDebugging.md`, `AndroidDebugging.md`, and `Debugging.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -187,7 +187,7 @@ Results:
 - Replaced remaining future-script-doc wording in build routing with a real link to the present `Scripting.md` page.
 - Confirmed current built-in baker owners include `ModelMeshBaker` / `ModelInfoBaker` under `Source/Tools/` and current model-baker coverage in `Source/Tests/Test_ModelBaker.cpp`.
 - Backticked source/build/doc path checks for this slice: no missing paths.
-- Symbol spot checks found the documented owners and APIs in current source, including `AddStageHook`, `AddExecutableApplication`, `AddSharedApplication`, `BakeResources`, `ForceBakeResources`, `CompileAngelScript`, `CompileMonoScripts`, `BaseBaker`, `SetupBakers`, `MasterBaker`, `MetadataBaker`, `CodeGeneration`, `ForceCodeGeneration`, `FO_SOURCE_META_FILES`, `FO_MONO_SOURCE`, `FO_ADDED_COMMON_HEADERS`, `FO_EMBEDDED_DATA_CAPACITY`, `FO_INTERNAL_CONFIG_CAPACITY`, `RegisterDynamicMetadata`, `MetadataRegistration` templates, `GenericCode-Template`, and `PropertyRegistrar`.
+- Symbol spot checks found the documented owners and APIs in current source, including `AddStageHook`, `AddExecutableApplication`, `AddSharedApplication`, `BakeResources`, `ForceBakeResources`, `CompileAngelScript`, `CompileMonoScripts`, `BaseBaker`, `SetupBakers`, `MasterBaker`, `MetadataBaker`, `CodeGeneration`, `ForceCodeGeneration`, `FO_SOURCE_META_FILES`, `FO_MONO_SOURCE`, `FO_ADDED_COMMON_HEADERS`, `FO_EMBEDDED_DATA_CAPACITY`, `INTERNAL_CONFIG_CAPACITY`, `RegisterDynamicMetadata`, `MetadataRegistration` templates, `GenericCode-Template`, and `PropertyRegistrar`.
 - Promoted in `Docs/DocumentationBacklog.md`: `BuildToolsPipeline.md`, `BakingPipeline.md`, and `GeneratedApiAndMetadata.md` from `drafted` to `verified`.
 
 Follow-up:
@@ -205,7 +205,7 @@ Scope:
 
 Source areas checked:
 
-- `Source/Common/ScriptSystem.*`, `Source/Scripting/AngelScript/AngelScriptScripting.*`, `AngelScriptBackend.*`, `AngelScriptAttributes.cpp`, `AngelScriptCall.cpp`, `AngelScriptEntity.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptRemoteCalls.cpp`, `AngelScriptReflection.cpp`, engine core scripts, Mono/Native roots, and `BuildTools/cmake/stages/ScriptsAndBaking.cmake` for scripting runtime/build flow.
+- `Source/Common/ScriptSystem.*`, `Source/Scripting/AngelScript/AngelScriptScripting.*`, `AngelScriptBackend.*`, `AngelScriptAttributes.cpp`, `AngelScriptCall.cpp`, `AngelScriptEntity.cpp`, `AngelScriptGlobals.cpp`, `AngelScriptRemoteCalls.cpp`, `AngelScriptReflection.cpp`, engine core scripts, Managed/Native roots, and `BuildTools/cmake/stages/ScriptsAndBaking.cmake` for scripting runtime/build flow.
 - All 18 current `Source/Scripting/*ScriptMethods.cpp` files for native exported method ownership and current export counts.
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`, `Source/Tools/MetadataBaker.cpp`, `BuildTools/codegen.py`, `Source/Common/ScriptSystem.h`, `Source/Essentials/BasicCore.h`, nullable analyzer tools under `../Tools/NullableEstimate/`, parent VS Code/CI task wiring, and nullable/script tests for nullability contracts.
 
@@ -234,7 +234,7 @@ Source areas checked:
 
 - All current `Source/Tools/*.h` and `Source/Tools/*.cpp` files, tool application entry points under `Source/Applications/`, and focused baker tests for reusable tool ownership.
 - `Source/Applications/MapperApp.cpp`, `Source/Tools/Mapper.*`, `Source/Scripting/MapperGlobalScriptMethods.cpp`, `Source/Scripting/CommonGlobalScriptMethods.cpp`, `Source/Client/MapView.*`, and `Source/Common/Geometry.cpp` for mapper lifecycle, mapper automation helpers, screenshot/readback flow, and map/camera transform claims.
-- Embedding-project examples explicitly marked as examples: `../../Scripts/MapperRender.fos`, `../../Tools/MapPreview/generate_map_preview.py`, `../../Tools/MapPreview/map_preview_overrides.ini`, and `../../LastFrontier.fomain`.
+- Embedding-project examples explicitly marked as examples: `../../Scripts/MapperRender.cs`, `../../Tools/MapPreview/generate_map_preview.py`, `../../Tools/MapPreview/map_preview_overrides.ini`, and `../../LastFrontier.fomain`.
 
 Results:
 

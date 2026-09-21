@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,24 +54,31 @@ public:
     [[nodiscard]] auto GetFrameTime() const noexcept -> nanotime { return _frameTime.load(std::memory_order_relaxed); }
     [[nodiscard]] auto GetFrameDeltaTime() const noexcept -> timespan { return _frameDeltaTime.load(std::memory_order_relaxed); }
     [[nodiscard]] auto IsTimeSynchronized() const -> bool;
+    [[nodiscard]] auto IsPaused() const noexcept -> bool { return _paused.load(std::memory_order_acquire); }
     [[nodiscard]] auto GetSynchronizedTime() const -> synctime;
     [[nodiscard]] auto GetFramesPerSecond() const noexcept -> int32_t { return _fps.load(std::memory_order_relaxed); }
 
     void SetSynchronizedTime(synctime time);
     void SetSynchronizedTimeMonotonic(synctime time);
+    void Pause();
+    void Resume();
     void FrameAdvance(bool clamp_to_cap);
 
 private:
     ptr<TimerSettings> _settings;
 
     // Advanced on the main worker (FrameAdvance) but read from WorkerPool/network threads (entity
-    // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race.
+    // activity timestamps, GetSynchronizedTime), so these are atomic to avoid a data race
     std::atomic<nanotime> _frameTime {};
     std::atomic<timespan> _frameDeltaTime {};
     timespan _debuggingOffset {}; // main-worker only
+    mutable mutex _pauseLocker {};
+    std::atomic<timespan> _pauseOffset {};
+    nanotime _pauseStartedAt FO_TSA_GUARDED_BY(_pauseLocker) {};
+    std::atomic_bool _paused {};
 
     // The synchronized-time projection reads this triple together, so it needs a consistent snapshot
-    // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic).
+    // against the main-worker writers — guarded by a mutex (the frame time is folded in via the atomic)
     mutable mutex _syncTimeLocker {};
     synctime _syncTimeBase FO_TSA_GUARDED_BY(_syncTimeLocker) {};
     synctime _syncTimeFloor FO_TSA_GUARDED_BY(_syncTimeLocker) {};

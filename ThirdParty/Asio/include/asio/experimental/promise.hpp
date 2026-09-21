@@ -32,6 +32,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace experimental {
 
 template <typename T>
@@ -90,6 +91,8 @@ struct promise_value_type<>
  *   co_await p;
  * }
  * @endcode
+ *
+ * @sa @ref overview_promises "Promises"
  */
 template<typename Signature = void(),
     typename Executor = asio::any_io_executor,
@@ -217,6 +220,7 @@ private:
 
 } // namespace experimental
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

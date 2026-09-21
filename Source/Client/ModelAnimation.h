@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -181,7 +181,7 @@ struct ModelPoseJointLink
 class ModelAnimationRuntimeClip final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeClip() = delete;
@@ -207,7 +207,7 @@ private:
 class ModelAnimationRuntimeRig final
 {
     friend class ModelAnimationRuntimeAccess;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     ModelAnimationRuntimeRig() = delete;

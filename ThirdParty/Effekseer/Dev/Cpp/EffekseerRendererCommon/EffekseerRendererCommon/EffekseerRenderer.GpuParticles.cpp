@@ -327,10 +327,20 @@ bool GpuParticleSystem::InitSystem(const Settings& settings)
 		dummyEmitPoints_ = graphicsDevice_->CreateStorageBuffer(1, sizeof(dummyData), &dummyData, Effekseer::Backend::StorageBufferUsage::ReadOnly);
 	}
 
-	return true;
+	for (const auto& emitter : emitters_)
+	{
+		if (!emitter.Buffer)
+		{
+			return false;
+		}
+	}
+
+	return computeConstantsUniformBuffer_ && renderConstantsUniformBuffer_ && particlesStorageBuffer_ && trailsStorageBuffer_ &&
+		   vertexLayout_ && modelSprite_ && modelTrail_ && dummyEmitPoints_ && dummyVectorTexture_ && dummyColorTexture_ &&
+		   dummyNormalTexture_;
 }
 
-void GpuParticleSystem::SetShaders(const Shaders& shaders)
+bool GpuParticleSystem::SetShaders(const Shaders& shaders)
 {
 	shaders_ = shaders;
 
@@ -349,6 +359,8 @@ void GpuParticleSystem::SetShaders(const Shaders& shaders)
 		params.ShaderPtr = shaders_.CsParticleUpdate;
 		pipelineParticleUpdate_ = graphicsDevice_->CreatePipelineState(params);
 	}
+
+	return pipelineParticleClear_ && pipelineParticleSpawn_ && pipelineParticleUpdate_;
 }
 
 void GpuParticleSystem::ComputeFrame(const Context& context)

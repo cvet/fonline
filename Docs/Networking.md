@@ -58,6 +58,8 @@ Important constants:
 - read typed values, strings, and hashed strings;
 - read property data with `ReadPropsData()`;
 - parse message IDs with `ReadMsg()`;
+- expose `GetUnreadSize()` for only the current framed message and `GetBufferedUnreadSize()` for all retained input;
+- require exact consumption of the current frame before `ShrinkReadBuf()` or the next `NeedProcess()` advances past it;
 - shrink/reset read buffers after processing.
 
 Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
@@ -66,8 +68,11 @@ Property synchronization and entity state transfer should go through these helpe
 
 The server treats all inbound bytes as hostile. Two layers guard against resource-exhaustion and malformed input:
 
-- **Length-before-allocation rule.** Any peer-declared length/count must be validated against the bytes actually remaining in the buffer *before* allocation or iteration. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message can no longer amplify into a multi-GB allocation. Inbound remote-call decoding uses a read-only `DataReader`: string bytes are bounds-checked as a borrowed view before constructing the owned string, while array, dict, and dict-of-array counts are charged against the remaining payload using each value type's minimum wire size before `Reserve()`, container creation, or a count-driven loop. The server-side content validator performs the same count preflight. These checks reject prefixes that cannot fit their payload without imposing a separate fixed limit on conforming calls, so they do **not** require a compatibility-version bump.
+- **Length-before-allocation rule.** Any peer-declared length/count must be validated against the bytes actually remaining in the *current frame* before allocation or iteration. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message cannot borrow bytes from the next coalesced frame or amplify into a multi-GB allocation. Inbound remote-call decoding uses a read-only `data_reader`: string bytes are bounds-checked as a borrowed view before constructing the owned string, while array, dict, and dict-of-array counts are charged against the remaining payload using each value type's minimum wire size before `Reserve()`, container creation, or a count-driven loop. The server-side content validator performs the same count preflight.
 - **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
+- **Maximum retained input.** `NetInBuffer::SetMaxBufLen(len)` caps total unread bytes retained across coalesced/partial frames, so a peer cannot grow the receive buffer by never completing a message. The server applies `ServerNetwork.MaxBufferedInputSize` to the TCP/UDP/interthread buffers and to the WebSocket endpoint's per-message cap; the limit must be zero (unlimited) or at least `MaxMessageSize`, and `InitNetworkingJob()` fails server startup otherwise. `AddData()` throws `NetBufferException` over the cap, but it runs on the network thread inside the same transport receive lock a disconnect would take again, so `ServerConnection` only latches the overflow (reporting it once) and `ServerEngine::ProcessConnection()` performs the hard disconnect on the owning worker pass.
+- **Remote-call structural limits.** A `///@ RemoteCall` may declare `MaxBytes N` and `MaxCollectionSize N`. Metadata carries both limits for every call - a call that declares neither is baked with an explicit `Limits 0 0` trailer, and a record without it is rejected at registration - and the server resolves the call name and rejects its payload before construction, while both the content validator and the AngelScript decoder enforce the collection limit before reserve/container creation, including nested dict arrays. Unknown calls are rejected before allocating their body. Adding these fields changed compatibility metadata and therefore requires the corresponding compatibility-version bump.
+- **Remote-call runtime ceiling.** `ServerNetwork.MaxRemoteCallPayloadSize` is the server-wide decoded RPC ceiling. The effective payload limit is the smaller non-zero structural/runtime limit; a call-specific `MaxBytes` is the semantic protocol boundary, not a substitute for the global hostile-input ceiling.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
 - **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
 
@@ -75,22 +80,35 @@ The per-type *content* validator (`ClientDataValidation.*`, invoked for client p
 
 ## Hashes
 
-Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
+Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `hash_resolver`.
+
+Each engine fills its hash storage in advance, from its own resources, and a hash that arrives over the wire is resolved against that storage: the message carries the 64-bit hash only, so the receiver never learns the text from it. A client holds exactly these strings before the first message:
+
+- metadata names registered at startup: entity, fixed and base type names, holder entries, remote-call names, migration-rule parts;
+- `fopro-bin-client`: the id of every prototype and fixed-type row the client registers, and every string a client-visible (`Common` or `Client`) hashed property holds in those prototypes: `hstring` values, prototype references, `hstring` dictionary keys and values. A `Server` property is disabled on the client, so it contributes nothing;
+- the animation-info index of the loaded packs: every image path in `SpriteInfo/<Pack>.foinfo` and every model name in `ModelAnimationInfo.foinfo`. Other resources are not interned by indexing: the sound index keeps plain file names;
+- every key part of the text packs of the loaded language;
+- the static `hstring` values of the client script assembly, interned when the assembly initializes;
+- a map's `fomap-bin-client` hash table, the client-visible hashed values of that map's static items with hidden ones included, only when that map loads (`MapView::LoadStaticData`).
+
+Nothing else is there. A map-instance override on a critter or a dynamic item lives only in the server map-bin, a string the server holds only in server code or composes at runtime is in no client source, and a sound or other non-image resource path is known only when a client-visible prototype property names it. Any of them fails to resolve when it arrives in a synced property, a remote-call argument or a synced ref-type value. The server storage is filled the same way from the server's resources, and `ClientDataValidation` rejects a hash a client sends that the server does not hold.
 
 When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
 
 ### Unresolved hash recovery
 
-Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
+Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `hash_resolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
 
 The engine recovers from this instead of looping on the disconnect:
 
-1. `ClientEngine` registers a `HashStorage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
+1. `ClientEngine` registers a `hash_storage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
 2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. If a transport reports the close before the server worker reaches already-delivered input, the server checks a hard-disconnected connection for a pending `UnresolvedHash` before cleanup. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
 3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
-4. Clients feed each received string through `HashResolver::ToHashedString`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
+4. Clients feed each received string through `hash_resolver::to_hashed_string`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
 
-The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `HashStorage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
+Recovery repairs the next connection, not the read that failed: the first read has already thrown, and on the managed bridge that is a script exception at the property read. It is a diagnostic for a missing string, never a way to deliver one; a value that must resolve on arrival belongs in one of the sources listed above.
+
+The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `hash_storage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
 
 This is a serialized contract change: `NetMessage::HashList` (server→client) and `NetMessage::UnresolvedHash` (client→server) were added, so the central compatibility marker in `Source/Common/Common.h` is bumped accordingly.
 
@@ -98,7 +116,7 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 
 `Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
 
-Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `StreamDecompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
+Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `stream_decompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
 
 The public surface is transport-neutral:
 
@@ -138,6 +156,17 @@ The client runtime should depend on the abstract connection interface where poss
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
+The send callback returns the outgoing bytes **by value**, and every transport owns the buffer it hands to
+its socket. That is a correctness requirement, not a style choice: the sender behind the callback is a
+`ServerConnection` owned by one `Player`, while the connection object lives in a transport's `shared_ptr`,
+and `Dispatch()` reaches the send path from any pool thread. A buffer borrowed from the sender would be
+refilled by a second dispatch, or freed when its owner disconnects, while a transport was still reading it -
+which is how a partly compressed packet turned into a SIGSEGV inside zlib on the UDP send thread.
+`Disconnect()` clears the send-callback flag before disconnecting, so a transport that ticks afterwards
+stops pulling from a sender that is going away. Each callback is also invoked under the lock that guards
+it, and `Disconnect()` drops the callbacks under those same locks on every call, so a destructor that
+disconnects waits for a call already running on a transport thread instead of racing it.
+
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
 transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
@@ -151,6 +180,40 @@ The server runtime applies two independent limits to connections that have not l
   authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
+
+A logged-in connection is additionally dropped when it stops answering pings: `ServerNetwork.ClientPingTime`
+sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
+disconnected. The in-process interthread transport opts out of this watchdog: its peer lifetime is explicit
+through the callback channel, while a busy shared process can delay both ends of the ping exchange together.
+Closing either interthread endpoint still disconnects the other immediately.
+
+### Disconnect reasons
+
+Every close records **why** it happened, because after the fact a connection that went away tells nothing
+about whether the player quit, the network died, or the server dropped them. `ServerConnection` stores a
+`DisconnectReason` (`ServerConnection.h`), and `HardDisconnect(reason)` takes it as a mandatory argument so
+a new call site cannot forget one:
+
+| Reason | Cause |
+|--------|-------|
+| `None` | still connected; no close has happened |
+| `ClientClosed` | the transport reported the peer went away — a voluntary quit and a lost network are indistinguishable here, because the client closes its socket without announcing either |
+| `InactivityTimeout` | `ServerNetwork.InactivityDisconnectTime` elapsed with no inbound message |
+| `PingTimeout` | the previous ping was never answered |
+| `LoginTimeout` | `ServerNetwork.LoginTimeout` elapsed without pre-login progress |
+| `ProtocolError` | unreadable or unexpected network data, or a failed connection publication |
+| `UpdaterError` | a bad update-file request |
+| `ServerShutdown` | the server is stopping |
+| `ScriptRequest` | `Player.HardDisconnect()` from a script |
+| `LoginFailed` | login rolled back after a server-side failure |
+| `ReplacedByReconnect` | the same account logged in again and took the session over |
+
+The **first** recorded reason wins. The transport close callback records `ClientClosed` of its own accord,
+and it runs after the path that decided to disconnect — without first-wins, that generic cause would bury
+every specific one. The reason is part of the `Closed connection from` log line and is readable from scripts
+through `Player.GetDisconnectReason()` while `OnPlayerLogout` handlers run, which is how the game reports a
+truthful session-end cause instead of assuming every disconnect was a logout. Pinned by
+`ServerConnectionRecordsWhyItWasDisconnected` in `Source/Tests/Test_NetworkServer.cpp`.
 
 `NetworkServer` starts transport-specific servers through factories:
 
@@ -281,6 +344,19 @@ The source tree supports several connection families:
 - WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
 
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
+
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
 
 ## Tests to inspect
 

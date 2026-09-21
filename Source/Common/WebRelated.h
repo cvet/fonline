@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,22 +37,24 @@
 
 FO_BEGIN_NAMESPACE
 
+struct AppScreenState;
 struct WebSettings;
 
 namespace WebRelated
 {
     inline constexpr string_view_nt CanvasSelector = "#canvas";
 
-    extern void ApplyApplicationHints() noexcept;
-    extern void ApplyWindowSettings(WebSettings& settings);
-    extern void ApplyCanvasLayout(WebSettings& settings) noexcept;
-    extern void SetupClipboard();
-    extern void SyncClipboardToSystem(string_view text);
-    extern void InitializePersistentData();
-    extern auto IsPersistentDataReady() noexcept -> bool;
-    extern void StartMainLoop(void (*entry)(void*), void* data) noexcept;
-    extern void SetWebSocketScheme(bool secure) noexcept;
-    extern void ShowError(string_view title, string_view text);
+    void ApplyApplicationHints() noexcept;
+    void ApplyWindowSettings(WebSettings& settings, AppScreenState& screen);
+    void ApplyCanvasLayout(WebSettings& settings, const AppScreenState& screen) noexcept;
+    void SetupClipboard();
+    void SyncClipboardToSystem(string_view text);
+    void InitializePersistentData();
+    auto IsPersistentDataReady() noexcept -> bool;
+    void StartMainLoop(void (*entry)(void*), void* data) noexcept;
+    void StopMainLoop() noexcept;
+    void SetWebSocketScheme(bool secure) noexcept;
+    void ShowError(string_view title, string_view text);
 }
 
 FO_END_NAMESPACE

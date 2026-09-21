@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,16 +34,6 @@
 #include "DataBase.h"
 #include "ImGuiStuff.h"
 
-#if FO_WINDOWS
-#include <fcntl.h>
-#include <io.h>
-#include <share.h>
-#else
-#include <fcntl.h>
-#include <sys/file.h>
-#include <unistd.h>
-#endif
-
 FO_DISABLE_WARNINGS_PUSH()
 #include <bson/bson.h>
 #include <json.hpp>
@@ -52,8 +42,15 @@ FO_DISABLE_WARNINGS_POP()
 #include "WinApiUndef.inc"
 
 FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
+FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
+
+#if FO_WINDOWS
+namespace osfile = winapi;
+#else
+namespace osfile = posix;
+#endif
 
 static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
 static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
@@ -76,50 +73,42 @@ static auto BsonMalloc(size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 }
 
 static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::CallocRaw(num, size).get();
+    return safe_alloc::calloc_raw(num, size).get();
 }
 
 static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return SafeAlloc::ReallocRaw(mem, size).get();
+    return safe_alloc::realloc_raw(mem, size).get();
 }
 
 static void BsonFree(void* mem) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    SafeAlloc::FreeRaw(mem);
+    safe_alloc::free_raw(mem);
 }
 
-// bson releases every block through the plain free member — it never records that an allocation came
-// from the aligned path, so the aligned allocator must produce blocks that BsonFree can release. That
-// holds under rpmalloc (rpaligned_alloc and rpmalloc both end in rpfree) and on POSIX without it
-// (posix_memalign blocks are free()-able by definition). The one combination where it does not hold is
-// Windows without rpmalloc — the sanitizer configs — because there the aligned path is
-// _aligned_malloc/_aligned_free. bson's own default vtable resolves this the same way: its
-// _aligned_alloc_impl falls back to plain malloc on MSVC and deliberately does not use _aligned_malloc,
-// precisely because that would break the free symmetry. Match it. Every aligned request in mongoc is a
-// BSON_ALIGNOF of an ordinary C struct (plus mongoc-ts-pool's promotion to BSON_ALIGN_OF_PTR), so
-// malloc's fundamental alignment already covers them.
+// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
+// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
 static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
 #if FO_HAVE_RPMALLOC || !FO_WINDOWS
-    return SafeAlloc::MallocAlignedRaw(size, alignment).get();
+    return safe_alloc::malloc_aligned_raw(size, alignment).get();
 #else
     ignore_unused(alignment);
 
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 #endif
 }
 
@@ -247,6 +236,14 @@ auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyD
     return _impl->GetDocument(collection_name, id);
 }
 
+auto DataBase::GetMany(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->GetDocuments(collection_name, ids);
+}
+
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -295,6 +292,22 @@ void DataBase::WaitCommitChanges()
     _impl->WaitCommitChanges();
 }
 
+auto DataBase::CreateSnapshot() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    return _impl->CreateSnapshot();
+}
+
+void DataBase::RestoreSnapshot(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
+    _impl->RestoreSnapshot(snapshot_data);
+}
+
 void DataBase::ClearChanges() noexcept
 {
     FO_STACK_TRACE_ENTRY();
@@ -318,10 +331,10 @@ void DataBase::DrawGui()
 
 DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) :
     _settings {db_settings},
-    _opLogEnabled {_settings->OpLogEnabled},
-    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->PanicOpLogSizeThreshold)},
-    _panicShutdownTimeout {std::chrono::milliseconds {_settings->PanicShutdownTimeout}},
-    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->ReconnectRetryPeriod, 1)}},
+    _opLogEnabled {_settings->DataBase.OpLogEnabled},
+    _pendingChangesPanicThreshold {numeric_cast<size_t>(_settings->DataBase.PanicOpLogSizeThreshold)},
+    _panicShutdownTimeout {std::chrono::milliseconds {_settings->DataBase.PanicShutdownTimeout}},
+    _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->DataBase.ReconnectRetryPeriod, 1)}},
     _panicCallback {std::move(panic_callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -373,7 +386,7 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     }
 
-    if (_settings->OpLogPath.empty()) {
+    if (_settings->DataBase.OpLogPath.empty()) {
         throw DataBaseException("Empty oplog path in settings");
     }
 
@@ -384,7 +397,7 @@ void DataBaseImpl::InitializeOpLogs()
 
         string dir = strex(file_path).extract_dir().str();
 
-        if (!dir.empty() && !fs_create_directories(dir)) {
+        if (!dir.empty() && !fs::create_directories(dir)) {
             throw DataBaseException("Oplog directory can't be created", file_desc, dir);
         }
 
@@ -454,8 +467,9 @@ void DataBaseImpl::InitializeOpLogs()
         return;
     };
 
-    open_log_file(_pendingChangesLog, _settings->OpLogPath, "pending database changes file");
-    open_log_file(_committedChangesLog, strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
+    string oplog_path = fs::make_writable_path(_settings->Common.UserWritablePath, _settings->DataBase.OpLogPath);
+    open_log_file(_pendingChangesLog, oplog_path, "pending database changes file");
+    open_log_file(_committedChangesLog, strex(oplog_path).replace(".oplog", "-committed.oplog").str(), "committed database changes file");
 
     if (_committedChangesLog->GetContent().size() > _pendingChangesLog->GetContent().size()) {
         throw DataBaseException("Committed database changes file line count is greater than pending database changes file line count");
@@ -481,11 +495,11 @@ void DataBaseImpl::RestorePendingChanges()
     }
 
     for (size_t i = 0; i < committed_changes_content.size(); i++) {
-        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->OpLogPath);
+        FO_VERIFY_AND_THROW(i < pending_changes_content.size(), "Committed oplog line index is outside the pending oplog content", i, pending_changes_content.size(), committed_changes_content.size(), _settings->DataBase.OpLogPath);
         size_t line_index = i + 1;
 
         if (pending_changes_content[i] != committed_changes_content[i]) {
-            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->OpLogPath);
+            throw DataBaseException("Committed oplog line doesn't match pending oplog line", line_index, _settings->DataBase.OpLogPath);
         }
     }
 
@@ -498,8 +512,8 @@ void DataBaseImpl::RestorePendingChanges()
             auto line_view = string_view {line};
             auto first_space = line_view.find(' ');
             auto second_space = line_view.find(' ', first_space + 1);
-            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->OpLogPath, line_view.size(), first_space);
-            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->OpLogPath, line_view.size(), first_space, second_space);
+            FO_VERIFY_AND_THROW(first_space != string_view::npos && first_space != 0, "Pending database oplog command has no collection name", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space);
+            FO_VERIFY_AND_THROW(second_space != string_view::npos && second_space != first_space + 1, "Pending database oplog command has no record id", i + 1, _settings->DataBase.OpLogPath, line_view.size(), first_space, second_space);
 
             auto command = line_view.substr(0, first_space);
             auto collection = line_view.substr(first_space + 1, second_space - first_space - 1);
@@ -537,7 +551,7 @@ void DataBaseImpl::RestorePendingChanges()
                         InsertRecord(collection_name, storage_record_id, doc);
                     }
                     else if (!AreDocumentsEqual(current_doc, doc)) {
-                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->OpLogPath);
+                        throw DataBaseException("Pending database insert replay conflict", record_id, _settings->DataBase.OpLogPath);
                     }
                 }
                 else if (!DoesDocumentContain(current_doc, doc)) {
@@ -550,7 +564,7 @@ void DataBaseImpl::RestorePendingChanges()
             }
 
             if (++replayed_commands % 100 == 0) {
-                WriteLog("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
+                logging::write("Replayed {}/{} pending database commands", replayed_commands, pending_commands_to_replay);
             }
         }
     }
@@ -558,18 +572,18 @@ void DataBaseImpl::RestorePendingChanges()
         throw;
     }
     catch (const std::exception& ex) {
-        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->OpLogPath);
+        throw DataBaseException("Pending database command parsing failed", ex.what(), _settings->DataBase.OpLogPath);
     }
 
     FO_VERIFY_AND_THROW(_pendingChangesLog->GetLinesCount() == _committedChangesLog->GetLinesCount(), "Pending and committed database logs have different command counts", _pendingChangesLog->GetLinesCount(), _committedChangesLog->GetLinesCount());
     FO_VERIFY_AND_THROW(std::ranges::equal(_pendingChangesLog->GetContent(), _committedChangesLog->GetContent()), "Pending and committed database logs contain different command payloads");
-    WriteLog("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
+    logging::write("Pending database changes successfully restored, total {} commands replayed", replayed_commands);
 
     if (!_committedChangesLog->Truncate()) {
-        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->OpLogPath).replace(".oplog", "-committed.oplog").str());
+        throw DataBaseException("Committed pending database changes file can't be truncated after successful restore", strex(_settings->DataBase.OpLogPath).replace(".oplog", "-committed.oplog").str());
     }
     if (!_pendingChangesLog->Truncate()) {
-        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->OpLogPath);
+        throw DataBaseException("Pending database changes file can't be truncated after successful restore", _settings->DataBase.OpLogPath);
     }
 
     _backendFailed = false;
@@ -594,74 +608,164 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
 {
     FO_STACK_TRACE_ENTRY();
 
+    auto docs = GetDocuments(collection_name, {id});
+    FO_VERIFY_AND_THROW(docs.size() == 1, "Database returned a different number of documents than requested", collection_name, id, docs.size());
+    return std::move(docs.front());
+}
+
+auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
     if (!InValidState()) {
         throw DataBaseException("Database backend is in failed state");
     }
 
-    ValidateCollectionKey(collection_name, id);
-    auto storage_id = EncodeBackendDbKey(id, GetCollectionKeyType(collection_name), GetStringKeyEscaping());
+    vector<AnyData::Document> docs(ids.size());
+
+    if (ids.empty()) {
+        return docs;
+    }
+
+    auto key_type = GetCollectionKeyType(collection_name);
+    auto key_escaping = GetStringKeyEscaping();
+    unordered_map<DataBaseKey, size_t> unique_index_by_id;
+    vector<DataBaseKey> unique_ids;
+    vector<DataBaseKey> storage_ids;
+    vector<size_t> doc_unique_index;
+    doc_unique_index.reserve(ids.size());
+
+    for (const auto& id : ids) {
+        auto [it, inserted] = unique_index_by_id.emplace(id, unique_ids.size());
+
+        if (inserted) {
+            ValidateCollectionKey(collection_name, id);
+            storage_ids.emplace_back(EncodeBackendDbKey(id, key_type, key_escaping));
+            unique_ids.emplace_back(id);
+        }
+
+        doc_unique_index.emplace_back(it->second);
+    }
 
     {
         scoped_lock locker {_stateLocker};
 
-        _docReadRetryMarkers.emplace(collection_name, id);
+        for (const auto& id : unique_ids) {
+            _docReadRetryMarkers.emplace(collection_name, id);
+        }
     }
 
-    auto release_reader = scope_exit([&]() noexcept {
+    auto release_readers = scope_exit([&]() noexcept {
         safe_call([&]() {
             scoped_lock locker {_stateLocker};
 
-            _docReadRetryMarkers.erase({collection_name, id});
+            for (const auto& id : unique_ids) {
+                _docReadRetryMarkers.erase({collection_name, id});
+            }
         });
     });
 
-    while (true) {
-        AnyData::Document doc;
+    vector<AnyData::Document> unique_docs(unique_ids.size());
+    vector<size_t> pending_indices(unique_ids.size());
+    std::iota(pending_indices.begin(), pending_indices.end(), size_t {0});
+
+    // A record committed while it was being read loses its marker to the commit thread and is read again, so
+    // every returned document is the stored one with the still-pending operations laid over it
+    while (!pending_indices.empty()) {
+        vector<DataBaseKey> request_ids = vec_transform(pending_indices, [&](size_t index) -> DataBaseKey { return storage_ids[index]; });
+        vector<AnyData::Document> records;
 
         try {
-            doc = GetRecord(collection_name, storage_id);
+            records = GetRecords(collection_name, request_ids);
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             _backendFailed = true;
             throw DataBaseException("Database backend failed to get document", ex.what());
         }
 
+        FO_VERIFY_AND_THROW(records.size() == request_ids.size(), "Database backend returned a different number of documents than requested", collection_name, request_ids.size(), records.size());
         RegisterDbRequests(1);
 
-        vector<shared_ptr<CommitOperationData>> pending_ops;
+        vector<size_t> retry_indices;
+        vector<uint8_t> read_completed(unique_ids.size());
+        vector<vector<shared_ptr<CommitOperationData>>> pending_ops(unique_ids.size());
 
         {
             scoped_lock locker {_stateLocker};
 
-            if (_docReadRetryMarkers.erase({collection_name, id}) == 0) {
-                _docReadRetryMarkers.emplace(collection_name, id);
-                continue;
+            for (size_t index : pending_indices) {
+                if (_docReadRetryMarkers.erase({collection_name, unique_ids[index]}) == 0) {
+                    _docReadRetryMarkers.emplace(collection_name, unique_ids[index]);
+                    retry_indices.emplace_back(index);
+                }
+                else {
+                    read_completed[index] = 1;
+                }
             }
 
             for (const auto& pending_op : _pendingCommitOperations) {
-                if (pending_op->CollectionName == collection_name && pending_op->RecordId == id) {
-                    pending_ops.emplace_back(pending_op);
+                if (pending_op->CollectionName != collection_name) {
+                    continue;
+                }
+
+                if (auto it = unique_index_by_id.find(pending_op->RecordId); it != unique_index_by_id.end() && read_completed[it->second] != 0) {
+                    pending_ops[it->second].emplace_back(pending_op);
                 }
             }
         }
 
-        for (const auto& pending_op : pending_ops) {
-            if (pending_op->Type == CommitOperationType::Insert) {
-                doc = pending_op->Doc.Copy();
+        for (size_t i = 0; i < pending_indices.size(); i++) {
+            size_t index = pending_indices[i];
+
+            if (read_completed[index] == 0) {
+                continue;
             }
-            else if (pending_op->Type == CommitOperationType::Update) {
-                for (const auto& [key, value] : pending_op->Doc) {
-                    doc.Assign(key, value.Copy());
+
+            AnyData::Document doc = std::move(records[i]);
+
+            for (const auto& pending_op : pending_ops[index]) {
+                if (pending_op->Type == CommitOperationType::Insert) {
+                    doc = pending_op->Doc.Copy();
+                }
+                else if (pending_op->Type == CommitOperationType::Update) {
+                    for (const auto& [key, value] : pending_op->Doc) {
+                        doc.Assign(key, value.Copy());
+                    }
+                }
+                else if (pending_op->Type == CommitOperationType::Delete) {
+                    doc = {};
                 }
             }
-            else if (pending_op->Type == CommitOperationType::Delete) {
-                doc = {};
-            }
+
+            unique_docs[index] = std::move(doc);
         }
 
-        return doc;
+        pending_indices = std::move(retry_indices);
     }
+
+    vector<size_t> first_doc_position(unique_ids.size(), ids.size());
+
+    for (size_t i = 0; i < ids.size(); i++) {
+        size_t index = doc_unique_index[i];
+
+        if (first_doc_position[index] == ids.size()) {
+            docs[i] = std::move(unique_docs[index]);
+            first_doc_position[index] = i;
+        }
+        else {
+            docs[i] = docs[first_doc_position[index]].Copy();
+        }
+    }
+
+    return docs;
+}
+
+auto DataBaseImpl::GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return vec_transform(ids, [&](const DataBaseKey& id) -> AnyData::Document { return GetRecord(collection_name, id); });
 }
 
 void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
@@ -676,9 +780,13 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Insert;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -697,9 +805,13 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Update;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -717,9 +829,13 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
     ValidateCollectionKey(collection_name, id);
 
     {
-        scoped_lock locker {_stateLocker};
+        unique_lock locker {_stateLocker};
 
-        auto op = SafeAlloc::MakeShared<CommitOperationData>();
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        auto op = safe_alloc::make_shared<CommitOperationData>();
         op->Type = CommitOperationType::Delete;
         op->CollectionName = collection_name;
         op->RecordId = id;
@@ -754,12 +870,109 @@ void DataBaseImpl::WaitCommitChanges()
 
     while (!_pendingCommitOperations.empty()) {
         if (!InValidState()) {
-            WriteLog("Database is not in valid state, pending commit operations can't be guaranteed to be durably committed");
+            logging::write("Database is not in valid state, pending commit operations can't be guaranteed to be durably committed");
             break;
         }
 
         _commitThreadDoneSignal.wait(locker);
     }
+}
+
+auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    {
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        if (!_commitThreadActive) {
+            throw DataBaseException("Database snapshot requires an active commit thread");
+        }
+
+        while (!_pendingCommitOperations.empty()) {
+            if (!InValidState()) {
+                throw DataBaseException("Database snapshot cannot drain a failed backend");
+            }
+
+            _commitThreadDoneSignal.wait(locker);
+        }
+
+        if (!InValidState()) {
+            throw DataBaseException("Database snapshot requires a valid backend");
+        }
+
+        _snapshotInProgress = true;
+    }
+
+    auto finish_snapshot = scope_exit([this]() noexcept {
+        safe_call([this] {
+            {
+                scoped_lock locker {_stateLocker};
+                _snapshotInProgress = false;
+            }
+
+            _snapshotDoneSignal.notify_all();
+        });
+    });
+
+    return CreateSnapshotData();
+}
+
+void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (snapshot_data.empty()) {
+        throw DataBaseException("Database snapshot data is empty");
+    }
+
+    {
+        unique_lock locker {_stateLocker};
+
+        while (_snapshotInProgress) {
+            _snapshotDoneSignal.wait(locker);
+        }
+
+        if (!_pendingCommitOperations.empty()) {
+            throw DataBaseException("Database snapshot restore requires a drained commit queue", _pendingCommitOperations.size());
+        }
+        if (!InValidState()) {
+            throw DataBaseException("Database snapshot restore requires a valid backend");
+        }
+
+        _snapshotInProgress = true;
+    }
+
+    auto finish_restore = scope_exit([this]() noexcept {
+        safe_call([this] {
+            {
+                scoped_lock locker {_stateLocker};
+                _snapshotInProgress = false;
+            }
+
+            _snapshotDoneSignal.notify_all();
+        });
+    });
+
+    RestoreSnapshotData(snapshot_data);
+}
+
+auto DataBaseImpl::CreateSnapshotData() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    throw DataBaseException("Database backend does not support snapshots");
+}
+
+void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    throw DataBaseException("Database backend does not support snapshots", snapshot_data.size());
 }
 
 void DataBaseImpl::ClearChanges() noexcept
@@ -898,7 +1111,7 @@ void DataBaseImpl::StopCommitThread() noexcept
         _commitThread = {};
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -959,7 +1172,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                     }
                 }
                 catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
+                    exceptions::report_and_continue(ex);
                     StartPanic("Failed to restore pending changes after successful backend reconnection");
                 }
             }
@@ -967,11 +1180,11 @@ void DataBaseImpl::CommitThreadEntry() noexcept
                 CommitNextChange();
             }
             else if (_backendFailed) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                coarse_sleep(std::chrono::milliseconds {10});
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 
@@ -1012,7 +1225,7 @@ void DataBaseImpl::CommitNextChange() noexcept
             }
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             _backendFailed = true;
             _reconnectRetryTime = nanotime::now() + _reconnectRetryPeriod;
         }
@@ -1057,7 +1270,7 @@ void DataBaseImpl::CommitNextChange() noexcept
             OnCommitOperationWrittenToOpLog();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
             StartPanic("Exception during commit failure handling");
             return;
         }
@@ -1067,7 +1280,7 @@ void DataBaseImpl::CommitNextChange() noexcept
         RegisterDbRequests(1);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 
     try {
@@ -1076,7 +1289,7 @@ void DataBaseImpl::CommitNextChange() noexcept
         _pendingCommitOperations.pop_front();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
         StartPanic("Exception during post-commit bookkeeping");
     }
 }
@@ -1136,7 +1349,7 @@ void DataBaseImpl::StartPanic(string_view message)
         return;
     }
 
-    WriteLog("Critical database failure: {}", message);
+    logging::write("Critical database failure: {}", message);
     _panicStarted = true;
 
     if (_panicCallback) {
@@ -1144,8 +1357,8 @@ void DataBaseImpl::StartPanic(string_view message)
     }
 
     run_thread("Panic", [timeout = _panicShutdownTimeout.value()]() {
-        std::this_thread::sleep_for(timeout);
-        ExitApp(false);
+        coarse_sleep(timeout);
+        fatal::report_and_exit("Database panic shutdown timed out");
     }).detach();
 }
 
@@ -1158,34 +1371,13 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
         throw DataBaseException("Empty recovery log file path");
     }
 
-    auto path_cstr = make_ptr(_path.c_str());
-
-#if FO_WINDOWS
-    if (_sopen_s(&_fd, path_cstr.get(), _O_BINARY | _O_RDWR | _O_CREAT, _SH_DENYRW, _S_IREAD | _S_IWRITE) != 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
-    }
-
-#else
-    _fd = open(path_cstr.get(), O_RDWR | O_CREAT, 0666);
+    _fd = osfile::open_exclusive_file(_path);
 
     if (_fd < 0) {
-        throw DataBaseException("Failed to open recovery oplog file", _path);
+        throw DataBaseException("Failed to open recovery oplog file, it may be used by another process", _path);
     }
 
-    if (flock(_fd, LOCK_EX | LOCK_NB) != 0) {
-        close(_fd);
-        throw DataBaseException("Failed to lock recovery oplog file, it may be used by another process", _path);
-    }
-#endif
-
-    auto fd_guard = scope_fail([this]() noexcept {
-#if FO_WINDOWS
-        _close(_fd);
-#else
-        flock(_fd, LOCK_UN);
-        close(_fd);
-#endif
-    });
+    auto fd_guard = scope_fail([this]() noexcept { osfile::close_exclusive_file(_fd); });
 
     auto read_content = Read();
 
@@ -1209,37 +1401,22 @@ DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    _close(_fd);
-#else
-    flock(_fd, LOCK_UN);
-    close(_fd);
-#endif
+    osfile::close_exclusive_file(_fd);
 }
 
 auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    auto size = _lseeki64(_fd, 0, SEEK_END);
-#else
-    const auto size = lseek(_fd, 0, SEEK_END);
-#endif
+    int64_t size = osfile::seek_file_end(_fd);
 
     if (size < 0) {
         return std::nullopt;
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_SET) < 0) {
+    if (!osfile::seek_file_begin(_fd)) {
         return std::nullopt;
     }
-#else
-    if (lseek(_fd, 0, SEEK_SET) < 0) {
-        return std::nullopt;
-    }
-#endif
 
     string content;
     content.resize(static_cast<size_t>(size));
@@ -1247,15 +1424,10 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
     size_t offset = 0;
 
     while (offset < content.size()) {
-        auto remaining = content.size() - offset;
+        size_t remaining = content.size() - offset;
         auto read_pos = make_ptr(content.data() + offset);
 
-#if FO_WINDOWS
-        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        int32_t read_size = _read(_fd, read_pos.get(), chunk);
-#else
-        const auto read_size = read(_fd, read_pos.get(), remaining);
-#endif
+        int64_t read_size = osfile::read_file_chunk(_fd, read_pos, remaining);
 
         if (read_size <= 0) {
             return std::nullopt;
@@ -1264,15 +1436,9 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
         offset += static_cast<size_t>(read_size);
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_END) < 0) {
+    if (osfile::seek_file_end(_fd) < 0) {
         return std::nullopt;
     }
-#else
-    if (lseek(_fd, 0, SEEK_END) < 0) {
-        return std::nullopt;
-    }
-#endif
 
     return content;
 }
@@ -1281,27 +1447,17 @@ auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-#if FO_WINDOWS
-    if (_chsize_s(_fd, 0) != 0) {
+    if (!osfile::truncate_file(_fd)) {
         return false;
     }
-    if (_lseeki64(_fd, 0, SEEK_SET) < 0) {
+
+    if (!osfile::seek_file_begin(_fd)) {
         return false;
     }
-    if (_commit(_fd) != 0) {
+
+    if (!osfile::sync_file(_fd)) {
         return false;
     }
-#else
-    if (ftruncate(_fd, 0) != 0) {
-        return false;
-    }
-    if (lseek(_fd, 0, SEEK_SET) < 0) {
-        return false;
-    }
-    if (fsync(_fd) != 0) {
-        return false;
-    }
-#endif
 
     _content.clear();
     _textSize = 0;
@@ -1380,28 +1536,17 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         line_begin = line_end + 1;
     }
 
-#if FO_WINDOWS
-    if (_lseeki64(_fd, 0, SEEK_END) < 0) {
+    if (osfile::seek_file_end(_fd) < 0) {
         return false;
     }
-#else
-    if (lseek(_fd, 0, SEEK_END) < 0) {
-        return false;
-    }
-#endif
 
     size_t offset = 0;
 
     while (offset < normalized_content.size()) {
-        auto remaining = normalized_content.size() - offset;
+        size_t remaining = normalized_content.size() - offset;
         auto write_pos = make_ptr(normalized_content.data() + offset);
 
-#if FO_WINDOWS
-        auto chunk = static_cast<unsigned int>(std::min(remaining, static_cast<size_t>(std::numeric_limits<int>::max())));
-        int32_t written_size = _write(_fd, write_pos.get(), chunk);
-#else
-        const auto written_size = write(_fd, write_pos.get(), remaining);
-#endif
+        int64_t written_size = osfile::write_file_chunk(_fd, write_pos, remaining);
 
         if (written_size <= 0) {
             return false;
@@ -1410,15 +1555,9 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
         offset += static_cast<size_t>(written_size);
     }
 
-#if FO_WINDOWS
-    if (_commit(_fd) != 0) {
+    if (!osfile::sync_file(_fd)) {
         return false;
     }
-#else
-    if (fsync(_fd) != 0) {
-        return false;
-    }
-#endif
 
     for (auto& line : parsed_content) {
         _content.emplace_back(std::move(line));
@@ -1441,7 +1580,7 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
     };
 
     if (auto options = strvex(connection_info).split(' '); !options.empty()) {
-        WriteLog("Connect to {} data base", options.front());
+        logging::write("Connect to {} data base", options.front());
 
         if (options.front() == "JSON" && options.size() == 2) {
             return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
@@ -2107,4 +2246,5 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 
 FO_END_NAMESPACE
 
+FO_GCC_IGNORE_WARNINGS_POP()
 FO_CLANG_IGNORE_WARNINGS_POP()

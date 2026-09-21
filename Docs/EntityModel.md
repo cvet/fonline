@@ -64,6 +64,27 @@ Do not bypass `Properties` when changing entity state. Property callbacks, overl
 - `SetName()` writes through `Properties::SetValue()`;
 - `IsNonEmptyName()` checks whether raw property data exists.
 
+**The accessors are `noexcept`, and the access check inside them is a tripwire, not an error path.** By the
+time any property is read or written, the entity's access must *already* have been proven; the
+`FO_VALIDATE_ENTITY_ACCESS_VALUE` call inside the accessor exists to catch code that skipped that step, and
+because it throws from a `noexcept` body it terminates the process deliberately and loudly. Do not turn the
+tripwire into a recoverable error by removing `noexcept` — fix the caller that reached the entity unproven.
+
+The rule that follows: **engine code that reads the properties of an entity other than the one the caller
+proved must validate access to that entity first.** `ServerEntity::GetParent()` validates the *child*, not
+the parent it returns, and covering a child does not cover its parent — the cover check walks *up* an
+entity's ancestors, so a held child lock says nothing about the map above it. Returning an unproven parent
+handle is therefore legitimate and deliberate (`Item.GetMap()` documents that the map it hands back "is not
+covered for later reads"); **reading that parent's own properties is not**.
+
+The item resolvers in `Source/Scripting/ServerItemScriptMethods.cpp` are the worked example. They continue
+the ownership walk by reading the parent — `cr->GetMapId()`, `cr->GetHex()`, the container's `Ownership` on
+the recursive step — so each of those sites proves the parent with `RequireProvenParent` before the read.
+The branches that merely return the parent do not, and must not: validating there would reject the ordinary
+`Item.GetMap()` of a map-owned item. A production crash came from exactly this gap: `Item.GetCritter()` on a
+radio inside a personal-storage container recursed into the container and read its `Ownership` with the whole
+chain unheld, so the first thing to notice was the tripwire, which terminated.
+
 `Source/Common/EntityProperties.h` defines the generated property wrapper classes:
 
 - `GameProperties`
@@ -85,7 +106,19 @@ Server-side AngelScript property getters copy non-virtual raw property data thro
 
 Typed and script-facing property assignment rejects non-finite floating-point leaves before storage, including values nested in arrays, structs, and dictionary keys or values. The same validation runs again after setter callbacks mutate raw data, and document/text serialization rejects non-finite values if trusted binary restore or native code supplied a corrupted payload.
 
-Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
+A numeric property can declare a value range with the `Min = <value>` and `Max = <value>` registration
+tags. The range is checked and applied on every write: typed and script-facing assignment, raw property
+data assignment (including client-originated property messages), and authored text / baked value
+deserialization all clamp the incoming value into the declared range before it reaches storage. Clamping
+runs before the "did the value change" comparison, so a write the range swallows entirely fires no setter
+or post-setter, and it runs again after setter callbacks rewrite the payload. The tags are accepted only
+on plain-data or array properties whose base type is a real integer or floating-point type — enums, bools
+and structs are rejected — and registration additionally rejects a bound that does not fit the stored
+width, an integer bound written as a fractional literal, a duplicated tag, and `Min` greater than `Max`.
+Trusted binary restore (`RestoreData()` / `RestoreAllData()`) does not re-clamp: persisted values that
+fall outside a newly tightened range belong to the migration layer, not to per-write clamping.
+
+Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`memory::compare`): the total byte length of a payload does not raise its alignment requirement.
 
 ## Property runtime
 
@@ -102,8 +135,13 @@ Property flags are load-bearing:
 - `Synced`, `OwnerSync`, `PublicSync`, `NoSync` route network replication behavior.
 - `ModifiableByClient` and `ModifiableByAnyClient` gate client-originated changes.
 - `Virtual`, `Mutable`, `Persistent`, `Historical`, `Nullable`, and `Temporary` influence storage, callbacks, persistence, and script contracts.
+- `Min` and `Max` declare a numeric value range that every write is clamped into.
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](Nullability.md).
+
+A `MigrationRule Property <Type> <Old> <New>` retires `<Old>` for good. It is consulted only where a name comes out of stored data — database documents, RefType values, property text — through `PropertyRegistrar::FindPersistedProperty`; live access (script bridges, editors, tooling) resolves names with `FindProperty`, which never applies a rule. A retired name must not also be a registered property of the same type: `EngineMetadata::FinalizeRegistration` fails on such a rule, because a stored value under that name could then mean either property. The same holds for the other stored-name rules. A `MigrationRule Proto` must not retire an id that is still a registered prototype of its type — `ProtoManager::GetProto*` applies the rule before the lookup, so that prototype would be unreachable — and a `MigrationRule Enum` must not retire a registered entry — the rule is consulted only for a name that does not resolve, so the entry would silently take values stored with the old meaning. A property that only changes its primitive type keeps its name and needs no rule: an integer stored under the former type loads into the new one through the ordinary conversion (non-zero becomes `true`, a value a narrower integer cannot hold fails the load).
+
+Stored-name migrations resolve aliases before duplicate detection, and a property may be named only once. The one exception is a database document: the server writes documents key by key and never deletes a key, so once a migrated property is saved the document holds both its obsolete key and its current one. There the key under the current name wins and the obsolete key is ignored; this is sound only because a retired name is never reused, which makes the obsolete key the older write. Two obsolete names of one property with no current key are still ambiguous and fail the load. RefType values and property text are written whole, so an input naming a field twice under old and current names is malformed and fails. RefType layouts require stored fields; registering a `Virtual` field fails before publishing the layout.
 
 ## Base properties and overlays
 
@@ -160,7 +198,7 @@ The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom
 
 A custom entity is published into the global registry only after its holder linkage is complete. Both publication paths — `EntityManager::CreateCustomInnerEntity()` and the inner-entity load path — bind the parent link, the nearest holder's `EntityLock` (or the engine's lock for engine-held entries), and `CustomHolderEntry` / `CustomHolderId` **before** calling `RegisterCustomEntity()`, which validates exactly that linkage and requires the holder lock to be held by the current thread. Registering first and linking afterwards would make the entity globally reachable while it still carries no lock.
 
-That holder lock comes from whoever drives the publication. A runtime `CreateCustomInnerEntity()` runs under the caller's prepared cover (for an engine-held entry, the script's `Game.Lock()`), and the world loader captures each fresh location/map/critter/item before descending into its inner entities. The engine singleton is the one holder that pre-exists the load, so `EntityManager::LoadEntities()` takes the engine's singleton lock itself around the engine-held inner-entity pass and releases it before restoring locations.
+That holder lock comes from whoever drives the publication. A runtime `CreateCustomInnerEntity()` runs under the caller's prepared cover (for an engine-held entry, the script's `GameLock` scope), and the world loader captures each fresh location/map/critter/item before descending into its inner entities. The engine singleton is the one holder that pre-exists the load, so `EntityManager::LoadEntities()` takes the engine's singleton lock itself around the engine-held inner-entity pass and releases it before restoring locations.
 
 When changing holder behavior, inspect server/client entity managers and persistence paths in addition to `Entity.*`.
 

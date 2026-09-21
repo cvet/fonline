@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -96,9 +96,8 @@ TEST_CASE("ConfigFile")
 
     SECTION("PreservesViewsAfterMoveForShortInput")
     {
-        // An input this small fits every implementation's small-string buffer, so holding it in a
-        // plain string member would move the characters inside the object and dangle every stored
-        // view. The input lives in the owned-node list precisely to keep its address stable here.
+        // An input this small lives in every small-string buffer, so a plain string member would move the
+        // characters with the object and dangle the stored views
         ConfigFile original {"[A]\nk = v\n"};
         ConfigFile moved {std::move(original)};
 
@@ -247,6 +246,36 @@ TEST_CASE("ConfigFile")
         ConfigFile config {"[ProtoItem]\n$Name = One\n[ProtoItem]\n$Name = Two\n"};
 
         CHECK(config.GetSection("ProtoItem").at("$Name") == "One");
+    }
+
+    SECTION("ReturnsEveryRepeatedSectionAmongOthersInFileOrder")
+    {
+        // The shape of a baked packaged config; with this many repeats libc++ multimap::find stops inside the name
+        string source = "Common.Packaged = 1\n";
+
+        for (int32_t index = 0; index < 32; index++) {
+            source += strex("[ResourcePack]\nName = Pack{}\n", index);
+
+            if (index % 8 == 0) {
+                source += strex("[Other]\nIndex = {}\n", index);
+            }
+        }
+
+        source += "[SubConfig]\nName = Last\n";
+        ConfigFile config {source};
+        vector<ptr<map<string_view, string_view>>> packs = config.GetSections("ResourcePack");
+
+        REQUIRE(packs.size() == 32);
+
+        for (size_t index = 0; index < packs.size(); index++) {
+            CHECK(packs[index]->at("Name") == strex("Pack{}", index).str());
+        }
+
+        CHECK(config.GetAsStr("ResourcePack", "Name") == "Pack0");
+        CHECK(config.HasKey("Other", "Index"));
+        CHECK(config.GetSection("Other").at("Index") == "0");
+        CHECK(config.GetSections("Other").size() == 4);
+        CHECK(config.GetSections("SubConfig").size() == 1);
     }
 
     SECTION("AppendsIntoMissingKeyWithoutLeadingSpace")

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -89,19 +89,53 @@ void GameTimer::SetSynchronizedTimeMonotonic(synctime time)
     _syncTimeSet = frame_time;
 }
 
+void GameTimer::Pause()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_pauseLocker};
+
+    FO_VERIFY_AND_THROW(!_paused.load(std::memory_order_relaxed), "Game timer is already paused");
+
+    _pauseStartedAt = nanotime::now();
+    _paused.store(true, std::memory_order_release);
+}
+
+void GameTimer::Resume()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_pauseLocker};
+
+    FO_VERIFY_AND_THROW(_paused.load(std::memory_order_relaxed), "Game timer is not paused");
+
+    // The offset is published before the flag clears, so a frame that observes a running timer also
+    // observes the offset that belongs to it
+    _pauseOffset.store(_pauseOffset.load(std::memory_order_relaxed) + (nanotime::now() - _pauseStartedAt), std::memory_order_release);
+    _pauseStartedAt = {};
+    _paused.store(false, std::memory_order_release);
+}
+
 void GameTimer::FrameAdvance(bool clamp_to_cap)
 {
     FO_STACK_TRACE_ENTRY();
 
+    if (_paused.load(std::memory_order_acquire)) {
+        _frameDeltaTime.store(timespan {}, std::memory_order_relaxed);
+        return;
+    }
+
+    timespan pause_offset = _pauseOffset.load(std::memory_order_acquire);
+
     auto prev_frame_time = _frameTime.load(std::memory_order_relaxed);
-    nanotime now_time = nanotime::now();
+    nanotime now_time = nanotime::now() - pause_offset;
     nanotime new_frame_time;
 
-    if (clamp_to_cap && _settings->DeltaTimeCap != 0) {
+    if (clamp_to_cap && _settings->Timer.DeltaTimeCap != 0) {
         int32_t dt = (now_time - prev_frame_time - _debuggingOffset).to_ms<int32_t>();
 
-        if (dt > _settings->DeltaTimeCap) {
-            _debuggingOffset += std::chrono::milliseconds(dt - _settings->DeltaTimeCap);
+        if (dt > _settings->Timer.DeltaTimeCap) {
+            _debuggingOffset += std::chrono::milliseconds(dt - _settings->Timer.DeltaTimeCap);
         }
 
         new_frame_time = now_time - _debuggingOffset;

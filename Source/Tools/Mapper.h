@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 
 #include "AnimationViewer.h"
 #include "AnyData.h"
+#include "AudioManager.h"
 #include "CacheStorage.h"
 #include "Client.h"
 #include "CritterHexView.h"
@@ -59,7 +60,6 @@
 #include "ScriptSystem.h"
 #include "Settings.h"
 #include "SettingsStorage.h"
-#include "SoundManager.h"
 #include "SpriteManager.h"
 #include "TextPack.h"
 
@@ -105,11 +105,11 @@ public:
     {
         string Label {};
         bool IsSnapshot {};
-        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
-        std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
+        function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Undo {};
+        function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> Redo {};
 
         UndoOp() = default;
-        UndoOp(string label, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, std::function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
+        UndoOp(string label, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> undo, function<bool(ptr<MapperEngine>, ptr<ptr<MapView>>)> redo, bool is_snapshot = false);
     };
 
     struct UndoContext
@@ -254,6 +254,8 @@ public:
     auto CreateCritter(hstring pid, mpos hex) -> ptr<CritterView>;
     auto CreateItem(hstring pid, mpos hex, nptr<Entity> owner) -> ptr<ItemView>;
     auto CloneEntity(ptr<Entity> entity) -> nptr<Entity>;
+    void PushManualScroll();
+    void PushLayerVisibility();
     void CloneInnerItems(ptr<MapView> map, ptr<ItemView> to_item, ptr<const ItemView> from_item);
 
     auto MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t;
@@ -341,6 +343,23 @@ public:
     shared_ptr<Sprite> CurPHand {};
     int32_t ActivePanelMode {};
     int32_t MouseHoldMode {};
+    // The editor's own scroll input, kept as two halves because the mouse one is recomputed from the
+    // cursor every frame while the keyboard one is toggled on key down and up
+    bool ScrollKeybLeft {};
+    bool ScrollKeybRight {};
+    bool ScrollKeybUp {};
+    bool ScrollKeybDown {};
+    bool ScrollMouseLeft {};
+    bool ScrollMouseRight {};
+    bool ScrollMouseUp {};
+    bool ScrollMouseDown {};
+    // The layers the editor draws, pushed into whichever map is current - a map opened later inherits the
+    // set the author is already working under
+    MapLayers VisibleLayers {MapLayers::All};
+    // Whether the cursor at the screen edge scrolls the map, seeded from the configured preference and then
+    // owned by the editor - the F8 hotkey and the render-plan scripts both turn it off while they work
+    bool FullscreenMouseScroll {};
+    bool WindowedMouseScroll {};
     ipos32 MainPanelPos {};
     mpos SelectHex1 {};
     mpos SelectHex2 {};
@@ -355,6 +374,7 @@ public:
     vector<MoveCommandEntry> PendingSelectionMoveEntries {};
     bool SelectAxialGrid {true};
     bool SelectEntireEntity {};
+    bool InterfaceHidden {};
     bool WorkspaceWindowVisible {};
     bool ContentWindowVisible {};
     bool CritterAnimationsWindowVisible {};
@@ -454,7 +474,7 @@ private:
     auto GetTileLayerFromKey(KeyCode key) const -> optional<int32_t>;
     auto GetNextCritterDir(mdir dir) const -> mdir;
     void AdvanceCritterDir(ptr<CritterHexView> cr) const;
-    void ToggleMapVisibilityFlag(nptr<MapView> map, bool& value) const;
+    void ToggleMapVisibilityFlag(MapLayers layer);
     auto ContainsCaseInsensitive(string_view text, string_view filter) const -> bool;
     auto ResolveAtlasSprite(nptr<const Sprite> sprite) const -> nptr<const AtlasSprite>;
     auto DrawAtlasSpriteImage(ptr<ImDrawList> draw_list, ptr<const AtlasSprite> atlas_sprite, ImVec2 logical_min, ImVec2 logical_size) const -> bool;
@@ -477,7 +497,7 @@ private:
     void SetSelectionContour(ptr<ClientEntity> entity, ucolor color) const;
 
     // Per-user editor settings (currently the ImGui window layout). Registry-backed on Windows, file-backed
-    // elsewhere; distinct from the resource Cache so tool preferences do not live in the baked-resource store.
+    // elsewhere; distinct from the resource Cache so tool preferences do not live in the baked-resource store
     SettingsStorage _uiSettings {"Mapper"};
 };
 

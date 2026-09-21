@@ -236,6 +236,8 @@ const char* ExecutionModeString(int mode)
 
     case (int)ExecutionMode::Shader64BitIndexingEXT:                   return "Shader64BitIndexingEXT";
 
+    case (int)ExecutionMode::OpacityMicromapIdKHR:                     return "OpacityMicromapIdKHR";
+
     case ExecutionModeCeiling:
     default: return "Bad";
     }
@@ -357,9 +359,9 @@ const char* DecorationString(int decoration)
     case (int)Decoration::BankNV:                        return "BankNV";
     case (int)Decoration::MemberOffsetNV:                return "MemberOffsetNV";
 
-    case (int)Decoration::ArrayStrideIdEXT:        return "DecorationArrayStrideIdEXT";
-    case (int)Decoration::OffsetIdEXT:             return "DecorationOffsetIdEXT";
-    case (int)Decoration::UTFEncodedKHR:          return "UTF8EncodedKHR";
+    case (int)Decoration::ArrayStrideIdEXT:        return "ArrayStrideIdEXT";
+    case (int)Decoration::OffsetIdEXT:             return "OffsetIdEXT";
+    case (int)Decoration::UTFEncodedKHR:           return "UTFEncodedKHR";
     }
 }
 
@@ -855,13 +857,14 @@ const char* CooperativeMatrixOperandsString(int op)
     }
 }
 
-const int TensorAddressingOperandsCeiling = 3;
+const int TensorAddressingOperandsCeiling = 4;
 
 const char* TensorAddressingOperandsString(int op)
 {
     switch (op) {
-    case (int)TensorAddressingOperandsShift::TensorView:  return "TensorView";
-    case (int)TensorAddressingOperandsShift::DecodeFunc:  return "DecodeFunc";
+    case (int)TensorAddressingOperandsShift::TensorView:        return "TensorView";
+    case (int)TensorAddressingOperandsShift::DecodeFunc:        return "DecodeFunc";
+    case (int)TensorAddressingOperandsShift::DecodeVectorFunc:  return "DecodeVectorFunc";
 
     default: return "Bad";
     }
@@ -1039,6 +1042,7 @@ const char* CapabilityString(int info)
     case (int)Capability::RayTracingPositionFetchKHR:      return "RayTracingPositionFetchKHR";
     case (int)Capability::DisplacementMicromapNV:           return "DisplacementMicromapNV";
     case (int)Capability::RayTracingOpacityMicromapEXT:    return "RayTracingOpacityMicromapEXT";
+    case (int)Capability::RayTracingOpacityMicromapExecutionModeKHR: return "RayTracingOpacityMicromapExecutionModeKHR";
     case (int)Capability::RayTracingDisplacementMicromapNV: return "RayTracingDisplacementMicromapNV";
     case (int)Capability::RayQueryPositionFetchKHR:        return "RayQueryPositionFetchKHR";
     // ComputeDerivativeGroupQuadsKHR is an alias of ComputeDerivativeGroupQuadsNV
@@ -1082,6 +1086,7 @@ const char* CapabilityString(int info)
     case (int)Capability::CooperativeMatrixPerElementOperationsNV: return "CooperativeMatrixPerElementOperationsNV";
     case (int)Capability::CooperativeMatrixTensorAddressingNV:     return "CooperativeMatrixTensorAddressingNV";
     case (int)Capability::CooperativeMatrixBlockLoadsNV:           return "CooperativeMatrixBlockLoadsNV";
+    case (int)Capability::CooperativeMatrixDecodeVectorNV:         return "CooperativeMatrixDecodeVectorNV";
     case (int)Capability::TensorAddressingNV:                      return "TensorAddressingNV";
 
     case (int)Capability::ShaderSMBuiltinsNV:      return "ShaderSMBuiltinsNV";
@@ -1162,6 +1167,12 @@ const char* CapabilityString(int info)
         
     case (int)Capability::Shader64BitIndexingEXT:              return "CapabilityShader64BitIndexingEXT";
     case (int)Capability::LongVectorEXT:                       return "LongVectorEXT";
+
+    case (int)Capability::Float4EXT:                           return "Float4EXT";
+    case (int)Capability::Float6EXT:                           return "Float6EXT";
+    case (int)Capability::Float8UnsignedE8M0EXT:               return "Float8UnsignedE8M0EXT";
+    case (int)Capability::MXInt8EXT:                           return "MXInt8EXT";
+    case (int)Capability::BitcastExtractEXT:                   return "BitcastExtractEXT";
 
     default: return "Bad";
     }
@@ -1794,6 +1805,8 @@ const char* OpcodeString(int op)
     case (int)Op::OpHitObjectTraceMotionReorderExecuteEXT: return "OpHitObjectTraceMotionReorderExecuteEXT";
     case (int)Op::OpHitObjectRecordFromQueryEXT:          return "OpHitObjectRecordFromQueryEXT";
     case (int)Op::OpHitObjectGetIntersectionTriangleVertexPositionsEXT: return "OpHitObjectGetIntersectionTriangleVertexPositionsEXT";
+
+    case (int)Op::OpBitcastExtractEXT:                    return "OpBitcastExtractEXT";
 
     default:
         return "Bad";
@@ -4149,6 +4162,8 @@ void Parameterize()
         InstructionDesc[enumCast(Op::OpHitObjectGetIntersectionTriangleVertexPositionsEXT)].operands.push(OperandId, "'HitObject'");
         InstructionDesc[enumCast(Op::OpHitObjectGetIntersectionTriangleVertexPositionsEXT)].setResultAndType(true, true);
 
+        InstructionDesc[enumCast(Op::OpBitcastExtractEXT)].operands.push(OperandId, "'Base'");
+        InstructionDesc[enumCast(Op::OpBitcastExtractEXT)].operands.push(OperandId, "'Offset'");
     });
 }
 

@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -108,6 +108,29 @@ auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_r
     }
 
     return runtime_result->Result.Success;
+}
+
+void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runtime_path, string& compatibility_version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto capture_text = [](nptr<const char> text, string& storage) -> nptr<const char> {
+        if (!text) {
+            storage.clear();
+            return nullptr;
+        }
+
+        // A result captured twice already points into this storage, and assigning a string its own buffer is
+        // not something every string implementation promises to survive
+        if (text.get() != storage.c_str()) {
+            storage = text.get();
+        }
+
+        return storage.c_str();
+    };
+
+    result.RequestedRuntimePath = capture_text(result.RequestedRuntimePath, runtime_path).get();
+    result.RequestedCompatibilityVersion = capture_text(result.RequestedCompatibilityVersion, compatibility_version).get();
 }
 
 auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view

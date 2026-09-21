@@ -2307,19 +2307,6 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 				fprintf(file, "   %-8s 0x%x          '%s'\n", asBCInfo[instr->op].name, (asUINT)*ARG_DW(instr->arg), engine->GetTypeDeclaration((int)*ARG_DW(instr->arg)));
 				break;
 
-			case asBC_CALL:
-			case asBC_CALLSYS:
-			case asBC_CALLBND:
-			case asBC_CALLINTF:
-			case asBC_Thiscall1:
-				{
-					int funcID = *(int*)ARG_DW(instr->arg);
-					asCString decl = engine->GetFunctionDeclaration(funcID);
-
-					fprintf(file, "   %-8s %d           (%s)\n", asBCInfo[instr->op].name, *((int*) ARG_DW(instr->arg)), decl.AddressOf());
-				}
-				break;
-
 			case asBC_REFCPY:
 			case asBC_RefCpyChk: // (FOnline Patch)
 				fprintf(file, "   %-8s 0x%x\n", asBCInfo[instr->op].name, *((int*) ARG_DW(instr->arg)));
@@ -2488,6 +2475,17 @@ void asCByteCode::DebugOutput(const char *name, asCScriptFunction *func)
 				fprintf(file, "   %-8s v%d, 0x%x          (i:%d, f:%g)\n", asBCInfo[instr->op].name, instr->wArg[0], (asUINT)*ARG_DW(instr->arg), *((int*) ARG_DW(instr->arg)), *((float*) ARG_DW(instr->arg)));
 			else if( instr->op == asBC_CMPIf )
 				fprintf(file, "   %-8s v%d, %f\n", asBCInfo[instr->op].name, instr->wArg[0], *(float*)ARG_DW(instr->arg));
+			else if( instr->op == asBC_CALL ||
+					instr->op == asBC_CALLSYS ||
+					instr->op == asBC_CALLBND ||
+					instr->op == asBC_CALLINTF ||
+					instr->op == asBC_Thiscall1 )
+			{
+				int funcID = *(int*)ARG_DW(instr->arg);
+				asCString decl = engine->GetFunctionDeclaration(funcID);
+
+				fprintf(file, "   %-8s %d, %d           (%s)\n", asBCInfo[instr->op].name, instr->wArg[0], *((int*) ARG_DW(instr->arg)), decl.AddressOf());
+			}
 			else
 				fprintf(file, "   %-8s v%d, %d\n", asBCInfo[instr->op].name, instr->wArg[0], (asUINT)*ARG_DW(instr->arg));
 			break;

@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "DataBase.h"
 
 #include "ImGuiStuff.h"
@@ -60,6 +93,24 @@ protected:
 
         auto it = collection.find(id);
         return it != collection.end() ? it->second.Copy() : AnyData::Document();
+    }
+
+    [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        scoped_lock locker {_storageLocker};
+
+        const auto& collection = _collections.at(collection_name);
+        vector<AnyData::Document> docs;
+        docs.reserve(ids.size());
+
+        for (const auto& id : ids) {
+            auto it = collection.find(id);
+            docs.emplace_back(it != collection.end() ? it->second.Copy() : AnyData::Document());
+        }
+
+        return docs;
     }
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -132,9 +183,8 @@ protected:
 
         scoped_lock locker {_storageLocker};
 
-        // Exception safety: build a plain-data model first (Phase 1), then render it with pure ImGui calls (Phase 2).
-        // Every recoverable throw (strex, AnyData::ValueToString on a non-finite Float64) happens in Phase 1, before any
-        // ImGui push, so an exception leaves ImGui's ID/tree/table stacks untouched and balanced instead of corrupting the frame.
+        // The data model is built before any ImGui push, so every recoverable throw happens while ImGui's ID, tree
+        // and table stacks are still balanced
         struct FieldRow
         {
             string key;
@@ -233,7 +283,7 @@ private:
 
 auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    return SafeAlloc::MakeUnique<DbMemory>(db_settings, std::move(panic_callback));
+    return safe_alloc::make_unique<DbMemory>(db_settings, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE

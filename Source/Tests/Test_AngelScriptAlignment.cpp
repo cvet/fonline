@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -47,21 +48,8 @@ FO_BEGIN_NAMESPACE
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
-// Regression coverage for the 8-byte value alignment of AngelScript STORAGE. Each historical
-// misalignment class gets both a direct layout assertion (member byte offsets via asITypeInfo,
-// checked on every build) and a runtime execution path (constructing/using the values, so the UBSan
-// leg catches any regression as a hard `alignment` runtime error):
-//   1. Script-class member layout — `as_objecttype.cpp AddPropertyToClass` used to pack 8-byte
-//      members on 4-byte boundaries (observed on script GUI classes and Ai::Plan in gameplay).
-//      Covered across primitives of every size, inline POD value types (ident/timespan/nanotime/
-//      mpos/ipos/irect/ucolor/hdir), non-POD value types stored as references (string/hstring/any),
-//      enums, funcdef/class/array handle members, two inheritance levels and a mixin.
-//   2. 8-byte locals in a callee whose argument block is an odd DWORD count —
-//      `as_context.cpp PrepareScriptFunction` aligns the frame base by relocating the arg block.
-//   3. Module globals of 8-byte types (initialized in the module-init frame), array init-list
-//      element storage, and the non-POD `any` value.
-// Call-shape coverage (method/virtual/interface/funcdef/delegate/parameters) lives in
-// Test_AngelScriptCall.cpp.
+// Every misalignment class gets both a layout assertion and a runtime path, so the UBSan leg turns a regression
+// into a hard alignment error; call-shape coverage lives in Test_AngelScriptCall.cpp
 namespace
 {
     struct AlignTestRig
@@ -97,7 +85,7 @@ namespace AlignTest
     funcdef int64 UnaryOp(int8);
 
     // Adversarial member ordering: every 8-byte or pointer-sized member is preceded by a smaller
-    // member, so the historical 4-byte packing would misalign each of them.
+    // member, so the historical 4-byte packing would misalign each of them
     class MixedMembers
     {
         int8 SmallA;
@@ -136,7 +124,7 @@ namespace AlignTest
     }
 
     // Inherited members continue after the base layout; derived 8-byte members must stay aligned
-    // regardless of the base class total size.
+    // regardless of the base class total size
     class DerivedMembers : MixedMembers
     {
         int8 SmallDerivedA;
@@ -192,7 +180,7 @@ namespace AlignTest
     }
 
     // One-DWORD argument block: without the runtime frame-base alignment the callee frame lands on
-    // a 4-mod-8 boundary and every 8-byte local below is misaligned.
+    // a 4-mod-8 boundary and every 8-byte local below is misaligned
     int64 OddArgFrameLocals(int8 pad)
     {
         int64 wide = 40;
@@ -209,7 +197,7 @@ namespace AlignTest
         return OddArgFrameLocals(1);
     }
 
-    // Module globals of 8-byte types: initialized in the module-init frame, then read at runtime.
+    // Module globals of 8-byte types: initialized in the module-init frame, then read at runtime
     const int64 g_wide = 80;
     const double g_real = 1.5;
     const timespan g_ts = timespan(6, 3);
@@ -221,7 +209,7 @@ namespace AlignTest
         return g_wide + int64(g_real) + g_ts.seconds;
     }
 
-    // Array storage of 8-byte elements filled through init lists and element access.
+    // Array storage of 8-byte elements filled through init lists and element access
     int64 UseArrays()
     {
         int64[] wides = {5, 6};
@@ -231,12 +219,19 @@ namespace AlignTest
         return wides[0] + wides[1] + int64(reals[0] + reals[1]) + int64(ids.length());
     }
 
-    // Construct-only coverage for the non-POD any value.
+    // Construct-only coverage for the non-POD any value
     int64 UseAny()
     {
         any holder = any(int64(42));
 
         return 1;
+    }
+
+    // A bool travels to a native function in a register, and `string opAdd(bool)` folds the literal length
+    // into arithmetic on it, so the stale bytes above the bool byte of its stack DWORD must not travel along
+    string ConcatBool(bool flag)
+    {
+        return "flag=" + flag;
     }
 }
 )"},
@@ -254,7 +249,7 @@ namespace AlignTest
         {
             auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-            auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
+            auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestCompilerResources");
             compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
             FileSystem compiler_resources;
@@ -262,7 +257,7 @@ namespace AlignTest
 
             auto script_blob = MakeScriptBinary(compiler_resources);
 
-            auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
+            auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AlignTestRuntimeResources");
             runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
             runtime_source->AddFile("AlignTest.fos-bin-server", script_blob);
 
@@ -288,12 +283,11 @@ namespace AlignTest
             return "ServerEngine startup timed out";
         }
 
-        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeResources()); }
+        static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine> { return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeResources()); }
     };
 
-    // Required byte alignment of one script-class member slot, derived from what the layout stores
-    // there: handles, script-object/array members and non-POD value references are a pointer; inline
-    // value types and primitives align by their size (mirrors AddPropertyToClass).
+    // Mirrors AddPropertyToClass: anything stored as a reference aligns like a pointer, while inline value types
+    // and primitives align by their size
     static auto RequiredMemberAlignment(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, bool is_reference) -> size_t
     {
         if (is_reference || (type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
@@ -367,10 +361,10 @@ TEST_CASE("AngelScriptValueAlignment")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto fn = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     // Script-class member layout: every member must sit on a correctly aligned byte offset across
-    // the base class, both inheritance levels and the mixin-including class.
+    // the base class, both inheritance levels and the mixin-including class
     {
         auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
         auto context_mngr = backend->GetContextMngr();
@@ -381,23 +375,23 @@ TEST_CASE("AngelScriptValueAlignment")
         auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
 
         nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
-        REQUIRE(as_engine != nullptr);
+        REQUIRE(as_engine);
 
-        // Script classes live in the script module, not in the engine's registered-type scope.
+        // Script classes live in the script module, not in the engine's registered-type scope
         REQUIRE(as_engine->GetModuleCount() >= 1);
         nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
-        REQUIRE(script_module != nullptr);
+        REQUIRE(script_module);
 
         for (string_view class_decl : {string_view {"AlignTest::MixedMembers"}, string_view {"AlignTest::DerivedMembers"}, string_view {"AlignTest::DerivedTwice"}, string_view {"AlignTest::WithMixin"}}) {
             INFO(class_decl);
             nptr<AngelScript::asITypeInfo> class_type = script_module->GetTypeInfoByDecl(class_decl.data());
-            REQUIRE(class_type != nullptr);
+            REQUIRE(class_type);
             CheckClassMemberAlignment(as_engine, class_type);
         }
     }
 
     // Runtime execution: under the UBSan leg any misaligned member/local/global constructor or read
-    // trips a hard `alignment` runtime error in the value-type behaviours.
+    // trips a hard `alignment` runtime error in the value-type behaviours
     auto call_and_check = [&](string_view func_name, int64_t expected) {
         INFO(func_name);
         auto func = server->FindFunc<int64_t>(fn(func_name));
@@ -411,6 +405,60 @@ TEST_CASE("AngelScriptValueAlignment")
     call_and_check("AlignTest::UseGlobals", 87);
     call_and_check("AlignTest::UseArrays", 16);
     call_and_check("AlignTest::UseAny", 1);
+}
+
+TEST_CASE("AngelScriptNativeCallNormalizesBoolArgument")
+{
+    auto settings = AlignTestRig::MakeSettings();
+    auto server = AlignTestRig::MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = AlignTestRig::WaitForStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto backend = GetScriptBackend(ptr<BaseEngine>(server.get()));
+    auto context_mngr = backend->GetContextMngr();
+    REQUIRE(context_mngr);
+
+    auto ctx = context_mngr->RequestContext();
+    uint64_t context_generation = context_mngr->GetContextGeneration(ctx);
+    auto return_context = scope_exit([&context_mngr, &ctx, &context_generation]() noexcept { context_mngr->ReturnContext(ctx, context_generation); });
+
+    nptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
+    REQUIRE(as_engine);
+    REQUIRE(as_engine->GetModuleCount() >= 1);
+
+    nptr<AngelScript::asIScriptModule> script_module = as_engine->GetModuleByIndex(0);
+    REQUIRE(script_module);
+
+    nptr<AngelScript::asIScriptFunction> concat_bool = script_module->GetFunctionByDecl("string AlignTest::ConcatBool(bool)");
+    REQUIRE(concat_bool);
+
+    // The VM writes one byte for a bool and leaves the rest of its stack DWORD as it found it, so the slot is
+    // filled here the way a reused slot arrives: the low byte carries the bool, the bytes above it carry litter
+    REQUIRE(ctx->Prepare(concat_bool.get()) >= 0);
+
+    nptr<void> flag_slot = ctx->GetAddressOfArg(0);
+    REQUIRE(flag_slot);
+    *cast_from_void<uint32_t*>(flag_slot) = 0x7F390401U;
+
+    REQUIRE(ctx->Execute() == AngelScript::asEXECUTION_FINISHED);
+
+    nptr<void> concat_result = ctx->GetReturnObject();
+    REQUIRE(concat_result);
+    CHECK(*cast_from_void<const string*>(concat_result) == "flag=true");
 }
 
 #endif

@@ -60,7 +60,31 @@ projects a `(hex, center-relative offset)` pair straight to screen with no furth
 
 `GameSettings::MAP_DIR_COUNT` participates in direction normalization. When changing geometry, inspect compile-time geometry settings, generated value types, path-finding tests, and any rendering code that projects map positions.
 
-`mdir` stores normalized angles and `hdir` stores discrete map directions. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+`mdir` stores normalized angles and `hdir` stores discrete map directions. Native and managed constructors accept full signed 32-bit inputs and normalize before narrowing to their two-byte/one-byte ABI storage; negative and out-of-range values wrap into `[0, 360)` and `[0, MAP_DIR_COUNT)` respectively. Managed narrow integer arguments follow the same constructors. Use the shared conversion helpers when moving or reversing directions: square builds place the north direction at angle `0`, so hand-written angle bucketing must handle wraparound at `360`/`0`.
+
+## Map camera projection
+
+The map camera works in a world frame of `+X` right, `+Y` up (elevation), `+Z` map-south, where one world
+unit is one pixel of hex spacing. It is a parallel (orthographic) projection that rigidly tilts the world
+about X by `MAP_CAMERA_ANGLE` (`arcsin(sqrt(3)/4)`, the angle that keeps hexes metric-regular): ground
+northing is foreshortened by `sin(angle)` (`== 1 / GetYProj()`) and elevation by `cos(angle)`. Anchoring a
+ground point at `z = legacy_y / sin(angle)` makes `ProjectWorldToMap` reproduce the legacy `GetHexPos`
+screen position exactly at elevation 0, so 3D models render in the same frame with no extra transform.
+
+`ProjectWorldToMap` is the reference form with no scroll or zoom. It returns map-space pixels in `.x`/`.y`
+(legacy convention, Y down) and view depth in `.z`, where a larger depth is nearer the camera and therefore
+drawn on top. The `(.y, .z)` pair is an orthonormal rotation of the world `(Z, Y)` pair, which makes this a
+true rigid camera tilt rather than a shear.
+
+`MakeMapCameraView` is the GPU form of the same projection with the camera's scroll (translate) and zoom
+(scale) folded in, plus a `yaw_deg` that orbits the camera about the vertical axis for a real 3D camera.
+At `yaw == 0` it reproduces the fixed isometric view: `(ProjectWorldToMap(world).xy - scroll) * zoom`, depth
+unchanged. The renderer composes the backend ortho on top (`MapViewProj = CreateOrthoMatrix(0, w, h, 0,
+near, far) * MakeMapCameraView`), so sprites, 3D models, and particles share one world→clip matrix. 2D map
+sprites write per-vertex world depth and test it with `DepthFunc = LessEqual` — the CPU painter sort still
+orders blended layers — so the shared depth buffer resolves occlusion across all three.
+
+`Test_Geometry.cpp` pins both forms against each other and against `GetHexPos`. `GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so changing the view origin translates every hex by one pixel delta; `MapView` relies on that identity when it shifts cached light primitives on scroll.
 
 ## Geometry helper responsibilities
 
@@ -96,7 +120,10 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings.
+- `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
+  only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
+  because the search never steps off the map and never travels further than the depth limit. Raising
+  the setting therefore costs nothing on maps smaller than the new limit.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -161,6 +188,28 @@ For multihex actors, `CheckHexWithMultihex()` checks the directional front arc a
 
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
 
+Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+## Static item removal
+
+Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
+
+**Removal is one-way for the life of the map instance.** `RemovedStaticItemIds` only ever grows: taking an id back out is refused by a property *setter*, which runs before the value is stored, so the write fails and both the stored list and the overlay stand unchanged. Do not expect an item to reappear on maps players already have loaded — the live client path is only ever told to drop a static item, never to build one back, and a rejection after the store would have persisted a shrunk list that silently undid the removal on the next server start. `MapManager::RegenerateMap()` regenerates map *content* and leaves removals in place; a map that needs its static layer whole again is a new map instance.
+
+The mechanics:
+
+- `Map::RemovedStaticItemIds` (`Common Mutable PublicSync Persistent`) is the stored list. It is the whole contract: persistence, client sync, and script visibility all follow from the property.
+- `Map` derives three caches from it in `RefreshRemovedStaticItems()` → `RebuildStaticOverlay()`: the removed-id set, a `vector` of the surviving static items, and a `StaticMap::Field` override for each hex a removed item covered. All three stay empty while the map keeps every baked item, so an untouched map reads the shared grid with no extra indirection.
+- `Map::VerifyStaticItemRemovalsOnlyGrow()` is the append-only guard, reached through the `ServerEngine::OnSetMapRemovedStaticItems` setter. It mutates nothing and only throws, so a refused write leaves the map exactly as it was.
+- `Map::GetStaticField()` returns the override when one exists and the shared cell otherwise. Every static query (`GetStaticItem`, `GetStaticItemOnHex`, `GetStaticItems`, `GetStaticItemsOnHex`, `GetStaticItemsInRadius`, `GetTriggerStaticItemsOnHex`, `IsTriggerStaticItemOnHex`) and both blocking queries go through it, so a removed item is gone from movement, shooting, triggers, and lookup alike.
+- `StaticMap::ForEachItemHex()` and `StaticMap::ApplyItemToField()` are shared by the loader and by the overlay rebuild, so the two can never disagree about which hexes an item contributes to or what blocking it implies.
+- `StaticMap::Field::ScrollBlocked` exists for this rebuild. The loader's scroll-block pass writes `MoveBlocked` with no owning item, so an override rebuilt purely from the surviving items would silently open the map border; the rebuild seeds `MoveBlocked` from `ScrollBlocked` first.
+- Static items carry the `ident_t` their map file authored (`MapManager::LoadFromResources`), which is what `GetStaticItem()` looks up, what the client's `ItemHexView` carries, and what the removal list records.
+
+`EntityManager::CallInit(Map, bool)` builds the overlay once per map — that hook covers both a freshly created map and one restored from the database. Runtime changes come through the `ServerEngine::OnPostSetMapRemovedStaticItems` property post-setter, so a script that writes the property directly gets the same rebuild as one that calls `RemoveStaticItem()`.
+
+On the client there are exactly two paths, and the map view holds no state of its own for this. `LoadStaticData()` skips an id in the removed list outright, so the item is never constructed, fielded, drawn, or indexed — the record is still walked past, because the baked entries are variable length and the reader has no index to seek with. `ClientEngine::OnSetMapRemovedStaticItems` calls `MapView::ApplyStaticItemRemovals()`, which destroys the now-removed views through the ordinary `DestroyItems()` path. There is no third path: nothing on the client ever rebuilds a static item on a loaded map.
+
 ## Line tracing
 
 `TraceLineInput` describes a trace from `StartHex` toward `TargetHex`:
@@ -216,7 +265,7 @@ static void Load(
     string_view name,
     const string& buf,
     const EngineMetadata& meta,
-    HashResolver& hash_resolver,
+    hash_resolver& hashes,
     const CrLoadFunc& cr_load,
     const ItemLoadFunc& item_load);
 ```

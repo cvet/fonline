@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -43,10 +43,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Reinterpret an opaque `void` pointer back to a typed nullable borrow. Lives here (not in BasicCore) because
-// the nullable-borrow return type `nptr<T>` needs the smart-pointer vocabulary. The pointer type is spelled as
-// the caller expects (`cast_from_void<T*>(vp)`), and the result is `nptr<T>` — deref/pass it through the wrapper
-// vocabulary. Raw `void*`, `ptr<void>`, and `nptr<void>` sources are accepted.
+// Spelled as the caller expects the pointer (`cast_from_void<T*>(vp)`), and lives here rather than in
+// BasicCore because the `nptr<T>` result needs the smart-pointer vocabulary
 template<typename T, typename U>
     requires(std::is_pointer_v<T> && !std::is_void_v<remove_all_pointers_t<T>> && std::is_pointer_v<U> && std::is_void_v<remove_all_pointers_t<U>>)
 [[nodiscard]] inline auto cast_from_void(U ptr) noexcept -> nptr<std::remove_pointer_t<T>>
@@ -78,7 +76,7 @@ inline void safe_call(const T& callable, Args&&... args) noexcept
         std::invoke(callable, std::forward<Args>(args)...);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -130,13 +128,13 @@ public:
     ~ref_hold_vector()
     {
         for (T& ref : _vec) {
-            release_ref(ref);
+            release(ref);
         }
     }
 
     void add(T ref)
     {
-        add_ref(ref);
+        addref(ref);
         _vec.emplace_back(std::move(ref));
     }
 
@@ -156,18 +154,18 @@ private:
         }
     }
 
-    static void add_ref(T& ref)
+    static void addref(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
-        ref_ptr->AddRef();
+        details::call_addref(ref_ptr);
     }
 
-    static void release_ref(T& ref)
+    static void release(T& ref)
     {
         auto ref_ptr = get_ref(ref);
         FO_VERIFY_AND_THROW(ref_ptr, "Missing required reference");
-        ref_ptr->Release();
+        details::call_release(ref_ptr);
     }
 
     small_vector<T, 8> _vec {};
@@ -273,7 +271,7 @@ template<typename T>
 }
 
 // RAII holder for a value-typed C resource bracketed by paired init/clear free functions (e.g. th_info_init / th_info_clear).
-// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction.
+// The held value is default-zeroed, then InitFn(&Value) runs on construction and ClearFn(&Value) on destruction
 template<typename T, auto InitFn, auto ClearFn>
     requires(std::is_invocable_v<decltype(InitFn), T*> && std::is_invocable_v<decltype(ClearFn), T*>)
 struct scoped_init_clear
@@ -509,6 +507,20 @@ template<typename T>
     auto bytes = make_nptr(data.data());
     FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
     ptr<T> values = bytes.reinterpret_as<T>();
+    return make_span(values, data.size() / sizeof(T));
+}
+
+template<typename T>
+[[nodiscard]] inline auto bytes_to_objects(const_span<uint8_t> data) noexcept -> const_span<T>
+{
+    if (data.empty()) {
+        return {};
+    }
+
+    FO_STRONG_ASSERT(data.size() % sizeof(T) == 0, "Byte span size is not a whole multiple of the object size");
+    auto bytes = make_nptr(data.data());
+    FO_STRONG_ASSERT(bytes, "Byte span has a null pointer");
+    ptr<const T> values = bytes.template reinterpret_as<T>();
     return make_span(values, data.size() / sizeof(T));
 }
 

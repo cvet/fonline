@@ -1,12 +1,11 @@
 #include "EffectRecorder.h"
+#include "../Graphics/GraphicsDevice.h"
 #include "RecorderCallback.h"
 
 #ifdef _WIN32
 #include "../Graphics/Platform/DX11/efk.GraphicsDX11.h"
 #include "Windows/RecorderCallbackH264.h"
 #endif
-
-#include "../GUI/RenderImage.h"
 
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -17,7 +16,7 @@
 #endif
 #include "PNGHelper.h"
 
-#include <sstream>
+#include <Common/StringHelper.h>
 
 namespace Effekseer
 {
@@ -127,25 +126,16 @@ public:
 
 	void OnEndFrameRecord(int index, std::vector<Effekseer::Color>& pixels) override
 	{
-		char16_t path_[260];
-		auto pathWithoutExt = recordingParameter_.GetPath();
-		auto ext = recordingParameter_.GetExt();
+		auto path = std::u16string(recordingParameter_.GetPath());
+		path += u".";
+		path += Effekseer::Tool::StringHelper::ConvertUtf8ToUtf16(std::to_string(index));
+		path += recordingParameter_.GetExt();
 
-		char pathWOE[256];
-		char ext_[256];
-		// char path8_dst[256];
-		Effekseer::ConvertUtf16ToUtf8(pathWOE, 256, pathWithoutExt);
-		Effekseer::ConvertUtf16ToUtf8(ext_, 256, ext);
-
-		auto ss = std::stringstream();
-		ss << pathWOE << "." << std::to_string(index) << ext_;
-
-		Effekseer::ConvertUtf8ToUtf16(path_, 260, ss.str().c_str());
-
-		spdlog::trace("RecorderCallbackSprite : {}", ss.str().c_str());
+		spdlog::trace(
+			"RecorderCallbackSprite : {}", Effekseer::Tool::StringHelper::ConvertUtf16ToUtf8(path));
 
 		efk::PNGHelper pngHelper;
-		pngHelper.Save((char16_t*)path_, imageSize_.X, imageSize_.Y, pixels.data());
+		pngHelper.Save(path.c_str(), imageSize_.X, imageSize_.Y, pixels.data());
 	}
 };
 
@@ -240,8 +230,7 @@ public:
 	{
 		auto path = std::u16string(recordingParameter_.GetPath()) + std::u16string(recordingParameter_.GetExt());
 
-		helper.Initialize(path.c_str(), imageSize_.X, imageSize_.Y, recordingParameter_.Freq);
-		return true;
+		return helper.Initialize(path.c_str(), imageSize_.X, imageSize_.Y, recordingParameter_.Freq);
 	}
 
 	void OnEndRecord() override
@@ -276,13 +265,12 @@ public:
 	bool OnBeginRecord() override
 	{
 		auto path = std::u16string(recordingParameter_.GetPath()) + std::u16string(recordingParameter_.GetExt());
-		char path8[256];
-		Effekseer::ConvertUtf16ToUtf8(path8, 256, path.c_str());
 
 #ifdef _WIN32
 		_wfopen_s(&fp, (const wchar_t*)path.c_str(), L"wb");
 #else
-		fp = fopen(path8, "wb");
+		auto path8 = Effekseer::Tool::StringHelper::ConvertUtf16ToUtf8(path);
+		fp = fopen(path8.c_str(), "wb");
 #endif
 
 		if (fp == nullptr)
@@ -333,17 +321,8 @@ bool EffectRecorder::Begin(int32_t squareMaxCount,
 	if (recordingParameter_.Transparence == TransparenceType::Generate2)
 	{
 		recordingParameter2_ = recordingParameter_;
-		auto path = recordingParameter_.GetPath();
-
-		char pathWOE[256];
-		char16_t path_[256];
-		Effekseer::ConvertUtf16ToUtf8(pathWOE, 256, path);
-
-		auto ss = std::stringstream();
-		ss << pathWOE << "_add";
-
-		Effekseer::ConvertUtf8ToUtf16(path_, 256, ss.str().c_str());
-		recordingParameter2_.SetPath(path_);
+		auto path = std::u16string(recordingParameter_.GetPath()) + u"_add";
+		recordingParameter2_.SetPath(path.c_str());
 	}
 
 	if (recordingParameter_.RecordingMode == RecordingModeType::Sprite)
@@ -422,7 +401,7 @@ bool EffectRecorder::Begin(int32_t squareMaxCount,
 		return false;
 	}
 
-	renderTarget_ = Effekseer::Tool::RenderImage::Create(graphicsDevice_);
+	renderTarget_ = Effekseer::ToolRuntime::RenderImage::Create(graphicsDevice_->GetGraphics()->GetGraphicsDevice());
 	renderTarget_->Resize(imageSize_.X, imageSize_.Y);
 	generator_->ResizeScreen(imageSize_);
 

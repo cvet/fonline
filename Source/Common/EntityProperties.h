@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -125,10 +125,6 @@ public:
     ///@ MigrationRule Property Item SubItemIds InnerItemIds
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, InnerItemIds);
-    ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(bool, Stackable);
-    ///@ ExportProperty Common Mutable PublicSync Persistent
-    FO_ENTITY_PROPERTY(int32_t, Count);
     ///@ ExportProperty Common Mutable PublicSync Persistent Resource
     FO_ENTITY_PROPERTY(hstring, PicMap);
     ///@ ExportProperty Common Mutable PublicSync Persistent
@@ -201,7 +197,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, DrawFlatten);
     ///@ ExportProperty Common Persistent
-    FO_ENTITY_PROPERTY(int8_t, DrawOrderOffsetHexY);
+    FO_ENTITY_PROPERTY(int8_t, DrawOrderSubLayer);
     ///@ MigrationRule Property Item IsNoHighlight NoHighlight
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoHighlight);
@@ -316,6 +312,8 @@ public:
     FO_ENTITY_PROPERTY(vector<ident_t>, CritterIds);
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, ItemIds);
+    ///@ ExportProperty Common Mutable PublicSync Persistent
+    FO_ENTITY_PROPERTY(vector<ident_t>, RemovedStaticItemIds);
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(msize, Size);
     ///@ ExportProperty Common Persistent

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -104,6 +104,7 @@ public:
     [[nodiscard]] auto GetAllIntIds(hstring collection_name) const -> vector<ident_t>;
     [[nodiscard]] auto GetAllStringIds(hstring collection_name) const -> vector<string>;
     [[nodiscard]] auto Get(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
+    [[nodiscard]] auto GetMany(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
     [[nodiscard]] auto Valid(hstring collection_name, const DataBaseKey& id) const -> bool;
 
     void Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc);
@@ -111,6 +112,8 @@ public:
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
+    auto CreateSnapshot() -> vector<uint8_t>;
+    void RestoreSnapshot(const_span<uint8_t> snapshot_data);
     void ClearChanges() noexcept;
     void DrawGui();
 
@@ -120,7 +123,7 @@ private:
     unique_nptr<DataBaseImpl> _impl {};
 };
 
-extern auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
+auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase;
 
 class DataBaseImpl
 {
@@ -167,6 +170,7 @@ public:
     [[nodiscard]] virtual auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping = 0;
     [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> = 0;
     [[nodiscard]] auto GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
+    [[nodiscard]] auto GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
 
     void InitializeCollections(const DataBaseCollectionSchemas& collection_schemas);
     void InitializeOpLogs();
@@ -176,6 +180,8 @@ public:
     void Delete(hstring collection_name, const DataBaseKey& id);
     void StartCommitChanges();
     void WaitCommitChanges();
+    auto CreateSnapshot() -> vector<uint8_t>;
+    void RestoreSnapshot(const_span<uint8_t> snapshot_data);
     void ClearChanges() noexcept;
     virtual void DrawGui();
 
@@ -185,9 +191,12 @@ protected:
 
     virtual void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) = 0;
     virtual auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document = 0;
+    virtual auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
     virtual void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) = 0;
     virtual void DeleteRecord(hstring collection_name, const DataBaseKey& id) = 0;
+    virtual auto CreateSnapshotData() -> vector<uint8_t>;
+    virtual void RestoreSnapshotData(const_span<uint8_t> snapshot_data);
     virtual auto TryReconnect() -> bool { return true; }
 
     virtual void OnCommitOperationWrittenToOpLog() { } // Testing override point for a failed commit operation being durably written to oplog
@@ -230,6 +239,8 @@ private:
     std::condition_variable_any _commitThreadDoneSignal {};
     bool _commitThreadStopRequested FO_TSA_GUARDED_BY(_stateLocker) {};
     bool _commitThreadActive FO_TSA_GUARDED_BY(_stateLocker) {};
+    bool _snapshotInProgress FO_TSA_GUARDED_BY(_stateLocker) {};
+    std::condition_variable_any _snapshotDoneSignal {};
     deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};

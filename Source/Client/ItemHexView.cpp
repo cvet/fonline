@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,6 +46,18 @@ ItemHexView::ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> prot
     FO_STACK_TRACE_ENTRY();
 }
 
+void ItemHexView::OnDestroySelf()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ItemView::OnDestroySelf();
+
+    // Release atlas-backed sprites at logical destroy: a wrapper-retained entity must reach a memory-only final
+    // destructor, because its dtor can run after the SpriteManager is gone
+    _spr = nullptr;
+    _anim = nullptr;
+}
+
 void ItemHexView::Init()
 {
     FO_STACK_TRACE_ENTRY();
@@ -70,7 +82,7 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 
     HexView::SetupSprite(mspr);
 
-    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->MapRoofElevation) : GetElevation());
+    mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -72,7 +72,7 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     bool is_flat = mapSpr->IsFlat;
     bool no_light = mapSpr->NoLight;
     DrawOrderType draw_order = mapSpr->DrawOrder;
-    int32_t draw_order_hy_offset = mapSpr->DrawOrderHyOffset;
+    int8_t draw_order_sub_layer = mapSpr->DrawOrderSubLayer;
     CornerType corner = mapSpr->Corner;
     bool disable_egg = mapSpr->DisableEgg;
 
@@ -83,12 +83,12 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         is_flat = proto->GetDrawFlatten();
         no_light = is_flat && !(proto->GetIsScenery() || proto->GetIsWall());
         draw_order = is_flat ? (proto->GetStatic() ? DrawOrderType::FlatItemPreLight : DrawOrderType::FlatItemAfterLight) : DrawOrderType::Item;
-        draw_order_hy_offset = numeric_cast<int32_t>(proto->GetDrawOrderOffsetHexY());
+        draw_order_sub_layer = proto->GetDrawOrderSubLayer();
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
     }
 
-    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_hy_offset, //
+    auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_sub_layer, //
         mapSpr->Offset, mapSpr->IsTweakOffs ? &mapSpr->TweakOffset : nullptr, //
         mapSpr->IsTweakAlpha ? &mapSpr->TweakAlpha : nullptr, &mapSpr->Valid);
 
@@ -182,6 +182,30 @@ FO_SCRIPT_API bool Client_Map_IsScrollCheck(ptr<MapView> self)
 FO_SCRIPT_API void Client_Map_SetScrollCheck(ptr<MapView> self, bool enabled)
 {
     self->SetScrollCheck(enabled);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API ScrollDirection Client_Map_GetManualScroll(ptr<MapView> self)
+{
+    return self->GetManualScroll();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetManualScroll(ptr<MapView> self, ScrollDirection dirs)
+{
+    self->SetManualScroll(dirs);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API MapLayers Client_Map_GetVisibleLayers(ptr<MapView> self)
+{
+    return self->GetVisibleLayers();
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Map_SetVisibleLayers(ptr<MapView> self, MapLayers layers)
+{
+    self->SetVisibleLayers(layers);
 }
 
 ///@ ExportMethod
@@ -720,7 +744,7 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
     }
 
     // SetTransparentEgg expects a hex-center-relative offset; GetHexMapPos is the cell top-left,
-    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center.
+    // so reference the hex visual center (top-left + half a hex) when measuring the sprite center
     irect32 rect = cr_hex->GetViewRect();
     ipos32 hex_pos = self->GetHexMapPos(cr_hex->GetHex());
     ipos32 hex_center = {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};

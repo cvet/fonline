@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -42,10 +42,10 @@
 
 FO_BEGIN_NAMESPACE
 
-struct ScriptSettings;
+struct AngelScriptSettings;
 
-void InitAngelScriptScripting(ptr<EngineMetadata> meta, const ScriptSettings& settings, const FileSystem& resources);
-auto CompileAngelScript(ptr<EngineMetadata> meta, const ScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
+void InitAngelScriptScripting(ptr<EngineMetadata> meta, const AngelScriptSettings& settings, const FileSystem& resources);
+auto CompileAngelScript(ptr<EngineMetadata> meta, const AngelScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>;
 
 FO_END_NAMESPACE
 

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,7 @@ ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_context->Settings->BakeLanguages.empty()) {
+    if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("No bake languages specified");
     }
 }
@@ -69,9 +69,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     for (const auto& file_header : files) {
         string ext = strex(file_header.GetPath()).get_file_extension();
-        auto it = std::ranges::find(_context->Settings->ProtoFileExtensions, ext);
+        auto it = std::ranges::find(_context->Settings->Baking.ProtoFileExtensions, ext);
 
-        if (it == _context->Settings->ProtoFileExtensions.end()) {
+        if (it == _context->Settings->Baking.ProtoFileExtensions.end()) {
             continue;
         }
 
@@ -83,15 +83,17 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         return;
     }
 
-    if (_context->Settings->BakeLanguages.empty()) {
+    if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("Prototype text baker cannot choose a default language because BakeLanguages is empty", _context->PackName);
     }
+
+    BakeLanguageConfig bake_languages = TextPack::ParseBakeLanguages(_context->Settings->Baking.BakeLanguages);
 
     // Process files
     if (_context->BakeChecker) {
         bool check_result = false;
 
-        for (const auto& lang_name : _context->Settings->BakeLanguages) {
+        for (const auto& lang_name : bake_languages.Languages) {
             check_result |= _context->BakeChecker(strex("{}.Protos.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Items.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
             check_result |= _context->BakeChecker(strex("{}.Critters.{}.fotxt-bin", _context->PackName, lang_name), max_write_time);
@@ -105,11 +107,11 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     }
 
     auto engine = BakerServerEngine(*_context->BakedFiles);
-    hstring proto_rule_name = engine.Hashes.ToHashedString("Proto");
-    hstring item_type_name = engine.Hashes.ToHashedString("Item");
-    hstring critter_type_name = engine.Hashes.ToHashedString("Critter");
-    hstring map_type_name = engine.Hashes.ToHashedString("Map");
-    hstring location_type_name = engine.Hashes.ToHashedString("Location");
+    hstring proto_rule_name = engine.Hashes.to_hashed_string("Proto");
+    hstring item_type_name = engine.Hashes.to_hashed_string("Item");
+    hstring critter_type_name = engine.Hashes.to_hashed_string("Critter");
+    hstring map_type_name = engine.Hashes.to_hashed_string("Map");
+    hstring location_type_name = engine.Hashes.to_hashed_string("Location");
 
     // Collect data
     unordered_map<hstring, unordered_map<hstring, map<string, string>>> all_file_protos;
@@ -127,9 +129,9 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             hstring type_name;
 
             if (strvex(section_name).starts_with("Proto") && section_name.length() > "Proto"_len) {
-                type_name = engine.Hashes.ToHashedString(section_name.substr("Proto"_len));
+                type_name = engine.Hashes.to_hashed_string(section_name.substr("Proto"_len));
             }
-            else if (hstring section_type = engine.Hashes.ToHashedString(section_name); engine.IsFixedType(section_type)) {
+            else if (hstring section_type = engine.Hashes.to_hashed_string(section_name); engine.IsFixedType(section_type)) {
                 type_name = section_type;
             }
             else {
@@ -157,7 +159,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             }
 
             auto name = section_kv.count("$Name") != 0 ? section_kv.at("$Name") : file.GetNameNoExt();
-            hstring pid = engine.Hashes.ToHashedString(name);
+            hstring pid = engine.Hashes.to_hashed_string(name);
             pid = engine.CheckMigrationRule(proto_rule_name, type_name, pid).value_or(pid);
 
             auto& file_protos = all_file_protos[type_name];
@@ -183,6 +185,8 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     };
 
+    bool allow_repeated_parents = _context->Settings->Baking.AllowRepeatedProtoParents;
+
     for (const auto& file_protos : all_file_protos) {
         const auto& type_name = file_protos.first;
         const auto& file_proto_pids = file_protos.second;
@@ -192,12 +196,14 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             FO_VERIFY_AND_THROW(all_proto_texts[type_name].count(pid) == 0, "Prototype text is registered more than once for the same entity type", type_name, pid);
 
             map<string, string> proto_kv;
+            unordered_set<hstring> reached_parents;
+            vector<hstring> parent_path;
 
             function<void(string_view, const map<string, string>&)> fill_parent_recursive = [&](string_view name, const map<string, string>& cur_kv) {
                 auto parent_name_line = cur_kv.count("$Parent") != 0 ? cur_kv.at("$Parent") : string();
 
                 for (auto& parent_name : strex(parent_name_line).split(' ')) {
-                    hstring parent_pid = engine.Hashes.ToHashedString(parent_name);
+                    hstring parent_pid = engine.Hashes.to_hashed_string(parent_name);
                     parent_pid = engine.CheckMigrationRule(proto_rule_name, type_name, parent_pid).value_or(parent_pid);
 
                     auto it_parent = file_proto_pids.find(parent_pid);
@@ -210,7 +216,25 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
                         throw ProtoTextBakerException("Proto fail to load parent for another proto", base_name, parent_name, name);
                     }
 
+                    // The path guard is what keeps the walk finite: a cycle would otherwise recurse until the stack is gone
+                    if (std::ranges::find(parent_path, parent_pid) != parent_path.end()) {
+                        throw ProtoTextBakerException("Proto parent chain contains a cycle", base_name, parent_name, name);
+                    }
+
+                    // A repeated ancestor contributes only where it is first reached: applying it again would
+                    // undo whatever the earlier parent overrode, which the source gives no hint of
+                    if (!reached_parents.insert(parent_pid).second) {
+                        if (!allow_repeated_parents) {
+                            throw ProtoTextBakerException("Proto reaches the same parent through several inheritance paths", base_name, parent_name, name);
+                        }
+
+                        continue;
+                    }
+
+                    parent_path.emplace_back(parent_pid);
                     fill_parent_recursive(parent_name, it_parent->second);
+                    parent_path.pop_back();
+
                     insert_map_values(it_parent->second, proto_kv);
                 }
             };
@@ -218,7 +242,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
             fill_parent_recursive(base_name, file_kv);
             insert_map_values(file_kv, proto_kv);
 
-            const string& default_lang = _context->Settings->BakeLanguages.front();
+            const string& default_lang = bake_languages.Languages.front();
 
             all_proto_texts[type_name][pid] = {};
 
@@ -261,7 +285,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
     size_t errors = 0;
     vector<pair<string, map<string, TextPack>>> lang_packs;
 
-    for (const auto& lang : _context->Settings->BakeLanguages) {
+    for (const auto& lang : bake_languages.Languages) {
         auto empty_lang_pack = map<string, TextPack>();
         empty_lang_pack.try_emplace("Items", &engine.Hashes);
         empty_lang_pack.try_emplace("Critters", &engine.Hashes);
@@ -273,21 +297,21 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
 
     auto fill_proto_texts = [&](hstring entity_name, string_view pack_name) {
         for (auto&& [pid, proto_texts] : all_proto_texts[entity_name]) {
-            for (const auto& proto_text : proto_texts) {
+            for (auto& proto_text : proto_texts) {
                 auto it = std::ranges::find_if(lang_packs, [&](auto&& l) { return l.first == proto_text.first; });
 
                 if (it != lang_packs.end()) {
                     auto& text_pack = it->second.at(string(pack_name));
 
                     if (text_pack.CheckIntersections(proto_text.second)) {
-                        WriteLog("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
+                        logging::write("Proto text intersection detected for proto {} and pack {}", pid, pack_name);
                         errors++;
                     }
 
                     text_pack.Merge(proto_text.second);
                 }
                 else {
-                    WriteLog(LogType::Warning, "Unsupported language {} in proto {}", proto_text.first, pid);
+                    logging::write(logging::type::warning, "Unsupported language {} in proto {}", proto_text.first, pid);
                 }
             }
         }
@@ -304,7 +328,7 @@ void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_p
         }
     }
 
-    TextPack::FixPacks(_context->Settings->BakeLanguages, lang_packs);
+    TextPack::FixPacks(bake_languages, lang_packs);
 
     if (errors != 0) {
         throw ProtoTextBakerException("Errors during proto texts parsing");

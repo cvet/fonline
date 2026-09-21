@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,7 @@ public:
     {
         Success,
         CompatibilityOutdated,
+        MetadataOutdated,
         UpdaterOutdated,
         Failed,
     };
@@ -70,8 +71,11 @@ public:
     [[nodiscard]] auto IsConnected() const noexcept -> bool { return _netConnection && _wasHandshake; }
     [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
+    [[nodiscard]] auto GetPing() const noexcept -> int32_t { return _ping; }
     [[nodiscard]] auto GetUnpackedBytesReceived() const noexcept -> size_t { return _bytesRealReceived; }
+    [[nodiscard]] auto GetServerMetadataVersion() const noexcept -> string_view { return _serverMetadataVersion; }
 
+    void SetMetadataVersion(string_view version);
     void SetConnectHandler(ConnectCallback handler);
     void SetDisconnectHandler(DisconnectCallback handler);
     void AddMessageHandler(NetMessage msg, MessageCallback handler);
@@ -88,6 +92,9 @@ private:
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
+    auto IsInboundLagged() -> bool;
+    auto IsOutboundLagged() -> bool;
+    auto IsArtificalLagPending(optional<nanotime>& deadline, bool has_data) -> bool;
     auto TryFallbackToTcp() -> bool;
 
     void Net_SendHandshake();
@@ -100,18 +107,22 @@ private:
     bool _connectingHandled {};
     bool _udpFallbackTried {};
     bool _wasHandshake {};
+    string _metadataVersion {};
+    string _serverMetadataVersion {};
     ConnectCallback _connectCallback {};
     DisconnectCallback _disconnectCallback {};
     NetInBuffer _netIn;
     NetOutBuffer _netOut;
-    StreamDecompressor _decompressor {};
+    stream_decompressor _decompressor {};
     vector<uint8_t> _unpackedReceivedBuf {};
     size_t _bytesSend {};
     size_t _bytesReceived {};
     size_t _bytesRealReceived {};
     unordered_map<NetMessage, MessageCallback> _handlers {};
-    optional<nanotime> _artificalLagTime {};
-    std::mt19937 _randomGenerator {MakeSeededRandomGenerator()};
+    optional<nanotime> _artificalInboundLagTime {};
+    optional<nanotime> _artificalOutboundLagTime {};
+    random_generator _randomGenerator {};
+    int32_t _ping {};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
     size_t _msgCount {};

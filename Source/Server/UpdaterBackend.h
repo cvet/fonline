@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -54,10 +54,12 @@ public:
 
     [[nodiscard]] auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 
-    void LoadFromClientResources(const GlobalSettings& settings);
+    void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
     void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 
 private:
+    static void VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version);
+
     struct UpdateFileData
     {
         bool InMemory {};
@@ -77,8 +79,8 @@ private:
     vector<UpdateFileData> _updateFiles {};
     vector<UpdateFileInfo> _commonUpdateFiles {};
     vector<uint8_t> _commonUpdateFilesDesc {};
-    map<string, vector<UpdateFileInfo>> _binaryTargetUpdateFiles {};
-    map<string, vector<uint8_t>> _binaryTargetUpdateFilesDesc {};
+    map<string, vector<UpdateFileInfo>> _platformTargetUpdateFiles {};
+    map<string, vector<uint8_t>> _platformTargetUpdateFilesDesc {};
 };
 
 FO_END_NAMESPACE

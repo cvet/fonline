@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -142,9 +142,8 @@ public:
         _sv = _s;
     }
 
-    // Formatting writes straight into the engine-allocated buffer. Do not switch these to std::format /
-    // std::vformat: those return a std::string built with std::allocator, which both bypasses the
-    // SafeAllocator out-of-memory contract and costs an extra copy into _s on every formatted call.
+    // Never switch to std::format / std::vformat: they return a std::allocator string, which bypasses
+    // the safe_allocator out-of-memory contract and costs a copy into _s on every call
     template<typename... Args>
     explicit strex(std::format_string<Args...>&& format, Args&&... args) :
         strvex()
@@ -161,7 +160,7 @@ public:
             (void)std::format_to(std::back_inserter(_s), std::move(format), std::forward<Args>(args)...);
         }
         catch (const std::exception& ex) {
-            BreakIntoDebugger();
+            break_into_debugger();
 
             try {
                 // Formatting appends incrementally, so drop whatever partial output was produced
@@ -283,12 +282,12 @@ static_assert(!std::is_polymorphic_v<strex>);
 
 namespace utf8
 {
-    auto IsValid(uint32_t ucs) noexcept -> bool;
-    auto DecodeStrNtLen(ptr<const char> str) noexcept -> size_t;
-    auto Decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
-    auto Encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
-    auto Lower(uint32_t ucs) noexcept -> uint32_t;
-    auto Upper(uint32_t ucs) noexcept -> uint32_t;
+    auto is_valid(uint32_t ucs) noexcept -> bool;
+    auto decode_str_nt_len(ptr<const char> str) noexcept -> size_t;
+    auto decode(ptr<const char> str, size_t& length) noexcept -> uint32_t;
+    auto encode(uint32_t ucs, char (&buf)[4]) noexcept -> size_t;
+    auto lower(uint32_t ucs) noexcept -> uint32_t;
+    auto upper(uint32_t ucs) noexcept -> uint32_t;
 }
 
 FO_END_NAMESPACE

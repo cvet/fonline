@@ -24,10 +24,11 @@ Read this page together with:
 - `Source/Client/ResourceManager.cpp`
 - `Source/Client/FontManager.h`
 - `Source/Client/FontManager.cpp`
+- `Source/Client/AudioManager.h`
+- `Source/Client/AudioManager.cpp`
 - `Source/Client/MapView.h`
 - `Source/Client/MapView.cpp`
 - `Source/Scripting/ClientMapScriptMethods.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/Gui.fos`
 - `Source/Client/CritterView.h`
 - `Source/Client/CritterHexView.h`
 - `Source/Client/ItemView.h`
@@ -98,6 +99,12 @@ A typical client lifetime has these phases:
 8. **Shutdown** disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
+
+**Terminal states report themselves.** A client that ends badly used to leave no trace we could read: the updater's fatal failures call `Application::ShowErrorMessage` directly, which never reaches the exception callback the crash reporter chains, and a shutdown that hangs is past the point where anything can be sent. Two things close that.
+
+`ShowUpdaterFailure` (`Source/Client/Updater.cpp`) reports every terminal `UpdaterResult` before it shows the dialog, carrying the result name, the binary update target, the platform and the build. `ServerMissingNativeUpdate` in particular means the server offered no native modules for this client's target — a distribution problem no player can fix by reinstalling, and one we would otherwise hear about only through a screenshot.
+
+`ClientSessionMarker` (`Source/Client/ClientSessionMarker.{h,cpp}`) records how far shutdown got. The runtime writes the marker once the application is initialized, updates it at each stage (`MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`), the host records the stage that happens after the runtime returns (`RuntimeReturned`; the library is never unloaded, so nothing follows it) and clears the file immediately before `exit_app`. A marker still present on the next launch means the previous run never finished, and the runtime reports it — with the stage — once the crash reporter is alive. The file sits in the client's writable root, as does the log: the host resolves the root as its first act and opens `<root>/<exe>.log` for the whole launch, and the runtime appends to the same file. Both halves call the same `ResolveWritableRoot(args)`, which reads no settings at all, so nothing crosses the host/runtime boundary and the two cannot disagree (see [ClientUpdater.md](ClientUpdater.md#installed-vs-portable-writable-data)). The marker path is made absolute even in portable mode, so runtime teardown cannot retarget it if a loaded dependency changes the process working directory. That root is the same one the cache, the resource overlay and the log use, so an installed client whose own directory is read-only still records its shutdown. `Source/Tests/Test_ClientRuntimeApi.cpp` pins the round trip.
 
 ## Server connection and message dispatch
 
@@ -246,7 +253,7 @@ relative to the draw anchor, or `false` when that instance has not produced a
 valid model sprite. `drawRect` covers the selected animation's complete cycle
 and continuous facing range, including its projected shadow. `viewRect` is the
 stable logical model-and-layers rectangle used by names, coarse picking, and
-similar presentation. GUI preview code fits and centres the draw rectangle;
+similar presentation. GUI preview code fits and centres the view rectangle;
 world-space overlays use the stable view rectangle as their logical anchor,
 without duplicating 3D projection rules or depending on the current atlas crop.
 The former custom pose evaluator and shared mutable matrix-output table have
@@ -267,6 +274,7 @@ the pack before this loader runs.
 `MapView` is the largest client view class because it bridges several subsystems:
 
 - map file/static-data loading through `LoadFromFile()` and `LoadStaticData()`;
+- per-instance static item removal, skipped in `LoadStaticData()` and applied live by `ApplyStaticItemRemovals()`, driven by the map's `RemovedStaticItemIds` property; removal is one-way and never reversed on a loaded map — see [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal);
 - map processing through `Process()`;
 - map rendering through `DrawMap()` and staged render events on `ClientEngine`;
 - field indexes for items and critters;
@@ -281,13 +289,42 @@ the pack before this loader runs.
 
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
+`GetHexOffset(from, to)` is `GetHexPos(to) - GetHexPos(from)`, so scrolling the view origin (`RebuildMapOffset`) moves every light vertex by the same pixel delta. `MapView` translates cached `_lightPoints` by that delta instead of calling `LightFanToPrimitves` on every hex-scroll. A light that leaves the view (last visible hex hidden in `HideHex`) still forces a primitive rebuild so leftover triangles are not drawn. New lights entering the view reapply their fans and rebuild as before. The uniform-delta identity is pinned by `Test_Geometry` (`GetHexOffset view-origin shift is a uniform pixel translation`).
+
+Map item hit testing walks the active item-owned `MapSprite` values in the ordinary and indoor-mask lists. `DrawHexItem` binds each primary and multihex sprite to its item, and invalidation clears that borrow before the pooled sprite can be reused. Empty screen points therefore cost one pass over visible sprites rather than one pass over every hex in the padded view field, while draw-order, transparent-egg, and alpha hit tests keep using the same sprite records as rendering.
+
+Which layers a view draws is the view's own state too. `MapView::SetVisibleLayers(MapLayers)` takes the set, `GetVisibleLayers()` reads it back, and `IsLayerVisible(MapLayers::Roof)` asks about one; `DrawHexItem` and `DrawHexCritter` consult it. A changed set schedules a sprite-list rebuild for the next draw, so scripts need no separate redraw call and a stationary camera sees both hidden and restored layers. The seven `Hex.Show*` settings this replaced were mapper state that only mapper-mode drawing read, so the client could not act on them at all — a spectator asking for the roofs to come off wrote a setting nothing consulted. The set is exported as `map.GetVisibleLayers()` / `map.SetVisibleLayers(...)`, and the Mapper keeps the editor's own set in `MapperEngine::VisibleLayers`, pushing it into whichever map becomes current so a map opened later inherits what the author is working under (`Game.GetVisibleMapLayers()` / `Game.SetVisibleMapLayers(...)` reach it from mapper scripts).
+
+The same reading moved three more values out of the settings table. The mixer volumes are `AudioManager::GetMusicVolume()` / `SetMusicVolume()` and their sound pair, exported as `Game.GetMusicVolume()` / `Game.SetMusicVolume(...)`; `Audio.MusicVolume` / `SoundVolume` now only say what to start at. The always-on-top window flag lives where it is applied, `SpriteManager::IsAlwaysOnTop()` / `SetAlwaysOnTop()`, exported as `Game.IsAlwaysOnTop()` / `Game.SetAlwaysOnTop(...)` — the old `Game.RefreshAlwaysOnTop()`, which re-read the setting the script had just written, is gone. The language in effect is `BaseEngine::GetCurLangName()`, set by `ClientEngine::ChangeLanguage()` and read by scripts as `Game.CurrentLanguage`; `Client.Language` names the language to load at startup.
+
+Manual scrolling is the view's own state in the same way. `MapView::SetManualScroll(ScrollDirection)` takes the direction set the input layer decided this frame, `GetManualScroll()` reads it back, and `IsManualScrolling()` is simply that value being non-empty; `ProcessScroll` consumes it. Both are exported to client scripts as `map.SetManualScroll(...)` / `map.GetManualScroll()`, and the Mapper drives its own view through the same call. The eight `Hex.ScrollKeyb*` / `Hex.ScrollMouse*` settings this replaced were never configuration: no config authored them, and input wrote them every frame for `MapView` to read. Where the input layer needs to remember which half of it is scrolling — a key held down versus the cursor sitting at a screen edge — that belongs to the input layer, which is why the Mapper keeps its two halves as its own members and the embedding project keeps its own in a script class.
+
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
-- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes sound-name mappings.
+- `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.
+- `AudioManager` indexes the sound resources named by `Audio.SoundFileExtensions`, decodes Ogg Vorbis, and mixes playing sounds into the audio device stream. `PlaySound(path)` plays flat and `PlaySound(path, attenuation, pan)` places the sound; both answer with the handle of the playing sound, which `UpdateSound(sound_id, attenuation, pan)` places again while it plays. `GetSoundNames()` reports the indexed resource paths, exported as `Game.GetSoundNames()`.
+
+### Positional audio
+
+The engine mixes, it does not decide. How far a sound carries, how its volume falls with distance and how hard it leans across the stereo image are game rules, so the caller computes both numbers and the engine applies them. An embedding project owns the curve, its radii and the listener it measures from.
+
+Naming is the caller's too. `PlaySound` takes a resource path the caller has already resolved and reads it; it does not lower-case, strip an extension or expand a convention such as a run of numbered variants. The engine reports what it indexed through `GetSoundNames()` and a project maps its own names onto that list, so two games can spell the same library differently without touching the mixer.
+
+- **Attenuation** scales the mixed volume. Zero is the caller's way of saying "out of earshot": `PlaySound` returns before the file is read, so a distant event costs no decode.
+- **Pan** runs from -1 at the left ear to 1 at the right one. The audio stream is opened with the engine's own format rather than the device's, so everything above the device mixes in one known layout — S16 stereo at `Audio.MixRate` — and SDL converts on output. Panning is therefore a scan over the mixed buffer with no format dispatch and no allocation, and it works whatever the source was authored as. The law is a balance rather than constant power: the near channel passes through untouched and the far one fades, because lifting the near channel above unity would clip a loud sample, which is a worse artefact than the lost three decibels. `ApplyPan` is pinned by `Test_AudioManager.cpp`.
+
+**Neither is fixed once the sound starts.** A sound outlives the frame that raised it — a burst, a line of speech, a machine — and the listener keeps moving meanwhile, so a placement decided once is heard from where the listener used to be. `PlaySound` answers with a `uint32_t` handle naming the sound while it plays, and `UpdateSound(handle, attenuation, pan)` places it again; that call answers `false` once the sound has finished, which is how a caller following it learns to stop, with no duration to track and no end-of-sound event to subscribe to. A handle is never reused, so a stale one is simply unknown rather than someone else's sound. It is the same shape as the interface sprite handles (`AnimLoad` / `Game.LoadSprite`), zero included.
+
+The handle is zero whenever nothing is playing to follow, and the mixer does not distinguish the reasons: a silent device, a sound out of earshot, and a resource that could not be played all answer zero. The first two are ordinary states rather than errors, and a caller can do nothing about the third, so an error channel beside the handle would be one nobody services. A resource that exists and still fails to decode is a defect in what was baked, so that path logs and calls `break_into_debugger()` — exactly what `AnimLoad` does for a sprite. Which name maps to which resource stays the caller's question, as above, so a path that resolves to no file only answers zero.
+
+Pan is therefore applied on the way to the mixer rather than into the decoded buffer. A sound short enough to decode in one pass is converted exactly once, so a pan baked in could never change afterwards, and a second pan laid over the first would multiply the two. Attenuation was already read per mixing callback, so it needed no such move.
+
+The engine is deliberately stereo. Surround would answer "in front of or behind me" for a listener standing inside the scene; a project whose camera looks down from above and never rotates makes the player an observer instead, so a sound lower on the screen is not behind them, it is somewhere they are looking straight at.
+
 - `SpriteManager` owns sprite factories, atlases, primitive drawing, draw ordering, scissor stack, window/screen sizing, and render-target drawing.
 - `DefaultSpriteFactory` loads atlas sprites and sprite sheets from default
   image/animation resources, including the optional per-frame silhouette mesh
@@ -304,29 +341,50 @@ The client resource path starts with a `FileSystem` from `GetClientResources()` 
   `EngineMetadata` for the already parsed version 2 aggregate, idle-priority
   view, and per-animation bounds from `ModelAnimationInfo.foinfo`; the client model
   layer never reopens or reparses that companion, and no authored `.fo3d`
-  `DrawSize` or `ViewSize` remains.
-  Enabled body/movement animation envelopes are projected through the active
-  model transform across every facing direction to derive a power-of-two
-  logical scratch frame large enough for the body and projected shadow. The
-  separate view envelope (`Unarmed + Idle`, any Idle, then deterministic
-  fallback) seeds the body `ViewRect`. Runtime layer and child-model bounds
-  extend both the view/name rectangle and the aggregate horizontal-lighting
-  frame; the envelope resets when mesh composition changes and otherwise only
-  grows. Names, coarse picking, transparent eggs, flying text, and attachments
-  therefore stay inside automatically derived bounds without authored sizes.
+  `DrawSize` or `ViewSize` remains. Every selectable geometry link in the binary
+  `.fo3d` also carries its own conservative root-space AABB. A root/skinned link
+  is sampled through every animation mapped by its parent description; a named-bone
+  link sweeps its child envelope through that bone and the authored link transform.
+  Disabled child meshes and nested description transforms are part of the same bake.
+  Runtime unions the active body/movement clip records with only the currently
+  selected link records and projects eight corners per AABB across every facing
+  direction. It never reads, deduplicates, or skins model vertices to determine a
+  sprite frame or crop.
+
+  The resulting envelope derives a grid-aligned logical scratch frame large enough
+  for the active composition and projected shadow. The separate view envelope
+  (`Unarmed + Idle`, any Idle, then deterministic fallback) seeds the body
+  `ViewRect`, while the aggregate root `ModelBounds` envelope sizes the
+  horizontal-lighting frame. Layout math that has no live GPU uses
+  `AppRender::MIN_ATLAS_SIZE / FRAME_SCALE` as the portable logical ceiling
+  (`MODEL_SPRITE_MAX_LOGICAL_FRAME_DIMENSION`): bake-host
+  `MAX_ATLAS_WIDTH` / `HEIGHT` is not the game device. At runtime the scratch
+  texture cannot exceed `Render.ModelSpriteMaxTextureWidth` / `Height` or this
+  machine's atlas; the logical frame is that texture divided by `FRAME_SCALE`
+  (the model renders at 2×). A pose or lighting envelope that would need more
+  is clamped to that cap and drawn cropped: an authored model `Scale` combined
+  with a GUI preview `SetScale` zoom can push an in-band model past the cap.
+  Invalid or non-finite bounds still assert rather than falling back, and those
+  asserts report the six coordinates plus the model file name. Runtime layer
+  and child-model bounds extend the drawing frame without lifting the stable
+  view/name rectangle. The configuration envelope resets when mesh composition
+  changes and otherwise only grows, so attachments stay inside the automatically
+  derived frame without authored sizes.
   A body/movement animation switch can refresh the scratch frame, but it must
   retain this accumulated configuration view envelope instead of falling back
   to the root model's idle-only view; otherwise a turn animation temporarily
   moves the name and flying-text anchor for equipped critters.
 
   The model is rendered into a reusable 2x scratch target for the automatic
-  frame. Per-animation prediction and exact weighted skinning of referenced
-  combined-mesh vertices choose the atlas crop. If the evaluated pose requires a larger scratch frame,
-  the factory expands it and rerenders before copying; the bounded retry loop
-  fails rather than accepting a clipped frame that does not converge. The
-  cropped sprite offset preserves the fixed model root, hit-test coordinates,
-  and stable horizontal lighting gradient. Scratch-frame setup does not reserve
-  atlas space; allocation happens only after the final crop is known. A changed
+  frame. The same baked active-composition envelope chooses the atlas crop; it is
+  deliberately conservative, so an attachment can reserve a small transparent
+  margin instead of paying for a live weighted-vertex sweep. If the evaluated
+  composition requires a larger scratch frame, the factory expands it and
+  rerenders before copying; the bounded retry loop fails rather than accepting a
+  clipped frame that does not converge. The cropped sprite offset preserves the
+  fixed model root, hit-test coordinates, and stable horizontal lighting gradient.
+  Scratch-frame setup does not reserve atlas space; allocation happens only after
+  the final crop is known. A changed
   placement is prepared locally, rendered, and published only after the atlas
   copy succeeds, while failures request an immediate redraw and retain the old
   allocation. An atlas
@@ -458,7 +516,7 @@ Input semantics originate in `Source/Frontend/Application.h`; game-specific UI b
 
 `ProcessInputEvent()` is the correct place for this because it is the single point every input source funnels through — SDL events polled by `ProcessInputEvents()`, scripted `Game.Simulate*` calls, and an embedding project's automation bridge alike. A filter placed in the frontend/SDL layer would cover only the OS path and would be invisible to simulated-input tests.
 
-Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences.
+Client scripts can synthesize local input through the same runtime path for automation and embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)`, and `Game.SimulateMouseUp(pos, button)` preserve held-button state across a raw mouse gesture, including positions outside the render window; `Game.SimulateMouseClick(pos, button)` sends a complete mouse click or wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)`, and `Game.SimulateTouchUp(fingerId, pos)` send raw touch streams, `Game.SimulateTouchTap(pos)` sends a completed tap event, `Game.SimulateKeyPress(key, text)` sends one key down/up pair, and `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` remains available for two-key sequences. Two network notifications are synthesizable the same way: `Game.SimulateDisconnect()` delivers the `OnDisconnected` notification a real disconnect ends with, and `Game.SimulateInfoMessage(infoMessage, extraText)` delivers `OnInfoMessage`. Both leave the connection itself untouched — a probe testing the reaction to a dropped session must not end the session it reports through.
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 

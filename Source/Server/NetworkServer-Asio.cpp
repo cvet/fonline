@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -79,6 +79,7 @@ private:
     asio::ip::tcp::socket _socket;
     std::atomic_bool _writePending {};
     vector<uint8_t> _inBufData {};
+    vector<uint8_t> _sendBuf {};
 };
 
 class NetworkServer_Asio : public NetworkServer
@@ -109,13 +110,13 @@ auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConn
 {
     FO_STACK_TRACE_ENTRY();
 
-    WriteLog("Listen TCP connections on port {}", settings->ServerPort);
+    logging::write("Listen TCP connections on port {}", settings->Network.ServerPort);
 
     try {
-        return SafeAlloc::MakeUnique<NetworkServer_Asio>(settings, std::move(callback));
+        return safe_alloc::make_unique<NetworkServer_Asio>(settings, std::move(callback));
     }
     catch (const std::system_error& ex) {
-        throw NetworkServerException("Can't listen for TCP connections", settings->ServerPort, GetAsioErrorText(ex.code()));
+        throw NetworkServerException("Can't listen for TCP connections", settings->Network.ServerPort, GetAsioErrorText(ex.code()));
     }
 }
 
@@ -137,13 +138,13 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
         _port = 0;
     }
 
-    if (settings->DisableTcpNagle) {
+    if (settings->Network.DisableTcpNagle) {
         std::error_code no_delay_error;
         _socket.set_option(asio::ip::tcp::no_delay(true), no_delay_error);
         LogSocketOperationError("set TCP_NODELAY", no_delay_error);
     }
 
-    _inBufData.resize(_settings->NetBufferSize);
+    _inBufData.resize(_settings->Network.NetBufferSize);
 }
 
 void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation, const std::error_code& error)
@@ -153,10 +154,10 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
     }
 
     if (_port != 0) {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "TCP socket {} failed for {}:{}: {}", operation, _host, _port, GetAsioErrorText(error));
     }
     else {
-        WriteLog(LogType::Warning, "TCP socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
+        logging::write(logging::type::warning, "TCP socket {} failed for {}: {}", operation, _host, GetAsioErrorText(error));
     }
 }
 
@@ -170,7 +171,7 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
 }
 
@@ -240,15 +241,17 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 
     auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
 
-    auto buf = SendCallback();
+    _sendBuf = SendCallback();
 
-    if (!buf.empty()) {
+    if (!_sendBuf.empty()) {
         auto write_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
             ignore_unused(lifetime);
             AsyncWriteComplete(error, bytes);
         };
 
-        async_write(_socket, asio::buffer(buf.data(), buf.size()), write_handler);
+        // A member, unlike the other transports: the write reads the bytes after this returns, and
+        // _writePending admits one chain at a time so the next assignment comes from AsyncWriteComplete
+        async_write(_socket, asio::buffer(_sendBuf.data(), _sendBuf.size()), write_handler);
     }
     else {
         _writePending = false;
@@ -277,7 +280,7 @@ void NetworkServerConnection_Asio::DisconnectImpl()
 
 NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
     _settings {settings},
-    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->ServerPort))),
+    _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
     FO_STACK_TRACE_ENTRY();
@@ -304,7 +307,7 @@ void NetworkServer_Asio::Run()
             break;
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
     }
 }
@@ -313,7 +316,7 @@ void NetworkServer_Asio::AcceptNext()
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto socket = SafeAlloc::MakeUnique<asio::ip::tcp::socket>(_context);
+    auto socket = safe_alloc::make_unique<asio::ip::tcp::socket>(_context);
     auto socket_ptr = socket.as_ptr();
     _acceptor.async_accept(*socket_ptr, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
 }
@@ -330,7 +333,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
 
     if (!error) {
         try {
-            auto connection = SafeAlloc::MakeShared<NetworkServerConnection_Asio>(_settings, std::move(socket));
+            auto connection = safe_alloc::make_shared<NetworkServerConnection_Asio>(_settings, std::move(socket));
             connection->StartAsyncRead(); // shared_from_this() is not available in constructor so StartRead/NextAsyncRead is called after
 
             if (TrackConnection(connection)) {
@@ -346,7 +349,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
                     std::rethrow_exception(exception);
                 }
                 catch (const std::exception& ex) {
-                    ReportExceptionAndContinue(ex);
+                    exceptions::report_and_continue(ex);
                 }
                 catch (...) {
                     FO_UNKNOWN_EXCEPTION();
@@ -360,7 +363,7 @@ void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio
     }
     else {
         if (error != asio::error::operation_aborted) {
-            WriteLog(LogType::Warning, "Accept error: {}", GetAsioErrorText(error));
+            logging::write(logging::type::warning, "Accept error: {}", GetAsioErrorText(error));
         }
     }
 }

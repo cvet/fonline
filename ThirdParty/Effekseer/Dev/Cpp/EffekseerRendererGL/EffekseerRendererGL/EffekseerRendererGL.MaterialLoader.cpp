@@ -78,6 +78,8 @@ void StoreModelVertexUniform(const ::Effekseer::MaterialFile& materialFile, cons
 		storeVector("UVOffset", generator.VertexModelUVOffset, GL_InstanceCount);
 
 		storeVector("ModelColor", generator.VertexModelColorOffset, GL_InstanceCount);
+
+		storeVector("ModelParticleTime", generator.VertexModelParticleTimeOffset, GL_InstanceCount);
 	}
 	else
 	{
@@ -86,6 +88,8 @@ void StoreModelVertexUniform(const ::Effekseer::MaterialFile& materialFile, cons
 		storeVector("UVOffset", generator.VertexModelUVOffset);
 
 		storeVector("ModelColor", generator.VertexModelColorOffset);
+
+		storeVector("ModelParticleTime", generator.VertexModelParticleTimeOffset);
 	}
 
 	storeVector("mUVInversed", generator.VertexInversedFlagOffset);

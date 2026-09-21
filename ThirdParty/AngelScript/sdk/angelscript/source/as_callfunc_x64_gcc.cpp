@@ -342,7 +342,9 @@ asQWORD CallSystemFunctionNative(asCContext *context, asCScriptFunction *descr, 
 			argsType[argIndex] = x64INTARG;
 			if( parmType.GetSizeOnStackDWords() == 1 )
 			{
-				memcpy(paramBuffer + argIndex, stack_pointer, sizeof(asDWORD));
+				// (FOnline Patch) only the value's own bytes: a script stack DWORD keeps stale bytes above a bool,
+				// and a callee is entitled to treat a bool register as 0 or 1 and fold arithmetic on it
+				memcpy(paramBuffer + argIndex, stack_pointer, parmType.GetSizeInMemoryBytes());
 				stack_pointer += 2; // (FOnline Patch) even argument slot: skip the slot padding above the value
 			}
 			else

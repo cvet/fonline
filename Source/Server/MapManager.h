@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -97,6 +97,7 @@ public:
     void ProcessVisibleCritters(ptr<Critter> cr);
     void ProcessVisibleItems(ptr<Critter> cr);
     void ViewMap(ptr<Player> view_player, ptr<Map> map);
+    void ClearStaticMaps() noexcept;
 
 private:
     auto IsCritterSeeCritter(ptr<const Map> map, ptr<const Critter> cr, ptr<const Critter> target) const -> CritterVisibilityMode;

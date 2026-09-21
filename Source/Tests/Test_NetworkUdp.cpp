@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -181,7 +181,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         REQUIRE(wire.size() == 2);
 
-        // Deliver second packet first.
+        // Deliver second packet first
         UdpPacketInfo info1;
         UdpPacketInfo info0;
         REQUIRE(TryParseUdpPacket(wire[1], info1));
@@ -232,14 +232,14 @@ TEST_CASE("NetworkUdp::OrderedChannel")
 
         REQUIRE(FeedAll(wire, receiver) == 6);
 
-        // Receiver flushes ack.
+        // Receiver flushes ack
         vector<vector<uint8_t>> ack_wire;
         receiver.PrepareOutput({}, ack_wire, base_time);
         REQUIRE_FALSE(ack_wire.empty());
 
         REQUIRE(FeedAll(ack_wire, sender) > 0);
 
-        // After ack, sender past the resend timeout should NOT resend any payload (everything acked).
+        // After ack, sender past the resend timeout should NOT resend any payload (everything acked)
         vector<vector<uint8_t>> after_ack;
         nanotime t = BumpTime(base_time, 1000);
         sender.PrepareOutput({}, after_ack, t);
@@ -257,7 +257,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         REQUIRE(sender.PrepareOutput(data, first_wire, base_time) == data.size());
         REQUIRE(first_wire.size() == 1);
 
-        // Pretend the wire packet was lost. Bump time past the resend timeout.
+        // Pretend the wire packet was lost. Bump time past the resend timeout
         nanotime later = BumpTime(base_time, 75);
         REQUIRE(sender.NeedSend(later));
 
@@ -265,7 +265,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         sender.PrepareOutput({}, resend_wire, later);
         REQUIRE(resend_wire.size() == 1);
 
-        // Receiver finally gets it.
+        // Receiver finally gets it
         REQUIRE(FeedAll(resend_wire, receiver) == 1);
 
         vector<uint8_t> ready;
@@ -275,7 +275,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
 
     SECTION("WindowBlocksFurtherPayloadUntilAcknowledged")
     {
-        // Window of 16 bytes, payload of 8 → only two packets fit.
+        // Window of 16 bytes, payload of 8 → only two packets fit
         UdpOrderedChannel sender(MakeOptions(/*max_payload*/ 8, /*window*/ 16));
         UdpOrderedChannel receiver(MakeOptions(8));
 
@@ -288,13 +288,13 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         CHECK(wire.size() == 2);
         CHECK_FALSE(sender.CanAcceptPayload());
 
-        // Try sending more — nothing should fit until window opens.
+        // Try sending more — nothing should fit until window opens
         auto leftover = BytesTail(data, consumed_first);
         vector<vector<uint8_t>> wire_blocked;
         size_t consumed_blocked = sender.PrepareOutput(leftover, wire_blocked, BumpTime(base_time, 5));
         CHECK(consumed_blocked == 0);
 
-        // Receiver acks both.
+        // Receiver acks both
         REQUIRE(FeedAll(wire, receiver) == 2);
         vector<vector<uint8_t>> ack_wire;
         receiver.PrepareOutput({}, ack_wire, base_time);
@@ -311,7 +311,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
     SECTION("AckOnlyKeepAliveDoesNotCascade")
     {
         // Regression: ack-only KeepAlive must not arm another ack on the receiver,
-        // otherwise both peers would ping-pong KeepAlive packets forever.
+        // otherwise both peers would ping-pong KeepAlive packets forever
         UdpOrderedChannel sender(MakeOptions(8));
         UdpOrderedChannel receiver(MakeOptions(8));
 
@@ -320,7 +320,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
         REQUIRE(FeedAll(wire, receiver) == 1);
 
-        // Receiver emits ack-only KeepAlive.
+        // Receiver emits ack-only KeepAlive
         vector<vector<uint8_t>> ack_wire;
         receiver.PrepareOutput({}, ack_wire, base_time);
         REQUIRE(ack_wire.size() == 1);
@@ -328,10 +328,10 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         REQUIRE(TryParseUdpPacket(ack_wire[0], ack_info));
         CHECK(ack_info.Type == UdpPacketType::KeepAlive);
 
-        // Sender consumes the ack — its pending list should clear.
+        // Sender consumes the ack — its pending list should clear
         FeedAll(ack_wire, sender);
 
-        // Critical: sender must NOT now need to send anything in response to the ack-only KeepAlive.
+        // Critical: sender must NOT now need to send anything in response to the ack-only KeepAlive
         CHECK_FALSE(sender.NeedSend(BumpTime(base_time, 1)));
 
         vector<vector<uint8_t>> nothing;
@@ -360,7 +360,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         CHECK(info.Type == UdpPacketType::KeepAlive);
         CHECK(info.Payload.empty());
 
-        // Second call must not re-emit (ack already consumed).
+        // Second call must not re-emit (ack already consumed)
         vector<vector<uint8_t>> ack_wire2;
         receiver.PrepareOutput({}, ack_wire2, base_time);
         CHECK(ack_wire2.empty());
@@ -369,11 +369,11 @@ TEST_CASE("NetworkUdp::OrderedChannel")
 
     SECTION("TailRedundancyResendsRecentPackets")
     {
-        // Redundancy=2: every new send round also re-emits up to 2 previously-sent packets.
+        // Redundancy=2: every new send round also re-emits up to 2 previously-sent packets
         UdpOrderedChannel sender(MakeOptions(4, 1024, 100, 200, /*redundancy*/ 2));
         UdpOrderedChannel receiver(MakeOptions(4));
 
-        // Send 3 packets first, then a 4th that should trigger redundancy of 2 of the first 3.
+        // Send 3 packets first, then a 4th that should trigger redundancy of 2 of the first 3
         auto data1 = Bytes("AAAA"
                            "BBBB"
                            "CCCC");
@@ -384,17 +384,17 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         auto data2 = Bytes("DDDD");
         vector<vector<uint8_t>> wire2;
         REQUIRE(sender.PrepareOutput(data2, wire2, BumpTime(base_time, 5)) == data2.size());
-        // 1 new + 2 redundant = 3 packets.
+        // 1 new + 2 redundant = 3 packets
         CHECK(wire2.size() == 3);
 
         // Drop wire1 entirely; only wire2 reaches the receiver. Channel should still recover
-        // because wire2 carries the redundant copies of B and C, plus the new D.
+        // because wire2 carries the redundant copies of B and C, plus the new D
         REQUIRE(FeedAll(wire2, receiver) == 3);
 
-        // Receiver still missing A → no ready data yet.
+        // Receiver still missing A → no ready data yet
         CHECK_FALSE(receiver.HasReadyData());
 
-        // Sender retries A on resend timeout.
+        // Sender retries A on resend timeout
         nanotime retry_time = BumpTime(base_time, 200);
         vector<vector<uint8_t>> wire3;
         sender.PrepareOutput({}, wire3, retry_time);
@@ -428,7 +428,7 @@ TEST_CASE("NetworkUdp::OrderedChannel")
         auto data = Bytes("resetme!");
         vector<vector<uint8_t>> wire;
         REQUIRE(sender.PrepareOutput(data, wire, base_time) == data.size());
-        // After sending, NeedSend at base_time is false (just sent), but pending is non-empty.
+        // After sending, NeedSend at base_time is false (just sent), but pending is non-empty
         CHECK(sender.NeedSend(BumpTime(base_time, 1000)));
 
         sender.Reset();

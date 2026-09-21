@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,21 +59,6 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
     ignore_unused(item_holder);
     ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
-
-    if (item->GetStackable()) {
-        auto item_already = cr->GetInvItemByPid(item->GetProtoId());
-
-        if (item_already) {
-            if (item_already == item) {
-                return item;
-            }
-
-            int32_t count = item->GetCount();
-            _engine->ItemMngr.DestroyItem(item);
-            item_already->SetCount(item_already->GetCount() + count);
-            return item_already;
-        }
-    }
 
     if (item->GetOwnership() != ItemOwnership::CritterInventory) {
         item->SetCritterSlot(CritterItemSlot::Inventory);
@@ -197,7 +182,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
     }
 
     // Create critter
-    auto cr = SafeAlloc::MakeRefCounted<Critter>(_engine, ident_t {}, proto, props);
+    auto cr = safe_alloc::make_refcounted<Critter>(_engine, ident_t {}, proto, props);
 
     _engine->EntityMngr.RegisterCritter(cr);
 
@@ -294,12 +279,11 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
                 }
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
             }
 
-            // Each teardown pass must strictly reduce the critter's remaining dependencies; a stalled
-            // (or growing) count means the destruction can never converge, so terminate deterministically
-            // rather than leave a half-destroyed "undead" critter in the registry until restart.
+            // A pass that does not strictly reduce the remaining dependencies can never converge, so this exits
+            // deterministically rather than leaving an undead critter in the registry
             size_t remaining_deps = (cr->GetMapId() ? 1 : 0) + (cr->GetRawGlobalMapGroup() ? 1 : 0) + cr->GetInvItems().size() + cr->GetInnerEntitiesCount() + (cr->GetIsAttached() ? 1 : 0) + cr->GetAttachedCritters().size();
             FO_STRONG_ASSERT(remaining_deps < prev_deps, "Critter destruction made no progress", cr->GetId(), remaining_deps, prev_deps);
             prev_deps = remaining_deps;

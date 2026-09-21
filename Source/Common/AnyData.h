@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -78,11 +78,11 @@ public:
         {
         }
         Value(Array&& value) :
-            _value(SafeAlloc::MakeUnique<Array>(std::move(value)))
+            _value(safe_alloc::make_unique<Array>(std::move(value)))
         {
         }
         Value(Dict&& value) :
-            _value(SafeAlloc::MakeUnique<Dict>(std::move(value)))
+            _value(safe_alloc::make_unique<Dict>(std::move(value)))
         {
         }
         // ReSharper restore CppNonExplicitConvertingConstructor
@@ -182,14 +182,11 @@ private:
     [[nodiscard]] static auto ReadToken(nptr<const char> str, string& result) -> nptr<const char>;
 };
 
-class StringEscaping final
+namespace StringEscaping
 {
-public:
-    StringEscaping() = delete;
-
-    static void AppendCodeString(string& result, string_view str);
-    [[nodiscard]] static auto CodeString(string_view str) -> string;
-    [[nodiscard]] static auto DecodeString(string_view str) -> string;
-};
+    void AppendCodeString(string& result, string_view str);
+    [[nodiscard]] auto CodeString(string_view str) -> string;
+    [[nodiscard]] auto DecodeString(string_view str) -> string;
+}
 
 FO_END_NAMESPACE

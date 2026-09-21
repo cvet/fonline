@@ -12,6 +12,11 @@ Convention and runtime enforcement for nullable values across AngelScript and th
 
 This applies symmetrically on both sides of the script-engine boundary.
 
+The managed indexed scalar-property bridge accepts only non-nullable primitive, enum, `hstring` and value-type
+properties. Its unmanaged value buffer has no null representation; nullable proto/fixed-type properties and
+reference-valued properties keep the converting bridge described in [Scripting.md](Scripting.md). Both paths
+retain native entity access and lifetime checks. Metadata rejects `Nullable` on primitive and struct properties.
+
 ## Script side: `T?` suffix
 
 AngelScript modules in [Scripts/](../../Scripts/) use a Kotlin/C#-style `?` suffix on the type to mark nullability. Default is **non-nullable**.
@@ -72,7 +77,7 @@ For native C++ code outside exported script signatures, use the pointer vocabula
 
 Stored native `ScriptFunc` signatures are part of the same contract. Their pointer spellings must match the script callback declaration argument by argument: a script callback parameter declared `Item?` is stored and looked up as `nptr<Item>`, while `Item` uses `ptr<Item>`. Otherwise a legitimate `null` can cross the exported method boundary successfully and then fail later when the callback wrapper implicitly narrows it.
 
-**Prefer the non-null spelling; reach for `nptr<T>` only when absence is a real, handled state.** A nullable wrapper is dead weight when every caller already passes non-null, a function never returns null, or a member is always set before use — convert those to `ptr<T>` / `unique_ptr<T>` / `refcount_ptr<T>`. In particular, do **not** make a raw `pointer + size` buffer parameter nullable just so the degenerate empty case may pass `nullptr` — take a non-null `const_span<uint8_t>` / `span<uint8_t>` (the engine's standard byte-buffer vocabulary) and let `.empty()` handle the zero-length case. This both removes the spurious nullability and deletes the `nptr<T> x = nullptr; if (!c.empty()) x = c.data(); f(x, c.size())` boilerplate at every call site (`f(c)`). Conversely, leave `nptr<T>` in place where absence is a real, handled state: the legitimate result of a fallible cast/lookup, a data member with a real transient-null window between construction and assignment, or a defensive boundary helper that deliberately accepts a nullable and asserts. In that case **keep the checked value as `nptr<T>` and dereference it directly after the guard** (`if (!x) { ... return; }` / `FO_VERIFY_AND_THROW(x, ...)` then `x->`) rather than copying it into a `nullable_x` intermediate and narrowing. Past the guard the checked `nptr<T>` also flows into any `ptr<T>` parameter, member, or return **implicitly** — the `nptr<T>`→`ptr<T>` conversion asserts non-null at the conversion point. Owning wrappers (`refcount_ptr`/`refcount_nptr`, `unique_ptr`/`unique_nptr`, `unique_del_ptr`/`unique_del_nptr`, `unique_arr_ptr`, and `shared_ptr`) likewise borrow implicitly to `ptr<T>` / `nptr<T>`; ownership acquisition and nullable-owner ownership narrowing remain explicit (`hold_ref`, `adopt_unique_ptr`, `make_unique_del_ptr`, `take_not_null`, `SafeAlloc::MakeShared`, or a domain factory). Owner dynamic casts should be direct (`owner.dyn_cast<T>()`) instead of going through an intermediate borrow. Freshly assigned non-null owner factory results can be used through the source owner directly when only a few member accesses follow. When a nullable/nullable-owner local is needed and later requires presence, bind the nullable wrapper with `auto`, then check it explicitly with `FO_VERIFY_AND_THROW(local, ...)` (or `FO_STRONG_ASSERT(local, ...)` inside `noexcept`) before deref; do not wrap the local in a double-negation expression for these guards. Explicit `.as_ptr()` / `.as_nptr()` calls are valid when they clarify the borrow or resolve overload/template deduction; implicit conversion remains available when the destination type is unambiguous. When a raw pointer enters native code, use `make_ptr(raw_value)` / `make_nptr(raw_value)`. The audit still enforces guarded nullable dereference through `NullableLocalDereference`; see [SmartPointers.md](SmartPointers.md).
+**Prefer the non-null spelling; reach for `nptr<T>` only when absence is a real, handled state.** A nullable wrapper is dead weight when every caller already passes non-null, a function never returns null, or a member is always set before use — convert those to `ptr<T>` / `unique_ptr<T>` / `refcount_ptr<T>`. In particular, do **not** make a raw `pointer + size` buffer parameter nullable just so the degenerate empty case may pass `nullptr` — take a non-null `const_span<uint8_t>` / `span<uint8_t>` (the engine's standard byte-buffer vocabulary) and let `.empty()` handle the zero-length case. This both removes the spurious nullability and deletes the `nptr<T> x = nullptr; if (!c.empty()) x = c.data(); f(x, c.size())` boilerplate at every call site (`f(c)`). Conversely, leave `nptr<T>` in place where absence is a real, handled state: the legitimate result of a fallible cast/lookup, a data member with a real transient-null window between construction and assignment, or a defensive boundary helper that deliberately accepts a nullable and asserts. In that case **keep the checked value as `nptr<T>` and dereference it directly after the guard** (`if (!x) { ... return; }` / `FO_VERIFY_AND_THROW(x, ...)` then `x->`) rather than copying it into a `nullable_x` intermediate and narrowing. Past the guard the checked `nptr<T>` also flows into any `ptr<T>` parameter, member, or return **implicitly** — the `nptr<T>`→`ptr<T>` conversion asserts non-null at the conversion point. Owning wrappers (`refcount_ptr`/`refcount_nptr`, `unique_ptr`/`unique_nptr`, `unique_del_ptr`/`unique_del_nptr`, `unique_arr_ptr`, and `shared_ptr`) likewise borrow implicitly to `ptr<T>` / `nptr<T>`; ownership acquisition and nullable-owner ownership narrowing remain explicit (`hold_ref`, `adopt_unique_ptr`, `make_unique_del_ptr`, `take_not_null`, `safe_alloc::make_shared`, or a domain factory). Owner dynamic casts should be direct (`owner.dyn_cast<T>()`) instead of going through an intermediate borrow. Freshly assigned non-null owner factory results can be used through the source owner directly when only a few member accesses follow. When a nullable/nullable-owner local is needed and later requires presence, bind the nullable wrapper with `auto`, then check it explicitly with `FO_VERIFY_AND_THROW(local, ...)` (or `FO_STRONG_ASSERT(local, ...)` inside `noexcept`) before deref; do not wrap the local in a double-negation expression for these guards. Explicit `.as_ptr()` / `.as_nptr()` calls are valid when they clarify the borrow or resolve overload/template deduction; implicit conversion remains available when the destination type is unambiguous. When a raw pointer enters native code, use `make_ptr(raw_value)` / `make_nptr(raw_value)`. The audit still enforces guarded nullable dereference through `NullableLocalDereference`; see [SmartPointers.md](SmartPointers.md).
 
 ```cpp
 ///@ ExportMethod
@@ -306,15 +311,15 @@ bool ok    = maybeItem == null || maybeItem.IsReady();              // narrowed 
 bool both  = Other() && maybeItem != null && maybeItem.IsReady();   // narrowed after the check
 bool tail  = maybeItem != null && Other() && maybeItem.IsReady();   // still narrowed at the tail
 // the narrowing covers the WHOLE right operand, not just an adjacent term:
-bool cmp   = maybeItem != null && maybeItem.Count == wanted;        // maybeItem.Count narrowed
-if (maybeItem != null && maybeItem.Count > 0 && Other()) { ... }    // narrowed across the compound
+bool cmp   = maybeItem != null && maybeItem.Hidden == wanted;       // maybeItem.Hidden narrowed
+if (maybeItem != null && maybeItem.Hidden && Other()) { ... }       // narrowed across the compound
 // every checked local in the chain narrows in the later operands, not just the nearest:
-if (a != null && b != null && a.Count == b.Count) { ... }          // both a and b narrowed
-if (a == null || b == null || a.Count != b.Count) { return; }      // both narrowed past the ||s
+if (a != null && b != null && a.Hidden == b.Hidden) { ... }        // both a and b narrowed
+if (a == null || b == null || a.Hidden != b.Hidden) { return; }    // both narrowed past the ||s
 
 // 6) Ternary branches narrow when the condition is a null-check
-int n = maybeItem != null ? maybeItem.Count : 0;         // then-branch narrowed
-int m = maybeItem == null ? 0 : maybeItem.Count;         // else-branch narrowed
+bool n = maybeItem != null ? maybeItem.Hidden : false;   // then-branch narrowed
+bool m = maybeItem == null ? false : maybeItem.Hidden;   // else-branch narrowed
 ```
 
 Smart-cast deliberately does **not** narrow:
@@ -352,15 +357,29 @@ The flag is parsed in [../Source/Common/Properties.cpp](../Source/Common/Propert
 
 For a **`Mutable`** nullable handle property the **setter** parameter is registered nullable too (`@?+`), matching the getter — see the `set_handle_str` branch in [AngelScriptEntity.cpp](../Source/Scripting/AngelScript/AngelScriptEntity.cpp). This is load-bearing, not cosmetic: AngelScript derives a virtual property's static type from the **setter parameter** whenever a setter exists (only getter-only / read-only properties fall back to the getter's return type — see `FindPropertyAccessor` in `as_compiler.cpp`). A non-nullable setter parameter alongside an `@?` getter would make `T? local = obj.MutableNullableProp` read as a *non-nullable* handle and wrongly trip the redundant-`?` warning (#3) — while `T local = obj.MutableNullableProp` (no `?`) still errors via the getter's nullable return — leaving the read with no warning-free spelling. Keeping the setter parameter nullable resolves both spellings consistently.
 
-### The `verify` macro
+### Always-on script invariants
 
-`verify(cond, message, ...)` is a variadic preprocessor macro defined in [Core.fos](../Source/Scripting/AngelScript/CoreScripts/Core.fos) (visible in every `.fos` module, like all `Core.fos` `#define`s):
+The engine no longer bundles an AngelScript CoreScripts library. Instead, the AngelScript backend registers the
+conventional variadic `verify(cond, message, ...)` macro programmatically in every fresh preprocessing context:
 
-```
+```angelscript
 #define verify(cond, ...) if (!(cond)) throw(__VA_ARGS__)
 ```
 
-It states an **invariant**: a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to signal that — C's `assert` connotes a debug-only check that is compiled out in release, which would be dangerous here.)
+Embedding projects can therefore use `verify` in any `.fos` module without including or supplying a core script.
+
+The managed backend supplies the equivalent engine-owned `Invariant.Verify` helper in
+`Source/Scripting/Managed/CoreScripts/Invariant.cs`; its condition is annotated with
+`[DoesNotReturnIf(false)]` so C# nullable flow analysis narrows a proved value. The managed spelling of
+`verify(false, ...)` is `Invariant.Failed(message, ...)`, marked `[DoesNotReturn]`; a tail the compiler must also see
+end is `throw Invariant.Unreachable(message, ...)`. Keep using the checked `T?` local
+after the check, as the native side does with a checked `nptr<T>`: copying it into a second `T` local adds nothing
+the flow analysis does not already know. Both forms state an **invariant**:
+a condition that holds whenever our own code - server logic *and* our client - behaves correctly. A failure means
+a bug, so it throws. Crucially these checks run in **every** configuration; there is no `NDEBUG`-style strip, so
+they are always the runtime guard, never a debug-only check. (The name is `verify`, not `assert`, precisely to
+signal that — C's `assert` connotes a debug-only check that is compiled out in release, which would be dangerous
+here.)
 
 #### Verify vs. graceful recovery
 

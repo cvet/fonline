@@ -777,6 +777,8 @@ void RecordProcesses(TIntermediate& intermediate, EShMessages messages, const st
         intermediate.addProcess("suppress-warnings");
     if ((messages & EShMsgKeepUncalled) != 0)
         intermediate.addProcess("keep-uncalled");
+    if ((messages & EShMsgRelaxSetBindingLimits) != 0)
+        intermediate.setRelaxSetBindingLimits(true);
     if (sourceEntryPointName.size() > 0) {
         intermediate.addProcess("source-entrypoint");
         intermediate.addProcessArgument(sourceEntryPointName);
@@ -1816,6 +1818,7 @@ void TShader::setInvertY(bool invert)                   { intermediate->setInver
 void TShader::setDxPositionW(bool invert)               { intermediate->setDxPositionW(invert); }
 void TShader::setEnhancedMsgs()                         { intermediate->setEnhancedMsgs(); }
 void TShader::setNanMinMaxClamp(bool useNonNan)         { intermediate->setNanMinMaxClamp(useNonNan); }
+void TShader::setDiscardIsTerminate(bool discardIsTerminate) { intermediate->setDiscardIsTerminate(discardIsTerminate); }
 
 // Set binding base for given resource type
 void TShader::setShiftBinding(TResourceType res, unsigned int base) {

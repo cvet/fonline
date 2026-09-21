@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -127,9 +127,8 @@ struct ModelAnimationRigBindingSource
     bool Reversed {};
 };
 
-// Builds canonical runtime animation objects, wraps them in LF archives, and
-// reads every archive back before returning. BuildModelAnimationRigData then
-// turns these validated artifacts into the production model-description payload.
+// Every archive is read back before returning, so BuildModelAnimationRigData starts from artifacts that are
+// already proven loadable
 [[nodiscard]] auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const_span<ModelAnimationSource> animations, bool nearest_sampling) -> ModelAnimationRigArtifacts;
 [[nodiscard]] auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span<ModelAnimationRigBindingSource> bindings) -> ModelAnimationRigData;
 

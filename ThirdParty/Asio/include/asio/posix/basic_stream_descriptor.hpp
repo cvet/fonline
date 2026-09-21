@@ -2,7 +2,7 @@
 // posix/basic_stream_descriptor.hpp
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -24,7 +24,17 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace posix {
+
+#if !defined(ASIO_POSIX_BASIC_STREAM_DESCRIPTOR_FWD_DECL)
+#define ASIO_POSIX_BASIC_STREAM_DESCRIPTOR_FWD_DECL
+
+// Forward declaration with defaulted arguments.
+template <typename Executor = any_io_executor>
+class basic_stream_descriptor;
+
+#endif // !defined(ASIO_POSIX_BASIC_STREAM_DESCRIPTOR_FWD_DECL)
 
 /// Provides stream-oriented descriptor functionality.
 /**
@@ -43,8 +53,10 @@ namespace posix {
  *
  * @par Concepts:
  * AsyncReadStream, AsyncWriteStream, Stream, SyncReadStream, SyncWriteStream.
+ *
+ * @sa @ref overview_posix_stream_descriptor "Stream-oriented file descriptors"
  */
-template <typename Executor = any_io_executor>
+template <typename Executor>
 class basic_stream_descriptor
   : public basic_descriptor<Executor>
 {
@@ -549,6 +561,7 @@ private:
 };
 
 } // namespace posix
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

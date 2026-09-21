@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -40,9 +40,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// Drives ImGui panels that normally wait for a user: a headless frame draws every widget but nothing is
-// ever pressed, so the code behind a button, a list entry or a folded section stays unreachable. These
-// helpers address widgets by the id they are built with and let a test take those branches.
+// A headless frame draws every widget but presses nothing, so these helpers address widgets by their built id to
+// reach the code behind a button, list entry or folded section
 namespace ImGuiTestHarness
 {
     // Windows are addressed by their visible name; child windows carry the "Parent/Child" form that ImGui
@@ -61,7 +60,7 @@ namespace ImGuiTestHarness
     }
 
     // Activation is queued and consumed when the widget is met again, so the caller must draw one more
-    // frame before the pressed branch runs. Returns false when the window has not been drawn yet.
+    // frame before the pressed branch runs. Returns false when the window has not been drawn yet
     inline auto ActivateItem(string_view window_name, string_view item_label) -> bool
     {
         nptr<ImGuiWindow> window = FindWindow(window_name);

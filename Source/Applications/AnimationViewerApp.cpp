@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -31,15 +31,8 @@
 // SOFTWARE.
 //
 
-///
-/// Standalone critter animation viewer.
-///
-/// Boots straight into the animation viewer window: no map, no mapper UI, no
-/// server connection. The viewer needs the client-side content services
-/// (prototypes, sprites, models, fonts, effects), which a plain `ClientEngine`
-/// already constructs, so this application owns one and drives a minimal frame
-/// of its own instead of the client's networked main loop.
-///
+// Standalone critter animation viewer. Owns a ClientEngine for its content services (protos,
+// sprites, models, fonts, effects) but runs its own frame instead of the networked main loop
 
 #include "Common.h"
 
@@ -81,9 +74,8 @@ static auto GetViewer() -> ptr<AnimationViewer>
     return Data->Viewer;
 }
 
-// Minimal frame: advance time, refresh the render-side managers, and draw the
-// single window. The client's own main loop is deliberately not used - it
-// drives networking, login, and game screens this tool has no use for.
+// The client's own main loop is deliberately not used: it drives networking, login, and game
+// screens this tool has no use for
 static void DrawViewerFrame()
 {
     FO_STACK_TRACE_ENTRY();
@@ -96,9 +88,8 @@ static void DrawViewerFrame()
 
     engine->SprMngr.BeginScene();
 
-    // EndScene must balance BeginScene even if Draw throws, or the scene render
-    // target is left bound and the following EndFrame fails ("render target tex
-    // must be unset").
+    // EndScene must balance BeginScene even if Draw throws, or the scene render target stays bound
+    // and the next EndFrame fails
     auto end_scene = scope_exit([&]() noexcept { safe_call([&engine] { engine->SprMngr.EndScene(); }); });
 
     GetViewer()->Draw();
@@ -118,18 +109,18 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
         if (!Data->Engine) {
             try {
                 auto settings = make_ptr(&GetApp()->Settings);
-                Data->Engine = SafeAlloc::MakeRefCounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
+                Data->Engine = safe_alloc::make_refcounted<ClientEngine>(settings, GetViewerResources(*settings), &GetApp()->MainWindow);
 
                 auto engine = GetEngine();
-                Data->Viewer = SafeAlloc::MakeUnique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->GameTime);
+                Data->Viewer = safe_alloc::make_unique<AnimationViewer>(engine, &engine->SprMngr, &engine->ResMngr, &engine->GameTime);
 
                 // The window is the whole application here: it starts open and
-                // fills the viewport instead of floating inside an empty frame.
+                // fills the viewport instead of floating inside an empty frame
                 Data->Viewer->SetVisible(true);
                 Data->Viewer->SetFillViewport(true);
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 GetApp()->RequestQuit();
                 GetApp()->EndFrame();
                 return;
@@ -140,13 +131,13 @@ static void AnimationViewerEntry([[maybe_unused]] void* data)
             DrawViewerFrame();
         }
         catch (const std::exception& ex) {
-            ReportExceptionAndContinue(ex);
+            exceptions::report_and_continue(ex);
         }
 
         GetApp()->EndFrame();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -182,7 +173,7 @@ int main(int argc, char** argv) // Handled by SDL
         }
 
 #else
-        auto balancer = FrameBalancer(!GetApp()->Settings.VSync, GetApp()->Settings.Sleep, GetApp()->Settings.FixedFPS);
+        auto balancer = FrameBalancer(!GetApp()->Settings.Render.VSync, GetApp()->Settings.Render.Sleep, GetApp()->Settings.Render.FixedFPS);
 
         while (!GetApp()->IsQuitRequested()) {
             balancer.StartLoop();
@@ -202,10 +193,10 @@ int main(int argc, char** argv) // Handled by SDL
             Data->Engine.reset();
         }
 
-        ExitApp(true);
+        exit_app(true);
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -216,15 +207,15 @@ static auto GetViewerResources(GlobalSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (IsPackaged()) {
+    if (settings.Common.Packaged) {
         FileSystem resources;
-        resources.AddPacksSource(settings.ClientResources, settings.ClientResourceEntries);
-        resources.AddPacksSource(settings.ClientResources, settings.MapperResourceEntries);
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
+        resources.AddPacksSource(settings.Baking.ClientResources, settings.GetMapperResourcePacks());
         return resources;
     }
     else {
         FileSystem resources;
-        resources.AddCustomSource(SafeAlloc::MakeUnique<BakerDataSource>(&settings));
+        resources.AddCustomSource(safe_alloc::make_unique<BakerDataSource>(&settings));
         return resources;
     }
 }

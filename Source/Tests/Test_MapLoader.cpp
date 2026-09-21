@@ -1,3 +1,36 @@
+//      __________        ___               ______            _
+//     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
+//   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
+//  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
+//                                                  /____/
+// FOnline Engine
+// https://fonline.ru
+// https://github.com/cvet/fonline
+//
+// MIT License
+//
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in all
+// copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+// SOFTWARE.
+//
+
 #include "catch_amalgamated.hpp"
 
 #include "EngineBase.h"
@@ -25,7 +58,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsMapsWithoutProtoMapSection")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         CHECK_THROWS_AS(MapLoader::Load("LegacyMap", "LegacyMap.fomap", "[Header]\n[Tiles]\n[Objects]\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
         CHECK_THROWS_AS(MapLoader::Load("BrokenMap", "BrokenMap.fomap", "[$Name/Critter]\n$Proto = CritterOne\n", meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) { }, [](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { }), MapLoaderException);
@@ -34,7 +67,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsBareContentSections")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = TestMap\n"
@@ -56,7 +89,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsNestedSectionsAddressedToUndeclaredMap")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = TestMap\n"
@@ -70,7 +103,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsUnknownNestedSectionType")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = TestMap\n"
@@ -83,7 +116,7 @@ TEST_CASE("MapLoader")
     SECTION("RejectsLoadOfMapThatIsNotDeclared")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = TestMap\n";
@@ -95,10 +128,10 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
-        meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "Outside = True\n"
@@ -129,7 +162,7 @@ TEST_CASE("MapLoader")
     SECTION("MissingProtosAccumulateErrorsAndSkipCallbacks")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
         size_t critter_calls = 0;
         size_t item_calls = 0;
 
@@ -151,7 +184,7 @@ TEST_CASE("MapLoader")
     SECTION("MissingProtoFieldAlsoFailsLoad")
     {
         EngineMetadata meta {[] { }};
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = TestMap\n"
@@ -167,12 +200,12 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto critter_proto = SafeAlloc::MakeRefCounted<ProtoCritter>(meta.Hashes.ToHashedString("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"));
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
-        meta.RegisterProto(meta.Hashes.ToHashedString("Critter"), critter_proto);
-        meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
+        auto critter_proto = safe_alloc::make_refcounted<ProtoCritter>(meta.Hashes.to_hashed_string("TestCritter"), GetTestMapLoaderRegistrar(meta, "Critter"));
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Critter"), critter_proto);
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
-        HashStorage hashes {};
+        hash_storage hashes {};
         vector<ident_t> critter_ids;
         vector<ident_t> item_ids;
         vector<string> critter_proto_names;
@@ -220,10 +253,10 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
-        meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
-        HashStorage hashes {};
+        hash_storage hashes {};
 
         string map_buf = "[ProtoMap]\n"
                          "$Name = MapOne\n"
@@ -296,10 +329,10 @@ TEST_CASE("MapLoader")
     {
         EngineMetadata meta {[] { }};
         InitTestMapLoaderMetadata(meta);
-        auto item_proto = SafeAlloc::MakeRefCounted<ProtoItem>(meta.Hashes.ToHashedString("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
-        meta.RegisterProto(meta.Hashes.ToHashedString("Item"), item_proto);
+        auto item_proto = safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("TestItem"), GetTestMapLoaderRegistrar(meta, "Item"));
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), item_proto);
 
-        HashStorage hashes {};
+        hash_storage hashes {};
         size_t item_calls = 0;
 
         string map_buf = "[ProtoMap]\n"
@@ -311,6 +344,40 @@ TEST_CASE("MapLoader")
         CHECK_NOTHROW(MapLoader::Load("StemMap", "StemMap.fomap", map_buf, meta, hashes, [](ident_t, ptr<const ProtoCritter>, ptr<const map<string_view, string_view>>) {}, [&](ident_t, ptr<const ProtoItem>, ptr<const map<string_view, string_view>>) { item_calls++; }));
 
         CHECK(item_calls == 1);
+    }
+
+    SECTION("RejectsBakedMapFileThatIsNotCurrentFormat")
+    {
+        auto make_baked_map_header = [](uint32_t magic, uint32_t version) {
+            vector<uint8_t> data;
+            auto writer = data_writer(data);
+            writer.write<uint32_t>(magic);
+            writer.write<uint32_t>(version);
+            writer.write<uint32_t>(uint32_t {7});
+            return data;
+        };
+
+        vector<uint8_t> current = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION);
+        auto current_reader = data_reader {current};
+        CHECK_NOTHROW(MapLoader::ReadBakedFileHeader(current_reader, "TestMap"));
+        CHECK(current_reader.read<uint32_t>() == 7);
+
+        vector<uint8_t> future = make_baked_map_header(BAKED_MAP_FILE_MAGIC, BAKED_MAP_FILE_VERSION + 1);
+        auto future_reader = data_reader {future};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(future_reader, "TestMap"), MapLoaderException);
+
+        // The pre-header layout opened with the hash count, so a stale resource file is caught by the magic
+        vector<uint8_t> headerless;
+        auto headerless_writer = data_writer(headerless);
+        headerless_writer.write<uint32_t>(uint32_t {2});
+        headerless_writer.write<uint32_t>(uint32_t {4});
+        headerless_writer.write_string_bytes("Item");
+        auto headerless_reader = data_reader {headerless};
+        CHECK_THROWS_AS(MapLoader::ReadBakedFileHeader(headerless_reader, "TestMap"), MapLoaderException);
+
+        vector<uint8_t> truncated;
+        auto truncated_reader = data_reader {truncated};
+        CHECK_THROWS(MapLoader::ReadBakedFileHeader(truncated_reader, "TestMap"));
     }
 }
 

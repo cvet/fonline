@@ -372,7 +372,7 @@ namespace NativeScripts
         // to `EngineMetadata` (which outlives any wrapper).
         [[nodiscard]] inline auto LookupEntityMethod(FO_NAMESPACE ptr<const FO_NAMESPACE EngineMetadata> meta, FO_NAMESPACE string_view entity_name, FO_NAMESPACE string_view method_name) -> FO_NAMESPACE ptr<const FO_NAMESPACE MethodDesc>
         {
-            const auto& type_desc = meta->GetEntityType(meta->Hashes.ToHashedString(entity_name));
+            const auto& type_desc = meta->GetEntityType(meta->Hashes.to_hashed_string(entity_name));
             for (const auto& m : type_desc.Methods) {
                 if (m.Name == method_name) {
                     return &m;
@@ -725,7 +725,7 @@ namespace NativeScripts
         {
             FO_NAMESPACE function<Ret(Args...)> wrapped {std::move(fn)};
             auto& desc = Detail::AllocateNativeScriptFunc(engine);
-            desc.Name = engine->Hashes.ToHashedString(name);
+            desc.Name = engine->Hashes.to_hashed_string(name);
 
             // Populate `Args` / `Ret` from the engine's type registry when
             // we're registering the desc into the global func map — without
@@ -1111,7 +1111,7 @@ namespace NativeScripts
         FO_NAMESPACE vector<uint8_t> data;
         FO_NAMESPACE DataWriter writer {data};
         (Detail::WriteRemoteCallArg(writer, args), ...);
-        engine->SendRemoteCall(engine->Hashes.ToHashedString(name), caller, data);
+        engine->SendRemoteCall(engine->Hashes.to_hashed_string(name), caller, data);
     }
 
     template<typename... Args>
@@ -1143,7 +1143,7 @@ namespace NativeScripts
     template<typename... Args, typename Handler>
     void BindRemoteCall(FO_NAMESPACE ptr<FO_NAMESPACE BaseEngine> engine, FO_NAMESPACE string_view name, Handler handler)
     {
-        FO_NAMESPACE hstring hashed = engine->Hashes.ToHashedString(name);
+        FO_NAMESPACE hstring hashed = engine->Hashes.to_hashed_string(name);
         engine->SetRemoteCallHandler(
             hashed,
             [engine, handler = std::move(handler)](FO_NAMESPACE hstring, FO_NAMESPACE nptr<FO_NAMESPACE Entity> caller, FO_NAMESPACE span<uint8_t> data) FO_DEFERRED {

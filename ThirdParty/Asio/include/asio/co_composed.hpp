@@ -2,7 +2,7 @@
 // co_composed.hpp
 // ~~~~~~~~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -47,6 +47,7 @@
 #include "asio/detail/push_options.hpp"
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 namespace detail {
 
 #if defined(ASIO_HAS_STD_COROUTINE)
@@ -712,7 +713,7 @@ public:
     derived_type& promise = *static_cast<derived_type*>(this);
     promise.state().return_value_ = std::move(value);
     promise.state().work_.reset();
-    promise.state().on_suspend_->arg_ = this;
+    promise.state().on_suspend_->arg_ = &promise;
     promise.state().on_suspend_->fn_ =
       [](void* p)
       {
@@ -842,7 +843,11 @@ public:
   {
     if (owner_)
       *owner_ = this;
+#if !defined(ASIO_NO_EXCEPTIONS)
     throw;
+#else // !defined(ASIO_NO_EXCEPTIONS)
+    std::terminate();
+#endif // !defined(ASIO_NO_EXCEPTIONS)
   }
 
   template <ASIO_ASYNC_OPERATION Op>
@@ -989,7 +994,13 @@ private:
 
   union block
   {
+#if defined(ASIO_MSVC) && !defined(__clang__)
+    // Force 16-byte alignment as std::max_align_t is only 8-byte aligned on
+    // MSVC, but the compiler may emit aligned SSE stores into the storage.
+    alignas(16) std::max_align_t max_align;
+#else // defined(ASIO_MSVC) && !defined(__clang__)
     std::max_align_t max_align;
+#endif // defined(ASIO_MSVC) && !defined(__clang__)
     alignas(allocator_type) char pad[alignof(allocator_type)];
   };
 
@@ -1147,6 +1158,7 @@ struct associator<Associator,
 
 #endif // !defined(GENERATING_DOCUMENTATION)
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #if !defined(GENERATING_DOCUMENTATION)
@@ -1191,6 +1203,7 @@ struct coroutine_traits<void,
 #endif // !defined(GENERATING_DOCUMENTATION)
 
 namespace asio {
+ASIO_INLINE_NAMESPACE_BEGIN
 
 /// Creates an initiation function object that may be used to launch a
 /// coroutine-based composed asynchronous operation.
@@ -1310,6 +1323,7 @@ inline auto co_composed(Implementation&& implementation,
             io_objects_or_executors))...));
 }
 
+ASIO_INLINE_NAMESPACE_END
 } // namespace asio
 
 #include "asio/detail/pop_options.hpp"

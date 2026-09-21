@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "AnimationInfo.h"
 #include "EngineBase.h"
+#include "EntityProtos.h"
 #include "Test_BakerHelpers.h"
 #include "TextPack.h"
 
@@ -66,7 +67,7 @@ static auto MakeSpriteAnimationInfoResources() -> FileSystem
             },
     };
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("SpriteInfoTestPack");
     source->AddFile("SpriteInfo/TestPack.foinfo", WriteSpriteInfoFile({entry}));
 
     FileSystem resources;
@@ -138,7 +139,7 @@ static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
     source->AddFile("ModelAnimationInfo.foinfo", content);
 
     FileSystem resources;
@@ -187,7 +188,7 @@ static void AddTestMigrationRule(EngineMetadata& meta, string_view target, strin
 
 static auto HashTestMigrationToken(EngineMetadata& meta, string_view value) -> hstring
 {
-    return meta.Hashes.ToHashedString(value);
+    return meta.Hashes.to_hashed_string(value);
 }
 
 static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -> optional<hstring>
@@ -197,6 +198,73 @@ static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -
 
 TEST_CASE("EngineMetadata")
 {
+    SECTION("RefTypeRejectsVirtualFieldsBeforePublishingLayout")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("StoredRecord");
+        CHECK_THROWS(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32", "Virtual"}}));
+        CHECK_NOTHROW(meta.RegisterRefTypeLayout("StoredRecord", {{"Value", "int32"}}));
+    }
+
+    SECTION("NativeValueSizeMismatchDoesNotPublishLayout")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterValueType("NativeValue", sizeof(int64_t));
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int32"}}));
+        CHECK_NOTHROW(meta.RegisterValueTypeLayout("NativeValue", {{"Value", "int64"}}));
+    }
+
+    SECTION("ValueTypeIsAlwaysPlainPackedData")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        meta.RegisterRefType("ComplexRecord");
+        meta.RegisterEntityType("Map", true, false, true, true, true);
+
+        // Nothing but primitives, enums, hashed strings and single-field structs gets into a value type
+        meta.RegisterValueType("HoldsString");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsString", {{"Text", "string"}}));
+        meta.RegisterValueType("HoldsRefType");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsRefType", {{"Record", "ComplexRecord"}}));
+        meta.RegisterValueType("HoldsEntity");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsEntity", {{"Owner", "Map"}}));
+
+        // A field that would need padding is rejected, and so is a tail both compilers would pad
+        meta.RegisterValueType("NeedsPadding");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NeedsPadding", {{"Small", "int8"}, {"Wide", "int32"}}));
+        meta.RegisterValueType("NeedsTailPadding");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("NeedsTailPadding", {{"Wide", "int32"}, {"Small", "bool"}}));
+
+        meta.RegisterValueType("Wrapper");
+        meta.RegisterValueTypeLayout("Wrapper", {{"Value", "hstring"}});
+        meta.RegisterValueType("Pair");
+        meta.RegisterValueTypeLayout("Pair", {{"First", "int32"}, {"Second", "int32"}});
+
+        // A struct of several fields cannot nest, so a value type never grows a layout of its own inside another
+        meta.RegisterValueType("HoldsPair");
+        CHECK_THROWS(meta.RegisterValueTypeLayout("HoldsPair", {{"Inner", "Pair"}, {"Tail", "int64"}}));
+
+        meta.RegisterValueType("Plain");
+        meta.RegisterValueTypeLayout("Plain", {{"Tag", "Wrapper"}, {"Name", "hstring"}, {"Count", "int64"}});
+
+        const BaseTypeDesc& plain_type = meta.GetBaseType("Plain");
+        REQUIRE(plain_type.StructLayout);
+        CHECK(plain_type.IsStruct);
+        CHECK_FALSE(plain_type.IsRefType);
+
+        size_t packed_size = 0;
+
+        for (const FieldDesc& field : plain_type.StructLayout->Fields) {
+            CHECK(field.Offset == packed_size);
+            packed_size += field.Type.Size;
+        }
+
+        CHECK(plain_type.Size == packed_size);
+        CHECK(meta.GetBaseType("ComplexRecord").IsRefType);
+        CHECK_FALSE(meta.GetBaseType("ComplexRecord").IsStruct);
+    }
+
     SECTION("BuiltinProtoEntityTypesUseDedicatedProtoFlag")
     {
         EngineMetadata meta {[] { }};
@@ -217,8 +285,9 @@ TEST_CASE("EngineMetadata")
     SECTION("ValueTypeLayoutMatchesNativeTextPackKey")
     {
         EngineMetadata meta {[] { }};
-        meta.RegisterValueType("TextPackName");
-        meta.RegisterValueType("TextPackKey");
+        static_assert(std::is_trivially_copyable_v<TextPackKey>);
+        meta.RegisterValueType("TextPackName", sizeof(TextPackName));
+        meta.RegisterValueType("TextPackKey", sizeof(TextPackKey));
         meta.RegisterValueTypeLayout("TextPackName", {{"Name", "hstring"}});
         meta.RegisterValueTypeLayout("TextPackKey", {{"Collection", "TextPackName"}, {"Key1", "hstring"}, {"Key2", "hstring"}, {"Key3", "hstring"}});
 
@@ -230,6 +299,15 @@ TEST_CASE("EngineMetadata")
         REQUIRE(text_key_type.StructLayout);
         CHECK(text_key_type.Size == sizeof(hstring::hash_t) * 4);
         CHECK(text_key_type.Size == sizeof(TextPackKey));
+
+        // A value type is plain data: the native twin copies byte for byte into storage laid out by the metadata
+        CHECK(text_key_type.StructLayout->NativeSize == sizeof(TextPackKey));
+        TextPackKey source {meta.Hashes.to_hashed_string("native-value-key")};
+        array<uint8_t, sizeof(TextPackKey)> storage {};
+        memory::copy(storage.data(), &source, text_key_type.Size);
+        TextPackKey copy;
+        memory::copy(&copy, storage.data(), text_key_type.Size);
+        CHECK(copy == source);
 
         const auto& fields = text_key_type.StructLayout->Fields;
         REQUIRE(fields.size() == 4);
@@ -297,6 +375,56 @@ TEST_CASE("EngineMetadata")
 
         CHECK_THROWS_AS(meta.RegisterMigrationRules(std::move(migration_rules)), VerificationException);
     }
+
+    SECTION("PropertyMigrationRuleRetiringRegisteredPropertyRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        (void)registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
+        (void)registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
+        AddTestMigrationRule(meta, "OldStep", "Step");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterSide(EngineSideKind::ServerSide);
+        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        (void)reuse_registrar->RegisterProperty({"Common", "int32", "Step", "Mutable", "Persistent", "PublicSync"});
+        (void)reuse_registrar->RegisterProperty({"Common", "int32", "LegacyStep", "Mutable", "Persistent", "PublicSync"});
+        AddTestMigrationRule(reuse_meta, "Step", "LegacyStep");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("ProtoMigrationRuleRetiringRegisteredPrototypeRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(EngineSideKind::ServerSide);
+        auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+        meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("Rifle"), registrar));
+        meta.RegisterMigrationRule("Proto", "Item", "OldRifle", "Rifle");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterSide(EngineSideKind::ServerSide);
+        auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
+        reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Rifle"), reuse_registrar));
+        reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Carbine"), reuse_registrar));
+        reuse_meta.RegisterMigrationRule("Proto", "Item", "Carbine", "Rifle");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("EnumMigrationRuleRetiringRegisteredEntryRejected")
+    {
+        EngineMetadata meta {[] { }};
+        meta.RegisterEnumGroup("TestBody", "int32", {{"Men", 0}, {"Dog", 1}});
+        meta.RegisterMigrationRule("Enum", "TestBody", "Raider", "Men");
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+
+        EngineMetadata reuse_meta {[] { }};
+        reuse_meta.RegisterEnumGroup("TestBody", "int32", {{"Men", 0}, {"Dog", 1}, {"Raider", 2}});
+        reuse_meta.RegisterMigrationRule("Enum", "TestBody", "Raider", "Men");
+        CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
+    }
 }
 
 TEST_CASE("EngineMetadataSpriteAnimationInfo")
@@ -307,7 +435,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         FileSystem resources = MakeSpriteAnimationInfoResources();
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Test.png"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Test.png"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Sprite.has_value());
         const SpriteInfo& sprite_info = *info->Sprite;
@@ -318,7 +446,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         CHECK(sprite_info.Directions.front().Frames.front().Offset == ipos32 {-3, 4});
         REQUIRE(sprite_info.Directions.front().Frames.back().SharedFrameIndex.has_value());
         CHECK(*sprite_info.Directions.front().Frames.back().SharedFrameIndex == 0);
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Art/Missing.png"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Art/Missing.png"))));
     }
 
     SECTION("RejectsUnsupportedSpriteInfoVersion")
@@ -328,7 +456,7 @@ TEST_CASE("EngineMetadataSpriteAnimationInfo")
         string invalid_info = info_file.GetStr();
         invalid_info = strex(invalid_info).replace("InfoVersion = 1", "InfoVersion = 2").str();
 
-        auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
+        auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("InvalidSpriteInfoTestPack");
         source->AddFile("SpriteInfo/TestPack.foinfo", invalid_info);
         FileSystem invalid_resources;
         invalid_resources.AddCustomSource(std::move(source));
@@ -348,7 +476,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        hstring model_name = meta.Hashes.ToHashedString("Critters/Test.fo3d");
+        hstring model_name = meta.Hashes.to_hashed_string("Critters/Test.fo3d");
         auto info = meta.GetAnimationInfo(model_name);
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
@@ -397,7 +525,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         FileSystem resources = MakeModelAnimationInfoResources(VALID_MODEL_ANIMATION_INFO);
         meta.RegisterAnimationInfo(resources);
 
-        auto static_info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Static.fo3d"));
+        auto static_info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Static.fo3d"));
         REQUIRE(static_cast<bool>(static_info));
         REQUIRE(static_info->Model.has_value());
         const ModelAnimationInfo& static_model_info = *static_info->Model;
@@ -406,7 +534,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         CHECK(static_model_info.ModelBounds.Min.x == -4.0f);
         CHECK(static_model_info.ViewBounds.Max.z == 1.5f);
 
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Missing.fo3d"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Missing.fo3d"))));
     }
 
     SECTION("MissingResourceLeavesLookupEmpty")
@@ -414,7 +542,7 @@ TEST_CASE("EngineMetadataModelAnimationInfo")
         EngineMetadata meta {[] { }};
         FileSystem resources;
         CHECK_NOTHROW(meta.RegisterAnimationInfo(resources));
-        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"))));
+        CHECK_FALSE(static_cast<bool>(meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"))));
     }
 
     SECTION("RejectsPresentEmptyResource")
@@ -486,7 +614,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_DURATIONS));
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;
@@ -501,7 +629,7 @@ BoundsMaxZ = 2 2
         FileSystem resources = MakeModelAnimationInfoResources(MakeModelAnimationInfoDocument(VALID_ANIMATION_BOUNDS));
         meta.RegisterAnimationInfo(resources);
 
-        auto info = meta.GetAnimationInfo(meta.Hashes.ToHashedString("Critters/Test.fo3d"));
+        auto info = meta.GetAnimationInfo(meta.Hashes.to_hashed_string("Critters/Test.fo3d"));
         REQUIRE(static_cast<bool>(info));
         REQUIRE(info->Model.has_value());
         const ModelAnimationInfo& model_info = *info->Model;

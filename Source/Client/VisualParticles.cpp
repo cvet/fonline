@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -100,15 +100,15 @@ auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const Par
     return nullptr;
 }
 
-ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleSceneBackgroundProvider scene_background_provider) :
-    _impl {SafeAlloc::MakeUnique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings})},
+ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager> effect_mngr, ptr<IAppRender> render, ptr<FileSystem> resources, ptr<GameTimer> game_time, ParticleTextureLoader tex_loader, ParticleWireframeQuery draw_wireframe, ParticleSceneBackgroundProvider scene_background_provider) :
+    _impl {safe_alloc::make_unique<Impl>(ParticleRuntimeServices {.EffectMngr = effect_mngr, .Render = render, .Resources = resources, .TextureLoader = std::move(tex_loader), .SceneBackgroundProvider = std::move(scene_background_provider), .Settings = settings, .DrawWireframe = std::move(draw_wireframe)})},
     _settings {settings},
     _gameTime {game_time}
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_settings->Animation3dFPS != 0) {
-        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Animation3dFPS));
+    if (_settings->Render.Animation3dFPS != 0) {
+        _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
     }
 }
 
@@ -148,7 +148,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     auto backend = _impl->FindBackend(ext);
 
     if (!backend) {
-        WriteLog("Particle resource '{}' has an unsupported extension", name);
+        logging::write("Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 
@@ -231,26 +231,23 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 {
     FO_STACK_TRACE_ENTRY();
 
-    // Size the sprite frame to the effect's baked extent. The atlas draws the effect through the map camera (a tilt
-    // about X) at ModelProjFactor px per world unit; project the 8 corners of the baked position box through that tilt
-    // (the ortho drops view Z), grow the result by the billboard radius - a view-plane length the tilt must not touch -
-    // and place the emitter, which projects to the view origin, so the extent exactly fills the frame. An effect that
-    // showed no particle (no box) falls back to a small default square.
+    // The box corners are projected through the map camera tilt and then grown by the billboard radius, which is a
+    // view-plane length the tilt must not touch; an effect that showed no particle falls back to a default square
     optional<ParticleBounds3D> baked = GetBakedBounds();
-    float32_t proj_factor = settings.ModelProjFactor;
+    float32_t proj_factor = settings.Render.ModelProjFactor;
     ParticleSpriteFrame layout;
 
     if (!baked) {
-        layout.DrawSize = {settings.DefaultParticleDrawWidth, settings.DefaultParticleDrawHeight};
-        layout.Offset = {0, settings.DefaultParticleDrawHeight / 4};
+        layout.DrawSize = {settings.Render.DefaultParticleDrawWidth, settings.Render.DefaultParticleDrawHeight};
+        layout.Offset = {0, settings.Render.DefaultParticleDrawHeight / 4};
         layout.ProjHeight = numeric_cast<float32_t>(layout.DrawSize.height) / proj_factor;
         layout.ProjWidth = numeric_cast<float32_t>(layout.DrawSize.width) / proj_factor;
         layout.World = glm::translate(mat44 {1.0f}, vec3 {layout.ProjWidth / 2.0f, layout.ProjHeight / 4.0f, 0.0f});
         return layout;
     }
 
-    float32_t cos_a = std::cos(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
-    float32_t sin_a = std::sin(settings.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t cos_a = std::cos(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
+    float32_t sin_a = std::sin(settings.Geometry.MapCameraAngle * DEG_TO_RAD_FLOAT);
     float32_t min_x = std::numeric_limits<float32_t>::max();
     float32_t max_x = std::numeric_limits<float32_t>::lowest();
     float32_t min_y = std::numeric_limits<float32_t>::max();
@@ -268,7 +265,7 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     }
 
     // A small margin so anti-aliased edges are not clipped by the tight frame, plus the billboard radius: the quad
-    // faces the camera, so its half-extent applies to both frame axes and is added once, after the tilt.
+    // faces the camera, so its half-extent applies to both frame axes and is added once, after the tilt
     float32_t margin = 2.0f / proj_factor + baked->BillboardRadius;
     min_x -= margin;
     max_x += margin;
@@ -279,11 +276,11 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
     layout.ProjHeight = max_y - min_y;
     layout.DrawSize = {std::max(2, iround<int32_t>(layout.ProjWidth * proj_factor)), std::max(2, iround<int32_t>(layout.ProjHeight * proj_factor))};
 
-    // tilt(translate(T)).xy = (T.x, T.y*cos - T.z*sin); with T.z = 0 the box min corner maps to the frame origin.
+    // tilt(translate(T)).xy = (T.x, T.y*cos - T.z*sin); with T.z = 0 the box min corner maps to the frame origin
     layout.World = glm::translate(mat44 {1.0f}, vec3 {-min_x, -min_y / cos_a, 0.0f});
 
     // Root convention is root = (width/2 - offset.x, height - offset.y) from the top-left; the emitter projects to
-    // (-min_x, -min_y) world units from the box origin, i.e. those pixels from the frame's left and bottom.
+    // (-min_x, -min_y) world units from the box origin, i.e. those pixels from the frame's left and bottom
     int32_t emitter_px_x = iround<int32_t>(-min_x * proj_factor);
     int32_t emitter_px_y = iround<int32_t>(-min_y * proj_factor);
     layout.Offset = {layout.DrawSize.width / 2 - emitter_px_x, emitter_px_y};
@@ -323,7 +320,7 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
         .ViewOffset = view_offset,
         .LookDirectionAngle = look_dir_angle,
         .Scale = _scale,
-        .MapCameraAngle = _particleMngr->_settings->MapCameraAngle,
+        .MapCameraAngle = _particleMngr->_settings->Geometry.MapCameraAngle,
         .TiltInProjection = tilt_in_proj,
     };
 

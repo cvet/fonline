@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -38,8 +38,8 @@ FO_BEGIN_NAMESPACE
 
 ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
     _settings {settings},
-    _netIn(_settings->NetBufferSize),
-    _netOut(_settings->NetBufferSize)
+    _netIn(_settings->Network.NetBufferSize),
+    _netOut(_settings->Network.NetBufferSize)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -92,28 +92,20 @@ void ClientConnection::Connect()
 
     try {
         // First try interthread communication
-        auto port = numeric_cast<uint16_t>(_settings->ServerPort);
+        auto port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
 
-        bool has_interthread_listener = false;
-
-        {
-            scoped_lock locker {InterthreadListenersLocker};
-
-            has_interthread_listener = InterthreadListeners.count(port) != 0;
-        }
-
-        if (has_interthread_listener) {
+        if (HasInterthreadListener(port)) {
             _netConnection = NetworkClientConnection::CreateInterthreadConnection(_settings);
             _connectingOverUdp = false;
             _udpFallbackTried = false;
         }
-        else if (_settings->UseUdp && build_condition<!FO_WEB>()) {
+        else if (_settings->ClientNetwork.UseUdp && build_condition<!FO_WEB>()) {
             try {
                 CreateNetworkConnection(true);
                 _udpFallbackTried = false;
             }
             catch (const std::exception& ex) {
-                ReportExceptionAndContinue(ex);
+                exceptions::report_and_continue(ex);
                 _udpFallbackTried = true;
                 CreateNetworkConnection(false);
             }
@@ -124,15 +116,15 @@ void ClientConnection::Connect()
         }
     }
     catch (const ClientConnectionException& ex) {
-        WriteLog("Connecting error: {}", ex.what());
+        logging::write("Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetworkClientException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetBufferException& ex) {
-        WriteLog("Connecting error: {}", ex.what());
+        logging::write("Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (...) {
@@ -149,22 +141,22 @@ void ClientConnection::Process()
         ProcessConnection();
     }
     catch (const ClientConnectionException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const NetworkClientException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
 
         if (!TryFallbackToTcp()) {
             Disconnect();
         }
     }
     catch (const NetBufferException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const DecompressException& ex) {
-        WriteLog("Connection error: {}", ex.what());
+        logging::write("Connection error: {}", ex.what());
         Disconnect();
     }
     catch (...) {
@@ -207,26 +199,13 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    // Lags emulation
-    if (_settings->ArtificalLags != 0 && !_artificalLagTime.has_value()) {
-        auto lag_ms = std::uniform_int_distribution<int32_t> {_settings->ArtificalLags / 2, _settings->ArtificalLags}(_randomGenerator);
-        _artificalLagTime = nanotime::now() + std::chrono::milliseconds {lag_ms};
-    }
-
-    if (_artificalLagTime.has_value()) {
-        if (nanotime::now() >= _artificalLagTime.value()) {
-            _artificalLagTime.reset();
-        }
-        else {
-            return;
-        }
-    }
-
     _netConnection->CheckStatus(false);
     _netConnection->CheckStatus(true);
 
     // Receive and send data
-    if (ReceiveData()) {
+    (void)ReceiveData();
+
+    if (!IsInboundLagged()) {
         while (_netIn.NeedProcess()) {
             auto msg = _netIn.ReadMsg();
 
@@ -238,9 +217,9 @@ void ClientConnection::ProcessConnection()
             }
 #endif
 
-            if (_settings->DebugNet) {
+            if (_settings->ClientNetwork.DebugNet) {
                 _msgCount++;
-                WriteLog("{}) Input net message {}", _msgCount, msg);
+                logging::write("{}) Input net message {}", _msgCount, msg);
             }
 
             auto it = _handlers.find(msg);
@@ -261,14 +240,16 @@ void ClientConnection::ProcessConnection()
         }
     }
 
-    if (_netOut.IsEmpty() && !_pingTime && _settings->PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
+    if (_netOut.IsEmpty() && !_pingTime && _settings->ClientNetwork.PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
         _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(false);
         _netOut.EndMsg();
         _pingTime = nanotime::now();
     }
 
-    SendData();
+    if (!IsOutboundLagged()) {
+        SendData();
+    }
 
     // Handle disconnect
     if (!_netConnection->IsConnected()) {
@@ -290,9 +271,11 @@ void ClientConnection::Disconnect()
     _connectingOverUdp = false;
     _connectingHandled = false;
     _udpFallbackTried = false;
+    _artificalInboundLagTime.reset();
+    _artificalOutboundLagTime.reset();
     _netIn.ResetBuf();
     _netOut.ResetBuf();
-    _decompressor.Reset();
+    _decompressor.reset();
 
     _netIn.SetEncryptKey(0);
     _netOut.SetEncryptKey(0);
@@ -321,7 +304,7 @@ auto ClientConnection::TryFallbackToTcp() -> bool
         return false;
     }
 
-    WriteLog("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ServerHost, _settings->ServerPort);
+    logging::write("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort);
 
     _udpFallbackTried = true;
     _connectingHandled = false;
@@ -352,6 +335,56 @@ void ClientConnection::SendData()
     }
 }
 
+// Symmetric by design: only the outbound half makes the server's copy of the world trail the client's,
+// and neither half throttles throughput. Delay distribution and its effect: Docs/Debugging.md
+
+auto ClientConnection::IsInboundLagged() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return IsArtificalLagPending(_artificalInboundLagTime, _netIn.NeedProcess());
+}
+
+auto ClientConnection::IsOutboundLagged() -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return IsArtificalLagPending(_artificalOutboundLagTime, !_netOut.IsEmpty());
+}
+
+auto ClientConnection::IsArtificalLagPending(optional<nanotime>& deadline, bool has_data) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A negative value builds a distribution whose lower bound exceeds its upper bound, which is undefined
+    // rather than merely odd, and the zero early-out below does not screen it
+    FO_VERIFY_AND_THROW(_settings->Network.ArtificalLags >= 0 && _settings->Network.ArtificalLagsJitter >= 0, "Artifical lag settings must not be negative", _settings->Network.ArtificalLags, _settings->Network.ArtificalLagsJitter);
+
+    if ((_settings->Network.ArtificalLags == 0 && _settings->Network.ArtificalLagsJitter == 0) || !has_data) {
+        deadline.reset();
+        return false;
+    }
+
+    if (!deadline.has_value()) {
+        // Both settings are free-form milliseconds, so accumulate wide enough that their sum cannot
+        // overflow before the duration is built
+        int64_t lag_ms = _randomGenerator.next_between(_settings->Network.ArtificalLags / 2, _settings->Network.ArtificalLags);
+
+        if (_settings->Network.ArtificalLagsJitter != 0) {
+            lag_ms += _randomGenerator.next_between(0, _settings->Network.ArtificalLagsJitter);
+        }
+
+        deadline = nanotime::now() + std::chrono::milliseconds {lag_ms};
+    }
+
+    if (nanotime::now() >= deadline.value()) {
+        deadline.reset();
+        return false;
+    }
+
+    return true;
+}
+
 auto ClientConnection::ReceiveData() -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -364,8 +397,8 @@ auto ClientConnection::ReceiveData() -> bool
 
         _netIn.ShrinkReadBuf();
 
-        if (!_settings->DisableZlibCompression) {
-            _decompressor.Decompress(recv_buf, _unpackedReceivedBuf);
+        if (!_settings->Network.DisableZlibCompression) {
+            _decompressor.decompress(recv_buf, _unpackedReceivedBuf);
             _netIn.AddData(_unpackedReceivedBuf);
             _bytesReceived += recv_buf.size();
             _bytesRealReceived += _unpackedReceivedBuf.size();
@@ -382,21 +415,28 @@ auto ClientConnection::ReceiveData() -> bool
     return false;
 }
 
+void ClientConnection::SetMetadataVersion(string_view version)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _metadataVersion = version;
+}
+
 void ClientConnection::Net_SendHandshake()
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::uniform_int_distribution<int32_t> random_distribution {1, 255};
     uint32_t encrypt_key = //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 24) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 16) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 8) | //
-        (numeric_cast<uint32_t>(random_distribution(_randomGenerator)) << 0);
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 24) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 16) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 8) | //
+        (numeric_cast<uint32_t>(_randomGenerator.next_between(1, 255)) << 0);
     uint32_t updater_version = FO_UPDATER_VERSION;
     string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
 
     _netOut.StartMsg(NetMessage::Handshake);
-    _netOut.Write(_settings->CompatibilityVersion);
+    _netOut.Write(_settings->Network.CompatibilityVersion);
+    _netOut.Write(_metadataVersion);
     _netOut.Write(updater_version);
     _netOut.Write(binary_update_target_name);
     _netOut.Write(encrypt_key);
@@ -411,6 +451,8 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
     bool compatibility_outdated = _netIn.Read<bool>();
     bool updater_outdated = _netIn.Read<bool>();
+    bool metadata_outdated = _netIn.Read<bool>();
+    _serverMetadataVersion = _netIn.Read<string>();
     auto encrypt_key = _netIn.Read<uint32_t>();
 
     _netIn.SetEncryptKey(encrypt_key);
@@ -422,6 +464,9 @@ void ClientConnection::Net_OnHandshakeAnswer()
     }
     else if (compatibility_outdated) {
         _connectCallback(ConnectResult::CompatibilityOutdated);
+    }
+    else if (metadata_outdated) {
+        _connectCallback(ConnectResult::MetadataOutdated);
     }
     else {
         _connectCallback(ConnectResult::Success);
@@ -436,9 +481,9 @@ void ClientConnection::Net_OnPing()
 
     if (answer) {
         nanotime time = nanotime::now();
-        _settings->Ping = (time - _pingTime).to_ms<int32_t>();
+        _ping = (time - _pingTime).to_ms<int32_t>();
         _pingTime = nanotime::zero;
-        _pingCallTime = time + std::chrono::milliseconds(_settings->PingPeriod);
+        _pingCallTime = time + std::chrono::milliseconds(_settings->ClientNetwork.PingPeriod);
     }
     else {
         _netOut.StartMsg(NetMessage::Ping);

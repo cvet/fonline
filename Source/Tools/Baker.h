@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -46,12 +46,13 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ResourceBakingException);
 
 inline constexpr string_view BAKER_CACHE_DIR = ".baker-cache";
+inline constexpr string_view REPORT_FILE_SUFFIX = ".report.json";
 
 class Properties;
 class ScriptSystem;
 
-using BakeCheckerCallback = function<bool(string_view, uint64_t)>;
-using AsyncWriteDataCallback = function<BakingWriteResult(string_view, const_span<uint8_t>)>;
+using BakeCheckerCallback = copyable_function<bool(string_view, uint64_t)>;
+using AsyncWriteDataCallback = copyable_function<BakingWriteResult(string_view, const_span<uint8_t>)>;
 
 struct BakingContext
 {
@@ -85,8 +86,8 @@ public:
     static auto SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report = nullptr, bool output_discovery = false, nptr<const FileSystem> pack_baked_files = nullptr) -> vector<unique_ptr<BaseBaker>>;
 
 protected:
-    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
-    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return _context->Report != nullptr; }
+    [[nodiscard]] auto GetAsyncMode() const -> async_launch_mode { return _context->ForceSyncMode.value_or(_context->Settings->Baking.SingleThreadBaking) ? launch_deferred_only : launch_async_and_deferred; }
+    [[nodiscard]] auto IsBakingReportEnabled() const noexcept -> bool { return !!_context->Report; }
     [[nodiscard]] auto ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t;
 
     void AddBakingReportCounter(string_view name, uint64_t value = 1) const;
@@ -96,6 +97,10 @@ protected:
     void RecordSharedSpriteMeshBakingFrames(uint64_t count) const;
 
     shared_ptr<BakingContext> _context;
+
+private:
+    // Fallback for a property script func the AngelScript-only bake script system can't resolve: a managed func
+    // bound by attribute (e.g. a C# [ItemTrigger]). Consults the manifest ManagedScriptBaker emits
 };
 
 class MasterBaker final
@@ -111,7 +116,25 @@ public:
     auto BakeAll() noexcept -> bool;
 
 private:
+    // Per-pack baking state, and the two views of "what this run produced" that the output sweeps consume.
+    // Both are defined in the translation unit: they are pure implementation detail of one bake
+    struct PackBakeContext;
+    struct ExpectedOutputs;
+
+    auto MakeOutputPath(string_view path) const -> string;
+    auto CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts) const -> ExpectedOutputs;
+
     void BakeAllInternal();
+    auto ResolveRebuildMode(string_view build_hash_path) -> bool;
+    auto MountSharedInputDirs() const -> unordered_map<string, unique_ptr<DataSource>>;
+    auto PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>;
+    auto PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>;
+    void RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking);
+    void ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected);
+    void SweepOutdatedOutputs(const ExpectedOutputs& expected);
+    void SweepOutdatedBakerCache(const ExpectedOutputs& expected);
+
+    static void BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_order);
 
     ptr<BakingSettings> _settings;
     shared_ptr<BakingReport> _report {};

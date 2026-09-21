@@ -14,7 +14,7 @@ The main layers are:
 - **Client runtime** — presentation/resource/network-client side in `Source/Client/`.
 - **Server runtime** — authoritative world, managers, database backends, network-server side, and updater backend in `Source/Server/`.
 - **Frontend** — application/window/rendering abstraction in `Source/Frontend/`.
-- **Scripting** — AngelScript, Native, Mono, and script method registration in `Source/Scripting/`.
+- **Scripting** — AngelScript, Native, Managed, and script method registration in `Source/Scripting/`.
 - **Tools** — baker, Mapper-centered editing, asset processors, and related developer tooling in `Source/Tools/`.
 - **BuildTools** — CMake stages, helpers, toolchains, platform project generation, package layout, and validation support in `BuildTools/`.
 
@@ -25,7 +25,7 @@ The main layers are:
 - `ClientApp.cpp` and `ClientLib.cpp` for client host/runtime flows.
 - `ServerApp.cpp`, `ServerDaemonApp.cpp`, `ServerHeadlessApp.cpp`, and `ServerServiceApp.cpp` for server variants.
 - `MapperApp.cpp` for the central interactive editing tool.
-- `BakerApp.cpp` and `ASCompilerApp.cpp` for generation/build support.
+- `BakerApp.cpp`, `ASCompilerApp.cpp`, and `ManagedScriptBakerApp.cpp` for generation/build support.
 - `TestingApp.cpp` for test execution.
 
 `BuildTools/cmake/stages/Applications.cmake` wires these files into project-specific targets based on build options such as client/server/tool/platform/library modes. Avoid hard-coding target names in engine docs: target names are often derived from the embedding project's `FO_DEV_NAME` and presets.
@@ -58,8 +58,17 @@ See [Applications.md](Applications.md) for the application map.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
 - `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
+- `ImageWriter.h` — TGA/PNG encoders for the diagnostic images the engine writes itself (screenshots, render-target and atlas dumps).
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
+
+### Runtime random state
+
+`random_generator` owns its own state: `capture_state()` returns the four 64-bit words that define the sequence, and `restore_state()` puts them back, rejecting the all-zero state because xoshiro256++ sits at a fixed point there. `BaseEngine::CaptureRandomState()` and `RestoreRandomState()` delegate to the generator under the mutex it shares with random draws. There is no engine-level serialization format; a caller that needs to store the state serializes the four words itself.
+
+This API is a persistence primitive, not a complete snapshot boundary. An authoritative server must still stop gameplay mutation before it captures the generator together with the corresponding world, time, event, and storage state. Client presentation, transport, and subsystem-specific generators are independent and are not included in this state.
+
+The server-side `RunInQuiescence()` operation supplies that reusable in-process stop boundary: new connection admission closes, main/worker gameplay execution drains, frame/synchronized time and delayed-job scheduling freeze, the live entity graph is covered, and synchronized-time/RNG state is captured before a callback runs. `ServerEngine::CreateSnapshot()` composes the stable subset: it rejects counted runtime-only script/delayed/time-event/movement blockers, flushes exact time/id, and returns the database payload bytes together with the state that describes them. Fresh construction takes that pair back, restores the random state before startup jobs, loads the payload into storage, and validates its time/id before gameplay hooks. Atomic slot publication, persistent time-event/movement forms, project eligibility, UI policy, integrity/rotation, and coordinated client reload remain embedding-layer work. See [ServerRuntime.md](ServerRuntime.md) and [Persistence.md](Persistence.md) for the exact guarantees and exclusions.
 
 ## Client and server layers
 
@@ -88,7 +97,7 @@ Platform workflow docs:
 
 - `Source/Scripting/AngelScript/`
 - `Source/Scripting/Native/`
-- `Source/Scripting/Mono/`
+- `Source/Scripting/Managed/`
 - `Source/Scripting/*ScriptMethods.cpp`
 
 The engine owns the reusable script/native bridge. A game project owns concrete game script modules and gameplay logic.

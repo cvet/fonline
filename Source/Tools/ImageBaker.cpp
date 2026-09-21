@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -61,7 +61,7 @@ struct SpriteInfoBakingStats
 };
 
 // clang-format off
-alignas(ucolor) static uint8_t FoPalette[] = {
+alignas(ucolor) static const uint8_t FoPalette[] = {
     // Transparent color
     0x00, 0x00, 0x00, 0x00,
     // Default colors
@@ -246,7 +246,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
             sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
-            WriteLog("Image baking error: {}", ex.what());
+            logging::write("Image baking error: {}", ex.what());
             errors++;
         }
     }
@@ -288,7 +288,7 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
     FO_STACK_TRACE_ENTRY();
 
     vector<uint8_t> data;
-    auto writer = DataWriter(data);
+    auto writer = data_writer(data);
 
     auto dirs = numeric_cast<uint8_t>(collection.HaveDirs ? GameSettings::MAP_DIR_COUNT : 1);
     SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
@@ -309,11 +309,11 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
         .Collections = 1,
         .Directions = dirs,
     };
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
-    writer.Write<uint8_t>(SPRITE_RESOURCE_VERSION);
-    writer.Write<uint16_t>(collection.SequenceSize);
-    writer.Write<uint16_t>(collection.AnimTicks);
-    writer.Write<uint8_t>(dirs);
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_VERSION);
+    writer.write<uint16_t>(collection.SequenceSize);
+    writer.write<uint16_t>(collection.AnimTicks);
+    writer.write<uint8_t>(dirs);
 
     for (uint8_t dir = 0; dir < dirs; dir++) {
         const auto& sequence = dir == 0 ? collection.Main : collection.Dirs[dir - 1];
@@ -349,7 +349,7 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
             const auto& shot = sequence.Frames[i];
             SpriteFrameInfo& frame_info = direction_info.Frames[numeric_cast<size_t>(i)];
             stats.FrameSlots++;
-            writer.Write<bool>(shot.Shared);
+            writer.write<bool>(shot.Shared);
 
             if (!shot.Shared) {
                 stats.UniqueFrames++;
@@ -438,42 +438,42 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
                     });
                 }
 
-                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.x));
-                writer.Write<int16_t>(numeric_cast<int16_t>(frame_offset.y));
-                writer.Write<uint16_t>(bake_shot->Width);
-                writer.Write<uint16_t>(bake_shot->Height);
-                writer.Write<int16_t>(bake_shot->NextX);
-                writer.Write<int16_t>(bake_shot->NextY);
+                writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.x));
+                writer.write<int16_t>(numeric_cast<int16_t>(frame_offset.y));
+                writer.write<uint16_t>(bake_shot->Width);
+                writer.write<uint16_t>(bake_shot->Height);
+                writer.write<int16_t>(bake_shot->NextX);
+                writer.write<int16_t>(bake_shot->NextY);
                 frame_info.Offset = frame_offset;
                 frame_info.Size = cropped_size;
                 frame_info.NextOffset = {bake_shot->NextX, bake_shot->NextY};
 
                 if (!bake_shot->Data.empty()) {
-                    writer.WriteBytes({bake_shot->Data.data(), bake_shot->Data.size()});
+                    writer.write_bytes({bake_shot->Data.data(), bake_shot->Data.size()});
                 }
 
-                writer.Write<uint8_t>(static_cast<uint8_t>(mesh.Kind));
+                writer.write<uint8_t>(static_cast<uint8_t>(mesh.Kind));
 
                 if (mesh.Kind == SpriteMeshKind::Mesh) {
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.Vertices.size()));
-                    writer.Write<uint32_t>(numeric_cast<uint32_t>(mesh.Data.Indices.size()));
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.width));
-                    writer.Write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.height));
-                    writer.Write<int32_t>(mesh.Data.SourceOffset.x);
-                    writer.Write<int32_t>(mesh.Data.SourceOffset.y);
+                    writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.Vertices.size()));
+                    writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Data.Indices.size()));
+                    writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.width));
+                    writer.write<uint16_t>(numeric_cast<uint16_t>(mesh.Data.SourceSize.height));
+                    writer.write<int32_t>(mesh.Data.SourceOffset.x);
+                    writer.write<int32_t>(mesh.Data.SourceOffset.y);
 
                     for (ipos32 vertex : mesh.Data.Vertices) {
-                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
-                        writer.Write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
+                        writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.x));
+                        writer.write<uint16_t>(numeric_cast<uint16_t>(vertex.y));
                     }
                     for (uint16_t index : mesh.Data.Indices) {
-                        writer.Write<uint16_t>(index);
+                        writer.write<uint16_t>(index);
                     }
                 }
             }
             else {
                 stats.SharedFrameReferences++;
-                writer.Write<uint16_t>(shot.SharedIndex);
+                writer.write<uint16_t>(shot.SharedIndex);
                 FO_VERIFY_AND_THROW(shot.SharedIndex < i, "Shared sprite frame points outside previously baked frames", fname, dir, i, shot.SharedIndex);
                 frame_info = direction_info.Frames[shot.SharedIndex];
                 frame_info.SharedFrameIndex = shot.SharedIndex;
@@ -481,7 +481,7 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
         }
     }
 
-    writer.Write<uint8_t>(SPRITE_RESOURCE_MAGIC);
+    writer.write<uint8_t>(SPRITE_RESOURCE_MAGIC);
 
     _context->WriteData(output_path, data);
 
@@ -531,7 +531,7 @@ static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -
     for (uint16_t y = 0; y < shot.Height; y++) {
         size_t source_offset = numeric_cast<size_t>(y) * source_row_size;
         size_t destination_offset = numeric_cast<size_t>(numeric_cast<int32_t>(y) + padding) * destination_row_size + destination_x_offset;
-        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
+        memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, source_row_size);
     }
 
     return result;
@@ -624,7 +624,7 @@ static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const
         size_t source_y = numeric_cast<size_t>(numeric_cast<int32_t>(y) + minimum_vertex.y);
         size_t source_offset = source_y * source_row_size + source_x_offset;
         size_t destination_offset = numeric_cast<size_t>(y) * cropped_row_size;
-        MemCopy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
+        memory::copy(result.Data.data() + destination_offset, shot.Data.data() + source_offset, cropped_row_size);
     }
 
     return optional<ImageBaker::FrameShot> {std::move(result)};
@@ -812,14 +812,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         collection.NewName = strex(fname).lower();
     }
 
-    // Animate pixels
-    // 0x00 - None
-    // 0x01 - Slime, 229 - 232, 4 frames
-    // 0x02 - Monitors, 233 - 237, 5 frames
-    // 0x04 - FireSlow, 238 - 242, 5 frames
-    // 0x08 - FireFast, 243 - 247, 5 frames
-    // 0x10 - Shoreline, 248 - 253, 6 frames
-    // 0x20 - BlinkingRed, 254, 15 frames
+    // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
@@ -859,7 +852,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
+        const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -874,7 +867,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = span<ucolor> {custom_palette};
+            palette = const_span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
@@ -1074,14 +1067,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         collection.NewName = strex("{}.{}", strvex(fname).erase_file_extension(), "frm");
     }
 
-    // Animate pixels
-    // 0x00 - None
-    // 0x01 - Slime, 229 - 232, 4 frames
-    // 0x02 - Monitors, 233 - 237, 5 frames
-    // 0x04 - FireSlow, 238 - 242, 5 frames
-    // 0x08 - FireFast, 243 - 247, 5 frames
-    // 0x10 - Shoreline, 248 - 253, 6 frames
-    // 0x20 - BlinkingRed, 254, 15 frames
+    // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
     uint32_t anim_pix_type = 0;
     const uint8_t blinking_red_vals[10] = {254, 210, 165, 120, 75, 45, 90, 135, 180, 225};
 
@@ -1131,7 +1117,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
         }
 
         // Make palette
-        span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
+        const_span<ucolor> palette = bytes_to_objects<ucolor>(span {FoPalette});
         ucolor custom_palette[256];
         File palette_file = files.FindFileByPath(strex("{}.pal", strvex(fname).erase_file_extension()));
 
@@ -1146,7 +1132,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
             }
 
             custom_palette[0] = ucolor {0};
-            palette = span<ucolor> {custom_palette};
+            palette = const_span<ucolor> {custom_palette};
         }
 
         for (uint16_t frm = 0; frm < frm_count; frm++) {
@@ -1420,7 +1406,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
             if (frame_spec_len != 0) {
                 string frame_spec {opt.substr(i + 1, frame_spec_len)};
-                istringstream idelim(frame_spec);
+                istringstream idelim(make_stream_string(frame_spec));
                 char ch = 0;
 
                 if (frame_spec.find('-') != string::npos) {
@@ -1442,11 +1428,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
     struct ArtHeader
     {
         int32_t Flags {};
-        // 0x00000001 = Static - no rotation, contains frames only for south direction.
-        // 0x00000002 = Critter - uses delta attribute, while playing walking animation.
-        // 0x00000004 = Font - X offset is equal to number of pixels to advance horizontally for next
-        // character. 0x00000008 = Facade - requires fackwalk file. 0x00000010 = Unknown - used in eye candy,
-        // for example, DIVINATION.art.
+        // Flags: 0x01 static, 0x02 critter delta, 0x04 font advance, 0x08 facade walk data, 0x10 eye-candy extension
         int32_t FrameRate {};
         int32_t RotationCount {};
         uint32_t PaletteList[4] {};
@@ -1696,11 +1678,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             dir_spr = (dir + 2) % 8;
         }
 
-        // Color offsets
-        // 0 - other
-        // 1 - skin
-        // 2 - hair
-        // 3 - armor
+        // Color offsets: 0 other, 1 skin, 2 hair, 3 armor
         int32_t rgb_offs[4][3] = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
 
         // Format: fileName$[1,100,0,0][2,0,0,100]animName.spr
@@ -1723,7 +1701,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
                 }
             }
 
-            istringstream ientry(entry);
+            istringstream ientry(make_stream_string(entry));
 
             // Parse numbers
             int32_t rgb[4];
@@ -1883,7 +1861,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             uint32_t unpacked_len = reader.GetLEUInt32();
             FO_VERIFY_AND_THROW(data_len != 0, "Packed SPR frame has zero data length");
             const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
-            auto unpacked_data = Compressor::Decompress(spr_data, unpacked_len / data_len + 1);
+            auto unpacked_data = compressor::decompress(spr_data, unpacked_len / data_len + 1);
 
             if (unpacked_data.empty()) {
                 throw ImageBakerException("Can't unpack SPR data", fname);
@@ -1896,7 +1874,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
             const_span<uint8_t> spr_data = reader.GetCurDataSpan(data_len);
 
             if (!spr_data.empty()) {
-                MemCopy(data.data(), spr_data.data(), spr_data.size());
+                memory::copy(data.data(), spr_data.data(), spr_data.size());
             }
         }
 
@@ -2380,7 +2358,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
         packed_data[0] = 0x78;
         packed_data[1] = 0x9C;
 
-        unpacked_data = Compressor::Decompress(packed_data, unpacked_len / reader.GetSize() + 1);
+        unpacked_data = compressor::decompress(packed_data, unpacked_len / reader.GetSize() + 1);
 
         if (unpacked_data.empty()) {
             throw ImageBakerException("Can't unpack MOS file", fname);
@@ -2477,7 +2455,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
     // Format: fileName$5-6.bam
     string opt_str = string(opt);
-    istringstream idelim(opt_str);
+    istringstream idelim(make_stream_string(opt_str));
     int32_t need_cycle = 0;
     int32_t specific_frame = -1;
     idelim >> need_cycle;
@@ -2512,7 +2490,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
         packed_data[0] = 0x78;
         packed_data[1] = 0x9C;
 
-        unpacked_data = Compressor::Decompress(packed_data, unpacked_len / reader.GetSize() + 1);
+        unpacked_data = compressor::decompress(packed_data, unpacked_len / reader.GetSize() + 1);
 
         if (unpacked_data.empty()) {
             throw ImageBakerException("Cab't unpack BAM file", fname);
@@ -2685,7 +2663,7 @@ static auto PngMalloc(png_structp png_ptr, png_alloc_size_t size) -> png_voidp
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(png_ptr);
-    return SafeAlloc::MallocRaw(size).get();
+    return safe_alloc::malloc_raw(size).get();
 }
 
 static void PngFree(png_structp png_ptr, png_voidp mem)
@@ -2693,7 +2671,7 @@ static void PngFree(png_structp png_ptr, png_voidp mem)
     FO_NO_STACK_TRACE_ENTRY();
 
     ignore_unused(png_ptr);
-    SafeAlloc::FreeRaw(mem);
+    safe_alloc::free_raw(mem);
 }
 
 static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
@@ -2718,7 +2696,6 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
             {
                 ignore_unused(png_ptr);
                 ignore_unused(error_msg);
-                // WriteLog("PNG loading warning: {}", error_msg);
             }
         };
 
@@ -2739,7 +2716,7 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
                 FO_VERIFY_AND_THROW(io_ptr, "PNG read cursor is null");
                 auto source = make_ptr(*io_ptr);
                 auto target = make_ptr(png_data);
-                MemCopy(target, source, length);
+                memory::copy(target, source, length);
                 auto next_source = source.offset(length);
                 *io_ptr = next_source.get();
             }
@@ -2812,7 +2789,7 @@ static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& re
         if (cur_pos + len <= data.size()) {
             if (len != 0) {
                 auto source = make_ptr(data.data() + cur_pos);
-                MemCopy(out, source, len);
+                memory::copy(out, source, len);
             }
 
             cur_pos += (len);

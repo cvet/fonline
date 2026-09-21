@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -192,7 +192,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     string_view depth_func_default = fofx.GetAsStr("Effect", "DepthFunc", "Always");
 
     // Opting in builds the alternative depth-state variants so a draw can select one; without it the effect only ever
-    // uses the state declared here and costs exactly what it did before.
+    // uses the state declared here and costs exactly what it did before
     _depthVariants = strvex(fofx.GetAsStr("Effect", "DepthVariants", "False")).to_bool();
     _cullVariants = strvex(fofx.GetAsStr("Effect", "CullVariants", "False")).to_bool();
 
@@ -331,7 +331,7 @@ auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
     FO_VERIFY_AND_THROW(pass < _passCount, "Depth variant pass is outside the effect's pass range", _name, pass + 1, _passCount);
 
     // The slot encodes the resolved state rather than the requested variant, so an effect that declares no variants
-    // can still use an equivalent requested state when it lands on the single slot the effect built.
+    // can still use an equivalent requested state when it lands on the single slot the effect built
     size_t slot = GetDepthWrite(pass) ? 1 : 0;
 
     if (GetDepthFunc(pass) == DepthFuncType::Always) {

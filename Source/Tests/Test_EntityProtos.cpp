@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -77,8 +78,8 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring knife_pid = meta.Hashes.ToHashedString("Knife");
-        hstring raider_pid = meta.Hashes.ToHashedString("Raider");
+        hstring knife_pid = meta.Hashes.to_hashed_string("Knife");
+        hstring raider_pid = meta.Hashes.to_hashed_string("Raider");
         auto item_registrar = meta.GetPropertyRegistrar("Item");
         auto critter_registrar = meta.GetPropertyRegistrar("Critter");
 
@@ -89,11 +90,11 @@ TEST_CASE("EntityProtos")
         ProtoCritter critter_proto {raider_pid, critter_registrar};
 
         CHECK(item_proto.GetProtoId() == knife_pid);
-        CHECK(item_proto.GetTypeName() == meta.Hashes.ToHashedString("Item"));
+        CHECK(item_proto.GetTypeName() == meta.Hashes.to_hashed_string("Item"));
         CHECK(item_proto.GetName() == string_view {"Knife"});
 
         CHECK(critter_proto.GetProtoId() == raider_pid);
-        CHECK(critter_proto.GetTypeName() == meta.Hashes.ToHashedString("Critter"));
+        CHECK(critter_proto.GetTypeName() == meta.Hashes.to_hashed_string("Critter"));
         CHECK(critter_proto.GetName() == string_view {"Raider"});
     }
 
@@ -105,11 +106,11 @@ TEST_CASE("EntityProtos")
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
-        hstring custom_pid = meta.Hashes.ToHashedString("TestProto");
+        hstring custom_pid = meta.Hashes.to_hashed_string("TestProto");
         ProtoCustomEntity proto {custom_pid, registrar};
 
         CHECK(proto.GetProtoId() == custom_pid);
-        CHECK(proto.GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(proto.GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
         CHECK(proto.GetName() == string_view {"TestProto"});
     }
 
@@ -118,14 +119,14 @@ TEST_CASE("EntityProtos")
         EngineMetadata meta {[] { }};
         InitEntityProtoTestMetadata(meta);
 
-        hstring custom_pid = meta.Hashes.ToHashedString("HeldProto");
+        hstring custom_pid = meta.Hashes.to_hashed_string("HeldProto");
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
         optional<TestEntityHolder> holder;
 
         {
-            refcount_ptr<ProtoEntity> proto = SafeAlloc::MakeRefCounted<ProtoCustomEntity>(custom_pid, registrar);
+            refcount_ptr<ProtoEntity> proto = safe_alloc::make_refcounted<ProtoCustomEntity>(custom_pid, registrar);
             holder.emplace(proto);
         }
 
@@ -134,7 +135,7 @@ TEST_CASE("EntityProtos")
         auto held_proto = holder->GetProto();
         CHECK(holder->GetProtoId() == custom_pid);
         CHECK(held_proto->GetName() == string_view {"HeldProto"});
-        CHECK(held_proto->GetTypeName() == meta.Hashes.ToHashedString("TestEntity"));
+        CHECK(held_proto->GetTypeName() == meta.Hashes.to_hashed_string("TestEntity"));
     }
 
     SECTION("LifecycleLatchesAreVisibleAcrossThreads")
@@ -145,7 +146,7 @@ TEST_CASE("EntityProtos")
         auto registrar = meta.GetPropertyRegistrar("TestEntity");
         REQUIRE(static_cast<bool>(registrar));
 
-        refcount_ptr<TestLifecycleEntity> entity = SafeAlloc::MakeRefCounted<TestLifecycleEntity>(registrar);
+        refcount_ptr<TestLifecycleEntity> entity = safe_alloc::make_refcounted<TestLifecycleEntity>(registrar);
         std::atomic_bool reader_started {false};
         std::atomic_bool saw_destroying {false};
         std::atomic_bool saw_destroyed {false};

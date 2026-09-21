@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,12 @@
 
 #if FO_ANGELSCRIPT_SCRIPTING
 
+#include "AngelScriptArray.h"
 #include "AngelScriptAttributes.h"
 #include "AngelScriptBackend.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
+#include "AngelScriptDict.h"
 #include "AngelScriptHelpers.h"
 #include "Settings.h"
 
@@ -73,9 +75,16 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
     obj_infos.reserve(ArgsCount);
 
     for (AngelScript::asUINT i = 1; i < numeric_cast<AngelScript::asUINT>(generic->GetArgCount()); i++) {
-        auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
         int32_t obj_type_id = generic->GetArgTypeId(i);
-        obj_infos.emplace_back(obj ? GetScriptObjectInfo(obj, obj_type_id) : string {"null"});
+        bool is_handle = (obj_type_id & AngelScript::asTYPEID_OBJHANDLE) != 0;
+        int32_t base_type_id = obj_type_id & ~(AngelScript::asTYPEID_OBJHANDLE | AngelScript::asTYPEID_HANDLETOCONST);
+        auto obj = NativeDataProvider::ReadHandleSlot(GetGenericAddressArg(generic, i));
+
+        if (is_handle && obj) {
+            obj = NativeDataProvider::ReadHandleSlot(obj);
+        }
+
+        obj_infos.emplace_back(obj ? GetScriptObjectInfo(obj, base_type_id) : string {"null"});
     }
 
     ThrowWithArgs(*message, obj_infos, std::make_index_sequence<ArgsCount> {});
@@ -115,6 +124,32 @@ static auto Global_GetContextExceptionCount() -> int32_t
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
     FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
     return ctx_ext->ExceptionCount;
+}
+
+static auto Global_GetExceptionInfo() -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto ctx = make_nptr(AngelScript::asGetActiveContext());
+    FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
+    auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
+    FO_VERIFY_AND_THROW(ctx_ext, "Missing extended script execution context");
+
+    // AngelScript reports a native throw as a generic string, so the real message is the stored engine
+    // exception. Reading consumes it, or the next catch in this context would inherit it
+    if (std::exception_ptr ex = std::exchange(ctx_ext->Exception, {}); ex) {
+        try {
+            std::rethrow_exception(ex);
+        }
+        catch (const std::exception& handled_ex) {
+            return string {handled_ex.what()};
+        }
+        catch (...) {
+            FO_UNKNOWN_EXCEPTION();
+        }
+    }
+
+    return string {ctx->GetExceptionString() != nullptr ? ctx->GetExceptionString() : ""};
 }
 
 static void Global_RunScriptGC()
@@ -158,7 +193,23 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
     return arg_types;
 }
 
-static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg) -> bool
+static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT result_arg) -> ComplexTypeDesc
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
+    int32_t result_type_id = gen->GetArgTypeId(result_arg);
+    auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
+
+    if (!result_type) {
+        nptr<const char> type_decl = as_engine->GetTypeDeclaration(result_type_id, true);
+        throw ScriptException("Unsupported invoke result type", type_decl ? type_decl.get() : "<unknown>");
+    }
+
+    return result_type;
+}
+
+static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg, nptr<void> ret_data = nullptr) -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -173,14 +224,12 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
         ptr<void> arg_data = gen->GetArgAddress(first_arg + numeric_cast<AngelScript::asUINT>(index));
         auto arg_type = make_ptr(&func_desc->Args[index].Type);
 
-        // Mutable simple arguments follow the unified slot contract: the slot is the address of the
-        // caller's variable (the value itself or the handle cell), which GetArgAddress already returns
-        // for the '?&' variadic reference. Non-mutable entity/ref-type and collection arguments are
-        // re-packed into a local handle cell so the callee sees a plain handle slot.
+        // Slot contract: a mutable simple argument is already the caller's variable address, so only
+        // the other kinds are re-packed into a local handle cell for the callee to read as a handle
         bool repack_into_handle_cell = arg_type->Kind != ComplexTypeKind::Simple || (!arg_type->IsMutable && (arg_type->BaseType.IsEntity || arg_type->BaseType.IsRefType));
 
         if (repack_into_handle_cell) {
-            indirect_args[index] = MemReadUnaligned<void*>(arg_data);
+            indirect_args[index] = memory::read_unaligned<void*>(arg_data);
             args_data.emplace_back(make_ptr(indirect_args[index].get_pp()).void_cast());
         }
         else {
@@ -191,13 +240,14 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
     auto accessor = make_ptr(&SCRIPT_DATA_ACCESSOR);
     FuncCallData call {.Accessor = accessor};
     call.ArgsData = const_span<ptr<void>> {args_data.data(), args_data.size()};
+    call.RetData = ret_data;
 
     try {
         func_desc->Call(call);
         return true;
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndContinue(ex);
+        exceptions::report_and_continue(ex);
         return false;
     }
 }
@@ -250,7 +300,7 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto func_name = GetGenericAddressArgAs<const string>(gen, 0);
-    hstring hashed_func_name = engine->Hashes.ToHashedString(*func_name);
+    hstring hashed_func_name = engine->Hashes.to_hashed_string(*func_name);
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto arg_types = ResolveInvokeArgTypes(generic, 1);
     auto func_desc = engine->FindFunc(hashed_func_name, span(arg_types));
@@ -260,6 +310,44 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
     }
 
     bool result = InvokeResolvedFunction(func_desc, generic, 1);
+    new (gen->GetAddressOfReturnLocation()) bool(result);
+}
+
+static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<BaseEngine> engine = GetGameEngine(gen->GetEngine());
+    const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
+    hstring hashed_func_name = engine->Hashes.to_hashed_string(func_name);
+    auto result_type = ResolveInvokeResultType(gen, 1);
+    auto arg_types = ResolveInvokeArgTypes(gen, 2);
+    nptr<ScriptFuncDesc> nullable_func_desc = engine->FindFunc(hashed_func_name, span(arg_types), result_type);
+
+    if (!nullable_func_desc) {
+        throw ScriptException("Script function not found", func_name);
+    }
+
+    ptr<const ScriptFuncDesc> func_desc = nullable_func_desc.as_ptr();
+
+    // ?&out starts with a null collection handle; accessors require a live destination
+    if (result_type.Kind == ComplexTypeKind::Array || result_type.Kind == ComplexTypeKind::Dict || result_type.Kind == ComplexTypeKind::DictOfArray) {
+        ptr<void> result_addr = gen->GetArgAddress(1);
+
+        if (!NativeDataProvider::ReadHandleSlot(result_addr)) {
+            nptr<AngelScript::asITypeInfo> collection_type = gen->GetEngine()->GetTypeInfoById(gen->GetArgTypeId(1));
+            FO_VERIFY_AND_THROW(collection_type, "InvokeResult collection result type is unavailable", func_name);
+
+            if (result_type.Kind == ComplexTypeKind::Array) {
+                NativeDataProvider::WriteHandleSlot(result_addr, ScriptArray::Create(collection_type.as_ptr()).release_ownership());
+            }
+            else {
+                NativeDataProvider::WriteHandleSlot(result_addr, ScriptDict::Create(collection_type.as_ptr()).release_ownership());
+            }
+        }
+    }
+
+    bool result = InvokeResolvedFunction(func_desc, gen, 2, gen->GetArgAddress(1));
     new (gen->GetAddressOfReturnLocation()) bool(result);
 }
 
@@ -326,8 +414,31 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
     if (!failed) {
         const auto& enum_type = meta->GetBaseType(*enum_name);
         auto result_arg = GetGenericArgAddress(gen, 1);
-        MemFill(result_arg, 0, enum_type.Size);
-        MemCopy(result_arg, &enum_value, enum_type.Size);
+        memory::fill(result_arg, 0, enum_type.Size);
+        memory::copy(result_arg, &enum_value, enum_type.Size);
+    }
+
+    new (gen->GetAddressOfReturnLocation()) bool(!failed);
+}
+
+static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
+    auto meta = GetEngineMetadata(as_engine);
+    auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
+    int32_t enum_index = 0;
+    const auto& enum_type = meta->GetBaseType(*enum_name);
+    auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
+    memory::copy(&enum_index, enum_arg, enum_type.Size);
+
+    bool failed = false;
+    string enum_value_name {meta->ResolveEnumValueName(*enum_name, enum_index, &failed)};
+
+    if (!failed) {
+        auto result_arg = GetGenericArgAddressAs<string>(gen, 1);
+        *result_arg = std::move(enum_value_name);
     }
 
     new (gen->GetAddressOfReturnLocation()) bool(!failed);
@@ -343,7 +454,7 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
     int32_t enum_index = 0;
     const auto& enum_type = meta->GetBaseType(*enum_name);
     auto enum_arg = GetGenericAddressArgAs<const void>(gen, 0);
-    MemCopy(&enum_index, enum_arg, enum_type.Size);
+    memory::copy(&enum_index, enum_arg, enum_type.Size);
     bool full_spec = *GetGenericAddressArgAs<bool>(gen, 1);
 
     bool failed = false;
@@ -476,7 +587,7 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
     auto arr = CreateScriptArray(as_engine, SettingScalarTypeNames<T>::ArrayName);
     arr->Reserve(numeric_cast<int32_t>(vec->size()));
 
-    // Handle vector<bool> in a special way since it has a non-standard reference proxy type.
+    // Handle vector<bool> in a special way since it has a non-standard reference proxy type
     for (size_t i = 0; i < vec->size(); i++) {
         T value = (*vec)[i];
         arr->InsertLast(make_nptr(&value).void_cast());
@@ -541,7 +652,7 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
             }
 
             // The textual check above misses numeric overflow: a value finite in float64 can still
-            // become infinity when narrowed to float32, so the parsed result is validated too.
+            // become infinity when narrowed to float32, so the parsed result is validated too
             float32_t float_value = strvex(value).to_float32();
 
             if (!std::isfinite(float_value)) {
@@ -731,12 +842,14 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetGlobalExceptionCount()", FO_SCRIPT_FUNC(Global_GetGlobalExceptionCount), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("int GetContextExceptionCount()", FO_SCRIPT_FUNC(Global_GetContextExceptionCount), FO_SCRIPT_FUNC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string GetExceptionInfo()", FO_SCRIPT_FUNC(Global_GetExceptionInfo), FO_SCRIPT_FUNC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("void RunScriptGC()", FO_SCRIPT_FUNC(Global_RunScriptGC), FO_SCRIPT_FUNC_CONV));
 
     // Global instances
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("GameSingleton@ get_Game()", FO_SCRIPT_GENERIC(Global_GetGame), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool get_IsGameDestroying()", FO_SCRIPT_GENERIC(Global_IsGameDestroying), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool Invoke(string funcName, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByName), FO_SCRIPT_GENERIC_CONV));
+    FO_AS_VERIFY(as_engine->RegisterGlobalFunction("bool InvokeResult(string funcName, ?&out result, const ?&in ...)", FO_SCRIPT_GENERIC(Global_InvokeByNameWithResult), FO_SCRIPT_GENERIC_CONV));
     FO_AS_VERIFY(as_engine->RegisterGlobalFunction("string NameOf(?&in obj)", FO_SCRIPT_GENERIC(Global_NameOf), FO_SCRIPT_GENERIC_CONV));
 
     // Enum helpers
@@ -744,6 +857,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("{} ParseEnum_{}(string valueName)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_ParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryParseEnum(string valueName, {}&out result)", enum_name, enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryParseEnum), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
         FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("string EnumToString({} value, bool fullSpecification = false)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_EnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
+        FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", strex("bool TryEnumToString({} value, string&out result)", enum_name).c_str(), FO_SCRIPT_GENERIC(Game_TryEnumToString), FO_SCRIPT_GENERIC_CONV, make_nptr(&enum_name).void_cast()));
     }
 
     FO_AS_VERIFY(as_engine->RegisterObjectMethod("GameSingleton", "int ParseGenericEnum(string enumName, string valueName)", FO_SCRIPT_FUNC_THIS(Game_ParseGenericEnum), FO_SCRIPT_FUNC_THIS_CONV));
@@ -767,7 +881,7 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
             FO_AS_VERIFY(as_engine->SetDefaultNamespace(""));
 
             // Hand the array's owned reference to the shutdown cleanup so it outlives this scope but is
-            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle).
+            // released exactly once at teardown (the `get_*()` accessor returns a borrowed auto-handle)
             backend->AddCleanupCallback([raw = enums_arr.release_ownership()]() FO_DEFERRED { raw->Release(); });
         }
     }
@@ -834,10 +948,9 @@ void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
     static GlobalSettings dummy_settings(false);
     auto settings = backend->HasGameEngine() ? backend->GetGameEngine()->Settings : make_ptr(&dummy_settings);
 
-#define FIXED_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, const_cast<type&>(settings->name), false)
-#define VARIABLE_SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, settings->name, true)
-#define SETTING_GROUP(name, ...)
-#define SETTING_GROUP_END()
+#define SETTING(type, group, name, ...) register_engine_setting.operator()<type>(ensure_setting_group(vector<string> {#group}), #name, const_cast<type&>(settings->group.name), false)
+#define SETTING_GROUP(group, ...)
+#define SETTING_GROUP_END(group)
 #include "Settings.inc"
 
     for (const auto& [setting_name, setting_type] : meta->GetGameSettings()) {

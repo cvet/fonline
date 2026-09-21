@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -71,7 +71,7 @@ public:
         msize MapSize {};
         nanotime FrameTime {};
         Origin FogOrigin {};
-        function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
+        copyable_function<mpos(mpos, mpos, int32_t, bool)> TraceBulletToBlock {};
     };
 
     FogShape() = default;
@@ -105,8 +105,8 @@ private:
     bool _lastEnabled {true};
     bool _transitionActive {};
     bool _collapsingToOff {}; // the active transition shrinks to center and clears the fog when it completes
-    unique_ptr<ipos32> _drawOffset {SafeAlloc::MakeUnique<ipos32>()};
-    unique_ptr<ipos32> _baseDrawOffset {SafeAlloc::MakeUnique<ipos32>()};
+    unique_ptr<ipos32> _drawOffset {safe_alloc::make_unique<ipos32>()};
+    unique_ptr<ipos32> _baseDrawOffset {safe_alloc::make_unique<ipos32>()};
     Origin _lastOrigin {};
     int32_t _lastDistance {};
     int32_t _lastRadius {};

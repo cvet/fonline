@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include <filesystem>
 
@@ -75,7 +76,7 @@ namespace
 
     static auto MakeServerHealthFileName() -> string
     {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
 
         return strex("{}_Health.txt", exe_path ? strvex(exe_path.value()).extract_file_name().erase_file_extension() : string_view(FO_DEV_NAME));
     }
@@ -83,31 +84,29 @@ namespace
     static auto MakeTempServerResourceDir(string_view name) -> string
     {
         auto base = std::filesystem::temp_directory_path() / std::format("lf_server_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
-        return fs_path_to_string(base);
+        return fs::path_to_string(base);
     }
 
     static void RemoveServerHealthFile(string_view name) noexcept
     {
         std::error_code ec;
-        (void)std::filesystem::remove(std::filesystem::path {fs_make_path(name)}, ec);
+        (void)std::filesystem::remove(std::filesystem::path {fs::make_path(name)}, ec);
     }
 
     static auto MakeEmptyMapBlob() -> vector<uint8_t>
     {
         vector<uint8_t> map_data;
-        auto writer = DataWriter(map_data);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
+        auto writer = data_writer(map_data);
+        writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
+        writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         return map_data;
     }
 
-    // A SUSTAINED state-mutex hold is an impossible state for a covered target (it can only be produced
-    // synthetically, as here): the retry loop absorbs transient windows, so an unending one exhausts the
-    // livelock valve and throws. Asserts that the give-up is the retry budget's own and not the watchdog's
-    // rescue, by requiring the contention to still be held when the throw lands. A wall-clock budget cannot
-    // state that: the budget is a count of attempts whose back-off sleeps are stretched by the platform's
-    // timer granularity, so on a loaded machine an absolute deadline measures the scheduler, not the code.
+    // A sustained hold is impossible for a covered target, so this pins that the give-up comes from the retry
+    // budget and not the watchdog, by requiring the contention to still be held when the throw lands
     static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
         FO_STACK_TRACE_ENTRY();
@@ -131,9 +130,8 @@ namespace
             std::this_thread::yield();
         }
 
-        // Safety net only — it must stay well above the retry budget (which on a coarse-timer platform is
-        // dominated by the sleep granularity), so releasing early can never turn the expected throw into a
-        // success and mask a regression.
+        // A safety net that must stay well above the retry budget, or releasing early would turn the expected
+        // throw into a success and mask a regression
         std::jthread contention_watchdog {[&](std::stop_token) {
             for (int32_t i = 0; i < 10000 && !ensure_finished.load(std::memory_order_acquire); i++) {
                 std::this_thread::sleep_for(std::chrono::milliseconds {1});
@@ -144,8 +142,8 @@ namespace
 
         CHECK_THROWS_WITH(ctx.EnsureEntitySynced(target), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
-        // Read before the test releases the contention itself, so this reflects only the watchdog.
-        const bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
+        // Read before the test releases the contention itself, so this reflects only the watchdog
+        bool rescued_by_watchdog = release_state.load(std::memory_order_acquire);
         ensure_finished.store(true, std::memory_order_release);
         release_state.store(true, std::memory_order_release);
         state_owner.join();
@@ -154,9 +152,8 @@ namespace
         CHECK_FALSE(rescued_by_watchdog);
     }
 
-    // The realistic counterpart: a foreign thread that holds the state mutex only for the microsecond-to-
-    // millisecond span of its own non-blocking pass. Retention must retry THROUGH that window and land,
-    // because for a covered target such a block always clears on its own.
+    // The realistic counterpart, where a foreign thread holds the mutex only for its own non-blocking pass:
+    // retention must retry through that window and land
     static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
         FO_STACK_TRACE_ENTRY();
@@ -185,24 +182,24 @@ namespace
         auto registrar = proto_engine.GetPropertyRegistrar(type_name);
         REQUIRE(static_cast<bool>(registrar));
 
-        ProtoMap proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
+        ProtoMap proto {proto_engine.Hashes.to_hashed_string(proto_name), registrar};
         proto.SetSize(map_size);
         proto.GetProperties()->StoreAllData(props_data, str_hashes);
 
         vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
+        auto writer = data_writer(protos_data);
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
         ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
+        writer.write_string_bytes(type_name.as_str());
+        writer.write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
+        writer.write_string_bytes(proto_name);
+        writer.write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
         if (!props_data.empty()) {
-            writer.WriteBytes({props_data.data(), props_data.size()});
+            writer.write_bytes({props_data.data(), props_data.size()});
         }
 
         return protos_data;
@@ -227,20 +224,12 @@ namespace ServerEngineTest
     int ImmediateInitOrder = 0;
     int DeferredInitOrder = 0;
 
-    // Deterministic seam for the item-move conservation regression: when armed, the next OnItemInit
-    // (which fires from inside CreateItem) mutates the SOURCE stack's count. CreateItem runs between
-    // SplitItem's count read and its write, so this reproduces — single-threaded and deterministically —
-    // the exact effect of a concurrent split/merge landing during CreateItem's sync-cover yield.
-    ident SplitInjectSourceId;
-    int SplitInjectAmount = 0;
-
     [[ModuleInit]]
     void RegisterHooks()
     {
         ImmediateInitOrder = ++ModuleInitOrder;
         Game.OnInit.Subscribe(OnInit);
         Game.OnCritterInit.Subscribe(OnCritterInit);
-        Game.OnItemInit.Subscribe(OnItemInit);
     }
 
     [[ModuleInit(2)]]
@@ -263,26 +252,13 @@ namespace ServerEngineTest
         LastCritterFirstTime = firstTime;
     }
 
-    [[Event]]
-    void OnItemInit(Item item, bool firstTime)
-    {
-        if (SplitInjectAmount != 0) {
-            int amount = SplitInjectAmount;
-            SplitInjectAmount = 0; // fire exactly once
-            Item? src = Game.GetItem(SplitInjectSourceId);
-            if (src !is null) {
-                src.Count += amount; // mutate the source mid-split, before SplitItem's write
-            }
-        }
-    }
-
-    void UnitTestArmSplitInjection(ident sourceId, int amount)
-    {
-        SplitInjectSourceId = sourceId;
-        SplitInjectAmount = amount;
-    }
-
     void UnitTestNoop() {}
+
+    [[Async]]
+    void UnitTestSuspend()
+    {
+        Yield(60000);
+    }
 
     void UnitTestMarkManualCall()
     {
@@ -452,67 +428,34 @@ namespace ServerEngineInitGateTest
             });
     }
 
-    // `MakeSingleProtoResourceBlob` builds a proto with default properties, which leaves `Stackable`
-    // false. The conservation stress (ServerEngineConcurrentItemTransferConservesTotal) needs a
-    // stackable item so `MoveItem` exercises the split/merge `count` read-modify-write. Mirror of the
-    // helper in Test_ServerMapOperations.cpp.
-    static auto MakeStackableItemProtoBlob(BakerServerEngine& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
-    {
-        vector<uint8_t> props_data;
-        set<hstring> str_hashes;
-
-        auto registrar = proto_engine.GetPropertyRegistrar(type_name);
-        ProtoItem proto {proto_engine.Hashes.ToHashedString(proto_name), registrar};
-        proto.SetStackable(true);
-        proto.GetProperties()->StoreAllData(props_data, str_hashes);
-
-        vector<uint8_t> protos_data;
-        auto writer = DataWriter(protos_data);
-
-        writer.Write<uint32_t>(uint32_t {0});
-        ignore_unused(str_hashes);
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(type_name.as_str().length()));
-        writer.WriteStringBytes(type_name.as_str());
-        writer.Write<uint16_t>(numeric_cast<uint16_t>(proto_name.length()));
-        writer.WriteStringBytes(proto_name);
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(props_data.size()));
-        writer.WriteBytes(props_data);
-
-        return protos_data;
-    }
-
     static auto MakeServerTestResources(ServerTestScriptMode script_mode = ServerTestScriptMode::Default) -> FileSystem
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_resources_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
+        auto compiler_resources_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineCompilerResources");
         compiler_resources_source->AddFile("Metadata.fometa-server", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_resources_source));
 
         BakerServerEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
-        hstring location_type = proto_engine.Hashes.ToHashedString("Location");
-        hstring map_type = proto_engine.Hashes.ToHashedString("Map");
-        hstring item_type = proto_engine.Hashes.ToHashedString("Item");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
+        hstring location_type = proto_engine.Hashes.to_hashed_string("Location");
+        hstring map_type = proto_engine.Hashes.to_hashed_string("Map");
+        hstring item_type = proto_engine.Hashes.to_hashed_string("Item");
         auto proto_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "UnitTestRat");
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "UnitTestLocation");
         auto map_blob = MakeMapProtoBlob(proto_engine, map_type, "UnitTestMap", SERVER_TEST_MAP_SIZE);
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
-        auto stackable_blob = MakeStackableItemProtoBlob(proto_engine, item_type, "UnitTestStackable");
         auto fomap_blob = MakeEmptyMapBlob();
         auto script_blob = script_mode == ServerTestScriptMode::Default ? MakeScriptBinary(compiler_resources) : MakeInitGateScriptBinary(compiler_resources, script_mode);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
         runtime_source->AddFile("ServerEngineTest.fopro-bin-server", proto_blob);
         runtime_source->AddFile("UnitTestLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("UnitTestMap.fopro-bin-server", map_blob);
         runtime_source->AddFile("UnitTestItem.fopro-bin-server", item_blob);
-        runtime_source->AddFile("UnitTestStackable.fopro-bin-server", stackable_blob);
         runtime_source->AddFile("UnitTestMap.fomap-bin-server", fomap_blob);
         runtime_source->AddFile(script_mode == ServerTestScriptMode::Default ? "ServerEngineTest.fos-bin-server" : "ServerEngineInitGateTest.fos-bin-server", std::move(script_blob));
 
@@ -538,14 +481,14 @@ namespace ServerEngineInitGateTest
         return "ServerEngine startup timed out";
     }
 
-    static auto MakeServerEngine(GlobalSettings& settings) -> refcount_ptr<ServerEngine>
+    static auto MakeServerEngine(GlobalSettings& settings, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt) -> refcount_ptr<ServerEngine>
     {
-        return SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+        return safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources(), std::move(restore_snapshot));
     }
 
     static void CheckServerStartupFailsSafely(GlobalSettings& settings, FileSystem&& resources)
     {
-        auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, std::move(resources));
+        auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, std::move(resources));
 
         string startup_error = WaitForServerStart(server);
         INFO(startup_error);
@@ -584,8 +527,8 @@ namespace ServerEngineInitGateTest
     static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = SafeAlloc::MakeUnique<ServerConnection>(server->Settings, std::move(net_connection));
-        auto player = SafeAlloc::MakeRefCounted<Player>(server, ident_t {}, std::move(connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
 
         SyncContext ctx;
         ctx.Activate();
@@ -603,7 +546,7 @@ namespace ServerEngineInitGateTest
 
     static auto MakeServerMovementContext(msize map_size, mpos start_hex, nanotime start_time) -> refcount_ptr<MovingContext>
     {
-        return SafeAlloc::MakeRefCounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
+        return safe_alloc::make_refcounted<MovingContext>(map_size, SERVER_TEST_MOVE_SPEED, SERVER_TEST_MOVE_STEPS, SERVER_TEST_MOVE_CONTROL_STEPS, start_time, timespan {}, start_hex, ipos16 {}, ipos16 {});
     }
 
     static auto WaitForUnlockedServerCondition(ptr<ServerEngine> server, bool& locked, const function<bool()>& condition, std::chrono::milliseconds timeout = std::chrono::milliseconds {1000}) -> bool
@@ -644,57 +587,66 @@ namespace ServerEngineInitGateTest
     }
 }
 
-TEST_CASE("ServerResourcesMountBakedServerEntries")
+TEST_CASE("ServerResourcesFollowPackagedSetting")
 {
     if (IsPackaged()) {
         SKIP("Baked directory mounting is only used by unpackaged test binaries");
     }
 
     string temp_dir = MakeTempServerResourceDir("baked_entries");
-    bool removed_before = fs_remove_dir_tree(temp_dir);
+    bool removed_before = fs::remove_dir_tree(temp_dir);
     ignore_unused(removed_before);
 
-    auto cleanup = scope_exit([&temp_dir]() noexcept { fs_remove_dir_tree(temp_dir); });
+    auto cleanup = scope_exit([&temp_dir]() noexcept { fs::remove_dir_tree(temp_dir); });
 
     string baked_dir = strex(temp_dir).combine_path("Baked").str();
     string packaged_dir = strex(temp_dir).combine_path("Packaged").str();
 
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
-    REQUIRE(fs_write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
-    REQUIRE(fs_write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ServerPack/payload.txt").str(), string_view {"baked-server"}));
+    REQUIRE(fs::write_file(strex(baked_dir).combine_path("ClientPack/client-only.txt").str(), string_view {"client"}));
+    REQUIRE(fs::write_file(strex(packaged_dir).combine_path("ServerPack/payload.txt").str(), string_view {"packaged-server"}));
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.BakeOutput, baked_dir);
-    BakerTests::OverrideSetting(settings.ServerResources, packaged_dir);
-    BakerTests::OverrideSetting(settings.ServerResourceEntries, vector<string> {"ServerPack"});
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, baked_dir);
+    BakerTests::OverrideSetting(settings.Baking.ServerResources, packaged_dir);
+    auto pack_config = ConfigFile("[ResourcePack]\nName = ServerPack\nServerOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
 
     auto resources = GetServerResources(settings);
 
     CHECK(resources.ReadFileText("payload.txt") == "baked-server");
     CHECK(resources.IsFileExists("payload.txt"));
     CHECK_FALSE(resources.IsFileExists("client-only.txt"));
+
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+
+    FileSystem packaged_resources = GetServerResources(settings);
+
+    CHECK(packaged_resources.ReadFileText("payload.txt") == "packaged-server");
+    CHECK(packaged_resources.IsFileExists("payload.txt"));
+    CHECK_FALSE(packaged_resources.IsFileExists("client-only.txt"));
 }
 
 TEST_CASE("ServerEngineConnectionAcceptPredicates")
 {
     // Pure accept-path decision logic for the network population cap + per-source rate guard
-    // (launch-network-load-test-and-caps Track 1). Static + side-effect-free, so no live server is needed.
+    // (launch-network-load-test-and-caps Track 1). Static + side-effect-free, so no live server is needed
 
     SECTION("PopulationCapAcceptsUnderLimitAndRejectsAtOrOver")
     {
-        // 0 means unlimited on both axes.
+        // 0 means unlimited on both axes
         CHECK(ServerEngine::ShouldAcceptConnection(1000, 1000, 0, 0));
 
-        // Connection cap.
+        // Connection cap
         CHECK(ServerEngine::ShouldAcceptConnection(9, 5, 10, 0));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 5, 10, 0));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(11, 5, 10, 0));
 
-        // Player cap.
+        // Player cap
         CHECK(ServerEngine::ShouldAcceptConnection(100, 4, 0, 5));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(100, 5, 0, 5));
 
-        // Either ceiling rejects.
+        // Either ceiling rejects
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(10, 1, 10, 5));
         CHECK_FALSE(ServerEngine::ShouldAcceptConnection(1, 5, 10, 5));
     }
@@ -703,20 +655,384 @@ TEST_CASE("ServerEngineConnectionAcceptPredicates")
     {
         ServerEngine::ConnRateState state {};
 
-        // 0 disables the guard (always accept) and does not touch the bucket.
+        // 0 disables the guard (always accept) and does not touch the bucket
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 0));
 
-        // Up to the limit within the same second is accepted; beyond it is rejected.
+        // Up to the limit within the same second is accepted; beyond it is rejected
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
         CHECK_FALSE(ServerEngine::EvaluateConnectionRate(state, 100, 3));
 
-        // A new second rolls the window over and accepts again.
+        // A new second rolls the window over and accepts again
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
         CHECK(ServerEngine::EvaluateConnectionRate(state, 101, 3));
     }
+}
+
+TEST_CASE("ServerEngineRandomGeneratorRoundTrip")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    random_generator::state_data captured_state = server->CaptureRandomState();
+    CHECK_FALSE(std::ranges::all_of(captured_state, [](uint64_t part) { return part == 0; }));
+
+    vector<int32_t> expected_sequence;
+    for (size_t i = 0; i < 32; i++) {
+        expected_sequence.emplace_back(server->Random(-100000, 100000));
+    }
+
+    // The generator stays behind the engine's own lock and its state travels as bare words, so a replay is a restore
+    server->RestoreRandomState(captured_state);
+    for (int32_t expected_value : expected_sequence) {
+        CHECK(server->Random(-100000, 100000) == expected_value);
+    }
+
+    // The same words survive a round trip through the generator type itself
+    random_generator rebuilt_generator {uint64_t {1}};
+    rebuilt_generator.restore_state(captured_state);
+    server->RestoreRandomState(rebuilt_generator.capture_state());
+    for (int32_t expected_value : expected_sequence) {
+        CHECK(server->Random(-100000, 100000) == expected_value);
+    }
+
+    // A rejected restore is validated before the state is touched, so the engine keeps drawing where it stood
+    random_generator::state_data state_before_invalid_restore = server->CaptureRandomState();
+    CHECK_THROWS(server->RestoreRandomState(random_generator::state_data {}));
+    CHECK(server->CaptureRandomState() == state_before_invalid_restore);
+}
+
+TEST_CASE("ServerEngineQuiescenceFreezesAndCleansUp")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+    REQUIRE(server->IsConnectionAdmissionOpen());
+
+    refcount_nptr<Critter> critter;
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+        critter = server->CreateCritter(critter_pid, false).hold_ref();
+    }
+
+    REQUIRE(critter);
+
+    bool callback_invoked = false;
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&](const ServerQuiescenceState& state) {
+        callback_invoked = true;
+
+        CHECK(server->GameTime.IsPaused());
+        CHECK_FALSE(server->IsConnectionAdmissionOpen());
+        CHECK(IsEntityAccessValid(critter));
+        CHECK(state.SynchronizedTime == server->GameTime.GetSynchronizedTime());
+
+        CHECK(state.RandomState == server->CaptureRandomState());
+
+        nanotime paused_frame_time = server->GameTime.GetFrameTime();
+        server->FrameAdvance();
+        CHECK(server->GameTime.GetFrameTime() == paused_frame_time);
+        CHECK(server->GameTime.GetFrameDeltaTime() == timespan {});
+    }));
+
+    CHECK(callback_invoked);
+    CHECK_FALSE(server->GameTime.IsPaused());
+    CHECK(server->IsConnectionAdmissionOpen());
+    CHECK_FALSE(server->GetCurrentSyncContext());
+
+    CHECK_THROWS_AS(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { throw GenericException("Intentional quiescence callback failure"); }), GenericException);
+    CHECK_FALSE(server->GameTime.IsPaused());
+    CHECK(server->IsConnectionAdmissionOpen());
+    CHECK_FALSE(server->GetCurrentSyncContext());
+
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [&server](const ServerQuiescenceState&) { CHECK_THROWS_AS(server->Shutdown(), VerificationException); }));
+    CHECK(server->IsStarted());
+    CHECK(server->IsConnectionAdmissionOpen());
+
+    server->RunScriptContext([&server] { CHECK_THROWS_AS(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { }), ServerQuiescenceException); });
+
+    REQUIRE(server->RunInQuiescence(timespan {std::chrono::seconds {10}}, [](const ServerQuiescenceState&) { }));
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    // The external lock opens a context of its own but covers nothing, and the destroy call only retains
+    // an already covered entity, so the caller establishes the cover
+    refcount_ptr<Critter> held_critter = critter.take_not_null();
+    server->RequireCurrentSyncContext()->SyncEntity(held_critter);
+    server->CrMngr.DestroyCritter(held_critter);
+}
+
+TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
+{
+    auto snapshot_root = std::filesystem::temp_directory_path() / std::format("fo_engine_snapshot_blockers_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    std::error_code remove_error;
+    std::filesystem::remove_all(snapshot_root, remove_error);
+
+    auto cleanup_snapshot = scope_exit([snapshot_root]() noexcept {
+        safe_call([snapshot_root] {
+            std::error_code ignored;
+            std::filesystem::remove_all(snapshot_root, ignored);
+        });
+    });
+
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    auto has_blocker = [](const ServerSnapshotCaptureResult& result, ServerSnapshotBlockerKind kind) { return std::ranges::any_of(result.Blockers, [kind](const ServerSnapshotBlocker& blocker) { return blocker.Kind == kind && blocker.Count != 0; }); };
+
+    SECTION("DelayedCallback")
+    {
+        server->ScheduleDelayedCallback(timespan {std::chrono::hours {1}}, [] { });
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
+        CHECK_FALSE(fs::exists(fs::path_to_string(snapshot_root / "delayed" / "Storage.sqlite")));
+    }
+
+    SECTION("SuspendedAngelScript")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto suspend_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestSuspend"));
+            REQUIRE(suspend_func);
+            REQUIRE(suspend_func.Call());
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::SuspendedScriptContexts));
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::DelayedCallbacks));
+    }
+
+    SECTION("TimeEvent")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto event_func = server->FindFunc<void>(server->Hashes.to_hashed_string("ServerEngineTest::UnitTestNoop"));
+            REQUIRE(event_func);
+            ignore_unused(server->TimeEventMngr.StartTimeEvent(server.get(), std::move(event_func), timespan {std::chrono::hours {1}}, timespan {}, {}));
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::TimeEvents));
+    }
+
+    SECTION("Movement")
+    {
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        {
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
+            critter->SetMoving(MakeServerMovementContext(SERVER_TEST_MAP_SIZE, SERVER_TEST_MOVE_START_HEX, server->GameTime.GetFrameTime()));
+        }
+
+        auto result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+
+        CHECK(result.ReachedQuiescence);
+        CHECK_FALSE(result.State.has_value());
+        CHECK(result.Payload.empty());
+        CHECK(has_blocker(result, ServerSnapshotBlockerKind::CritterMovements));
+    }
+}
+
+TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
+{
+    auto storage_root = std::filesystem::temp_directory_path() / std::format("fo_engine_server_snapshot_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    auto source_storage = storage_root / "source";
+    auto restored_storage = storage_root / "restored-live";
+    std::error_code remove_error;
+    std::filesystem::remove_all(storage_root, remove_error);
+    std::filesystem::create_directories(storage_root);
+
+    auto cleanup_storage = scope_exit([storage_root]() noexcept {
+        safe_call([storage_root] {
+            std::error_code ignored;
+            std::filesystem::remove_all(storage_root, ignored);
+        });
+    });
+
+    ident_t saved_location_id;
+    ident_t expected_next_location_id;
+    vector<int32_t> expected_random_sequence;
+    ServerSnapshotState captured_state;
+    vector<uint8_t> captured_payload;
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", source_storage.generic_string()).str());
+        auto server = MakeServerEngine(settings);
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
+            server->EntityMngr.MakePersistent(location, true, true);
+            saved_location_id = location->GetId();
+        }
+
+        // The Engine hands back bytes and state; naming, versioning and publishing them is the embedder's job
+        auto capture_result = server->CreateSnapshot(timespan {std::chrono::seconds {10}});
+        REQUIRE(capture_result.ReachedQuiescence);
+        REQUIRE(capture_result.Blockers.empty());
+        REQUIRE(capture_result.State.has_value());
+        REQUIRE_FALSE(capture_result.Payload.empty());
+        captured_state = *capture_result.State;
+        captured_payload = std::move(capture_result.Payload);
+
+        REQUIRE(captured_payload.size() > 16);
+        CHECK(string_view {reinterpret_cast<const char*>(captured_payload.data()), 15} == string_view {"SQLite format 3"});
+
+        for (int32_t i = 0; i < 8; i++) {
+            expected_random_sequence.emplace_back(server->Random(-1000000, 1000000));
+        }
+
+        {
+            REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+            auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+            expected_next_location_id = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"))->GetId();
+        }
+
+        server->Shutdown();
+    }
+
+    std::filesystem::create_directories(restored_storage);
+
+    {
+        // A state that disagrees with its payload must fail before gameplay hooks run
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        auto mismatched_state = captured_state;
+        mismatched_state.LastEntityId = ident_t {captured_state.LastEntityId.underlying_value() + 1};
+        auto server = MakeServerEngine(settings, ServerSnapshotRestore {mismatched_state, captured_payload});
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        CHECK_FALSE(startup_error.empty());
+        CHECK(server->IsStartingError());
+        CHECK_FALSE(server->IsStarted());
+        REQUIRE_NOTHROW(server->Shutdown());
+    }
+
+    {
+        // An empty payload is rejected at construction rather than producing an empty world
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", (storage_root / "empty-payload").generic_string()).str());
+        CHECK_THROWS_AS(MakeServerEngine(settings, ServerSnapshotRestore {captured_state, {}}), ServerSnapshotException);
+    }
+
+    {
+        auto settings = MakeServerTestSettings();
+        BakerTests::OverrideSetting(settings.Server.DbStorage, strex("DbSQLite {}", restored_storage.generic_string()).str());
+        auto server = MakeServerEngine(settings, ServerSnapshotRestore {captured_state, captured_payload});
+
+        auto shutdown = scope_exit([&server]() noexcept {
+            safe_call([&server] {
+                if (server->IsStarted()) {
+                    server->Shutdown();
+                }
+            });
+        });
+
+        string startup_error = WaitForServerStart(server);
+        INFO(startup_error);
+        REQUIRE(startup_error.empty());
+
+        REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+        auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+        REQUIRE(static_cast<bool>(server->EntityMngr.GetLocation(saved_location_id)));
+        CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(expected_next_location_id)));
+
+        for (int32_t expected : expected_random_sequence) {
+            CHECK(server->Random(-1000000, 1000000) == expected);
+        }
+
+        auto next_location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
+        CHECK(next_location->GetId() == expected_next_location_id);
+    }
+}
+
+TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
+{
+    // The flag suppresses the script responsiveness report while the engine comes up. Leaving it set
+    // would silence that report for the whole life of the server, and nothing else would say so
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    CHECK_FALSE(server->IsStartingUp());
 }
 
 TEST_CASE("ServerEngineStartsAndCreatesCritter")
@@ -740,7 +1056,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     REQUIRE(static_cast<bool>(server->GetProtoCritter(critter_pid)));
 
     size_t critter_count = server->EntityMngr.GetCrittersCount();
@@ -765,7 +1081,7 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(registered_player == player);
 
     // Login work re-synced the context onto the player, so the critter cover must be re-established
-    // by the caller before the destroy call — the callee only retains an already covered entity.
+    // by the caller before the destroy call — the callee only retains an already covered entity
     server->RequireCurrentSyncContext()->SyncEntity(cr);
 
     server->CrMngr.DestroyCritter(cr);
@@ -774,10 +1090,50 @@ TEST_CASE("ServerEngineStartsAndCreatesCritter")
     CHECK(server->EntityMngr.GetCrittersCount() == critter_count);
 }
 
+TEST_CASE("ServerEngineSingleThreadedLogicRunsWithoutEntityCover")
+{
+    auto settings = MakeServerTestSettings();
+    BakerTests::OverrideSetting(settings.Server.SingleThreadedLogic, true);
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    // One worker is what serializes the jobs, which is what lets the cover requirement go away
+    CHECK(server->GetWorkerThreadCount() == 1);
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    auto cr = server->CreateCritter(critter_pid, false);
+    ident_t cr_id = cr->GetId();
+
+    // ServerEngineStartsAndCreatesCritter with every synchronization call removed: login re-syncs the context
+    // onto the player, so in the multithreaded mode the critter below would be uncovered and every access throw
+    auto player = CreateLoggedPlayer(server, "UnitTestSingleThreaded");
+    CHECK(player->GetId() != ident_t {});
+
+    CHECK(IsEntityAccessValid(cr));
+    CHECK_NOTHROW(ignore_unused(cr->GetProtoId()));
+    CHECK_NOTHROW(server->CrMngr.DestroyCritter(cr));
+    CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetCritter(cr_id)));
+}
+
 TEST_CASE("ServerEngineDelayedCallbackAndSharedPropertyLock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -824,10 +1180,10 @@ TEST_CASE("ServerEngineWritesHealthFile")
     auto cleanup_health_file = scope_exit([&health_file_name]() noexcept { RemoveServerHealthFile(health_file_name); });
 
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.WriteHealthFile, true);
-    BakerTests::OverrideSetting(settings.HealthFilePeriodMs, int32_t {5});
+    BakerTests::OverrideSetting(settings.Server.WriteHealthFile, true);
+    BakerTests::OverrideSetting(settings.Server.HealthFilePeriodMs, int32_t {5});
 
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(&settings, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -856,7 +1212,7 @@ TEST_CASE("ServerEngineWritesHealthFile")
     REQUIRE(WaitForUnlockedServerCondition(
         server.get(), locked,
         [&health_file_name, &health_content] {
-            auto content = fs_read_file(health_file_name);
+            auto content = fs::read_file(health_file_name);
 
             if (!content.has_value() || content->find("Server uptime:") == string::npos || content->find("Connections:") == string::npos) {
                 return false;
@@ -876,23 +1232,18 @@ TEST_CASE("ServerEngineWritesHealthFile")
 
 TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
 {
-    // Regression for the cvet-server-1 Staging crash: MongoDB was down, so InitStorageJob threw and
-    // startup aborted before the worker pool, database connection and time-sync were established. A
-    // later quit ran Shutdown(), which dereferenced the null worker pool — SIGSEGV in
-    // WorkerPool::Clear() locking the pool mutex through a null `this`. Shutdown() must be safe to
-    // call on such a partially-initialized engine. An unrecognized DbStorage makes ConnectToDataBase
-    // throw "Wrong storage options", reproducing the same aborted-startup state deterministically.
+    // Shutdown must be safe on an engine whose startup aborted before the worker pool existed; an unrecognized
+    // DbStorage reproduces that state deterministically
     auto settings = MakeServerTestSettings();
-    BakerTests::OverrideSetting(settings.DbStorage, string {"UnreachableStorageForTest"});
+    BakerTests::OverrideSetting(settings.Server.DbStorage, string {"UnreachableStorageForTest"});
 
     CheckServerStartupFailsSafely(settings);
 }
 
 TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 {
-    // Everything else in this suite runs against an in-memory database, so the world-load path that a real
-    // server takes on every restart never runs. A file-backed JSON storage makes it reachable: one server
-    // writes the world, a second one on the same directory has to read it back.
+    // File-backed storage is what makes the restart world-load path reachable at all: the rest of the suite is
+    // in-memory, so one server writes the world and a second reads it back
     auto storage_dir = std::filesystem::temp_directory_path() / std::format("fo_engine_world_reload_test_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     std::error_code remove_error;
     std::filesystem::remove_all(storage_dir, remove_error);
@@ -912,7 +1263,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -926,11 +1277,11 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
             // Runtime entities are temporary by default, so they have to be marked persistent before the
             // restart has anything to read back
-            auto location = server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+            auto location = server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
             server->EntityMngr.MakePersistent(location, true, true);
             location_id = location->GetId();
 
-            auto critter = server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+            auto critter = server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
             server->EntityMngr.MakePersistent(critter, true, true);
             critter_id = critter->GetId();
         }
@@ -943,7 +1294,7 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
     {
         auto settings = MakeServerTestSettings();
-        BakerTests::OverrideSetting(settings.DbStorage, storage_option);
+        BakerTests::OverrideSetting(settings.Server.DbStorage, storage_option);
 
         auto server = MakeServerEngine(settings);
         string startup_error = WaitForServerStart(server);
@@ -962,9 +1313,8 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server.get_no_const()->Unlock(); }); });
 
-        // The restarted server rebuilt the location from its stored document, so the same id resolves again.
-        // The critter is not asserted on: it was created off-map, and critters are reached through the map
-        // or the global map they live on, so a placeless one has nothing to load it from.
+        // The critter is deliberately not asserted on: it was created off-map, and a placeless critter has
+        // nothing to load it from
         CHECK(server->EntityMngr.GetLocationsCount() >= 1);
         CHECK(static_cast<bool>(server->EntityMngr.GetLocation(location_id)));
         CHECK_FALSE(static_cast<bool>(server->EntityMngr.GetLocation(ident_t {})));
@@ -993,31 +1343,31 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
 
     SECTION("RejectsMissingSeparator")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BrokenCollection"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BrokenCollection"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsEmptyTrimmedCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"   : Int"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"   : Int"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsUnknownKeyType")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"BadType:Uuid"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"BadType:Uuid"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("RejectsDuplicateCollectionName")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"Duplicate:Int", "Duplicate:Str"});
         CheckServerStartupFailsSafely(settings);
     }
 
     SECTION("AcceptsTrimmedCaseInsensitiveKeyTypes")
     {
-        BakerTests::OverrideSetting(settings.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
+        BakerTests::OverrideSetting(settings.DataBase.CustomCollections, vector<string> {"  TrimmedInt : int  ", "  TrimmedStr : STR  "});
 
         auto server = MakeServerEngine(settings);
 
@@ -1033,8 +1383,8 @@ TEST_CASE("ServerEngineCustomCollectionStartupValidation")
         INFO(startup_error);
         REQUIRE(startup_error.empty());
 
-        hstring int_collection = server->Hashes.ToHashedString("TrimmedInt");
-        hstring string_collection = server->Hashes.ToHashedString("TrimmedStr");
+        hstring int_collection = server->Hashes.to_hashed_string("TrimmedInt");
+        hstring string_collection = server->Hashes.to_hashed_string("TrimmedStr");
         ident_t int_id = ident_t {1001};
         string string_id = string {"custom:key"};
 
@@ -1086,7 +1436,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 
     SECTION("PlayerControlledCritterCanBeUnloaded")
     {
-        hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+        hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
         size_t critter_count = server->EntityMngr.GetCrittersCount();
 
         auto cr = server->CreateCritter(critter_pid, true);
@@ -1105,7 +1455,7 @@ TEST_CASE("ServerEngineHandlesPlayerCritterUnloadAndMissingProto")
 
     SECTION("MissingProtoThrows")
     {
-        hstring missing_pid = server->Hashes.ToHashedString("MissingUnitTestCritter");
+        hstring missing_pid = server->Hashes.to_hashed_string("MissingUnitTestCritter");
 
         CHECK_THROWS(server->CreateCritter(missing_pid, false));
         CHECK_THROWS(server->CreateCritter(missing_pid, true));
@@ -1133,7 +1483,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     int init_calls = 0;
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetInitCalls"), init_calls));
@@ -1147,7 +1497,7 @@ TEST_CASE("ServerEngineScriptModuleInitAndEventsAreCallable")
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestGetManualCalls"), manual_calls));
     CHECK(manual_calls == 1);
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
 
     int critter_init_calls = 0;
@@ -1186,7 +1536,7 @@ TEST_CASE("ServerEngineModuleInitAttributePriorityIsRespected")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     int immediate_init_order = 0;
     int deferred_init_order = 0;
@@ -1219,7 +1569,7 @@ TEST_CASE("ServerEngineAdminRemoteCallsAreAllowlisted")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     REQUIRE(server->CallFunc(get_func_name("ServerEngineTest::UnitTestResetAdminCallCounter")));
     REQUIRE(server->CallAdminFunc(get_func_name("ServerEngineTest::UnitTestAdminEntry")));
@@ -1254,7 +1604,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
 
     auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-    auto get_func_name = [&server](string_view name) { return server->Hashes.ToHashedString(name); };
+    auto get_func_name = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
 
     vector<int32_t> values {1, 2, 3};
     auto sum_array_func = server->FindFunc<int32_t, vector<int32_t>>(get_func_name("ServerEngineTest::UnitTestSumArray"));
@@ -1267,7 +1617,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
     REQUIRE(mutate_array_func.Call(values));
     CHECK(values == vector<int32_t> {11, 2, 3, 77});
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
     auto cr = server->CreateCritter(critter_pid, false);
 
     auto critter_id_func = server->FindFunc<int64_t, ptr<Critter>>(get_func_name("ServerEngineTest::UnitTestGetCritterIdValue"));
@@ -1282,7 +1632,7 @@ TEST_CASE("ServerEngineScriptCallsMarshalContainersAndEntities")
 
     auto matches_hash_func = server->FindFunc<bool, hstring>(get_func_name("ServerEngineTest::UnitTestMatchesHash"));
     REQUIRE(matches_hash_func);
-    REQUIRE(matches_hash_func.Call(server->Hashes.ToHashedString("UnitTestHash")));
+    REQUIRE(matches_hash_func.Call(server->Hashes.to_hashed_string("UnitTestHash")));
     CHECK(matches_hash_func.GetResult());
 
     server->CrMngr.DestroyCritter(cr);
@@ -1316,9 +1666,9 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         });
     });
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     SECTION("CompletesWholeRoute")
     {
@@ -1329,7 +1679,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1351,7 +1701,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1377,7 +1727,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1400,7 +1750,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1427,7 +1777,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
             safe_call([&server, &loc] {
                 if (!loc->IsDestroyed()) {
                     // The wait loop unlocked/relocked the server, so this context starts empty — the caller
-                    // establishes the destroy cover itself.
+                    // establishes the destroy cover itself
                     server->RequireCurrentSyncContext()->SyncEntity(loc);
                     server->MapMngr.DestroyLocation(loc);
                 }
@@ -1463,7 +1813,7 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
         auto moving = MakeServerMovementContext(map->GetSize(), cr->GetHex(), server->GameTime.GetFrameTime() - overdue_time);
 
         server->StartCritterMoving(cr.get(), moving, nullptr);
-        REQUIRE(cr->GetMovingContext() != nullptr);
+        REQUIRE(cr->GetMovingContext());
 
         REQUIRE(WaitForUnlockedServerCondition(server, locked, [&server, &cr] {
             auto ctx = server->RequireCurrentSyncContext();
@@ -1483,13 +1833,8 @@ TEST_CASE("ServerEngineProcessesOverdueMovementByHex")
     }
 }
 
-// ============================================================================
-// Per-entity sync rail (multithreading): SyncContext minimal-cover / escalation /
-// ValidateAccess hierarchy walk against REAL ServerEntity instances. The primitive
-// tests in Test_EntitySync.cpp cannot reach this - they have no entity hierarchy
-// (see its "ValidateAccessFailsOnUnheldLock" comment). World is built under an
-// external ServerEngine::Lock; trusted registration captures newly created entities before publication.
-// ============================================================================
+// Per-entity sync rail against real ServerEntity instances, which the primitive tests in Test_EntitySync.cpp
+// cannot reach because they have no entity hierarchy
 
 TEST_CASE("ServerEngineSyncContextEntityCover")
 {
@@ -1508,10 +1853,10 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring item_pid = server->Hashes.ToHashedString("TestItem");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
+    hstring item_pid = server->Hashes.to_hashed_string("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -1531,7 +1876,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     auto cr_a = server->CreateCritter(critter_pid, false);
     auto cr_b = server->CreateCritter(critter_pid, false);
     auto cr_c = server->CreateCritter(critter_pid, false);
-    auto nested_item = server->ItemMngr.CreateItem(item_pid, 1, nullptr).hold_ref();
+    auto nested_item = server->ItemMngr.CreateItem(item_pid, nullptr).hold_ref();
     ptr<ServerEntity> cr_a_entity = cr_a;
     ptr<ServerEntity> cr_b_entity = cr_b;
     ptr<ServerEntity> nested_item_entity = nested_item.as_ptr();
@@ -1541,7 +1886,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     server->MapMngr.TransferToMap(cr_c, map, mpos {14, 14}, mdir {}, std::nullopt);
     server->CrMngr.AddItemToCritter(cr_a, nested_item, false);
 
-    // Parent wiring (Critter._parent = Map) must be established for the cover logic.
+    // Parent wiring (Critter._parent = Map) must be established for the cover logic
     auto cr_a_parent = cr_a->GetParentRaw();
     auto cr_b_parent = cr_b->GetParentRaw();
     auto cr_c_parent = cr_c->GetParentRaw();
@@ -1565,18 +1910,16 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         });
     });
 
-    // Two checks, two layers: `ctx.ValidateAccess(e)` reports whether e's OWN lock is held (used to
-    // pin the exact cover, e.g. that escalation drops the children's own locks); `IsEntityAccessValid(e)`
-    // is the production access gate - the hierarchy walk that accepts e's own OR any ancestor lock,
-    // plus the null short-circuit and the stop-the-world universal-cover grant.
+    // Two layers: ValidateAccess reports whether the entity's own lock is held, pinning the exact cover, while
+    // IsEntityAccessValid is the production gate that also accepts an ancestor
 
     // Strict model: an empty context is NOT exempt — no held lock means no entity access. Only a
-    // null entity short-circuits to granted.
+    // null entity short-circuits to granted
     CHECK(ctx.IsEmpty());
     CHECK_FALSE(IsEntityAccessValid(cr_a));
     CHECK(IsEntityAccessValid(nullptr));
 
-    // Single critter: only its own lock is held; access is granted to it but not siblings or the map.
+    // Single critter: only its own lock is held; access is granted to it but not siblings or the map
     {
         vector<ptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
@@ -1587,12 +1930,12 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
 
         {
             bool sync_diag_seen = false;
-            SetLogCallback("entity_access_valid_diagnose_test", [&sync_diag_seen](LogType, string_view message, nptr<const CatchedStackTraceData>) {
+            logging::set_callback("entity_access_valid_diagnose_test", [&sync_diag_seen](logging::type, string_view message, nptr<const stack_trace::catched_data>) {
                 if (message.find("SyncDiag access-without-sync") != string_view::npos) {
                     sync_diag_seen = true;
                 }
             });
-            auto clear_log_callback = scope_exit([]() noexcept { SetLogCallback("entity_access_valid_diagnose_test", {}); });
+            auto clear_log_callback = scope_exit([]() noexcept { logging::set_callback("entity_access_valid_diagnose_test", {}); });
 
             CHECK_FALSE(IsEntityAccessValid(cr_b, false));
             CHECK_FALSE(sync_diag_seen);
@@ -1605,9 +1948,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK_FALSE(IsEntityAccessValid(cr_c));
         CHECK_FALSE(IsEntityAccessValid(map));
 
-        // Negative: the binding-level gate (ServerEntity::ValidateAccess, hit by every script
-        // property read / method call) must THROW on an uncovered entity, not merely report false -
-        // an unsynced access is a rejected error, never silently allowed. The covered entity passes.
+        // The binding-level gate must throw on an uncovered entity rather than report false, because an unsynced
+        // access is a rejected error and never silently allowed
         CHECK_NOTHROW(cr_a->ValidateAccess());
         CHECK_THROWS_AS(cr_b->ValidateAccess(), ScriptException);
         CHECK_THROWS_AS(map->ValidateAccess(), ScriptException);
@@ -1615,10 +1957,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
     CHECK(ctx.IsEmpty());
 
-    // Two siblings are locked INDIVIDUALLY — there is deliberately no sibling-to-parent escalation, so
-    // `Sync({cr_a, cr_b})` holds exactly those two critters' own locks. The shared map is only
-    // descendant-MARKED (not exclusively held), so the map itself is not accessible and an unrequested
-    // third sibling on the same map is NOT covered.
+    // Siblings are locked individually with no escalation onto the shared parent, so the map is only marked and
+    // an unrequested third sibling stays uncovered
     {
         vector<ptr<ServerEntity>> both {cr_a, cr_b};
         ctx.SyncEntities(both);
@@ -1633,7 +1973,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Explicit {critter, its own map}: BOTH locks are kept (no parent-cover reduction), so the
-    // critter survives a reparent that a parent-only cover would strand.
+    // critter survives a reparent that a parent-only cover would strand
     {
         vector<ptr<ServerEntity>> pair {cr_a, map};
         ctx.SyncEntities(pair);
@@ -1645,7 +1985,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Ordinary EnsureEntitySynced only retains the own lock of an entity that is already covered. It never turns an
-    // empty context or an unrelated held entity into implicit synchronization.
+    // empty context or an unrelated held entity into implicit synchronization
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("neither locked nor covered"));
     CHECK(ctx.IsEmpty());
 
@@ -1667,9 +2007,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_FALSE(IsEntityAccessValid(cr_b));
     ctx.Release();
 
-    // Distinct covered children can each be retained once without changing or releasing the parent cover.
-    // This is the runtime counterpart of the allowed structural-loop contract: one acquisition per newly
-    // visited entity is not a retry of the same target.
+    // The runtime counterpart of the structural-loop contract: one acquisition per newly visited child is not a
+    // retry of the same target
     ctx.SyncEntity(map);
     ctx.EnsureEntitySynced(cr_a);
     ctx.EnsureEntitySynced(cr_b);
@@ -1677,13 +2016,13 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(ctx.ValidateAccess(cr_a));
     CHECK(ctx.ValidateAccess(cr_b));
     CHECK(IsEntityAccessValid(cr_b));
-    const auto retained_children = ctx.GetHeldEntities();
+    auto retained_children = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_children, cr_a_entity) != retained_children.end());
     CHECK(std::ranges::find(retained_children, cr_b_entity) != retained_children.end());
     ctx.Release();
 
     // A successful multi-op retention commits both the nested target's exclusive lock and the
-    // intermediate ancestor mark, and Release balances both counters.
+    // intermediate ancestor mark, and Release balances both counters
     ctx.SyncEntity(map);
     auto successful_item_lock = nested_item->GetEntityLock();
     auto successful_cr_lock = cr_a->GetEntityLock();
@@ -1701,12 +2040,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK(successful_item_lock->GetExclusiveRecursionForCurrentThread() == 0);
     CHECK(successful_cr_lock->GetDescendantHoldCountForCurrentThread() == 0);
 
-    // A violated hierarchy contract must fail retention without releasing the valid caller cover. Directly
-    // taking the child's raw lock simulates the impossible foreign contention while bypassing ancestor
-    // intention marks: an unending foreign exclusive hold under our exclusively-held ancestor cannot occur
-    // for a genuinely covered target, so retention retries it as if transient and then reports the corrupt
-    // invariant when the livelock valve trips. The watchdog is a safety net only and must stay above that
-    // valve, so it can never release early and turn the expected throw into a success.
+    // Taking the child's raw lock bypasses the intention marks to simulate contention that cannot occur under a
+    // held ancestor, so retention retries as if transient and then reports the corrupt invariant
     ctx.SyncEntity(map);
     auto cr_lock = cr_a->GetEntityLock();
     REQUIRE(cr_lock);
@@ -1737,25 +2072,24 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }};
     CHECK_THROWS_WITH(ctx.EnsureEntitySynced(cr_a), Catch::Matchers::ContainsSubstring("covered entity lock is contended"));
 
-    // Read before the test releases the contention itself, so this reflects only the watchdog.
-    const bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
+    // Read before the test releases the contention itself, so this reflects only the watchdog
+    bool rescued_by_watchdog = release_child.load(std::memory_order_acquire);
     ensure_finished.store(true, std::memory_order_release);
     release_child.store(true, std::memory_order_release);
     child_owner.join();
     contention_watchdog.join();
 
     // Bounded and self-terminating: it gave up on its own retry budget while the child lock was still held,
-    // rather than being rescued by the watchdog letting go.
+    // rather than being rescued by the watchdog letting go
     CHECK_FALSE(rescued_by_watchdog);
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover = ctx.GetHeldEntities();
+    auto retained_cover = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover, map_entity) != retained_cover.end());
     CHECK(std::ranges::find(retained_cover, cr_a_entity) == retained_cover.end());
     ctx.Release();
 
-    // A busy target's internal state mutex normally means a foreign non-blocking pass is mid-flight, so
-    // retention retries through it (covered below). An UNENDING hold cannot legitimately happen; ensure must
-    // then give up on its own bounded budget without changing the valid parent cover.
+    // A busy state mutex normally means a foreign pass is mid-flight, so an unending one must make retention
+    // give up on its own budget without changing the parent cover
     {
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
@@ -1763,14 +2097,14 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, cr_a, target_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_target_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, map_entity) != cover_after_target_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_target_state_mutex_contention, cr_a_entity) == cover_after_target_state_mutex_contention.end());
         ctx.Release();
     }
 
     // The same guarantee applies to an intermediate ancestor mark. Giving up on its state mutex must not
-    // leave either the descendant's exclusive count or the intermediate mark incremented.
+    // leave either the descendant's exclusive count or the intermediate mark incremented
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1782,15 +2116,14 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_intermediate_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, map_entity) != cover_after_intermediate_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_intermediate_state_mutex_contention, nested_item_entity) == cover_after_intermediate_state_mutex_contention.end());
         ctx.Release();
     }
 
-    // Deterministically contend the second address-ordered state mutex. Every unlanded attempt — including
-    // the last one before giving up — must roll back the first state mutex it already try-locked and leave
-    // both ownership counters at zero.
+    // Contending the second address-ordered mutex proves every unlanded attempt rolls the first one back and
+    // leaves both ownership counters at zero
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1803,22 +2136,20 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         ExpectSustainedEnsureStateMutexContentionThrows(ctx, nested_item, second_lock);
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 0);
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
-        const bool first_state_mutex_free = first_lock->TryLockStateMutex();
+        bool first_state_mutex_free = first_lock->TryLockStateMutex();
         REQUIRE(first_state_mutex_free);
         if (first_state_mutex_free) {
             first_lock->UnlockStateMutex();
         }
         CHECK(ctx.ValidateAccess(map));
-        const auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
+        auto cover_after_second_state_mutex_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, map_entity) != cover_after_second_state_mutex_contention.end());
         CHECK(std::ranges::find(cover_after_second_state_mutex_contention, nested_item_entity) == cover_after_second_state_mutex_contention.end());
         ctx.Release();
     }
 
-    // The realistic case, and the reason retention retries at all: a foreign thread holds the state mutex
-    // only for the span of its own non-blocking pass. Retention must absorb that window and LAND — reporting
-    // it instead would make an ordinary concurrent access fail a caller that provably owns the cover (the
-    // regression this pins: `DestroyLocation` retaining a child map while a worker drains its marks).
+    // The reason retention retries at all: reporting the transient window instead would fail a caller that
+    // provably owns the cover, as DestroyLocation did while a worker drained its marks
     {
         ctx.SyncEntity(map);
         auto target_lock = cr_a->GetEntityLock();
@@ -1827,7 +2158,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(target_lock->GetExclusiveRecursionForCurrentThread() == 1);
         CHECK(ctx.ValidateAccess(map));
         CHECK(ctx.ValidateAccess(cr_a));
-        const auto cover_after_transient_contention = ctx.GetHeldEntities();
+        auto cover_after_transient_contention = ctx.GetHeldEntities();
         CHECK(std::ranges::find(cover_after_transient_contention, map_entity) != cover_after_transient_contention.end());
         CHECK(std::ranges::find(cover_after_transient_contention, cr_a_entity) != cover_after_transient_contention.end());
         ctx.Release();
@@ -1835,7 +2166,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     // The same absorption for an intermediate ancestor mark: a transient hold on the mark's state mutex must
-    // not fail the nested target's retention.
+    // not fail the nested target's retention
     {
         ctx.SyncEntity(map);
         auto target_lock = nested_item->GetEntityLock();
@@ -1853,10 +2184,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
         CHECK(intermediate_lock->GetDescendantHoldCountForCurrentThread() == 0);
     }
 
-    // A failed multi-op atomic preflight must leave every operation unchanged.
-    // The nested item contributes its exclusive own-lock op and a descendant-mark op on its critter;
-    // raw-locking whichever sorts second proves that compatibility is checked for the complete batch
-    // before either earlier operation can be committed.
+    // Raw-locking whichever op sorts second proves the batch is checked for compatibility as a whole, before any
+    // earlier operation can commit
     ctx.SyncEntity(map);
     auto item_lock = nested_item->GetEntityLock();
     auto nested_cr_lock = cr_a->GetEntityLock();
@@ -1896,7 +2225,7 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     }
 
     CHECK(ctx.ValidateAccess(map));
-    const auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
+    auto retained_cover_after_partial_rollback = ctx.GetHeldEntities();
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, map_entity) != retained_cover_after_partial_rollback.end());
     CHECK(std::ranges::find(retained_cover_after_partial_rollback, nested_item_entity) == retained_cover_after_partial_rollback.end());
     release_later.store(true, std::memory_order_release);
@@ -1904,14 +2233,14 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     ctx.Release();
 
     // Fresh registration uses the dedicated trusted capture path and therefore remains safe under an
-    // otherwise empty context without weakening ordinary EnsureEntitySynced.
+    // otherwise empty context without weakening ordinary EnsureEntitySynced
     auto fresh_cr = server->CreateCritter(critter_pid, false);
     CHECK(ctx.ValidateAccess(fresh_cr));
     CHECK(IsEntityAccessValid(fresh_cr));
     server->CrMngr.DestroyCritter(fresh_cr);
     ctx.Release();
 
-    // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate.
+    // SyncEntity REPLACES the held set (yield-on-Sync), it does not accumulate
     ctx.SyncEntity(cr_a);
     CHECK(ctx.ValidateAccess(cr_a));
     ctx.SyncEntity(cr_b);
@@ -1924,11 +2253,8 @@ TEST_CASE("ServerEngineSyncContextEntityCover")
     CHECK_FALSE(IsEntityAccessValid(cr_a)); // empty again → strict model: still no cover, access denied
 }
 
-// ============================================================================
-// Symmetric Critter<->Player auto-widening + the ancestor-coverage verify fix.
-// Critter::GetSyncWidenEntity returns its Player and Player::GetSyncWidenEntity
-// returns its controlled Critter, so a Sync of either half must cover both.
-// ============================================================================
+// Symmetric Critter<->Player auto-widening: each half reports the other through GetSyncWidenEntity, so a Sync
+// of either must cover both
 
 TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 {
@@ -1947,10 +2273,10 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring item_pid = server->Hashes.ToHashedString("TestItem");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
+    hstring item_pid = server->Hashes.to_hashed_string("TestItem");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -1979,7 +2305,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     auto player_b_holder = CreateStandalonePlayer(server, "SyncWidenPlayerB");
 
     // The standalone players were built inside their own already-released contexts, so this context has no
-    // cover for them and retention alone cannot create one — the whole setup scope is Sync'd by the caller.
+    // cover for them and retention alone cannot create one — the whole setup scope is Sync'd by the caller
     vector<ptr<ServerEntity>> setup_scope {loc, map, cr_a, cr_b, player_a_holder, player_b_holder};
     setup_ctx->SyncEntities(setup_scope);
 
@@ -2013,10 +2339,9 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
 
     server->MapMngr.TransferToMap(cr_a, map, mpos {10, 10}, mdir {}, std::nullopt);
     server->MapMngr.TransferToMap(cr_b, map, mpos {12, 12}, mdir {}, std::nullopt);
-    auto item_a = server->ItemMngr.AddItemCritter(cr_a, item_pid, 1);
-    REQUIRE(static_cast<bool>(item_a));
+    auto item_a = server->CrMngr.AddItemToCritter(cr_a, server->ItemMngr.CreateItem(item_pid, nullptr), true);
 
-    // The widen link must be live in both directions before we test the cover.
+    // The widen link must be live in both directions before we test the cover
     REQUIRE(cr_a->GetSyncWidenEntity() == player_a_holder);
     REQUIRE(player_a_holder->GetSyncWidenEntity() == cr_a);
 
@@ -2033,7 +2358,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     });
 
     // Syncing a player-controlled critter auto-widens to also lock its Player (both own locks held);
-    // the other player is untouched.
+    // the other player is untouched
     {
         vector<ptr<ServerEntity>> one {cr_a};
         ctx.SyncEntities(one);
@@ -2047,7 +2372,7 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held).
+    // Symmetric: syncing the Player widens to lock its controlled critter (both own locks held)
     {
         vector<ptr<ServerEntity>> one {player_a_holder};
         ctx.SyncEntities(one);
@@ -2058,9 +2383,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Duplicate-lock regression: an inventory item can share the holder critter's propagated lock.
-    // The lock-set representative may be the item, but widening still has to inspect the explicitly
-    // requested holder so the controlled Player lock is included.
+    // An inventory item shares its holder's propagated lock, so widening must still inspect the requested holder
+    // or the controlled Player lock is missed
     {
         vector<ptr<ServerEntity>> item_holder_map {item_a, cr_a, map};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_map));
@@ -2073,9 +2397,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // No propagation, no escalation: Sync({item, holder, recipient}) holds each one's OWN lock — the item
-    // keeps its own lock (it does not share the holder's), and the two critters are NOT collapsed onto
-    // their shared map. Widening still adds each critter's Player. The shared map is only marked, not held.
+    // Each requested entity keeps its own lock — the item does not share the holder's and the critters are not
+    // collapsed onto their shared map — while widening still adds each critter's Player
     {
         vector<ptr<ServerEntity>> item_holder_recipient {item_a, cr_a, cr_b};
         REQUIRE_NOTHROW(ctx.SyncEntities(item_holder_recipient));
@@ -2091,10 +2414,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Syncing BOTH players widens each to its controlled critter. With no escalation those critters keep
-    // their OWN locks (not collapsed onto the shared map), so each is covered by its own held lock and the
-    // widen verify-after-acquire is satisfied directly. The shared map is only marked, so the map itself
-    // is not accessible.
+    // Widening both players reaches both controlled critters, which keep their own locks, so the widen verify
+    // is satisfied directly and the shared map stays merely marked
     {
         vector<ptr<ServerEntity>> players {player_a_holder, player_b_holder};
         REQUIRE_NOTHROW(ctx.SyncEntities(players));
@@ -2110,9 +2431,8 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     }
     ctx.Release();
 
-    // Login begins with only the Player covered. PlayerInit switches to the restored critter inside
-    // its nested script context; SwitchPlayerCritter must retain the new pair in the outer context
-    // before the next OnPlayerLogin subscriber reads the critter inventory.
+    // Login starts with only the Player covered, so the critter switch must retain the new pair in the outer
+    // context before the next subscriber reads the critter's inventory
     {
         vector<ptr<ServerEntity>> attached_pair {player_a_holder, cr_a};
         ctx.SyncEntities(attached_pair);
@@ -2138,29 +2458,102 @@ TEST_CASE("ServerEngineSyncContextWidenAndAncestorCover")
     ctx.Release();
 }
 
-// ============================================================================
-// Concurrency stress - hammer the lock-free cover computation + verify-after-acquire /
-// retry-if-escaped loop. Many reader threads run independent SyncContexts (Sync a random
-// entity pair, validate, release) while reparenter threads flip entity parents under own-lock
-// via SetParent - the exact race the verify loop is built to tolerate (a concurrent
-// SetParent moving a requested entity out of the just-computed cover). Assertions are
-// timing-INDEPENDENT so the test never flakes: every reader iteration is accounted for
-// exactly once (no deadlock / lost work), forward progress is made, and nothing crashes
-// or corrupts (the atomic _parent + TryAddRef-after-load + the engine asserts would trip
-// otherwise). EntitySyncException is an ACCEPTED outcome under extreme churn - the bounded
-// retry deliberately gives up rather than livelock.
-// ============================================================================
+// The link accessors run without the entity cover, so they must hand out an owning handle rather than a raw
+// read: the refcount deltas below are what separates a pin from a bare load that a concurrent detach can free
+
+TEST_CASE("ServerEngineEntityLinkPinSurvivesConcurrentDetach")
+{
+    auto settings = MakeServerTestSettings();
+    auto server = MakeServerEngine(settings);
+
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    string startup_error = WaitForServerStart(server);
+    INFO(startup_error);
+    REQUIRE(startup_error.empty());
+
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    bool locked = true;
+    auto unlock = scope_exit([&server, &locked]() noexcept {
+        safe_call([&server, &locked] {
+            if (locked) {
+                server->Unlock();
+            }
+        });
+    });
+
+    auto cr = server->CreateCritter(critter_pid, true);
+    auto setup_ctx = server->GetCurrentSyncContext();
+    REQUIRE(static_cast<bool>(setup_ctx));
+    setup_ctx->EnsureEntitySynced(cr);
+
+    auto player = CreateStandalonePlayer(server, "LinkPinPlayer");
+
+    vector<ptr<ServerEntity>> setup_scope {cr, player};
+    setup_ctx->SyncEntities(setup_scope);
+
+    cr->AttachPlayer(player);
+
+    // The link carries its own reference, which is exactly what an unpinned read would be relying on, so the
+    // accessor's contribution has to show up on top of it
+    int32_t linked_player_refs = player->GetRefCount();
+
+    {
+        auto widen = cr->GetSyncWidenEntity();
+        REQUIRE(widen == player);
+        CHECK(player->GetRefCount() == linked_player_refs + 1);
+    }
+
+    CHECK(player->GetRefCount() == linked_player_refs);
+
+    {
+        auto pinned = cr->GetPlayerForSend();
+        REQUIRE(pinned == player);
+        CHECK(player->GetRefCount() == linked_player_refs + 1);
+    }
+
+    // The Player-to-Critter half of the pair is a non-owning link, so there the pin is the caller's only hold
+    int32_t linked_critter_refs = cr->GetRefCount();
+
+    {
+        auto widen_back = player->GetSyncWidenEntity();
+        REQUIRE(widen_back == cr);
+        CHECK(cr->GetRefCount() == linked_critter_refs + 1);
+    }
+
+    CHECK(cr->GetRefCount() == linked_critter_refs);
+
+    // Detach drops the link's reference; a handle taken beforehand keeps the player addressable past that point
+    auto held = cr->GetSyncWidenEntity();
+    REQUIRE(held);
+    int32_t attached_player_refs = player->GetRefCount();
+
+    cr->DetachPlayer();
+
+    CHECK(player->GetRefCount() == attached_player_refs - 1);
+    CHECK_FALSE(static_cast<bool>(cr->GetSyncWidenEntity()));
+    CHECK_FALSE(static_cast<bool>(player->GetSyncWidenEntity()));
+    CHECK(held == player);
+    CHECK(held->GetName() == "LinkPinPlayer");
+}
+
+// Readers and reparenters hammer the race the verify loop exists for. Assertions stay timing-independent so it
+// cannot flake, and an EntitySyncException is an accepted outcome: the bounded retry gives up over livelocking
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
 {
-    // Load-bearing design invariant (mt-additional-test-coverage, Critical): under hierarchical exclusion a
-    // map (ancestor) lock and a critter (descendant) lock ARE mutually exclusive cross-thread, but that
-    // exclusion must never deadlock or starve. Two threads — one repeatedly taking the map, the other
-    // repeatedly taking the descendant critter — serialize against each other yet must both make full
-    // progress (FIFO queue + anti-starvation). A model that turned the exclusion into a lock cycle would
-    // hang here (the joins never return); completion is the deterministic deadlock/starvation-freedom proof.
+    // Ancestor and descendant locks exclude each other, and this pins that the exclusion never deadlocks or
+    // starves: a model that turned it into a cycle would simply never join
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2174,9 +2567,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisitionAncestorAndSiblingLiveness")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool flat_locked = true;
@@ -2251,9 +2644,9 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2289,7 +2682,7 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     locked = false;
 
     // Reparent targets include nullptr so the detach / no-parent / cover-recompute paths are churned
-    // alongside same-map (escalation) and cross-map (escape → retry) transitions.
+    // alongside same-map (escalation) and cross-map (escape → retry) transitions
     const nptr<ServerEntity> targets[] = {map_a, map_b, map_c, nullptr};
 
     std::atomic_bool stop {false};
@@ -2336,9 +2729,8 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
             try {
                 ctx.SyncEntities(req);
                 syncs_ok.fetch_add(1, std::memory_order_relaxed);
-                // Drive the single-pass access validator under concurrent reparenting to confirm it
-                // never crashes or reads freed memory; the racing SetParent makes the boolean result
-                // nondeterministic, so it is observed to drive the code path, not asserted.
+                // The racing SetParent makes the result nondeterministic, so it is observed to drive the code path
+                // rather than asserted
                 (void)IsEntityAccessValid(req[0]);
                 (void)IsEntityAccessValid(req[1]);
             }
@@ -2369,14 +2761,13 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     }
 
     INFO("syncs_ok=" << syncs_ok.load() << " giveups=" << sync_giveups.load() << " reparents=" << reparents.load());
-    // No deadlock (every thread joined) and no crash (control reached here). Every reader
-    // iteration completed exactly once - either a valid cover or a bounded give-up - so no
-    // work was lost or double-counted.
+    // Reaching here already proves no deadlock or crash; the counts prove every reader iteration completed
+    // exactly once, as a valid cover or a bounded give-up
     CHECK(syncs_ok.load() + sync_giveups.load() == int64_t {READER_THREADS} * int64_t {READER_ITERS});
     CHECK(syncs_ok.load() > 0); // forward progress - the retry loop is not failing every call
     CHECK(reparents.load() > 0);
 
-    // Detach the critters so the maps' refcounts drop cleanly before Shutdown.
+    // Detach the critters so the maps' refcounts drop cleanly before Shutdown
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
@@ -2392,266 +2783,8 @@ TEST_CASE("ServerEngineSyncContextReparentStress")
     }
 }
 
-// ============================================================================
-// Item-transfer conservation (#12 launch MT gap): concurrent MoveItem of stackable units between
-// holders must conserve the total count. The historical ItemManager::SplitItem path read the pre-split
-// count across a cover-changing initialization boundary, so a concurrent split/merge of the same stack
-// could land a lost update (199/200). Red before the leaf-lock fix, green after. Mirrors
-// the script-stress sync_stress.concurrent_item_transfer_conserves_total. High-contention iteration
-// rather than a strict-deterministic interleave: many threads × many moves so the window is hit.
-// ============================================================================
-
-TEST_CASE("ServerEngineConcurrentItemTransferConservesTotal")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    constexpr int32_t HOLDER_COUNT = 8;
-    constexpr int32_t COINS_PER_HOLDER = 25;
-    constexpr int64_t EXPECTED_TOTAL = int64_t {HOLDER_COUNT} * int64_t {COINS_PER_HOLDER};
-
-    vector<ptr<Critter>> holders;
-    for (int32_t i = 0; i < HOLDER_COUNT; i++) {
-        auto cr = server->CreateCritter(critter_pid, false);
-        cr->SetParent(map); // parent only — keeps the critter (and its inventory) covered via the map
-        auto coins = server->ItemMngr.AddItemCritter(cr, coin_pid, COINS_PER_HOLDER);
-        REQUIRE(coins != nullptr);
-        REQUIRE(coins->GetCount() == COINS_PER_HOLDER);
-        holders.push_back(cr);
-    }
-
-    server->Unlock();
-    locked = false;
-
-    constexpr int32_t MOVER_THREADS = 6;
-    constexpr int32_t MOVES_PER_THREAD = 30000;
-
-    std::atomic<int64_t> moves_done {0};
-    std::atomic<int64_t> move_skips {0};
-
-    auto mover_fn = [&](int32_t tid) {
-        SyncContext ctx;
-        ctx.Activate();
-
-        // Per-thread LCG — deterministic per thread but overlaps other threads' holder pairs so the
-        // covers on shared stacks contend (no Math::Random in engine code; vary the stream by tid).
-        uint64_t rng = numeric_cast<uint64_t>(tid) * 0x9E3779B97F4A7C15ULL + 1U;
-
-        vector<ptr<ServerEntity>> req;
-        req.reserve(2);
-
-        for (int32_t it = 0; it < MOVES_PER_THREAD; it++) {
-            rng = rng * 6364136223846793005ULL + 1442695040888963407ULL;
-            int32_t from = numeric_cast<int32_t>((rng >> 33) % numeric_cast<uint64_t>(HOLDER_COUNT));
-            int32_t step = numeric_cast<int32_t>((rng >> 17) % numeric_cast<uint64_t>(HOLDER_COUNT - 1));
-            int32_t to = (from + 1 + step) % HOLDER_COUNT;
-
-            auto from_cr = holders[numeric_cast<size_t>(from)];
-            auto to_cr = holders[numeric_cast<size_t>(to)];
-
-            try {
-                req.clear();
-                req.emplace_back(from_cr);
-                req.emplace_back(to_cr);
-                ctx.SyncEntities(req);
-
-                auto stack = from_cr->GetInvItemByPid(coin_pid);
-                if (stack != nullptr && stack->GetCount() > 0) {
-                    server->ItemMngr.MoveItem(stack, 1, to_cr);
-                    moves_done.fetch_add(1, std::memory_order_relaxed);
-                }
-                else {
-                    move_skips.fetch_add(1, std::memory_order_relaxed);
-                }
-            }
-            catch (const EntitySyncException&) {
-                move_skips.fetch_add(1, std::memory_order_relaxed);
-            }
-
-            ctx.Release();
-        }
-
-        ctx.Deactivate();
-    };
-
-    vector<std::thread> movers;
-    for (int32_t i = 0; i < MOVER_THREADS; i++) {
-        movers.emplace_back(mover_fn, i);
-    }
-    for (auto& t : movers) {
-        t.join();
-    }
-
-    // Sum the surviving stacks under a single cover — conservation must hold regardless of how the
-    // coins redistributed across holders.
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    locked = true;
-
-    vector<ptr<ServerEntity>> sync_holders;
-    sync_holders.reserve(holders.size());
-
-    for (auto cr : holders) {
-        sync_holders.emplace_back(cr);
-    }
-
-    auto ctx = server->RequireCurrentSyncContext();
-    ctx->SyncEntities(sync_holders);
-
-    int64_t total = 0;
-    for (auto cr : holders) {
-        auto stack = cr->GetInvItemByPid(coin_pid);
-        total += (stack != nullptr) ? int64_t {stack->GetCount()} : int64_t {0};
-    }
-
-    INFO("moves_done=" << moves_done.load() << " skips=" << move_skips.load() << " total=" << total << " expected=" << EXPECTED_TOTAL);
-    CHECK(moves_done.load() > 0);
-    CHECK(total == EXPECTED_TOTAL);
-
-    // Detach so item/critter refcounts drop before Shutdown.
-    for (auto cr : holders) {
-        cr->SetParent(nullptr);
-    }
-}
-
-// ============================================================================
-// Deterministic conservation regression for the item-move fix. The contention stress above only
-// reproduces the lost update by a rare timing coincidence; this drives the exact stale-snapshot effect
-// deterministically: an OnItemInit script handler mutates the SOURCE stack from inside CreateItem —
-// i.e. between SplitItem's count read and its write, the same point a concurrent split/merge would
-// land during CreateItem's sync-cover yield. Pre-fix, SplitItem's stale write clobbers the mutation
-// (a lost unit when the source grew, a duplicated unit when it shrank); the reorder fix re-reads fresh
-// and conserves. This is the only engine-resident test that covers the fix's fresh-read invariant AND
-// its post-yield re-validation (drain -> DestroyItem -> nullptr) cleanup branch.
-// ============================================================================
-
-TEST_CASE("ServerEngineSplitItemUsesFreshCountAfterInitYield")
-{
-    auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
-
-    auto shutdown = scope_exit([&server]() noexcept {
-        safe_call([&server] {
-            if (server->IsStarted()) {
-                server->Shutdown();
-            }
-        });
-    });
-
-    string startup_error = WaitForServerStart(server.get());
-    INFO(startup_error);
-    REQUIRE(startup_error.empty());
-
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
-    hstring coin_pid = server->Hashes.ToHashedString("UnitTestStackable");
-    hstring arm_func = server->Hashes.ToHashedString("ServerEngineTest::UnitTestArmSplitInjection");
-
-    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
-    bool locked = true;
-    auto unlock = scope_exit([&server, &locked]() noexcept {
-        safe_call([&server, &locked] {
-            if (locked) {
-                server->Unlock();
-            }
-        });
-    });
-
-    auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid});
-    auto map = loc->GetMapByIndex(0);
-
-    auto h1 = server->CreateCritter(critter_pid, false);
-    auto h2 = server->CreateCritter(critter_pid, false);
-    h1->SetParent(map);
-    h2->SetParent(map);
-
-    SECTION("source grows mid-split: fresh read conserves the injected units")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 20);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit (fires inside CreateItem) adds 5 to the source, mid-split.
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {5}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        REQUIRE(moved != nullptr);
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count << " total=" << (src_count + dst_count));
-        // 20 spawned + 5 injected during the split = 25 must survive. Pre-fix: 20 (the +5 was clobbered
-        // by SplitItem writing the stale pre-CreateItem count).
-        CHECK(src_count + dst_count == 25);
-    }
-
-    SECTION("source drained below the split count mid-split: re-validation undoes the move")
-    {
-        auto source = server->ItemMngr.AddItemCritter(h1, coin_pid, 2);
-        REQUIRE(source != nullptr);
-
-        // The split product's OnItemInit removes 1 from the source (2 -> 1), so the fresh post-yield
-        // re-validation (count >= GetCount()) trips and the split is undone.
-        REQUIRE(server->CallFunc(arm_func, source->GetId(), int32_t {-1}));
-
-        auto moved = server->ItemMngr.MoveItem(source, 1, h2);
-        CHECK(moved == nullptr); // re-validation cleanup -> nullptr; the move did not happen
-
-        auto src_after = h1->GetInvItemByPid(coin_pid);
-        auto dst_after = h2->GetInvItemByPid(coin_pid);
-        int32_t src_count = src_after != nullptr ? src_after->GetCount() : 0;
-        int32_t dst_count = dst_after != nullptr ? dst_after->GetCount() : 0;
-
-        INFO("src=" << src_count << " dst=" << dst_count);
-        // 2 spawned - 1 drained = 1 unit total, all on the source; no phantom split on h2. Pre-fix the
-        // stale write would leave src=1 AND a phantom split=1 on h2 (a duplicated unit).
-        CHECK(src_count == 1);
-        CHECK(dst_count == 0);
-    }
-
-    h1->SetParent(nullptr);
-    h2->SetParent(nullptr);
-}
-
-// ============================================================================
-// Flat acquisition: an ancestor (map) cover GRANTS access to a descendant but does NOT exclude
-// another thread's own-lock on that descendant. This is the load-bearing design invariant of the
-// whole sync model - a regression that made ancestor locks exclude descendant locks would deadlock
-// or starve. ReparentStress hammers overlapping covers with reparent noise; this isolates and
-// directly proves the positive non-exclusion property.
-// ============================================================================
+// An ancestor cover grants access to a descendant but must not exclude another thread's own lock on it —
+// isolated here, where ReparentStress only exercises it under noise
 
 TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 {
@@ -2670,9 +2803,9 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2698,10 +2831,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 
     SECTION("AncestorExcludesDescendantCrossThread")
     {
-        // Hierarchical exclusion: T1 holds the map (ancestor) lock and keeps holding it. While it does,
-        // T2's Sync(cr_a) — a descendant of that map — must BLOCK (Sync marks the critter's ancestors,
-        // and the mark on the map cannot be registered while T1 owns the map exclusively). T2 must only
-        // acquire cr_a once T1 releases the map. This is the core ancestor↔descendant mutual exclusion.
+        // Syncing a descendant must block while another thread owns the ancestor exclusively, because the
+        // critter's ancestor mark cannot be registered until that owner releases
         std::atomic_bool t1_holds_map {false};
         std::atomic_bool t2_got_cr {false};
         std::atomic_bool t2_may_finish {false};
@@ -2733,16 +2864,15 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
             ctx.Deactivate();
         });
 
-        // While T1 holds the map, T2 must be excluded: t2_got_cr stays false. A generous window rules
-        // out the descendant being acquired concurrently (the old flat model would set it almost
-        // immediately). A correct hierarchical model never sets it while the ancestor is held.
+        // The generous window is what rules out a concurrent acquisition: a flat model would set the flag almost
+        // immediately, a hierarchical one never while the ancestor is held
         nanotime exclusion_window = nanotime::now() + timespan {std::chrono::milliseconds {300}};
         while (nanotime::now() < exclusion_window) {
             CHECK_FALSE(t2_got_cr.load(std::memory_order_acquire));
             std::this_thread::sleep_for(std::chrono::milliseconds(5));
         }
 
-        // Release T1 — T2's blocked Sync must now complete.
+        // Release T1 — T2's blocked Sync must now complete
         t2_may_finish.store(true, std::memory_order_release);
         t1.join();
         t2.join();
@@ -2751,9 +2881,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
 
     SECTION("ConcurrentAncestorAndSiblingLockLivenessLoop")
     {
-        // Both threads hammer locks that now mutually exclude under hierarchical exclusion: one always
-        // takes the map ancestor, the other always takes cr_a's descendant lock. They serialize against
-        // each other, but both must complete every iteration — no deadlock, no starvation.
+        // Two threads hammering mutually exclusive ancestor and descendant locks must still complete every
+        // iteration, which is the deadlock- and starvation-freedom proof
         constexpr int32_t ITERS = 20000;
         std::atomic<int64_t> ancestor_done {0};
         std::atomic<int64_t> sibling_done {0};
@@ -2797,7 +2926,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         EntityLock singleton_lock;
         auto registrar = server->GetPropertyRegistrar("Critter");
         REQUIRE(registrar);
-        auto singleton_owned_entity = SafeAlloc::MakeRefCounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
+        auto singleton_owned_entity = safe_alloc::make_refcounted<CustomEntity>(server, ident_t {1}, registrar, nullptr);
         CHECK_FALSE(singleton_owned_entity->GetEntityLock());
         singleton_owned_entity->SetEntityLock(make_nptr(&singleton_lock));
 
@@ -2805,9 +2934,8 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         ctx.Activate();
         ctx.LockSingleton(make_ptr(&singleton_lock));
 
-        // Game-owned custom entities share Game's singleton lock. Engine operations such as
-        // DestroyEntity call EnsureEntitySynced while Game.Lock() is active; that must reuse the
-        // acquisition already tracked by this context instead of adding it to a second lock bucket.
+        // A Game-owned custom entity shares Game's singleton lock, so retention under an active Game.Lock() must
+        // reuse the tracked acquisition instead of opening a second bucket
         ctx.EnsureEntitySynced(singleton_owned_entity);
         ctx.UnlockSingleton(make_ptr(&singleton_lock));
 
@@ -2816,7 +2944,7 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
         ctx.Deactivate();
     }
 
-    // Detach so the map refcount drops cleanly before Shutdown.
+    // Detach so the map refcount drops cleanly before Shutdown
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     locked = true;
     auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
@@ -2827,25 +2955,13 @@ TEST_CASE("ServerEngineSyncContextFlatAcquisition")
     cr_b->SetParent(nullptr);
 }
 
-// ============================================================================
-// Nested cross-entity acquisition must not deadlock. Two worker threads each run a PRIMARY
-// SyncContext that already covers one critter (mirrors a per-player job whose cover is {player,
-// controlled critter} via auto-widen), then each fires a callback whose NESTED SyncContext requests
-// BOTH critters in the OPPOSITE order — exactly what two concurrent group-logout cleanups do
-// (`Groups::OnPlayerLogout` → `KickCritterFromGroup` → `Sync::Lock(cr, leader)`). Thread 1 holds
-// cr_a (parent) and wants {cr_a, cr_b}; thread 2 holds cr_b (parent) and wants {cr_b, cr_a}: a
-// genuine hold-and-wait 2-cycle. A nested acquire that only spins non-parking (holding the parent's
-// lock the whole time) can never break this — the contended lock is permanently held by the other
-// thread's parent. The acquire must escalate to a globally-ordered blocking acquire of the full
-// thread-held union (releasing parent locks across the transition, since no entity state is observed
-// during a lock-set change) so both threads converge. Guarded by a watchdog so a regression reports
-// a clean failure instead of hanging the whole unit-test process.
-// ============================================================================
+// Two nested contexts requesting the same pair in opposite order form a genuine hold-and-wait cycle that only
+// the globally-ordered escalation can break; a watchdog turns a regression into a failure instead of a hang
 
 TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 {
     auto settings = MakeServerTestSettings();
-    auto server = SafeAlloc::MakeRefCounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
+    auto server = safe_alloc::make_refcounted<ServerEngine>(ptr<GlobalSettings> {&settings}, MakeServerTestResources());
 
     auto shutdown = scope_exit([&server]() noexcept {
         safe_call([&server] {
@@ -2859,9 +2975,9 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
-    hstring location_pid = server->Hashes.ToHashedString("UnitTestLocation");
-    hstring map_pid = server->Hashes.ToHashedString("UnitTestMap");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
+    hstring location_pid = server->Hashes.to_hashed_string("UnitTestLocation");
+    hstring map_pid = server->Hashes.to_hashed_string("UnitTestMap");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
     bool locked = true;
@@ -2874,7 +2990,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     });
 
     // Two critters on DIFFERENT maps so each keeps its OWN lock (no sibling escalation to a shared
-    // map lock would collapse the pair and hide the cross-lock contention).
+    // map lock would collapse the pair and hide the cross-lock contention)
     auto loc = server->MapMngr.CreateLocation(location_pid, vector<hstring> {map_pid, map_pid});
     auto map_a = loc->GetMapByIndex(0);
     auto map_b = loc->GetMapByIndex(1);
@@ -2894,12 +3010,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::atomic<int64_t> rounds_done {0};
     std::atomic_bool failed {false};
 
-    // Per-round rendezvous taken BEFORE any lock is acquired, so neither thread ever waits at the
-    // barrier while holding a lock (that would be a harness-level deadlock independent of the rail).
-    // Once both threads pass the barrier they acquire {primary cover} then {nested cross cover}
-    // back-to-back, so the two opposite-order cross-acquires overlap and the 2-cycle is hammered
-    // every round. The outer barrier is lock-free; the inner barrier intentionally waits while each
-    // thread holds only its own primary lock.
+    // The outer rendezvous is taken before any lock, or the harness itself would deadlock; the inner one
+    // deliberately waits while each thread holds only its primary lock, so the cycle is hit every round
     std::atomic<int32_t> arrive {0};
     std::atomic<int32_t> generation {0};
     std::atomic<int32_t> primary_arrive {0};
@@ -2937,38 +3049,29 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     auto cross_thread = [&](ServerEntity* own, ServerEntity* peer) {
         for (int32_t round = 0; round < ROUNDS && !failed.load(std::memory_order_acquire); round++) {
             // Outer rendezvous while holding NO lock, so both threads start the locked section
-            // together.
+            // together
             barrier(round);
 
             SyncContext primary;
             primary.Activate();
 
             // Primary cover: this thread's "own" critter (like a player job's controlled critter,
-            // already covered when an event fires).
+            // already covered when an event fires)
             vector<ptr<ServerEntity>> primary_req {own};
             try {
                 primary.SyncEntities(primary_req);
 
-                // Inner rendezvous holding ONLY the primary: busy-yield (no lock-ordering hazard —
-                // just an atomic) until the peer also holds its primary. This makes the nested
-                // cross-acquire below near-deterministically collide: both threads request {own, peer}
-                // in OPPOSITE order while each holds (via its primary) the lock the other needs — a
-                // genuine cross hold-and-wait 2-cycle. The fixed engine breaks it via the ordered-fair
-                // escalation; an unfixed engine spins forever (regression caught by the watchdog).
-                // The generation counter avoids the reset race of a plain per-round counter: a fast
-                // thread entering the next round must not make its peer miss this round's rendezvous.
+                // Waiting until the peer also holds its primary is what makes the cross-acquire below collide
+                // near-deterministically; the generation counter keeps a fast thread from skipping the rendezvous
                 bool primary_met = primary_barrier(round);
 
-                // The rendezvous MUST be met before the nested cross-acquire: if the peer never
-                // reached its primary, the two opposite-order acquires don't overlap, the 2-cycle
-                // never forms, and even a broken engine would slip through as a false PASS. The peer
-                // only has to take one uncontended primary lock, so missing the generous deadline means
-                // the setup is broken — fail hard instead of running a non-diagnostic acquire.
+                // Without the rendezvous the two acquires never overlap and a broken engine would pass, so a
+                // missed deadline means the setup itself is broken and must fail hard
                 if (!primary_met) {
                     failed.store(true, std::memory_order_release);
                 }
                 else {
-                    // Nested context (like script execution) requesting BOTH critters.
+                    // Nested context (like script execution) requesting BOTH critters
                     SyncContext nested;
                     nested.Activate();
                     auto nested_cleanup = scope_exit([&]() noexcept {
@@ -2978,9 +3081,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 
                     vector<ptr<ServerEntity>> nested_req {own, peer};
                     nested.SyncEntities(nested_req);
-                    // Catch2's CHECK/REQUIRE macros are not thread-safe (they race on RunContext's assertion
-                    // fast-path, a process-global), and this runs on a worker thread. Record the result through
-                    // the `failed` atomic instead; the main thread reports it via CHECK_FALSE(failed.load()).
+                    // Catch2's assertion macros race on a process-global fast path, so a worker thread records
+                    // through the atomic and the main thread reports it
                     if (!IsEntityAccessValid(own) || !IsEntityAccessValid(peer)) {
                         failed.store(true, std::memory_order_release);
                     }
@@ -2999,9 +3101,8 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     std::thread t1(cross_thread, cr_a.get(), cr_b.get());
     std::thread t2(cross_thread, cr_b.get(), cr_a.get());
 
-    // Watchdog: a correct implementation finishes the cross-rounds in well under a second even on a
-    // loaded host. If the threads deadlock, detect it, wake shutdown-abortable waiters, then join before
-    // reporting the failure. Both threads run ROUNDS rounds, so the target is 2*ROUNDS.
+    // A correct implementation finishes well inside this window even on a loaded host, so a timeout means a
+    // deadlock: wake the abortable waiters and join before reporting
     constexpr int64_t total_rounds = int64_t {ROUNDS} * 2;
     nanotime deadline = nanotime::now() + timespan {std::chrono::seconds {30}};
     bool timed_out = false;
@@ -3014,7 +3115,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     }
 
     if (timed_out) {
-        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit.
+        // Best-effort: wake any thread stuck in a shutdown-abortable wait so the process can exit
         failed.store(true, std::memory_order_release);
         server->Shutdown();
     }
@@ -3030,7 +3131,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
     }
 
     if (!timed_out) {
-        // Detach so the map refcounts drop cleanly before Shutdown.
+        // Detach so the map refcounts drop cleanly before Shutdown
         REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
         locked = true;
         auto cleanup_ctx = SyncContext::GetCurrentOnThisThread();
@@ -3043,7 +3144,7 @@ TEST_CASE("ServerEngineSyncContextNestedCrossEntityNoDeadlock")
 }
 
 // Minimal accessor for driving NativeDataCaller::ConvertArg directly. The entity branch reads its
-// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body.
+// value through ReadTypedHandleSlot and never touches the accessor, so only the pure virtual needs a body
 class BoundaryArgAccessor final : public DataAccessor
 {
 public:
@@ -3067,7 +3168,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
     INFO(startup_error);
     REQUIRE(startup_error.empty());
 
-    hstring critter_pid = server->Hashes.ToHashedString("UnitTestRat");
+    hstring critter_pid = server->Hashes.to_hashed_string("UnitTestRat");
 
     REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
 
@@ -3078,10 +3179,8 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 
     BoundaryArgAccessor accessor;
 
-    // The script ABI hands an entity to native code as a pointer-sized handle slot holding the Entity
-    // base handle, which ConvertArg reads back through ReadTypedHandleSlot; a borrow wrapper is exactly
-    // that pointer, so it stands in as the slot without unwrapping. Production instantiates the scratch
-    // parameter as optional<...> for the branches that need it — the entity branch never touches it.
+    // A borrow wrapper is exactly the pointer-sized handle slot the script ABI passes, so it stands in without
+    // unwrapping; the entity branch never touches the scratch parameter
     auto convert = [&accessor](ptr<Critter> cr) {
         nptr<Entity> slot = cr;
         nptr<Critter> unused_scratch;
@@ -3101,7 +3200,7 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
     SECTION("DestroyedButStillCoveredNamesTheDestroyedHandle")
     {
         // The destroyer keeps the victim's own lock, so this is the caller that destroyed the entity
-        // and kept using the handle — the one case the destroyed-entity message actually describes.
+        // and kept using the handle — the one case the destroyed-entity message actually describes
         auto cr = server->CreateCritter(critter_pid, false);
         setup_ctx->EnsureEntitySynced(cr);
         server->CrMngr.DestroyCritter(cr);
@@ -3112,10 +3211,8 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
 
     SECTION("DestroyedAndUncoveredNamesTheMissingCover")
     {
-        // Destroy inside a nested script context so its locks drain on exit. What is left is the shape
-        // a racing caller sees, and the actionable defect there is the absent cover, not the symptom.
-        // Hold a ref: the nested context drops the last one when it releases, and the argument a racing
-        // caller still holds is exactly what has to stay observable here.
+        // Destroying inside a nested context leaves exactly the shape a racing caller sees; the extra ref keeps
+        // the argument observable after that context drops the last one
         refcount_nptr<Critter> cr;
 
         server->RunScriptContext([&] {
@@ -3130,6 +3227,21 @@ TEST_CASE("ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst")
         REQUIRE(static_cast<bool>(cr));
         REQUIRE_FALSE(IsEntityAccessValid(cr));
         CHECK_THROWS_WITH(convert(cr.as_ptr()), Catch::Matchers::ContainsSubstring("Entity access without sync"));
+    }
+
+    SECTION("EntityArrayRejectsPrototypeAtTheNativeBoundary")
+    {
+        nptr<const ProtoCritter> proto = server->GetProtoCritter(critter_pid);
+        REQUIRE(proto);
+
+        vector<nptr<const Entity>> script_entities {proto};
+        NativeDataProvider::StorageEntryType storage;
+        ptr<void> array_data = NativeDataProvider::NormalizeArg(script_entities, storage);
+        optional<vector<nptr<const ServerEntity>>> converted_entities;
+
+        auto convert_collection = [&]() { return NativeDataCaller::ConvertArg<readonly_vector<nptr<const ServerEntity>>, optional<vector<nptr<const ServerEntity>>>, true>(array_data, NativeDataProvider::NATIVE_DATA_ACCESSOR, converted_entities); };
+
+        CHECK_THROWS_WITH(convert_collection(), Catch::Matchers::ContainsSubstring("Script entity is not usable as this entity type"));
     }
 }
 
@@ -3156,9 +3268,9 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
 
         auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
 
-        (void)server->CreateCritter(server->Hashes.ToHashedString("UnitTestRat"), false);
+        (void)server->CreateCritter(server->Hashes.to_hashed_string("UnitTestRat"), false);
         (void)CreateLoggedPlayer(server, "UnitTestGuiPlayer");
-        (void)server->MapMngr.CreateLocation(server->Hashes.ToHashedString("UnitTestLocation"));
+        (void)server->MapMngr.CreateLocation(server->Hashes.to_hashed_string("UnitTestLocation"));
 
         shared_ptr<NetworkServerConnection> not_logged_in_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
         (void)server->CreateNotLoggedInPlayer(std::move(not_logged_in_connection));
@@ -3168,9 +3280,8 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     REQUIRE(server->EntityMngr.GetPlayersCount() >= 1);
     REQUIRE(server->EntityMngr.GetLocationsCount() >= 1);
 
-    // The diagnostic panels are normally only reachable through the windowed server application, so the
-    // test drives a backend-less ImGui context directly: no renderer is attached and the draw data is
-    // discarded, but every panel builder runs for real
+    // The panels are normally reachable only through the windowed application, so a backend-less ImGui context
+    // runs every panel builder for real and discards the draw data
     REQUIRE(ImGui::GetCurrentContext() == nullptr);
     ImGuiExt::Init();
 
@@ -3191,9 +3302,8 @@ TEST_CASE("ServerEngineDrawsDiagnosticGuiHeadlessly")
     // and let ImGui own the atlas; nothing consumes the resulting texture requests here
     io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
 
-    // A collapsed node never runs its body, and ImGui only stores an open state once something opens the
-    // node, so there is nothing to flip afterwards. Logging is the supported way through: it auto-expands
-    // every tree node while capturing the rendered text
+    // A collapsed node never runs its body and has no stored open state to flip, so logging — which
+    // auto-expands every node — is the supported way in
     constexpr int32_t GUI_FRAMES = 3;
 
     // Collapsing headers opt out of the log auto-expansion, so their stored state is seeded by hand. The

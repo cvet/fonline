@@ -2,7 +2,7 @@
 // asio.hpp
 // ~~~~~~~~
 //
-// Copyright (c) 2003-2025 Christopher M. Kohlhoff (chris at kohlhoff dot com)
+// Copyright (c) 2003-2026 Christopher M. Kohlhoff (chris at kohlhoff dot com)
 //
 // Distributed under the Boost Software License, Version 1.0. (See accompanying
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
@@ -106,6 +106,8 @@
 #include "asio/handler_continuation_hook.hpp"
 #include "asio/high_resolution_timer.hpp"
 #include "asio/immediate.hpp"
+#include "asio/inline_executor.hpp"
+#include "asio/inline_or_executor.hpp"
 #include "asio/io_context.hpp"
 #include "asio/io_context_strand.hpp"
 #include "asio/ip/address.hpp"
@@ -160,6 +162,7 @@
 #include "asio/read_until.hpp"
 #include "asio/readable_pipe.hpp"
 #include "asio/recycling_allocator.hpp"
+#include "asio/redirect_disposition.hpp"
 #include "asio/redirect_error.hpp"
 #include "asio/registered_buffer.hpp"
 #include "asio/require.hpp"

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -80,14 +80,14 @@ static void ServerEntry()
 
     try {
         auto settings = make_ptr(&GetApp()->Settings);
-        Data->Server = SafeAlloc::MakeRefCounted<ServerEngine>(settings, GetServerResources(*settings));
+        Data->Server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
         auto server = GetServiceServer();
         GetApp()->WaitForRequestedQuit();
         server->Shutdown();
         Data->Server.reset();
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -141,7 +141,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
                 }
             }
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            coarse_sleep(std::chrono::milliseconds {1});
         }
 
         auto server = GetServiceServer();
@@ -153,7 +153,7 @@ static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -278,7 +278,7 @@ int main(int argc, char** argv)
 #endif
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -307,7 +307,7 @@ static VOID WINAPI FOServiceCtrlHandler(DWORD opcode)
         }
     }
     catch (const std::exception& ex) {
-        ReportExceptionAndExit(ex);
+        exceptions::report_and_exit(ex);
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();

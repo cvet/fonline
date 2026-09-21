@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,17 +29,17 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
 #include <filesystem>
 
-#if FO_LINUX || FO_MAC
-#include <unistd.h>
-#endif
-
+#include "DiskFileSystem.h"
 #include "Platform.h"
+#include "Posix.h"
 #include "StringUtils.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -47,17 +47,17 @@ TEST_CASE("Platform")
 {
     SECTION("GetExePathReturnsExistingPath")
     {
-        auto exe_path = Platform::GetExePath();
+        auto exe_path = platform::get_exe_path();
 
         REQUIRE(exe_path.has_value());
         CHECK_FALSE(exe_path->empty());
-        CHECK(std::filesystem::exists(*exe_path));
-        CHECK(std::filesystem::is_regular_file(*exe_path));
+        CHECK(std::filesystem::exists(fs::make_path(*exe_path)));
+        CHECK(std::filesystem::is_regular_file(fs::make_path(*exe_path)));
     }
 
     SECTION("CurrentProcessIdStringMatchesRuntime")
     {
-        string pid_str = Platform::GetCurrentProcessIdStr();
+        string pid_str = platform::get_current_process_id_str();
 
         CHECK_FALSE(pid_str.empty());
         CHECK(pid_str.find_first_not_of("0123456789") == std::string::npos);
@@ -65,8 +65,7 @@ TEST_CASE("Platform")
 #if FO_WINDOWS
         CHECK(pid_str != "0");
 #elif FO_LINUX || FO_MAC
-        const std::string runtime_pid = std::to_string(::getpid());
-        CHECK(pid_str == runtime_pid.c_str());
+        CHECK(pid_str == strex("{}", posix::get_current_process_id()).str());
 #else
         CHECK(pid_str == "0");
 #endif
@@ -75,7 +74,7 @@ TEST_CASE("Platform")
     SECTION("GetFuncAddrCanResolveProcessSymbols")
     {
         using FuncPtr = void (*)();
-        FuncPtr func = Platform::GetFuncAddr<FuncPtr>(nullptr, "getpid");
+        FuncPtr func = platform::get_func_addr<FuncPtr>(nullptr, "getpid");
 
 #if FO_LINUX || FO_MAC
         CHECK(func != nullptr);
@@ -86,28 +85,51 @@ TEST_CASE("Platform")
 
     SECTION("GetFuncAddrReturnsNullForMissingSymbol")
     {
-        const void* func = Platform::GetFuncAddr(nullptr, "lf_missing_platform_symbol_for_tests");
+        const void* func = platform::get_func_addr(nullptr, "lf_missing_platform_symbol_for_tests");
         CHECK(func == nullptr);
     }
 
     SECTION("LoadModuleReturnsNullForMissingLibrary")
     {
-        nptr<void> module = Platform::LoadModule("lf_missing_platform_module_for_tests");
+        nptr<void> module = platform::load_module("lf_missing_platform_module_for_tests");
         CHECK_FALSE(static_cast<bool>(module));
-        Platform::UnloadModule(module);
+        platform::unload_module(module);
+        CHECK_FALSE(static_cast<bool>(platform::load_pinned_module("lf_missing_platform_module_for_tests")));
     }
+
+#if FO_WINDOWS
+    SECTION("PinnedModuleStaysLoadedAfterUnload")
+    {
+        // A system library this process has no other use for, so whether it is unmapped can be observed
+        string module_name = "msacm32.dll";
+
+        if (winapi::is_library_loaded(module_name)) {
+            SKIP("msacm32.dll is already held by this process, so an unload cannot be observed");
+        }
+
+        nptr<void> unpinned = platform::load_module(module_name);
+        REQUIRE(unpinned);
+        platform::unload_module(unpinned);
+        REQUIRE_FALSE(winapi::is_library_loaded(module_name));
+
+        nptr<void> pinned = platform::load_pinned_module(module_name);
+        REQUIRE(pinned);
+        platform::unload_module(pinned);
+        CHECK(winapi::is_library_loaded(module_name));
+    }
+#endif
 
     SECTION("InfoHelpersAreSafeToCall")
     {
-        Platform::InfoLog("platform test log");
-        Platform::SetThreadName("platform-test-thread");
+        platform::info_log("platform test log");
+        platform::set_thread_name("platform-test-thread");
         SUCCEED();
     }
 
     SECTION("ProcessMemoryUsageIsReported")
     {
-        size_t working_set = Platform::GetProcessMemoryUsage();
-        size_t private_usage = Platform::GetProcessPrivateMemoryUsage();
+        size_t working_set = platform::get_process_memory_usage();
+        size_t private_usage = platform::get_process_private_memory_usage();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
         // A live process always occupies memory, so both readings must be non-zero on a real platform
@@ -122,32 +144,32 @@ TEST_CASE("Platform")
     SECTION("ModuleLifecycleResolvesAndReleases")
     {
         // The already-loaded process image is the one module every platform can name without a fixture
-        nptr<void> self_module = Platform::LoadModule({});
+        nptr<void> self_module = platform::load_module({});
 
         if (self_module) {
-            CHECK(Platform::GetFuncAddr(self_module, "malloc") != nullptr);
-            CHECK(Platform::GetFuncAddr(self_module, "no_such_symbol_for_test") == nullptr);
-            Platform::UnloadModule(self_module);
+            CHECK(platform::get_func_addr(self_module, "malloc") != nullptr);
+            CHECK(platform::get_func_addr(self_module, "no_such_symbol_for_test") == nullptr);
+            platform::unload_module(self_module);
         }
 
         // Unloading nothing is a no-op rather than a failure
-        Platform::UnloadModule(nullptr);
+        platform::unload_module(nullptr);
     }
 
     SECTION("CpuUsageSnapshotIsWellFormed")
     {
-        Platform::CpuUsageSnapshot snapshot = Platform::GetCpuUsageSnapshot();
+        platform::cpu_usage_snapshot snapshot = platform::get_cpu_usage_snapshot();
 
 #if FO_WINDOWS || FO_LINUX || FO_MAC || FO_ANDROID
-        REQUIRE_FALSE(snapshot.Cores.empty());
-        CHECK(snapshot.LogicalCoreCount > 0);
+        REQUIRE_FALSE(snapshot.cores.empty());
+        CHECK(snapshot.logical_core_count > 0);
 
-        for (const Platform::CpuUsageCoreSnapshot& core : snapshot.Cores) {
-            CHECK(core.TotalTime >= core.IdleTime);
+        for (const platform::cpu_usage_core_snapshot& core : snapshot.cores) {
+            CHECK(core.total_time >= core.idle_time);
         }
 #else
-        CHECK(snapshot.Cores.empty());
-        CHECK(snapshot.ProcessTimeNs == 0);
+        CHECK(snapshot.cores.empty());
+        CHECK(snapshot.process_time_ns == 0);
 #endif
     }
 
@@ -174,7 +196,7 @@ TEST_CASE("Platform")
         auto restore_env = [&set_env](const char* name, const optional<string>& saved) { set_env(name, saved.has_value() ? saved->c_str() : ""); };
 
         // The resolver reads the OS user-data env vars directly (no SDL/shell32). Drive each platform's
-        // primary var and its documented fallback, capture the results, then restore the real env.
+        // primary var and its documented fallback, capture the results, then restore the real env
 #if FO_WINDOWS
         auto saved_local = save_env("LOCALAPPDATA");
         auto saved_roaming = save_env("APPDATA");
@@ -183,11 +205,11 @@ TEST_CASE("Platform")
         string roaming_dir = strex("C:").combine_path("AppData/Roaming").str();
 
         set_env("LOCALAPPDATA", local_dir.c_str());
-        string from_local = Platform::GetUserDataBase();
+        string from_local = platform::get_user_data_base();
 
         set_env("LOCALAPPDATA", "");
         set_env("APPDATA", roaming_dir.c_str());
-        string from_roaming = Platform::GetUserDataBase();
+        string from_roaming = platform::get_user_data_base();
 
         restore_env("LOCALAPPDATA", saved_local);
         restore_env("APPDATA", saved_roaming);
@@ -199,24 +221,24 @@ TEST_CASE("Platform")
         const auto home_dir = strex("/Users").combine_path("test").str();
 
         set_env("HOME", home_dir.c_str());
-        const auto from_home = Platform::GetUserDataBase();
+        const auto from_home = platform::get_user_data_base();
 
         restore_env("HOME", saved_home);
 
         CHECK(from_home == strex(home_dir).combine_path("Library/Application Support").str());
 #else
-        const auto saved_xdg = save_env("XDG_DATA_HOME");
-        const auto saved_home = save_env("HOME");
+        auto saved_xdg = save_env("XDG_DATA_HOME");
+        auto saved_home = save_env("HOME");
 
-        const auto xdg_dir = strex("/tmp").combine_path("xdg_data").str();
-        const auto home_dir = strex("/home").combine_path("test").str();
+        string xdg_dir = strex("/tmp").combine_path("xdg_data").str();
+        string home_dir = strex("/home").combine_path("test").str();
 
         set_env("XDG_DATA_HOME", xdg_dir.c_str());
-        const auto from_xdg = Platform::GetUserDataBase();
+        string from_xdg = platform::get_user_data_base();
 
         set_env("XDG_DATA_HOME", "");
         set_env("HOME", home_dir.c_str());
-        const auto from_home = Platform::GetUserDataBase();
+        string from_home = platform::get_user_data_base();
 
         restore_env("XDG_DATA_HOME", saved_xdg);
         restore_env("HOME", saved_home);

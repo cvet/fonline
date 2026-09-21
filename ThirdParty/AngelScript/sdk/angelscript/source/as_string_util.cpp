@@ -1,6 +1,6 @@
 /*
    AngelCode Scripting Library
-   Copyright (c) 2003-2025 Andreas Jonsson
+   Copyright (c) 2003-2026 Andreas Jonsson
 
    This software is provided 'as-is', without any express or implied 
    warranty. In no event will the authors be held liable for any 
@@ -49,7 +49,7 @@ int asCompareStrings(const char *str1, size_t len1, const char *str2, size_t len
 	{
 		if( str2 == 0 || len2 == 0 ) return 0; // Equal
 
-		return 1; // The other string is larger than this
+		return -1; // The other string is larger than this
 	}
 
 	if( str2 == 0 )
@@ -57,19 +57,19 @@ int asCompareStrings(const char *str1, size_t len1, const char *str2, size_t len
 		if( len1 == 0 ) 
 			return 0; // Equal
 
-		return -1; // The other string is smaller than this
+		return 1; // The other string is smaller than this
 	}
 
 	if( len2 < len1 )
 	{
 		int result = memcmp(str1, str2, len2);
-		if( result == 0 ) return -1; // The other string is smaller than this
+		if( result == 0 ) return 1; // The other string is smaller than this
 
 		return result;
 	}
 
 	int result = memcmp(str1, str2, len1);
-	if( result == 0 && len1 < len2 ) return 1; // The other string is larger than this
+	if( result == 0 && len1 < len2 ) return -1; // The other string is larger than this
 
 	return result;
 }

@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "SpriteResource.h"
 #include "FileSystem.h"
@@ -144,7 +145,7 @@ auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteRes
     for (int32_t y = 0; y < copy_height; y++) {
         size_t frame_offset = numeric_cast<size_t>(frame_begin_y + y) * frame.Size.width + frame_begin_x;
         size_t image_offset = numeric_cast<size_t>(source_begin_y + y) * image.Size.width + source_begin_x;
-        MemCopy(image.Pixels.data() + image_offset, frame.Pixels.data() + frame_offset, numeric_cast<size_t>(copy_width) * sizeof(ucolor));
+        memory::copy(image.Pixels.data() + image_offset, frame.Pixels.data() + frame_offset, numeric_cast<size_t>(copy_width) * sizeof(ucolor));
     }
 
     return image;

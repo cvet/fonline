@@ -85,6 +85,11 @@ asCBuilder::asCBuilder(asCScriptEngine *_engine, asCModule *_module)
 	this->engine = _engine;
 	this->module = _module;
 	silent = false;
+	numWarnings = 0;
+	numErrors = 0;
+#ifndef AS_NO_COMPILER
+	hasCachedKnownTypes = false;
+#endif
 }
 
 asCBuilder::~asCBuilder()
@@ -1410,6 +1415,12 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 	// Count number of parameters
 	int paramCount = 0;
 	asCScriptNode *paramList = tmp->next;
+	if( paramList == 0 )
+	{
+		// Something is wrong with the parser
+		asASSERT(false);
+		return asINVALID_DECLARATION;
+	}
 	n = paramList->firstChild;
 	while( n )
 	{
@@ -1471,6 +1482,12 @@ int asCBuilder::ParseFunctionDeclaration(asCObjectType *objType, const char *dec
 			return asINVALID_DECLARATION;
 
 		// Move to next parameter
+		if( n->next == 0 )
+		{
+			// Something is wrong with the parser, but don't crash, just skip the parameter
+			asASSERT(false);
+			return asINVALID_DECLARATION;
+		}
 		n = n->next->next;
 		if (n && n->nodeType == snVariadic)
 		{
@@ -2836,7 +2853,7 @@ void asCBuilder::CompileGlobalVariables()
 							if( !gvar2->isCompiled )
 							{
 								int row, col;
-								gvar->script->ConvertPosToRowCol(gvar->declaredAtNode->tokenPos, &row, &col);
+								gvar->script->ConvertPosToRowCol(gvar->declaredAtNode ? gvar->declaredAtNode->tokenPos : 0, &row, &col);
 
 								asCString str = gvar->datatype.Format(gvar->ns);
 								str += " " + gvar->name;
@@ -4391,6 +4408,14 @@ void asCBuilder::IncludePropertiesFromMixins(sClassDeclaration *decl)
 						n2 = n2->next;
 					}
 
+					if( n2 == 0 )
+					{
+						// Something is wrong with the parser, but don't crash, just skip the property
+						asASSERT(false);
+						WriteError(TXT_UNEXPECTED_END_OF_FILE, decl->script, node);
+						continue;
+					}
+
 					asCScriptCode *file = mixin->script;
 					asCDataType dt = CreateDataTypeFromNode(n2, file, mixin->ns);
 
@@ -5130,6 +5155,14 @@ void asCBuilder::GetParsedFunctionDetails(asCScriptNode *node, asCScriptCode *fi
 		parameterTypes.PushLast(type);
 		inOutFlags.PushLast(inOutFlag);
 
+		if( n->next == 0 )
+		{
+			// Something is wrong with the parser, but don't crash, just skip the parameter
+			asASSERT(false);
+			WriteError(TXT_UNEXPECTED_END_OF_FILE, file, n);
+			break;
+		}
+
 		// Move to next parameter
 		n = n->next->next;
 		if( n && n->nodeType == snIdentifier )
@@ -5527,7 +5560,19 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 
 	// Check that the same function hasn't been registered already in the namespace
 	asCArray<int> funcs;
-	if( objType )
+	if( funcTraits.GetTrait(asTRAIT_CONSTRUCTOR) )
+	{
+		asASSERT(objType);
+		if( objType )
+			funcs = objType->beh.constructors;
+	}
+	else if( funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
+	{
+		asASSERT(objType);
+		if( objType && objType->beh.destruct )
+			funcs.PushLast(objType->beh.destruct);
+	}
+	else if( objType )
 		GetObjectMethodDescriptions(name.AddressOf(), objType, funcs, false);
 	else
 		GetFunctionDescriptions(name.AddressOf(), funcs, ns);
@@ -5566,6 +5611,9 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 		for( asUINT n = 0; n < funcs.GetLength(); ++n )
 		{
 			asCScriptFunction *func = GetFunctionDescription(funcs[n]);
+			// Ignore the default built-in script class constructor
+			if( func->id == engine->scriptTypeBehaviours.beh.constructors[0] )
+				continue;
 			if( func->IsSignatureExceptNameAndReturnTypeEqual(parameterTypes, inOutFlags, objType, funcTraits.GetTrait(asTRAIT_CONST), funcTraits.GetTrait(asTRAIT_VARIADIC)) )
 			{
 				if( isMixin )
@@ -5685,8 +5733,14 @@ int asCBuilder::RegisterScriptFunction(asCScriptNode *node, asCScriptCode *file,
 			compiler.CompileFactory(this, file, engine->scriptFunctions[factoryId]);
 			engine->scriptFunctions[factoryId]->AddRefInternal();
 		}
-		else if(funcTraits.GetTrait(asTRAIT_DESTRUCTOR))
+		else if( funcTraits.GetTrait(asTRAIT_DESTRUCTOR) )
+		{
+			if( objType->beh.destruct != 0 )
+				// Release the previous, to avoid memory leak. The error for duplicate declaration is already reported above
+				engine->scriptFunctions[objType->beh.destruct]->ReleaseInternal();
+
 			objType->beh.destruct = funcId;
+		}
 		else
 		{
 			// If the method is the assignment operator we need to replace the default implementation
@@ -5863,23 +5917,26 @@ int asCBuilder::RegisterVirtualProperty(asCScriptNode *node, asCScriptCode *file
 				if( funcNode ) funcNode->Destroy(engine);
 
 				// Should validate that the function really exists in the class/interface
-				bool found = false;
-				for( asUINT n = 0; n < objType->methods.GetLength(); n++ )
+				if( objType )
 				{
-					asCScriptFunction *func = engine->scriptFunctions[objType->methods[n]];
-					if( func->name == name &&
-						func->IsSignatureExceptNameEqual(returnType, paramTypes, paramModifiers, objType, funcTraits.GetTrait(asTRAIT_CONST), funcTraits.GetTrait(asTRAIT_VARIADIC)) )
+					bool found = false;
+					for( asUINT n = 0; n < objType->methods.GetLength(); n++ )
 					{
-						found = true;
-						break;
+						asCScriptFunction *func = engine->scriptFunctions[objType->methods[n]];
+						if( func->name == name &&
+						   func->IsSignatureExceptNameEqual(returnType, paramTypes, paramModifiers, objType, funcTraits.GetTrait(asTRAIT_CONST), funcTraits.GetTrait(asTRAIT_VARIADIC)) )
+						{
+							found = true;
+							break;
+						}
 					}
-				}
 
-				if( !found )
-				{
-					asCString str;
-					str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL_s, objType->GetName(), objType->GetModule() ? objType->GetModule()->GetName() : "");
-					WriteError(str, file, node);
+					if( !found )
+					{
+						asCString str;
+						str.Format(TXT_SHARED_s_DOESNT_MATCH_ORIGINAL_s, objType->GetName(), objType->GetModule() ? objType->GetModule()->GetName() : "");
+						WriteError(str, file, node);
+					}
 				}
 			}
 		}
@@ -6049,7 +6106,8 @@ void asCBuilder::GetObjectMethodDescriptions(const char *name, asCObjectType *ob
 				asCScriptFunction *f = engine->scriptFunctions[objectType->methods[n]];
 				if( f && f->funcType == asFUNC_VIRTUAL )
 					f = objectType->virtualFunctionTable[f->vfTableIdx];
-				methods.PushLast(f->id);
+				asASSERT(f);
+				methods.PushLast(f ? f->id : 0);
 			}
 		}
 	}
@@ -6321,51 +6379,85 @@ asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameS
 	if( scopeType )
 		*scopeType = 0;
 
+	asSNameSpace *foundNs = 0;
 	asSNameSpace *ns = implicitNs;
 	if( nsName == "::" )
-		ns = engine->nameSpaces[0];
+		foundNs = engine->nameSpaces[0];
 	else if( nsName != "" )
 	{
-		ns = engine->FindNameSpace(nsName.AddressOf());
-		if (ns == 0 && scopeType)
+		bool found = false;
+
+		// Recursively search parent namespaces for matching type
+//		asSNameSpace *origNs = ns;
+		asCArray<asSNameSpace*> pendingNamespaces;
+		asCArray<asSNameSpace*> visitedNamespaces;
+
+		asSNameSpace* parentNs = engine->GetParentNameSpace(ns);
+		while( ns && !found )
 		{
-			asCString typeName;
-			asCString searchNs;
+			if( !visitedNamespaces.Exists(ns) )
+			{
+				visitedNamespaces.PushLast(ns);
 
-			// Split the scope with at the inner most ::
-			int pos = nsName.FindLast("::");
-			bool recursive = false;
-			if (pos >= 0)
-			{
-				// Fully qualified namespace
-				typeName = nsName.SubString(pos + 2);
-				searchNs = nsName.SubString(0, pos);
-			}
-			else
-			{
-				// Partially qualified, use the implicit namespace and then search recursively for the type
-				typeName = nsName;
-				searchNs = implicitNs->name;
-				recursive = true;
-			}
+				asCString searchNs = nsName;
+				if( nsName.SubString(0, 2) != "::" && ns->name != "" )
+					searchNs = ns->name + "::" + nsName;
 
-			asSNameSpace *nsTmp = searchNs == "::" ? engine->nameSpaces[0] : engine->FindNameSpace(searchNs.AddressOf());
-			asCTypeInfo *ti = 0;
-			while( !ti && nsTmp )
-			{
-				// Check if the typeName is an existing type in the namespace
-				ti = GetType(typeName.AddressOf(), nsTmp, 0);
-				if (ti)
+				foundNs = engine->FindNameSpace(searchNs.AddressOf());
+				if( foundNs )
+					found = true;
+
+				// If no namespace is found, then check if the scope is actually a type
+				if( foundNs == 0 && scopeType )
 				{
-					// The informed scope is not a namespace, but it does match a type
-					*scopeType = ti;
-					return 0;
+					asCString typeName;
+
+					// Split the scope with at the inner most ::
+					int pos = nsName.FindLast("::");
+					bool recursive = false;
+					if( pos >= 0 )
+					{
+						// Fully qualified namespace
+						typeName = nsName.SubString(pos + 2);
+						searchNs = nsName.SubString(0, pos);
+					}
+					else
+					{
+						// Partially qualified, use the implicit namespace and then search recursively for the type
+						typeName = nsName;
+						searchNs = implicitNs->name;
+						recursive = true;
+					}
+
+					asSNameSpace *nsTmp = searchNs == "::" ? engine->nameSpaces[0] : engine->FindNameSpace(searchNs.AddressOf());
+					asCTypeInfo *ti = 0;
+					if( nsTmp )
+					{
+						// Check if the typeName is an existing type in the namespace
+						ti = GetType(typeName.AddressOf(), nsTmp, 0);
+						if( ti )
+						{
+							// The informed scope is not a namespace, but it does match a type
+							*scopeType = ti;
+							return 0;
+						}
+					}
 				}
-				nsTmp = recursive ? engine->GetParentNameSpace(nsTmp) : 0;
+			}
+
+			if( !found )
+			{
+				AddVisibleNamespaces(ns, visitedNamespaces, pendingNamespaces);
+
+				// Try to find it in the parent namespace
+				bool dummyCcheckAmbiguousSymbols = false;
+				ns = FindNextVisibleNamespace(visitedNamespaces, pendingNamespaces, parentNs, &dummyCcheckAmbiguousSymbols);
+				if (parentNs == ns)
+					parentNs = engine->GetParentNameSpace(ns);
 			}
 		}
 
-		if (ns == 0 && isRequired)
+		if (foundNs == 0 && isRequired)
 		{
 			asCString msg;
 			msg.Format(TXT_NAMESPACE_s_DOESNT_EXIST, nsName.AddressOf());
@@ -6373,7 +6465,7 @@ asSNameSpace *asCBuilder::GetNameSpaceByString(const asCString &nsName, asSNameS
 		}
 	}
 
-	return ns;
+	return foundNs;
 }
 
 asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCode *file, asSNameSpace *implicitNamespace, bool acceptHandleForScope, asCObjectType *currentType, bool reportError, bool *isValid, asCArray<asCDataType> *templSubTypes, asCArray<asSNameSpace*>* scopeVisibleNamespaces)
@@ -6630,6 +6722,13 @@ asCDataType asCBuilder::CreateDataTypeFromNode(asCScriptNode *node, asCScriptCod
 	}
 
 	// Determine array dimensions and object handles
+	if( n == 0 )
+	{
+		// Something is wrong with the parser, but don't crash
+		asASSERT(false);
+		WriteError(TXT_UNEXPECTED_END_OF_FILE, file, node);
+		return asCDataType::CreatePrimitive(ttInt, false);
+	}
 	n = n->next;
 	while( n && (n->tokenType == ttOpenBracket || n->tokenType == ttHandle || n->tokenType == ttQuestion) ) // (FOnline Patch) || n->tokenType == ttQuestion
 	{
@@ -6879,7 +6978,7 @@ asCObjectType *asCBuilder::GetTemplateInstanceFromNode(asCScriptNode *node, asCS
 			// If this is the first time the template instance is used, store where it was declared from
 			otInstance->scriptSectionIdx = engine->GetScriptSectionNameIndex(file->name.AddressOf());
 			int row, column;
-			file->ConvertPosToRowCol(n->tokenPos, &row, &column);
+			file->ConvertPosToRowCol(n ? n->tokenPos: 0, &row, &column);
 			otInstance->declaredAt = (row & 0xFFFFF) | (column << 20);
 		}
 

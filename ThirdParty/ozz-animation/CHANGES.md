@@ -1,3 +1,23 @@
+Release version 0.17.0
+----------------------
+
+* Library
+  - [animation] Prevents introducing NaNs in two-bone IK computation, which was causing instability when softening target position.
+  - [animation] Implements skeleton model-space rest pose computation utility.
+  - [offline] Implements model-space raw track sampling utility.
+  - [base] Makes sure cross product last component is always 0, otherwise risquing to propagate NaNs.
+  - [base] Adds math transform multiplication operator.
+  - [base] Implements relevant default initialization of math structures, ensuring safe initialization in user code.
+
+* Tools
+  - [gltf2ozz] Updates tinygltf dependency to v2.9
+
+* Samples
+  - Integrates [Quaternius Universal Animation Library](https://quaternius.com/packs/universalanimationlibrary.html) data set.
+  - Updates samples to quaternius animation data set.
+  - Adds animations browsing sample, allowing to visualize all Quaternius animations.
+  - Handle exact 0 and 1 ratio for PlaybackController without looping.
+
 Release version 0.16.0
 ----------------------
 

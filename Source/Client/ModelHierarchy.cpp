@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -142,7 +142,7 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
     auto&& [tex, tex_data] = _modelMngr->_textureLoader(tex_path);
     FO_VERIFY_AND_THROW(tex, "Model texture could not be loaded", tex_name, _fileName);
 
-    auto texture = SafeAlloc::MakeUnique<MeshTexture>(_modelMngr->_engineMetadata->Hashes.ToHashedString(tex_name), tex, tex_data);
+    auto texture = safe_alloc::make_unique<MeshTexture>(_modelMngr->_engineMetadata->Hashes.to_hashed_string(tex_name), tex, tex_data);
     _textures.emplace_back(std::move(texture));
 
     return _textures.back();

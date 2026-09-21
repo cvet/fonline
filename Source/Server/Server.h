@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -59,15 +59,70 @@
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ServerInitException);
+FO_DECLARE_EXCEPTION(ServerQuiescenceException);
+FO_DECLARE_EXCEPTION(ServerSnapshotException);
 
 auto GetServerResources(GlobalSettings& settings) -> FileSystem;
+
+enum class ServerSnapshotBlockerKind : uint8_t
+{
+    SuspendedScriptContexts,
+    ActiveScriptContexts,
+    RetainedScriptContexts,
+    DelayedCallbacks,
+    TimeEvents,
+    CritterMovements,
+};
+
+struct ServerSnapshotBlocker
+{
+    ServerSnapshotBlockerKind Kind {};
+    size_t Count {};
+};
+
+struct ServerSnapshotState
+{
+    static constexpr uint32_t FORMAT_VERSION = 1;
+
+    uint32_t FormatVersion {FORMAT_VERSION};
+    string CompatibilityVersion {};
+    string MetadataVersion {};
+    synctime SynchronizedTime {};
+    ident_t LastEntityId {};
+    random_generator::state_data RandomState {};
+};
+
+// The captured world as plain bytes plus the state that describes them. Storing the pair, naming it,
+// versioning the container and publishing it atomically are the embedder's business, not the Engine's
+struct ServerSnapshotCaptureResult
+{
+    bool ReachedQuiescence {};
+    vector<ServerSnapshotBlocker> Blockers {};
+    optional<ServerSnapshotState> State {};
+    vector<uint8_t> Payload {};
+};
+
+struct ServerSnapshotRestore
+{
+    ServerSnapshotState State {};
+    vector<uint8_t> Payload {};
+};
+
+struct ServerQuiescenceState
+{
+    synctime SynchronizedTime {};
+    random_generator::state_data RandomState {};
+};
 
 class ServerEngine final : public BaseEngine, public EntityManagerApi
 {
     friend class ServerScriptSystem;
+    friend class ServerEntity;
 
 public:
-    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources);
+    using QuiescenceCallback = function<void(const ServerQuiescenceState&)>;
+
+    explicit ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources, optional<ServerSnapshotRestore> restore_snapshot = std::nullopt);
 
     ServerEngine(const ServerEngine&) = delete;
     ServerEngine(ServerEngine&&) noexcept = delete;
@@ -78,13 +133,16 @@ public:
     [[nodiscard]] auto GetEngine() noexcept -> ptr<ServerEngine> { return this; }
     [[nodiscard]] auto IsStarted() const noexcept -> bool { return _started; }
     [[nodiscard]] auto IsStartingError() const noexcept -> bool { return _startingError; }
-    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress; }
+    [[nodiscard]] auto IsShutdownInProgress() const noexcept -> bool { return _shutdownInProgress.load(); }
+    [[nodiscard]] auto IsRestoredFromSnapshot() const noexcept -> bool { return _restoreSnapshot.has_value(); }
     [[nodiscard]] auto GetHealthInfo() const -> string;
     [[nodiscard]] auto GetLangPack() const -> const TextPack& { return _defaultLang; }
     [[nodiscard]] auto GetCurrentSyncContext() const noexcept -> nptr<SyncContext> { return SyncContext::GetCurrentOnThisThread(); }
     [[nodiscard]] auto RequireCurrentSyncContext() const -> ptr<SyncContext>;
     [[nodiscard]] auto GetEntityLock() const noexcept -> ptr<EntityLock> { return _entityLock; }
     [[nodiscard]] auto GetCompletedServerJobsCount() const -> uint64_t;
+    [[nodiscard]] auto IsConnectionAdmissionOpen() const -> bool;
+    [[nodiscard]] auto GetWorkerThreadCount() const -> int32_t;
 
     void Shutdown() override;
     void FlushExactSyncTime();
@@ -95,7 +153,7 @@ public:
     void UnlockForPropertyAccessShared() noexcept override;
 
     void ScheduleDelayedCallback(timespan delay, function<void()> body) override;
-    void RunScriptContext(const function<void()>& callback) override;
+    auto RunScriptContext(const function<void()>& callback) -> timespan override;
 
     auto CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomInnerEntity(holder, entry, pid); }
     auto CreateCustomEntity(hstring type_name, hstring pid) -> nptr<Entity> override { return EntityMngr.CreateCustomEntity(type_name, pid); }
@@ -115,6 +173,8 @@ public:
 
     auto Lock(optional<timespan> max_wait_time) -> bool;
     void Unlock();
+    auto RunInQuiescence(optional<timespan> max_wait_time, const QuiescenceCallback& callback) -> bool;
+    auto CreateSnapshot(optional<timespan> max_wait_time) -> ServerSnapshotCaptureResult;
     void DrawGui();
 
     auto CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> net_connection) -> ptr<Player>;
@@ -201,6 +261,7 @@ private:
     std::atomic_bool _started {false};
     std::atomic_bool _startingError {false};
     std::atomic_bool _shutdownInProgress {false};
+    std::atomic<int32_t> _liveEntityCount {};
 
 public:
     EntityManager EntityMngr;
@@ -209,11 +270,11 @@ public:
     ItemManager ItemMngr;
 
     DataBase DbStorage {};
-    const hstring GameCollectionName = Hashes.ToHashedString("Game");
-    const hstring HistoryCollectionName = Hashes.ToHashedString("History");
-    const hstring PlayersCollectionName = Hashes.ToHashedString("Players");
-    const hstring CrittersCollectionName = Hashes.ToHashedString("Critters");
-    const hstring HashReportsCollectionName = Hashes.ToHashedString("HashReports");
+    const hstring GameCollectionName = Hashes.to_hashed_string("Game");
+    const hstring HistoryCollectionName = Hashes.to_hashed_string("History");
+    const hstring PlayersCollectionName = Hashes.to_hashed_string("Players");
+    const hstring CrittersCollectionName = Hashes.to_hashed_string("Critters");
+    const hstring HashReportsCollectionName = Hashes.to_hashed_string("HashReports");
 
     EventObserver<> OnWillFinish {};
     EventObserver<> OnDidFinish {};
@@ -245,7 +306,7 @@ private:
         uint64_t JobCounterBeginTotal {};
         deque<pair<nanotime, uint64_t>> JobTimeStamps {};
 
-        optional<Platform::CpuUsageSnapshot> LastCpuUsageSnapshot {};
+        optional<platform::cpu_usage_snapshot> LastCpuUsageSnapshot {};
         nanotime LastCpuUsageSampleTime {};
         bool CpuUsageAvailable {};
         float32_t CpuSystemLoad {};
@@ -256,7 +317,9 @@ private:
 
     void SyncPoint();
     void SyncWholeWorld(SyncContext& ctx, span<const refcount_ptr<Player>> additional_players = {});
+    auto CollectSnapshotBlockers() -> vector<ServerSnapshotBlocker>;
 
+    void StartConnectionServer(string_view what, const function<unique_ptr<NetworkServer>()>& start);
     void OnNewConnection(shared_ptr<NetworkServerConnection> net_connection);
     void ProcessNotLoggedInPlayer(ptr<Player> not_logged_in_player);
     void ProcessPlayer(ptr<Player> player);
@@ -292,7 +355,8 @@ private:
     void OnSendCustomEntityValue(ptr<Entity> entity, ptr<const Property> prop);
 
     void OnSetCritterLookDistance(ptr<Entity> entity, ptr<const Property> prop);
-    void OnSetItemCount(ptr<Entity> entity, ptr<const Property> prop, ptr<const void> new_value);
+    void OnSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop, PropertyRawData& data);
+    void OnPostSetMapRemovedStaticItems(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemHidden(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> prop);
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
@@ -330,12 +394,12 @@ private:
     void OnPlayerLoggedIn(ptr<Player> player, nptr<Player> not_logged_in_player);
     auto PlayerJob(ptr<Player> player) -> std::optional<timespan>;
     auto CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>;
-    auto WrapJobWithSync(WorkThread::Job body) -> WorkThread::Job;
+    auto WrapJobWithSync(work_thread::job body) -> work_thread::job;
     void CountServerStatsJob() noexcept;
 
-    WorkThread _starter {"ServerStarter"};
-    WorkThread _mainWorker {"ServerWorker"};
-    WorkThread _healthWriter {"ServerHealthWriter"};
+    work_thread _starter {"ServerStarter"};
+    work_thread _mainWorker {"ServerWorker"};
+    work_thread _healthWriter {"ServerHealthWriter"};
     string _healthFileName {};
     optional<WorkerPool> _workerPool {};
     std::atomic<uint64_t> _completedServerStatsJobs {};
@@ -360,6 +424,10 @@ private:
     vector<unique_ptr<NetworkServer>> _connectionServers {};
     mutable mutex _notLoggedInPlayersLocker {};
     vector<refcount_ptr<Player>> _notLoggedInPlayers FO_TSA_GUARDED_BY(_notLoggedInPlayersLocker) {};
+    mutable mutex _connectionAdmissionLocker {};
+    bool _connectionAdmissionOpen FO_TSA_GUARDED_BY(_connectionAdmissionLocker) {true};
+    mutex _quiescenceLocker {};
+    optional<ServerSnapshotRestore> _restoreSnapshot {};
     mutable mutex _connRateLocker {};
     unordered_map<string, ConnRateState> _connRates FO_TSA_GUARDED_BY(_connRateLocker) {};
 

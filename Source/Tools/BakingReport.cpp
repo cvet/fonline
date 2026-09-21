@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "BakingReport.h"
 
@@ -49,9 +50,9 @@ static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
 static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame);
 
 BakingReport::BakingReport(ptr<const BakingSettings> settings) :
-    _bakeOutput {settings->BakeOutput},
-    _forceRequested {settings->ForceBaking},
-    _singleThread {settings->SingleThreadBaking}
+    _bakeOutput {settings->Baking.BakeOutput},
+    _forceRequested {settings->Baking.ForceBaking},
+    _singleThread {settings->Baking.SingleThreadBaking}
 {
     FO_STACK_TRACE_ENTRY();
 }
@@ -302,7 +303,7 @@ void BakingReport::Complete(bool success, string_view failure_message)
     scoped_lock lock {_locker};
     _status = success ? "success" : "failed";
     _failureMessage = failure_message;
-    _completedDurationMs = _duration.GetDuration().milliseconds();
+    _completedDurationMs = _duration.get_duration().milliseconds();
 }
 
 auto BakingReport::IsFullRebuild() const -> bool
@@ -952,7 +953,7 @@ auto BakingReport::Serialize() const -> string
         {"failureMessage", _failureMessage},
         {"buildHash", FO_BUILD_HASH},
         {"bakeOutput", _bakeOutput},
-        {"durationMs", _status == "running" ? _duration.GetDuration().milliseconds() : _completedDurationMs},
+        {"durationMs", _status == "running" ? _duration.get_duration().milliseconds() : _completedDurationMs},
         {"mode", {{"forceRequested", _forceRequested}, {"fullRebuild", _fullRebuild}, {"rebuildReason", _rebuildReason}, {"singleThread", _singleThread}}},
         {"measurementScope",
             {

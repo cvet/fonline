@@ -1,15 +1,5 @@
-# Cross-compile from a POSIX host (typically Linux) to Windows MSVC ABI targets,
-# using clang-cl + lld-link with the Windows SDK / CRT staged by xwin.
-#
-# Required env:
-#   FO_XWIN_ROOT - absolute path to the xwin "splat" output (must contain crt/ and sdk/).
-#
-# Optional env (override only when the auto-detected tool isn't right):
-#   FO_CLANG_CL  - clang-cl binary used as both C and CXX compiler.
-#   FO_LLVM_ML   - MASM-compatible assembler used for ASM_MASM sources.
-#
-# Defaults to win64 (x86_64). Override CMAKE_SYSTEM_PROCESSOR via the cache
-# (e.g. -DCMAKE_SYSTEM_PROCESSOR=x86) before including this file to target win32.
+# Cross-compile POSIX to Windows MSVC ABI with clang-cl, lld-link, and FO_XWIN_ROOT SDK/CRT.
+# FO_CLANG_CL and FO_LLVM_ML override tools; CMAKE_SYSTEM_PROCESSOR overrides the win64 default
 
 set(CMAKE_SYSTEM_NAME Windows)
 if(NOT DEFINED CMAKE_SYSTEM_PROCESSOR OR CMAKE_SYSTEM_PROCESSOR STREQUAL "")
@@ -45,7 +35,7 @@ function(_fo_find_versioned_llvm_tool out_var env_var)
         return()
     endif()
     # Use a per-invocation cache slot so find_program does not reuse a hit
-    # from a previous tool lookup in the same configure.
+    # from a previous tool lookup in the same configure
     set(_cache_var "_fo_llvm_tool_${out_var}")
     find_program(${_cache_var} NAMES ${ARGN} REQUIRED)
     set(${out_var} "${${_cache_var}}" PARENT_SCOPE)
@@ -69,7 +59,7 @@ set(CMAKE_C_COMPILER_TARGET "${_fo_xwin_target_triple}" CACHE STRING "clang-cl W
 set(CMAKE_CXX_COMPILER_TARGET "${_fo_xwin_target_triple}" CACHE STRING "clang-cl Windows target triple" FORCE)
 
 # xwin ships only Release CRTs; MSVC Debug CRTs are not redistributable, so all
-# configurations link the Release dynamic CRT.
+# configurations link the Release dynamic CRT
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDLL")
 cmake_policy(SET CMP0091 NEW)
 
@@ -82,7 +72,7 @@ set(_fo_xwin_includes
 list(JOIN _fo_xwin_includes " " _fo_xwin_includes_flag)
 
 # clang-cl on a Linux host can otherwise keep its x86_64 Windows default even
-# when CMake's processor/linker settings select the x86 SDK and /machine:X86.
+# when CMake's processor/linker settings select the x86 SDK and /machine:X86
 set(_fo_xwin_target_flag "--target=${_fo_xwin_target_triple}")
 set(CMAKE_C_FLAGS_INIT "${_fo_xwin_target_flag} ${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS")
 set(CMAKE_CXX_FLAGS_INIT "${_fo_xwin_target_flag} ${_fo_xwin_includes_flag} /D_CRT_SECURE_NO_WARNINGS /EHsc")
@@ -98,9 +88,7 @@ set(CMAKE_MODULE_LINKER_FLAGS_INIT "${_fo_xwin_libpaths_flag}")
 
 set(CMAKE_RC_FLAGS_INIT "-I${_fo_xwin_root}/sdk/include/um -I${_fo_xwin_root}/sdk/include/shared")
 
-# llvm-ml defaults to 32-bit when invoked under its bare name. Pin to the
-# matching bitness for x86_64 / aarch64 so 64-bit registers and SEH directives
-# parse correctly.
+# Pin llvm-ml bitness so 64-bit registers and SEH directives parse correctly
 if(_fo_xwin_arch_dir STREQUAL "x86_64")
     set(CMAKE_ASM_MASM_FLAGS_INIT "-m64")
 elseif(_fo_xwin_arch_dir STREQUAL "aarch64")

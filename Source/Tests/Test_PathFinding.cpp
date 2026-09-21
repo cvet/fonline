@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -702,6 +702,36 @@ TEST_CASE("PathFinding::FindPath")
             CHECK(output.Steps.size() >= numeric_cast<size_t>(direct_dist));
         }
     }
+
+    SECTION("MaxLengthFarBeyondTheMapKeepsTheSameRoute")
+    {
+        // The grid half-extent is clamped to the map, so a caller that raises MaxLength walks a different
+        // buffer shape. It must still walk the same route: this pins the indexing, not the allocation
+        auto blocked = [](mpos hex) { return hex.x == 9 && hex.y >= 4 && hex.y <= 16; };
+        auto huge = MakeBlockedSettings(mpos {2, 10}, mpos {17, 10}, blocked);
+        huge.MaxLength = 3000;
+
+        auto huge_output = PathFinding::FindPath(huge);
+        auto modest_output = PathFinding::FindPath(MakeBlockedSettings(mpos {2, 10}, mpos {17, 10}, blocked));
+
+        CHECK(modest_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(huge_output.Result == modest_output.Result);
+        CHECK(huge_output.NewToHex == modest_output.NewToHex);
+        CHECK(huge_output.Steps == modest_output.Steps);
+    }
+
+    SECTION("ShortMaxLengthOnAWideMapKeepsTheSameRoute")
+    {
+        // The other side of the clamp: a limit smaller than the map keeps the tight buffer it always had
+        auto settings = MakeClearSettings(mpos {2, 2}, mpos {8, 2});
+        settings.MaxLength = 12;
+
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == mpos {8, 2});
+        CHECK(!output.Steps.empty());
+    }
 }
 
 TEST_CASE("PathFinding::FreeMovementEndOffset")
@@ -729,7 +759,7 @@ TEST_CASE("PathFinding::FreeMovementEndOffset")
     SECTION("DegenerateTargetKeepsCurrentOffset")
     {
         // Cut 0 onto a centered target produces an undefined stop direction; FindPath must fall
-        // back to the mover's current sub-hex offset so the critter stays in place visually.
+        // back to the mover's current sub-hex offset so the critter stays in place visually
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
         settings.ToHexOffset = ipos16 {0, 0};
         settings.FromHexOffset = ipos16 {-6, 4};
@@ -770,7 +800,7 @@ TEST_CASE("PathFinding::FreeMovementEndOffset")
     SECTION("ExactCenteredTargetWithCenteredMoverStaysCentered")
     {
         // Cut 0 onto a centered target is the degenerate case; with FromHexOffset == 0 the fallback
-        // also yields 0, preserving the old center-snapped behavior for a mover already at its center.
+        // also yields 0, preserving the old center-snapped behavior for a mover already at its center
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {9, 5}, 0);
         settings.ToHexOffset = ipos16 {0, 0};
         settings.FreeMovement = true;

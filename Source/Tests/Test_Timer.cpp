@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -73,6 +74,37 @@ TEST_CASE("GameTimer")
         timer.FrameAdvance(false);
 
         CHECK(timer.GetSynchronizedTime() >= sync_base);
+    }
+
+    SECTION("PauseFreezesFrameAndSynchronizedTime")
+    {
+        GameTimer timer {&settings};
+        synctime sync_base {654321};
+
+        timer.SetSynchronizedTime(sync_base);
+        timer.FrameAdvance(false);
+        timer.Pause();
+
+        CHECK(timer.IsPaused());
+        CHECK_THROWS_AS(timer.Pause(), VerificationException);
+
+        nanotime paused_frame_time = timer.GetFrameTime();
+        synctime paused_sync_time = timer.GetSynchronizedTime();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+        timer.FrameAdvance(false);
+
+        CHECK(timer.GetFrameTime() == paused_frame_time);
+        CHECK(timer.GetFrameDeltaTime() == timespan {});
+        CHECK(timer.GetSynchronizedTime() == paused_sync_time);
+
+        timer.Resume();
+        CHECK_FALSE(timer.IsPaused());
+        CHECK_THROWS_AS(timer.Resume(), VerificationException);
+
+        timer.FrameAdvance(false);
+        CHECK(timer.GetFrameTime() >= paused_frame_time);
+        CHECK(timer.GetSynchronizedTime() >= paused_sync_time);
     }
 
     SECTION("MonotonicSynchronizedTimeDoesNotRollbackAndCatchesUp")

@@ -39,7 +39,7 @@ function(DisableLibWarnings)
 		# flags also reach ASM_MASM sources (e.g. AngelScript's as_callfunc_x64_msvc_asm.asm under clang-cl), and the
 		# MASM assembler (llvm-ml) rejects the warning flags with "ignoring unsupported 'w'/'W' option" — a warning that
 		# our own warning-silencing was the sole cause of. Keeping the gate makes vendored ASM assemble cleanly while the
-		# C/CXX warning suppression is unchanged.
+		# C/CXX warning suppression is unchanged
 		target_compile_options(${lib} PRIVATE
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>>:-w>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>>>:-Wno-error=incompatible-pointer-types
@@ -72,8 +72,14 @@ function(DisableLibWarnings)
 			# "subtraction of unsigned offset overflowed" even though the result stays inside the VM stack frame — upstream
 			# interpreter addressing, correct on every target architecture, not our patch. A full gameplay San_Undefined
 			# run reports this at exactly one site (the AngelScript VM) and 0 pointer-overflow sites in Engine/Source, so
-			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage.
-			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow>
+			# keeping the check active for our own code (this exclusion is vendored-libs-only) loses no coverage
+			#
+			# -fsanitize=shift-base is excluded for the same reason, and again for vendored design only: libvorbis packs
+			# a bark-band pair into one int as `((lo-1)<<16)+(hi-1)` (psy.c), so the first band shifts -1 left and reads
+			# back with an arithmetic >>16. Shifting a negative value is UB by the letter of C, correct on every
+			# two's-complement target the engine builds for, and the encoder reaches it on the first Ogg bake. The
+			# shift-exponent check stays on everywhere, and our own code is unaffected by this exclusion
+			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>,$<CONFIG:San_Undefined,San_Address_Undefined>>:-fno-sanitize=function$<COMMA>alignment$<COMMA>pointer-overflow$<COMMA>shift-base>
 			$<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<CXX_COMPILER_ID:MSVC>>:/W0>)
 	endforeach()
 endfunction()
@@ -192,7 +198,7 @@ macro(SetOptionValues)
 		# untyped -D / preset cache entries have no shadow yet, so preserve those as initial overrides too.
 		# Otherwise (unset, or still our default) -> (re)apply the current cmake-file default with FORCE.
 		# This keeps the cmake file authoritative against stale-cache drift (e.g. FO_EFFECT_SCRIPT_VALUES no
-		# longer sticks at an old number) while still honoring real overrides.
+		# longer sticks at an old number) while still honoring real overrides
 		if(DEFINED ${optionName} AND DEFINED ${_soptShadow} AND NOT "${${optionName}}" STREQUAL "${${_soptShadow}}")
 			set(_soptResolved "${${optionName}}")
 		elseif(_soptHasCache AND _soptCacheType STREQUAL "UNINITIALIZED" AND NOT DEFINED ${_soptShadow})
@@ -294,7 +300,7 @@ macro(AddEngineSource target)
 		AppendList(FO_${target}_SOURCE ${resolvedFile})
 		AppendList(FO_SOURCE_META_FILES ${resolvedFile})
 
-		StringRegexMatch("\\.h$" isHeader "${resolvedFile}")
+		StringRegexMatch("[.]h$" isHeader "${resolvedFile}")
 
 		if(${target} STREQUAL "COMMON" AND isHeader)
 			AppendList(FO_ADDED_COMMON_HEADERS ${resolvedFile})
@@ -641,6 +647,8 @@ macro(SetupApplicationTarget target)
 	if(APP_TARGET_WRITE_BUILD_HASH)
 		WriteBuildHash(${target})
 	endif()
+
+	CopyManagedRuntimeToTarget(${target})
 endmacro()
 
 macro(AddExecutableApplication target sourceFile)
@@ -664,7 +672,7 @@ macro(AddExecutableApplication target sourceFile)
 		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so
 		# sanitizer configs get the same 8 MiB reserve that Linux runs already have from the default rlimit.
 		# Production configs deliberately keep the 1 MiB default: this is ASan-overhead parity, not a
-		# statement that the engine needs a bigger stack.
+		# statement that the engine needs a bigger stack
 		TargetLinkOptions(${target} PRIVATE $<${expr_SanitizerConfigs}:/STACK:8388608>)
 	endif()
 
@@ -721,7 +729,7 @@ macro(AddSharedApplication target sourceFile)
 		# Runtime modules are dlopen'ed by an engine host executable that exports its own engine
 		# symbols (-rdynamic for stack traces). Bind the module's global references to its own
 		# definitions so it keeps private global data and allocator state instead of interposing
-		# on the host's copies; the host/runtime C ABI never transfers ownership across modules.
+		# on the host's copies; the host/runtime C ABI never transfers ownership across modules
 		TargetLinkOptions(${target} PRIVATE -Wl,-Bsymbolic)
 	endif()
 
@@ -734,7 +742,7 @@ endmacro()
 # binary as a POST_BUILD step. Silently does nothing if runtimePath is empty,
 # the file does not exist, or the target has not been declared — so callers
 # can wire it up unconditionally for optional dependencies (Steamworks SDK,
-# Mono runtime, plugin DLLs, ...).
+# managed runtime, plugin DLLs, ...).
 function(CopyRuntimeToTarget targetName runtimePath)
 	if(NOT runtimePath OR NOT EXISTS "${runtimePath}" OR NOT TARGET ${targetName})
 		return()
@@ -746,11 +754,28 @@ function(CopyRuntimeToTarget targetName runtimePath)
 		COMMENT "Copy ${runtimeFileName} runtime for ${targetName}")
 endfunction()
 
+function(CopyManagedRuntimeToTarget targetName)
+	if(NOT FO_MANAGED_SCRIPTING OR NOT TARGET ${targetName})
+		return()
+	endif()
+	if(NOT TARGET PrepareManagedRuntimePayload OR NOT DEFINED FO_MANAGED_RUNTIME_PAYLOAD_DIR)
+		return()
+	endif()
+
+	add_dependencies(${targetName} PrepareManagedRuntimePayload)
+	AddCustomCommand(TARGET ${targetName} POST_BUILD
+		COMMAND ${CMAKE_COMMAND}
+			-DINPUT_DIR="${FO_MANAGED_RUNTIME_PAYLOAD_DIR}"
+			-DOUTPUT_DIR="$<TARGET_FILE_DIR:${targetName}>"
+			-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/CopyManagedRuntime.cmake"
+		COMMENT "Copy Managed runtime for ${targetName}")
+endfunction()
+
 # Wire one CMake target's output binary to be copied next to another's output
 # binary as a POST_BUILD step, and ensure the producer is built first. Useful
 # for shared libraries / plugins that must sit next to a host executable
 # (e.g. Baker shared lib next to the Server, AngelScript debugger plugin next
-# to a tool host, ...). Silently does nothing if either target is missing.
+# to a tool host, ...). Silently does nothing if either target is missing
 function(CopyTargetRuntimeToTarget consumerTarget producerTarget)
 	if(NOT TARGET ${consumerTarget} OR NOT TARGET ${producerTarget})
 		return()

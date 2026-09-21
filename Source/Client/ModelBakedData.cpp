@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "ModelBakedData.h"
 
@@ -36,14 +37,14 @@
 
 FO_BEGIN_NAMESPACE
 
-void VerifyModelBakedCountFitsData(const DataReader& reader, size_t count, size_t min_element_size, string_view field, string_view context)
+void VerifyModelBakedCountFitsData(const data_reader& reader, size_t count, size_t min_element_size, string_view field, string_view context)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_STRONG_ASSERT(min_element_size != 0, "Minimum baked element size must be non-zero");
 
-    if (count > reader.GetUnreadSize() / min_element_size) {
-        throw DataReadingException("Baked model field element count cannot fit in unread bytes", context, field, count, reader.GetUnreadSize());
+    if (count > reader.get_unread_size() / min_element_size) {
+        throw DataReadingException("Baked model field element count cannot fit in unread bytes", context, field, count, reader.get_unread_size());
     }
 }
 

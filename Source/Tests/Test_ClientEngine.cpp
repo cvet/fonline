@@ -1,6 +1,6 @@
 //      __________        ___               ______            _
 //     / ____/ __ \____  / (_)___  ___     / ____/___  ____ _(_)___  ___
-//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ \
+//    / /_  / / / / __ \/ / / __ \/ _ \   / __/ / __ \/ __ `/ / __ \/ _ `
 //   / __/ / /_/ / / / / / / / / /  __/  / /___/ / / / /_/ / / / / /  __/
 //  /_/    \____/_/ /_/_/_/_/ /_/\___/  /_____/_/ /_/\__, /_/_/ /_/\___/
 //                                                  /____/
@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,15 +29,19 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include <chrono>
+#include <filesystem>
 #include <thread>
 
 #include "catch_amalgamated.hpp"
 
+#if FO_ANGELSCRIPT_SCRIPTING
 #include "AngelScriptDebugger.h"
 #include "AngelScriptHelpers.h"
 #include "AngelScriptScripting.h"
+#endif
 #include "AnimationViewer.h"
 #include "Application.h"
 #include "Baker.h"
@@ -47,6 +51,7 @@
 #include "DefaultSprites.h"
 #include "EffectBaker.h"
 #include "ImGuiStuff.h"
+#include "MetadataRegistration.h"
 #include "ModelAnimationData.h"
 #include "ModelInfoBaker.h"
 #include "ModelManager.h"
@@ -57,6 +62,7 @@
 #include "PlayerView.h"
 #include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
+#include "Test_DumpArtifacts.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -125,13 +131,25 @@ namespace
         return settings;
     }
 
+    static auto MakeTempClientResourceDir(string_view name) -> string
+    {
+        std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_resources_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
+        return fs::path_to_string(base);
+    }
+
+    static auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
+    {
+        return !IsPackaged();
+    }
+
     static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
     {
         BakerClientEngine compiler_engine {metadata_resources};
 
         return BakerTests::CompileInlineScripts(&compiler_engine, "ClientEngineScripts",
             {
-                {"Scripts/ClientEngineTest.fos", R"(
+                {"Scripts/ClientEngineTest.fos",
+                    R"(
 namespace ClientEngineTest
 {
     int StartCalls = 0;
@@ -230,75 +248,97 @@ namespace ClientEngineTest
         ImGui.SetNextWindowFocus();
 
         if (ImGui.Begin("ScriptImGuiCoverage", ImGui_WindowFlags::None)) {
-            ImGui.Text("plain text");
-            ImGui.TextDisabled("disabled text");
-            ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
-            ImGui.AlignTextToFramePadding();
+            // The engine swallows anything escaping OnRenderIface, so a throw would skip ImGui.End and abort the
+            // next render instead of failing here; catching keeps the window balanced and records the failure
+            try {
+                ImGui.Text("plain text");
+                ImGui.TextDisabled("disabled text");
+                ImGui.TextWrapped("wrapped text that is long enough to actually wrap inside the window");
+                ImGui.AlignTextToFramePadding();
 
-            ImGui.PushID(1);
-            ImGui.PopID();
-            ImGui.PushID("named");
-            ImGui.PopID();
+                ImGui.PushID(1);
+                ImGui.PopID();
+                ImGui.PushID("named");
+                ImGui.PopID();
 
-            ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
-            ImGui.PopStyleColor(1);
-            ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
-            ImGui.PopStyleVar(1);
+                ImGui.PushStyleColor(ImGui_Col::Text, 1.0f, 1.0f, 1.0f, 1.0f);
+                ImGui.PopStyleColor(1);
+                ImGui.PushStyleVar(ImGui_StyleVar::Alpha, 1.0f);
+                ImGui.PopStyleVar(1);
 
-            ImGui.Separator();
-            ImGui.SameLine();
-            ImGui.Spacing();
-            ImGui.NewLine();
-            ImGui.Indent();
-            ImGui.Unindent();
+                ImGui.Separator();
+                ImGui.SameLine();
+                ImGui.Spacing();
+                ImGui.NewLine();
+                ImGui.Indent();
+                ImGui.Unindent();
 
-            if (ImGui.Button("button")) {
+                if (ImGui.Button("button")) {
+                }
+
+                ImGui.SmallButton("small");
+                ImGui.Bullet();
+                ImGui.BulletText("bullet text");
+
+                // Geometry and state queries answer inside a live window
+                fsize textSize = ImGui.CalcTextSize("measure me");
+                fpos windowPos = ImGui.GetWindowPos();
+                fsize windowSize = ImGui.GetWindowSize();
+
+                float scrollX = ImGui.GetScrollX();
+                float scrollY = ImGui.GetScrollY();
+                ImGui.SetScrollX(scrollX);
+                ImGui.SetScrollY(scrollY);
+                float maxX = ImGui.GetScrollMaxX();
+                float maxY = ImGui.GetScrollMaxY();
+
+                // Skipped by branching, never by returning: the matching ImGui.End must still run, or the next
+                // render aborts the whole frame over the unbalanced window
+                bool geometryIsSane = textSize.width >= 0.0f && windowPos.x >= -100000.0f && windowSize.width >= 0.0f && maxX >= 0.0f && maxY >= 0.0f;
+
+                if (geometryIsSane) {
+                    ImGui.GetTextLineHeight();
+                    ImGui.GetTextLineHeightWithSpacing();
+                    ImGui.GetFrameHeight();
+                    ImGui.GetFrameHeightWithSpacing();
+                    ImGui.GetWindowWidth();
+                    ImGui.GetWindowHeight();
+                    ImGui.GetTime();
+                    ImGui.GetFrameCount();
+                    ImGui.IsWindowAppearing();
+                    ImGui.IsAnyItemHovered();
+                    ImGui.IsAnyItemActive();
+
+                    ImGuiStage = "layout";
+                    DrawImGuiLayout();
+                    ImGuiStage = "input widgets";
+                    DrawImGuiInputWidgets();
+                    ImGuiStage = "containers";
+                    DrawImGuiContainers();
+                    ImGuiStage = "item queries";
+                    DrawImGuiItemQueries();
+                    ImGuiStage = "trees and selectables";
+                    DrawImGuiTreesAndSelectables();
+                    ImGuiStage = "tooltips and popups";
+                    DrawImGuiTooltipsAndPopups();
+                    ImGuiStage = "tables and tabs";
+                    DrawImGuiTablesAndTabs();
+                    ImGuiStage = "text and color widgets";
+                    DrawImGuiTextAndColorWidgets();
+                    ImGuiStage = "menus and settings";
+                    DrawImGuiMenusAndSettings();
+                    ImGuiStage = "remaining bindings";
+                    DrawImGuiRemainingBindings();
+                    ImGuiStage = "sprites";
+                    DrawImGuiSprites();
+                    ImGuiStage = "empty id sweep";
+                    SweepImGuiEmptyIds();
+                }
             }
-
-            ImGui.SmallButton("small");
-            ImGui.Bullet();
-            ImGui.BulletText("bullet text");
-
-            // Geometry and state queries answer inside a live window
-            fsize textSize = ImGui.CalcTextSize("measure me");
-            if (textSize.width < 0.0f) return;
-
-            fpos windowPos = ImGui.GetWindowPos();
-            fsize windowSize = ImGui.GetWindowSize();
-            if (windowPos.x < -100000.0f || windowSize.width < 0.0f) return;
-
-            float scrollX = ImGui.GetScrollX();
-            float scrollY = ImGui.GetScrollY();
-            ImGui.SetScrollX(scrollX);
-            ImGui.SetScrollY(scrollY);
-            float maxX = ImGui.GetScrollMaxX();
-            float maxY = ImGui.GetScrollMaxY();
-            if (maxX < 0.0f || maxY < 0.0f) return;
-
-            ImGui.GetTextLineHeight();
-            ImGui.GetTextLineHeightWithSpacing();
-            ImGui.GetFrameHeight();
-            ImGui.GetFrameHeightWithSpacing();
-            ImGui.GetWindowWidth();
-            ImGui.GetWindowHeight();
-            ImGui.GetTime();
-            ImGui.GetFrameCount();
-            ImGui.IsWindowAppearing();
-            ImGui.IsAnyItemHovered();
-            ImGui.IsAnyItemActive();
-
-            DrawImGuiLayout();
-            DrawImGuiInputWidgets();
-            DrawImGuiContainers();
-            DrawImGuiItemQueries();
-            DrawImGuiTreesAndSelectables();
-            DrawImGuiTooltipsAndPopups();
-            DrawImGuiTablesAndTabs();
-            DrawImGuiTextAndColorWidgets();
-            DrawImGuiMenusAndSettings();
-            DrawImGuiRemainingBindings();
-            DrawImGuiSprites();
-            SweepImGuiEmptyIds();
+            catch {
+                ImGuiSurfaceFailures++;
+                ImGuiFailedStage = ImGuiStage;
+            }
         }
 
         ImGui.End();
@@ -515,7 +555,7 @@ namespace ClientEngineTest
         ImGui.TextColored("colored", 1.0f, 0.5f, 0.25f, 1.0f);
         ImGui.TextLink("link");
 )"
-R"(        ImGui.Value("bool", true);
+                    R"(        ImGui.Value("bool", true);
         ImGui.Value("int", 42);
         ImGui.Value("uint", uint(7));
         ImGui.ProgressBar(0.5f);
@@ -730,6 +770,9 @@ R"(        ImGui.Value("bool", true);
 
     int ImGuiEmptyIdRejections = 0;
     int ImGuiSpriteRejections = 0;
+    int ImGuiSurfaceFailures = 0;
+    string ImGuiStage;
+    string ImGuiFailedStage;
 
     int UnitTestGetImGuiSpriteRejections()
     {
@@ -751,6 +794,16 @@ R"(        ImGui.Value("bool", true);
     int UnitTestGetImGuiEmptyIdRejections()
     {
         return ImGuiEmptyIdRejections;
+    }
+
+    int UnitTestGetImGuiSurfaceFailures()
+    {
+        return ImGuiSurfaceFailures;
+    }
+
+    string UnitTestGetImGuiFailedStage()
+    {
+        return ImGuiFailedStage;
     }
 
     void UnitTestImGuiRejectsEmptyId(int index)
@@ -980,7 +1033,7 @@ R"(        ImGui.Value("bool", true);
                 break;
             case 69:
 )"
-R"(                ImGui.ColorEdit4("", colorValue);
+                    R"(                ImGui.ColorEdit4("", colorValue);
                 break;
             case 70:
                 ImGui.ColorPicker3("", colorValue);
@@ -1080,7 +1133,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (effectRejections != 4) return -10;
 
         // Every effect slot resolves through its own arm of one switch, so the whole enum is walked. The
-        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved.
+        // fixture binds no shader, so each call is expected to be rejected once the slot is resolved
         EffectType[] effectTypes = {
             EffectType::GenericSprite, EffectType::CritterSprite, EffectType::TileSprite,
             EffectType::RoofSprite, EffectType::RainSprite, EffectType::SkinnedMesh,
@@ -1108,9 +1161,8 @@ R"(                ImGui.ColorEdit4("", colorValue);
         try { Game.ClearEffectScriptValues(EffectType::CritterSprite, 1); } catch { subtypeRejections++; }
         if (subtypeRejections != 4) return -13;
 
-        // Binding walks the same slot table from the other side. The headless render backend builds a stub
-        // effect for any path and only logs a missing file, so a bad path installs a stub rather than
-        // failing - the point here is that every slot is addressable, not that the path is validated.
+        // The headless backend stubs any effect path, so this proves every slot is addressable rather than that
+        // the path is validated
         int bindRejections = 0;
         for (uint i = 0; i < effectTypes.length(); i++) {
             try { Game.SetEffect(effectTypes[i], 0, "Effects/UnitTestMissing.fofx"); } catch { bindRejections++; }
@@ -1166,8 +1218,18 @@ R"(                ImGui.ColorEdit4("", colorValue);
         Game.BindFont(FontType::Default, "UnitTestFont.fofnt");
 
         string[] noModels;
-        Game.Preload3dFiles(noModels);
-
+)"
+#if FO_ENABLE_3D
+                    R"(        Game.Preload3dFiles(noModels);
+)"
+#else
+                    R"(        // The binding stays exported without the 3D submodule and rejects the call
+        int preloadRejections = 0;
+        try { Game.Preload3dFiles(noModels); } catch { preloadRejections++; }
+        if (preloadRejections != 1) return -15;
+)"
+#endif
+                    R"(
         return 0;
     }
 
@@ -1179,7 +1241,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (Game.IsFullscreen() != wasFullscreen) return -1;
 
         Game.MinimizeWindow();
-        Game.RefreshAlwaysOnTop();
+        Game.SetAlwaysOnTop(Game.IsAlwaysOnTop());
         Game.FlashUnfocusedWindow();
         Game.SetScreenKeyboard(true);
         Game.SetScreenKeyboard(false);
@@ -1241,7 +1303,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
     int UnitTestClientStateQueries()
     {
         // Without a session none of the current-context accessors have anything to hand out.
-        // These are GlobalGetter exports, so they are bare globals rather than Game members.
+        // These are GlobalGetter exports, so they are bare globals rather than Game members
         if (HasChosen) return -1;
         if (HasCurPlayer) return -2;
         if (HasCurLocation) return -3;
@@ -1302,7 +1364,7 @@ R"(                ImGui.ColorEdit4("", colorValue);
         if (readBack[2] != 3) return -9;
 
 )"
-R"(        Game.RemoveCacheEntry("unit_test_entry");
+                    R"(        Game.RemoveCacheEntry("unit_test_entry");
         Game.RemoveCacheEntry("unit_test_bin");
         if (Game.IsCacheEntry("unit_test_entry")) return -10;
 
@@ -1364,86 +1426,86 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     }
 
     // A minimal BMFont binary: the info/common/pages/chars blocks the loader walks, with one glyph per
-    // ASCII letter so the measurement paths behave the same as with the text descriptor.
+    // ASCII letter so the measurement paths behave the same as with the text descriptor
     static auto MakeUnitTestBmfFont(string_view image_name) -> vector<uint8_t>
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
 
-        writer.Write<uint8_t>(uint8_t {'B'});
-        writer.Write<uint8_t>(uint8_t {'M'});
-        writer.Write<uint8_t>(uint8_t {'F'});
-        writer.Write<uint8_t>(uint8_t {3});
+        writer.write<uint8_t>(uint8_t {'B'});
+        writer.write<uint8_t>(uint8_t {'M'});
+        writer.write<uint8_t>(uint8_t {'F'});
+        writer.write<uint8_t>(uint8_t {3});
 
         // Info block: everything up to the padding quad is skipped, the padding itself must read as 1/1/1/1
         string font_name = "UnitTest";
-        writer.Write<uint8_t>(uint8_t {1});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
-        writer.Write<uint16_t>(uint16_t {8}); // Font size
-        writer.Write<uint8_t>(uint8_t {0}); // Bit field
-        writer.Write<uint8_t>(uint8_t {0}); // Char set
-        writer.Write<uint16_t>(uint16_t {100}); // Stretch height
-        writer.Write<uint8_t>(uint8_t {0}); // Anti-aliasing
-        writer.Write<uint8_t>(uint8_t {1}); // Padding up
-        writer.Write<uint8_t>(uint8_t {1}); // Padding right
-        writer.Write<uint8_t>(uint8_t {1}); // Padding down
-        writer.Write<uint8_t>(uint8_t {1}); // Padding left
-        writer.Write<uint8_t>(uint8_t {0}); // Spacing horizontal
-        writer.Write<uint8_t>(uint8_t {0}); // Spacing vertical
-        writer.Write<uint8_t>(uint8_t {0}); // Outline
+        writer.write<uint8_t>(uint8_t {1});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(14 + font_name.size() + 1));
+        writer.write<uint16_t>(uint16_t {8}); // Font size
+        writer.write<uint8_t>(uint8_t {0}); // Bit field
+        writer.write<uint8_t>(uint8_t {0}); // Char set
+        writer.write<uint16_t>(uint16_t {100}); // Stretch height
+        writer.write<uint8_t>(uint8_t {0}); // Anti-aliasing
+        writer.write<uint8_t>(uint8_t {1}); // Padding up
+        writer.write<uint8_t>(uint8_t {1}); // Padding right
+        writer.write<uint8_t>(uint8_t {1}); // Padding down
+        writer.write<uint8_t>(uint8_t {1}); // Padding left
+        writer.write<uint8_t>(uint8_t {0}); // Spacing horizontal
+        writer.write<uint8_t>(uint8_t {0}); // Spacing vertical
+        writer.write<uint8_t>(uint8_t {0}); // Outline
 
         for (char ch : font_name) {
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(ch));
+            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
         }
 
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
 
         // Common block
-        writer.Write<uint8_t>(uint8_t {2});
-        writer.Write<uint32_t>(uint32_t {15});
-        writer.Write<uint16_t>(uint16_t {10}); // Line height
-        writer.Write<uint16_t>(uint16_t {8}); // Base height
-        writer.Write<uint16_t>(uint16_t {16}); // Texture width
-        writer.Write<uint16_t>(uint16_t {16}); // Texture height
-        writer.Write<uint16_t>(uint16_t {1}); // Pages
-        writer.Write<uint8_t>(uint8_t {0}); // Bit field
-        writer.Write<uint8_t>(uint8_t {0}); // Alpha channel
-        writer.Write<uint8_t>(uint8_t {0}); // Red channel
-        writer.Write<uint8_t>(uint8_t {0}); // Green channel
-        writer.Write<uint8_t>(uint8_t {0}); // Blue channel
+        writer.write<uint8_t>(uint8_t {2});
+        writer.write<uint32_t>(uint32_t {15});
+        writer.write<uint16_t>(uint16_t {10}); // Line height
+        writer.write<uint16_t>(uint16_t {8}); // Base height
+        writer.write<uint16_t>(uint16_t {16}); // Texture width
+        writer.write<uint16_t>(uint16_t {16}); // Texture height
+        writer.write<uint16_t>(uint16_t {1}); // Pages
+        writer.write<uint8_t>(uint8_t {0}); // Bit field
+        writer.write<uint8_t>(uint8_t {0}); // Alpha channel
+        writer.write<uint8_t>(uint8_t {0}); // Red channel
+        writer.write<uint8_t>(uint8_t {0}); // Green channel
+        writer.write<uint8_t>(uint8_t {0}); // Blue channel
 
         // Pages block
-        writer.Write<uint8_t>(uint8_t {3});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
+        writer.write<uint8_t>(uint8_t {3});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(image_name.size() + 1));
 
         for (char ch : image_name) {
-            writer.Write<uint8_t>(numeric_cast<uint8_t>(ch));
+            writer.write<uint8_t>(numeric_cast<uint8_t>(ch));
         }
 
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
 
         // Chars block: 20 bytes per glyph
         string glyphs = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 .,!?-";
-        writer.Write<uint8_t>(uint8_t {4});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
+        writer.write<uint8_t>(uint8_t {4});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(glyphs.size() * 20));
 
         for (char ch : glyphs) {
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
-            writer.Write<uint16_t>(uint16_t {0}); // X
-            writer.Write<uint16_t>(uint16_t {0}); // Y
-            writer.Write<uint16_t>(uint16_t {6}); // Width
-            writer.Write<uint16_t>(uint16_t {8}); // Height
-            writer.Write<uint16_t>(uint16_t {0}); // X offset
-            writer.Write<uint16_t>(uint16_t {0}); // Y offset
-            writer.Write<uint16_t>(uint16_t {4}); // X advance
-            writer.Write<uint16_t>(uint16_t {0}); // Page and channel
+            writer.write<uint32_t>(numeric_cast<uint32_t>(numeric_cast<uint8_t>(ch)));
+            writer.write<uint16_t>(uint16_t {0}); // X
+            writer.write<uint16_t>(uint16_t {0}); // Y
+            writer.write<uint16_t>(uint16_t {6}); // Width
+            writer.write<uint16_t>(uint16_t {8}); // Height
+            writer.write<uint16_t>(uint16_t {0}); // X offset
+            writer.write<uint16_t>(uint16_t {0}); // Y offset
+            writer.write<uint16_t>(uint16_t {4}); // X advance
+            writer.write<uint16_t>(uint16_t {0}); // Page and channel
         }
 
         return data;
     }
 
     // A minimal .fofnt descriptor plus its atlas page. Every glyph shares one cell, which is enough for the
-    // measurement, wrapping and draw paths to run end to end without a real bitmap font.
+    // measurement, wrapping and draw paths to run end to end without a real bitmap font
     static auto MakeUnitTestFontResources() -> vector<pair<string, vector<uint8_t>>>
     {
         string descriptor = "Version 2\n";
@@ -1470,24 +1532,23 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
     {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
 
-        auto compiler_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
+        auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineCompilerResources");
         compiler_source->AddFile("Metadata.fometa-client", metadata_blob);
 
         FileSystem compiler_resources;
         compiler_resources.AddCustomSource(std::move(compiler_source));
 
         BakerClientEngine proto_engine {compiler_resources};
-        hstring critter_type = proto_engine.Hashes.ToHashedString("Critter");
+        hstring critter_type = proto_engine.Hashes.to_hashed_string("Critter");
         // The model-backed proto lets the animation viewer build a real preview instead of stopping at a
         // missing model
-        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos {
-            {string {"UnitTestClientCritter"}, [](ProtoCritter&) {}},
-            {string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.ToHashedString("Models/RuntimeInstance.fo3d")); }},
-        };
+        vector<pair<string, function<void(ProtoCritter&)>>> critter_protos;
+        critter_protos.emplace_back(string {"UnitTestClientCritter"}, [](ProtoCritter&) { });
+        critter_protos.emplace_back(string {"UnitTestModelCritter"}, [&proto_engine](ProtoCritter& proto) { proto.SetModelName(proto_engine.Hashes.to_hashed_string("Models/RuntimeInstance.fo3d")); });
         auto proto_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, critter_protos);
         auto script_blob = MakeClientScriptBinary(compiler_resources);
 
-        auto runtime_source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
+        auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEngineRuntimeResources");
         runtime_source->AddFile("Metadata.fometa-client", metadata_blob);
         runtime_source->AddFile("ClientEngineTest.fopro-bin-client", proto_blob);
         runtime_source->AddFile("ClientEngineTest.fos-bin-client", script_blob);
@@ -1503,7 +1564,7 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
 
     static auto MakeClientEngine(GlobalSettings& settings, FileSystem resources) -> refcount_ptr<ClientEngine>
     {
-        return SafeAlloc::MakeRefCounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
+        return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
     }
 
     static auto MakeClientEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
@@ -1511,57 +1572,8 @@ R"(        Game.RemoveCacheEntry("unit_test_entry");
         return MakeClientEngine(settings, MakeClientTestResources());
     }
 
-#if FO_ENABLE_3D
-    static void WriteRuntimeModelBoneHeader(DataWriter& writer, string_view name, bool attached_mesh)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        writer.WriteString(name);
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
-    }
-
-    static auto MakeRuntimeModelMesh(const function<void(DataWriter&)>& write_root) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        vector<uint8_t> data;
-        DataWriter writer {data};
-        WriteModelMeshHeader(writer);
-        write_root(writer);
-        return data;
-    }
-
-    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return MakeRuntimeModelMesh([&](DataWriter& writer) {
-            WriteRuntimeModelBoneHeader(writer, "Root", true);
-            array<Vertex3D, 1> vertices {vertex};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
-            writer.Write<uint32_t>(uint32_t {0});
-            writer.WriteString({});
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.WriteString({});
-            }
-
-            writer.Write<uint32_t>(skin_bones_count);
-
-            for (uint32_t i = 0; i < skin_bones_count; i++) {
-                writer.Write<mat44>(mat44 {1.0f});
-            }
-
-            writer.Write<uint32_t>(uint32_t {0});
-        });
-    }
-
     // A minimal effect, baked through the real EffectBaker so the runtime accepts it. Registering one as an
-    // offscreen effect is what makes the offscreen surface bindings usable at all.
+    // offscreen effect is what makes the offscreen surface bindings usable at all
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1611,53 +1623,102 @@ void main(void)
         return resources;
     }
 
-    // A real triangle, so the model-info baker can compute static bounds from it
-    static auto MakeRuntimeModelTriangleMesh() -> vector<uint8_t>
+#if FO_ENABLE_3D
+    static void WriteRuntimeModelBoneHeader(data_writer& writer, string_view name, bool attached_mesh)
     {
         FO_STACK_TRACE_ENTRY();
 
-        return MakeRuntimeModelMesh([](DataWriter& writer) {
+        writer.write_string(name);
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<uint8_t>(attached_mesh ? uint8_t {1} : uint8_t {0});
+    }
+
+    static auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        vector<uint8_t> data;
+        data_writer writer {data};
+        WriteModelMeshHeader(writer);
+        write_root(writer);
+        return data;
+    }
+
+    static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return MakeRuntimeModelMesh([&](data_writer& writer) {
+            WriteRuntimeModelBoneHeader(writer, "Root", true);
+            array<Vertex3D, 1> vertices {vertex};
+            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.write_object_array(const_span<Vertex3D> {vertices});
+            writer.write<uint32_t>(uint32_t {0});
+            writer.write_string({});
+            writer.write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.write_string({});
+            }
+
+            writer.write<uint32_t>(skin_bones_count);
+
+            for (uint32_t i = 0; i < skin_bones_count; i++) {
+                writer.write<mat44>(mat44 {1.0f});
+            }
+
+            writer.write<uint32_t>(uint32_t {0});
+        });
+    }
+
+    // A real triangle, so the model-info baker can compute static bounds from it. The origin moves the whole
+    // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
+    static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
+    {
+        FO_STACK_TRACE_ENTRY();
+
+        return MakeRuntimeModelMesh([origin](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
             array<Vertex3D, 3> vertices {};
-            vertices[0].Position = vec3 {0.0f, 0.0f, 0.0f};
-            vertices[1].Position = vec3 {1.0f, 0.0f, 0.0f};
-            vertices[2].Position = vec3 {0.0f, 1.0f, 0.0f};
+            vertices[0].Position = origin;
+            vertices[1].Position = origin + vec3 {1.0f, 0.0f, 0.0f};
+            vertices[2].Position = origin + vec3 {0.0f, 1.0f, 0.0f};
 
             for (Vertex3D& vertex : vertices) {
                 vertex.BlendWeights[0] = 1.0f;
                 vertex.BlendIndices[0] = 0.0f;
             }
 
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-            writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+            writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+            writer.write_object_array(const_span<Vertex3D> {vertices});
 
             array<ModelMeshIndexData, 3> indices {0, 1, 2};
-            writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
-            writer.WriteObjectArray(const_span<ModelMeshIndexData> {indices});
+            writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+            writer.write_object_array(const_span<ModelMeshIndexData> {indices});
 
-            writer.WriteString({});
-            writer.Write<uint32_t>(uint32_t {1});
-            writer.WriteString({});
-            writer.Write<uint32_t>(uint32_t {1});
-            writer.Write<mat44>(mat44 {1.0f});
-            writer.Write<uint32_t>(uint32_t {0});
+            writer.write_string({});
+            writer.write<uint32_t>(uint32_t {1});
+            writer.write_string({});
+            writer.write<uint32_t>(uint32_t {1});
+            writer.write<mat44>(mat44 {1.0f});
+            writer.write<uint32_t>(uint32_t {0});
         });
     }
 
-    // A two-bone skinned box. The second bone carries an offset of its own, so half the corners are placed by a
-    // different matrix than the other half and the posed silhouette is genuinely skeleton-driven rather than a
-    // rigid copy of the root transform.
+    // The second bone carries its own offset, so half the corners move by a different matrix and the posed
+    // silhouette is genuinely skeleton-driven
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
-        auto root_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         root_bone->Name = "Root";
         root_bone->TransformationMatrix = mat44 {1.0f};
         root_bone->GlobalTransformationMatrix = mat44 {1.0f};
 
-        auto limb_bone = SafeAlloc::MakeUnique<ModelMeshBoneData>();
+        auto limb_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         limb_bone->Name = "Limb";
         limb_bone->TransformationMatrix = glm::translate(mat44 {1.0f}, vec3 {0.35f, 0.7f, 0.0f});
         limb_bone->GlobalTransformationMatrix = limb_bone->TransformationMatrix;
@@ -1693,59 +1754,60 @@ void main(void)
         data.RootBone = std::move(root_bone);
 
         vector<uint8_t> blob;
-        DataWriter writer {blob};
+        data_writer writer {blob};
         WriteModelMeshData(writer, data, "SkinnedSpriteBoundsModel");
         return blob;
     }
 
-    static void WriteRuntimeModelDescriptionPrefix(DataWriter& writer, string_view base_model = "Models/UnusedBase.fbx")
+    static void WriteRuntimeModelDescriptionPrefix(data_writer& writer, string_view base_model = "Models/UnusedBase.fbx")
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-        writer.WriteString(base_model);
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<uint8_t>(uint8_t {0});
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.WriteString({});
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.write_string(base_model);
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<uint8_t>(uint8_t {0});
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write_string({});
     }
 
-    static void WriteRuntimeModelDescriptionLinkPrefix(DataWriter& writer)
+    static void WriteRuntimeModelDescriptionLinkPrefix(data_writer& writer)
     {
         FO_STACK_TRACE_ENTRY();
 
-        writer.Write<int32_t>(0);
-        writer.Write<int32_t>(0);
-        writer.WriteString({});
-        writer.WriteString({});
-        writer.Write<uint8_t>(uint8_t {0});
+        writer.write<int32_t>(0);
+        writer.write<int32_t>(0);
+        writer.write_string({});
+        writer.write_string({});
+        writer.write<uint8_t>(uint8_t {0});
 
         for (size_t i = 0; i < 10; i++) {
-            writer.Write<float32_t>(0.0f);
+            writer.write<float32_t>(0.0f);
         }
 
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
     }
 
-    static void WriteRuntimeModelDescriptionLink(DataWriter& writer)
+    static void WriteRuntimeModelDescriptionLink(data_writer& writer)
     {
         FO_STACK_TRACE_ENTRY();
 
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {0});
     }
 
     // The runtime requires the baked animation-info document: a plain config keyed by the model resource
-    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record.
+    // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
@@ -1783,16 +1845,17 @@ BoundsMaxZ = 1 1 1 1
     }
 
     // A valid baked model description is produced by the real ModelInfoBaker: the fixture supplies the
-    // source asset directly through the loader callback, so no source-file format has to be reproduced.
-    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob) -> vector<uint8_t>
+    // source asset directly through the loader callback, so no source-file format has to be reproduced
+    static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
     {
         FO_STACK_TRACE_ENTRY();
 
         BakerTests::TestRig rig;
-        // A one-line description leaves the whole layer machinery unreachable: animation-data layers,
-        // per-animation speeds and the link transforms are all authored here and nowhere else
+        // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
+        // after the model line — where the description's own default link is authored
         string mesh_name = strex(mesh_path).extract_file_name().str();
         string description = strex("Model {}\n"
+                                   "{}"
                                    "Anim 1 1 {} Base\n"
                                    "Anim 1 3 {} Base\n"
                                    "Anim 1 5 {} Base\n"
@@ -1820,7 +1883,7 @@ BoundsMaxZ = 1 1 1 1
                                    "Root\n"
                                    "Link Root\n"
                                    "Scale* 0.5\n",
-            mesh_name, mesh_name, mesh_name, mesh_name, mesh_name)
+            mesh_name, default_link_extra, mesh_name, mesh_name, mesh_name, mesh_name)
                                  .str();
 
         rig.AddSourceFile(model_path, description, 1);
@@ -1828,14 +1891,25 @@ BoundsMaxZ = 1 1 1 1
         // The info baker resolves the mesh through the source loader as well as the baked output
         rig.AddSourceFile(mesh_path, string {"model source fixture"}, 1);
         rig.AddBakedFile(mesh_path, mesh_blob, 1);
+
+        if (!attached_mesh_path.empty()) {
+            FO_VERIFY_AND_THROW(attached_mesh_blob, "Runtime model description attachment has no mesh blob", attached_mesh_path);
+            rig.AddSourceFile(attached_mesh_path, string {"attached model source fixture"}, 1);
+            rig.AddBakedFile(attached_mesh_path, *attached_mesh_blob, 1);
+        }
+
         rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
 
-        ModelInfoBaker info_baker(rig.MakeContext(), [](string_view path, const File& file) -> ModelSourceAsset {
+        ModelInfoBaker info_baker(rig.MakeContext(), [mesh_path, use_two_bone_rig](string_view path, const File& file) -> ModelSourceAsset {
             ModelSourceAsset asset;
             asset.FileName = path;
             asset.WriteTime = file.GetWriteTime();
             asset.Skeleton.FileName = path;
             asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
+
+            if (use_two_bone_rig) {
+                asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Limb", .Hierarchy = {"Root", "Limb"}, .RestLocalTransform = mat44 {1.0f}});
+            }
 
             // One real clip, so the runtime rig carries a timeline the instance can actually play
             ModelAnimationSource animation;
@@ -1854,7 +1928,23 @@ BoundsMaxZ = 1 1 1 1
             joint.Scale.Values = {vec3 {1.0f, 1.0f, 1.0f}, vec3 {1.0f, 1.0f, 1.0f}};
             animation.Joints.emplace_back(std::move(joint));
 
-            asset.Animations.emplace_back(std::move(animation));
+            if (use_two_bone_rig) {
+                ModelAnimationJointSource limb_joint;
+                limb_joint.OutputName = "Limb";
+                limb_joint.Hierarchy = {"Root", "Limb"};
+                limb_joint.Translation.Times = {0.0f, 1.0f};
+                limb_joint.Translation.Values = {vec3 {}, vec3 {}};
+                limb_joint.Rotation.Times = {0.0f, 1.0f};
+                limb_joint.Rotation.Values = {quaternion {1.0f, 0.0f, 0.0f, 0.0f}, quaternion {1.0f, 0.0f, 0.0f, 0.0f}};
+                limb_joint.Scale.Times = {0.0f, 1.0f};
+                limb_joint.Scale.Values = {vec3 {1.0f}, vec3 {1.0f}};
+                animation.Joints.emplace_back(std::move(limb_joint));
+            }
+
+            if (path == mesh_path) {
+                asset.Animations.emplace_back(std::move(animation));
+            }
+
             return asset;
         });
 
@@ -1865,6 +1955,103 @@ BoundsMaxZ = 1 1 1 1
     }
 
 #endif
+}
+
+TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
+{
+    if (!CanUseDirectoryBackedClientResourceFixtures()) {
+        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
+    }
+
+    string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    string writable_root = MakeTempClientResourceDir("writable_overlay");
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    ignore_unused(removed_base_before);
+    ignore_unused(removed_writable_before);
+
+    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
+    });
+
+    string pack_name = "ClientPack";
+    string metadata_file = "Metadata.fometa-client";
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+
+    STATIC_REQUIRE(METADATA_FILE_VERSION > 1);
+    constexpr uint16_t outdated_file_version = METADATA_FILE_VERSION - 1;
+    vector<uint8_t> outdated_metadata;
+    data_writer outdated_writer {outdated_metadata};
+    outdated_writer.write<uint32_t>(METADATA_FILE_MAGIC);
+    outdated_writer.write<uint16_t>(outdated_file_version);
+    outdated_writer.write<uint16_t>(numeric_cast<uint16_t>(BakerTests::TEST_METADATA_VERSION.length()));
+    outdated_writer.write_string_bytes(BakerTests::TEST_METADATA_VERSION);
+    outdated_writer.write<uint16_t>(uint16_t {0});
+
+    vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
+    REQUIRE(fs::write_file(strex(unique_name).combine_path(pack_name).combine_path(metadata_file).str(), outdated_metadata));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path(pack_name).combine_path(metadata_file).str(), current_metadata));
+
+    FileSystem install_resources;
+    install_resources.AddPacksSource(unique_name, {pack_name});
+    vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
+    CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    auto pack_config = ConfigFile(strex("[ResourcePack]\nName = {}\nClientOnly = True\n", pack_name).str());
+    settings.ApplyConfigFile(pack_config, "");
+    settings.ApplyWritableRoot(writable_root);
+
+    FileSystem resources = GetClientResources(settings);
+    vector<uint8_t> recovered_metadata = ReadMetadataBin(&resources, "Client");
+
+    CHECK(ReadMetadataVersion(recovered_metadata) == BakerTests::TEST_METADATA_VERSION);
+
+    EngineMetadata metadata {[] { }};
+    metadata.RegisterSide(EngineSideKind::ClientSide);
+    CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
+}
+
+TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
+{
+    if (!CanUseDirectoryBackedClientResourceFixtures()) {
+        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
+    }
+
+    string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    string writable_root = MakeTempClientResourceDir("writable_overlay");
+    bool removed_base_before = fs::remove_dir_tree(unique_name);
+    bool removed_writable_before = fs::remove_dir_tree(writable_root);
+    ignore_unused(removed_base_before);
+    ignore_unused(removed_writable_before);
+
+    auto cleanup = scope_exit([&unique_name, &writable_root]() noexcept {
+        fs::remove_dir_tree(unique_name);
+        fs::remove_dir_tree(writable_root);
+    });
+
+    string writable_resources = fs::make_writable_path(writable_root, unique_name);
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/shared.txt").str(), string_view {"install-base"}));
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/base-only.txt").str(), string_view {"base-only"}));
+    REQUIRE(fs::write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"base-fallback"}));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/shared.txt").str(), string_view {"writable-overlay"}));
+    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/overlay-only.txt").str(), string_view {"overlay-only"}));
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, unique_name);
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Main\nClientOnly = True\n[ResourcePack]\nName = Fallback\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
+    settings.ApplyWritableRoot(writable_root);
+
+    FileSystem resources = GetClientResources(settings);
+    CHECK(resources.ReadFileText("shared.txt") == "writable-overlay");
+    CHECK(resources.ReadFileText("base-only.txt") == "base-only");
+    CHECK(resources.ReadFileText("overlay-only.txt") == "overlay-only");
+    CHECK(resources.ReadFileText("fallback.txt") == "base-fallback");
 }
 
 #if FO_ENABLE_3D
@@ -1900,51 +2087,53 @@ f 1 2 3
 
 TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 {
+    static_assert(MODEL_DESCRIPTION_SCHEMA_VERSION == 3);
+
     vector<pair<string, vector<uint8_t>>> malformed_resources;
 
-    malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/VertexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/IndexCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/IndexCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/IndexOutOfBounds.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
         array<Vertex3D, 1> vertices {};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
-        writer.WriteObjectArray(const_span<Vertex3D> {vertices});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(vertices.size()));
+        writer.write_object_array(const_span<Vertex3D> {vertices});
         array<vindex_t, 1> indices {vindex_t {1}};
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
-        writer.WriteObjectArray(const_span<vindex_t> {indices});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.Write<mat44>(mat44 {1.0f});
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(indices.size()));
+        writer.write_object_array(const_span<vindex_t> {indices});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write<mat44>(mat44 {1.0f});
+        writer.write<uint32_t>(uint32_t {0});
     }));
 
-    malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/SkinCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.WriteString({});
-        writer.Write<uint32_t>(numeric_cast<uint32_t>(MODEL_MAX_BONES + 1));
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write_string({});
+        writer.write<uint32_t>(numeric_cast<uint32_t>(MODEL_MAX_BONES + 1));
     }));
 
-    malformed_resources.emplace_back("Models/SkinOffsetMismatch.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/SkinOffsetMismatch.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", true);
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.Write<uint32_t>(uint32_t {0});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {1});
-        writer.WriteString({});
-        writer.Write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {1});
+        writer.write_string({});
+        writer.write<uint32_t>(uint32_t {0});
     }));
 
     Vertex3D valid_skin_vertex {};
@@ -1974,47 +2163,82 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
     invalid_skin_weight_sum.BlendWeights[0] = 0.5f;
     malformed_resources.emplace_back("Models/InvalidSkinWeightSum.fbx", MakeRuntimeModelMeshWithVertex(invalid_skin_weight_sum));
 
-    malformed_resources.emplace_back("Models/ChildCountBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/ChildCountBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         WriteRuntimeModelBoneHeader(writer, "Root", false);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
     }));
 
-    malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](DataWriter& writer) {
+    malformed_resources.emplace_back("Models/HierarchyDepthBomb.fbx", MakeRuntimeModelMesh([](data_writer& writer) {
         for (uint32_t depth = 0; depth <= MODEL_MESH_MAX_HIERARCHY_DEPTH; depth++) {
             WriteRuntimeModelBoneHeader(writer, "Bone", false);
-            writer.Write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
+            writer.write<uint32_t>(depth < MODEL_MESH_MAX_HIERARCHY_DEPTH ? uint32_t {1} : uint32_t {0});
         }
     }));
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
-        writer.WriteBytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
-        writer.Write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        data_writer writer {data};
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(uint16_t {2});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        malformed_resources.emplace_back("Models/DescriptionOldSchema.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        data_writer writer {data};
+        writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
+        writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionStringBomb.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLink(writer);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionLinksBomb.fo3d", std::move(data));
     }
 
     {
         vector<uint8_t> data;
-        DataWriter writer {data};
+        data_writer writer {data};
         WriteRuntimeModelDescriptionPrefix(writer);
         WriteRuntimeModelDescriptionLinkPrefix(writer);
-        writer.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
+        writer.write<uint32_t>(std::numeric_limits<uint32_t>::max());
         malformed_resources.emplace_back("Models/DescriptionNestedCountBomb.fo3d", std::move(data));
     }
 
-    array<pair<string_view, string_view>, 16> expected_failures {{
+    {
+        vector<uint8_t> data;
+        data_writer writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {1});
+        malformed_resources.emplace_back("Models/DescriptionGeometryFlagMismatch.fo3d", std::move(data));
+    }
+
+    {
+        vector<uint8_t> data;
+        data_writer writer {data};
+        WriteRuntimeModelDescriptionPrefix(writer);
+        WriteRuntimeModelDescriptionLinkPrefix(writer);
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint32_t>(uint32_t {0});
+        writer.write<uint8_t>(uint8_t {2});
+        malformed_resources.emplace_back("Models/DescriptionGeometryFlagOutOfRange.fo3d", std::move(data));
+    }
+
+    array<pair<string_view, string_view>, 19> expected_failures {{
         {"Models/VertexCountBomb.fbx", "vertex count exceeds maximum addressable count"},
         {"Models/IndexCountBomb.fbx", "mesh indices"},
         {"Models/IndexOutOfBounds.fbx", "outside vertex count"},
@@ -2028,9 +2252,12 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
         {"Models/InvalidSkinWeightSum.fbx", "skin-weight sum"},
         {"Models/ChildCountBomb.fbx", "child count exceeds maximum"},
         {"Models/HierarchyDepthBomb.fbx", "hierarchy depth"},
+        {"Models/DescriptionOldSchema.fo3d", "Unsupported baked model description schema"},
         {"Models/DescriptionStringBomb.fo3d", "String length exceeds remaining buffer"},
         {"Models/DescriptionLinksBomb.fo3d", "links"},
         {"Models/DescriptionNestedCountBomb.fo3d", "disabled meshes"},
+        {"Models/DescriptionGeometryFlagMismatch.fo3d", "geometry flag does not match"},
+        {"Models/DescriptionGeometryFlagOutOfRange.fo3d", "geometry flag is not 0 or 1"},
     }};
 
     auto settings = MakeClientTestSettings();
@@ -2049,17 +2276,8 @@ TEST_CASE("ClientEngineRejectsMalformedBakedModelCountsAndBounds")
 
 TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 {
-    // The sprite frame must follow the model's scale, camera tilt, facing and shadow state, and it is derived through
-    // per-instance state that survives across calls - the posed-frame flag, the frame layout, the configuration
-    // bounds keyed on the combined-mesh generation. State that outlives a call is exactly what can go stale, and a
-    // stale frame rectangle is a silent bug: the model is clipped only in some states, with nothing logged.
-    //
-    // So pin it differentially rather than against hardcoded rectangles. Drive one instance through a sequence of
-    // state changes, measuring after each, and compare every measurement against a freshly created instance driven
-    // to the same state, which by construction carries nothing forward. Anything the reused instance fails to
-    // refresh surfaces as it still reporting the previous state's rectangle while the fresh one reports the new one.
-    // This was verified to detect real staleness: an experimental cache of the vertex sweep with a deliberately
-    // incomplete invalidation key failed here at exactly the step whose input the key was missing.
+    // Pinned differentially against a fresh instance rather than hardcoded rectangles, because the frame is derived
+    // through per-instance state that can go stale, and a stale rectangle clips the model with nothing logged
     constexpr string_view model_path = "Models/SkinnedSpriteBounds.fbx";
 
     auto settings = MakeClientTestSettings();
@@ -2073,10 +2291,10 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     struct SpriteBoundsStep
     {
         string_view Name {};
-        function<void(ptr<ModelInstance>)> Apply {};
+        void (*Apply)(ptr<ModelInstance>) {};
     };
 
-    const vector<SpriteBoundsStep> steps {
+    vector<SpriteBoundsStep> steps {
         {"rest pose", [](ptr<ModelInstance>) {}},
         {"scaled up", [](ptr<ModelInstance> model) { model->SetScale(1.7f, 1.7f, 1.7f); }},
         {"camera tilt", [](ptr<ModelInstance> model) { model->SetRotation(0.4f, 0.0f, 0.25f); }},
@@ -2109,7 +2327,7 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
 
     auto warm_model = make_model();
 
-    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly.
+    // The hit path on its own: measuring twice without touching anything must reproduce the first answer exactly
     optional<ModelSpriteBounds> first_bounds = measure(warm_model.as_ptr());
     optional<ModelSpriteBounds> repeated_bounds = measure(warm_model.as_ptr());
 
@@ -2145,16 +2363,112 @@ TEST_CASE("ModelSpriteBoundsFollowEveryStateChangeThatMovesTheEnvelope")
     }
 
     // Guard the guard: a step that leaves the envelope where it was cannot tell a stale cache from a correct one, so
-    // the sequence above only tests anything as long as it keeps moving the rectangle.
+    // the sequence above only tests anything as long as it keeps moving the rectangle
     CHECK(moved_steps + 1 >= steps.size() - 1);
 }
 #endif
 
 #if FO_ENABLE_3D
+TEST_CASE("ModelDefaultLinkDisablesItsOwnMeshes")
+{
+    // Baked model and animation bounds are calculated with the default link's disabled meshes excluded, so the
+    // runtime model state must agree with the geometry the bake budgeted for
+    constexpr string_view MESH_PATH = "Models/DefaultLinkDisabled.fbx";
+    constexpr string_view MODEL_PATH = "Models/DefaultLinkDisabled.fo3d";
+
+    // Far outside the declared bounds; the test is about applying the authored disable state, not measuring vertices
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh(vec3 {12.0f, 12.0f, 0.0f});
+
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob, "DisableMesh All\n"));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    REQUIRE_NOTHROW(model_mngr->PreloadModel(MODEL_PATH));
+
+    auto model = model_mngr->CreateModel(MODEL_PATH);
+    REQUIRE(static_cast<bool>(model));
+
+    // Creation leaves the root layout pending: _parent is assigned only after CreateModel returns, and an
+    // attachment laid out as a root measures the joint it hangs from plus its shadow, past any frame it can hold
+    CHECK(model->GetDrawSize() == isize32 {4, 4});
+
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+
+    // Guard the fixture: the layout must come from the declared +/-1 bounds, or the far triangle is already
+    // inside the frame and the check below would pass without proving anything
+    isize32 layout_size = model->GetDrawSize();
+    int32_t bounds_span_limit = iround<int32_t>(6.0f * client->Settings->Render.ModelProjFactor);
+    REQUIRE(layout_size.width <= bounds_span_limit);
+    REQUIRE(layout_size.height <= bounds_span_limit);
+
+    model->SetupFrame(layout_size, model->GetFramePivot());
+    model->PoseSpriteFrame(true);
+
+    auto bounds = model->GetSpriteBounds();
+    REQUIRE(bounds);
+    CHECK(bounds->RequiredFrameSize == layout_size);
+}
+
+TEST_CASE("ModelSpriteBoundsUseBakedBoundsForTheActiveGeometryLink")
+{
+    constexpr string_view BASE_MESH_PATH = "Models/BakedLinkBase.fbx";
+    constexpr string_view LINK_MESH_PATH = "Models/BakedLinkEquipment.fbx";
+    constexpr string_view MODEL_PATH = "Models/BakedLink.fo3d";
+    vector<uint8_t> base_mesh_blob = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> link_mesh_blob = MakeSkinnedRuntimeModelMesh();
+    vector<uint8_t> model_blob = MakeRuntimeModelDescription(MODEL_PATH, BASE_MESH_PATH, base_mesh_blob, "Layer 3\n Value 1 Attach BakedLinkEquipment.fbx MoveX 3\n", LINK_MESH_PATH, &link_mesh_blob, true);
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {BASE_MESH_PATH}, base_mesh_blob);
+    model_resources.emplace_back(string {LINK_MESH_PATH}, link_mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, std::move(model_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto model = factory->GetModelMngr()->CreateModel(MODEL_PATH);
+    REQUIRE(static_cast<bool>(model));
+
+    model->StartMeshGeneration();
+    model->PrepareFrameLayout();
+    isize32 base_size = model->GetDrawSize();
+    array<int32_t, MODEL_LAYERS_COUNT> layers {};
+    layers[3] = 1;
+    REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+    isize32 equipped_size = model->GetDrawSize();
+    CHECK(equipped_size.width > base_size.width);
+
+    model->SetupFrame(equipped_size, model->GetFramePivot());
+    model->PoseSpriteFrame(true);
+    optional<ModelSpriteBounds> bounds = model->GetSpriteBounds();
+    REQUIRE(bounds);
+    CHECK(bounds->RequiredFrameSize == equipped_size);
+
+    layers[3] = 0;
+    REQUIRE(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+    isize32 unequipped_size = model->GetDrawSize();
+    CHECK(unequipped_size.width < equipped_size.width);
+    CHECK(unequipped_size.height < equipped_size.height);
+}
+
 TEST_CASE("ModelManagerInstantiatesABakedModel")
 {
     // The 3D instance surface was assumed to need a GPU, but the headless Null renderer serves it: with a
-    // baked mesh and a valid baked description the manager builds a real ModelInstance.
+    // baked mesh and a valid baked description the manager builds a real ModelInstance
     constexpr string_view MESH_PATH = "Models/RuntimeInstance.fbx";
     constexpr string_view MODEL_PATH = "Models/RuntimeInstance.fo3d";
 
@@ -2240,7 +2554,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         ignore_unused(model->GetAnimDuration(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1)));
         ignore_unused(model->IsAnimationPlaying());
 
-        hstring root_bone = client->Hashes.ToHashedString("Root");
+        hstring root_bone = client->Hashes.to_hashed_string("Root");
         ignore_unused(model->FindBone(root_bone));
         ignore_unused(model->GetBonePos(root_bone));
         ignore_unused(model->GetBoneSpritePos(root_bone));
@@ -2249,11 +2563,24 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
         REQUIRE_NOTHROW(model->SetAnimInitCallback([](CritterStateAnim&, CritterActionAnim&) { }));
     }
 
+    SECTION("AFrameLargerThanTheMaximumRenderTextureIsRejected")
+    {
+        // Rejected while the model is still identifiable, instead of reaching the graphics API and failing there as
+        // an anonymous invalid argument
+        int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / ModelInstance::FRAME_SCALE;
+        int32_t max_draw_height = AppRender::MAX_ATLAS_HEIGHT / ModelInstance::FRAME_SCALE;
+
+        REQUIRE(max_draw_width > 0);
+        REQUIRE(max_draw_height > 0);
+        REQUIRE_NOTHROW(model->SetupFrame(isize32 {max_draw_width, max_draw_height}, ipos32 {}));
+        REQUIRE_THROWS(model->SetupFrame(isize32 {max_draw_width + 1, max_draw_height}, ipos32 {}));
+        REQUIRE_THROWS(model->SetupFrame(isize32 {max_draw_width, max_draw_height + 1}, ipos32 {}));
+    }
+
     SECTION("LayerValuesDriveTheAnimationDataAndLinkTransforms")
     {
-        // Every link block in the description - the transform one, the disabling one and the second
-        // layer - is applied only when the matching layer value is requested, so nothing under
-        // SetAnimData runs until an animation is played with layers set
+        // Each link block applies only when its layer value is requested, so nothing under SetAnimData runs until
+        // an animation plays with layers set
         model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
 
         auto state_anim = static_cast<CritterStateAnim>(1);
@@ -2407,7 +2734,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
     {
         // Going through the sprite manager takes the model down the model-sprite path instead of the raw
         // instance one: atlas placement, per-frame update and the sprite-side draw
-        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.ToHashedString(MODEL_PATH), AtlasType::MapSprites, true);
+        shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
         REQUIRE(static_cast<bool>(sprite));
 
         CHECK(sprite->GetSize().width > 0);
@@ -2432,7 +2759,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
-    // engine code: it binds a loopback port and runs its worker threads without anyone connecting.
+    // engine code: it binds a loopback port and runs its worker threads without anyone connecting
     auto settings = MakeClientTestSettings();
     auto client = MakeClientEngine(settings);
 
@@ -2451,12 +2778,12 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
     REQUIRE_NOTHROW(debugger.EmitEvent("unitTestEventWithBody", R"({"value":1})"));
 
     // Attaching a plain socket drives the accept path, the handshake write and the request reader. The
-    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it.
+    // listener picks its port from the process id inside a fixed span, so the same arithmetic finds it
     REQUIRE(net_sockets::startup());
 
     constexpr uint16_t DEBUGGER_BASE_PORT = 43000;
     constexpr uint16_t DEBUGGER_PORT_SPAN = 2000;
-    int32_t pid_num = strvex(Platform::GetCurrentProcessIdStr()).to_int32();
+    int32_t pid_num = strvex(platform::get_current_process_id_str()).to_int32();
     uint16_t start_offset = pid_num > 0 ? numeric_cast<uint16_t>(pid_num % DEBUGGER_PORT_SPAN) : uint16_t {0};
 
     tcp_socket client_sock;
@@ -2474,7 +2801,7 @@ TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
         std::this_thread::sleep_for(std::chrono::milliseconds {120});
 
         // Walk the request surface: every command has its own handler and response shape
-        const vector<string> requests {
+        vector<string> requests {
             R"({"seq":1,"type":"request","command":"capabilities"})",
             R"({"seq":2,"type":"request","command":"setBreakpoints","arguments":{"source":{"path":"ClientEngineTest.fos"},"breakpoints":[{"line":10},{"line":20}]}})",
             R"({"seq":3,"type":"request","command":"stackTrace"})",
@@ -2540,12 +2867,12 @@ TEST_CASE("ClientEngineStartsAndRegistersEntities")
     CHECK_FALSE(static_cast<bool>(client->GetCurLocation()));
     CHECK_FALSE(static_cast<bool>(client->GetCurMap()));
 
-    hstring critter_pid = client->Hashes.ToHashedString("UnitTestClientCritter");
+    hstring critter_pid = client->Hashes.to_hashed_string("UnitTestClientCritter");
     auto critter_proto = client->GetProtoCritter(critter_pid);
     REQUIRE(static_cast<bool>(critter_proto));
 
-    auto player = SafeAlloc::MakeRefCounted<PlayerView>(client, ident_t {1001});
-    auto critter = SafeAlloc::MakeRefCounted<CritterView>(client, ident_t {1002}, critter_proto);
+    auto player = safe_alloc::make_refcounted<PlayerView>(client, ident_t {1001});
+    auto critter = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, critter_proto);
 
     REQUIRE(client->GetEntity(player->GetId()) == player);
     REQUIRE(client->GetEntity(critter->GetId()) == critter);
@@ -2566,7 +2893,7 @@ TEST_CASE("ClientEngineScriptModuleInitAndLoopAreCallable")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     int start_calls = 0;
     int loop_calls = 0;
@@ -2620,7 +2947,7 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto get_func_name = [&client](string_view name) { return client->Hashes.ToHashedString(name); };
+    auto get_func_name = [&client](string_view name) { return client->Hashes.to_hashed_string(name); };
 
     int32_t result = 0;
     REQUIRE(client->CallFunc(get_func_name("ClientEngineTest::UnitTestMapSpriteHolderRefType"), result));
@@ -2629,10 +2956,8 @@ TEST_CASE("ClientEngineMethodRefTypeOps")
 
 TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 {
-    // The legacy Fallout animation path only runs for model names under art/critters/, and derives its
-    // sprite names by dropping the extension and the last two characters, then appending one index letter
-    // per animation from "_abcdefghijklmnopqrstuvwxyz0123456789". The loader casts the result to a
-    // SpriteSheet, so the fixture sprites carry several frames.
+    // The legacy path only runs under art/critters/ and builds sprite names by index letter, then casts the result
+    // to a SpriteSheet — hence the multi-frame fixtures
     constexpr string_view FRM_IND = "_abcdefghijklmnopqrstuvwxyz0123456789";
     constexpr string_view MODEL_NAME = "art/critters/utxx.frm";
     constexpr string_view MODEL_STEM = "art/critters/ut";
@@ -2651,7 +2976,7 @@ TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    hstring model_name = client->Hashes.ToHashedString(MODEL_NAME);
+    hstring model_name = client->Hashes.to_hashed_string(MODEL_NAME);
 
     SECTION("AnimationPairsResolveThroughTheLegacyLoader")
     {
@@ -2677,7 +3002,7 @@ TEST_CASE("ResourceManagerLoadsLegacyCritterAnimations")
 
     SECTION("AModelWithNoSpritesAnswersEmpty")
     {
-        hstring missing = client->Hashes.ToHashedString("art/critters/nosuchxx.frm");
+        hstring missing = client->Hashes.to_hashed_string("art/critters/nosuchxx.frm");
         CHECK_FALSE(static_cast<bool>(client->ResMngr.GetCritterAnimFrames(missing, static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), mdir {0})));
     }
 }
@@ -2754,6 +3079,11 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
+    // The sweep below dumps the atlases, so the directories it writes are cleared once the case is done
+    set<string> tex_dumps_before = TexDumpArtifacts::CollectDumpDirs();
+
+    auto remove_tex_dumps = scope_exit([&tex_dumps_before]() noexcept { safe_call([&tex_dumps_before] { TexDumpArtifacts::RemoveNewDumpDirs(tex_dumps_before); }); });
+
     // The scripts below change the resolution, which writes through to the process-global app window and would
     // otherwise leave every later test computing ratios against the changed size
     isize32 saved_screen_size = GetApp()->MainWindow.GetScreenSize();
@@ -2762,7 +3092,7 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     auto run_script = [&client](string_view name) {
         int32_t result = -1;
         INFO(name);
-        REQUIRE(client->CallFunc(client->Hashes.ToHashedString(name), result));
+        REQUIRE(client->CallFunc(client->Hashes.to_hashed_string(name), result));
         CHECK(result == 0);
     };
 
@@ -2777,19 +3107,16 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
     run_script("ClientEngineTest::UnitTestClientRejectsBadArguments");
 
     int32_t rejection_count = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Bits 8/16/128/256 are the probes that must reject: a missing video file, an unknown font extension and
-    // the two empty output paths. The rest legitimately answer instead of throwing - the sound and music
-    // players report a bool, a video request with no file queues nothing, SetEffect with subtype 0 addresses
-    // no drawable, and language selection accepts a pack that resolves to no entries.
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
+    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
+    // sound handle, queueing nothing, or accepting a pack that resolves to no entries
     CHECK(rejection_count == 8 + 16 + 128 + 256);
 }
 
 TEST_CASE("MultiFrameSpritesPlayAndCopy")
 {
-    // A single-frame sprite resolves to an atlas sprite, so the sheet's own playback - frame stepping,
-    // looping, reversing and the copy that a second user of the same animation gets - has nothing to run
-    // on until the fixture serves a real multi-frame sprite.
+    // A single-frame sprite resolves to an atlas sprite, so sheet playback has nothing to run on until the fixture
+    // serves a real multi-frame one
     auto settings = MakeClientTestSettings();
 
     vector<pair<string, vector<uint8_t>>> sprite_resources;
@@ -2799,7 +3126,7 @@ TEST_CASE("MultiFrameSpritesPlayAndCopy")
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
-    auto sheet = client->SprMngr.LoadSprite(client->Hashes.ToHashedString("AnimSheet.png"), AtlasType::IfaceSprites);
+    auto sheet = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string("AnimSheet.png"), AtlasType::IfaceSprites);
     REQUIRE(sheet);
     CHECK(sheet->GetSize() == isize32 {2, 2});
 
@@ -2875,7 +3202,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Absent mesh keeps the legacy quad")
     {
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
@@ -2897,7 +3224,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
 
     SECTION("Explicit empty mesh emits no draw data")
     {
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, SpriteMeshData {});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         size_t index_count = sprite->FillData(draw_buf, draw_rect, {color_left, color_right});
@@ -2915,7 +3242,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {5, 10}, {10, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         draw_buf->Vertices.resize(2);
         draw_buf->VertCount = 2;
@@ -2960,7 +3287,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {3, 10}, {6, 0}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 10}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
         CHECK(sprite->GetSize() == isize32 {10, 10});
@@ -2986,7 +3313,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
@@ -3023,7 +3350,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {14, 0}, {0, 13}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {14, 13}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.0f, 0.0f}, {1.0f, 1.0f}, draw_rect);
 
@@ -3056,7 +3383,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Vertices = {{0, 0}, {6, 0}, {0, 5}};
         mesh.Indices = {0, 1, 2};
 
-        auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+        auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {6, 5}, ipos32 {}, nullptr, nullptr, atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
         optional<AtlasSpriteRegion> region = sprite->ResolveRegion({0.1f, 0.2f}, {0.5f, 0.6f}, draw_rect);
 
         REQUIRE(region.has_value());
@@ -3082,7 +3409,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         mesh.Indices = {0, 1, 2};
 
         {
-            auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+            auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, nullptr, std::move(atlas_allocation), atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
             auto draw_buf = client->SprMngr.GetRender().CreateDrawBuffer(false);
 
             REQUIRE(allocation_observer->GetSpriteMesh());
@@ -3091,7 +3418,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         }
 
         CHECK_FALSE(allocation_observer->IsActive());
-        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
+        CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 
     SECTION("Moving an atlas sprite rebinds the allocation mesh observer")
@@ -3117,7 +3444,7 @@ TEST_CASE("AtlasSpriteFillDataSupportsBakedMeshes")
         }
 
         CHECK_FALSE(allocation_observer->IsActive());
-        CHECK(allocation_observer->GetSpriteMesh() == nullptr);
+        CHECK_FALSE(allocation_observer->GetSpriteMesh());
     }
 }
 
@@ -3158,7 +3485,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
         data[offset + 3] = numeric_cast<uint8_t>(value >> 24);
     };
 
-    auto source = SafeAlloc::MakeUnique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
+    auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("PolygonSpriteResources");
     source->AddFile("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
     source->AddFile("Empty.png", BakerTests::MakeMinimalBakedSprite(2, 2, SpriteMeshKind::Empty));
     source->AddFile("ValidMesh.png", valid_blob);
@@ -3220,7 +3547,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
 
     client->SprMngr.GetResources()->AddCustomSource(std::move(source));
     DefaultSpriteFactory factory {&client->SprMngr};
-    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.ToHashedString(path), AtlasType::MapSprites); };
+    auto load = [&client, &factory](string_view path) { return factory.LoadSprite(client->Hashes.to_hashed_string(path), AtlasType::MapSprites); };
 
     auto valid_sprite = load("ValidMesh.png");
     REQUIRE(static_cast<bool>(valid_sprite));
@@ -3245,7 +3572,7 @@ TEST_CASE("DefaultSpriteFactoryValidatesBakedMeshPayload")
     CHECK(cropped_draw_buf->Vertices[2].PosX == Catch::Approx(1.0f));
     CHECK(cropped_draw_buf->Vertices[2].PosY == Catch::Approx(2.0f));
 
-    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.ToHashedString("CroppedMesh.png"), AtlasType::IfaceSprites);
+    auto restored_image = client->SprMngr.LoadSpriteAsQuad(client->Hashes.to_hashed_string("CroppedMesh.png"), AtlasType::IfaceSprites);
     REQUIRE(restored_image);
     CHECK(restored_image->GetSize() == cropped_mesh.SourceSize);
     CHECK(restored_image->GetAtlasRect().width * restored_image->GetAtlas()->GetTexture()->SizeData[0] == Catch::Approx(4.0f));
@@ -3394,7 +3721,7 @@ TEST_CASE("SpriteManagerMapsPolygonAtlasPatternsAndPaddedEffects")
 TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 {
     auto settings = MakeClientTestSettings();
-    settings.DrawWireframe = true;
+    BakerTests::OverrideSetting(settings.Render.DrawWireframe, true);
     auto client = MakeClientEngine(settings);
 
     auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
@@ -3415,7 +3742,7 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
         10.0f / numeric_cast<float32_t>(atlas->GetSize().width),
         10.0f / numeric_cast<float32_t>(atlas->GetSize().height),
     };
-    auto sprite = SafeAlloc::MakeShared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
+    auto sprite = safe_alloc::make_shared<AtlasSprite>(&client->SprMngr, isize32 {10, 10}, ipos32 {}, atlas, std::move(atlas_allocation), sprite_atlas_rect, vector<bool> {}, optional<SpriteMeshData> {std::move(mesh)});
 
     client->SprMngr.DrawSprite(sprite, {2, 3}, ucolor {255, 255, 255});
     CHECK_NOTHROW(client->SprMngr.Flush());
@@ -3423,6 +3750,10 @@ TEST_CASE("SpriteWireframeRendersThroughPrimitiveOverlay")
 
 TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
 {
+    // The ImGui sweep below writes under `Workspace/`, relative to whatever directory the binary was launched
+    // from, and `ImGui::LogToFile` asserts on a file it cannot open — aborting the frame mid-sweep
+    (void)fs::create_directories("Workspace");
+
     auto settings = MakeClientTestSettings();
     auto client_resources = MakeUnitTestFontResources();
     client_resources.emplace_back("Quad.png", BakerTests::MakeMinimalBakedSprite(2, 2));
@@ -3468,15 +3799,15 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
     }
 
     int32_t loop_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetLoopCalls"), loop_calls));
     CHECK(loop_calls > 0);
 
     int32_t render_calls = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetRenderCalls"), render_calls));
     CHECK(render_calls > 0);
 
     // Re-run with script drawing enabled so the render-pass-only draw bindings execute
-    REQUIRE(client->CallFunc<void>(client->Hashes.ToHashedString("ClientEngineTest::UnitTestEnableRenderDrawing")));
+    REQUIRE(client->CallFunc<void>(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestEnableRenderDrawing")));
 
     for (int32_t frame = 0; frame < 2; frame++) {
         ImGui::NewFrame();
@@ -3484,20 +3815,29 @@ TEST_CASE("ClientEngineRunsMainLoopHeadlessly")
         ImGui::Render();
     }
 
-    // Every ImGui binding validates its label/id before touching ImGui, so an empty one must surface as a
-    // script exception rather than an unaddressable widget. The sweep runs inside the render pass because
-    // the ImGui accessor itself is only available while a frame is open.
+    // An empty label must surface as a script exception rather than an unaddressable widget; the sweep runs inside
+    // the render pass because the accessor exists only while a frame is open
     int32_t probe_count = 0;
     int32_t rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestImGuiEmptyIdProbeCount"), probe_count));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiEmptyIdRejections"), rejections));
     CHECK(probe_count > 0);
     CHECK(rejections > 0);
     CHECK(rejections % probe_count == 0);
 
     int32_t sprite_rejections = 0;
-    REQUIRE(client->CallFunc(client->Hashes.ToHashedString("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSpriteRejections"), sprite_rejections));
     CHECK(sprite_rejections == 4);
+
+    // The surface guard keeps ImGui balanced when a probe throws, but a throw still means a binding
+    // misbehaved - the engine swallows it inside the event, so it is only visible through this counter
+    int32_t surface_failures = 0;
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiSurfaceFailures"), surface_failures));
+
+    string failed_stage;
+    REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetImGuiFailedStage"), failed_stage));
+    INFO("last ImGui stage entered before the throw: " << failed_stage);
+    CHECK(surface_failures == 0);
 
     // Input events must be safe to feed outside of a session too
     InputEvent move;

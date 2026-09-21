@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -56,9 +56,8 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
         }
     }
     catch (...) {
-        // Thread spawning can throw (e.g. OS thread exhaustion). Any workers already started are
-        // referencing *this via their captured lambda; the constructor is unwinding and ~WorkerPool
-        // will not run, so stop and join them here before the storage is torn down, then rethrow.
+        // Workers already started reference *this through their lambda, and an unwinding constructor never runs
+        // ~WorkerPool, so they are stopped and joined here before the storage goes away
         StopWorkers();
         throw;
     }
@@ -106,7 +105,7 @@ void WorkerPool::Submit(timespan delay, Job job)
             throw EntitySyncException("Cannot submit job to a stopped WorkerPool");
         }
 
-        EnqueueJob(nanotime::now() + delay, ANONYMOUS_JOB, std::move(job));
+        EnqueueJob(GetSchedulingTime() + delay, ANONYMOUS_JOB, std::move(job));
     }
 
     _workSignal.notify_one();
@@ -136,11 +135,11 @@ void WorkerPool::Submit(JobKey key, timespan delay, Job job)
         }
 
         if (_runningKeys.contains(key)) {
-            _pendingRerun[key] = ScheduledJob {nanotime::now() + delay, key, std::move(job)};
+            _pendingRerun[key] = ScheduledJob {GetSchedulingTime() + delay, key, std::move(job)};
             _cancelOnFinish.erase(key);
         }
         else if (!_queuedKeys.contains(key)) {
-            EnqueueJob(nanotime::now() + delay, key, std::move(job));
+            EnqueueJob(GetSchedulingTime() + delay, key, std::move(job));
             _queuedKeys.insert(key);
             needs_notify = true;
         }
@@ -167,12 +166,17 @@ auto WorkerPool::Wake(JobKey key) -> bool
 
         if (_queuedKeys.contains(key)) {
             // Pull the queued entry out, set its FireTime to now, and re-insert sorted so workers
-            // that are wait_until-ing on the previous front fire time get woken to pick it up.
+            // that are wait_until-ing on the previous front fire time get woken to pick it up
             for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                 if (it->Key == key) {
                     auto entry = std::move(*it);
+
+                    if (entry.Key == ANONYMOUS_JOB) {
+                        _anonymousScheduledJobs--;
+                    }
+
                     _jobs.erase(it);
-                    entry.FireTime = nanotime::now();
+                    entry.FireTime = GetSchedulingTime();
                     EnqueueJob(entry.FireTime, entry.Key, std::move(entry.Body));
                     break;
                 }
@@ -183,7 +187,7 @@ auto WorkerPool::Wake(JobKey key) -> bool
         }
         else if (_runningKeys.contains(key)) {
             // The body is in flight; arm a wake-on-finish so its self-reschedule (return value)
-            // is overridden to fire immediately when the worker finalizes.
+            // is overridden to fire immediately when the worker finalizes
             _wakeRequests.insert(key);
             result = true;
         }
@@ -213,6 +217,10 @@ auto WorkerPool::Cancel(JobKey key) -> bool
         if (_queuedKeys.erase(key) != 0) {
             for (auto it = _jobs.begin(); it != _jobs.end(); ++it) {
                 if (it->Key == key) {
+                    if (it->Key == ANONYMOUS_JOB) {
+                        _anonymousScheduledJobs--;
+                    }
+
                     _jobs.erase(it);
                     break;
                 }
@@ -226,12 +234,12 @@ auto WorkerPool::Cancel(JobKey key) -> bool
         }
 
         if (_runningKeys.contains(key)) {
-            // Drop the in-flight run's self-reschedule when it finishes.
+            // Drop the in-flight run's self-reschedule when it finishes
             _cancelOnFinish.insert(key);
             removed = true;
         }
 
-        // Cancel supersedes any pending wake.
+        // Cancel supersedes any pending wake
         _wakeRequests.erase(key);
     }
 
@@ -249,12 +257,13 @@ void WorkerPool::Clear()
     scoped_lock locker {_mutex};
 
     _jobs.clear();
+    _anonymousScheduledJobs = 0;
     _queuedKeys.clear();
     _pendingRerun.clear();
     _wakeRequests.clear();
 
     // Any in-flight run should drop its self-reschedule. We can't know its key from here, so mark
-    // every currently-running key.
+    // every currently-running key
     for (const auto& key : _runningKeys) {
         _cancelOnFinish.insert(key);
     }
@@ -299,6 +308,8 @@ void WorkerPool::Resume()
             return;
         }
 
+        FO_VERIFY_AND_THROW(!_schedulingTimeFrozen, "Cannot resume WorkerPool while scheduling time is frozen");
+
         _paused = false;
     }
 
@@ -316,6 +327,34 @@ void WorkerPool::Pause()
     while (_activeWorkers != 0) {
         _idleSignal.wait(locker);
     }
+}
+
+void WorkerPool::FreezeSchedulingTime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_mutex};
+
+    FO_VERIFY_AND_THROW(_paused && _activeWorkers == 0, "WorkerPool scheduling time can only freeze at a drained pause boundary", _paused, _activeWorkers);
+    FO_VERIFY_AND_THROW(!_schedulingTimeFrozen, "WorkerPool scheduling time is already frozen");
+
+    _schedulingTimeFrozenAt = GetSchedulingTime();
+    _schedulingTimeFrozen = true;
+}
+
+void WorkerPool::ResumeSchedulingTime()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_mutex};
+
+    FO_VERIFY_AND_THROW(_paused && _activeWorkers == 0, "WorkerPool scheduling time can only resume at a drained pause boundary", _paused, _activeWorkers);
+    FO_VERIFY_AND_THROW(_schedulingTimeFrozen, "WorkerPool scheduling time is not frozen");
+
+    nanotime current_scheduling_time = nanotime::now() - _schedulingTimeOffset;
+    _schedulingTimeOffset += current_scheduling_time - _schedulingTimeFrozenAt;
+    _schedulingTimeFrozenAt = {};
+    _schedulingTimeFrozen = false;
 }
 
 auto WorkerPool::GetPendingJobCount() const -> size_t
@@ -336,11 +375,13 @@ auto WorkerPool::GetDiagnostics() const -> Diagnostics
     return Diagnostics {
         .ThreadCount = numeric_cast<int32_t>(_workers.size()),
         .ScheduledJobs = _jobs.size(),
+        .AnonymousScheduledJobs = _anonymousScheduledJobs,
         .QueuedKeys = _queuedKeys.size(),
         .RunningJobs = _runningKeys.size(),
         .PendingReruns = _pendingRerun.size(),
         .ActiveWorkers = _activeWorkers,
         .Paused = _paused,
+        .SchedulingTimeFrozen = _schedulingTimeFrozen,
         .CompletedJobs = _completedJobs,
     };
 }
@@ -360,6 +401,10 @@ auto WorkerPool::IsKeyActive(JobKey key) const -> bool
 
 void WorkerPool::EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept
 {
+    if (key == ANONYMOUS_JOB) {
+        _anonymousScheduledJobs++;
+    }
+
     ScheduledJob entry {fire_time, key, std::move(job)};
 
     if (_jobs.empty() || fire_time >= _jobs.back().FireTime) {
@@ -379,12 +424,17 @@ void WorkerPool::EnqueueJob(nanotime fire_time, JobKey key, Job job) noexcept
 
 auto WorkerPool::IsAnyJobReadyNow() const noexcept -> bool
 {
-    return !_jobs.empty() && _jobs.front().FireTime <= nanotime::now();
+    return !_jobs.empty() && _jobs.front().FireTime <= GetSchedulingTime();
 }
 
 auto WorkerPool::IsBarrierIdle() const noexcept -> bool
 {
     return !IsAnyJobReadyNow() && _activeWorkers == 0 && _pendingRerun.empty();
+}
+
+auto WorkerPool::GetSchedulingTime() const noexcept -> nanotime
+{
+    return _schedulingTimeFrozen ? _schedulingTimeFrozenAt : nanotime::now() - _schedulingTimeOffset;
 }
 
 void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
@@ -412,16 +462,20 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 }
 
                 nanotime front_fire = _jobs.front().FireTime;
-                nanotime now = nanotime::now();
+                nanotime now = GetSchedulingTime();
 
                 if (front_fire > now) {
-                    // Wait until the earliest job becomes due, or until something nearer arrives.
-                    _workSignal.wait_until(locker, front_fire.value());
+                    // Wait until the earliest job becomes due, or until something nearer arrives
+                    _workSignal.wait_for(locker, (front_fire - now).value());
                     continue;
                 }
 
                 job = std::move(_jobs.front());
                 _jobs.erase(_jobs.begin());
+
+                if (job.Key == ANONYMOUS_JOB) {
+                    _anonymousScheduledJobs--;
+                }
 
                 if (job.Key != ANONYMOUS_JOB) {
                     _queuedKeys.erase(job.Key);
@@ -454,7 +508,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                 }
                 catch (const std::exception& ex) {
                     if (!_shutdownFlag->load(std::memory_order_acquire)) {
-                        ReportExceptionAndContinue(ex);
+                        exceptions::report_and_continue(ex);
                     }
                 }
                 catch (...) {
@@ -480,7 +534,7 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     _pendingRerun.erase(it);
 
                     if (wake_requested) {
-                        entry.FireTime = nanotime::now();
+                        entry.FireTime = GetSchedulingTime();
                     }
 
                     EnqueueJob(entry.FireTime, entry.Key, std::move(entry.Body));
@@ -488,15 +542,15 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
                     need_wake = true;
                 }
                 else if (next_delay.has_value() && !cancelled) {
-                    auto reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
-                    EnqueueJob(nanotime::now() + reschedule_delay, job.Key, std::move(job.Body));
+                    timespan reschedule_delay = wake_requested ? timespan::zero : next_delay.value();
+                    EnqueueJob(GetSchedulingTime() + reschedule_delay, job.Key, std::move(job.Body));
                     body_rescheduled = true;
                     _queuedKeys.insert(job.Key);
                     need_wake = true;
                 }
             }
             else if (next_delay.has_value()) {
-                EnqueueJob(nanotime::now() + next_delay.value(), ANONYMOUS_JOB, std::move(job.Body));
+                EnqueueJob(GetSchedulingTime() + next_delay.value(), ANONYMOUS_JOB, std::move(job.Body));
                 body_rescheduled = true;
                 need_wake = true;
             }
@@ -508,13 +562,8 @@ void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
             _activeWorkers--;
         }
 
-        // If the job did not reschedule (its entity was destroyed/cancelled, the pending-rerun branch
-        // replaced it, or shutdown skipped execution), `job.Body` still owns its captured state — possibly
-        // the last refcount_ptr to an entity (e.g. a TimeEvent closure holding a critter that has since
-        // died). Destroying that closure releases the ref, and ~Entity -> ValidateAccess strong-asserts
-        // unless a sync context is active on this thread; the body ran under one above, but it was
-        // deactivated at the end of that scope. Drop the closure under a fresh, empty context so the entity
-        // release is valid — an empty context locks nothing, it only satisfies the access check.
+        // A non-rescheduled body may own the last entity reference after its execution context closes.
+        // Destroy the closure under an empty sync context so entity validation remains legal
         if (!body_rescheduled) {
             ScopedSyncContext sync_ctx;
 

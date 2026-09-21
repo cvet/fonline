@@ -29,15 +29,17 @@ Read this page together with:
 - `Source/Scripting/AngelScript/AngelScriptGlobals.cpp`
 - `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp`
 - `Source/Scripting/AngelScript/AngelScriptReflection.cpp`
-- `Source/Scripting/AngelScript/CoreScripts/*.fos`
 - `ThirdParty/AngelScript/sdk/angelscript/source/as_compiler.cpp`
+- `ThirdParty/AngelScript/sdk/angelscript/source/as_scriptengine.cpp`
 - `Source/Scripting/*ScriptMethods.cpp`
-- `Source/Scripting/Mono/*.cs`
+- `Source/Scripting/Managed/CoreScripts/*.cs`
+- `Source/Tools/ManagedScriptBaker.*`
 - `Source/Scripting/Native/.keepalive`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
+- `Source/Tests/Test_AngelScriptCall.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -48,9 +50,12 @@ Read this page together with:
 The scripting subsystem has four layers:
 
 1. **Common runtime facade** — `Source/Common/ScriptSystem.h` / `.cpp` define the backend-agnostic `ScriptSystem`, `ScriptFuncDesc`, `ScriptFunc`, `FuncCallData`, `DataAccessor`, native call adapters, init functions, loop callbacks, and type maps.
-2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the current production backend. Mono and native scripting have placeholder/source roots, but AngelScript owns the implemented script compiler/runtime path in this tree.
+2. **Backend implementation** — `Source/Scripting/AngelScript/` provides the legacy AngelScript backend;
+   `Source/Scripting/Managed/` embeds the Mono runtime with the marshalling, event-subscription, and settings
+   bridges described later in this document; `Source/Scripting/Native/` is still a source-root stub. Embedding
+   projects select the backend through their build configuration.
 3. **Script-visible native methods** — `Source/Scripting/*ScriptMethods.cpp` files contain `///@ ExportMethod` functions grouped by runtime side and receiver type. Codegen reads these annotations and emits method descriptors/wrappers.
-4. **Core script library and game scripts** — `Source/Scripting/AngelScript/CoreScripts/*.fos` provides engine-owned reusable script-side helpers. Embedding projects add their own `.fos` files and metadata through project configuration and resource/script baking.
+4. **Managed runtime support and project scripts** — `Source/Scripting/Managed/CoreScripts/*.cs` provides the engine-owned managed/runtime bridge. Embedding projects own higher-level script libraries and game scripts for either backend and add them through project configuration and resource/script baking. The engine does not bundle an AngelScript CoreScripts library.
 
 The engine owns the reusable bridge. The embedding project owns game scripts and chooses which features are enabled through project configuration, build presets, and `.fomain` inputs.
 
@@ -78,13 +83,30 @@ This boundary is also where generated nullability checks are inserted. `NativeDa
 `AngelScriptBackend` owns the concrete engine instance and module lifecycle:
 
 - `RegisterMetadata()` binds engine metadata and registers C++/script-visible types.
-- `BindRequiredStuff()` registers arrays, dictionaries, strings, math/value types, globals, entity wrappers, remote callers, reflection helpers, and backend helpers.
+- `BindRequiredStuff()` registers arrays, dictionaries, strings, math/value types, globals, entity wrappers, remote callers, reflection helpers, and backend helpers. Entity registration stores type-name strings in `AngelScriptBackend::InternUserString` (`set<string>`: logarithmic intern and node-stable pointers for AngelScript auxiliary data) instead of pinning `hstring` intern entries.
 - `CompileTextScripts()` preprocesses script source, adds script sections to a module, resolves includes, builds the module, and serializes bytecode.
-- `LoadBinaryScripts()` loads compiled bytecode from resources at runtime.
+- `LoadBinaryScripts()` loads compiled bytecode from resources at runtime. The `FOA2` container includes pointer size, endian tag and build configuration flags; other format signatures are rejected. Each declared payload must fit the remaining input before its owning buffer is allocated.
 - `SetMessageCallback()` / `SendMessage()` route compiler/runtime diagnostics to the caller. AngelScript diagnostic locations keep the original script line but format only the source file name, not the full source path, so logs remain stable across local and CI workspaces.
 - cleanup callbacks and post-cleanup callbacks release backend-owned resources in a controlled order.
 
 AngelScript is therefore used in two modes: compile-time tooling mode and runtime mode. The same metadata and type registration code must remain compatible with both.
+
+Runtime overrun diagnostics use `AngelScript.OverrunReportTime` as an independent threshold for two measurements.
+`Script execution overrun` reports wall time after subtracting the server synchronization context's accumulated
+entity-lock wait, while `Script lock wait overrun` reports the contention component itself. Both messages include
+execution, lock-wait, and total wall durations, so a compute-heavy function and a wait-heavy function remain
+separately searchable without losing the full latency picture. Non-server engines return zero lock wait. As
+before, a value of zero disables both diagnostics and an attached debugger suppresses them. The managed backend
+reports the same two measurements against its own threshold; see
+[Managed and native scripting roots](#managed-and-native-scripting-roots).
+
+Separate script contexts may request a registered object's type id concurrently during first use. AngelScript
+assigns that id lazily, so FOnline's vendored runtime reads and initializes `asCTypeInfo::typeId` under the engine
+reader/writer lock and refreshes the local value after acquiring the exclusive lock. No caller may observe the
+pre-lock `-1` after another thread has completed assignment. This protects simultaneous first-login paths that
+construct return-type metadata in different server workers. `AngelScriptTypeIdsAreLazilyAssignedAcrossThreads`
+starts 16 native workers against 128 fresh object types through the public `asITypeInfo::GetTypeId()` entry
+point and requires every worker to receive the same valid id.
 
 Native methods registered through generated `MethodDesc` descriptors are invoked through `ScriptGenericCall()`.
 The unified `FuncCallData` slot for a mutable simple argument is the **address of the caller's variable** — the
@@ -99,6 +121,23 @@ AngelScript branch of `ScriptFuncCall()` (script-fired events with by-ref args, 
 function) passes the slot straight to `asIScriptContext::SetArgAddress()`. Regression coverage:
 `Test_CommonScriptMethods.cpp` (`TimePackingOperations`, `GameInvokeOperations/ByNameWithRefArgs`) and
 `Test_ScriptEntityOps.cpp` (`AdvancedServerOperations/CustomEntityEventRefArgs`).
+
+`Yield(ms)` suspends the current AngelScript context and asks the active engine to resume it later through
+`ScheduleDelayedCallback()`. On multithreaded servers, zero-delay or short-delay resumes may run on another worker
+while the suspending context is still unwinding, or while another resume callback for the same context is already
+starting. `AngelScriptContextManager::ResumeSpecificContext()` therefore treats `ExecutionActive` as an atomic
+reservation before it leaves the context-pool lock: an already-active context is re-armed for a later retry, and
+`ReturnContext()` leaves a context busy if a concurrent resume has already reserved it. This keeps suspended
+coroutines from being either lost or re-entered concurrently. Client runtime callbacks are processed on the main
+loop and do not have the same worker-pool race window.
+
+A suspending routine has written neither its return value nor its mutable (`&`) arguments by the time control
+returns to the caller, so **only a call with no result at all may yield** — no return value and no out-arguments.
+`ScriptFuncCall()` computes that permission and, when the caller does expect a result, a `Yield` inside the callee
+raises `Can't yield current routine` instead of completing the call. Without that rule the caller reads untouched
+storage as if it were a real result: a cross-backend `ScriptFunc.Invoke("Ns::Func", …, ref out)` from managed code into
+an `[[Async]]` AngelScript function that suspends used to return default-initialized out-values while
+`NativeInvokeScriptFunc` still reported success, so the failure was silent rather than diagnosable.
 
 When `asEP_ALLOW_UNSAFE_REFERENCES` is enabled, AngelScript may defer releasing method receivers and
 arguments until an expression reaches a safe point. Short-circuit boolean compilation processes the
@@ -119,13 +158,15 @@ A destroyed entity does not cross the script-to-native boundary either: `Convert
 
 The rejection validates access **before** it reports the destroyed handle, because missing cover is the cause and a destroyed argument is only the symptom. Every destroy path takes the victim's own lock through `EnsureEntitySynced`, and a descendant lock cannot be registered under a foreign-held ancestor (`EntitySync.h`, descendant-hold), so a caller holding any valid cover — the entity's own lock or any ancestor's — cannot have the entity die under it. A destroyed entity therefore reaches the boundary in exactly two shapes: uncovered, where `ServerEntity::ValidateAccess` throws *"Entity access without sync"* and names the actionable defect, or still covered by the caller that destroyed it and kept using the handle, which is the only case the *"Target entity lookup returned destroyed entity"* message describes. On the client `ValidateAccess` is a no-op and only the second message can appear. Both branches are pinned by `Source/Tests/Test_ServerEngine.cpp` → `ServerEngineDestroyedEntityArgumentReportsMissingCoverFirst`. The single opt-out is `///@ ExportMethod … AllowDestroyedEntityArgs`, which codegen turns into a compile-time template argument on `NativeDataCaller::NativeCall`. It exists for the explicit synchronization primitives (`Game.Sync`), whose purpose is to answer whether an entity is still reachable: a script can test liveness and then call, but never both at once, so a concurrent destroy always fits between the two and rejecting the argument would make the recoverable-`false` contract of their script wrappers impossible to honour. Those exports accept a destroyed entity and leave it uncovered rather than synchronizing it. Do not add the flag to an ordinary export — a destroyed argument reaching one is a caller bug and must keep failing. Pinned by `Source/Tests/Test_ServerScriptMethods.cpp` → `SyncAcceptsDestroyedEntity`.
 
+A returned handle's reference follows `///@ ExportMethod … PassOwnership`. Without the flag an export returns a borrowed pointer and the receiving backend takes a reference of its own — AngelScript through the auto-handle `@+` declaration, managed code through the generated wrapper's constructor. With the flag the export returns a pointer that already carries one reference for the caller (the `release_ownership()` of its pin), so the entity stays alive across the handoff whatever cover the caller holds. AngelScript adopts that reference by dropping the `+`; the managed bridge (`NativeCallMethodImpl`) adopts it for an entity result and releases it once the result is boxed, because the wrapper has taken its own. A live managed handle therefore accounts for exactly one reference. A backend that ignores the flag leaks one reference per call: an entity fetched that way is never freed, and a hot loop eventually overflows the counter, which surfaces as `Release called for expired entity` far from the leaking call. Server entities expose `GetRefCount()` for diagnosing such a leak; only a difference measured around a controlled sequence of calls means anything, since every wrapper and in-flight pin is counted. Native ref-type results are the managed exception: their wrappers hold a raw pointer without a reference, so for a `PassOwnership` ref type the handed reference is what keeps the object valid, and it is never released.
+
 ## Attributes, declarations, and metadata
 
 `Source/Scripting/AngelScript/AngelScriptAttributes.cpp` parses engine-specific script attributes and declaration tags. Important contracts include:
 
 - nullable `T?` suffix stripping and propagation into metadata;
 - `///@ Event` declarations and matching `[[Event]]` handlers;
-- `///@ RemoteCall` declarations and matching `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, or `[[AdminRemoteCall]]` implementations;
+- `///@ RemoteCall` declarations, optional structural `MaxBytes N` / `MaxCollectionSize N` limits, and matching `[[ServerRemoteCall]]`, `[[ClientRemoteCall]]`, or `[[AdminRemoteCall]]` implementations;
 - module/init-function priorities;
 - callback attribute validation rules;
 - `[[InvokeEntry]]` for functions dispatched only by name through the global `Invoke(...)` helper. It blocks ordinary direct calls while still allowing a function reference for `NameOf(...)` registration.
@@ -145,13 +186,53 @@ Entity lifetime is still owned by the engine runtime:
 
 Use [EntityModel.md](EntityModel.md) for entity/property/prototype ownership and [Persistence.md](Persistence.md) for database boundaries.
 
+Server scripts additionally owe the native call graph an entity cover before they cross the boundary, unless the
+server runs with `Server.SingleThreadedLogic`, which drops that requirement entirely; both contracts live in
+[ServerRuntime.md](ServerRuntime.md).
+
+### A prototype is not a live entity, and the script types must say so
+
+Natively the two are unrelated: `ProtoCritter` derives from `ProtoEntity`, while `Critter` derives from
+`ServerEntity`, and they share no base but `Entity`. A script type graph that lets one stand in for the other
+therefore hands an export a pointer to a different subobject -- wrong vtable, wrong layout, silent corruption
+instead of a diagnosable failure.
+
+So `Proto<Type>` is emitted as its own class off `Entity`, carrying the type's **properties and components and
+nothing else**. It does not derive from the live type. Deriving was only ever a way to hand the prototype the
+type's properties, and it cost far more than it gave: `ProtoCritter` WAS a `Critter`, so `Critter cr = proto;`
+compiled, and it also inherited ~100 methods of live behaviour -- `Disconnect()`, `AddItem()`, `DestroyItem()`
+-- on something with no id, no map and no lock. Both are now compile errors (CS0029 and CS1061).
+
+`HasAbstract` is a **separate** decision, and it is about generalization, not safety. It emits `Abstract<Type>`
+to carry the content with `<Type>`, `Proto<Type>` and `Static<Type>` as its leaves, so one parameter can accept
+all of them. Declare it only where an API genuinely needs to take the live entity and its prototype through
+one parameter, because a prototype legitimately stands in for an instance there. An embedding project shows
+the shape: Last Frontier declares it on `Item`, since an unarmed attack uses a weapon **prototype** in place
+of a carried one, so its weapon-use event receives a `ProtoItem`. Where no such case exists, leave it off --
+an abstract form nothing asks for is just another type in the script API.
+
+The type graph cannot cover every path -- `object`, reflection and remote calls all bypass it -- so the
+managed bridge validates the argument as well. `ValidateManagedEntityKind` (`ManagedScriptBackend.cpp`) rejects
+a `ProtoEntity` handed to a parameter that asks for a live entity, and exempts one typed `Abstract<Type>` via
+`BaseTypeDesc::IsAbstractEntity`. Static entities are not checked: a `StaticItem` IS an `Item` natively, so its
+pointer is already the right type. Nor can the check go by name -- a prototype shares its property registrator
+with the live type, so `GetTypeName()` answers `Critter` for both, and only the runtime type separates them.
+
 ## Remote calls and event callbacks
 
 `Source/Scripting/AngelScript/AngelScriptRemoteCalls.cpp` registers remote caller object types such as `RemoteCaller` and `CritterRemoteCaller`. Remote-call declarations are metadata-backed, and runtime handling is split by side:
 
 - server-side command processing validates client-originated remote calls before invoking server script handlers;
 - client-side runtime receives server-originated remote calls and dispatches client script handlers;
-- admin remote calls use the `CallAdminFunc()` path and require the `AdminRemoteCall` attribute.
+- admin remote calls are not network calls: they use the `CallAdminFunc()` path and require the
+  `AdminRemoteCall` attribute. On the managed backend, `ScriptFunc.TryInvokeAdmin()` resolves only that administrative
+  allowlist and answers `false` when no admin function has the name, since the name comes from an administrator;
+  `ScriptFunc.Invoke()` and `ScriptFunc.InvokeAsync()` resolve the separate `CallableByName` allowlist used by
+  internal name dispatch. Those two return no status: a name that resolves in neither the managed allowlist nor the
+  native global-function map throws `InvalidOperationException`, and an exception thrown by the target — including
+  an argument that will not coerce — reaches the caller unchanged instead of being counted and answered with `false`.
+
+For an untrusted client-to-server call, author `MaxBytes` as the largest legitimate serialized payload and `MaxCollectionSize` as the largest legitimate declared collection. The server resolves the call descriptor before body allocation, and native validation plus AngelScript decoding enforce the same collection limit before reserve/construction, including nested dictionary arrays. The server-wide `ServerNetwork.MaxRemoteCallPayloadSize` remains a second hostile-input ceiling. See [Networking.md](Networking.md#inbound-hardening-untrusted-client--server).
 
 Events and remote calls are intentionally separate concepts. Events describe engine/runtime lifecycle and gameplay notifications; remote calls describe network-addressable script entry points. Both rely on metadata signatures, nullability contracts, and generated descriptors.
 
@@ -170,26 +251,29 @@ For entity instance methods, the AngelScript dispatch layer validates the receiv
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
 
+The VM stores a `bool` as one byte inside a four-byte stack slot, so the bytes above it keep whatever the slot held before. Native-call marshalling normalizes that at the ABI boundary — `as_callfunc_x64_gcc.cpp`, `as_callfunc_x64_msvc.cpp`, and `as_callfunc_arm64.cpp` copy only the value's own bytes into the zeroed argument slot — because a callee is entitled to treat a `bool` argument register as 0 or 1 and fold arithmetic on it. The engine's own `string opAdd(bool)` is such a callee: clang folds `strlen(b ? "true" : "false")` into `b ^ 5`, so a dirty register turned a four-byte append into a two-gigabyte one and crashed the client script that built a status line out of bools. Pinned by `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp`.
+
+`Gui::RegisterScreen` precaches each screen inside a try/catch, so a window that cannot be built keeps its creator and the registrations after it still run; `Gui::VerifyScreensInitialized()` then raises one `verify` naming every failed window. The `verify` in `CreateScreen` passes the screen's enum name as context. An AngelScript `catch` binds no exception object, so `GetExceptionInfo()` returns the message of the exception the current catch block is handling — the context is only reset when the script context is reprepared.
+
 Client render helpers such as `Game.DrawSprite`, `Game.DrawSpritePattern`, and `Game.DrawSpriteRegion` are valid only during render-facing script callbacks (`RenderIface` / GUI draw callbacks). `Game.DrawSpriteRegion(sprId, uv0, uv1, pos, size, color)` draws a normalized `[0, 1]` sub-rectangle of the sprite's original logical image into a destination rectangle; polygon-cropped atlas frames are remapped through their source offset and transparent cropped margins remain transparent in the destination. `Game.DrawSpritePattern` follows the same logical-image contract for every complete or partial tile. Region drawing is intended for reusable GUI composition such as script-side 9-slice panels, and returns `false` when the sprite cannot provide atlas-region drawing.
 
 ## Core scripts
 
-The engine-owned AngelScript core library lives in `Source/Scripting/AngelScript/CoreScripts/` and includes reusable modules such as:
+The engine does not ship a high-level AngelScript CoreScripts library. An embedding project that enables the
+AngelScript backend owns every `.fos` utility module it needs and supplies those sources through its resource
+and script configuration. The backend itself registers the always-on variadic `verify(cond, ...)` invariant macro
+in each compilation's preprocessing context, so projects do not need a utility module merely to define it.
 
-- `Core.fos`
-- `Math.fos`
-- `Time.fos`
-- `Color.fos` (`namespace Color`, `Color::Text`, `Color::Neutral`)
-- `Input.fos`
-- `Gui.fos`
-- `Sprite.fos`
-- `LineTracer.fos`
-- `Serializer.fos`
-- `MapperCore.fos`
-- `FixedDropMenu.fos`
-- `Tween.fos`
+`Source/Scripting/Managed/CoreScripts/` is narrower: it contains only stable support that implements the managed
+runtime contract or adapts it to the engine. This includes script attributes and initialization, native internal
+calls, remote-call and registered-function dispatch, invoke/exception accounting, synchronization and async
+suspension, entity-holder mechanics, enum metadata parity, always-on invariant helpers, `hstring` hashing, and
+generated engine value-type adapters.
 
-Treat these files as engine library code. Game-specific script modules should live in the embedding project instead of expanding the engine core script library with project policy.
+Higher-level facilities such as GUI widgets and input state, color/math/time helpers, sprite composition, line
+tracing, serialization, tweening, reflection conveniences, and generic AngelScript-compatibility collection or
+string helpers belong to the embedding project. They may retain the `FOnline` namespace when that is part of the
+project's public script API, but that namespace does not make them engine-owned.
 
 ## Build and baking flow
 
@@ -198,16 +282,296 @@ Treat these files as engine library code. Game-specific script modules should li
 - `FO_ANGELSCRIPT_SCRIPTING` enables the `CompileAngelScript` command target.
 - The target runs the project AS compiler app (`${FO_DEV_NAME}_ASCompiler`) with the main config arguments.
 - `CompileAngelScript` depends on `ForceCodeGeneration`, so script-visible generated metadata is current before compilation.
-- `FO_MONO_SCRIPTING` wires `CompileMonoScripts` through `BuildTools/compile-mono-scripts.py` and `FO_MONO_ASSEMBLIES` / `FO_MONO_SOURCE`.
+- `FO_MANAGED_SCRIPTING` enables managed runtime loading, adds the `Managed` resource baker, and wires `CompileManagedScripts` to the standalone `ManagedScriptBakerApp` (`<FO_DEV_NAME>_ManagedScriptBaker`). The baker discovers `.cs` sources from the resource packs declared in the main config (the same ownership model as AngelScript sources) and reads script configuration from settings with plain defaults — project name `FOnline`, assembly list `FOnline`, `dotnet msbuild`, `net10.0`, source dirs `Engine/Source/Scripting/Managed/CoreScripts` plus `Scripts` (relative to the directory containing the root applied config), generated output in the build `GeneratedSource/Managed` tree unless `ManagedScript.GeneratedDir` points elsewhere; managed generated-dir overrides, extra sources, path references, and analyzers use the same config-relative rule; empty values are configuration errors, not fallbacks; the `ManagedScript.Assemblies` / `ExtraSources` / `ExtraReferences` / `MsBuild` / `TargetFramework` / `ProjectName` / `Dirs` / `GeneratedDir` / `Analyzers` / `AnalyzerPackages` / `AdditionalFiles` / `AnalysisLevel` / `AnalysisMode` / `BakerDryRun` settings (the `ManagedScript` group) are the override channel for tests and special tooling. The compiler runs as a child process with its output captured into the baker log, and on Windows through a hidden-window console, so a windowed host that bakes on startup (a server window, the mapper) opens no terminal and a failed compile still leaves its diagnostics in the log. Script settings are not read from environment variables; `FO_MANAGED_RUNTIME` is only a build/tooling override for locating the prepared runtime payload. Script-level metadata tags such as `///@ Enum`, `///@ Property`, `///@ RefType`, and `///@ Setting` can live in C# source files; build-time codegen skips them (`script_metadata_tags`) and `MetadataBaker` consumes them during resource baking.
 - `BakeResources` and `ForceBakeResources` also depend on code generation and run the project baker app.
 
 Script compilation and resource baking are adjacent but not identical. Script compilation produces bytecode/runtime inputs; baking packages resources and metadata for runtime consumption. See [BakingPipeline.md](BakingPipeline.md) for resource baking.
 
-## Mono and native scripting roots
+## Managed and native scripting roots
 
-`Source/Scripting/Mono/` contains C# support files such as `AssemblyInfo.cs`, `BasicTypes.cs`, `Entity.cs`, `Initializator.cs`, `MapSprite.cs`, and `Link.xml`. BuildTools can wire Mono compilation when `FO_MONO_SCRIPTING` is enabled.
+Native-to-managed callbacks run inside the engine's script context, just as event and property
+handlers do. On a server this gives each invocation a nested synchronization context: a callback
+may release or replace its own entity cover, including before returning an incomplete Task,
+without changing the caller's cover for the next network message. Return and exception paths both
+restore the calling context. Deferred continuations enter their own engine context when pumped.
 
-`Source/Scripting/Native/` currently contains `.keepalive`, marking the source-root location for native scripting integration. Do not document Native or Mono as equivalent to the AngelScript runtime unless the implementation and tests are expanded.
+Every such entry is measured against `ManagedScript.OverrunReportTime`, the managed counterpart of
+`AngelScript.OverrunReportTime`: a script-function or delegate callback, an event handler, a property getter
+or setter, and each continuation the script pump resumes. The measurements, the suppressions (a zero threshold, an
+attached debugger, engine start-up, `FO_DEBUG` builds) and the line shape are the AngelScript ones, so
+`Script execution overrun: <entry> (execution: ..., lock wait: ..., total: ...)` and `Script lock wait overrun`
+read alike from either backend. The entry is named the way dispatch by name spells a function, `Type::Method`: a
+lambda or local function carries the method that wrote it, and a continuation is named after the async method it
+resumes, with a ` (continuation)` suffix. An adapter delegate — a compiler-generated lambda whose closure holds one
+delegate and nothing else it could be running instead — is named after the handler it wraps, with a ` (via <adapter>)`
+suffix, because `RemoteCallScriptFuncs` wraps every async remote call in one Action and the adapter's own name would
+therefore be the answer for all of them and the handler for none. `ScriptSynchronizationContext` keeps each posted
+callback with its state so `ScriptEntryNames` can find that method, and the name is resolved only for a run that
+overran, so an entry that stays under the threshold costs one clock read. A run that ends in an exception is
+reported through the exception.
+
+Every native-to-managed entry also owns a Mono thread attachment, and a thread attaches once.
+The first entry on a worker registers it with the runtime and caches that attachment for the
+lifetime of the thread; every later entry only enters GC-unsafe mode around the managed call
+and parks GC-safe again on the way out, so a worker parked on an engine lock cannot block a
+later stop-the-world collection. Reentrant calls use the cached or inherited attachment and
+leave its ownership unchanged. Attaching per entry instead is what this did until a parallel
+gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread:
+each pair creates a finalizable managed `Thread` object and allocates a handle stack, and it
+returns the thread to the registration window where a stop-the-world may fail to suspend it.
+SGen marks such a thread skipped, and its assertion in `sgen_client_scan_thread_data` rejects
+a skipped thread that still owns a non-empty handle stack, because the collector may then move
+an object and leave that handle stale — which surfaced as heap corruption elsewhere entirely.
+The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
+implicitly attaches its native caller, so the initialization scope explicitly adopts and
+releases that attachment after loading the first backend.
+`ConfigureManagedRuntime` installs `mono_set_allocator_vtable` onto `safe_alloc`'s raw tier
+before any other Mono call, so eglib `g_malloc` (metadata, runtime internals) uses the engine
+heap and terminate-on-OOM contract. Managed objects still live in SGen, which maps pages
+through `mono_valloc`.
+Backend teardown keeps one attachment while it stops continuations, clears the script statics,
+releases persistent callback GC handles and global-function descriptors, collects, unbinds its entry
+assemblies (`Native.UnbindBackend`, after which `Native.IsBackendAlive` is false and a late finalizer keeps
+the reference it holds) and releases its managed assembly scope. Collection runs while the assembly images are
+still available for the core-method lookup and the engine is alive. Callback handles must be released
+before collection because a captured entity stays rooted by the handle even after its script static is cleared.
+
+**Clearing the statics comes first**, because a wrapper's finalizer is the one path that gives
+its native entity reference back - the wrapper takes the reference in its constructor
+(`Native.AddRefEntity`) and returns it there (`Native.ReleaseEntity`), and nothing takes it away
+behind the wrapper's back - and a wrapper reachable from a static is never collected at all,
+since the script assembly load context is not collectible. `ScriptStaticCleanup` walks the
+script assembly by reflection and nulls each static reference field, which clears the **root,
+not the graph**: a collection, a closure, a delegate or a cache behind a cleared field becomes
+garbage on its own. A `static readonly` field cannot be reassigned - the runtime refuses that
+write - so a collection behind one is emptied instead, which releases the same references: through
+the non-generic `IList` / `IDictionary` where the value offers them, otherwise through a mutable
+`ICollection<T>`, which covers sets. Queues and stacks do not implement that interface and are cleared
+through their known BCL `Clear` methods, including subclasses of the generic types. An unrelated object
+with a method named `Clear` is never invoked. Arrays are cleared in place through `IList`.
+A read-only view is left
+alone, since asking it is cheaper than provoking the exception it would answer with. Anything the
+cleanup cannot reach is named in its report with a leading `!`. It runs as managed code deliberately - the same walk
+through the embedding API (`mono_class_vtable` plus `mono_field_static_set_value`) leaves the
+static area disagreeing with the root descriptor the collector scans it by, and the collector
+then dies on the next collection; a bisection pinned that to the very first field written. It
+covers the embedding project's script types only. The engine's own managed
+namespace (`FOnline`) is not script state but the runtime plumbing the engine shuts down through
+its own steps - the continuation scheduler's queues and gate above all - and nulling those from
+under a live scheduler leaves the collector reading an object header that is no longer there.
+Generic statics, thread statics, and value-type statics containing references remain out of reach.
+Embedding projects must reject these shapes, including auto-property and event backing fields, in
+their script analysis. An init-only reference to a non-collection or read-only view also remains
+uncleared and is included in the report; this sweep does not prove such an object's graph contains no entities.
+
+**Then the collector runs, from managed code**: `GC.Collect()` followed by
+`GC.WaitForPendingFinalizers()`, alternating because a finalized wrapper can drop the last
+reference to another one. The pass limit bounds repeated collections; a separate five-second budget
+bounds the finalizer waits. The runtime wait executes on an engine-requested pool task so a blocked
+finalizer cannot park the shutdown thread indefinitely. The browser runtime is the exception: it has
+neither a thread pool nor a finalizer thread, so queuing the task aborts the process and the wait
+returns at once; there the pass runs once, inline, finalizers follow as main-thread jobs after the
+shutdown returns, and the live-wrapper count is reported but not verified. A timeout is reported as a managed failure;
+it does not cancel the finalizer or take its native reference away. This is not a deadline for a
+stop-the-world GC itself. `mono_domain_finalize` is not used: it belongs to domain unloading, and on the
+root domain it answered with a timeout and then took the runtime down. The wait ends on the
+count of live wrappers, and the collection took 89 to 181 ms per engine on a test run, which a
+parallel run pays once per engine it destroys.
+
+**What is left is counted always and named on request.** `EntityWrapperTracker` keeps a live
+wrapper count unconditionally - one interlocked increment in the generated wrapper's constructor,
+one decrement in its finalizer - so every shutdown knows how many wrappers outlived it, and a
+non-zero count is reported and raises `FO_VERIFY_AND_CONTINUE` even on a production run that asked
+for no diagnostics. Naming them costs a dictionary write per wrapper, and a wrapper is built on
+every marshalling, so the weak table that can name them waits for
+`ManagedScript.DeepTrackEntityWrappers`; the counting report says so, and turning it on is the
+next step of the hunt rather than its precondition. With the table armed, the report separates a
+wrapper something still holds - a static, a closure, a captured async state machine - from one
+merely queued for collection, and adds how many wrappers the run registered in total.
+Reporting holds each weakly tracked wrapper alive through its native name/id lookup. Collection and
+reporting exceptions, or missing core methods in a loaded script image, are reported rather than
+interpreted as a zero count. A failed collection still attempts the outstanding-wrapper report.
+`BuildTools/tests/test_managed_shutdown.py` compiles these two production core classes with a small
+native-entity fixture under the installed .NET SDK. It covers static collections, wrapper counts,
+a blocked finalizer, and collection during a diagnostic lookup; it complements embedded-runtime testing.
+GC-handle owners that may outlive a dispatch, including stored callback descriptors and
+event subscriptions, retain the process-wide Mono domain and attach around their final release.
+
+Managed property internal calls complete native C++ unwinding before returning through Mono. `CoreScripts/Native.cs` converts an error payload to `NativeCallException` (an `InvalidOperationException`), so generated typed properties and generic property-index helpers remain catchable in C# while preserving server entity-cover validation. Every typed and generic property read takes the entity's shared property auto-lock, and every write takes its exclusive property auto-lock for the complete native access. This matches AngelScript property dispatch and serializes `Game` singleton access against engine-owned frame-property updates; an explicit singleton lock, taken with `using GameLock scope = GameLock.Acquire();`, remains recursive so scripts can make a read-modify-write sequence atomic.
+
+Generated non-nullable primitive and enum properties, including component-presence flags, use their baked
+registrar index and unboxed internal calls. `Native.GetPropertyValue<T>` / `SetPropertyValue<T>` pass a
+constrained unmanaged local by reference, with its exact size checked against native metadata; no names,
+boxed values, argument arrays or per-call GC handles are needed on this path. Native getters copy ordinary
+property bytes directly, while virtual getters still execute their registered callbacks. Writes own a small
+native payload before invoking the normal setter chain, preserving clamping, validation and notifications.
+Narrow entity accessors keep the integer bridge's unbound-getter default and unchanged-write suppression.
+The fixed bridge work is independent of the number of registered properties and creates no heap objects;
+property storage, synchronization contention and callbacks retain their own costs. Every value type
+(`IsStruct`: `mpos`, `ipos`, `ucolor`, `ident`, `TextPackKey`, script `///@ ValueType` layouts) uses the same
+unboxed property bridge and the same caller-owned method/event frame, because a value type is plain data by
+registration and is always moved by memcpy (see [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md#value-types-are-plain-data)).
+`hstring` is one value on both sides: the native object representation is the interned entry pointer, 8 bytes
+wide on every target, and the managed `hstring` (`IntPtr Value`, sequential size 8) is exactly those bytes, so
+frames, boxing and value types copy it byte for byte and a zero handle is the empty `hstring`. The single place
+that differs is property storage, which keeps the 64-bit hash: `PropertyDataToValue` / `ValueToPropertyData`
+swap hash and handle in place, field by field inside value types, at the property boundary and nowhere else.
+An array property whose element is one of those fixed values crosses as raw bytes: `Native.GetPropertyList<T>` hands the native side a 512-byte stack buffer, receives
+the byte size, and copies into a `List<T>` sized from it through `CollectionsMarshal`; a longer array is read a
+second time straight into the list's storage, and the two sizes must agree because both reads happen under one
+cover. `SetPropertyList<T>` passes the list's storage the same way, and the native side owns a copy before any
+setter runs; an element with hashed strings in it gets the same in-place hash/handle swap.
+No element is boxed and no managed helper is invoked per element, which is what the converting bridge does.
+Everything else - strings, dictionaries, arrays of strings and dynamic ref types, nullable proto/fixed-type
+values - stays on the converting bridge, but reaches it by
+registrar index (`Native.GetProperty(entityPtr, index)`): no owner or property name crosses the boundary. Scalar, enum, and value-type methods, including
+ref/out, fill a caller-owned ABI frame and dispatch by a dense method id (`Native.CallMethodIndexed`); signatures
+that still need objects use `Native.CallMethodBoxed` with the same id. Events, numeric/bool settings, and inner-entity
+entries share that id space from one baker/native ABI manifest. A hash mismatch at `Initializator.InitializeEarly`
+(`Native.BindAbi`) is a load error. Method and event dispatch keep their bounded native argument-pointer tables
+inline rather than allocating a vector buffer per call.
+
+`Source/Scripting/Managed/CoreScripts/` contains only engine-owned stable C# runtime support such as `Attributes.cs`, `Initializator.cs`, and `Native.cs`. Those core files are compiled in place: every directory listed in `ManagedScript.Dirs` contributes its top-level `.cs` files to the generated project, engine and project sources alike. Script-visible types are generated into the `ManagedScript.GeneratedDir` directory: `hstring` and value/ref wrappers go to files such as `ServerTypes.gen.cs`, `ClientTypes.gen.cs`, and `MapperTypes.gen.cs`, while the managed `Entity` base and concrete entity wrappers go to `ServerEntities.gen.cs`, `ClientEntities.gen.cs`, and `MapperEntities.gen.cs`. Generated managed project files and MSBuild-generated assembly metadata also belong to the project managed directory; the engine source directory should not receive generated project `.csproj`, solution `.sln`, assembly info, or target API files. The managed baker only treats its own generated API files as stale cleanup candidates: `.gen.csproj` / `.gen.sln`, known generated managed API filenames, and `.gen.cs` files carrying the baker's auto-generated disclaimer. Project-owned generated C# files produced by other tools, such as GUI generator output, must stay intact. When `FO_MANAGED_SCRIPTING` is enabled, `Source/Tools/ManagedScriptBaker.*` builds server/client/mapper stub metadata, generates C# API files for enums, value/ref types, entity wrappers, events, settings, ABI bind stubs (`*Abi.gen.cs`), and content constants, writes one generated project plus a matching solution with `.gen` filenames (for example `<FO_NICE_NAME>.gen.csproj` and `<FO_NICE_NAME>.gen.sln`), adds an auto-generated disclaimer to generated files, deletes stale baker-owned generated artifacts from the managed project directory, then compiles the generated `.gen.cs` files together with project `.cs` sources directly into the current baking pack under `Baking/<Pack>/Assemblies/Assemblies-<target>/` as `<Pack>.<Target>.dll`. The incremental bake stamp is taken after that generation and includes the generated API files, project/solution, and `runtime.manifest`, so a generator- or ABI-only change rebuilds the packed DLL instead of shipping new C# with a skipped assembly. The lowercase target suffix uses the same `-server` / `-client` / `-mapper` resource filtering contract as other baked outputs. Generated settings accessors for numeric/bool project settings and numeric/bool engine `ExportSettings` read through indexed `Native.GetSettingValue<T>` against the `GlobalSettings` of the backend the calling assembly is bound to (builtin fields through typed accessors, custom entries through the existing runtime setting store); the generated surface is get-only. String and list settings still go through the name-based get/set helpers. C# module init code can read feature flags, view settings, and other settings from the backend currently executing that target, including in-process parallel test workers. Mapper generated settings receive the Client/Common engine `ExportSettings` surface as well, matching mapper AngelScript visibility for editor rendering, input, geometry, and mapper helper settings. Generated entity wrappers also include generic `Entity.GetAsInt<TProp>()`, `Entity.SetAsInt<TProp>()`, `Entity.GetAsAny<TProp>()`, and `Entity.SetAsAny<TProp>()` property-index helpers that pass `Native.EnumToInt32` into the integer property-index bridge rather than `Convert.ToInt32`. Non-nullable scalar typed accessors use the indexed unboxed bridge described above. Entity accessors for `int8`, `uint8`, `int16`, and `uint16` keep the integer bridge, passing the index directly without boxing the property enum, to preserve its default for an unbound virtual getter and suppression of unchanged writes. Generated wrappers also include metadata-driven entity-holder helpers (`Add<X>`, `Has<X>s`, `Get<X>`, `Get<X>s`) backed by inner-entry ids: `Get<X>s` snapshots once through `Native.FillInnerEntities` (scratch frame, then a heap buffer only when n exceeds 256) instead of Count + n×At, and also emits a caller-owned `Get<X>s(T[] buffer)` overload. An insufficient native buffer returns the required count with no partial write. Server-side generic `Game.Destroy(...)` aliases remain over generated `DestroyEntity` calls. Engine CoreScripts also provide a managed `ScriptFunc.Invoke(string, ...)` dispatcher for managed `Module::Func` callbacks, including generic ref-result overloads and managed exception counters for `GetGlobalExceptionCount()` / `GetContextExceptionCount()`; these counters cover managed `Invoke` failures, observed faulted tasks, swallowed managed event exceptions, and propagated managed callback/property/registered-func exceptions. `ScriptFunc.Invoke` first resolves methods inside the managed assembly, then falls back to `Native.InvokeScriptFunc`, which asks backend-neutral C++ `ScriptSystem` for registered candidates with the same name, pre-checks candidate compatibility against the boxed C# argument shapes, and invokes the first signature whose exact engine argument descriptors can be populated. Generated wrappers also include `Game.GetPropertyInfo(<Type>Property, out ...)` overloads for entity and fixed-type property enums; these property-info overloads are emitted from bake-time metadata and mirror the AngelScript property-info surface without a runtime internal call. For virtual-property callbacks, generated `Game.AddPropertySetter(...)` overloads support both `PropertySetter<TEntity,TValue>` (`entity, ref value`) and `PropertySetterWithProperty<TEntity,TProperty,TValue>` (`entity, property, ref value`), matching AngelScript setters that are registered for a property group.
+
+For a generic ref-result overload, managed lookup first preserves the traditional shape whose last parameter is
+the mutable result. If that shape is absent, it invokes a synchronous managed method against the input arguments
+and copies its return value into the ref result before considering the native fallback.
+
+Three markers cover the three ways a managed method is reached by name, and none of them implies another:
+
+- `[CallableByName]` admits a static method to managed `ScriptFunc.Invoke` / `ScriptFunc.InvokeAsync`, which find it by
+  reflection. It publishes nothing in the native global-function map.
+- `[CallableFromNative]` publishes a script method in that map under its `Module::Func` name during
+  `InitializeEarly` (`ScriptFuncRegistration.RegisterEngineAttributeFuncs`), so the engine, embedding C++ and
+  `Native.InvokeScriptFunc` resolve it through `ScriptSystem::FindFunc`. A method called both ways carries both.
+- `[CallableByEngine]`, described below, marks the backend's own entries and registers nothing.
+
+`[CallableByEngine]` is engine-internal and registers nothing. It marks a method `ManagedScriptBackend.cpp`
+resolves itself through Mono metadata of its declaring class (`mono_class_get_method_from_name`): the `Native`
+helpers, `Initializator.InitializeEarly` / `Initialize`, and the `ManagedLoadContextHost` entries. Nothing in managed
+code calls these methods and native code never checks the marker, so it is a hint telling a reader that their name
+and parameter count are relied on natively. Those methods are `internal`: Mono still finds non-public members, and
+unused-private analysis (`IDE0051`) would otherwise treat the native lookup as dead code. Script code reached from
+native code uses `[CallableFromNative]` instead. The load-context host is
+compiled from its own source file and cannot see CoreScripts, so it declares a private copy of the marker.
+Constructors the backend looks up (`.ctor` on a generated wrapper) are outside this contract: the generator owns
+both sides of that shape.
+
+Managed named invocation resolves qualified module names directly and short names within the current entry
+assembly. Its type and method-candidate caches belong to that backend's load context. Candidate compatibility
+is checked for every invocation, so equal-arity overloads cannot reuse a method selected for different argument
+types; cached misses still fall through to native dispatch. Enum lookup is also restricted to that assembly,
+with exact qualified names taking precedence over short-name matches. A foreign backend or unrelated helper
+assembly cannot supply an enum or make the lookup fail during domain-wide type enumeration. Failure to load a
+type in the owning entry assembly remains an error rather than being hidden by partial reflection results.
+String enum arguments accept qualified and case-insensitive names just like `ParseGenericEnum`. Ref-result
+copy-back converts to the caller's type; a failed conversion returns `false`, records one managed exception,
+and leaves the caller's result unchanged. The target may already have executed when copy-back fails.
+Registered dictionary signatures use `key=>value` (including `key=>value[]`); unsupported generic shapes fail
+registration explicitly instead of publishing a CLR-mangled type name.
+
+Managed duration formatting selects units by absolute magnitude and preserves a leading minus sign, including
+`long.MinValue`. This presentation change does not alter stored time units or the native ABI.
+
+Script exceptions are reported with their script frames placed into the native stack trace, the way AngelScript reported them. A managed exception that reaches a native entry becomes a `ScriptException` carrying the exception summary; an exception script catches and accounts with logging (`ScriptExceptions.Record(ex, true)`: stopped event chains, continuations, observed task faults, and a script-owned boundary calling `ScriptExceptions.Report`) is reported through the engine exception reporter instead of a text dump. A native failure handed to script as a `NativeCallException` retains the original native exception while its originating entry remains alive, identified by its message object rather than message text. Semantic managed wrappers keep their context, and aggregate failures retain every cause's frames. The mechanism and lifetime are described in [Debugging.md](Debugging.md#managed-mono-bridge).
+
+A CLR exception caught entirely inside project C# does not cross an invocation boundary, so it cannot increment the managed exception counters automatically. A test harness that deliberately catches such an exception can call `ScriptExceptions.RecordCaught(exception)` before acknowledging it; the helper increments both managed exception counters without logging an already handled failure. Do not use it to suppress an unhandled or unrelated exception.
+
+### The analysis profile of the generated script project
+
+The generated script project always sets `Nullable=enable`, `TreatWarningsAsErrors=true` and
+`EnforceCodeStyleInBuild=true`, so every analyzer diagnostic the compilation reports is a build failure and
+the `IDE*` code-style rules run in the build rather than only in an editor. Everything above that baseline is
+the embedding project's choice, expressed through five settings and emitted only when configured, so a
+project that sets none of them gets the same project it got before these existed:
+
+| Setting | Emitted as | Purpose |
+|---|---|---|
+| `ManagedScript.AnalysisLevel` | `<AnalysisLevel>` (plus an explicit `<EnableNETAnalyzers>true`) | Pins which version of the built-in .NET analyzer rule set applies |
+| `ManagedScript.AnalysisMode` | `<AnalysisMode>` | Chooses how much of that rule set is enabled |
+| `ManagedScript.Analyzers` | `<ProjectReference OutputItemType="Analyzer" …>` | Analyzer projects built from source alongside the scripts |
+| `ManagedScript.AnalyzerPackages` | `<PackageReference … PrivateAssets="all">` | Packaged analyzers, as `name,version` entries |
+| `ManagedScript.AdditionalFiles` | `<AdditionalFiles>` | Analyzer configuration the compiler reads rather than compiles, such as a banned-symbols list |
+
+Three rules are enforced by the baker rather than left to the embedder:
+
+- **An analyzer package version must be exact.** A wildcard, a range or a missing version makes the reported
+  rule set depend on the day the build ran, which defeats gating on analyzer diagnostics; the baker throws
+  instead of emitting one.
+- **The profile covers the script project only.** The managed host project compiles engine-owned source, and
+  its analysis policy belongs to the engine, not to the embedder.
+- **Analyzers and their configuration files participate in the incremental bake check.** Editing an analyzer
+  project or a banned-symbols list recompiles the scripts. Without that, a newly added rule stays silent
+  until an unrelated source file changes, which is indistinguishable from a rule that found nothing.
+
+Severities are not part of this surface: they come from the embedding project's `.editorconfig`, which Roslyn
+resolves per source file, so the file governing `Scripts/**` is the one above those sources rather than one
+beside the generated project. Because the project sets `TreatWarningsAsErrors`, promoting a rule to `warning`
+there makes it a hard failure — roll a new rule out by severity, not all at once.
+
+`Source/Scripting/Managed/ManagedHost/` owns the stateless bootstrap used before project code can be loaded. The baker emits `FOnline.ManagedHost.gen.csproj`, references it from the generated project, and packages `FOnline.ManagedHost.dll` beside every target entry assembly. Its source timestamp and output path participate in the managed bake check, so incremental baking rebuilds a missing or changed host and does not delete an unchanged host as stale output.
+
+Native exported ref types are lightweight borrowed wrappers. When a ref type exports `__Factory`, the managed baker emits that factory as a static C# method and the backend invokes it without a receiver. The returned initial native reference belongs to the managed caller and must be balanced with `__Release()` after the object is detached from native users; borrowed wrappers retained across frames still require paired `__AddRef()` / `__Release()` calls.
+
+Entity-only managed property post-set callbacks are emitted as `Action<TEntity>` delegates. Runtime callback dispatch resolves `FOnline.Native` through the backend that registered the callback, not through the delegate type's assembly image, so both generated `System.Action<TEntity>` delegates and custom `FOnline.*` delegates can invoke the native callback trampoline.
+
+Managed property getters and setters execute through `BaseEngine::RunScriptContext`, matching event and AngelScript callback isolation. On the server this creates a nested `SyncContext`: a callback must acquire the complete entity cover it needs, while `Game.Sync` / `Sync.Lock` inside that callback replaces only the nested cover and cannot discard locks held by the native property write or another outer script call.
+
+Managed callback and property dispatch roots the argument array before boxing its elements and reads the array and delegate through their GC handles after allocation. Each boxed argument enters the rooted array before the next argument is created. Mutable property setters read the updated value from that array after managed invocation; a getter result remains rooted during conversion to native property data. A GC handle preserves object lifetime, while re-fetching its target preserves the current address when the collector moves an object. Native conversion helpers must observe the same rule whenever they retain a managed value across another managed allocation or invocation.
+
+At runtime, all managed backends share one Mono VM and root domain, but each `ManagedScriptBackend` owns a dedicated non-collectible `System.Runtime.Loader.AssemblyLoadContext`. `FOnline.ManagedHost.dll` is the only engine bootstrap loaded into the default context; it loads the current target's entry and helper assemblies into the backend context. Consequently C# static fields, type initializers, module state, and dependency identity are isolated per engine instance even when several server/client/mapper engines coexist in one process. That isolation is also how an internal call learns its engine: Mono registers an internal call by name for the whole process, so the native side cannot tell which context called it, and the engine therefore writes its backend pointer into each entry assembly (`Native.BindBackend`) right after the context loads it and before any of its code runs - static constructors included. Every internal call that reaches an engine passes that pointer as its first argument, whatever thread runs the code and whichever native caller entered it; nothing is kept per thread. Managed objects and delegates must not cross backend boundaries; a wrapper type belongs to one context, so a wrapper never reaches the typed code of another engine. Backend shutdown removes native callback roots and managed function descriptors, clears the host scope, and releases its GC handle. The context itself remains owned by Mono until process shutdown: collectible-context unload corrupts the embedded Mono runtime once native callbacks and concurrent engine threads have exercised the assembly, and this Mono build forces every context non-collectible anyway, so each backend's assemblies and JIT code stay in memory for the life of the process. Entity wrappers release their native entities from finalizers on Mono's finalizer thread, possibly after the engine is gone, which is why an entity keeps what its destructor reads — the engine's shutdown flag — in shared ownership rather than behind an engine pointer. Do not drain finalizers from a teardown thread: `mono_gc_invoke_finalizers()` called beside the finalizer thread trips SGen's `!pending_unqueued_finalizer` assertion. Backend teardown finally detaches the recurring frame-worker attachment of the thread it runs on (`ManagedThreadAttachmentCache::Release`): left to the thread-local destructor, the main thread's detach would run inside process exit, after Mono's own threads were terminated possibly holding the locks the detach takes. Another backend pumping on the same thread attaches it again. Mono itself has no usable shutdown in this version — `mono_jit_cleanup` removes neither its threads (finalizer, SGen worker) nor its exception handlers, and the runtime cannot be initialized a second time in the same image — so the VM is process-lifetime by design and any library that has initialized it must never be unloaded (see [ClientUpdater.md](ClientUpdater.md)). Context execution remains parallel, while assembly loading is serialized process-wide because embedded Mono does not safely overlap context loads. Mono VM shutdown remains process-owned.
+
+`InitManagedScripting()` requires metadata that implements `ScriptSystem` and rejects other metadata objects before creating a backend. It registers the managed backend after script type mapping, restores every baked dll under `Assemblies/Assemblies-<target>/` for the current side, and asks the backend context to load only entry assemblies matching `Assemblies/Assemblies-<target>/*.<Target>.dll`. Each loaded assembly is first bound to its backend (`FOnline.Native.BindBackend`) and then immediately receives `FOnline.Initializator.InitializeEarly()`; this binds the generated ABI manifest (`Native.BindAbi`) and managed script funcs and remote-call metadata needed by resource/map loading before ordinary script module initialization, and then invokes every static parameterless `[ScriptFuncRegistrar]` method found in the assembly — the extension point embedding projects use to register their own attributed script functions (e.g. dialog demand/result markers) in the registration phase. `InitializeEarly()` rejects a second invocation in the same load context, making accidental default-context loading a runtime error instead of silently sharing static state. Because registration lives in `InitializeEarly`, bake-time validation engines can restore the managed script subsystem from the baked compiled assembly with `InitManagedScripting()` — the managed twin of the AngelScript bytecode restore — and resolve managed functions through the ordinary `ScriptSystem::FindFunc`/`CheckFunc` reflection, with no side manifests. The backend then registers `FOnline.Initializator.Initialize()` as a normal script init function, so user `[ModuleInit]` code runs later through `ScriptSystem::InitModules()` after embedding-side native hooks have initialized their state. `Initializator` runs static constructors, finds `[ModuleInit]` methods returning either `void` or `Task`, waits task-returning initializers, and invokes them in priority order. Registration and initialization depend only on the compiled entry assembly and engine metadata; source files and the working directory never select runtime ownership. Static-constructor failures abort initialization before module initializers run. Registering an attributed function with an existing name, attribute and argument/result signature is an error, so backends cannot silently replace each other. The managed backend is implemented on top of the Mono embedding API and binds the native `FOnline.Native` internal calls used by generated `Game.Log()`, `hstring.ToString()`, `hstring.FromString()`, generated scalar/list `Settings.*` accessors, generated generic entity `GetAsInt`/`SetAsInt`/`GetAsAny`/`SetAsAny` property-index helpers, native-backed scalar/value/entity/dynamic-ref-type properties, native-backed array properties for supported scalar/value/entity-proto/dynamic-ref-type elements, native-backed scalar/value/entity/dynamic-ref-type methods, exported native ref-type methods, scalar/value/entity/dynamic-ref-type `ref`/mutable method arguments, `List<T>`/engine-array method and event arguments for scalar/value/entity/ref-type elements, `Dictionary<K,V>`/engine-dictionary method and event arguments for scalar/value/entity/ref-type keys and values, generated event subscriptions, native event firing, and managed delegate adapters for script callback parameters such as `Callback_void` / `Callback_bool_Critter_Item`. Scalar `any` crosses this bridge as the engine's string-backed `any_t`, with managed values converted through `ToString()` and native `any_t` boxed back as a managed string; managed C# signatures use `object` for metadata `any` when registering script functions. Dynamic `RefType` layouts are generated as C# DTO classes with settable properties; exported native ref types are generated as lightweight wrappers over the native ref pointer. Mutable dynamic-RefType arguments use an owning native handle slot. If the called backend replaces that slot, the managed bridge reconciles its stored owner before result boxing and again during exception unwinding: it disarms the already-released old owner and adopts the transferred replacement reference. This prevents stale-owner double release while preserving normal RefType replacement semantics across managed event, method, and named script-function calls. Method wrappers pass a dense ABI method id; scalar/enum signatures including ref/out write an unboxed frame, and remaining signatures still box through `CallMethodBoxed`. Generated event accessors are stateless structs over the entity pointer; the subscriptions live on the entity. `Subscribe()` registers a native callback for the calling assembly's backend by event id unless the entity already holds one for an equal handler, and `Unsubscribe()` / `UnsubscribeAll()` find this backend's subscriptions on the entity (`EventCallbackData::SubscriptionOwner`) and match handlers the way C# delegate equality does. Every lookup hands out a new wrapper, so any wrapper of the entity must reach the same subscriptions: a map kept per wrapper, as before, made an unsubscribe through another wrapper a silent no-op and let the same handler subscribe twice. A wrapper therefore carries no per-event state. Unsubscribing on a destroyed entity does nothing, because `MarkAsDestroyed` already dropped every subscription. Scalar `Fire()` writes the same style of ABI frame (`FireEventIndexed`); remaining signatures still build an object-array payload (`FireEventBoxed`). Native-to-managed scalar dispatch calls a generated `AdaptInvoke` on the event type instead of `DynamicInvoke`. Sync scalar property getters/setters register a generated `PropertyCallbackAdapters.AdaptGetter_*` / `AdaptSetter_*` similarly. Handlers passed to generated `Subscribe()` methods must be marked `[Event]`, and missing markers are rejected before the native subscription is created. Residual allocations on that callback surface, when they remain, come from `ScriptSynchronizationContext.Enter` and entity wrappers, not from argument arrays or boxed scalars. API members whose signatures still require unsupported bridges fail managed baking with `ManagedScriptBakerException` instead of generating runtime-only stubs. Runtime loading restores baked resource-pack assemblies to shared content-hashed subdirectories under `Cache/ManagedAssemblies/`, reusing existing files when bytes already match so parallel in-process test workers do not rewrite loaded assemblies while still keeping helper dlls next to the entry assembly. If no baked managed assemblies are present, the backend logs a skip and continues with zero managed assemblies, which keeps self-contained test rigs and tools that do not bake managed scripts usable.
+
+Dynamic `RefType` component members use one flattened managed name in both codegen and runtime conversion: a
+component marker named `Component` becomes `Component`, while `Component.Field` becomes `ComponentField`.
+`ManagedScriptBaker` rejects collisions after flattening. Native-to-managed boxing and managed-to-native
+materialization both use this same rule, so a DTO carrying component fields can cross either script boundary.
+
+Generated event wrappers accept `void`, `Task`, `EventResult`, and `Task<EventResult>` handlers. An async result
+handler is awaited before native dispatch continues, allowing it to stop the remaining subscriber chain after an
+awaited operation. Use that form when a handler consumes or destroys an entity argument that later subscribers
+must not receive.
+
+Entity dict-of-array properties are native-backed as `Dictionary<K, List<V>>` when `K` has a fixed-size non-string
+layout and `V` is a supported fixed-size or string-backed element. The bridge reads and writes the existing
+AngelScript property-buffer layout, including entries whose list is empty, so both runtimes observe the same entity
+state without a persistence or network-schema conversion. Variable-size `string` keys and unsupported dynamic list
+elements remain outside this native property bridge.
+
+Managed `List<T>` settings for engine `vector<T>` `ExportSettings` use the same whitespace-separated string format as `GlobalSettings::Save()` and `GlobalSettings::SetValue()`. The generated getter formats the native vector through the engine setting bridge and the C# core helper parses it into `List<T>`; the setter joins values with spaces and routes them back through `SetValue()`, so project custom settings and built-in engine settings share one path.
+
+Managed timer APIs (`StartTimeEvent`, `CountTimeEvent`, `StopTimeEvent`, `RepeatTimeEvent`, and `SetTimeEventData`) also accept generated `Callback_*Async` delegates returning `Task`. These overloads retain the same native metadata method index, callback method/target identity, entity-cover requirements, and timer ID semantics as their synchronous counterparts. The delegate itself crosses the native bridge; there is no `async void` adapter. An incomplete task returns control to the timer pump immediately, and a later fault is counted and logged once by the existing task observer. Repetition or cancellation affects timer scheduling and does not cancel an already-started task. After an await, callers follow the ordinary synchronization-cover rules. A null callback must be typed to choose the synchronous or asynchronous delegate overload.
+
+Entity-only post-set property reactions accept `Func<TEntity, Task>` in both `AddPropertySetter` and `AddPropertyDeferredSetter`. They use the same deferred native registrar and task observer after the property value has been written. Value-transforming setters with `ref` arguments and property getters retain their synchronous result contract.
+
+Callback invocation uses the delegate's `Invoke` return type as its result contract. A `Task<T>` method bound covariantly to a timer's `Task` delegate is observed without waiting for `T`; a registered callback whose delegate actually returns `Task<T>` retains its synchronous native-result behavior. `async void` has no task to observe and must not be used for callbacks that suspend.
+
+A native-to-managed callback whose signature the ABI frame can carry — entity and native ref-type handles, fixed values (primitives, enums, `hstring`, value types), a void or fixed-value result — is dispatched through a generated adapter instead of `DynamicInvoke`. `ManagedScriptBaker` emits `CallbackAdapters.Adapt_<key>(Delegate handler, ref byte frame, int frameSize)` per such signature next to the `Callback_*` delegates (the key is `MakeManagedAbiCallbackKey`: metadata type names, so `Adapt_Callback_void_Critter_TimeEventContext`), and the backend builds one `ManagedCallbackPlan` per registration — at `Native.RegisterGlobalScriptFunc` for attributed handlers such as `[TimeEvent]`, and when a script hands a delegate to an export such as `StartTimeEvent` — that resolves the adapter once. Dispatch then copies handles (zero-extended 64-bit slots) and fixed values into a stack frame and invokes the adapter, which wraps the handles and calls the delegate directly: the generated `Callback_*` and `Callback_*Async` types, or the `Action<...>` / `Func<..., Task>` / `Func<..., T>` shapes the attribute registration builds. A delegate of any other shape falls back to `Native.InvokeCallback` inside the adapter, and a signature with strings, collections, dynamic ref types, abstract entities or by-ref arguments keeps the boxed `MonoArray` + `DynamicInvoke` path. An inbound remote call has no delegate type of its own, so the baker emits an adapter for each distinct inbound signature as well - the calling `Player` on the server, then the wire arguments - matching only the `Action<...>` / `Func<..., Task>` shapes the registration builds. The adapter wraps a handle as non-null, so a dispatch that carries a null handle (a loopback call with no caller, for one) declines the frame and takes the boxed path for that call. Both paths keep the same `ScriptSynchronizationContext`, `Task` completion (`Native.CompleteCallbackTask`) and exception accounting; `Native.GetAndResetTypedCallbackDispatches` / `GetAndResetBoxedCallbackDispatches` count them for the interop tests.
+
+Method and event frames carry entities the same way. An entity, proto, fixed-type or native ref-type argument that is passed by value occupies an 8-byte handle slot holding its native pointer (`ManagedAbiValueKind::Handle`, zero-extended on a 32-bit target), and an entity result returns in one. A handle that reaches managed code - an event or callback argument, a result - is wrapped by the runtime type of its entity, which only the boxing path resolves for an abstract entity or the `Entity` base, so those keep the boxed path there; a method argument only travels into native code, so it rides a handle slot whatever its entity type (`IsManagedAbiHandleType(type, wrapped)`). Dynamic ref types, by-ref handles and ref-type results keep the boxed path. Generated wrappers write `arg.EntityPtr` / `arg.RefPtr` - the accessor that checks the wrapper's backend, as a boxed argument would be checked - and a nullable argument writes zero. The native side holds a handle slot to what a boxed argument is held to: `ValidateManagedFrameHandle` rejects null in a non-nullable slot and a prototype passed where a live entity is expected (`ValidateManagedEntityKind`). A handle result is wrapped in C# through the registered factory, `WrapEntity<T>` for a nullable return and `WrapEntityNotNull<T>` otherwise, and a `PassOwnership` export's handed-over reference is released right after the wrapper took its own. Event dispatch fills handle slots from the native call arguments and `AdaptInvoke` wraps them; since the adapter wraps a non-nullable handle as non-null, a dispatch that carries null there declines the frame and takes the boxed path for that call, which keeps whatever the handler did with a null before. In the embedding game this moved 95 of 709 boxed server methods and 119 of 137 server event signatures onto the frame; what stays boxed carries strings, collections, callbacks or `any`.
+
+Wrapper construction is reflection-free on both sides. The generated ABI bind stub registers `Native.RegisterWrapperFactory<T>(static ptr => new T(ptr))` for every generated class with a native-pointer constructor (concrete, abstract, proto and static entities, fixed types, native ref types), so `Native.WrapEntity<T>` / `WrapRef<T>` / `WrapRefNotNull<T>` call one delegate; a class no generator registered keeps `Activator.CreateInstance`. Natively, `CreateEntityObject` and `CreateNativeRefTypeObject` resolve the `MonoClass` and its pointer constructor through the backend-owned `ManagedBackendCaches` (`ResolveWrapperClass`), instead of a class lookup and `.ctor` search per wrap. Those caches are shared by every worker of the engine, so none of them is filled lazily on a hot path: the wrapper-class map is built once while the assembly binds its ABI (`BuildWrapperClassCache`, from the same `CollectManagedAbiWrapperClasses` list the baker registers factories for) and only read afterwards, callback adapters are resolved under a lock at registration, a project custom setting's parsed value is a pair of atomics stored value-first, and the diagnostic dispatch counters stay off until a test first reads them, so a production dispatch pays one relaxed load.
+
+Managed-to-native method and event frames are packed byte buffers, including when the frame itself starts at an unaligned address. `ManagedAbiNativeFrame` is a passive aggregate built by `BuildManagedAbiNativeFrame`, which copies each argument and result slot into separately aligned stack storage before `NativeDataCaller` or native event subscribers dereference it. `GetManagedAbiNativeFrameArg` and `GetManagedAbiNativeFrameResult` expose that storage; after a successful call, `CopyBackManagedAbiNativeFrame` copies only mutable arguments and the result back. This preserves the compact managed ABI without assuming a platform tolerates unaligned native loads.
+
+An event adapter returns its result through a trailing `ref int result`: `AdaptInvoke(handler, hasExplicitResult, entityPtr, ref byte frame, int frameSize, ref int result)` is `void`, so a dispatch neither boxes an `EventResult` nor roots a returned object, and a handler that throws writes `StopChain`. A Task-returning event handler uses the boxed fallback inside the adapter; after invocation the adapter copies every by-ref argument back into the frame, skipping the leading owner argument for an entity event. The next subscriber and the original caller therefore see the rewrite on both global and entity events. The managed helpers the bridge calls by name (the delegate, list and dictionary helpers, `InvokeCallback`, `InvokeEvent`, `DescribeException`, `EventHandlersEqual`) are listed once in `MANAGED_NATIVE_HELPERS` and resolved into `ManagedBackendCaches` when the ABI binds, so no call searches a class for a method. `ScriptSynchronizationContext` creates its continuation queue on the first post, which makes an entry that finishes without awaiting pay 56 bytes for its context instead of 96. The same bind step fills two more read-only tables: every `FOnline` class the bridge names by metadata type (entities and their proto/static/abstract forms, enums, value and ref types, property enums), which `FindFOnlineClass` consults before it searches the loaded images, and the C# property getter and setter of every dynamic ref-type field, keyed by the field's `Property`, so materializing a ref-type object neither builds a property name nor searches the class for it. A failure context string is built only when a managed call actually failed. `Native.CreateList` makes a `List<T>` through a delegate created once per element type rather than through `MakeGenericType` and `Activator` on every collection the engine hands to script, and an entity event subscription resolves its adapter from a table filled per event id at bind. Mono inlines no method that makes a call unless it is marked `AggressiveInlining`, so the bridge helpers on the fixed-value path carry that attribute and `ThrowNativeError` keeps its throw in a separate non-inlined method.
+
+Managed remote-call registration accepts `void`, `Task`, and `Task<T>` handlers for attributed remote-call methods. Native callback invocation adapts engine collection payloads to the handler's declared C# shape before `DynamicInvoke`: dictionary-like payloads can feed `Dictionary<string, string>` handlers, while the string-backed engine `any[]` surface is boxed as `List<string>` for generated APIs and can also feed registered `List<object>` handlers through an explicit list adaptation. Incoming remote calls have no wire return value, so task-returning handlers are dispatched without blocking the network or client pump and their completion is observed through `ScriptExceptions.ObserveTask`; synchronous exceptions and deferred task faults still reach the script exception path, while a `Task<T>` result value is intentionally ignored. The same rule applies to registered managed script functions whose C# return type is non-generic `Task`: metadata exposes them as native `void`, native invocation returns at the first incomplete await, and the bridge observes deferred faults instead of blocking the script pump needed by `ScriptTask.Delay`. A registered `Task<T>` function remains synchronous at this boundary because its native caller requires `T` before the call can return.
+
+Managed `hstring` is an 8-byte blittable value whose payload is the native intern-table entry pointer (`IntPtr`), not the 64-bit hash. Construction (`new hstring(string)` / `.hstr()`) interns through the `EngineMetadata::Hashes` of the backend the assembly is bound to, and `hstring.ToString()` reads the entry the handle points at. Empty is `IntPtr.Zero`, matching native `hstring{}` (`nullptr` intern pointer). Property and RPC payloads still travel as `hstring::hash_t` and resolve in the receiving engine. Resolution only finds a string that engine already holds: a hash it has never met is not learned from the payload, and reading it throws `Managed hstring is not interned in the active backend`, so a value one side sends must already be in the other side's hash storage (the sources are listed in [Networking.md](Networking.md#hashes)); `Entity.ProtoId`, the generated proto getters and inner-entity creation pass the handle itself. Static C# `hstring` fields belong to the backend's `AssemblyLoadContext`, so their type initializer interns literals into that engine instance. Value structs with `hstring` fields copy the native intern pointer. Boxing and unboxing an `hstring` or a value type copies its bytes (`mono_value_box` / `mono_object_unbox`), with the managed size checked against the layout; no field is read or written one by one.
+
+Managed CoreScripts do not mirror AngelScript's string, array or dictionary members; managed code uses the BCL for them. The `hstr()` string extension accepts nullable managed receivers and hashes the empty string when the receiver is null.
+
+Managed `ident` has a CoreScript string constructor and `ToString()` override so string-backed `any_t` property access and GUI parameter conversion can round-trip entity identifiers without generated value-struct special cases.
+
+Managed value-struct CoreScript extensions mirror AngelScript helper constructors and conversions that the raw struct baker cannot derive from fields alone. `TextPackKey.ToString()` mirrors the C++ formatter's `{Collection}{Key1}{Key2}{Key3}` structured tuple. Direction constructors accept full-width `int` inputs: `hdir` normalizes into `[0, Game.MapDirCount)`, and `mdir` normalizes degrees into `[0, 360)`. The baker emits their ABI fields and equality members but no raw constructors. CoreScripts retain the existing `sbyte`/`short` constructor signatures as forwarding overloads, so narrow arguments use the same normalization and compiled consumers keep their constructor entrypoints. `mdir(hdir)` and the `hex` getter route through native `HdirToMdir` / `MdirHex` helpers for geometry-dependent conversion.
+
+The CMake `SetupManagedRuntime` target runs `BuildTools/setup-mono.*` with a build-local `FO_WORKSPACE`, builds `mono.runtime+mono.corelib+libs.native+libs.sfx`, and publishes the Mono runtime into `dotnet/output/mono/<triplet>`, taking the class libraries from the target's runtime pack built by `libs.sfx` rather than from the SDK's own shared framework ([BuildToolsPipeline.md](BuildToolsPipeline.md)). `PrepareManagedRuntimePayload` then creates a clean deploy payload containing only PE assemblies with a CLR header from `lib/netcoreapp`, requires Mono's `System.Private.CoreLib.dll`, rejects class libraries whose informational version differs from CoreLib's, and writes `runtime.manifest`; native runtime DLLs, JITs, headers, import libraries, symbols, and other build products are excluded by construction. These class libraries are target-platform data, not architecture-neutral data: CoreLib selects Windows, Unix, Android, and browser interop at build time, and so do the OS-variant libraries such as `System.Net.Http` and `System.Console`. Mono and the generated native interop-shim table remain linked into the application.
+
+The Managed baker writes its build target's prepared payload under `ManagedRuntime/` in the same resource pack as the game assemblies (`Scripts` in Last Frontier), reduced to CoreLib and the class libraries those assemblies reach through assembly references ([BakingPipeline.md](BakingPipeline.md#managed-runtime-payload-selection)); a class library that only a string-based `Type.GetType` or `Assembly.Load` would open is not shipped unless some assembly also references it statically. Package assembly must then use the payload belonging to the application target: client packages rebuild that resource pack from `Binaries/Client-<platform>-<arch>/ManagedRuntime`, and server packages stage one target-specific copy under `PlatformBinaries/<target>/<pack>.zip` for every distributed client target. The updater replaces the common pack entry with that target copy while leaving native modules tagged as `ClientBinaries`. Before Mono initialization, runtime startup restores the selected resource files atomically to the content-addressed writable cache at `<CacheDir>/ManagedRuntime/<content-hash>/`, adds its `lib/netcoreapp` directory to Mono's assembly search path, and uses the cached payload as the source of truth. Application build outputs also receive the same clean payload beside the executable for unpackaged development and standalone build tools; packaged native, Web, and Android applications use the resource-pack path and do not ship a separate directory. Startup enables `DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1` by default because the embedded runtime is published without `System.Globalization.Native`, and attaches each native engine thread to the process-wide Mono root domain. Per-engine isolation is provided by the backend-owned `AssemblyLoadContext`, not by classic Mono AppDomains, whose creation/unload embedding APIs are unavailable in this runtime. Projects that stage their own globalization native library can override the environment variable before startup.
+
+`Source/Scripting/Native/` currently contains `.keepalive`, marking the source-root location for native scripting integration; do not document native scripting as equivalent to the AngelScript runtime. The Managed backend is implemented (see above), with engine-side coverage concentrated in `Source/Tests/Test_ManagedScriptBaker.cpp` for project/resource generation, host/helper and runtime payload packaging, cache restoration and repair, incremental tracking, path handling, and stale generated artifact cleanup; embedding projects should still carry end-to-end managed runtime suites for their live gameplay modules.
 
 ## Tests to inspect
 
@@ -216,6 +580,8 @@ Script behavior is covered by focused tests:
 - `Source/Tests/Test_AngelScriptAttributes.cpp` — attribute parsing, nullable suffix handling, events, remote calls, and callback rules.
 - `Source/Tests/Test_AngelScriptBaker.cpp` — AngelScript bytecode/resource baking path.
 - `Source/Tests/Test_AngelScriptBytecode.cpp` — bytecode compilation/loading behavior.
+- `Source/Tests/Test_ManagedScriptBaker.cpp` — managed project/resource generation in dry-run mode.
+- `Source/Tests/Test_AngelScriptCall.cpp` — native/script call shapes, return cleanup, and concurrent lazy type-id assignment.
 - `Source/Tests/Test_CommonScriptMethods.cpp` — common exported methods.
 - `Source/Tests/Test_ServerScriptMethods.cpp` — server exported methods.
 - `Source/Tests/Test_ScriptBuiltins.cpp` — built-in script helpers/types.
@@ -243,3 +609,23 @@ Use these tests as executable documentation when changing script registration, g
 4. For nullable changes, run the nullability analyzers described in [Nullability.md](Nullability.md).
 5. For server/client/mapper method changes, validate the owning runtime path; do not rely only on compilation.
 6. Update [ScriptMethodsMap.md](ScriptMethodsMap.md) when exported method files are added, removed, or materially regrouped.
+
+AngelScript `InvokeResult` constructs null array and dictionary output handles before dispatch.
+
+Inbound managed RPC value layouts use aligned, call-owned field storage. Hashed-string fields, including nested fields, are constructed in place and destroyed before the buffer is freed. The managed boxer reads the layout field by field; the buffer is not a constructed native aggregate and must not be cast to an exported C++ value type.
+
+Generated managed API/project files are written through a checked temporary file and renamed over the destination. Write, flush, close or rename failure preserves the previous destination; a directory at the generated file path is an error.
+
+Managed bake-output assembly discovery returns an empty set only for absent paths. Filesystem lookup and directory traversal errors propagate, so a readable entry assembly cannot turn an incomplete directory listing into a successful startup.
+
+Exported value metadata records the native size and fixed field layout, including stub metadata used by baking; generated native registration requires the type to be trivially copyable. Managed interop copies value types as bytes and validates the managed size against metadata. Property storage converts nested hash values between stored hashes and runtime intern handles. Native calls use aligned argument storage, including for mutable arguments and results. Layout registration rejects a field size total that differs from the native type before publishing the layout.
+
+### Managed continuation scheduling
+
+Each backend loads its core scripts into a separate entry assembly in its own non-collectible load context. `ScriptSynchronizationContext` therefore owns a separate managed continuation queue for each backend, including multiple embedded clients in one process. Native callback and event entry installs an invocation context; `Post` only queues managed work and never dereferences a native engine from a ThreadPool thread. `BaseEngine::FrameAdvance` pumps that backend after releasing the frame-property lock on server, client, and mapper. Each resumed continuation enters `BaseEngine::RunScriptContext` for the backend its assembly is bound to; on the server this creates a fresh nested entity-sync context. A suspended method must reacquire and revalidate its entities before using them again. This also covers late Task continuation registration and nested awaits, which cannot safely rely on inline `TaskCompletionSource` completion. `ConfigureAwait(false)` and manually dispatched ThreadPool work deliberately bypass this context and must not call engine APIs. The engine does not detect such a call on every path: the bound backend answers "which engine" on any thread, so only a server entity access fails there (its sync check reports `Entity access without sync`). Embedding projects keep these APIs out of script code statically (Last Frontier bans them in `Scripts/BannedSymbols.txt`).
+
+A native result callback (`Task<T>` or `Task<EventResult>`) and module initialization remain synchronous. Their invocation has a private continuation queue: while awaiting an external Task completion, the owning thread drains only that queue, with a fresh native script context for each continuation. Nested no-result callbacks inherit the active synchronous owner and post into that same private queue. Once the owner returns, a detached child resumes through the normal frame pump and can yield engine timers. Other pending script callbacks are left to the regular frame pump. `ScriptTask.Delay` rejects these synchronous contexts before registering a timer, with `A synchronous script callback cannot yield an engine timer`; the blocked native caller cannot advance the client/mapper timer pump. Completed Task results retain their ordinary synchronous behavior, and a covariant `Task<T>` method bound to a void-returning Task delegate remains asynchronous.
+
+Backend shutdown closes the managed scheduler and discards queued work before releasing the load context. Later posts cannot execute against the disposed engine. `Initializator.InitializeEarly`, also used by bake validation, rejects every declared static or instance `async void` method (including compiler-generated lambda methods) by its `AsyncStateMachineAttribute`, before registering script functions: `Async void script methods are not supported; return Task`. Ordinary synchronous `void` methods remain valid. Deferred Task exceptions are observed once by the existing managed exception accounting.
+
+`BuildTools/tests/test_managed_async_callbacks.py` exercises the actual managed dispatch and scheduler with external native-call sinks. `EngineFramePumpsOnlyItsOwnScriptBackends` covers the common frame-pump boundary for all three metadata roles and verifies backend isolation and removal. Full embedded-engine gameplay remains the check for native entity-cover and timer behavior.

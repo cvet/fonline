@@ -751,6 +751,46 @@ void CompilerGLSL::ray_tracing_khr_fixup_locations()
 	});
 }
 
+std::string CompilerGLSL::integer_dot_product_entry_point(const IntegerDotProduct &idot)
+{
+	std::string expr = "spv";
+
+	switch (idot.op)
+	{
+	case OpSDot: expr += "SDot"; break;
+	case OpUDot: expr += "UDot"; break;
+	case OpSUDot: expr += "SUDot"; break;
+	case OpSDotAccSat: expr += "SDotAccSat"; break;
+	case OpUDotAccSat: expr += "UDotAccSat"; break;
+	case OpSUDotAccSat: expr += "SUDotAccSat"; break;
+	default: SPIRV_CROSS_THROW("Invalid integer dot product opcode.");
+	}
+
+	expr += "_" + type_to_glsl(get<SPIRType>(idot.result_type));
+	for (auto &arg : idot.argument_type)
+		expr += "_" + type_to_glsl(get<SPIRType>(arg));
+
+	return expr;
+}
+
+void CompilerGLSL::add_integer_dot_product_polyfill(const IntegerDotProduct &idot)
+{
+	for (auto &impl : integer_dot_products_polyfills)
+	{
+		if (impl.result_type == idot.result_type &&
+		    impl.argument_type[0] == idot.argument_type[0] &&
+		    impl.argument_type[1] == idot.argument_type[1] &&
+		    impl.op == idot.op)
+		{
+			return;
+		}
+	}
+
+	require_extension_internal("GL_EXT_spirv_intrinsics");
+	integer_dot_products_polyfills.push_back(idot);
+	force_recompile();
+}
+
 string CompilerGLSL::compile()
 {
 	ir.fixup_reserved_names();
@@ -819,15 +859,25 @@ string CompilerGLSL::compile()
 			emit_polyfills(required_polyfills, false);
 		if ((options.es || options.vulkan_semantics) && required_polyfills_relaxed != 0)
 			emit_polyfills(required_polyfills_relaxed, true);
+		emit_polyfills_integer_dot_product();
 
-		emit_function(get<SPIRFunction>(ir.default_entry_point), Bitset());
+		if (ir.is_library_module)
+		{
+			// Emit each exported function as a normal free function.
+			// emit_function recursively emits callees, so internal helpers
+			// are picked up too.
+			for (auto export_id : ir.library_exported_functions)
+				emit_function(get<SPIRFunction>(export_id), Bitset());
+		}
+		else
+			emit_function(get<SPIRFunction>(ir.default_entry_point), Bitset());
 
 		pass_count++;
 	} while (is_forcing_recompilation());
 
 	// Implement the interlocked wrapper function at the end.
 	// The body was implemented in lieu of main().
-	if (interlocked_is_complex)
+	if (interlocked_is_complex && !ir.is_library_module)
 	{
 		if (options.use_entry_point_name)
 			statement("void ", get_entry_point().name, "()");
@@ -841,8 +891,9 @@ string CompilerGLSL::compile()
 		end_scope();
 	}
 
-	// Entry point in GLSL is always main().
-	if (!options.use_entry_point_name)
+	// Entry point in GLSL is always main(). Skip the rename for library
+	// modules; their exports keep their declared names.
+	if (!options.use_entry_point_name && !ir.is_library_module)
 		get_entry_point().name = "main";
 
 	return buffer.str();
@@ -915,6 +966,16 @@ void CompilerGLSL::request_subgroup_feature(ShaderSubgroupSupportHelper::Feature
 void CompilerGLSL::emit_header()
 {
 	auto &execution = get_entry_point();
+
+	// Library modules have no entry point. The emitted GLSL is meant to be #include'd or appended
+	// rather than compiled standalone, so the version and extension directives that follow are
+	// wrapped in `#ifdef SPIRV_CROSS_LIBRARY_HEADER ... #endif`. By default they are skipped (the
+	// consuming translation unit provides its own preamble); a caller that wants to compile the
+	// library standalone defines SPIRV_CROSS_LIBRARY_HEADER to opt in. The stage-specific layout
+	// block at the end of this function is skipped entirely in library mode.
+	if (ir.is_library_module)
+		statement("#ifdef SPIRV_CROSS_LIBRARY_HEADER");
+
 	statement("#version ", options.version, options.es && options.version > 100 ? " es" : "");
 
 	if (!options.es && options.version < 420)
@@ -1123,6 +1184,13 @@ void CompilerGLSL::emit_header()
 
 	for (auto &header : header_lines)
 		statement(header);
+
+	if (ir.is_library_module)
+	{
+		statement("#endif");
+		statement("");
+		return;
+	}
 
 	SmallVector<string> inputs;
 	SmallVector<string> outputs;
@@ -5037,6 +5105,37 @@ void CompilerGLSL::emit_extension_workarounds(ExecutionModel model)
 				statement(type_to_glsl(type), " spvWorkaroundRowMajor(", type_to_glsl(type), " wrap) { return wrap; }");
 			}
 		}
+		statement("");
+	}
+}
+
+void CompilerGLSL::emit_polyfills_integer_dot_product()
+{
+	for (auto &op : integer_dot_products_polyfills)
+	{
+		string caps = join("[", CapabilityDotProduct);
+		auto &arg_type = get<SPIRType>(op.argument_type[0]);
+		if (arg_type.basetype == SPIRType::SByte || arg_type.basetype == SPIRType::UByte)
+			caps += join(", ", CapabilityDotProductInput4x8Bit);
+		else if (arg_type.vecsize == 1)
+			caps += join(", ", CapabilityDotProductInput4x8BitPacked);
+		else
+			caps += join(", ", CapabilityDotProductInputAll);
+		caps += "]";
+
+		auto arg0 = type_to_glsl(get<SPIRType>(op.argument_type[0]));
+		auto arg1 = type_to_glsl(get<SPIRType>(op.argument_type[1]));
+		auto acc_arg =
+				(op.op == OpSDotAccSat || op.op == OpUDotAccSat || op.op == OpSUDotAccSat)
+					? (", " + type_to_glsl(get<SPIRType>(op.result_type))) : "";
+
+		bool packed_vector = get<SPIRType>(op.argument_type[0]).vecsize == 1;
+		const char *packed_argument = packed_vector ? ", spirv_literal uint packedFormat" : "";
+
+		statement("spirv_instruction (extensions = [\"SPV_KHR_integer_dot_product\"], capabilities = ",
+		          caps, ", id = ", op.op, ")");
+		statement(type_to_glsl(get<SPIRType>(op.result_type)), " ", integer_dot_product_entry_point(op), "(",
+		          arg0, " arg0, ", arg1, " arg1", acc_arg, packed_argument, ");");
 		statement("");
 	}
 }
@@ -12710,6 +12809,18 @@ static bool opcode_is_precision_sensitive_operation(Op op)
 	case OpConvertUToF:
 	case OpConvertFToU:
 	case OpConvertFToS:
+	case OpShiftLeftLogical:
+	case OpShiftRightLogical:
+	case OpShiftRightArithmetic:
+	case OpBitwiseOr:
+	case OpBitwiseXor:
+	case OpBitwiseAnd:
+	case OpNot:
+	case OpBitFieldInsert:
+	case OpBitFieldSExtract:
+	case OpBitFieldUExtract:
+	case OpBitReverse:
+	case OpBitCount:
 		return true;
 
 	default:
@@ -16494,6 +16605,59 @@ void CompilerGLSL::emit_instruction(const Instruction &instruction)
 		break;
 	}
 
+	case OpSDot:
+	case OpUDot:
+	case OpSUDot:
+	case OpSDotAccSat:
+	case OpUDotAccSat:
+	case OpSUDotAccSat:
+	{
+		uint32_t result_type = ops[0];
+		uint32_t id = ops[1];
+
+		bool is_acc_sat = opcode == OpSDotAccSat || opcode == OpUDotAccSat || opcode == OpSUDotAccSat;
+
+		if (length == (is_acc_sat ? 6 : 5))
+		{
+			if (ops[length - 1] != PackedVectorFormatPackedVectorFormat4x8Bit)
+				SPIRV_CROSS_THROW("Only 4x8bit packing is supported.");
+		}
+
+		IntegerDotProduct idot = {};
+		idot.argument_type[0] = expression_type_id(ops[2]);
+		idot.argument_type[1] = expression_type_id(ops[3]);
+		idot.result_type = result_type;
+		idot.op = opcode;
+		add_integer_dot_product_polyfill(idot);
+
+		auto expr = join(integer_dot_product_entry_point(idot), "(", to_expression(ops[2]), ", ", to_expression(ops[3]));
+
+		if (is_acc_sat)
+		{
+			expr += ", ";
+			expr += to_expression(ops[4]);
+		}
+
+		if (expression_type(ops[2]).vecsize == 1)
+		{
+			expr += ", ";
+			expr += to_string(PackedVectorFormatPackedVectorFormat4x8Bit);
+		}
+
+		expr += ")";
+
+		bool forward = should_forward(ops[2]) && should_forward(ops[3]);
+		if (is_acc_sat && forward)
+			forward = should_forward(ops[4]);
+
+		emit_op(result_type, id, expr, forward);
+		inherit_expression_dependencies(id, ops[2]);
+		inherit_expression_dependencies(id, ops[3]);
+		if (is_acc_sat)
+			inherit_expression_dependencies(id, ops[4]);
+		break;
+	}
+
 	default:
 		statement("// unimplemented op ", instruction.op);
 		break;
@@ -17733,7 +17897,12 @@ void CompilerGLSL::add_function_overload(const SPIRFunction &func)
 
 void CompilerGLSL::emit_function_prototype(SPIRFunction &func, const Bitset &return_flags)
 {
-	if (func.self != ir.default_entry_point)
+	// In library mode default_entry_point points at the first exported
+	// function; treat every export as a normal function rather than as the
+	// shader's entry point.
+	const bool is_entry_point = !ir.is_library_module && func.self == ir.default_entry_point;
+
+	if (!is_entry_point)
 		add_function_overload(func);
 
 	// Avoid shadow declarations.
@@ -17747,7 +17916,7 @@ void CompilerGLSL::emit_function_prototype(SPIRFunction &func, const Bitset &ret
 	decl += type_to_array_glsl(type, 0);
 	decl += " ";
 
-	if (func.self == ir.default_entry_point)
+	if (is_entry_point)
 	{
 		// If we need complex fallback in GLSL, we just wrap main() in a function
 		// and interlock the entire shader ...
@@ -18612,7 +18781,11 @@ void CompilerGLSL::emit_hoisted_temporaries(SmallVector<pair<TypeID, ID>> &tempo
 		// There are some rare scenarios where we are asked to declare pointer types as hoisted temporaries.
 		// This should be ignored unless we're doing actual variable pointers and backend supports it.
 		// Access chains cannot normally be lowered to temporaries in GLSL and HLSL.
-		if (type.pointer && !backend.native_pointers)
+		if (type.pointer && (!backend.native_pointers || type_is_opaque_value(get_pointee_type(type))))
+			continue;
+
+		// Anything involving opaque objects cannot be lowered to temporaries ever.
+		if (type_is_opaque_value(type))
 			continue;
 
 		add_local_variable_name(tmp.second);

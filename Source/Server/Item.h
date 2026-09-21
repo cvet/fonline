@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -63,7 +63,6 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override;
     [[nodiscard]] auto GetProtoItem() const noexcept -> ptr<const ProtoItem>;
     [[nodiscard]] auto GetInnerItem(ident_t item_id) noexcept -> nptr<Item>;
-    [[nodiscard]] auto GetInnerItemByPid(hstring pid, const any_t& stack_id) noexcept -> nptr<Item>;
     [[nodiscard]] auto GetInnerItems(const any_t& stack_id) -> vector<ptr<Item>>;
     [[nodiscard]] auto HasInnerItems() const noexcept -> bool;
     [[nodiscard]] auto GetAllInnerItems() -> vector<ptr<Item>>;
@@ -73,11 +72,13 @@ public:
     [[nodiscard]] auto HasMultihexEntries() const noexcept -> bool;
     [[nodiscard]] auto GetMultihexEntries() const noexcept -> nptr<const vector<mpos>>;
     [[nodiscard]] auto GetOwnedLock() noexcept -> ptr<EntityLock>;
+    [[nodiscard]] auto IsInsideContainer(ptr<const Item> container) -> bool;
 
     auto AddItemToContainer(ptr<Item> item, const any_t& stack_id) -> ptr<Item>;
     void RemoveItemFromContainer(ptr<Item> item);
     void SetItemToContainer(ptr<Item> item);
     void SetMultihexEntries(vector<mpos> entries);
+    void ClearAllAssociations() noexcept;
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);

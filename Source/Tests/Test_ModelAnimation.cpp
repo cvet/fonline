@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -59,8 +60,8 @@ static void ConfigureTrack(ModelAnimationController& controller, int32_t track, 
 TEST_CASE("Model animation controller copies share immutable metadata and own timeline state")
 {
 #if FO_ENABLE_3D
-    HashStorage hashes;
-    hstring bone = hashes.ToHashedString("Bone");
+    hash_storage hashes;
+    hstring bone = hashes.to_hashed_string("Bone");
     ModelAnimationController prototype {1};
     int32_t first_index = prototype.RegisterAnimation(3, 2.0f, false, {bone});
     int32_t second_index = prototype.RegisterAnimation(7, 4.0f, true, {bone});
@@ -92,8 +93,8 @@ TEST_CASE("Model animation controller copies share immutable metadata and own ti
 TEST_CASE("Model animation controller timeline resolves events for runtime track state")
 {
 #if FO_ENABLE_3D
-    HashStorage hashes;
-    hstring bone = hashes.ToHashedString("Bone");
+    hash_storage hashes;
+    hstring bone = hashes.to_hashed_string("Bone");
     ModelAnimationController controller {1};
     int32_t animation_index = controller.RegisterAnimation(5, 2.0f, true, {bone});
     controller.SetTrackAnimation(0, animation_index, nullptr);
@@ -128,10 +129,10 @@ TEST_CASE("Model animation controller timeline resolves events for runtime track
 TEST_CASE("Model animation track bindings preserve allowed masks and transition suppression")
 {
 #if FO_ENABLE_3D
-    HashStorage hashes;
-    hstring bone = hashes.ToHashedString("Bone");
-    hstring other = hashes.ToHashedString("Other");
-    hstring missing = hashes.ToHashedString("Missing");
+    hash_storage hashes;
+    hstring bone = hashes.to_hashed_string("Bone");
+    hstring other = hashes.to_hashed_string("Other");
+    hstring missing = hashes.to_hashed_string("Missing");
     ModelAnimationController controller {2};
     int32_t first_index = controller.RegisterAnimation(11, 2.0f, true, {bone, other});
     int32_t second_index = controller.RegisterAnimation(13, 2.0f, false, {bone, other});
@@ -182,12 +183,12 @@ TEST_CASE("Model animation track bindings preserve allowed masks and transition 
 TEST_CASE("Model animation bone masks use exact runtime binding names")
 {
 #if FO_ENABLE_3D
-    HashStorage hashes;
-    hstring source_root = hashes.ToHashedString("SourceRoot");
-    hstring runtime_root = hashes.ToHashedString("ModelFile.fbx");
-    hstring child = hashes.ToHashedString("Child");
-    hstring contributed = hashes.ToHashedString("Contributed");
-    hstring absent = hashes.ToHashedString("Absent");
+    hash_storage hashes;
+    hstring source_root = hashes.to_hashed_string("SourceRoot");
+    hstring runtime_root = hashes.to_hashed_string("ModelFile.fbx");
+    hstring child = hashes.to_hashed_string("Child");
+    hstring contributed = hashes.to_hashed_string("Contributed");
+    hstring absent = hashes.to_hashed_string("Absent");
     vector<hstring> canonical_names {source_root, child, contributed, absent};
     vector<hstring> runtime_names {runtime_root, child, contributed, absent};
     vector<uint8_t> canonical_joint_present {1, 1, 1, 0};

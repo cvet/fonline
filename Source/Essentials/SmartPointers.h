@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -34,20 +34,30 @@
 #pragma once
 
 #include "BasicCore.h"
+#include "FatalError.h"
+#include "FunctionObjects.h"
 
 FO_BEGIN_NAMESPACE
 
 // Template helpers
+
+// Either spelling counts: engine types write the protocol in snake_case, AngelScript's own types bring
+// PascalCase from the library
 template<typename T>
 concept refcountable = requires(T t) {
+    t.addref();
+    t.release();
+} || requires(T t) {
     t.AddRef();
     t.Release();
 };
 
 template<typename T>
-concept try_refcountable = refcountable<T> && requires(T t) {
+concept try_refcountable = refcountable<T> && (requires(T t) {
+    { t.try_addref() } -> std::convertible_to<bool>;
+} || requires(T t) {
     { t.TryAddRef() } -> std::convertible_to<bool>;
-};
+});
 
 template<typename From, typename To>
 concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from); };
@@ -55,9 +65,46 @@ concept dynamically_castable_to = requires(From& from) { dynamic_cast<To&>(from)
 namespace details
 {
     template<typename T>
-    [[nodiscard]] FO_FORCE_INLINE auto make_void_ptr(T* value) noexcept -> void*
+    [[nodiscard]] auto make_void_ptr(T* value) noexcept -> void*
     {
         return const_cast<void*>(static_cast<const void*>(value));
+    }
+
+    // Reaches the pointee through whichever spelling it declares. The forwarding reference keeps the
+    // caller constness: bound as const, a wrapper hands out a const pointee and a non-const Release fails
+    template<typename T>
+    FO_FORCE_INLINE void call_addref(T&& value) noexcept
+    {
+        if constexpr (requires { value->addref(); }) {
+            value->addref();
+        }
+        else {
+            value->AddRef();
+        }
+    }
+
+    template<typename T>
+    FO_FORCE_INLINE void call_release(T&& value) noexcept
+    {
+        if constexpr (requires { value->release(); }) {
+            value->release();
+        }
+        else {
+            value->Release();
+        }
+    }
+
+    template<typename T>
+    [[nodiscard]] FO_FORCE_INLINE auto call_try_addref(T&& value) noexcept -> bool
+    {
+        if constexpr (requires {
+                          { value->try_addref() } -> std::convertible_to<bool>;
+                      }) {
+            return value->try_addref();
+        }
+        else {
+            return value->TryAddRef();
+        }
     }
 }
 
@@ -71,7 +118,7 @@ template<typename T>
 class nptr;
 
 // True for the borrow pointer-wrapper vocabulary (ptr/nptr/refcount_ptr/refcount_nptr).
-// Used by marshalling layers to treat a wrapped entity pointer like the raw pointer it borrows.
+// Used by marshalling layers to treat a wrapped entity pointer like the raw pointer it borrows
 template<typename>
 inline constexpr bool is_borrow_pointer_wrapper_v = false;
 template<typename T>
@@ -97,7 +144,7 @@ template<typename T>
 class shared_ptr;
 
 // Owning smart pointers (refcount_ptr/unique_ptr/shared_ptr/unique_del_ptr and their nullable variants)
-// implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below.
+// implicitly convert to a borrowed view (ptr/nptr) via ptr's/nptr's converting constructors below
 template<typename>
 inline constexpr bool is_nonnull_owning_pointer_v = false;
 template<typename T>
@@ -121,7 +168,7 @@ template<typename T>
 inline constexpr bool is_owning_pointer_v<shared_ptr<T>> = true;
 
 // The nullable borrow wrapper. A guard-checked nptr implicitly narrows to a non-null ptr (with an always-on
-// non-null assert) through ptr's converting constructor below, so a checked nptr needs no manual .as_ptr().
+// non-null assert) through ptr's converting constructor below, so a checked nptr needs no manual .as_ptr()
 template<typename>
 inline constexpr bool is_nptr_v = false;
 template<typename T>
@@ -209,7 +256,7 @@ public:
     }
 
     // Implicit non-null borrow from an owning pointer: reads out the raw pointer without taking ownership and
-    // asserts non-null exactly like as_ptr() did. Const-propagating through the owner's get().
+    // asserts non-null exactly like as_ptr() did. Const-propagating through the owner's get()
     template<typename Owner>
         requires(is_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -219,10 +266,8 @@ public:
         FO_BASIC_STRONG_ASSERT(_ptr != nullptr);
     }
 
-    // Implicit narrow from a nullable borrow (nptr): reads out the pointer and asserts non-null at the conversion
-    // point, exactly like the raw-pointer constructor above. This lets a guard-checked nptr flow straight into a
-    // ptr<T> parameter/member/return without a manual .as_ptr(). Const-propagating and mutability-preserving through
-    // the source's get(), mirroring the owning-pointer borrow constructor: a const nptr<T> yields ptr<const T>.
+    // Implicit so a guard-checked nptr reaches a ptr<T> parameter without a manual .as_ptr(); non-null
+    // is asserted at the conversion point, and constness propagates from the source
     template<typename NPtr>
         requires(is_nptr_v<std::remove_cvref_t<NPtr>> && std::is_convertible_v<decltype(std::declval<NPtr>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -262,7 +307,7 @@ public:
         return *_ptr;
     }
     // Pointer-to-member access. A raw `p->*pmf` expression is not a first-class value, so to support
-    // `(sp->*pmf)(args...)` the operator returns a small forwarding callable bound to the pointee.
+    // `(sp->*pmf)(args...)` the operator returns a small forwarding callable bound to the pointee
     template<typename M>
     [[nodiscard]] FO_FORCE_INLINE auto operator->*(M member) noexcept
     {
@@ -273,8 +318,8 @@ public:
     {
         return [obj = _ptr, member](auto&&... args) -> decltype(auto) { return (obj->*member)(std::forward<decltype(args)>(args)...); };
     }
-    [[nodiscard]] FO_FORCE_INLINE auto get() noexcept -> T* { return _ptr; }
-    [[nodiscard]] FO_FORCE_INLINE auto get() const noexcept -> const T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE constexpr auto get() noexcept -> T* { return _ptr; }
+    [[nodiscard]] FO_FORCE_INLINE constexpr auto get() const noexcept -> const T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto get_no_const() const noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto as_uintptr() const noexcept -> uintptr_t { return reinterpret_cast<uintptr_t>(_ptr); }
     [[nodiscard]] FO_FORCE_INLINE auto as_intptr() const noexcept -> intptr_t { return reinterpret_cast<intptr_t>(_ptr); }
@@ -317,10 +362,8 @@ public:
         requires(dynamically_castable_to<T, const U>)
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>;
 
-    // Reinterpret the pointee type through void for low-level byte/ABI views (e.g. `ucolor` <-> `uint8_t`),
-    // replacing the `cast_from_void<U*>(cast_to_void(p.get()))` idiom. A `ptr<void>` source is also supported
-    // (`void` -> `U`, as `GetPtrAs<U>()` uses). Source-pointee constness is preserved, so this can never
-    // silently strip `const`.
+    // Replaces the `cast_from_void<U*>(cast_to_void(p.get()))` idiom for byte/ABI views; pointee
+    // constness is preserved, so it can never silently strip `const`
     template<typename U>
     FO_FORCE_INLINE auto reinterpret_as() const noexcept -> ptr<std::conditional_t<std::is_const_v<T>, const U, U>>
     {
@@ -334,7 +377,7 @@ public:
     }
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
-    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
+    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
@@ -476,7 +519,7 @@ public:
     }
 
     // Implicit nullable borrow from any owning pointer (including the nullable refcount_nptr/unique_nptr): reads
-    // out the raw pointer without taking ownership. Const-propagating through the owner's get().
+    // out the raw pointer without taking ownership. Const-propagating through the owner's get()
     template<typename Owner>
         requires(is_owning_pointer_v<std::remove_cvref_t<Owner>> && std::is_convertible_v<decltype(std::declval<Owner>().get()), T*>)
     // ReSharper disable once CppNonExplicitConvertingConstructor
@@ -491,6 +534,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -557,9 +602,8 @@ public:
         return nptr<const U>(dynamic_cast<const U*>(_ptr));
     }
 
-    // Reinterpret the pointee type through void for low-level byte/ABI views, replacing the
-    // `cast_from_void<U*>(cast_to_void(p.get()))` idiom. Nullability and source-pointee constness are
-    // preserved (null reinterprets to null), so this can never silently strip `const`.
+    // Replaces the `cast_from_void<U*>(cast_to_void(p.get()))` idiom for byte/ABI views; null stays
+    // null and pointee constness is preserved, so it can never silently strip `const`
     template<typename U>
     FO_FORCE_INLINE auto reinterpret_as() const noexcept -> nptr<std::conditional_t<std::is_const_v<T>, const U, U>>
     {
@@ -573,7 +617,7 @@ public:
     }
 
     // Borrow this pointer as a raw opaque `void*` for immediate ABI handoff. `void*` is an opaque handle
-    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did.
+    // (nothing is read/written through it), so pointee-const is dropped exactly as the old `cast_to_void` did
     [[nodiscard]] FO_FORCE_INLINE auto void_cast() const noexcept -> void* { return details::make_void_ptr(_ptr); }
 
     template<typename U = T>
@@ -859,6 +903,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -957,16 +1003,16 @@ public:
     FO_FORCE_INLINE constexpr refcount_ptr(std::nullptr_t) noexcept = delete;
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_ptr& = delete;
 
-    [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_ptr
+    [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_ptr
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
         refcount_ptr result;
         result._ptr = p;
-        result.add_ref();
+        result.addref();
         return result;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto try_from_add_ref(T* p) noexcept -> refcount_nptr<T>;
+    [[nodiscard]] FO_FORCE_INLINE static auto try_from_addref(T* p) noexcept -> refcount_nptr<T>;
 
     [[nodiscard]] FO_FORCE_INLINE static auto from_adopted_ref(T* p) noexcept -> refcount_ptr
     {
@@ -979,7 +1025,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE refcount_ptr(refcount_ptr&& other) noexcept
     {
@@ -992,7 +1038,7 @@ public:
     FO_FORCE_INLINE refcount_ptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1020,7 +1066,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_ptr&& other) noexcept -> refcount_ptr&
     {
         if (this != &other) {
-            dec_ref();
+            decref();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -1030,13 +1076,13 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_ptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_ptr() { dec_ref(); }
+    FO_FORCE_INLINE ~refcount_ptr() { decref(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_ptr& other) const noexcept -> bool { return _ptr == other._ptr; }
@@ -1069,9 +1115,9 @@ public:
     FO_FORCE_INLINE void reset(T* p) noexcept
     {
         FO_BASIC_STRONG_ASSERT(p != nullptr);
-        dec_ref();
+        decref();
         _ptr = p;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE void reset(std::nullptr_t) noexcept = delete;
 
@@ -1092,16 +1138,16 @@ public:
     FO_FORCE_INLINE auto dyn_cast() const noexcept -> nptr<const U>;
 
 private:
-    FO_FORCE_INLINE void add_ref() noexcept
+    FO_FORCE_INLINE void addref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->AddRef();
+            details::call_addref(_ptr);
         }
     }
-    FO_FORCE_INLINE void dec_ref() noexcept
+    FO_FORCE_INLINE void decref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->Release();
+            details::call_release(_ptr);
         }
     }
 
@@ -1135,27 +1181,27 @@ public:
     }
     FO_FORCE_INLINE auto operator=(std::nullptr_t) noexcept -> refcount_nptr&
     {
-        dec_ref();
+        decref();
         _ptr = nullptr;
         return *this;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto from_add_ref(T* p) noexcept -> refcount_nptr
+    [[nodiscard]] FO_FORCE_INLINE static auto from_addref(T* p) noexcept -> refcount_nptr
     {
         refcount_nptr result;
         result._ptr = p;
-        result.add_ref();
+        result.addref();
         return result;
     }
 
-    [[nodiscard]] FO_FORCE_INLINE static auto try_from_add_ref(T* p) noexcept -> refcount_nptr
+    [[nodiscard]] FO_FORCE_INLINE static auto try_from_addref(T* p) noexcept -> refcount_nptr
     {
         if (p == nullptr) {
             return {};
         }
 
         if constexpr (try_refcountable<T>) {
-            if (!p->TryAddRef()) {
+            if (!details::call_try_addref(p)) {
                 return {};
             }
 
@@ -1164,7 +1210,7 @@ public:
             return result;
         }
         else {
-            return from_add_ref(p);
+            return from_addref(p);
         }
     }
 
@@ -1178,7 +1224,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_nptr& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     FO_FORCE_INLINE refcount_nptr(refcount_nptr&& other) noexcept
     {
@@ -1191,7 +1237,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_nptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1207,7 +1253,7 @@ public:
     FO_FORCE_INLINE refcount_nptr(const refcount_ptr<U>& other) noexcept
     {
         _ptr = other._ptr;
-        add_ref();
+        addref();
     }
     template<typename U>
         requires(std::is_convertible_v<U*, T*>)
@@ -1235,7 +1281,7 @@ public:
     FO_FORCE_INLINE auto operator=(refcount_nptr&& other) noexcept -> refcount_nptr&
     {
         if (this != &other) {
-            dec_ref();
+            decref();
             _ptr = other._ptr;
             other._ptr = nullptr;
         }
@@ -1245,7 +1291,7 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_nptr<U>&& other) noexcept -> refcount_nptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
@@ -1261,18 +1307,20 @@ public:
         requires(std::is_convertible_v<U*, T*>)
     FO_FORCE_INLINE auto operator=(refcount_ptr<U>&& other) noexcept -> refcount_nptr& // NOLINT(cppcoreguidelines-rvalue-reference-param-not-moved)
     {
-        dec_ref();
+        decref();
         _ptr = other._ptr;
         other._ptr = nullptr;
         return *this;
     }
 
-    FO_FORCE_INLINE ~refcount_nptr() { dec_ref(); }
+    FO_FORCE_INLINE ~refcount_nptr() { decref(); }
 
     [[nodiscard]] FO_FORCE_INLINE explicit operator bool() const noexcept { return _ptr != nullptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const refcount_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const refcount_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -1309,9 +1357,9 @@ public:
 
     FO_FORCE_INLINE void reset(T* p = nullptr) noexcept
     {
-        dec_ref();
+        decref();
         _ptr = p;
-        add_ref();
+        addref();
     }
 
     template<typename U>
@@ -1343,16 +1391,16 @@ public:
     }
 
 private:
-    FO_FORCE_INLINE void add_ref() noexcept
+    FO_FORCE_INLINE void addref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->AddRef();
+            details::call_addref(_ptr);
         }
     }
-    FO_FORCE_INLINE void dec_ref() noexcept
+    FO_FORCE_INLINE void decref() noexcept
     {
         if (_ptr != nullptr) {
-            _ptr->Release();
+            details::call_release(_ptr);
         }
     }
 
@@ -1361,9 +1409,9 @@ private:
 static_assert(std::is_standard_layout_v<refcount_nptr<int32_t>>);
 
 template<typename T>
-FO_FORCE_INLINE auto refcount_ptr<T>::try_from_add_ref(T* p) noexcept -> refcount_nptr<T>
+FO_FORCE_INLINE auto refcount_ptr<T>::try_from_addref(T* p) noexcept -> refcount_nptr<T>
 {
-    return refcount_nptr<T>::try_from_add_ref(p);
+    return refcount_nptr<T>::try_from_addref(p);
 }
 
 template<typename T>
@@ -1404,7 +1452,7 @@ template<typename U>
 FO_FORCE_INLINE auto ptr<T>::hold_ref() const noexcept -> refcount_ptr<U>
 {
     static_assert(std::is_convertible_v<T*, U*>);
-    return refcount_ptr<U>::from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1418,7 +1466,7 @@ FO_FORCE_INLINE auto ptr<T>::try_hold_ref() const noexcept -> refcount_nptr<U>
         return {};
     }
 
-    return refcount_ptr<U>::try_from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::try_from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1427,7 +1475,7 @@ template<typename U>
 FO_FORCE_INLINE auto nptr<T>::hold_ref() const noexcept -> refcount_ptr<U>
 {
     static_assert(std::is_convertible_v<T*, U*>);
-    return refcount_ptr<U>::from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::from_addref(static_cast<U*>(_ptr));
 }
 
 template<typename T>
@@ -1441,7 +1489,7 @@ FO_FORCE_INLINE auto nptr<T>::try_hold_ref() const noexcept -> refcount_nptr<U>
         return {};
     }
 
-    return refcount_ptr<U>::try_from_add_ref(static_cast<U*>(_ptr));
+    return refcount_ptr<U>::try_from_addref(static_cast<U*>(_ptr));
 }
 
 FO_END_NAMESPACE
@@ -1459,9 +1507,8 @@ struct FO_NAMESPACE hashing::hash<FO_NAMESPACE refcount_nptr<T>>
 };
 FO_BEGIN_NAMESPACE
 
-// Shared-ownership control block: the strong count owns the object, the weak count owns the block.
-// destroy_object() is a virtual hook, so shared_ptr/weak_ptr never need the complete pointee type at
-// the destruction site (the same type erasure std::shared_ptr provides).
+// The strong count owns the object, the weak count owns the block. destroy_object() is virtual so the
+// destruction site never needs the complete pointee type
 class shared_ptr_control_block
 {
 public:
@@ -1472,13 +1519,13 @@ public:
     auto operator=(shared_ptr_control_block&&) noexcept = delete;
     virtual ~shared_ptr_control_block() = default;
 
-    FO_FORCE_INLINE void add_strong_ref() noexcept { _strongRefs.fetch_add(1, std::memory_order_relaxed); }
+    FO_FORCE_INLINE void add_strong_ref() noexcept { _strong_refs.fetch_add(1, std::memory_order_relaxed); }
     [[nodiscard]] FO_FORCE_INLINE auto add_strong_ref_if_alive() noexcept -> bool
     {
-        int64_t refs = _strongRefs.load(std::memory_order_relaxed);
+        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
 
         while (refs > 0) {
-            if (_strongRefs.compare_exchange_weak(refs, refs + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
+            if (_strong_refs.compare_exchange_weak(refs, refs + 1, std::memory_order_acquire, std::memory_order_relaxed)) {
                 return true;
             }
         }
@@ -1487,32 +1534,32 @@ public:
     }
     FO_FORCE_INLINE void release_strong_ref() noexcept
     {
-        if (_strongRefs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (_strong_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             destroy_object();
             release_weak_ref();
         }
     }
-    FO_FORCE_INLINE void add_weak_ref() noexcept { _weakRefs.fetch_add(1, std::memory_order_relaxed); }
+    FO_FORCE_INLINE void add_weak_ref() noexcept { _weak_refs.fetch_add(1, std::memory_order_relaxed); }
     FO_FORCE_INLINE void release_weak_ref() noexcept
     {
-        if (_weakRefs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+        if (_weak_refs.fetch_sub(1, std::memory_order_acq_rel) == 1) {
             delete this;
         }
     }
     [[nodiscard]] FO_FORCE_INLINE auto strong_ref_count() const noexcept -> size_t
     {
-        int64_t refs = _strongRefs.load(std::memory_order_relaxed);
+        int64_t refs = _strong_refs.load(std::memory_order_relaxed);
         return refs > 0 ? static_cast<size_t>(refs) : 0;
     }
 
 private:
     virtual void destroy_object() noexcept = 0;
 
-    std::atomic<int64_t> _strongRefs {1};
-    std::atomic<int64_t> _weakRefs {1}; // one weak ref is held collectively by all strong refs
+    std::atomic<int64_t> _strong_refs {1};
+    std::atomic<int64_t> _weak_refs {1}; // one weak ref is held collectively by all strong refs
 };
 
-// Control block with the object embedded in the same allocation (what SafeAlloc::MakeShared creates)
+// Control block with the object embedded in the same allocation (what safe_alloc::make_shared creates)
 template<typename T>
 class shared_ptr_storage_block final : public shared_ptr_control_block
 {
@@ -1531,7 +1578,7 @@ private:
     alignas(T) uint8_t _storage[sizeof(T)];
 };
 
-class SafeAlloc;
+class safe_alloc;
 
 template<typename T>
 class shared_ptr;
@@ -1549,7 +1596,7 @@ class shared_ptr
     friend class shared_ptr;
     template<typename U>
     friend class weak_ptr;
-    friend class SafeAlloc;
+    friend class safe_alloc;
 
 public:
     using element_type = T;
@@ -1654,6 +1701,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const shared_ptr& other) const noexcept -> bool { return _obj == other._obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const shared_ptr& other) const noexcept -> bool { return _obj < other._obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _obj == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _obj < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _obj; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _obj; }
@@ -1872,18 +1921,18 @@ class enable_shared_from_this
 public:
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() -> shared_ptr<T>
     {
-        auto locked = _weakThis.lock();
+        auto locked = _weak_this.lock();
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
     [[nodiscard]] FO_FORCE_INLINE auto shared_from_this() const -> shared_ptr<const T>
     {
-        shared_ptr<const T> locked = _weakThis.lock();
+        shared_ptr<const T> locked = _weak_this.lock();
         FO_BASIC_STRONG_ASSERT(locked);
         return locked;
     }
-    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() noexcept -> weak_ptr<T> { return _weakThis; }
-    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() const noexcept -> weak_ptr<const T> { return weak_ptr<const T>(_weakThis); }
+    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() noexcept -> weak_ptr<T> { return _weak_this; }
+    [[nodiscard]] FO_FORCE_INLINE auto weak_from_this() const noexcept -> weak_ptr<const T> { return weak_ptr<const T>(_weak_this); }
 
 protected:
     FO_FORCE_INLINE constexpr enable_shared_from_this() noexcept = default;
@@ -1896,16 +1945,15 @@ protected:
     FO_FORCE_INLINE ~enable_shared_from_this() = default;
 
 private:
-    weak_ptr<T> _weakThis {};
+    weak_ptr<T> _weak_this {};
 };
 
-// SafeAlloc::MakeShared wires the embedded weak reference right after construction through the public
-// weak-from-shared assignment; the second overload is the no-op fallback for types that do not derive
-// from enable_shared_from_this
+// Called by safe_alloc::make_shared right after construction; the second overload is the no-op fallback
+// for types that do not derive from enable_shared_from_this
 template<typename T, typename X>
 FO_FORCE_INLINE void init_shared_from_this_weak(const shared_ptr<T>& owner, enable_shared_from_this<X>* base) noexcept
 {
-    base->_weakThis = owner;
+    base->_weak_this = owner;
 }
 
 template<typename T>
@@ -1956,6 +2004,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_arr_ptr& other) const noexcept -> bool { return _arr == other._arr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_arr_ptr& other) const noexcept -> bool { return _arr < other._arr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _arr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _arr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) noexcept -> T& { return _arr[index]; }
     [[nodiscard]] FO_FORCE_INLINE auto operator[](size_t index) const noexcept -> const T& { return _arr[index]; }
@@ -2021,6 +2071,8 @@ public:
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const unique_del_nptr& other) const noexcept -> bool { return _ptr == other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const unique_del_nptr& other) const noexcept -> bool { return _ptr < other._ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator==(const T* other) const noexcept -> bool { return _ptr == other; }
+    [[nodiscard]] FO_FORCE_INLINE auto operator==(std::nullptr_t) const noexcept -> bool = delete;
+    [[nodiscard]] FO_FORCE_INLINE auto operator!=(std::nullptr_t) const noexcept -> bool = delete;
     [[nodiscard]] FO_FORCE_INLINE auto operator<(const T* other) const noexcept -> bool { return _ptr < other; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() noexcept -> T* { return _ptr; }
     [[nodiscard]] FO_FORCE_INLINE auto operator->() const noexcept -> const T* { return _ptr; }
@@ -2198,38 +2250,40 @@ static_assert(!std::is_copy_constructible_v<unique_del_ptr<int32_t>>);
 // Heterogeneous wrapper comparison
 template<typename L, typename R>
     requires((is_borrow_pointer_wrapper_v<L> || is_owning_pointer_v<L>) && (is_borrow_pointer_wrapper_v<R> || is_owning_pointer_v<R>) && !std::is_same_v<L, R> && requires(const L& l, const R& r) { l.get() == r.get(); })
-[[nodiscard]] FO_FORCE_INLINE auto operator==(const L& lhs, const R& rhs) noexcept -> bool
+[[nodiscard]] auto operator==(const L& lhs, const R& rhs) noexcept -> bool
 {
     return lhs.get() == rhs.get();
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>
+[[nodiscard]] auto adopt_unique_ptr(ptr<T> value) noexcept -> unique_ptr<T>
 {
     return unique_ptr<T> {value.get()};
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
+[[nodiscard]] auto adopt_unique_ptr(nptr<T> value) noexcept -> unique_ptr<T>
 {
     ptr<T> checked_value = value;
     return adopt_unique_ptr(checked_value);
 }
 
+// Unlike the wrappers above these do not just move a pointer: each erases the caller deleter into a
+// `function<void(T*)>`, which is too much body for a forced inline to be honoured
 template<typename T, typename Deleter>
-[[nodiscard]] FO_FORCE_INLINE auto make_unique_del_ptr(ptr<T> value, Deleter&& deleter) -> unique_del_ptr<T>
+[[nodiscard]] auto make_unique_del_ptr(ptr<T> value, Deleter&& deleter) -> unique_del_ptr<T>
 {
     return unique_del_ptr<T> {value.get(), std::forward<Deleter>(deleter)};
 }
 
 template<typename T, typename Deleter>
-[[nodiscard]] FO_FORCE_INLINE auto make_unique_del_ptr(nptr<T> value, Deleter&& deleter) -> unique_del_nptr<T>
+[[nodiscard]] auto make_unique_del_ptr(nptr<T> value, Deleter&& deleter) -> unique_del_nptr<T>
 {
     return unique_del_nptr<T> {value.get(), std::forward<Deleter>(deleter)};
 }
 
 template<typename T>
-[[nodiscard]] FO_FORCE_INLINE auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
+[[nodiscard]] auto take_not_null(unique_del_nptr<T>& value) noexcept -> unique_del_ptr<T>
 {
     FO_BASIC_STRONG_ASSERT(value);
     auto value_ptr = ptr<T> {value};

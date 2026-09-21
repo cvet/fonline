@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -29,6 +29,7 @@
 // LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 // SOFTWARE.
+//
 
 #include "catch_amalgamated.hpp"
 
@@ -159,11 +160,11 @@ TEST_CASE("Direct model rest pose rejects invalid hierarchy and matrices")
 TEST_CASE("Model pose canonical names resolve contributed joints without physical bones")
 {
 #if FO_ENABLE_3D
-    HashStorage hashes;
-    hstring source_root = hashes.ToHashedString("SourceRoot");
-    hstring runtime_root = hashes.ToHashedString("ModelFile.fbx");
-    hstring spine = hashes.ToHashedString("Spine");
-    hstring contributed = hashes.ToHashedString("ContributedSocket");
+    hash_storage hashes;
+    hstring source_root = hashes.to_hashed_string("SourceRoot");
+    hstring runtime_root = hashes.to_hashed_string("ModelFile.fbx");
+    hstring spine = hashes.to_hashed_string("Spine");
+    hstring contributed = hashes.to_hashed_string("ContributedSocket");
     vector<hstring> runtime_names {runtime_root, spine, contributed};
     ModelBone root_bone;
     ModelBone spine_bone;
@@ -175,8 +176,8 @@ TEST_CASE("Model pose canonical names resolve contributed joints without physica
     CHECK(joint_indexes.count(runtime_root) == 1);
     CHECK(joint_indexes.count(source_root) == 0);
 
-    hstring child_root = hashes.ToHashedString("ChildFile.fbx");
-    hstring child_only = hashes.ToHashedString("ChildOnly");
+    hstring child_root = hashes.to_hashed_string("ChildFile.fbx");
+    hstring child_only = hashes.to_hashed_string("ChildOnly");
     vector<hstring> child_runtime_names {child_root, contributed, spine, child_only};
     vector<ModelPoseJointLink> links = ResolveModelPoseJointLinks(joint_indexes, child_runtime_names);
     REQUIRE(links.size() == 2);

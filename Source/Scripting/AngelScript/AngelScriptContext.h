@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -70,10 +70,11 @@ struct AngelScriptContextExtendedData
     int32_t ExceptionCount {};
     shared_ptr<DebuggerStepState> StepState {};
     std::exception_ptr Exception {};
-    std::array<NativeStackFrameAddress, STACK_TRACE_MAX_NATIVE_FRAMES> BirthNativeFrames {};
+    std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> BirthNativeFrames {};
     uint32_t BirthNativeFrameCount {};
     bool BirthNativeTruncated {};
     std::atomic_bool ExecutionActive {};
+    std::atomic_bool ExecutionSuspended {};
     std::atomic<uint64_t> Generation {};
 
 #if FO_TRACY
@@ -94,12 +95,23 @@ class AngelScriptContextManager final
 public:
     using DelayedScheduler = function<void(timespan delay, function<void()> body)>;
 
+    struct Diagnostics
+    {
+        size_t FreeContexts {};
+        size_t BusyContexts {};
+        size_t SuspendedContexts {};
+        size_t ActiveContexts {};
+        size_t OtherBusyContexts {};
+    };
+
     explicit AngelScriptContextManager(ptr<AngelScript::asIScriptEngine> as_engine, ptr<BaseEngine> engine, timespan overrun_timeout, function<void(string_view, string_view, string_view, optional<uint32_t>, string_view)> debugger_stop_callback = nullptr);
     AngelScriptContextManager(const AngelScriptContextManager&) noexcept = delete;
     auto operator=(const AngelScriptContextManager&) noexcept -> AngelScriptContextManager& = delete;
     AngelScriptContextManager(AngelScriptContextManager&&) noexcept = delete;
     auto operator=(AngelScriptContextManager&&) noexcept -> AngelScriptContextManager& = delete;
     ~AngelScriptContextManager() FO_TSA_NO_ANALYSIS; // Single-threaded teardown drains both context pools without the lock
+
+    [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
 
     auto RequestContext() -> ptr<AngelScript::asIScriptContext>;
     void ReturnContext(ptr<AngelScript::asIScriptContext> ctx, uint64_t expected_generation) noexcept;

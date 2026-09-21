@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -62,6 +62,7 @@ public:
     ~EngineMetadata() override = default;
 
     [[nodiscard]] auto GetSide() const noexcept -> EngineSideKind { return _side; }
+    [[nodiscard]] auto GetMetadataVersion() const noexcept -> string_view { return _metadataVersion; }
     [[nodiscard]] auto GetPropertyRegistrar(hstring type_name) const noexcept -> nptr<const PropertyRegistrar>;
     [[nodiscard]] auto GetPropertyRegistrar(string_view type_name) const noexcept -> nptr<const PropertyRegistrar>;
     [[nodiscard]] auto GetPropertyRegistrarForEdit(string_view type_name) -> ptr<PropertyRegistrar>;
@@ -130,6 +131,7 @@ public:
         const auto it = _exportedGameSettingsTypeName.find(string(name));
         return it != _exportedGameSettingsTypeName.end() ? make_nptr(&it->second) : nullptr;
     }
+    [[nodiscard]] auto GetGameSettingsInitialValues() const noexcept -> const auto& { return _gameSettingsInitialValues; }
     [[nodiscard]] auto CheckMigrationRule(hstring rule_name, hstring extra_info, hstring target) const noexcept -> optional<hstring> override;
     [[nodiscard]] auto GetRefTypes() const noexcept -> const auto& { return _refTypes; }
     [[nodiscard]] auto GetStructLayouts() const noexcept -> const auto& { return _structLayouts; }
@@ -147,6 +149,7 @@ public:
     [[nodiscard]] auto GetAnimationInfo(hstring resource_name) const noexcept -> nptr<const AnimationInfo>;
 
     void RegisterSide(EngineSideKind side);
+    void RegisterMetadataVersion(string_view version);
     auto RegisterEntityType(string_view name, bool exported, bool is_global, bool has_protos, bool has_statics, bool has_abstract) -> ptr<PropertyRegistrar>;
     // Annotate the per-role C++ class names for a registered entity type.
     // Codegen emits this after `RegisterEntityType` for
@@ -161,6 +164,7 @@ public:
     void RegisterEnumGroup(string_view name, string_view underlying_type, unordered_map<string, int32_t>&& key_values);
     void RegisterEnumEntry(string_view name, string_view entry_name, int32_t entry_value);
     void RegisterValueType(string_view name);
+    void RegisterValueType(string_view name, size_t native_size);
     void RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout);
     // Annotate the C++ alias name for a registered ValueType. Codegen
     // emits this after `RegisterValueType` for `///@ ExportValueType`
@@ -186,7 +190,7 @@ public:
     void RegisterEntityEvent(string_view entity_name, EntityEventDesc&& event);
     void RegisterOutboundRemoteCall(RemoteCallDesc&& remote_call);
     void RegisterInboundRemoteCall(RemoteCallDesc&& remote_call);
-    void RegisterGameSetting(string_view name, const BaseTypeDesc& type);
+    void RegisterGameSetting(string_view name, const BaseTypeDesc& type, string_view initial_value);
     void MarkGameSettingAsExported(string_view name);
     // Annotate the BaseTypeDesc for an engine-exported setting whose
     // value type resolves to a primitive base. Codegen emits this
@@ -208,12 +212,13 @@ public:
     void RegisterProto(hstring type_name, refcount_ptr<ProtoEntity> proto);
     void FinalizeRegistration();
 
-    mutable HashStorage Hashes {};
+    mutable hash_storage Hashes {};
 
 private:
     auto RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>;
 
     EngineSideKind _side {};
+    string _metadataVersion {};
     bool _registrationFinalized {};
     map<hstring, EntityTypeDesc> _entityTypes {};
     map<hstring, EntityTypeDesc> _fixedTypes {};
@@ -238,6 +243,7 @@ private:
     unordered_map<string, ptr<const BaseTypeDesc>> _exportedGameSettingsType {};
     unordered_map<string, string> _exportedGameSettingsTypeName {};
     unordered_set<string> _exportedEnums {};
+    map<string, string> _gameSettingsInitialValues {};
     unordered_map<hstring, unordered_map<hstring, unordered_map<hstring, hstring>>> _migrationRules {};
     string _emptyStr {};
 };
@@ -264,21 +270,29 @@ public:
     [[nodiscard]] auto GetName() const noexcept -> string_view override { return "Engine"; }
     [[nodiscard]] auto IsGlobal() const noexcept -> bool override { return true; }
     [[nodiscard]] auto GetImGui() noexcept -> ptr<ScriptImGui> { return _imgui; }
+    [[nodiscard]] auto IsStartingUp() const noexcept -> bool { return _startingUp; }
+    [[nodiscard]] auto GetCurLangName() const noexcept -> const string& { return _curLangName; }
+    [[nodiscard]] auto HasRemoteCallHandler(hstring name) const -> bool;
 
+    // Scripts run single-threaded while the engine comes up and hold nobody back, so the responsiveness
+    // budget that reports an overrunning call does not apply to them until it is serving
+    void SetStartingUp(bool starting_up) noexcept { _startingUp = starting_up; }
+    void SetCurLangName(string_view lang_name) { _curLangName = lang_name; }
     auto Random(int32_t min_value, int32_t max_value) const -> int32_t;
-    virtual void Shutdown() { }
+    auto CaptureRandomState() const -> random_generator::state_data;
+    void RestoreRandomState(const random_generator::state_data& state);
     void FrameAdvance();
 
+    virtual void Shutdown() { }
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
-    virtual void RunScriptContext(const function<void()>& callback);
+    virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, RemoteCallHandlerMode mode = RemoteCallHandlerMode::Strict);
     void VerifyBindedRemoteCalls() const noexcept(false);
-    // Dispatch a pre-decoded inbound RemoteCall to the registered handler.
-    // Derived `ServerEngine` / `ClientEngine` call this from the network
-    // packet handler. Also useful for synthetic in-process tests of
-    // inbound binders (no networking required).
+    // Dispatch a pre-decoded inbound RemoteCall to the registered handler. Derived `ServerEngine` /
+    // `ClientEngine` call this from the network packet handler. Also useful for synthetic in-process tests
+    // of inbound binders (no networking required).
     void HandleInboundRemoteCall(hstring name, nptr<Entity> caller, span<uint8_t> data);
 
     ptr<GlobalSettings> Settings;
@@ -295,8 +309,10 @@ protected:
 
 private:
     refcount_ptr<ScriptImGui> _imgui;
+    string _curLangName {};
+    std::atomic_bool _startingUp {false};
     mutable mutex _randomGeneratorLocker {};
-    mutable std::mt19937 _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {MakeSeededRandomGenerator()};
+    mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
     unordered_set<hstring> _fallbackInboundRemoteCallHandlers {};
 };

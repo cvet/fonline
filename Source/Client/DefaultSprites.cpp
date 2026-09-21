@@ -10,7 +10,7 @@
 //
 // MIT License
 //
-// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <cvet@tut.by>
+// Copyright (c) 2006 - 2026, Anton Tsvetinskiy aka cvet <aka.cvet@gmail.com>
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -111,25 +111,6 @@ AtlasSprite::AtlasSprite(AtlasSprite&& other) noexcept :
 AtlasSprite::~AtlasSprite()
 {
     FO_STACK_TRACE_ENTRY();
-
-#if 0 // For debug purposes
-    if constexpr (FO_DEBUG) {
-        try {
-            const auto rnd_color = ucolor {numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255)), numeric_cast<uint8_t>(_sprMngr->Random(0, 255))};
-
-            vector<ucolor> color_data;
-            color_data.resize(_atlasAllocation->GetSize().square());
-
-            for (size_t i = 0; i < color_data.size(); i++) {
-                color_data[i] = rnd_color;
-            }
-
-            _atlas->_mainTex->UpdateTextureRegion(_atlasAllocation->GetPosition(), _atlasAllocation->GetSize(), color_data);
-        }
-        catch (...) {
-        }
-    }
-#endif
 }
 
 auto AtlasSprite::IsHitTest(ipos32 pos) const -> bool
@@ -454,7 +435,7 @@ SpriteSheet::SpriteSheet(ptr<SpriteManager> spr_mngr, int32_t frames, int32_t ti
     _dirCount = dirs;
 
     for (int32_t dir = 0; dir < dirs - 1; dir++) {
-        _dirs[dir] = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, frames, ticks, 1);
+        _dirs[dir] = safe_alloc::make_shared<SpriteSheet>(_sprMngr, frames, ticks, 1);
     }
 }
 
@@ -502,7 +483,7 @@ auto SpriteSheet::MakeCopy() const -> shared_ptr<Sprite>
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto copy = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
+    auto copy = safe_alloc::make_shared<SpriteSheet>(_sprMngr, _framesCount, _wholeTicks, _dirCount);
 
     for (size_t i = 0; i < _spr.size(); i++) {
         copy->_spr[i] = _spr[i]->MakeCopy();
@@ -712,7 +693,7 @@ auto DefaultSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sha
     shared_ptr<Sprite> result;
 
     if (sprite_info.FrameCount > 1 || direction_count > 1) {
-        auto anim = SafeAlloc::MakeShared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
+        auto anim = safe_alloc::make_shared<SpriteSheet>(_sprMngr, sprite_info.FrameCount, sprite_info.Duration.to_ms<int32_t>(), direction_count);
 
         for (uint8_t i = 0; i < direction_count; i++) {
             mdir dir = hdir(i);
@@ -836,7 +817,7 @@ auto DefaultSpriteFactory::FillAtlas(AtlasType atlas_type, isize32 size, ipos32 
     atlas_rect.width = numeric_cast<float32_t>(size.width) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.height = numeric_cast<float32_t>(size.height) / numeric_cast<float32_t>(atlas->GetSize().height);
 
-    return SafeAlloc::MakeShared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
+    return safe_alloc::make_shared<AtlasSprite>(_sprMngr, size, offset, atlas, std::move(atlas_allocation), atlas_rect, std::move(hit_test_data), std::move(mesh_data));
 }
 
 FO_END_NAMESPACE
