@@ -172,12 +172,6 @@ FO_SCRIPT_API bool Client_Game_IsConnected(ptr<ClientEngine> client)
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API bool Client_Game_IsServerChannelTrusted(ptr<ClientEngine> client)
-{
-    return client->GetConnection()->IsTrustedChannel();
-}
-
-///@ ExportMethod
 FO_SCRIPT_API int32_t Client_Game_GetDistance(ptr<ClientEngine> client, ptr<CritterView> cr1, ptr<CritterView> cr2)
 {
     ignore_unused(client);

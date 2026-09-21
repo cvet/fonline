@@ -55,8 +55,6 @@ public:
     [[nodiscard]] auto IsConnected() const noexcept -> bool { return _isConnected; }
     [[nodiscard]] auto GetBytesSend() const noexcept -> size_t { return _bytesSend; }
     [[nodiscard]] auto GetBytesReceived() const noexcept -> size_t { return _bytesReceived; }
-    // Whether no third party can read or alter what travels over the channel
-    [[nodiscard]] auto IsTrustedChannel() const noexcept -> bool { return _isTrustedChannel; }
 
     auto CheckStatus(bool for_write) -> bool;
     auto SendData(const_span<uint8_t> buf) -> size_t;
@@ -76,7 +74,6 @@ protected:
     ptr<ClientNetworkSettings> _settings;
     bool _isConnecting {};
     bool _isConnected {};
-    bool _isTrustedChannel {};
 
 private:
     size_t _bytesSend {};

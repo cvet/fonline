@@ -83,8 +83,6 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
         throw NetworkClientException("Interthread listener is not available", port);
     }
 
-    // An in-process channel has no wire for a third party to read or alter
-    _isTrustedChannel = true;
     _interthreadState = safe_alloc::make_shared<NetworkClientInterthreadState>();
     auto state = _interthreadState;
 
