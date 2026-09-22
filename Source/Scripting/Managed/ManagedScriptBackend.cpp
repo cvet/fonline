@@ -2440,7 +2440,7 @@ static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t 
         // Setters may re-enter managed code; own the bytes before invoking them
         prop_data.Set(ptr<const void> {value}, prop->GetBaseSize());
         ValueToPropertyData(prop->GetBaseType(), prop_data.GetPtrAs<uint8_t>().get());
-        entity->SetValueFromData(prop, prop_data);
+        entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -2552,7 +2552,7 @@ static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
             }
         }
 
-        entity->SetValueFromData(prop, prop_data);
+        entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -3846,7 +3846,7 @@ static void NativeSetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     }
 
     PropertyRawData prop_data = ConvertManagedObjectToPropertyData(backend, prop, value);
-    entity->SetValueFromData(prop, prop_data);
+    entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
 }
 
 static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*

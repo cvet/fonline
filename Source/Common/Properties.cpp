@@ -2378,6 +2378,7 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual() && prop->_setters.empty()) {
