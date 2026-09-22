@@ -34,13 +34,13 @@
 #pragma once
 
 #include "Common.h"
-#include "ResourcePack.h"
 
 #include "CacheStorage.h"
 #include "ClientConnection.h"
 #include "EffectManager.h"
 #include "FileSystem.h"
 #include "FontManager.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 #include "SpriteManager.h"
 
