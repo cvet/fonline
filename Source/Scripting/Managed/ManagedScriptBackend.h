@@ -60,6 +60,8 @@ public:
 
     void RegisterMetadata(ptr<EngineMetadata> meta);
     void LoadAssemblies(const FileSystem& resources, string_view assembly_cache_dir, string_view bake_output_dir = {});
+    auto LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>;
+    auto ReadClientScriptsImage() -> vector<uint8_t>;
     void BindRequiredStuff();
     void Process() override;
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);

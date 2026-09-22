@@ -312,6 +312,31 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);
 
+    internal static Assembly LoadDynamicAssembly(byte[] image, byte[]? symbols)
+    {
+        string ? error;
+        Assembly? assembly = LoadDynamicAssemblyInternal(BoundBackend, image, symbols, out error);
+        ThrowNativeError(error);
+        Invariant.Verify(assembly != null, "Dynamic assembly load must answer with an assembly or an error");
+        return assembly;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern Assembly? LoadDynamicAssemblyInternal(IntPtr backend, byte[] image, byte[]? symbols,
+                                                                out string? error);
+
+    internal static byte[] ReadClientScriptsImage()
+    {
+        string ? error;
+        byte[]? image = ReadClientScriptsImageInternal(BoundBackend, out error);
+        ThrowNativeError(error);
+        Invariant.Verify(image != null, "Client scripts image read must answer with an image or an error");
+        return image;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern byte[]? ReadClientScriptsImageInternal(IntPtr backend, out string? error);
+
     private static void CopyBackByRefArgs(Delegate handler, object?[] invokeArgs, object?[] args)
     {
         ParameterInfo[] parameters = handler.Method.GetParameters();

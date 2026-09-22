@@ -807,6 +807,7 @@ TEST_CASE("ManagedScriptBaker")
     WriteTextFile(managed_host_source, "namespace FOnline.ManagedHost { public static class ManagedLoadContextHost {} }\n");
     WriteTextFile(managed_reference, "managed-reference\n");
     WriteTextFile(managed_analyzer, "<Project />\n");
+    WriteTextFile(managed_source_dir / "Compiler" / "UnitCompiler.csproj", "<Project />\n");
     WriteTextFile(banned_symbols, "M:System.Environment.Exit(System.Int32);Process lifetime is not the script layer's decision.\n");
 
     std::filesystem::path server_source = script_dir / "ServerOnly.cs";
@@ -863,7 +864,7 @@ TEST_CASE("ManagedScriptBaker")
             "UnitManaged,All,Scripts/Managed/Shared.cs",
             "UnitManaged,All,Scripts/Managed/Tilde~1.cs",
         });
-    OverrideSetting(rig.Settings.ManagedScript.ExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core"});
+    OverrideSetting(rig.Settings.ManagedScript.ExtraReferences, vector<string> {"UnitManaged,Server,System.Xml", "UnitManaged,Server,ManagedSupport/References/ManagedDependency.dll", "UnitManaged,All,System.Core", "UnitManaged,Server,ManagedSupport/Compiler/UnitCompiler.csproj"});
     OverrideSetting(rig.Settings.ManagedScript.Analyzers, vector<string> {"ManagedSupport/Analyzers/ManagedAnalyzer.csproj"});
     OverrideSetting(rig.Settings.ManagedScript.AnalyzerPackages, vector<string> {"Unit.Analyzer,1.2.3", "Unit.Banned.Analyzer,4.5.6"});
     OverrideSetting(rig.Settings.ManagedScript.AdditionalFiles, vector<string> {"ManagedSupport/Analyzers/BannedSymbols.txt"});
@@ -980,6 +981,13 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(unified_project.find("Obsolete.gen.cs") != string::npos);
     CHECK(unified_project.find("<ProjectReference Include=\"FOnline.ManagedHost.gen.csproj\" />") != string::npos);
 
+    // A project among the extra references builds as itself, and only the target naming it copies its package assemblies
+    CHECK(unified_project.find("<ProjectReference Include=\"../../ManagedSupport/Compiler/UnitCompiler.csproj\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />") != string::npos);
+    CHECK(unified_project.find("<Reference Include=\"UnitCompiler\">") == string::npos);
+    CHECK(unified_project.find("<DefineConstants>TRACE;SERVER</DefineConstants>\n    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>") != string::npos);
+    CHECK(unified_project.find("<DefineConstants>TRACE;CLIENT</DefineConstants>\n  </PropertyGroup>") != string::npos);
+    CHECK(unified_project.find("<DefineConstants>TRACE;MAPPER</DefineConstants>\n  </PropertyGroup>") != string::npos);
+
     // Every target keeps its portable PDB inside the assembly, so script frames carry file and line wherever it runs
     for (string_view target : {"Server", "Client", "Mapper"}) {
         CHECK(unified_project.find(strex("== '{}|AnyCPU' \">\n    <DebugType>embedded</DebugType>", target).str()) != string::npos);
@@ -996,6 +1004,15 @@ TEST_CASE("ManagedScriptBaker")
 
     string managed_host_project = ReadTextFile(script_dir / "FOnline.ManagedHost.gen.csproj");
     CHECK(managed_host_project.find("<AssemblyName>FOnline.ManagedHost</AssemblyName>") != string::npos);
+    // Restore writes project.assets.json per intermediate directory, and the script project shares this directory, so
+    // the host restores into its own one, named before the SDK props read it
+    size_t host_intermediate_pos = managed_host_project.find("<BaseIntermediateOutputPath>obj/FOnline.ManagedHost/</BaseIntermediateOutputPath>");
+    size_t host_sdk_props_pos = managed_host_project.find("<Import Project=\"Sdk.props\" Sdk=\"Microsoft.NET.Sdk\" />");
+    CHECK(host_intermediate_pos != string::npos);
+    CHECK(host_sdk_props_pos != string::npos);
+    CHECK(host_intermediate_pos < host_sdk_props_pos);
+    CHECK(managed_host_project.find("<Import Project=\"Sdk.targets\" Sdk=\"Microsoft.NET.Sdk\" />") != string::npos);
+    CHECK(managed_host_project.find("<Project Sdk=") == string::npos);
     CHECK(managed_host_project.find("ManagedHost/ManagedLoadContextHost.cs") != string::npos);
     CHECK(managed_host_project.find("<DebugType>embedded</DebugType>") != string::npos);
     // The profile covers the script project only; the host compiles engine-owned source
@@ -1674,6 +1691,40 @@ TEST_CASE("ManagedScriptBaker packs helper assemblies")
         CHECK(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/System.Xml.dll"));
         CHECK(rig.Outputs.contains("ManagedRuntime/lib/netcoreapp/System.Linq.dll"));
         CHECK(rig.GetOutputText("ManagedRuntime/runtime.manifest").find("System.Xml.dll") != string::npos);
+    }
+
+    // The bake deletes every output no baker claimed, so an assembly the build copies beside the entry assembly (a
+    // package or project reference) must be claimed as well, both when it is built and when its target is up to date
+    SECTION("EveryPackedAssemblyIsClaimed")
+    {
+        set<string> claimed_paths;
+        ManagedScriptBaker baker(rig.MakeContext("TestPack", [&claimed_paths](string_view path, uint64_t) {
+            claimed_paths.emplace(path);
+            return true;
+        }));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+        CHECK(rig.Outputs.contains("Assemblies/Assemblies-server/SharedDependency.dll"));
+
+        for (const string& output_path : rig.Outputs | std::views::keys) {
+            INFO(output_path);
+            CHECK(claimed_paths.contains(output_path));
+        }
+    }
+
+    SECTION("UpToDateTargetClaimsItsBakedAssemblies")
+    {
+        WriteBinaryFile(fake_msbuild_root / "Assemblies-mapper" / "TestPack.Mapper.dll", MakeManagedAssemblyImage("TestPack.Mapper", {"System.Runtime", "SharedDependency"}));
+        WriteBinaryFile(fake_msbuild_root / "Assemblies-mapper" / "SharedDependency.dll", MakeManagedAssemblyImage("SharedDependency", {"System.Private.CoreLib"}));
+
+        set<string> claimed_paths;
+        ManagedScriptBaker baker(rig.MakeContext("TestPack", [&claimed_paths](string_view path, uint64_t) {
+            claimed_paths.emplace(path);
+            return !path.starts_with("Assemblies/Assemblies-mapper/");
+        }));
+        REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+
+        CHECK_FALSE(rig.Outputs.contains("Assemblies/Assemblies-mapper/SharedDependency.dll"));
+        CHECK(claimed_paths.contains("Assemblies/Assemblies-mapper/SharedDependency.dll"));
     }
 
     SECTION("DiscoveryDeclaresOnlyTheSelectedPayload")
