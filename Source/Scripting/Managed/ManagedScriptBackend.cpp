@@ -622,6 +622,7 @@ static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t 
 
 // Managed object creation and native<->managed values
 static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*;
+static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view text) -> MonoObject*;
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*;
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*;
 static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context);
@@ -708,6 +709,7 @@ static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<E
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*;
 static auto ExtractRefPtr(MonoObject* obj) -> void*;
 static auto ExtractNativeHstring(MonoObject* obj) -> hstring;
+static auto ExtractNativeAnyText(MonoObject* obj) -> string;
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring;
 
 // Assembly loading, runtime configuration and resource cache
@@ -5816,6 +5818,20 @@ static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstr
     return mono_value_box(domain, hash_class, &copy);
 }
 
+static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view text) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    CountManagedObject();
+
+    // The managed `any` is one text reference, so its boxed form is that reference copied in place
+    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+    MonoClass* any_class = FindFOnlineClass(backend, "any");
+    FO_VERIFY_AND_THROW(mono_class_value_size(any_class, nullptr) == sizeof(MonoString*), "Managed any size does not match one text reference");
+    MonoString* managed_text = mono_string_new_len(domain, text.data(), numeric_cast<uint32_t>(text.size()));
+    return mono_value_box(domain, any_class, &managed_text);
+}
+
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
@@ -6288,7 +6304,7 @@ static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseT
     FO_STACK_TRACE_ENTRY();
 
     if (type.Name == "any") {
-        return mono_get_string_class();
+        return FindFOnlineClass(backend, "any");
     }
     if (type.IsString) {
         return mono_get_string_class();
@@ -6415,7 +6431,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.Name == "any") {
-        storage.Any = any_t(ManagedObjectToString(value));
+        storage.Any = any_t(ExtractNativeAnyText(value));
         return &storage.Any;
     }
     if (base_type.IsString) {
@@ -6556,7 +6572,7 @@ static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.Name == "any") {
-        return true;
+        return value != nullptr && ManagedObjectClassMatches(value, FindFOnlineClass(backend, "any"));
     }
     if (base_type.IsString) {
         return value == nullptr || ManagedObjectClassMatches(value, mono_get_string_class());
@@ -6609,9 +6625,9 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
+    // Storage for an `any` is sometimes the string it derives from, which is all this reads
     if (base_type.Name == "any") {
-        const any_t& value = *static_cast<any_t*>(data);
-        return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size())));
+        return CreateAnyObject(backend, *static_cast<const string*>(data));
     }
     if (base_type.IsString) {
         const string& text = *static_cast<string*>(data);
@@ -6657,7 +6673,7 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
     if (base_type.Name == "any") {
-        return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, reinterpret_cast<const char*>(raw_data.data()), numeric_cast<uint32_t>(raw_data.size())));
+        return CreateAnyObject(backend, string_view(reinterpret_cast<const char*>(raw_data.data()), raw_data.size()));
     }
     if (base_type.IsString) {
         return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, reinterpret_cast<const char*>(raw_data.data()), numeric_cast<uint32_t>(raw_data.size())));
@@ -6822,7 +6838,7 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
     PropertyRawData prop_data;
 
     if (base_type.Name == "any") {
-        string text = ManagedObjectToString(value);
+        string text = ExtractNativeAnyText(value);
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsString) {
@@ -7610,6 +7626,17 @@ static auto ExtractNativeHstring(MonoObject* obj) -> hstring
     hstring value;
     memory::copy(&value, mono_object_unbox(obj), sizeof(value));
     return value;
+}
+
+static auto ExtractNativeAnyText(MonoObject* obj) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(obj != nullptr, "Managed any value is null");
+    FO_VERIFY_AND_THROW(mono_class_value_size(mono_object_get_class(obj), nullptr) == sizeof(MonoString*), "Managed any size does not match one text reference");
+    MonoString* text = nullptr;
+    memory::copy(&text, mono_object_unbox(obj), sizeof(text));
+    return ToStringAndFree(text);
 }
 
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring

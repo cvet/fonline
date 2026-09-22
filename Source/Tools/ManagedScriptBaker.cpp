@@ -124,6 +124,9 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_call
 static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is_global, const_span<ArgDesc> args) -> vector<string>;
 static void AppendGeneratedHeader(ostringstream& out);
 static void AppendHstringType(ostringstream& out);
+static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type);
+static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, vector<pair<string, ptr<const BaseTypeDesc>>>& leaves);
+static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view;
 static void AppendEntityBaseClass(ostringstream& out);
 static auto MakePropertyInitializer(const string& type_name, optional<string_view> explicit_initializer, bool is_ref_type = false) -> optional<string>;
 static auto IsNonNullableRefType(const ComplexTypeDesc& type, bool nullable) -> bool;
@@ -595,6 +598,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     }
 
                     out << CS_INDENT << "}\n";
+
+                    AppendAnyConversions(out, *type);
                 }
 
                 out << "}\n\n";
@@ -2263,6 +2268,10 @@ static auto MakeCsTypeName(const BaseTypeDesc& type) -> string
     if (type.IsDoubleFloat) {
         return "double";
     }
+    // Stored as a string, but a type of its own with its own conversions (CoreScripts/Any.cs)
+    if (type.Name == "any") {
+        return "any";
+    }
     if (type.IsString) {
         return "string";
     }
@@ -2484,7 +2493,7 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
 
     // A string default written as a constructor call is the empty string, and `= default` would turn it into a
     // null the C++ side never passes
-    if (arg.Type.Kind == ComplexTypeKind::Simple && arg.Type.BaseType.IsString && !arg.Nullable) {
+    if (arg.Type.Kind == ComplexTypeKind::Simple && arg.Type.BaseType.IsString && arg.Type.BaseType.Name != "any" && !arg.Nullable) {
         return " = \"\"";
     }
 
@@ -3101,6 +3110,105 @@ static void AppendHstringType(ostringstream& out)
     out << "}\n\n";
 }
 
+// A value type's `any` form is the one GenericType_AnyConv writes: its primitive fields, nested types flattened
+static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<pair<string, ptr<const BaseTypeDesc>>> leaves;
+    CollectAnyFieldLeaves(type, "", leaves);
+    string struct_name = EscapeCsIdentifier(type.Name);
+
+    out << "\n";
+    out << CS_INDENT << "public static implicit operator global::FOnline.any(" << struct_name << " value)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return global::FOnline.any.FromFields(new string[]\n";
+    out << CS_INDENT << "    {\n";
+
+    for (const auto& [path, leaf] : leaves) {
+        string cast = leaf->IsEnum ? strex("({})", MakeEnumUnderlyingCsType(*leaf)).str() : string {};
+        out << CS_INDENT << "        global::FOnline.any.FieldText(" << cast << "value" << path << "),\n";
+    }
+
+    out << CS_INDENT << "    });\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public static explicit operator " << struct_name << "(global::FOnline.any value)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    string[] fields = value.SplitFields(" << leaves.size() << ", \"" << EscapeCsStringLiteral(type.Name) << "\");\n";
+    out << CS_INDENT << "    " << struct_name << " result = default;\n";
+
+    for (size_t i = 0; i < leaves.size(); i++) {
+        const auto& [path, leaf] = leaves[i];
+        const BaseTypeDesc& stored_type = leaf->IsEnum ? *leaf->EnumUnderlyingType : *leaf;
+        string cast = leaf->IsEnum ? strex("({})", MakeCsTypeName(*leaf)).str() : string {};
+        out << CS_INDENT << "    result" << path << " = " << cast << "global::FOnline.any." << MakeAnyFieldReader(stored_type) << "(fields[" << i << "]);\n";
+    }
+
+    out << CS_INDENT << "    return result;\n";
+    out << CS_INDENT << "}\n";
+}
+
+static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, vector<pair<string, ptr<const BaseTypeDesc>>>& leaves)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (type.IsStruct) {
+        FO_VERIFY_AND_THROW(type.StructLayout, "Value type has no layout", type.Name);
+
+        for (const FieldDesc& field : type.StructLayout->Fields) {
+            CollectAnyFieldLeaves(field.Type, strex("{}.{}", path, EscapeCsIdentifier(field.Name)).str(), leaves);
+        }
+    }
+    else {
+        FO_VERIFY_AND_THROW(!type.IsEnum || type.EnumUnderlyingType, "Enum field has no underlying type", type.Name);
+        leaves.emplace_back(path, make_ptr(&type));
+    }
+}
+
+static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (type.IsBool) {
+        return "FieldBool";
+    }
+    if (type.IsInt8) {
+        return "FieldInt8";
+    }
+    if (type.IsUInt8) {
+        return "FieldUInt8";
+    }
+    if (type.IsInt16) {
+        return "FieldInt16";
+    }
+    if (type.IsUInt16) {
+        return "FieldUInt16";
+    }
+    if (type.IsInt32) {
+        return "FieldInt32";
+    }
+    if (type.IsUInt32) {
+        return "FieldUInt32";
+    }
+    if (type.IsInt64) {
+        return "FieldInt64";
+    }
+    if (type.IsUInt64) {
+        return "FieldUInt64";
+    }
+    if (type.IsSingleFloat) {
+        return "FieldFloat32";
+    }
+    if (type.IsDoubleFloat) {
+        return "FieldFloat64";
+    }
+    if (type.IsHashedString) {
+        return "FieldHash";
+    }
+
+    throw ManagedScriptBakerException("Value type field has no any form", type.Name);
+}
+
 static void AppendEntityBaseClass(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3163,13 +3271,13 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsInt(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "public string GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
+    out << CS_INDENT << "public any GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    return global::FOnline.Native.GetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, string value) where TProp : unmanaged, System.Enum\n";
+    out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, any value) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value ?? string.Empty);\n";
+    out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool Equals(Entity? other)\n";
     out << CS_INDENT << "{\n";

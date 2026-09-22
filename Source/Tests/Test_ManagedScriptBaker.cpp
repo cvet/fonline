@@ -822,7 +822,7 @@ TEST_CASE("ManagedScriptBaker")
         "[ItemInit]\n"
         "public static void InitDoor(Item item, bool firstTime) {}\n"
         "[ItemStatic]\n"
-        "public static bool UseStatic(Critter cr, StaticItem staticItem, Item item, object param) { return true; }\n"
+        "public static bool UseStatic(Critter cr, StaticItem staticItem, Item item, any param) { return true; }\n"
         "[ItemTrigger]\n"
         "public static void EnterTrigger(Critter cr, StaticItem staticItem, bool entered, byte dir) {}\n"
         "[CritterInit]\n"
@@ -878,7 +878,7 @@ TEST_CASE("ManagedScriptBaker")
             {"Event", {{"Game", "OnManagedTest", "int32", "", "value"}, {"Critter", "OnManagedTouched", "Critter", "", "other", "int32", "", "power"}, {"Game", "OnManagedArray", "int32 []", "", "values"}, {"Game", "OnManagedDict", "string = > string", "", "values"}, {"Game", "OnManagedMutablePosition", "int32", "", "first", "int32", "", "second", "int32 &", "", "third"}}},
             {"Property",
                 {{"Game", "Server", "string", "ManagedTitle", "Mutable"}, {"Game", "Server", "ManagedRoute", "ManagedRouteValue", "Mutable"}, {"Game", "Server", "int32 []", "ManagedSteps", "Mutable"}, {"Game", "Server", "uint16", "ManagedNarrowLimit", "Mutable"}, {"Critter", "Server", "int16", "ManagedSkill", "Mutable"}, {"Critter", "Server", "int8", "ManagedInt8", "Mutable"}, {"Critter", "Server", "uint8", "ManagedUInt8", "Mutable"}, {"Critter", "Server", "int32", "ManagedInt32", "Mutable"}, {"Critter", "Server", "uint32", "ManagedUInt32", "Mutable"}, {"Critter", "Server", "int64", "ManagedInt64", "Mutable"}, {"Critter", "Server", "uint64", "ManagedUInt64", "Mutable"}, {"Critter", "Server", "float32", "ManagedFloat32", "Mutable"}, {"Critter", "Server", "float64", "ManagedFloat64", "Mutable"}, {"Critter", "Server", "bool", "ManagedBool", "Mutable"}, {"Critter", "Server", "CritterCondition", "ManagedEnum", "Mutable"}, {"Critter", "Server", "bool", "ManagedProbe", "Component"},
-                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}}},
+                    {"Critter", "Server", "int32", "ManagedProbe.Value"}, {"Critter", "Server", "mpos", "ManagedHex", "Mutable"}, {"Critter", "Server", "ucolor", "ManagedTint", "Mutable"}, {"Critter", "Server", "hstring=>hstring[]", "ManagedCheckpointEntries", "Mutable"}, {"Critter", "Server", "int32=>string[]", "ManagedTextGroups", "Mutable"}, {"Critter", "Server", "any", "ManagedAnyValue", "Mutable"}, {"Critter", "Server", "any[]", "ManagedAnyList", "Mutable"}}},
             {"RefType", {{"ManagedRoute", "Step", "int32", "0", "Note", "string", "0", "Values", "int32[]", "0", "Checkpoint", "bool", "1", "Component", "Checkpoint.Index", "int32", "0", "Checkpoint.Label", "string", "0"}}},
             {"RemoteCall", {{"ManagedMoveProbe", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedMoveProbeTwin", "UnitManaged.cs", "In", "int32", "", "step", "mpos", "", "hex", "Limits", "0", "0"}, {"ManagedTextProbe", "UnitManaged.cs", "In", "string", "", "text", "Limits", "0", "0"}}},
         }));
@@ -1064,6 +1064,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_entities.find("global::FOnline.Native.SetProperty(_entityPtr, ") != string::npos);
     CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups") != string::npos);
     CHECK(server_entities.find("public Dictionary<int, List<string>> ManagedTextGroups\n    {\n        get\n        {\n            return (Dictionary<int, List<string>>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    // `any` is a type of its own on the script surface, not the string the engine stores it as
+    CHECK(server_entities.find("public any ManagedAnyValue\n    {\n        get\n        {\n            return (any)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public List<any> ManagedAnyList\n    {\n        get\n        {\n            return (List<any>)global::FOnline.Native.GetProperty(_entityPtr, ") != string::npos);
+    CHECK(server_entities.find("public any GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum") != string::npos);
+    CHECK(server_entities.find("public void SetAsAny<TProp>(TProp prop, any value) where TProp : unmanaged, System.Enum") != string::npos);
+    CHECK(server_entities.find("public string ManagedAnyValue") == string::npos);
     CHECK(server_entities.find("public static List<mpos> TraceHexLine") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(server_entities.find("global::FOnline.Native.CallMethodIndexed(") != string::npos);
@@ -1227,6 +1233,12 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct mpos") != string::npos);
     CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct ucolor") != string::npos);
     CHECK(server_types.find("[global::System.Runtime.InteropServices.StructLayout(global::System.Runtime.InteropServices.LayoutKind.Sequential)]\npublic partial struct ipos") != string::npos);
+
+    // A value type converts to and from `any` field by field, nested value types flattened, as GenericType_AnyConv does
+    CHECK(server_types.find("public static implicit operator global::FOnline.any(mpos value)\n    {\n        return global::FOnline.any.FromFields(new string[]\n        {\n            global::FOnline.any.FieldText(value.x),\n            global::FOnline.any.FieldText(value.y),\n        });\n    }") != string::npos);
+    CHECK(server_types.find("public static explicit operator mpos(global::FOnline.any value)\n    {\n        string[] fields = value.SplitFields(2, \"mpos\");\n        mpos result = default;\n        result.x = global::FOnline.any.FieldInt16(fields[0]);\n        result.y = global::FOnline.any.FieldInt16(fields[1]);\n        return result;\n    }") != string::npos);
+    CHECK(server_types.find("global::FOnline.any.FieldText(value.Collection.Name),") != string::npos);
+    CHECK(server_types.find("result.Collection.Name = global::FOnline.any.FieldHash(fields[0]);") != string::npos);
 
     for (string_view target : {"Server", "Client", "Mapper"}) {
         string types = ReadTextFile(script_dir / fs::make_path(strex("{}Types.gen.cs", target).str()));
