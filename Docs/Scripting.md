@@ -296,6 +296,16 @@ may release or replace its own entity cover, including before returning an incom
 without changing the caller's cover for the next network message. Return and exception paths both
 restore the calling context. Deferred continuations enter their own engine context when pumped.
 
+Both backends also pass measured overruns to `BaseEngine::RegisterScriptOverrun`. The engine-local,
+mutex-protected buffer retains at most 32 distinct entry names, counts repeated entries and keeps the
+maximum execution and lock-wait times independently. A new name beyond the cap is dropped; existing
+entries continue accumulating. `TakeScriptOverruns()` atomically drains the buffer. The client drains it
+before `OnLoop` and fires `OnScriptOverrun(string entry, timespan execution, timespan lockWait, int count)`
+once per retained entry. Dispatch occurs outside the buffer lock; any overrun caused by a subscriber is
+deferred to the next drain. The server and mapper do not publish this event through their own main loops.
+The collection uses the same suppression rules as logging below. The bounded collection and independent
+engine ownership are covered by `ScriptOverrunsAreBoundedAndEngineLocal` in `Source/Tests/Test_Common.cpp`.
+
 Every such entry is measured against `ManagedScript.OverrunReportTime`, the managed counterpart of
 `AngelScript.OverrunReportTime`: a script-function or delegate callback, an event handler, a property getter
 or setter, and each continuation the script pump resumes. The measurements, the suppressions (a zero threshold, an

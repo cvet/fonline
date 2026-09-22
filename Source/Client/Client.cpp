@@ -453,6 +453,13 @@ void ClientEngine::MainLoop()
     ProcessInputEvents();
     ProcessScheduledCallbacks();
     TimeEventMngr.ProcessTimeEvents();
+
+    // Reporting an overrun is itself a script call that can overrun, so a record produced here simply arrives
+    // on the next frame instead of recursing
+    for (const ScriptOverrunRecord& overrun : TakeScriptOverruns()) {
+        OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
+    }
+
     OnLoop.Fire();
 
     if (_curMap) {

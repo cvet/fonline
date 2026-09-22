@@ -1353,6 +1353,8 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<Ba
     if constexpr (!FO_DEBUG) {
         string entry_name = DescribeManagedScriptEntry(backend, get_entry);
 
+        engine->RegisterScriptOverrun(entry_name, execution_duration, lock_wait_duration);
+
         if (execution_overrun) {
             logging::write("Script execution overrun: {} (execution: {}, lock wait: {}, total: {})", entry_name, execution_duration, lock_wait_duration, total_duration);
         }

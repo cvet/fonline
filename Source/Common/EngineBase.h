@@ -163,6 +163,16 @@ private:
     string _emptyStr {};
 };
 
+// One script entry that ran past the responsiveness budget, aggregated per entry so a repeatedly stalling
+// call arrives as a single record carrying its worst measurements
+struct ScriptOverrunRecord
+{
+    string Entry {};
+    timespan MaxExecution {};
+    timespan MaxLockWait {};
+    int32_t Count {};
+};
+
 class BaseEngine : public EngineMetadata, public ScriptSystem, public Entity, public GameProperties
 {
 public:
@@ -193,6 +203,11 @@ public:
     virtual void ScheduleDelayedCallback(timespan delay, function<void()> body);
     virtual auto RunScriptContext(const function<void()>& callback) -> timespan;
 
+    // The script backends measure an overrun and log it; this keeps it for whoever reports it onwards, since a
+    // player machine's log never reaches us. Distinct entries are capped, so nothing grows while nobody drains
+    void RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait);
+    auto TakeScriptOverruns() -> vector<ScriptOverrunRecord>;
+
     void SendRemoteCall(hstring name, ptr<Entity> caller, const_span<uint8_t> data);
     void SetRemoteCallHandler(hstring name, RemoteCallHandler handler, bool replace = false);
     void VerifyBindedRemoteCalls() const noexcept(false);
@@ -214,6 +229,8 @@ private:
     refcount_ptr<ScriptImGui> _imgui;
     string _curLangName {};
     std::atomic_bool _startingUp {true};
+    mutex _scriptOverrunLocker {};
+    vector<ScriptOverrunRecord> _scriptOverruns FO_TSA_GUARDED_BY(_scriptOverrunLocker) {};
     mutable mutex _randomGeneratorLocker {};
     mutable random_generator _randomGenerator FO_TSA_GUARDED_BY(_randomGeneratorLocker) {};
     unordered_map<hstring, RemoteCallHandler> _inboundRemoteCallHandlers {};
