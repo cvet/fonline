@@ -168,6 +168,8 @@ public:
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
     ///@ ExportEvent
+    FO_ENTITY_EVENT(OnScriptOverrun, string /*entry*/, timespan /*execution*/, timespan /*lockWait*/, int32_t /*count*/);
+    ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoop);
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnScreenScroll);

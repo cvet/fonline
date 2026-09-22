@@ -1267,6 +1267,15 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FinalizeRegistration();
 }
 
+void BaseEngine::FinishStartingUp()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_startingUp, "Engine start-up is already finished");
+
+    _startingUp = false;
+}
+
 void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1287,6 +1296,39 @@ void BaseEngine::FrameAdvance()
     }
 
     ProcessBackends();
+}
+
+void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr size_t max_distinct_entries = 32;
+
+    scoped_lock locker {_scriptOverrunLocker};
+
+    for (ScriptOverrunRecord& record : _scriptOverruns) {
+        if (record.Entry == entry) {
+            record.MaxExecution = std::max(record.MaxExecution, execution);
+            record.MaxLockWait = std::max(record.MaxLockWait, lock_wait);
+            record.Count++;
+            return;
+        }
+    }
+
+    // An unknown entry beyond the cap is dropped rather than evicting a measured one: the consumer drains every
+    // frame, so reaching this at all means the reporter itself stopped running
+    if (_scriptOverruns.size() < max_distinct_entries) {
+        _scriptOverruns.push_back(ScriptOverrunRecord {string(entry), execution, lock_wait, 1});
+    }
+}
+
+auto BaseEngine::TakeScriptOverruns() -> vector<ScriptOverrunRecord>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_scriptOverrunLocker};
+
+    return std::exchange(_scriptOverruns, {});
 }
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t

@@ -28,6 +28,12 @@ public static class ManagedLoadContextHost
     }
 
     [CallableByEngine]
+    internal static Assembly LoadDynamicAssembly(object scope, string assemblyName, byte[] image, byte[]? symbols)
+    {
+        return GetScope(scope).LoadDynamicAssembly(assemblyName, image, symbols);
+    }
+
+    [CallableByEngine]
     internal static void ReleaseLoadScope(object scope)
     {
         GetScope(scope).Release();
@@ -54,6 +60,15 @@ public static class ManagedLoadContextHost
 
         public Assembly[] EntryAssemblies { get; private set; }
 
+        public Assembly LoadDynamicAssembly(string assemblyName, byte[] image, byte[]? symbols)
+        {
+            if (Context == null) {
+                throw new InvalidOperationException("Managed load scope is released");
+            }
+
+            return Context.LoadDynamicAssembly(assemblyName, image, symbols);
+        }
+
         public void Release()
         {
             if (Context == null) {
@@ -67,8 +82,13 @@ public static class ManagedLoadContextHost
 
     private sealed class ManagedAssemblyLoadContext : AssemblyLoadContext
     {
+        // Code compiled after the bake carries this prefix, so its name can never be taken for a pack assembly or a
+        // class library the context has not opened yet
+        private const string DynamicAssemblyNamePrefix = "FOnline.Dynamic.";
+
         private readonly Dictionary<string, string> AssemblyPaths =
             new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> DynamicAssemblyNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         public ManagedAssemblyLoadContext(string name, string[] assemblyPaths) : base(name, isCollectible: false)
         {
@@ -89,6 +109,40 @@ public static class ManagedLoadContextHost
             }
         }
 
+        // The name comes from the image before loading: a stream load never reuses an assembly the context holds, so
+        // a second image under a taken name would load beside the first and later references could bind to either
+        public Assembly LoadDynamicAssembly(string assemblyName, byte[] image, byte[]? symbols)
+        {
+            if (!assemblyName.StartsWith(DynamicAssemblyNamePrefix, StringComparison.Ordinal) ||
+                assemblyName.Length == DynamicAssemblyNamePrefix.Length) {
+                throw new InvalidOperationException("Dynamic managed assembly name must start with " +
+                                                    DynamicAssemblyNamePrefix + ": " + assemblyName);
+            }
+
+            lock (DynamicAssemblyNames)
+            {
+                if (AssemblyPaths.ContainsKey(assemblyName) || DynamicAssemblyNames.Contains(assemblyName)) {
+                    throw new InvalidOperationException("Duplicate managed assembly name: " + assemblyName);
+                }
+
+                using MemoryStream imageStream = new MemoryStream(image, false);
+
+                // An empty PDB is no PDB: a caller relaying one it was never given passes an empty array
+                using MemoryStream? symbolsStream =
+                    symbols is { Length: > 0 } ? new MemoryStream(symbols, false) : null;
+                Assembly assembly = LoadFromStream(imageStream, symbolsStream);
+
+                if (!string.Equals(assembly.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase)) {
+                    throw new InvalidOperationException("Dynamic managed assembly loaded under another name: " +
+                                                        assemblyName);
+                }
+
+                DynamicAssemblyNames.Add(assemblyName);
+                return assembly;
+            }
+        }
+
+        // A reference to a dynamic assembly never gets here: the runtime answers it with the assembly already loaded
         protected override Assembly? Load(AssemblyName assemblyName)
         {
             if (assemblyName.Name != null && AssemblyPaths.TryGetValue(assemblyName.Name, out string? path))

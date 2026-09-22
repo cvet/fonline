@@ -1,6 +1,7 @@
 namespace FOnline;
 
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading.Tasks;
 
 public static partial class Sync
@@ -25,10 +26,14 @@ public static partial class Sync
 
     // Lifecycle: strict — a destroyed/destroying entity returns false before or after acquisition; it is never skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity entity)
+    public static async Task<bool> Lock(Entity entity, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (entity.IsDestroyed || entity.IsDestroying) {
-            return false;
+            return failure.Report("entity_unavailable_before_acquire", entity);
         }
 
         // Prototypes and static map data are readable at any time and hold no entity lock, so they are
@@ -39,35 +44,49 @@ public static partial class Sync
 
         Game.Sync(entity);
 
-        return !entity.IsDestroyed && !entity.IsDestroying;
+        return (!entity.IsDestroyed && !entity.IsDestroying) ||
+               failure.Report("entity_unavailable_after_acquire", entity);
     }
 
     // Lifecycle: strict — either destroyed/destroying entity makes the call return false; neither one is skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity)
+    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity,
+                                        [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
         // Routed through the list overload so the always-covered filtering lives in one place
-        return await Lock(new List<Entity> { firstEntity, secondEntity });
+        return await Lock(new List<Entity> { firstEntity, secondEntity }, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: strict — any destroyed/destroying entity makes the call return false; no partial set is accepted
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity)
+    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity,
+                                        [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
-        return await Lock(new List<Entity> { firstEntity, secondEntity, thirdEntity });
+        return await Lock(new List<Entity> { firstEntity, secondEntity, thirdEntity },
+                          callerFile,
+                          callerMember,
+                          callerLine);
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying member returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(List<Entity> entities)
+    public static async Task<bool> Lock(List<Entity> entities, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (entities.Count == 0) {
             return true;
         }
 
         for (int i = 0; i < entities.Count; i++) {
             if (entities[i].IsDestroyed || entities[i].IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable_before_acquire", entities[i], entities);
             }
         }
 
@@ -83,7 +102,7 @@ public static partial class Sync
 
         for (int i = 0; i < entities.Count; i++) {
             if (entities[i].IsDestroyed || entities[i].IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable_after_acquire", entities[i], entities);
             }
         }
 
@@ -125,8 +144,12 @@ public static partial class Sync
 
     // Lifecycle: restores every live entry and returns true only if the entire input stayed live; an empty snapshot releases all cover and succeeds
     [CoverEffect(CoverEffectKind.Restore)]
-    public static async Task<bool> Restore(List<Entity> entities)
+    public static async Task<bool> Restore(List<Entity> entities, [CallerFilePath] string callerFile = "",
+                                           [CallerMemberName] string callerMember = "",
+                                           [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> candidates = new List<Entity>(entities);
         bool allEntitiesLive = true;
 
@@ -145,11 +168,11 @@ public static partial class Sync
 
             if (survivors.Count == 0) {
                 Release();
-                return allEntitiesLive;
+                return allEntitiesLive || failure.Report("snapshot_incomplete", entities);
             }
 
             if (await Lock(survivors)) {
-                return allEntitiesLive;
+                return allEntitiesLive || failure.Report("snapshot_incomplete", entities);
             }
 
             allEntitiesLive = false;
@@ -163,11 +186,15 @@ public static partial class Sync
     // Lifecycle: strict for requested extras; stale extras fail the call, stale retained cover is pruned, and live survivors remain covered
     [CoverEffect(CoverEffectKind.Extend)]
     [PreservesCover]
-    public static async Task<bool> Widen(List<Entity> extras)
+    public static async Task<bool> Widen(List<Entity> extras, [CallerFilePath] string callerFile = "",
+                                         [CallerMemberName] string callerMember = "",
+                                         [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         for (int i = 0; i < extras.Count; i++) {
             if (extras[i].IsDestroyed || extras[i].IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable_before_acquire", extras[i], extras);
             }
         }
 
@@ -175,7 +202,7 @@ public static partial class Sync
 
         for (int i = 0; i < extras.Count; i++) {
             if (extras[i].IsDestroyed || extras[i].IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable_after_acquire", extras[i], extras);
             }
         }
 
@@ -184,9 +211,11 @@ public static partial class Sync
 
     // Lifecycle: strict for the requested extra; a stale extra fails without a native lookup, while stale retained cover is pruned for live input
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> Widen(Entity extra)
+    public static async Task<bool> Widen(Entity extra, [CallerFilePath] string callerFile = "",
+                                         [CallerMemberName] string callerMember = "",
+                                         [CallerLineNumber] int callerLine = 0)
     {
-        return await Widen(new List<Entity> { extra });
+        return await Widen(new List<Entity> { extra }, callerFile, callerMember, callerLine);
     }
 
     // Widens current cover with every live extra while intentionally skipping stale requests.
@@ -223,7 +252,10 @@ public static partial class Sync
     // Widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
     [CoverEffect(CoverEffectKind.Extend)]
-    public static Task<bool> WidenCritterWithMap(Critter cr) => WidenCritterWithMap(new List<Entity>(), cr);
+    public static Task<bool> WidenCritterWithMap(Critter cr, [CallerFilePath] string callerFile = "",
+                                                 [CallerMemberName] string callerMember = "",
+                                                 [CallerLineNumber] int callerLine = 0) =>
+        WidenCritterWithMap(new List<Entity>(), cr, callerFile, callerMember, callerLine);
 
     // Gives the caller its critter and map back on the way out of a cover-neutral helper, where the answer
     // decides nothing: the work is over, and a critter that did not survive it is the caller's own next
@@ -242,8 +274,13 @@ public static partial class Sync
     // Widens cover with strictRoots + cr + its current map when mapped; every retry explicitly re-proves all roots.
     // Lifecycle: a stale explicit root/cr/current map returns false; a changed cr-to-map link is retried
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterWithMap(List<Entity> strictRoots, Critter cr)
+    public static async Task<bool> WidenCritterWithMap(List<Entity> strictRoots, Critter cr,
+                                                       [CallerFilePath] string callerFile = "",
+                                                       [CallerMemberName] string callerMember = "",
+                                                       [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
         if (!roots.Contains(cr)) {
             roots.Add(cr);
@@ -251,7 +288,7 @@ public static partial class Sync
 
         while (true) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             Map? map = cr.GetMap();
@@ -266,13 +303,13 @@ public static partial class Sync
             }
             if (!await Widen(scope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (cr.MapId != mapId) {
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
             if (cr.MapId != mapId) {
                 continue;
@@ -285,11 +322,16 @@ public static partial class Sync
     // Widens cover with both critters and their distinct current maps; retries if either critter migrates.
     // Lifecycle: a stale critter or initially resolved map returns false; acquisition races retry against both current map links
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCrittersWithMap(Critter first, Critter second)
+    public static async Task<bool> WidenCrittersWithMap(Critter first, Critter second,
+                                                        [CallerFilePath] string callerFile = "",
+                                                        [CallerMemberName] string callerMember = "",
+                                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (!await Widen(new List<Entity> { first, second })) {
-                return false;
+                return failure.Report("dependency_unavailable", first, second);
             }
 
             Map? firstMap = first.GetMap();
@@ -307,13 +349,13 @@ public static partial class Sync
 
             if (!await Widen(scope)) {
                 if (!await Widen(new List<Entity> { first, second })) {
-                    return false;
+                    return failure.Report("dependency_unavailable", first, second);
                 }
                 if (first.MapId != firstMapId || second.MapId != secondMapId) {
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
             if (first.MapId != firstMapId || second.MapId != secondMapId) {
                 continue;
@@ -326,11 +368,15 @@ public static partial class Sync
     // Widens cover with cr, its current map, and that map's current location.
     // Lifecycle: a stale cr or resolved map/location returns false; acquisition races retry against the current parent chain
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterWithMapAndLocation(Critter cr)
+    public static async Task<bool> WidenCritterWithMapAndLocation(Critter cr, [CallerFilePath] string callerFile = "",
+                                                                  [CallerMemberName] string callerMember = "",
+                                                                  [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (!await Widen(cr)) {
-                return false;
+                return failure.Report("dependency_unavailable", cr);
             }
 
             Map? map = cr.GetMap();
@@ -341,13 +387,13 @@ public static partial class Sync
             ident mapId = map.Id;
             if (!await Widen(new List<Entity> { cr, map })) {
                 if (!await Widen(cr)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", cr);
                 }
                 if (cr.MapId != mapId) {
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", cr, map);
             }
             if (cr.MapId != mapId) {
                 continue;
@@ -357,13 +403,13 @@ public static partial class Sync
             ident locId = loc.Id;
             if (!await Widen(new List<Entity> { cr, map, loc })) {
                 if (!await WidenCritterWithMap(cr)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", cr);
                 }
                 if (cr.MapId != mapId || map.GetLocation().Id != locId) {
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", cr, map, loc);
             }
             if (cr.MapId != mapId || map.GetLocation().Id != locId) {
                 continue;
@@ -393,8 +439,12 @@ public static partial class Sync
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying critter returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(List<Critter> critters)
+    public static async Task<bool> Lock(List<Critter> critters, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (critters.Count == 0) {
             return true;
         }
@@ -402,18 +452,22 @@ public static partial class Sync
         List<Entity> entities = new List<Entity>(critters.Count);
         for (int i = 0; i < critters.Count; i++) {
             if (critters[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", critters[i], critters);
             }
 
             entities.Add(critters[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying item returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(List<Item> items)
+    public static async Task<bool> Lock(List<Item> items, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (items.Count == 0) {
             return true;
         }
@@ -421,18 +475,22 @@ public static partial class Sync
         List<Entity> entities = new List<Entity>(items.Count);
         for (int i = 0; i < items.Count; i++) {
             if (items[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", items[i], items);
             }
 
             entities.Add(items[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying map returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(List<Map> maps)
+    public static async Task<bool> Lock(List<Map> maps, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (maps.Count == 0) {
             return true;
         }
@@ -440,18 +498,22 @@ public static partial class Sync
         List<Entity> entities = new List<Entity>(maps.Count);
         for (int i = 0; i < maps.Count; i++) {
             if (maps[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", maps[i], maps);
             }
 
             entities.Add(maps[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying location returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(List<Location> locations)
+    public static async Task<bool> Lock(List<Location> locations, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (locations.Count == 0) {
             return true;
         }
@@ -459,12 +521,12 @@ public static partial class Sync
         List<Entity> entities = new List<Entity>(locations.Count);
         for (int i = 0; i < locations.Count; i++) {
             if (locations[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", locations[i], locations);
             }
 
             entities.Add(locations[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Each Game.Sync replaces the SyncContext lock set entirely, so a script that wants both fixed
@@ -475,30 +537,39 @@ public static partial class Sync
 
     // Lifecycle: strict — a stale fixed entity or critter returns false; an empty critter array locks only the fixed entity
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity entity, List<Critter> critters)
+    public static async Task<bool> Lock(Entity entity, List<Critter> critters, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (entity.IsDestroyed) {
-            return false;
+            return failure.Report("entity_unavailable", entity, critters);
         }
 
         List<Entity> entities = new List<Entity>(critters.Count + 1);
         entities.Add(entity);
         for (int i = 0; i < critters.Count; i++) {
             if (critters[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", critters[i], entity, critters);
             }
 
             entities.Add(critters[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: strict — a stale fixed entity or critter returns false; an empty array locks the two fixed entities
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Critter> critters)
+    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Critter> critters,
+                                        [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (firstEntity.IsDestroyed || secondEntity.IsDestroyed) {
-            return false;
+            return failure.Report("entity_unavailable", firstEntity, secondEntity, critters);
         }
 
         List<Entity> entities = new List<Entity>(critters.Count + 2);
@@ -506,40 +577,49 @@ public static partial class Sync
         entities.Add(secondEntity);
         for (int i = 0; i < critters.Count; i++) {
             if (critters[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", critters[i], firstEntity, secondEntity);
             }
 
             entities.Add(critters[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: strict — a stale fixed entity or item returns false; an empty item array locks only the fixed entity
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity entity, List<Item> items)
+    public static async Task<bool> Lock(Entity entity, List<Item> items, [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (entity.IsDestroyed) {
-            return false;
+            return failure.Report("entity_unavailable", entity, items);
         }
 
         List<Entity> entities = new List<Entity>(items.Count + 1);
         entities.Add(entity);
         for (int i = 0; i < items.Count; i++) {
             if (items[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", items[i], entity, items);
             }
 
             entities.Add(items[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: strict — a stale fixed entity or item returns false; an empty array locks the two fixed entities
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Item> items)
+    public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, List<Item> items,
+                                        [CallerFilePath] string callerFile = "",
+                                        [CallerMemberName] string callerMember = "",
+                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (firstEntity.IsDestroyed || secondEntity.IsDestroyed) {
-            return false;
+            return failure.Report("entity_unavailable", firstEntity, secondEntity, items);
         }
 
         List<Entity> entities = new List<Entity>(items.Count + 2);
@@ -547,12 +627,12 @@ public static partial class Sync
         entities.Add(secondEntity);
         for (int i = 0; i < items.Count; i++) {
             if (items[i].IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", items[i], firstEntity, secondEntity);
             }
 
             entities.Add(items[i]);
         }
-        return await Lock(entities);
+        return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
     // Lifecycle: performs no entity checks and reports no status; an empty cover is not unrestricted, so later entity access must sync again
@@ -565,15 +645,19 @@ public static partial class Sync
     // A destroying parent is terminal: its destroyer may be parked on the marks this job's outer context keeps on it
     // Lifecycle: a stale or destroying cr/current map returns false; a changed cr->map link is retried
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockCritterWithMap(Critter cr)
+    public static async Task<bool> LockCritterWithMap(Critter cr, [CallerFilePath] string callerFile = "",
+                                                      [CallerMemberName] string callerMember = "",
+                                                      [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (cr.IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", cr);
             }
 
             if (!await Lock(cr)) {
-                return false;
+                return failure.Report("dependency_unavailable", cr);
             }
 
             Map? map = cr.GetMap();
@@ -583,7 +667,7 @@ public static partial class Sync
             }
 
             if (map.IsDestroyed || map.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", map, cr);
             }
 
             ident mapId = map.Id;
@@ -603,25 +687,30 @@ public static partial class Sync
 
     // Lifecycle: a stale critter or initially resolved map returns false; acquisition races retry against both current map links
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockCrittersWithMap(Critter first, Critter second)
+    public static async Task<bool> LockCrittersWithMap(Critter first, Critter second,
+                                                       [CallerFilePath] string callerFile = "",
+                                                       [CallerMemberName] string callerMember = "",
+                                                       [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (first.IsDestroyed || first.IsDestroying || second.IsDestroyed || second.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", first, second);
             }
 
             if (!await Lock(first, second)) {
-                return false;
+                return failure.Report("dependency_unavailable", first, second);
             }
 
             Map? firstMap = first.GetMap();
             Map? secondMap = second.GetMap();
 
             if (firstMap != null && (firstMap.IsDestroyed || firstMap.IsDestroying)) {
-                return false;
+                return failure.Report("entity_unavailable", firstMap, first, second);
             }
             if (secondMap != null && (secondMap.IsDestroyed || secondMap.IsDestroying)) {
-                return false;
+                return failure.Report("entity_unavailable", secondMap, first, second);
             }
 
             ident firstMapId = firstMap != null ? firstMap.Id : new ident(0);
@@ -649,15 +738,19 @@ public static partial class Sync
 
     // Lifecycle: a stale or destroying cr or resolved map/location returns false; acquisition races retry against the current parent chain
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockCritterWithMapAndLocation(Critter cr)
+    public static async Task<bool> LockCritterWithMapAndLocation(Critter cr, [CallerFilePath] string callerFile = "",
+                                                                 [CallerMemberName] string callerMember = "",
+                                                                 [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (cr.IsDestroyed) {
-                return false;
+                return failure.Report("entity_unavailable", cr);
             }
 
             if (!await Lock(cr)) {
-                return false;
+                return failure.Report("dependency_unavailable", cr);
             }
 
             Map? map = cr.GetMap();
@@ -667,7 +760,7 @@ public static partial class Sync
             }
 
             if (map.IsDestroyed || map.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", map, cr);
             }
 
             ident mapId = map.Id;
@@ -683,7 +776,7 @@ public static partial class Sync
 
             Location loc = map.GetLocation();
             if (loc.IsDestroyed || loc.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", loc, cr);
             }
 
             ident locId = loc.Id;
@@ -708,24 +801,29 @@ public static partial class Sync
 
     // Lifecycle: a stale cr/member/destination chain or a destroying source map/location returns false; a changed source graph is retried because cr may have migrated or changed groups
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockForTransferToMap(Critter cr, Map destMap)
+    public static async Task<bool> LockForTransferToMap(Critter cr, Map destMap,
+                                                        [CallerFilePath] string callerFile = "",
+                                                        [CallerMemberName] string callerMember = "",
+                                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (cr.IsDestroyed || cr.IsDestroying || destMap.IsDestroyed || destMap.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", cr, destMap);
             }
 
             if (!await Lock(cr, destMap)) {
-                return false;
+                return failure.Report("dependency_unavailable", cr, destMap);
             }
 
             Map? srcMap = cr.GetMap();
             Location destLoc = destMap.GetLocation();
             if (destLoc.IsDestroyed || destLoc.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", destLoc, cr, destMap);
             }
             if (srcMap != null && (srcMap.IsDestroyed || srcMap.IsDestroying)) {
-                return false;
+                return failure.Report("entity_unavailable", srcMap, cr, destMap);
             }
 
             List<Entity> scope = new List<Entity> { cr, destMap, destLoc };
@@ -746,7 +844,7 @@ public static partial class Sync
             if (srcMap != null) {
                 Location srcLoc = srcMap.GetLocation();
                 if (srcLoc.IsDestroyed || srcLoc.IsDestroying) {
-                    return false;
+                    return failure.Report("entity_unavailable", srcLoc, cr, destMap);
                 }
 
                 ident srcLocId = srcLoc.Id;
@@ -770,15 +868,22 @@ public static partial class Sync
 
     // Lifecycle: strict — a mapped root, stable destroyed/destroying member, or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static Task<bool>
-    WidenCritterWithGlobalMapGroup(Critter cr) => WidenCritterWithGlobalMapGroup(new List<Entity>(), cr);
+    public static Task<bool> WidenCritterWithGlobalMapGroup(Critter cr, [CallerFilePath] string callerFile = "",
+                                                            [CallerMemberName] string callerMember = "",
+                                                            [CallerLineNumber] int callerLine = 0) =>
+        WidenCritterWithGlobalMapGroup(new List<Entity>(), cr, callerFile, callerMember, callerLine);
 
     // Retry yields may drop incidental caller cover; every acquisition re-proves strictRoots + cr,
     // and success also covers every member from the stable native global-group snapshot.
     // Lifecycle: strict - a stale explicit root/member, mapped cr, or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterWithGlobalMapGroup(List<Entity> strictRoots, Critter cr)
+    public static async Task<bool> WidenCritterWithGlobalMapGroup(List<Entity> strictRoots, Critter cr,
+                                                                  [CallerFilePath] string callerFile = "",
+                                                                  [CallerMemberName] string callerMember = "",
+                                                                  [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
         if (!roots.Contains(cr)) {
             roots.Add(cr);
@@ -786,17 +891,17 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < GlobalMapGroupCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
             if (cr.MapId.value != 0) {
-                return false;
+                return failure.Report("mapped_critter", strictRoots, cr);
             }
 
             uint tripId = cr.GlobalMapTripId;
             ulong revision = 0;
             List<ident> memberIds = cr.GetGlobalMapCritterIds(ref revision);
             if (!memberIds.Contains(cr.Id)) {
-                return false;
+                return failure.Report("group_member_missing", strictRoots, cr);
             }
 
             List<Entity> scope = new List<Entity>(roots);
@@ -814,7 +919,7 @@ public static partial class Sync
 
             if (!allMembersResolved || !await Widen(scope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (cr.MapId.value != 0 || cr.GlobalMapTripId != tripId) {
                     await ScriptTask.Delay(0);
@@ -827,7 +932,7 @@ public static partial class Sync
                     await ScriptTask.Delay(0);
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", scope, memberIds);
             }
 
             if (cr.MapId.value != 0 || cr.GlobalMapTripId != tripId) {
@@ -844,14 +949,16 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, cr);
     }
 
     // Monotonic counterpart of LockForTransferToMap for helpers that must retain caller-owned roots.
     // Lifecycle: a stale cr/member/destination chain returns false; a changed source graph is retried against the current parent/group links
     [CoverEffect(CoverEffectKind.Extend)]
-    public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap) => WidenForTransferToMap(new List<Entity>(),
-                                                                                                     cr, destMap);
+    public static Task<bool> WidenForTransferToMap(Critter cr, Map destMap, [CallerFilePath] string callerFile = "",
+                                                   [CallerMemberName] string callerMember = "",
+                                                   [CallerLineNumber] int callerLine = 0) =>
+        WidenForTransferToMap(new List<Entity>(), cr, destMap, callerFile, callerMember, callerLine);
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr +
     // its complete stable source graph + destMap/location.
@@ -859,8 +966,13 @@ public static partial class Sync
     // or parent graphs are retried.
     // Lifecycle: a stale explicit root/source member/destination chain returns false; changed source or parent graphs are retried
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenForTransferToMap(List<Entity> strictRoots, Critter cr, Map destMap)
+    public static async Task<bool> WidenForTransferToMap(List<Entity> strictRoots, Critter cr, Map destMap,
+                                                         [CallerFilePath] string callerFile = "",
+                                                         [CallerMemberName] string callerMember = "",
+                                                         [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
         if (!roots.Contains(cr)) {
             roots.Add(cr);
@@ -871,7 +983,7 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < GlobalMapGroupCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             Map? srcMap = cr.GetMap();
@@ -899,7 +1011,7 @@ public static partial class Sync
                 srcTripId = cr.GlobalMapTripId;
                 srcMemberIds = cr.GetGlobalMapCritterIds(ref srcRevision);
                 if (!srcMemberIds.Contains(cr.Id)) {
-                    return false;
+                    return failure.Report("group_member_missing", strictRoots, cr, destMap);
                 }
 
                 bool allMembersResolved = true;
@@ -915,19 +1027,19 @@ public static partial class Sync
                 }
                 if (!allMembersResolved) {
                     if (!await Widen(roots)) {
-                        return false;
+                        return failure.Report("dependency_unavailable", roots);
                     }
                     if (!IsGlobalMapGroupSnapshotCurrent(cr, srcTripId, srcRevision, srcMemberIds)) {
                         await ScriptTask.Delay(0);
                         continue;
                     }
-                    return false;
+                    return failure.Report("dependency_unavailable", scope, srcMemberIds);
                 }
             }
 
             if (!await Widen(scope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
                     await ScriptTask.Delay(0);
@@ -937,7 +1049,7 @@ public static partial class Sync
                     await ScriptTask.Delay(0);
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
 
             if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
@@ -957,7 +1069,7 @@ public static partial class Sync
                     scope.Add(srcLoc);
                     if (!await Widen(scope)) {
                         if (!await Widen(roots)) {
-                            return false;
+                            return failure.Report("dependency_unavailable", roots);
                         }
                         if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
                             continue;
@@ -972,19 +1084,19 @@ public static partial class Sync
                         }
                         if (!await Widen(mapScope)) {
                             if (!await Widen(roots)) {
-                                return false;
+                                return failure.Report("dependency_unavailable", roots);
                             }
                             if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId) {
                                 continue;
                             }
-                            return false;
+                            return failure.Report("dependency_unavailable", mapScope);
                         }
                         if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
                             srcMap.GetLocation().Id != srcLocId) {
                             await ScriptTask.Delay(0);
                             continue;
                         }
-                        return false;
+                        return failure.Report("dependency_unavailable", scope);
                     }
 
                     if (cr.MapId != srcMapId || destMap.GetLocation().Id != destLocId ||
@@ -998,21 +1110,25 @@ public static partial class Sync
             return true;
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, cr, destMap);
     }
 
     // Lifecycle: a stale player/map or resolved location returns false; final acquisition/relink races retry the map->location chain
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockForViewMap(Player player, Map map)
+    public static async Task<bool> LockForViewMap(Player player, Map map, [CallerFilePath] string callerFile = "",
+                                                  [CallerMemberName] string callerMember = "",
+                                                  [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (!await Lock(player, map)) {
-                return false;
+                return failure.Report("dependency_unavailable", player, map);
             }
 
             Location loc = map.GetLocation();
             if (loc.IsDestroyed || loc.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", loc, player, map);
             }
 
             ident locId = loc.Id;
@@ -1030,15 +1146,20 @@ public static partial class Sync
 
     // Lifecycle: a stale player/cr or resolved map/location returns false; acquisition races retry against the current cr parent chain
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockPlayerAndCritterWithMapAndLocation(Player player, Critter cr)
+    public static async Task<bool> LockPlayerAndCritterWithMapAndLocation(Player player, Critter cr,
+                                                                          [CallerFilePath] string callerFile = "",
+                                                                          [CallerMemberName] string callerMember = "",
+                                                                          [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (player.IsDestroyed || player.IsDestroying || cr.IsDestroyed || cr.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", player, cr);
             }
 
             if (!await Lock(player, cr)) {
-                return false;
+                return failure.Report("dependency_unavailable", player, cr);
             }
 
             Map? map = cr.GetMap();
@@ -1047,7 +1168,7 @@ public static partial class Sync
             }
 
             if (map.IsDestroyed || map.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", map, player, cr);
             }
 
             ident mapId = map.Id;
@@ -1057,7 +1178,7 @@ public static partial class Sync
 
             Location loc = map.GetLocation();
             if (loc.IsDestroyed || loc.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", loc, player, cr);
             }
 
             ident locId = loc.Id;
@@ -1076,27 +1197,46 @@ public static partial class Sync
     // Replaces cover with player + cr and the stable initial-info dependency graph: map/location when mapped, or every current global-map group member.
     // Lifecycle: strict - any stale dependency returns false; parent/group changes during acquisition are retried before returning success
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockPlayerCritterInitialInfoGraph(Player player, Critter cr)
+    public static async Task<bool> LockPlayerCritterInitialInfoGraph(Player player, Critter cr,
+                                                                     [CallerFilePath] string callerFile = "",
+                                                                     [CallerMemberName] string callerMember = "",
+                                                                     [CallerLineNumber] int callerLine = 0)
     {
-        return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, new List<Critter> { cr });
+        return await LockCrittersInitialInfoGraphs(new List<Entity> { player },
+                                                   new List<Critter> { cr },
+                                                   callerFile,
+                                                   callerMember,
+                                                   callerLine);
     }
 
     // Replaces cover with player + every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every root, map/location, and global-group member is requested by the final exact acquisition; graph changes are retried
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockPlayerCrittersInitialInfoGraphs(Player player, List<Critter> critters)
+    public static async Task<bool> LockPlayerCrittersInitialInfoGraphs(Player player, List<Critter> critters,
+                                                                       [CallerFilePath] string callerFile = "",
+                                                                       [CallerMemberName] string callerMember = "",
+                                                                       [CallerLineNumber] int callerLine = 0)
     {
-        return await LockCrittersInitialInfoGraphs(new List<Entity> { player }, critters);
+        return await LockCrittersInitialInfoGraphs(new List<Entity> { player },
+                                                   critters,
+                                                   callerFile,
+                                                   callerMember,
+                                                   callerLine);
     }
 
     // Replaces cover with both sessions, the stable controlled-critter initial-info graph,
     // and the spectator view target. A graph race returns false to the caller's retry budget.
     // Lifecycle: strict — a stale dependency or concurrent player graph change returns false to the caller's single retry budget; a stable asymmetric player/cr link is an invariant failure
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockPlayerReconnectGraph(Player notLoggedInPlayer, Player player)
+    public static async Task<bool> LockPlayerReconnectGraph(Player notLoggedInPlayer, Player player,
+                                                            [CallerFilePath] string callerFile = "",
+                                                            [CallerMemberName] string callerMember = "",
+                                                            [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (!await Lock(notLoggedInPlayer, player)) {
-            return false;
+            return failure.Report("dependency_unavailable", notLoggedInPlayer, player);
         }
 
         Critter? cr = player.GetControlledCritter();
@@ -1110,10 +1250,10 @@ public static partial class Sync
         }
 
         if (!await Lock(roots)) {
-            return false;
+            return failure.Report("dependency_unavailable", roots);
         }
         if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap) {
-            return false;
+            return failure.Report("graph_changed", roots);
         }
         if (cr == null) {
             return true;
@@ -1126,20 +1266,20 @@ public static partial class Sync
                 mapScope.Add(map);
             }
             if (!await Lock(mapScope)) {
-                return false;
+                return failure.Report("dependency_unavailable", mapScope);
             }
             if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap || cr.MapId != map.Id) {
-                return false;
+                return failure.Report("graph_changed", mapScope);
             }
 
             Location location = map.GetLocation();
             mapScope.Add(location);
             if (!await Lock(mapScope)) {
-                return false;
+                return failure.Report("dependency_unavailable", mapScope);
             }
             if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap || cr.MapId != map.Id ||
                 map.GetLocation().Id != location.Id) {
-                return false;
+                return failure.Report("graph_changed", mapScope);
             }
 
             Invariant.Verify(cr.GetPlayer() == player,
@@ -1149,32 +1289,32 @@ public static partial class Sync
             return true;
         }
         if (cr.MapId != new ident(0)) {
-            return false;
+            return failure.Report("graph_changed", roots);
         }
 
         uint tripId = cr.GlobalMapTripId;
         ulong revision = 0;
         List<ident> memberIds = cr.GetGlobalMapCritterIds(ref revision);
         if (!memberIds.Contains(cr.Id)) {
-            return false;
+            return failure.Report("group_member_missing", roots, memberIds);
         }
 
         List<Entity> groupScope = new List<Entity>(roots);
         for (int i = 0; i < memberIds.Count; i++) {
             Critter? member = Game.GetCritter(memberIds[i]);
             if (member == null) {
-                return false;
+                return failure.Report("group_member_missing", roots, memberIds[i]);
             }
             if (!groupScope.Contains(member)) {
                 groupScope.Add(member);
             }
         }
         if (!await Lock(groupScope)) {
-            return false;
+            return failure.Report("dependency_unavailable", groupScope);
         }
         if (player.GetControlledCritter() != cr || player.GetViewMapTarget() != viewMap ||
             !IsGlobalMapGroupSnapshotCurrent(cr, tripId, revision, memberIds) || !IsIdentMembershipCovered(memberIds)) {
-            return false;
+            return failure.Report("graph_changed", groupScope, memberIds);
         }
 
         Invariant.Verify(cr.GetPlayer() == player,
@@ -1187,8 +1327,13 @@ public static partial class Sync
     // Replaces cover with strictRoots plus every critter and the union of all stable mapped or global initial-info graphs.
     // Lifecycle: strict - every explicit root, critter, map/location, and global-group member must be live in the final exact acquisition
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockCrittersInitialInfoGraphs(List<Entity> strictRoots, List<Critter> critters)
+    public static async Task<bool> LockCrittersInitialInfoGraphs(List<Entity> strictRoots, List<Critter> critters,
+                                                                 [CallerFilePath] string callerFile = "",
+                                                                 [CallerMemberName] string callerMember = "",
+                                                                 [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
 
         for (int i = 0; i < critters.Count; i++) {
@@ -1199,7 +1344,7 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < GlobalMapGroupCoverAttempts; attempt++) {
             if (!await Lock(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             List<Entity> mapScope = new List<Entity>(roots);
@@ -1366,30 +1511,34 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, critters);
     }
 
     // Lifecycle: a stale item/direct holder or missing holder returns false; direct reparent races retry against the current holder
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockItemWithHolder(Item item)
+    public static async Task<bool> LockItemWithHolder(Item item, [CallerFilePath] string callerFile = "",
+                                                      [CallerMemberName] string callerMember = "",
+                                                      [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         while (true) {
             if (!await Lock(item)) {
-                return false;
+                return failure.Report("dependency_unavailable", item);
             }
 
             Entity? holder = item.FindHolder();
             if (holder == null) {
-                return false;
+                return failure.Report("holder_missing", item);
             }
 
             if (!await Lock(item, holder)) {
-                return false;
+                return failure.Report("dependency_unavailable", item, holder);
             }
 
             Entity? holderAfter = item.FindHolder();
             if (holderAfter == null) {
-                return false;
+                return failure.Report("holder_missing", item);
             }
             if (holderAfter != holder) {
                 continue;
@@ -1405,7 +1554,7 @@ public static partial class Sync
                 return true;
             }
             if (map.IsDestroyed || map.IsDestroying) {
-                return false;
+                return failure.Report("entity_unavailable", map, item);
             }
 
             ident mapId = map.Id;
@@ -1433,49 +1582,87 @@ public static partial class Sync
     // Retry yields may drop incidental caller cover; success covers cr's complete stable transitive attachment component and every component node's map or global-map group.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterAttachmentGraph(Critter cr)
+    public static async Task<bool> WidenCritterAttachmentGraph(Critter cr, [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { cr });
+        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(),
+                                                      new List<Critter> { cr },
+                                                      callerFile,
+                                                      callerMember,
+                                                      callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus cr's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterAttachmentGraphWithRoots(List<Entity> strictRoots, Critter cr)
+    public static async Task<bool> WidenCritterAttachmentGraphWithRoots(List<Entity> strictRoots, Critter cr,
+                                                                        [CallerFilePath] string callerFile = "",
+                                                                        [CallerMemberName] string callerMember = "",
+                                                                        [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { cr });
+        return await WidenCritterAttachmentGraphsImpl(strictRoots,
+                                                      new List<Critter> { cr },
+                                                      callerFile,
+                                                      callerMember,
+                                                      callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers the union of both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterAttachmentGraphs(Critter first, Critter second)
+    public static async Task<bool> WidenCritterAttachmentGraphs(Critter first, Critter second,
+                                                                [CallerFilePath] string callerFile = "",
+                                                                [CallerMemberName] string callerMember = "",
+                                                                [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(), new List<Critter> { first, second });
+        return await WidenCritterAttachmentGraphsImpl(new List<Entity>(),
+                                                      new List<Critter> { first, second },
+                                                      callerFile,
+                                                      callerMember,
+                                                      callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus both complete stable transitive attachment components and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphsWithRoots(List<Entity> strictRoots, Critter first,
-                                                                         Critter second)
+                                                                         Critter second,
+                                                                         [CallerFilePath] string callerFile = "",
+                                                                         [CallerMemberName] string callerMember = "",
+                                                                         [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphsImpl(strictRoots, new List<Critter> { first, second });
+        return await WidenCritterAttachmentGraphsImpl(strictRoots,
+                                                      new List<Critter> { first, second },
+                                                      callerFile,
+                                                      callerMember,
+                                                      callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers the leader plus every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — a stale component node/placement dependency or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenForTransferToGlobalBatch(Critter leader, List<Critter> group)
+    public static async Task<bool> WidenForTransferToGlobalBatch(Critter leader, List<Critter> group,
+                                                                 [CallerFilePath] string callerFile = "",
+                                                                 [CallerMemberName] string callerMember = "",
+                                                                 [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenForTransferToGlobalBatch(new List<Entity>(), leader, group);
+        return await WidenForTransferToGlobalBatch(new List<Entity>(),
+                                                   leader,
+                                                   group,
+                                                   callerFile,
+                                                   callerMember,
+                                                   callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus the leader and every group member's complete stable transitive attachment component and all placements.
     // Lifecycle: strict — every explicit root, component node, map, and global-group member must be live in the final acquisition
     [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenForTransferToGlobalBatch(List<Entity> strictRoots, Critter leader,
-                                                                 List<Critter> group)
+                                                                 List<Critter> group,
+                                                                 [CallerFilePath] string callerFile = "",
+                                                                 [CallerMemberName] string callerMember = "",
+                                                                 [CallerLineNumber] int callerLine = 0)
     {
         List<Critter> attachmentRoots = new List<Critter> { leader };
 
@@ -1483,15 +1670,24 @@ public static partial class Sync
             attachmentRoots.Add(group[i]);
         }
 
-        return await WidenCritterAttachmentGraphsImpl(strictRoots, attachmentRoots);
+        return await WidenCritterAttachmentGraphsImpl(strictRoots,
+                                                      attachmentRoots,
+                                                      callerFile,
+                                                      callerMember,
+                                                      callerLine);
     }
 
     // Internal union builder for stable transitive attachment components and each node's current map or complete global-map group.
     // Lifecycle: strict — all explicit roots, discovered component nodes, and placement members must remain live through the final snapshot check
     [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterAttachmentGraphsImpl(List<Entity> strictRoots,
-                                                                    List<Critter> attachmentRoots)
+                                                                    List<Critter> attachmentRoots,
+                                                                    [CallerFilePath] string callerFile = "",
+                                                                    [CallerMemberName] string callerMember = "",
+                                                                    [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
 
         for (int i = 0; i < attachmentRoots.Count; i++) {
@@ -1502,7 +1698,7 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < GlobalMapGroupCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             List<Critter> graph = new List<Critter>(attachmentRoots);
@@ -1534,7 +1730,7 @@ public static partial class Sync
                         Critter? master = Game.GetCritter(node.AttachMaster);
 
                         if (master == null) {
-                            return false;
+                            return failure.Report("attachment_master_missing", node, node.AttachMaster);
                         }
                         if (!graph.Contains(master) && !discovered.Contains(master)) {
                             discovered.Add(master);
@@ -1620,7 +1816,7 @@ public static partial class Sync
                     memberIds = node.GetGlobalMapCritterIds(ref revision);
 
                     if (!memberIds.Contains(node.Id)) {
-                        return false;
+                        return failure.Report("group_member_missing", node, memberIds);
                     }
 
                     for (int memberIndex = 0; memberIndex < memberIds.Count; memberIndex++) {
@@ -1701,7 +1897,7 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, attachmentRoots);
     }
 
     // Checks that every id from a previously stabilized native membership snapshot resolves inside the current cover.
@@ -1764,30 +1960,42 @@ public static partial class Sync
     // Retry yields may drop incidental caller cover; success covers cr plus its source map, complete stable global group, or only cr while still parentless.
     // Lifecycle: strict — a stale critter/placement dependency or exhausted global-group retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterForDestroy(Critter cr)
+    public static async Task<bool> WidenCritterForDestroy(Critter cr, [CallerFilePath] string callerFile = "",
+                                                          [CallerMemberName] string callerMember = "",
+                                                          [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphWithRoots(new List<Entity>(), cr);
+        return await WidenCritterAttachmentGraphWithRoots(new List<Entity>(), cr, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and its source map, complete stable global group, or parentless own lock.
     // Lifecycle: strict — a stale explicit root/cr/placement dependency or exhausted global-group retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterForDestroy(List<Entity> strictRoots, Critter cr)
+    public static async Task<bool> WidenCritterForDestroy(List<Entity> strictRoots, Critter cr,
+                                                          [CallerFilePath] string callerFile = "",
+                                                          [CallerMemberName] string callerMember = "",
+                                                          [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterAttachmentGraphWithRoots(strictRoots, cr);
+        return await WidenCritterAttachmentGraphWithRoots(strictRoots, cr, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers cr + its stable source map or global group and globalCr + every stable target-group member.
     // Lifecycle: strict — a stale dependency or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static Task<bool> WidenForTransferToGlobalGroup(Critter cr, Critter globalCr) =>
-        WidenForTransferToGlobalGroup(new List<Entity>(), cr, globalCr);
+    public static Task<bool>
+    WidenForTransferToGlobalGroup(Critter cr, Critter globalCr, [CallerFilePath] string callerFile = "",
+                                  [CallerMemberName] string callerMember = "", [CallerLineNumber] int callerLine = 0) =>
+        WidenForTransferToGlobalGroup(new List<Entity>(), cr, globalCr, callerFile, callerMember, callerLine);
 
     // Retry yields may drop incidental caller cover; snapshots both graphs under strictRoots + cr + globalCr and returns only after one final union acquisition still matches them.
     // Lifecycle: strict — every explicit root, source dependency, target-group member, and final union member must be live
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenForTransferToGlobalGroup(List<Entity> strictRoots, Critter cr, Critter globalCr)
+    public static async Task<bool> WidenForTransferToGlobalGroup(List<Entity> strictRoots, Critter cr, Critter globalCr,
+                                                                 [CallerFilePath] string callerFile = "",
+                                                                 [CallerMemberName] string callerMember = "",
+                                                                 [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
         if (!roots.Contains(cr)) {
             roots.Add(cr);
@@ -1798,17 +2006,17 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < GlobalMapGroupCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
             if (globalCr.MapId.value != 0) {
-                return false;
+                return failure.Report("mapped_critter", strictRoots, cr, globalCr);
             }
 
             uint targetTripId = globalCr.GlobalMapTripId;
             ulong targetRevision = 0;
             List<ident> targetMemberIds = globalCr.GetGlobalMapCritterIds(ref targetRevision);
             if (!targetMemberIds.Contains(globalCr.Id)) {
-                return false;
+                return failure.Report("group_member_missing", strictRoots, cr, globalCr);
             }
 
             List<Critter> targetMembers = new List<Critter>();
@@ -1832,7 +2040,7 @@ public static partial class Sync
             if (sourceMap == null) {
                 sourceMemberIds = cr.GetGlobalMapCritterIds(ref sourceRevision);
                 if (!sourceMemberIds.Contains(cr.Id)) {
-                    return false;
+                    return failure.Report("group_member_missing", strictRoots, cr, globalCr);
                 }
                 for (int i = 0; i < sourceMemberIds.Count; i++) {
                     Critter? member = Game.GetCritter(sourceMemberIds[i]);
@@ -1855,7 +2063,7 @@ public static partial class Sync
                     await ScriptTask.Delay(0);
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", roots, sourceMemberIds, targetMemberIds);
             }
 
             List<Entity> scope = new List<Entity>(roots);
@@ -1879,7 +2087,7 @@ public static partial class Sync
 
             if (!await Widen(scope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 targetChanged =
                     !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
@@ -1890,7 +2098,7 @@ public static partial class Sync
                     await ScriptTask.Delay(0);
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
 
             targetChanged = !IsGlobalMapGroupSnapshotCurrent(globalCr, targetTripId, targetRevision, targetMemberIds);
@@ -1903,37 +2111,45 @@ public static partial class Sync
             }
             if (!IsIdentMembershipCovered(targetMemberIds) ||
                 (sourceMap == null && !IsIdentMembershipCovered(sourceMemberIds))) {
-                return false;
+                return failure.Report("group_not_covered", scope, sourceMemberIds, targetMemberIds);
             }
 
             return true;
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, cr, globalCr);
     }
 
     // Replaces the caller cover with map's complete stable destroy graph: map + parent location + every independent spectator Player.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockMapForDestroy(Map map)
+    public static async Task<bool> LockMapForDestroy(Map map, [CallerFilePath] string callerFile = "",
+                                                     [CallerMemberName] string callerMember = "",
+                                                     [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (!await Lock(map)) {
-            return false;
+            return failure.Report("dependency_unavailable", map);
         }
 
-        return await WidenMapForDestroy(map);
+        return await WidenMapForDestroy(map, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers map + current location + every independent spectator Player, while map ancestry covers its descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/location/spectator membership retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenMapForDestroy(Map map)
+    public static async Task<bool> WidenMapForDestroy(Map map, [CallerFilePath] string callerFile = "",
+                                                      [CallerMemberName] string callerMember = "",
+                                                      [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity> { map };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             Location location = map.GetLocation();
@@ -1942,14 +2158,14 @@ public static partial class Sync
 
             if (!await Widen(treeScope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (map.GetLocation().Id != locationId) {
                     await ScriptTask.Delay(0);
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", treeScope);
             }
             if (map.GetLocation().Id != locationId) {
                 await ScriptTask.Delay(0);
@@ -1967,7 +2183,7 @@ public static partial class Sync
 
             if (!await Widen(scope)) {
                 if (!await Widen(treeScope)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", treeScope);
                 }
                 if (map.GetLocation().Id != locationId ||
                     !HasSamePlayerMembership(spectators, map.GetSpectatorPlayers())) {
@@ -1975,7 +2191,7 @@ public static partial class Sync
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
 
             if (map.GetLocation().Id == locationId && HasSamePlayerMembership(spectators, map.GetSpectatorPlayers())) {
@@ -1985,31 +2201,39 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", map);
     }
 
     // Replaces the caller cover with location's complete stable destroy graph: the location tree + every independent spectator Player on its maps.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
     [CoverEffect(CoverEffectKind.Replace)]
-    public static async Task<bool> LockLocationForDestroy(Location location)
+    public static async Task<bool> LockLocationForDestroy(Location location, [CallerFilePath] string callerFile = "",
+                                                          [CallerMemberName] string callerMember = "",
+                                                          [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (!await Lock(location)) {
-            return false;
+            return failure.Report("dependency_unavailable", location);
         }
 
-        return await WidenLocationForDestroy(location);
+        return await WidenLocationForDestroy(location, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers location + every independent spectator Player from current child maps, while location ancestry covers descendants.
     // Lifecycle: strict — a stale dependency or exhausted map/spectator membership retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenLocationForDestroy(Location location)
+    public static async Task<bool> WidenLocationForDestroy(Location location, [CallerFilePath] string callerFile = "",
+                                                           [CallerMemberName] string callerMember = "",
+                                                           [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity> { location };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             List<Map> maps = location.GetMaps();
@@ -2029,14 +2253,14 @@ public static partial class Sync
 
             if (!await Widen(scope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (!IsLocationDestroySnapshotCurrent(location, maps, spectatorSnapshots)) {
                     await ScriptTask.Delay(0);
                     continue;
                 }
 
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
 
             if (IsLocationDestroySnapshotCurrent(location, maps, spectatorSnapshots)) {
@@ -2046,7 +2270,7 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", location);
     }
 
     // Verifies that a covered location still owns the same maps and that every map has the same independent spectator membership.
@@ -2114,13 +2338,17 @@ public static partial class Sync
     // Widens cover with map + its current location + every Player observing it; every retry explicitly re-proves all roots.
     // Lifecycle: strict — a stale dependency or exhausted map/location/observer membership retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenMapForCritterAdd(Map map)
+    public static async Task<bool> WidenMapForCritterAdd(Map map, [CallerFilePath] string callerFile = "",
+                                                         [CallerMemberName] string callerMember = "",
+                                                         [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity> { map };
 
         for (int attempt = 0; attempt < MapDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             Location location = map.GetLocation();
@@ -2129,12 +2357,12 @@ public static partial class Sync
 
             if (!await Widen(treeScope)) {
                 if (!await Widen(roots)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", roots);
                 }
                 if (map.GetLocation().Id != locationId) {
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", treeScope);
             }
             if (map.GetLocation().Id != locationId) {
                 continue;
@@ -2151,13 +2379,13 @@ public static partial class Sync
 
             if (!await Widen(scope)) {
                 if (!await Widen(treeScope)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", treeScope);
                 }
                 if (map.GetLocation().Id != locationId ||
                     !HasSamePlayerMembership(observers, CollectMapObserverPlayers(map))) {
                     continue;
                 }
-                return false;
+                return failure.Report("dependency_unavailable", scope);
             }
 
             if (map.GetLocation().Id == locationId &&
@@ -2166,7 +2394,7 @@ public static partial class Sync
             }
         }
 
-        return false;
+        return failure.Report("retry_exhausted", map);
     }
 
     // Compares two owning spectator snapshots by immutable Player identity without changing cover.
@@ -2189,34 +2417,50 @@ public static partial class Sync
     // Retry yields may drop incidental caller cover; success covers item + stable immediate holder, while the root lock covers its nested subtree by ancestry.
     // Lifecycle: strict — a stale root or owned item with a stale/unresolvable direct holder returns false; a parentless root succeeds and direct reparent races are retried
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenItemForDestroy(Item item)
+    public static async Task<bool> WidenItemForDestroy(Item item, [CallerFilePath] string callerFile = "",
+                                                       [CallerMemberName] string callerMember = "",
+                                                       [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenItemsForDestroy(new List<Entity>(), new List<Item> { item });
+        return await WidenItemsForDestroy(new List<Entity>(),
+                                          new List<Item> { item },
+                                          callerFile,
+                                          callerMember,
+                                          callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots plus item and its stable immediate holder.
     // Lifecycle: strict — every explicit root, item, and current direct holder must remain live through the final relationship read
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenItemForDestroy(List<Entity> strictRoots, Item item)
+    public static async Task<bool> WidenItemForDestroy(List<Entity> strictRoots, Item item,
+                                                       [CallerFilePath] string callerFile = "",
+                                                       [CallerMemberName] string callerMember = "",
+                                                       [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenItemsForDestroy(strictRoots, new List<Item> { item });
+        return await WidenItemsForDestroy(strictRoots, new List<Item> { item }, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success covers every root item + the union of stable immediate holders, with each nested subtree covered by ancestry.
     // Lifecycle: strict — any stale root or owned item with a stale/unresolvable direct holder returns false; parentless roots succeed, duplicates are deduplicated, and direct reparent races are retried
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenItemsForDestroy(List<Item> items)
+    public static async Task<bool> WidenItemsForDestroy(List<Item> items, [CallerFilePath] string callerFile = "",
+                                                        [CallerMemberName] string callerMember = "",
+                                                        [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenItemsForDestroy(new List<Entity>(), items);
+        return await WidenItemsForDestroy(new List<Entity>(), items, callerFile, callerMember, callerLine);
     }
 
     // Retry yields may drop incidental caller cover; every attempt re-proves strictRoots, and success also covers every root item + stable immediate holder.
     // Lifecycle: strict — every explicit root and current direct holder of an owned item must remain live through the final relationship read; parentless roots need no holder
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenItemsForDestroy(List<Entity> strictRoots, List<Item> items)
+    public static async Task<bool> WidenItemsForDestroy(List<Entity> strictRoots, List<Item> items,
+                                                        [CallerFilePath] string callerFile = "",
+                                                        [CallerMemberName] string callerMember = "",
+                                                        [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         if (items.Count == 0) {
-            return await Widen(strictRoots);
+            return await Widen(strictRoots, callerFile, callerMember, callerLine);
         }
 
         List<Item> roots = new List<Item>();
@@ -2242,7 +2486,7 @@ public static partial class Sync
                 scope = new List<Entity>(baseScope);
 
                 if (!await Widen(scope)) {
-                    return false;
+                    return failure.Report("dependency_unavailable", scope);
                 }
             }
 
@@ -2259,7 +2503,7 @@ public static partial class Sync
                 Entity? holder = root.FindHolder();
 
                 if (holder == null) {
-                    return false;
+                    return failure.Report("holder_missing", root);
                 }
                 if (!currentScope.Contains(holder)) {
                     currentScope.Add(holder);
@@ -2284,39 +2528,68 @@ public static partial class Sync
             return true;
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, items);
     }
 
     // Retry yields may drop incidental caller cover; success covers cr plus every current matching direct inventory-item destroy graph and verifies membership stability.
     // Lifecycle: strict — a stale critter/item graph or exhausted retry budget returns false; an empty matching set succeeds with cr explicitly covered
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, hstring protoId)
+    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, hstring protoId,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterItemsForDestroy(new List<Entity>(), cr, new List<hstring> { protoId });
+        return await WidenCritterItemsForDestroy(new List<Entity>(),
+                                                 cr,
+                                                 new List<hstring> { protoId },
+                                                 callerFile,
+                                                 callerMember,
+                                                 callerLine);
     }
 
     // Multi-proto convenience overload; leaves cr and every current matching stable inventory-item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root multi-proto overload
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, List<hstring> protoIds)
+    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, List<hstring> protoIds,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterItemsForDestroy(new List<Entity>(), cr, protoIds);
+        return await WidenCritterItemsForDestroy(new List<Entity>(),
+                                                 cr,
+                                                 protoIds,
+                                                 callerFile,
+                                                 callerMember,
+                                                 callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current matching direct inventory-item destroy graph.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, hstring protoId)
+    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, hstring protoId,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterItemsForDestroy(strictRoots, cr, new List<hstring> { protoId });
+        return await WidenCritterItemsForDestroy(strictRoots,
+                                                 cr,
+                                                 new List<hstring> { protoId },
+                                                 callerFile,
+                                                 callerMember,
+                                                 callerLine);
     }
 
     // Retry yields may drop incidental caller cover; success re-proves strictRoots + cr and every current inventory-item destroy graph matching any requested proto.
     // Lifecycle: strict — a stale explicit root/cr/item graph or exhausted retry budget returns false; an empty matching set succeeds with every root explicitly covered
     [CoverEffect(CoverEffectKind.Extend)]
     public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr,
-                                                               List<hstring> protoIds)
+                                                               List<hstring> protoIds,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
+        FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
+
         List<Entity> roots = new List<Entity>(strictRoots);
 
         if (!roots.Contains(cr)) {
@@ -2325,13 +2598,13 @@ public static partial class Sync
 
         for (int attempt = 0; attempt < ItemDestroyGraphCoverAttempts; attempt++) {
             if (!await Widen(roots)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots);
             }
 
             List<Item> items = CollectItemsByProtos(cr, protoIds);
 
             if (!await WidenItemsForDestroy(roots, items)) {
-                return false;
+                return failure.Report("dependency_unavailable", roots, items);
             }
 
             List<Item> currentItems = CollectItemsByProtos(cr, protoIds);
@@ -2343,23 +2616,29 @@ public static partial class Sync
             await ScriptTask.Delay(0);
         }
 
-        return false;
+        return failure.Report("retry_exhausted", strictRoots, cr, protoIds);
     }
 
     // ProtoItem convenience overload for WidenCritterItemsForDestroy; leaves cr and every matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the hstring overload
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, ProtoItem proto)
+    public static async Task<bool> WidenCritterItemsForDestroy(Critter cr, ProtoItem proto,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterItemsForDestroy(cr, proto.ProtoId);
+        return await WidenCritterItemsForDestroy(cr, proto.ProtoId, callerFile, callerMember, callerLine);
     }
 
     // Strict-root ProtoItem convenience overload; leaves every explicit root, cr and each matching stable item destroy graph covered.
     // Lifecycle: strict — identical to the strict-root hstring overload
     [CoverEffect(CoverEffectKind.Extend)]
-    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, ProtoItem proto)
+    public static async Task<bool> WidenCritterItemsForDestroy(List<Entity> strictRoots, Critter cr, ProtoItem proto,
+                                                               [CallerFilePath] string callerFile = "",
+                                                               [CallerMemberName] string callerMember = "",
+                                                               [CallerLineNumber] int callerLine = 0)
     {
-        return await WidenCritterItemsForDestroy(strictRoots, cr, proto.ProtoId);
+        return await WidenCritterItemsForDestroy(strictRoots, cr, proto.ProtoId, callerFile, callerMember, callerLine);
     }
 
     // Compares two covered item snapshots by immutable entity identity without changing cover.

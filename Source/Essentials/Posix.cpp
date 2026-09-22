@@ -61,6 +61,7 @@
 #include <mach/processor_info.h>
 #include <mach/task.h>
 #include <mach/task_info.h>
+#include <sys/proc.h>
 #endif
 
 #if !FO_WINDOWS
@@ -91,6 +92,57 @@ auto posix::get_current_process_id() noexcept -> int32_t
     return static_cast<int32_t>(::getpid());
 #else
     return 0;
+#endif
+}
+
+auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uint64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (pid <= 0) {
+        return std::nullopt;
+    }
+
+#if FO_LINUX || FO_ANDROID
+    string stat_path = strex("/proc/{}/stat", pid).str();
+    std::ifstream file {stat_path.c_str()};
+
+    if (!file) {
+        return std::nullopt;
+    }
+
+    string text;
+    getline(file, text);
+
+    // The command name is parenthesized and may itself contain spaces, so the fields start after its close:
+    // the state is the first of them and the start time in clock ticks the twentieth
+    size_t comm_end = text.rfind(')');
+
+    if (comm_end == string::npos || comm_end + 2 >= text.size()) {
+        return std::nullopt;
+    }
+
+    vector<string_view> fields = strvex(string_view {text}.substr(comm_end + 2)).split(' ');
+    uint64_t start_time = 0;
+
+    if (fields.size() <= 19 || fields[0] == "Z" || fields[0] == "X" || !parse_counter(fields[19], start_time)) {
+        return std::nullopt;
+    }
+
+    return start_time;
+
+#elif FO_MAC
+    proc_bsdinfo info {};
+    auto info_data = make_ptr(&info);
+
+    if (::proc_pidinfo(pid, PROC_PIDTBSDINFO, 0, info_data.get(), PROC_PIDTBSDINFO_SIZE) != PROC_PIDTBSDINFO_SIZE || info.pbi_status == SZOMB) {
+        return std::nullopt;
+    }
+
+    return static_cast<uint64_t>(info.pbi_start_tvsec) * 1000000ULL + static_cast<uint64_t>(info.pbi_start_tvusec);
+
+#else
+    return std::nullopt;
 #endif
 }
 

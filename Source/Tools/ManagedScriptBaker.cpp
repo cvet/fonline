@@ -124,6 +124,9 @@ static auto MakeCsArgumentDeclarations(const_span<ArgDesc> args, bool async_call
 static auto MakeCsEventArgumentDeclarations(string_view owner_type_name, bool is_global, const_span<ArgDesc> args) -> vector<string>;
 static void AppendGeneratedHeader(ostringstream& out);
 static void AppendHstringType(ostringstream& out);
+static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type);
+static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, vector<pair<string, ptr<const BaseTypeDesc>>>& leaves);
+static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view;
 static void AppendEntityBaseClass(ostringstream& out);
 static auto MakePropertyInitializer(const string& type_name, optional<string_view> explicit_initializer, bool is_ref_type = false) -> optional<string>;
 static auto IsNonNullableRefType(const ComplexTypeDesc& type, bool nullable) -> bool;
@@ -183,6 +186,7 @@ static auto CollectManagedAssemblyFiles(const std::filesystem::path& dir) -> vec
 static void RemoveManagedOutputAssemblies(const std::filesystem::path& assemblies_output_dir, string_view target_name);
 static void RemoveManagedBuildSidecars(const std::filesystem::path& assemblies_output_dir, string_view target_name, string_view assembly_file_name);
 static void AppendProjectReferences(std::ostream& file, const std::filesystem::path& project_dir, const vector<string>& references, optional<string_view> condition);
+static auto IsManagedProjectReference(string_view reference) -> bool;
 
 ManagedScriptBaker::ManagedScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
@@ -235,6 +239,7 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
         string ResourcePath {};
         vector<std::filesystem::path> SourceFiles {};
         vector<string> References {};
+        uint64_t BakeStamp {};
         bool ShouldBake {};
     };
 
@@ -336,12 +341,15 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
     for (TargetBakeTask& task : target_tasks) {
         uint64_t managed_bake_stamp = GetManagedBakeStamp(*_context, task.Target, task.SourceFiles, task.References, managed_host_source, analysis, managed_generated_dir, project_name);
         bool should_bake = !_context->BakeChecker || _context->BakeChecker(task.ResourcePath, managed_bake_stamp);
+        task.BakeStamp = managed_bake_stamp;
 
         if (_context->BakeChecker) {
             string host_resource_path = MakeManagedOutputAssemblyResourcePath(task.Target, MANAGED_HOST_ASSEMBLY_FILE_NAME);
             should_bake = _context->BakeChecker(host_resource_path, managed_bake_stamp) || should_bake;
 
-            for (const std::filesystem::path& assembly_disk_path : CollectManagedOutputAssemblies(managed_assemblies_output_dir, task.Target)) {
+            // What the previous bake shipped, not the build directory: that one lies inside the pack output and the
+            // sweep removes it after every bake, so an assembly beyond the entry and the host would go unclaimed
+            for (const std::filesystem::path& assembly_disk_path : CollectManagedAssemblyFiles(managed_assemblies_output_dir.parent_path() / fs::make_path(MakeManagedOutputAssemblyResourceDir(task.Target)))) {
                 string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
                 string output_resource_path = MakeManagedOutputAssemblyResourcePath(task.Target, output_file_name);
 
@@ -381,6 +389,13 @@ void ManagedScriptBaker::BakeFiles(const FileCollection& files, string_view targ
                 string output_file_name = strex("{}", assembly_disk_path.filename().string()).str();
                 string resource_path = MakeManagedOutputAssemblyResourcePath(target, output_file_name);
                 auto assembly_data = ReadFileBytes(assembly_disk_path);
+
+                // A package or project reference copied beside the entry assembly is known only now, and an output
+                // nobody claims is deleted as outdated at the end of the bake
+                if (_context->BakeChecker) {
+                    (void)_context->BakeChecker(resource_path, task.BakeStamp);
+                }
+
                 _context->WriteData(resource_path, assembly_data);
                 pack_assemblies.emplace_back(ReadManagedAssemblyIdentityFrom(resource_path, assembly_data));
 
@@ -583,6 +598,8 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                     }
 
                     out << CS_INDENT << "}\n";
+
+                    AppendAnyConversions(out, *type);
                 }
 
                 out << "}\n\n";
@@ -999,7 +1016,13 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     auto project_path = project_dir / fs::make_path(MakeGeneratedManagedUnifiedProjectFileName(MANAGED_HOST_PROJECT_NAME));
     ostringstream file;
     file << GENERATED_XML_DISCLAIMER;
-    file << "<Project Sdk=\"Microsoft.NET.Sdk\">\n";
+    // Restore must not overwrite the sibling script project's package assets; the SDK reads this directory in props,
+    // so choose a separate one before importing them
+    file << "<Project>\n";
+    file << "  <PropertyGroup>\n";
+    file << "    <BaseIntermediateOutputPath>obj/" << MANAGED_HOST_PROJECT_NAME << "/</BaseIntermediateOutputPath>\n";
+    file << "  </PropertyGroup>\n";
+    file << "  <Import Project=\"Sdk.props\" Sdk=\"Microsoft.NET.Sdk\" />\n";
     file << "  <PropertyGroup>\n";
     file << "    <Configuration Condition=\" '$(Configuration)' == '' \">" << MANAGED_TARGETS.front() << "</Configuration>\n";
     file << "    <Platform Condition=\" '$(Platform)' == '' \">AnyCPU</Platform>\n";
@@ -1029,6 +1052,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     file << "  <ItemGroup>\n";
     file << "    <Compile Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, source_file)) << "\" />\n";
     file << "  </ItemGroup>\n";
+    file << "  <Import Project=\"Sdk.targets\" Sdk=\"Microsoft.NET.Sdk\" />\n";
     file << "</Project>\n";
     WriteTextFileIfChanged(project_path, file.str(), "Can't create generated Managed host project file");
 }
@@ -1112,6 +1136,14 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "    <AssemblyName>" << EscapeXml(pack_name) << "." << EscapeXml(target) << "</AssemblyName>\n";
         file << "    <OutputPath>" << EscapeXml(assemblies_output_dir) << "/" << EscapeXml(target) << "Assemblies/</OutputPath>\n";
         file << "    <DefineConstants>TRACE;" << strex(target).upper().str() << "</DefineConstants>\n";
+
+        // A library copies nothing of the packages a referenced project depends on, and the entry assembly of this
+        // target does not load without them; satellite resources would only add same-named assemblies in subfolders
+        if (auto it = references.find(string(target)); it != references.end() && std::ranges::any_of(it->second, [](const string& reference) { return IsManagedProjectReference(reference); })) {
+            file << "    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>\n";
+            file << "    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>\n";
+        }
+
         file << "  </PropertyGroup>\n";
     }
 
@@ -1423,6 +1455,17 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
     for (const string& reference : references) {
         if (reference.find('/') != string::npos || reference.find('\\') != string::npos || reference.find(':') != string::npos || strex(reference).get_file_extension() == "dll") {
             merge_disk_file(reference);
+        }
+
+        // A referenced project compiles into the target, so the sources beside it are inputs of the bake as well
+        if (IsManagedProjectReference(reference)) {
+            std::error_code ec;
+
+            for (std::filesystem::directory_iterator it(std::filesystem::path {fs::make_path(reference)}.parent_path(), ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+                if (it->is_regular_file() && it->path().extension() == ".cs") {
+                    merge_disk_file(fs::path_to_string(it->path()));
+                }
+            }
         }
     }
 
@@ -2225,6 +2268,10 @@ static auto MakeCsTypeName(const BaseTypeDesc& type) -> string
     if (type.IsDoubleFloat) {
         return "double";
     }
+    // Stored as a string, but a type of its own with its own conversions (CoreScripts/Any.cs)
+    if (type.Name == "any") {
+        return "any";
+    }
     if (type.IsString) {
         return "string";
     }
@@ -2446,7 +2493,7 @@ static auto MakeCsDefaultValueSuffix(const ArgDesc& arg) -> string
 
     // A string default written as a constructor call is the empty string, and `= default` would turn it into a
     // null the C++ side never passes
-    if (arg.Type.Kind == ComplexTypeKind::Simple && arg.Type.BaseType.IsString && !arg.Nullable) {
+    if (arg.Type.Kind == ComplexTypeKind::Simple && arg.Type.BaseType.IsString && arg.Type.BaseType.Name != "any" && !arg.Nullable) {
         return " = \"\"";
     }
 
@@ -3063,6 +3110,105 @@ static void AppendHstringType(ostringstream& out)
     out << "}\n\n";
 }
 
+// A value type's `any` form is the one GenericType_AnyConv writes: its primitive fields, nested types flattened
+static void AppendAnyConversions(ostringstream& out, const BaseTypeDesc& type)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<pair<string, ptr<const BaseTypeDesc>>> leaves;
+    CollectAnyFieldLeaves(type, "", leaves);
+    string struct_name = EscapeCsIdentifier(type.Name);
+
+    out << "\n";
+    out << CS_INDENT << "public static implicit operator global::FOnline.any(" << struct_name << " value)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    return global::FOnline.any.FromFields(new string[]\n";
+    out << CS_INDENT << "    {\n";
+
+    for (const auto& [path, leaf] : leaves) {
+        string cast = leaf->IsEnum ? strex("({})", MakeEnumUnderlyingCsType(*leaf)).str() : string {};
+        out << CS_INDENT << "        global::FOnline.any.FieldText(" << cast << "value" << path << "),\n";
+    }
+
+    out << CS_INDENT << "    });\n";
+    out << CS_INDENT << "}\n\n";
+    out << CS_INDENT << "public static explicit operator " << struct_name << "(global::FOnline.any value)\n";
+    out << CS_INDENT << "{\n";
+    out << CS_INDENT << "    string[] fields = value.SplitFields(" << leaves.size() << ", \"" << EscapeCsStringLiteral(type.Name) << "\");\n";
+    out << CS_INDENT << "    " << struct_name << " result = default;\n";
+
+    for (size_t i = 0; i < leaves.size(); i++) {
+        const auto& [path, leaf] = leaves[i];
+        const BaseTypeDesc& stored_type = leaf->IsEnum ? *leaf->EnumUnderlyingType : *leaf;
+        string cast = leaf->IsEnum ? strex("({})", MakeCsTypeName(*leaf)).str() : string {};
+        out << CS_INDENT << "    result" << path << " = " << cast << "global::FOnline.any." << MakeAnyFieldReader(stored_type) << "(fields[" << i << "]);\n";
+    }
+
+    out << CS_INDENT << "    return result;\n";
+    out << CS_INDENT << "}\n";
+}
+
+static void CollectAnyFieldLeaves(const BaseTypeDesc& type, const string& path, vector<pair<string, ptr<const BaseTypeDesc>>>& leaves)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (type.IsStruct) {
+        FO_VERIFY_AND_THROW(type.StructLayout, "Value type has no layout", type.Name);
+
+        for (const FieldDesc& field : type.StructLayout->Fields) {
+            CollectAnyFieldLeaves(field.Type, strex("{}.{}", path, EscapeCsIdentifier(field.Name)).str(), leaves);
+        }
+    }
+    else {
+        FO_VERIFY_AND_THROW(!type.IsEnum || type.EnumUnderlyingType, "Enum field has no underlying type", type.Name);
+        leaves.emplace_back(path, make_ptr(&type));
+    }
+}
+
+static auto MakeAnyFieldReader(const BaseTypeDesc& type) -> string_view
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (type.IsBool) {
+        return "FieldBool";
+    }
+    if (type.IsInt8) {
+        return "FieldInt8";
+    }
+    if (type.IsUInt8) {
+        return "FieldUInt8";
+    }
+    if (type.IsInt16) {
+        return "FieldInt16";
+    }
+    if (type.IsUInt16) {
+        return "FieldUInt16";
+    }
+    if (type.IsInt32) {
+        return "FieldInt32";
+    }
+    if (type.IsUInt32) {
+        return "FieldUInt32";
+    }
+    if (type.IsInt64) {
+        return "FieldInt64";
+    }
+    if (type.IsUInt64) {
+        return "FieldUInt64";
+    }
+    if (type.IsSingleFloat) {
+        return "FieldFloat32";
+    }
+    if (type.IsDoubleFloat) {
+        return "FieldFloat64";
+    }
+    if (type.IsHashedString) {
+        return "FieldHash";
+    }
+
+    throw ManagedScriptBakerException("Value type field has no any form", type.Name);
+}
+
 static void AppendEntityBaseClass(ostringstream& out)
 {
     FO_STACK_TRACE_ENTRY();
@@ -3125,13 +3271,13 @@ static void AppendEntityBaseClass(ostringstream& out)
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsInt(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "public string GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
+    out << CS_INDENT << "public any GetAsAny<TProp>(TProp prop) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
     out << CS_INDENT << "    return global::FOnline.Native.GetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop));\n";
     out << CS_INDENT << "}\n\n";
-    out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, string value) where TProp : unmanaged, System.Enum\n";
+    out << CS_INDENT << "public void SetAsAny<TProp>(TProp prop, any value) where TProp : unmanaged, System.Enum\n";
     out << CS_INDENT << "{\n";
-    out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value ?? string.Empty);\n";
+    out << CS_INDENT << "    global::FOnline.Native.SetEntityValueAsAny(_entityPtr, global::FOnline.Native.EnumToInt32(prop), value);\n";
     out << CS_INDENT << "}\n\n";
     out << CS_INDENT << "public bool Equals(Entity? other)\n";
     out << CS_INDENT << "{\n";
@@ -5142,7 +5288,14 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     for (const string& reference : references) {
         bool is_path_reference = reference.find('\\') != string::npos || reference.find('/') != string::npos || std::filesystem::path(fs::make_path(reference)).extension().string() == ".dll";
 
-        if (is_path_reference) {
+        // The referenced project builds as itself: the configuration and output path of the script bake belong to
+        // the script project, and would build the reference under a configuration it does not define
+        if (IsManagedProjectReference(reference)) {
+            std::filesystem::path reference_path = fs::make_path(reference);
+            auto project_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
+            file << "    <ProjectReference Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, project_path)) << "\" GlobalPropertiesToRemove=\"OutputPath;Configuration;Platform\" />\n";
+        }
+        else if (is_path_reference) {
             std::filesystem::path reference_path = fs::make_path(reference);
             auto hint_path = reference_path.is_absolute() ? reference_path : std::filesystem::current_path() / reference_path;
             file << "    <Reference Include=\"" << EscapeXml(reference_path.stem().string()) << "\">\n";
@@ -5155,6 +5308,13 @@ static void AppendProjectReferences(std::ostream& file, const std::filesystem::p
     }
 
     file << "  </ItemGroup>\n";
+}
+
+static auto IsManagedProjectReference(string_view reference) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(reference).get_file_extension() == "csproj";
 }
 
 FO_END_NAMESPACE

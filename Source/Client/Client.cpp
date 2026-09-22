@@ -267,6 +267,8 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     }
 
     _eventUnsubscriber += (*window->GetOnScreenSizeChanged()) += [this]() FO_DEFERRED { OnScreenSizeChanged.Fire(); };
+
+    FinishStartingUp();
 }
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
@@ -280,6 +282,9 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _conn(Settings)
 {
     FO_STACK_TRACE_ENTRY();
+
+    // Start-up is not finished here: the mapper builds on this constructor and keeps coming up through
+    // its own body, so MapperEngine is what declares itself running
 }
 
 ClientEngine::~ClientEngine()
@@ -483,6 +488,13 @@ void ClientEngine::MainLoop()
     ProcessInputEvents();
     ProcessScheduledCallbacks();
     TimeEventMngr.ProcessTimeEvents();
+
+    // Reporting an overrun is itself a script call that can overrun, so a record produced here simply arrives
+    // on the next frame instead of recursing
+    for (const ScriptOverrunRecord& overrun : TakeScriptOverruns()) {
+        OnScriptOverrun.Fire(overrun.Entry, overrun.MaxExecution, overrun.MaxLockWait, overrun.Count);
+    }
+
     OnLoop.Fire();
 
     if (_curMap) {

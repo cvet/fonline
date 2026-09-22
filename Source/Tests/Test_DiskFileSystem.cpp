@@ -121,7 +121,14 @@ TEST_CASE("DiskFileSystem")
         fs::iterate_dir(temp_dir, true, [&](string_view name, size_t, uint64_t) { entries.emplace_back(name); });
         CHECK(entries.size() == 2);
         CHECK(std::ranges::find(entries, relative_file) != entries.end());
+        CHECK(fs::make_io_path(control_path) == control_path);
 #if FO_WINDOWS
+        string io_path = fs::make_io_path(file_path);
+        CHECK(io_path.starts_with("\\\\?\\"));
+        {
+            std::ifstream io_stream {std::filesystem::path {fs::make_path(io_path)}, std::ios::binary};
+            CHECK(io_stream.is_open());
+        }
         CHECK(fs::read_file(file_path + ". ") == fs::read_file(file_path));
         CHECK(fs::read_file(control_path + ". ") == fs::read_file(control_path));
         string extended_path = string {"\\\\?\\"} + file_path;
@@ -153,6 +160,8 @@ TEST_CASE("DiskFileSystem")
         REQUIRE(fs::read_file(literal_short_child).has_value());
         CHECK(*fs::read_file(literal_short_child) == literal_content);
         REQUIRE(fs::remove_dir_tree(literal_short_dir));
+#else
+        CHECK(fs::make_io_path(file_path) == file_path);
 #endif
 
         REQUIRE(fs::rename(file_path, renamed_path));

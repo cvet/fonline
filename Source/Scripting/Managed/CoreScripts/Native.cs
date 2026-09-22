@@ -205,7 +205,7 @@ internal static class Native
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasExplicitResult);
 
         try {
-            object? result = handler.DynamicInvoke(AdaptInvokeArgs(handler, args));
+            object? result = handler.DynamicInvoke(args);
             Task? task = result as Task;
 
             if (task != null) {
@@ -254,15 +254,8 @@ internal static class Native
         using ScriptSynchronizationContext context = ScriptSynchronizationContext.Enter(hasResult);
 
         try {
-            // A by-ref parameter is written by the callee, and the caller reads it back out of the very array it
-            // handed over. AdaptInvokeArgs may hand DynamicInvoke a copy, so the written values are carried back
-            object?[] invokeArgs = AdaptInvokeArgs(handler, args);
-            object? result = handler.DynamicInvoke(invokeArgs);
-
-            if (!ReferenceEquals(invokeArgs, args)) {
-                CopyBackByRefArgs(handler, invokeArgs, args);
-            }
-
+            // A by-ref parameter is written by the callee into the very array the caller handed over and reads back
+            object? result = handler.DynamicInvoke(args);
             Task? task = result as Task;
 
             if (task == null) {
@@ -312,83 +305,30 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);
 
-    private static void CopyBackByRefArgs(Delegate handler, object?[] invokeArgs, object?[] args)
+    internal static Assembly LoadDynamicAssembly(byte[] image, byte[]? symbols)
     {
-        ParameterInfo[] parameters = handler.Method.GetParameters();
-
-        for (int i = 0; i < args.Length && i < parameters.Length && i < invokeArgs.Length; i++) {
-            if (parameters[i].ParameterType.IsByRef) {
-                args[i] = invokeArgs[i];
-            }
-        }
+        string ? error;
+        Assembly? assembly = LoadDynamicAssemblyInternal(BoundBackend, image, symbols, out error);
+        ThrowNativeError(error);
+        Invariant.Verify(assembly != null, "Dynamic assembly load must answer with an assembly or an error");
+        return assembly;
     }
 
-    private static object?[] AdaptInvokeArgs(Delegate handler, object?[] args)
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern Assembly? LoadDynamicAssemblyInternal(IntPtr backend, byte[] image, byte[]? symbols,
+                                                                out string? error);
+
+    internal static byte[] ReadClientScriptsImage()
     {
-        ParameterInfo[] parameters = handler.Method.GetParameters();
-        object?[]? adaptedArgs = null;
-
-        for (int i = 0; i < args.Length && i < parameters.Length; i++) {
-            Type parameterType = parameters[i].ParameterType;
-
-            if (parameterType == typeof(Dictionary<string, string>) && args[i] is IDictionary source &&
-                !(args[i] is Dictionary<string, string>)) {
-                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
-                adaptedArgs[i] = StringifyDictionary(source);
-            }
-            else if (parameterType == typeof(List<string>) && args[i] is IEnumerable sourceList &&
-                     !(args[i] is List<string>) && !(args[i] is string)) {
-                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
-                adaptedArgs[i] = StringifyList(sourceList);
-            }
-            else if (parameterType == typeof(List<object>) && args[i] is IEnumerable sourceObjectList &&
-                     !(args[i] is List<object>) && !(args[i] is string)) {
-                adaptedArgs = adaptedArgs ?? (object?[])args.Clone();
-                adaptedArgs[i] = ObjectList(sourceObjectList);
-            }
-        }
-
-        return adaptedArgs ?? args;
+        string ? error;
+        byte[]? image = ReadClientScriptsImageInternal(BoundBackend, out error);
+        ThrowNativeError(error);
+        Invariant.Verify(image != null, "Client scripts image read must answer with an image or an error");
+        return image;
     }
 
-    private static Dictionary<string, string> StringifyDictionary(IDictionary source)
-    {
-        Dictionary<string, string> result = new Dictionary<string, string>();
-
-        foreach (DictionaryEntry entry in source) {
-            string? key = entry.Key as string;
-
-            if (key == null) {
-                continue;
-            }
-
-            result[key] = entry.Value?.ToString() ?? string.Empty;
-        }
-
-        return result;
-    }
-
-    private static List<string> StringifyList(IEnumerable source)
-    {
-        List<string> result = new List<string>();
-
-        foreach (object entry in source) {
-            result.Add(entry?.ToString() ?? string.Empty);
-        }
-
-        return result;
-    }
-
-    private static List<object> ObjectList(IEnumerable source)
-    {
-        List<object> result = new List<object>();
-
-        foreach (object entry in source) {
-            result.Add(entry);
-        }
-
-        return result;
-    }
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern byte[]? ReadClientScriptsImageInternal(IntPtr backend, out string? error);
 
     // Called by the engine when a script exception reaches native code
     [CallableByEngine]
@@ -988,20 +928,20 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? SetEntityValueAsIntInternal(IntPtr backend, IntPtr entityPtr, int propIndex, int value);
 
-    internal static string GetEntityValueAsAny(IntPtr entityPtr, int propIndex)
+    internal static any GetEntityValueAsAny(IntPtr entityPtr, int propIndex)
     {
         string ? error;
         string? value = GetEntityValueAsAnyInternal(BoundBackend, entityPtr, propIndex, out error);
         ThrowNativeError(error);
-        return value!;
+        return Invariant.VerifyNotNull(value, "Native any property read returned no text");
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? GetEntityValueAsAnyInternal(IntPtr backend, IntPtr entityPtr, int propIndex, out string? error);
 
-    internal static void SetEntityValueAsAny(IntPtr entityPtr, int propIndex, string value)
+    internal static void SetEntityValueAsAny(IntPtr entityPtr, int propIndex, any value)
     {
-        ThrowNativeError(SetEntityValueAsAnyInternal(BoundBackend, entityPtr, propIndex, value));
+        ThrowNativeError(SetEntityValueAsAnyInternal(BoundBackend, entityPtr, propIndex, value.ToString()));
     }
 
     [MethodImpl(MethodImplOptions.InternalCall)]

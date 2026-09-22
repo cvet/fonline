@@ -32,24 +32,22 @@
 //
 
 #include "WinApi.h"
+
+#if FO_WINDOWS
+
 #include "StackTrace.h"
 #include "StringUtils.h"
 
-#if FO_WINDOWS
-#include <fcntl.h>
-#include <io.h>
-#include <share.h>
-#endif
-
-#if FO_WINDOWS
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
-#include <psapi.h>
-#include <shlobj.h>
-#endif
-#include "WinApiUndef.inc"
 
-#if FO_WINDOWS
+#include <fcntl.h>
+#include <io.h>
+#include <psapi.h>
+#include <share.h>
+#include <shlobj.h>
+
+#include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
 
@@ -106,7 +104,7 @@ auto winapi::set_thread_description(const string& name) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     using set_thread_description_fn = HRESULT(WINAPI*)(HANDLE, PCWSTR);
-    auto entry = reinterpret_cast<set_thread_description_fn>(resolve_kernel_entry("SetThreadDescription")); // NOLINT(clang-diagnostic-cast-function-type-strict)
+    set_thread_description_fn entry = reinterpret_cast<set_thread_description_fn>(resolve_kernel_entry("SetThreadDescription")); // NOLINT(clang-diagnostic-cast-function-type-strict)
 
     if (entry == nullptr) {
         return false;
@@ -122,6 +120,33 @@ auto winapi::get_current_process_id() noexcept -> uint32_t
     FO_STACK_TRACE_ENTRY();
 
     return ::GetCurrentProcessId();
+}
+
+auto winapi::get_running_process_start_time(uint32_t pid) noexcept -> optional<uint64_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    HANDLE process = ::OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION | SYNCHRONIZE, FALSE, pid);
+
+    if (process == nullptr) {
+        return std::nullopt;
+    }
+
+    FILETIME creation_time {};
+    FILETIME exit_time {};
+    FILETIME kernel_time {};
+    FILETIME user_time {};
+
+    // A terminated process may itself return STILL_ACTIVE (259); only its signaled handle proves termination
+    bool running = ::WaitForSingleObject(process, 0) == WAIT_TIMEOUT;
+    bool has_times = ::GetProcessTimes(process, &creation_time, &exit_time, &kernel_time, &user_time) != 0;
+    ::CloseHandle(process);
+
+    if (!running || !has_times) {
+        return std::nullopt;
+    }
+
+    return file_time_to_ticks(creation_time);
 }
 
 auto winapi::get_module_file_name() noexcept -> optional<string>

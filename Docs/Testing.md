@@ -54,6 +54,8 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
 
+`BuildTools/tests/test_process_identity.py` is a Windows process-lifecycle regression. With `clang++` available it compiles the canonical `WinApi.cpp` process query into a small probe and checks a live foreign process and terminated processes whose handles remain open, including exit code `259`. Run it with `python -m pytest BuildTools/tests/test_process_identity.py`; it complements the `Platform` and `ClientSessionMarker*` native cases without needing the full engine linkage.
+
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. When the run fails, the helper also echoes the captured output before failing, so a failure is diagnosable from the build output alone — on CI the log file never leaves the runner, and the exit code by itself does not say which test or assertion broke.
 The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
 
@@ -142,6 +144,20 @@ fixture. Cases cover ref-result conversion and failure accounting, qualified mod
 cached dispatch allocation, native fallback, isolation from foreign enum assemblies, dictionary signatures,
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
+
+The synchronization harness compiles the real `Sync` helpers with deterministic native-acquisition fixtures:
+
+```bash
+dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
+```
+
+It proves one report per externally returned false across every acquisition overload when subscribed,
+unchanged results without subscribers, multiple independent subscribers, unsubscription and callback-fault
+isolation with exception accounting. It also covers caller metadata forwarding, phase/entity information,
+successful retry and best-effort silence, partial restoration, native exception propagation, unchanged caller
+strings, typed IDs/prototypes and immutable snapshots across subscribers. Its fixture exposes neither a logging
+API nor a diagnostics setting to Sync. The data contract lives in
+[ServerRuntime.md](ServerRuntime.md#managed-synchronization-failure-diagnostics).
 
 `Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and value-type accessors and component
 presence checks must use the indexed unboxed bridge, while complex properties retain conversion. It also pins
