@@ -593,6 +593,18 @@ static auto Any_ResolveEnumValue(const any_t& self, ptr<const EngineMetadata> me
     bool failed = false;
     int32_t enum_value = 0;
 
+    // Property data reads back into `any` as the member's number
+    if (strvex(self_view).is_number()) {
+        enum_value = strvex(self_view).to_int32();
+        (void)meta->ResolveEnumValueName(enum_name, enum_value, &failed);
+
+        if (failed) {
+            throw ScriptException("Invalid enum value for any conversion", enum_name, self_view);
+        }
+
+        return enum_value;
+    }
+
     if (auto sep_pos = self_view.find("::"); sep_pos != string_view::npos) {
         auto parsed_enum_name = self_view.substr(0, sep_pos);
         auto parsed_value_name = self_view.substr(sep_pos + 2);

@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2530,
-      "inventory_sha256": "e7d48961fd1ed4025d05559208ee49db3fda8ba32bf613ceb1af8d6807bfcc43",
+      "symbol_count": 2532,
+      "inventory_sha256": "7c6b1ce985128b9da3be5ce578458d68584b9e95ec09f613b46431fa4a40d136",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,12 +70,12 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2530,
+    "symbol_count": 2532,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 57,
-      "enum-value": 770,
-      "event": 121,
+      "enum-value": 771,
+      "event": 122,
       "method": 990,
       "migration-rule": 28,
       "property": 132,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2529,
+      "experimental": 2531,
       "internal": 1
     },
     "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2530,
+    "explicit_contract_symbol_count": 2532,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2529,
+      "experimental": 2531,
       "internal": 1
     },
-    "described_symbol_count": 2530,
+    "described_symbol_count": 2532,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -1107,7 +1107,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 60",
+      "signature": "Version 0 0 61",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1129,7 +1129,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "60"
+      "replacement": "61"
     },
     {
       "id": "script.entity.Critter",
@@ -9657,7 +9657,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 555
+        "line": 556
       },
       "contract": {
         "explicit": true,
@@ -9693,7 +9693,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 524
+        "line": 525
       },
       "contract": {
         "explicit": true,
@@ -9729,7 +9729,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 519
+        "line": 520
       },
       "contract": {
         "explicit": true,
@@ -9765,7 +9765,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 522
+        "line": 523
       },
       "contract": {
         "explicit": true,
@@ -9801,7 +9801,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 523
+        "line": 524
       },
       "contract": {
         "explicit": true,
@@ -9837,7 +9837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 518
+        "line": 519
       },
       "contract": {
         "explicit": true,
@@ -9873,7 +9873,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 525
+        "line": 526
       },
       "contract": {
         "explicit": true,
@@ -9909,7 +9909,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 526
+        "line": 527
       },
       "contract": {
         "explicit": true,
@@ -9945,7 +9945,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 517
+        "line": 518
       },
       "contract": {
         "explicit": true,
@@ -9981,7 +9981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 520
+        "line": 521
       },
       "contract": {
         "explicit": true,
@@ -10017,7 +10017,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 521
+        "line": 522
       },
       "contract": {
         "explicit": true,
@@ -10053,7 +10053,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 563
+        "line": 564
       },
       "contract": {
         "explicit": true,
@@ -10089,7 +10089,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 571
+        "line": 572
       },
       "contract": {
         "explicit": true,
@@ -10125,7 +10125,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 573
+        "line": 574
       },
       "contract": {
         "explicit": true,
@@ -10161,7 +10161,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 572
+        "line": 573
       },
       "contract": {
         "explicit": true,
@@ -10305,7 +10305,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 565
+        "line": 566
       },
       "contract": {
         "explicit": true,
@@ -10341,7 +10341,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 564
+        "line": 565
       },
       "contract": {
         "explicit": true,
@@ -10413,7 +10413,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 575
+        "line": 576
       },
       "contract": {
         "explicit": true,
@@ -10449,7 +10449,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 574
+        "line": 575
       },
       "contract": {
         "explicit": true,
@@ -10485,7 +10485,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 566
+        "line": 567
       },
       "contract": {
         "explicit": true,
@@ -10593,7 +10593,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 580
+        "line": 581
       },
       "contract": {
         "explicit": true,
@@ -10629,7 +10629,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 579
+        "line": 580
       },
       "contract": {
         "explicit": true,
@@ -10665,7 +10665,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 567
+        "line": 568
       },
       "contract": {
         "explicit": true,
@@ -10701,7 +10701,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 568
+        "line": 569
       },
       "contract": {
         "explicit": true,
@@ -10737,7 +10737,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 576
+        "line": 577
       },
       "contract": {
         "explicit": true,
@@ -10773,7 +10773,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 578
+        "line": 579
       },
       "contract": {
         "explicit": true,
@@ -10809,7 +10809,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 577
+        "line": 578
       },
       "contract": {
         "explicit": true,
@@ -10845,7 +10845,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 569
+        "line": 570
       },
       "contract": {
         "explicit": true,
@@ -10881,7 +10881,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 570
+        "line": 571
       },
       "contract": {
         "explicit": true,
@@ -11205,7 +11205,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 561
+        "line": 562
       },
       "contract": {
         "explicit": true,
@@ -11241,7 +11241,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 562
+        "line": 563
       },
       "contract": {
         "explicit": true,
@@ -11457,7 +11457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 557
+        "line": 558
       },
       "contract": {
         "explicit": true,
@@ -11529,7 +11529,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 560
+        "line": 561
       },
       "contract": {
         "explicit": true,
@@ -11565,7 +11565,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 558
+        "line": 559
       },
       "contract": {
         "explicit": true,
@@ -11601,7 +11601,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 559
+        "line": 560
       },
       "contract": {
         "explicit": true,
@@ -12177,7 +12177,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 556
+        "line": 557
       },
       "contract": {
         "explicit": true,
@@ -12537,7 +12537,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 541
+        "line": 542
       },
       "contract": {
         "explicit": true,
@@ -12825,7 +12825,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 552
+        "line": 553
       },
       "contract": {
         "explicit": true,
@@ -12861,7 +12861,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 549
+        "line": 550
       },
       "contract": {
         "explicit": true,
@@ -12897,7 +12897,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 548
+        "line": 549
       },
       "contract": {
         "explicit": true,
@@ -12933,7 +12933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 550
+        "line": 551
       },
       "contract": {
         "explicit": true,
@@ -12969,7 +12969,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 551
+        "line": 552
       },
       "contract": {
         "explicit": true,
@@ -13113,7 +13113,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 530
+        "line": 531
       },
       "contract": {
         "explicit": true,
@@ -13149,7 +13149,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 531
+        "line": 532
       },
       "contract": {
         "explicit": true,
@@ -13329,7 +13329,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 532
+        "line": 533
       },
       "contract": {
         "explicit": true,
@@ -13653,7 +13653,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 533
+        "line": 534
       },
       "contract": {
         "explicit": true,
@@ -14013,7 +14013,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 542
+        "line": 543
       },
       "contract": {
         "explicit": true,
@@ -14063,6 +14063,42 @@
       "parent_id": "script.enum.ImGui_InputTextFlags",
       "value": "8192",
       "evaluated_value": 8192,
+      "generated": false
+    },
+    {
+      "id": "script.enum-value.ImGui_InputTextFlags.Password",
+      "family_id": "script.enum-value.ImGui_InputTextFlags.Password",
+      "kind": "enum-value",
+      "name": "Password",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "ImGui_InputTextFlags",
+      "signature": "ImGui_InputTextFlags.Password = 1024",
+      "description": "Password mode, display all characters as '*', disable copy",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "ThirdParty/imgui/imgui.h",
+        "line": 1287
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "parent_id": "script.enum.ImGui_InputTextFlags",
+      "value": "1024",
+      "evaluated_value": 1024,
       "generated": false
     },
     {
@@ -14121,7 +14157,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 545
+        "line": 546
       },
       "contract": {
         "explicit": true,
@@ -14157,7 +14193,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 547
+        "line": 548
       },
       "contract": {
         "explicit": true,
@@ -14193,7 +14229,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 546
+        "line": 547
       },
       "contract": {
         "explicit": true,
@@ -14229,7 +14265,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 544
+        "line": 545
       },
       "contract": {
         "explicit": true,
@@ -14553,7 +14589,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 543
+        "line": 544
       },
       "contract": {
         "explicit": true,
@@ -14733,7 +14769,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 527
+        "line": 528
       },
       "contract": {
         "explicit": true,
@@ -14805,7 +14841,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 554
+        "line": 555
       },
       "contract": {
         "explicit": true,
@@ -15057,7 +15093,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 553
+        "line": 554
       },
       "contract": {
         "explicit": true,
@@ -16101,7 +16137,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 538
+        "line": 539
       },
       "contract": {
         "explicit": true,
@@ -16173,7 +16209,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 539
+        "line": 540
       },
       "contract": {
         "explicit": true,
@@ -16425,7 +16461,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 540
+        "line": 541
       },
       "contract": {
         "explicit": true,
@@ -16605,7 +16641,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 537
+        "line": 538
       },
       "contract": {
         "explicit": true,
@@ -17397,7 +17433,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 535
+        "line": 536
       },
       "contract": {
         "explicit": true,
@@ -18333,7 +18369,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 534
+        "line": 535
       },
       "contract": {
         "explicit": true,
@@ -18909,7 +18945,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 536
+        "line": 537
       },
       "contract": {
         "explicit": true,
@@ -19017,7 +19053,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 529
+        "line": 530
       },
       "contract": {
         "explicit": true,
@@ -19269,7 +19305,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 528
+        "line": 529
       },
       "contract": {
         "explicit": true,
@@ -19845,7 +19881,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 515
+        "line": 516
       },
       "contract": {
         "explicit": true,
@@ -19917,7 +19953,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 516
+        "line": 517
       },
       "contract": {
         "explicit": true,
@@ -20025,7 +20061,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 514
+        "line": 515
       },
       "contract": {
         "explicit": true,
@@ -20313,7 +20349,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 513
+        "line": 514
       },
       "contract": {
         "explicit": true,
@@ -29862,7 +29898,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 403
+        "line": 404
       },
       "contract": {
         "explicit": true,
@@ -29930,7 +29966,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 446
+        "line": 447
       },
       "contract": {
         "explicit": true,
@@ -29964,7 +30000,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 414
+        "line": 415
       },
       "contract": {
         "explicit": true,
@@ -30066,7 +30102,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 377
+        "line": 378
       },
       "contract": {
         "explicit": true,
@@ -30202,7 +30238,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 368
+        "line": 369
       },
       "contract": {
         "explicit": true,
@@ -30236,7 +30272,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 352
+        "line": 353
       },
       "contract": {
         "explicit": true,
@@ -30304,7 +30340,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 388
+        "line": 389
       },
       "contract": {
         "explicit": true,
@@ -30338,7 +30374,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/ImGuiExt/ImGuiStuff.h",
-        "line": 489
+        "line": 490
       },
       "contract": {
         "explicit": true,
@@ -31172,7 +31208,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 312
+        "line": 315
       },
       "contract": {
         "explicit": true,
@@ -31241,7 +31277,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 327
+        "line": 330
       },
       "contract": {
         "explicit": true,
@@ -31331,7 +31367,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 321
+        "line": 324
       },
       "contract": {
         "explicit": true,
@@ -31421,7 +31457,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 315
+        "line": 318
       },
       "contract": {
         "explicit": true,
@@ -31483,7 +31519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 318
+        "line": 321
       },
       "contract": {
         "explicit": true,
@@ -31552,7 +31588,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 324
+        "line": 327
       },
       "contract": {
         "explicit": true,
@@ -31628,7 +31664,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 270
+        "line": 273
       },
       "contract": {
         "explicit": true,
@@ -31669,7 +31705,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 273
+        "line": 276
       },
       "contract": {
         "explicit": true,
@@ -31710,7 +31746,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 276
+        "line": 279
       },
       "contract": {
         "explicit": true,
@@ -31758,7 +31794,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 291
+        "line": 294
       },
       "contract": {
         "explicit": true,
@@ -31799,7 +31835,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 294
+        "line": 297
       },
       "contract": {
         "explicit": true,
@@ -31954,7 +31990,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 267
+        "line": 270
       },
       "contract": {
         "explicit": true,
@@ -31987,7 +32023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 285
+        "line": 288
       },
       "contract": {
         "explicit": true,
@@ -32028,7 +32064,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 288
+        "line": 291
       },
       "contract": {
         "explicit": true,
@@ -32069,7 +32105,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 279
+        "line": 282
       },
       "contract": {
         "explicit": true,
@@ -32110,7 +32146,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 282
+        "line": 285
       },
       "contract": {
         "explicit": true,
@@ -32151,7 +32187,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 261
+        "line": 264
       },
       "contract": {
         "explicit": true,
@@ -32199,7 +32235,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 264
+        "line": 267
       },
       "contract": {
         "explicit": true,
@@ -32273,7 +32309,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 180
+        "line": 183
       },
       "contract": {
         "explicit": true,
@@ -32306,7 +32342,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 300
+        "line": 303
       },
       "contract": {
         "explicit": true,
@@ -32339,7 +32375,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 303
+        "line": 306
       },
       "contract": {
         "explicit": true,
@@ -32372,7 +32408,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 306
+        "line": 309
       },
       "contract": {
         "explicit": true,
@@ -32405,7 +32441,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 333
+        "line": 336
       },
       "contract": {
         "explicit": true,
@@ -32446,7 +32482,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 231
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -32487,7 +32523,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 237
+        "line": 240
       },
       "contract": {
         "explicit": true,
@@ -32528,7 +32564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 234
+        "line": 237
       },
       "contract": {
         "explicit": true,
@@ -32569,7 +32605,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 297
+        "line": 300
       },
       "contract": {
         "explicit": true,
@@ -32624,7 +32660,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 309
+        "line": 312
       },
       "contract": {
         "explicit": true,
@@ -32672,7 +32708,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 186
+        "line": 189
       },
       "contract": {
         "explicit": true,
@@ -32705,7 +32741,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 201
+        "line": 204
       },
       "contract": {
         "explicit": true,
@@ -32753,7 +32789,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 228
+        "line": 231
       },
       "contract": {
         "explicit": true,
@@ -32801,7 +32837,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 219
+        "line": 222
       },
       "contract": {
         "explicit": true,
@@ -32849,7 +32885,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 207
+        "line": 210
       },
       "contract": {
         "explicit": true,
@@ -32897,7 +32933,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 213
+        "line": 216
       },
       "contract": {
         "explicit": true,
@@ -32945,7 +32981,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 222
+        "line": 225
       },
       "contract": {
         "explicit": true,
@@ -32993,7 +33029,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 195
+        "line": 198
       },
       "contract": {
         "explicit": true,
@@ -33041,7 +33077,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 198
+        "line": 201
       },
       "contract": {
         "explicit": true,
@@ -33089,7 +33125,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 225
+        "line": 228
       },
       "contract": {
         "explicit": true,
@@ -33137,7 +33173,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 216
+        "line": 219
       },
       "contract": {
         "explicit": true,
@@ -33185,7 +33221,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 204
+        "line": 207
       },
       "contract": {
         "explicit": true,
@@ -33233,7 +33269,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 210
+        "line": 213
       },
       "contract": {
         "explicit": true,
@@ -33281,7 +33317,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 192
+        "line": 195
       },
       "contract": {
         "explicit": true,
@@ -33329,7 +33365,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 189
+        "line": 192
       },
       "contract": {
         "explicit": true,
@@ -33370,7 +33406,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 183
+        "line": 186
       },
       "contract": {
         "explicit": true,
@@ -33403,7 +33439,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 330
+        "line": 333
       },
       "contract": {
         "explicit": true,
@@ -33416,6 +33452,68 @@
       },
       "declared_target": "client",
       "arguments": []
+    },
+    {
+      "id": "script.event.client.Game.OnScriptOverrun",
+      "family_id": "script.event.client.Game.OnScriptOverrun",
+      "kind": "event",
+      "name": "OnScriptOverrun",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "event Game.OnScriptOverrun(string entry, timespan execution, timespan lockWait, int32 count)",
+      "description": "Reports a bounded, drained script overrun summary before the next OnLoop callback",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Client/Client.h",
+        "line": 180
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "arguments": [
+        {
+          "name": "entry",
+          "type": "string",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "execution",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "lockWait",
+          "type": "timespan",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "count",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
     },
     {
       "id": "script.event.client.Game.OnStart",
@@ -33469,7 +33567,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 252
+        "line": 255
       },
       "contract": {
         "explicit": true,
@@ -33510,7 +33608,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 240
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -33558,7 +33656,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 243
+        "line": 246
       },
       "contract": {
         "explicit": true,
@@ -33613,7 +33711,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 255
+        "line": 258
       },
       "contract": {
         "explicit": true,
@@ -33661,7 +33759,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 249
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -33702,7 +33800,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 246
+        "line": 249
       },
       "contract": {
         "explicit": true,
@@ -33750,7 +33848,7 @@
       "examples": [],
       "source": {
         "path": "Source/Client/Client.h",
-        "line": 258
+        "line": 261
       },
       "contract": {
         "explicit": true,

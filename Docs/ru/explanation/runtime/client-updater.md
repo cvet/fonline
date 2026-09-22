@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"2ea91db3c59759901ef6eb45b5cd789faf1b3413c8415c9aa79e57b48d9c07a5"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"40488cb0c7caca773d34e5e3e19aa2e23d57b06cb254ff2eafccc451ead98c8e"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,

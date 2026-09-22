@@ -258,6 +258,121 @@ internal static class Program
                  Check(Native.LastContinuationName == "DispatchProbe::YieldOnce (continuation)",
                        "A resumed await is not named after its async method: " + Native.LastContinuationName);
              }),
+            ("any writes a value in the engine's text form",
+             () =>
+             {
+                 Check(((any) true).ToString() == "true" && ((any) false).ToString() == "false", "Wrong boolean text");
+                 Check(((any)(-5)).ToString() == "-5", "Wrong integer text");
+                 Check(((any)ulong.MaxValue).ToString() == "18446744073709551615", "Wrong unsigned text");
+                 Check(((any)1.5f).ToString() == "1.5", "Wrong floating point text");
+                 Check(((any) "text").ToString() == "text", "Wrong string text");
+                 Check(((any) new hstring("Name")).ToString() == "Name", "Wrong hashed string text");
+                 Check(((any)CritterProperty.Strength).ToString() == "CritterProperty::Strength",
+                       "An enum is not written with its type");
+                 Check(default(any).ToString().Length == 0, "Default any is not empty");
+                 Check((any) "7" == (any)7 && (any) "7" != (any) "07", "Any equality is not the equality of its text");
+                 ExpectThrows<InvalidOperationException>(() => _ = (any)(CritterProperty)12345,
+                                                         "An enum value with no member was written");
+             }),
+            ("any reads a value by the engine's rules",
+             () =>
+             {
+                 Check((int)(any) "42" == 42 && (int)(any) " 42 " == 42, "Wrong decimal integer");
+                 Check((int)(any) "0x10" == 16 && (int)(any) "-0x10" == -16, "Wrong hexadecimal integer");
+                 Check((int)(any) "2.9" == 2, "A fraction is not truncated");
+                 Check((int)(any) "true" == 1 && (int)(any) "FALSE" == 0, "A boolean is not an integer");
+                 Check((int)(any) "CritterProperty::Strength" == 7, "An enum member is not its value");
+                 Check((int)default(any) == 0 && !(bool)default(any) && (double)default(any) == 0.0,
+                       "Empty text is not zero");
+                 Check((long)(any) long.MinValue == long.MinValue, "Integer bounds do not round-trip");
+                 Check((float)(any) float.MaxValue == float.MaxValue, "Float bounds do not round-trip");
+                 Check((double)(any) "1.5f" == 1.5, "The float literal suffix is refused");
+                 Check((bool)(any) "True" && !(bool)(any) "0" && (bool)(any) "2", "Wrong boolean reading");
+                 Check((string)(any) "text" == "text", "Wrong string reading");
+                 Check(((hstring)(any) "Name").ToString() == "Name", "Wrong hashed string reading");
+                 Check(((any) "CritterProperty::Strength").ToEnum<CritterProperty>() == CritterProperty.Strength &&
+                           ((any) "Strength").ToEnum<CritterProperty>() == CritterProperty.Strength &&
+                           ((any) "7").ToEnum<CritterProperty>() == CritterProperty.Strength,
+                       "Wrong enum reading");
+             }),
+            ("any refuses text that does not hold the requested type",
+             () =>
+             {
+                 ExpectThrows<InvalidOperationException>(() => _ = (int)(any) "abc", "Text was read as an integer");
+                 ExpectThrows<InvalidOperationException>(() => _ = (byte)(any) "300", "An integer overflowed its type");
+                 ExpectThrows<InvalidOperationException>(() => _ = (ulong)(any) "-1", "A negative unsigned was read");
+                 ExpectThrows<InvalidOperationException>(() => _ = (bool)(any) "maybe", "Text was read as a boolean");
+                 ExpectThrows<InvalidOperationException>(() => _ = (double)(any) "nan", "A non-finite number was read");
+                 ExpectThrows<InvalidOperationException>(() => _ = (float)(any) "1e300", "A float overflowed");
+                 ExpectThrows<InvalidOperationException>(() => _ = ((any) "12345").ToEnum<CritterProperty>(),
+                                                         "A number that names no member was read as one");
+                 ExpectThrows<InvalidOperationException>(() => _ =
+                                                             ((any) "TextPackName::Game").ToEnum<CritterProperty>(),
+                                                         "A member of another enum was accepted");
+             }),
+            ("any refuses enum numbers that overflow their storage",
+             () =>
+             {
+                 foreach (string text in new[] { "4294967303", "-4294967289", "0x100000007" }) {
+                     ExpectThrows<InvalidOperationException>(() => _ = ((any)text).ToEnum<CritterProperty>(),
+                                                             "An overflowing number aliased an enum member: " + text);
+                 }
+
+                 ExpectThrows<InvalidOperationException>(() => _ = ((any) "263").ToEnum<ExampleGame.ByteEnum>(),
+                                                         "An overflowing byte aliased an enum member");
+                 Check(((any) "7").ToEnum<ExampleGame.ByteEnum>() == ExampleGame.ByteEnum.Value,
+                       "A valid narrow enum member was rejected");
+             }),
+            ("any integer conversions accept the engine float suffix",
+             () =>
+             {
+                 Check((int)(any) "2.9f" == 2 && (int)(any) "-2.9f" == -2,
+                       "A suffixed fraction was not truncated toward zero");
+                 Check((bool)(any) "1f" && !(bool)(any) "0f", "A suffixed boolean number was refused");
+             }),
+            ("any carries a value type field by field",
+             () =>
+             {
+                 any fields = any.FromFields(new[] { any.FieldText(-3), any.FieldText(new hstring("Key")) });
+                 Check(fields.ToString() == "-3 Key", "Wrong field text");
+                 string[] split = fields.SplitFields(2, "Probe");
+                 Check(any.FieldInt32(split[0]) == -3 && any.FieldHash(split[1]).ToString() == "Key",
+                       "Fields do not read back");
+                 ExpectThrows<InvalidOperationException>(() => fields.SplitFields(3, "Probe"),
+                                                         "A field count mismatch was accepted");
+                 any emptyField = any.FromFields(new[] { any.FieldText(new hstring("Game")),
+                                                         any.FieldText(new hstring("")),
+                                                         any.FieldText(new hstring("Key")) });
+                 string[] emptySplit = emptyField.SplitFields(3, "Probe");
+                 Check(emptySplit[0] == "Game" && emptySplit[1].Length == 0 && emptySplit[2] == "Key",
+                       "A field with empty text lost its place");
+                 Check(((any) "10   20").SplitFields(2, "Probe")[1] == "20",
+                       "Typed text with repeated spaces was refused");
+             }),
+            ("script signatures name any and refuse object",
+             () =>
+             {
+                 Check(ScriptFuncRegistration.EngineTypeName(typeof(any)) == "any", "Wrong any signature");
+                 Check(ScriptFuncRegistration.EngineTypeName(typeof(List<any>)) == "any[]",
+                       "Wrong any array signature");
+                 ExpectThrows<NotSupportedException>(() => ScriptFuncRegistration.EngineTypeName(typeof(object)),
+                                                     "object was accepted as an engine type");
+             }),
+            ("name dispatch converts arguments to and from any",
+             () =>
+             {
+                 ScriptFunc.Invoke("DispatchProbe::TakeAny", 5);
+                 Check(ExampleGame.DispatchProbe.AnyValue.ToString() == "5",
+                       "An integer did not reach an any parameter");
+                 ScriptFunc.Invoke("DispatchProbe::TakeAny", CritterProperty.Strength);
+                 Check(ExampleGame.DispatchProbe.AnyValue.ToString() == "CritterProperty::Strength",
+                       "An enum did not reach an any parameter in its engine form");
+                 ScriptFunc.Invoke("DispatchProbe::TakeInt", (any) "7");
+                 Check(ExampleGame.DispatchProbe.IntValue == 7, "An any argument did not reach an integer parameter");
+                 ScriptFunc.Invoke("DispatchProbe::TakeEnum", (any) "CritterProperty::Strength");
+                 Check(ExampleGame.DispatchProbe.EnumValue == CritterProperty.Strength,
+                       "An any argument did not reach an enum parameter");
+             }),
             ("duration formatting across signs and extremes",
              () =>
              {
@@ -335,6 +450,11 @@ internal sealed class CheckFailedException : Exception
 
 namespace ExampleGame
 {
+public enum ByteEnum : byte
+{
+    Value = 7
+}
+
 public sealed class First
 {
 }
@@ -377,6 +497,18 @@ public static class DispatchProbe
     public static void TakeEnum(CritterProperty value)
     {
         EnumValue = value;
+    }
+    internal static any AnyValue;
+    internal static int IntValue;
+    [CallableByName]
+    public static void TakeAny(any value)
+    {
+        AnyValue = value;
+    }
+    [CallableByName]
+    public static void TakeInt(int value)
+    {
+        IntValue = value;
     }
     [CallableByName]
     public static void NoArgs()
@@ -463,3 +595,4 @@ public enum Shared
     Value = 2
 }
 }
+

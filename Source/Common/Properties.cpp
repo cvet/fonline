@@ -65,6 +65,28 @@ static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> boo
     return false;
 }
 
+// Script values write an enum into `any` as `EnumType::Member` and property data reads back as the number, so both are accepted
+static auto ResolveAnyEnumValue(string_view value, const BaseTypeDesc& enum_type, const NameResolver& name_resolver) -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (strvex(value).is_number()) {
+        return strvex(value).to_int64();
+    }
+
+    string_view member_name = strvex(value).trim().strv();
+
+    if (size_t separator = member_name.find("::"); separator != string_view::npos) {
+        FO_VERIFY_AND_THROW(member_name.substr(0, separator) == enum_type.Name, "Any value holds another enum type", enum_type.Name, value);
+        member_name = member_name.substr(separator + 2);
+    }
+
+    bool failed = false;
+    int32_t enum_value = name_resolver.ResolveEnumValue(enum_type.Name, member_name, &failed);
+    FO_VERIFY_AND_THROW(!failed, "Any value is not a member of the enum", enum_type.Name, value);
+    return enum_value;
+}
+
 static auto GetBaseTypeIntRange(const BaseTypeDesc& base_type) -> pair<int64_t, int64_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -2117,18 +2139,20 @@ void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& v
         SetValue<hstring>(prop, _registrar->GetHashResolver()->to_hashed_string(value));
     }
     else if (base_type.IsEnum) {
+        int64_t enum_value = ResolveAnyEnumValue(value, base_type, *_registrar->GetNameResolver());
+
         if (base_type.Size == 1) {
-            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(strvex(value).to_int32()));
+            SetValue<uint8_t>(prop, numeric_cast<uint8_t>(enum_value));
         }
         else if (base_type.Size == 2) {
-            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(strvex(value).to_int32()));
+            SetValue<uint16_t>(prop, numeric_cast<uint16_t>(enum_value));
         }
         else if (base_type.Size == 4) {
             if (base_type.EnumUnderlyingType->IsSignedInt) {
-                SetValue<int32_t>(prop, strvex(value).to_int32());
+                SetValue<int32_t>(prop, numeric_cast<int32_t>(enum_value));
             }
             else {
-                SetValue<uint32_t>(prop, strvex(value).to_uint32());
+                SetValue<uint32_t>(prop, numeric_cast<uint32_t>(enum_value));
             }
         }
     }
@@ -2378,6 +2402,7 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
+    FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
     if (prop->IsVirtual() && prop->_setters.empty()) {

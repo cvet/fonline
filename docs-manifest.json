@@ -820,8 +820,8 @@
         "BuildTools/managed_runtime_payload.py",
         "Source/Tests/Test_BakerSetup.cpp"
       ],
-      "content_sha256": "dbc5e2f272f5561dc1adff8d19508631a8e4f94a3f90ff044741e0b503debd8e",
-      "byte_size": 80936
+      "content_sha256": "9ced5c14108592427e932d34a5fc5b656574258fb00df60ed9f53ae63f07ac3a",
+      "byte_size": 81389
     },
     {
       "id": "build-workflow",
@@ -1011,8 +1011,8 @@
         "Source/Client",
         "Source/Frontend"
       ],
-      "content_sha256": "2aa23468e72fcd5a678706f9f5d1b424528adc988c3edd591800a38367628a38",
-      "byte_size": 45725
+      "content_sha256": "675570e1a70669afad99f3439c96fd099e6c5b69d35bdfa043d327ed14d4e71f",
+      "byte_size": 46808
     },
     {
       "id": "client-updater",
@@ -1070,8 +1070,8 @@
         "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c",
         "BuildTools/ExternalProjectEvidence.json"
       ],
-      "content_sha256": "2ea91db3c59759901ef6eb45b5cd789faf1b3413c8415c9aa79e57b48d9c07a5",
-      "byte_size": 68240
+      "content_sha256": "40488cb0c7caca773d34e5e3e19aa2e23d57b06cb254ff2eafccc451ead98c8e",
+      "byte_size": 68206
     },
     {
       "id": "configuration-data-sources",
@@ -1215,8 +1215,8 @@
         "BuildTools/tests/test_docs_debugging.py",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "c2fdee38757ae0b736d7c34fcab357969f08e1f632e4cee9771b70ce33554054",
-      "byte_size": 48801
+      "content_sha256": "3f4e8ad9e5c72cda5c132f7434b4d171cd122d6c4ae7b1f28a0a5a7f6a4fbb17",
+      "byte_size": 49753
     },
     {
       "id": "documentation-home",
@@ -1694,8 +1694,8 @@
         "Source/Server",
         "Source/Tests"
       ],
-      "content_sha256": "fbe82911b8dd868355ecfc1e50ffba33ff70b72ad4e17dcc55e1f2aefbe078d7",
-      "byte_size": 21366
+      "content_sha256": "41137c9eb3420d880f80218a4e5f90d4c7e17f29dde38667cf62e226f329da7a",
+      "byte_size": 21997
     },
     {
       "id": "exception-safety",
@@ -2182,8 +2182,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "195ff065acd8ee8f40998a1d812a7a5c310e8da48957b7da0ae68ae4e3421b40",
-      "byte_size": 74334
+      "content_sha256": "5b65be0d7827daf71e272e1372a4a38fe2d430c1c6de87fc8ed321f2415cdc2d",
+      "byte_size": 74971
     },
     {
       "id": "generated-api-index",
@@ -2213,7 +2213,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "87413dedb17d0dda1d4aabbe5ffeea1f9f26fed0a013e42754855e65d3cdd328",
+      "content_sha256": "3c8f0390f41bb6065d025b58e28d7fd8b82623cf5b6adc643b1c3552ba855995",
       "byte_size": 3410
     },
     {
@@ -2363,7 +2363,7 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "b96b96c35a2775dcfc1beee9301ffaf7b1e9e5d82db91a65876073cc007ccd8a",
+      "content_sha256": "eae1c6028101cc27926223b65a4739d5662f631f5ced070a46344c111e9073c0",
       "byte_size": 17824
     },
     {
@@ -2454,8 +2454,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "268f142000d60718ac17efd58bbb8924ca0838ea7d2abc696977d3987fae2d5b",
-      "byte_size": 591451
+      "content_sha256": "b0703735500c045940b2afa0b31b4005d2eb3c87b95827509a72ba2a8f21b169",
+      "byte_size": 592017
     },
     {
       "id": "generated-audio-decoding",
@@ -7154,8 +7154,8 @@
         "Docs/ru/reference/script-api/events.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "1e4b9410afb2afc5982373d546627463335a75feb66b88219df424ac153e1397",
-      "byte_size": 31716,
+      "content_sha256": "5825a8fc13ff19a08b929d30930bd4dd11fde320097dff6d3c7bc669b59ed565",
+      "byte_size": 31954,
       "redirect_to": "generated-api-events"
     },
     {
@@ -7382,8 +7382,8 @@
         "Docs/ru/reference/script-api/types.md",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "b872acbfc979a07836b479f2d933cea2f8db8aee1e988d454e986d4fdb6b10c2",
-      "byte_size": 248153,
+      "content_sha256": "3681b6f3fcad94e283a0281d8461583a03facd02a41cc6ec15b19007d2960b53",
+      "byte_size": 248411,
       "redirect_to": "generated-api-types"
     },
     {
@@ -11209,7 +11209,7 @@
         "Docs/generated/ai-control-protocol.json",
         "Docs/en/reference/ai-control-protocol/index.md"
       ],
-      "content_sha256": "93dd1f1c588f39adcb802e0dc134e6c7e9205603eb7afa81836799e27612e3ae",
+      "content_sha256": "ed1da5a029ccd2bca99442de83cb236130487586ae6b951f73b456f0a9b85031",
       "byte_size": 7369
     },
     {
@@ -12025,8 +12025,8 @@
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "BuildTools/tests/test_docs_managed_csharp.py"
       ],
-      "content_sha256": "fe58d5395276a40f9b70cd5d3ee1ebb387d4278a612e0ba4ced145f7d66943fd",
-      "byte_size": 37840
+      "content_sha256": "4ef6564d92f2cb681fbf59ef0b3588f2feada3f12439b54f248bdcaaab1ec07c",
+      "byte_size": 43735
     },
     {
       "id": "map-format-guide",
@@ -12407,8 +12407,8 @@
         "Source/Tests/Test_CommonHelpers.cpp",
         "Source/Tests/Test_WorkThread.cpp"
       ],
-      "content_sha256": "6c7953ca0cb21c6db8a7157b60a87d0ecd832eb45bb36f8b5a3ce49b399345d7",
-      "byte_size": 34588
+      "content_sha256": "cc9de3520878f0f3695ae1890558f5e44094190e6b49e87d7be2e78dee8d1643",
+      "byte_size": 36033
     },
     {
       "id": "native-extension-sample-readme",
@@ -13486,8 +13486,8 @@
         "Source/Server",
         "Source/Tests"
       ],
-      "content_sha256": "7286188432033b8d2de248cbde6d07db5dc0a96b04e76456e3df7f6a4c725b00",
-      "byte_size": 65966
+      "content_sha256": "dabc1f24be195a1a5553750ec71630c6a2c1a703509edc692eb4337956ac9f67",
+      "byte_size": 67314
     },
     {
       "id": "smart-pointers",
@@ -13693,8 +13693,8 @@
         "Docs/generated/source-inventory.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "c0ae9ca65e7a7ef793d1dabbd9b6ffdcdd0566c23e0cd98a6e55a32c8f6cc53f",
-      "byte_size": 28568
+      "content_sha256": "d6f76b33100f588167e37f19aebf9fb14d973a9b6589aa139ef4d9512b3e70fe",
+      "byte_size": 28346
     },
     {
       "id": "text-and-localization-guide",
@@ -14017,8 +14017,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "80e6c968ebbac60bfd808cdaefc97bbb953e92c818aa77f3ac7e8ec41a62b785",
-      "byte_size": 2066298
+      "content_sha256": "db4270a90adb033f7c4c8b8e03f694cf6f0455ec15044563119acab4e7a4e616",
+      "byte_size": 2077849
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14031,15 +14031,15 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "9be5fda2b6261d960e4ac6af81cc94bb325f260a705ba02fc3f30fc287c02057",
-      "byte_size": 113194
+      "content_sha256": "7e968408a811588c4d37dba27e0b23bbcd07caa9b3033698fb3605e3627f4c63",
+      "byte_size": 113195
     },
     {
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "54ccec7463cb685ea7a6b68d39a0c492df1dead2e29e7ed202ed275888d87b3a",
-      "byte_size": 3080904
+      "content_sha256": "c874c5952fab25dc0bd04926a951f63dd066099749d3ab217dc10ddd6cee53eb",
+      "byte_size": 3083619
     },
     {
       "id": "audio_reference",
@@ -14066,8 +14066,8 @@
       "id": "description_translation_status",
       "path": "Docs/generated/description-translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/description-translation-status.json",
-      "content_sha256": "9d78b15cc879f281a6870c9131e769f6d89b6ed1bb99dfc60cc00560c9a8fb34",
-      "byte_size": 1664419
+      "content_sha256": "9317a62e0f3b98f2cb00baf09f6d34b2353920b687281837bf6db4ef17bea1f2",
+      "byte_size": 1665085
     },
     {
       "id": "documentation_diagrams",
@@ -14171,7 +14171,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "bffd8691cd5d85a30002bcdc5c0e8c5d0b39b7c7fe7fb219d1de10e9cb539686",
+      "content_sha256": "794251d8ec68b896d8b4890f0dfcdacbc235341810244d36566a8e21627bcf46",
       "byte_size": 264613
     },
     {
@@ -14199,7 +14199,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "13f65571fc281c3c86d458e9835823ab8ecc9679b6961aaac5706a4ffcc93232",
+      "content_sha256": "b5b15a9a8341b99d11f5ce1097f58e6a674fde301470359e7c0935572cc6eca1",
       "byte_size": 104632
     },
     {
@@ -14220,15 +14220,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "0cd3b107afb02d0e05da7d4468b05f2c6308334cb9391a23577bca7e150e0781",
-      "byte_size": 1222423
+      "content_sha256": "363ec016470529da93567168b8d1e25a58c63f742406d035abda2e65b2dc750d",
+      "byte_size": 1226957
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "8069d6fbd9250ae7199dddbf5ff7b2d74d2d9d1d0322c0ffeeb9288492d09a0c",
-      "byte_size": 1722782
+      "content_sha256": "f4873ce2e1d7f799adca99c8047fbcfd9d05829a74798bcf19d9d58f2868501f",
+      "byte_size": 1729204
     }
   ]
 }

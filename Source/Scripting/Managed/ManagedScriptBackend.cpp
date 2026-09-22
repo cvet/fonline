@@ -39,6 +39,7 @@
 #include "EngineBase.h"
 #include "EntityProtos.h"
 #include "FileSystem.h"
+#include "ManagedAssemblyReferences.h"
 #include "ManagedInteropAbi.h"
 #include "ManagedPInvokeTable.h"
 #include "ManagedRuntime.h"
@@ -319,8 +320,7 @@ private:
 class ManagedScriptEntryScope final
 {
 public:
-    // Not inlined, so the birth capture can skip exactly the constructor frame
-    FO_NO_INLINE explicit ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept;
+    explicit ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept;
     ManagedScriptEntryScope(const ManagedScriptEntryScope&) = delete;
     ManagedScriptEntryScope(ManagedScriptEntryScope&&) noexcept = delete;
     auto operator=(const ManagedScriptEntryScope&) = delete;
@@ -330,6 +330,8 @@ public:
     [[nodiscard]] static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
     [[nodiscard]] auto GetMethod() const noexcept -> nptr<MonoMethod> { return _method; }
     [[nodiscard]] auto GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>;
+    // The frame that opened the entry saves this point itself, since the point records the registers of its caller
+    [[nodiscard]] auto GetBirthPoint() noexcept -> stack_trace::resume_point* { return &_birthPoint; }
 
     void CopyBirthFrames(stack_trace::script_layer& layer) const noexcept;
     void AppendBirthRuntimeFrames(MonoDomain* domain, stack_trace::script_layer& layer) const;
@@ -341,12 +343,16 @@ private:
     nptr<MonoMethod> _method {};
     nptr<ManagedScriptEntryScope> _parent {};
     bool _running {true};
-    // Left uninitialized: the capture fills the first _birthFrameCount slots and nothing reads past them, while
-    // zeroing a kilobyte on every script entry is measurable
-    std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> _birthFrames;
-    uint32_t _birthFrameCount {};
-    bool _birthTruncated {};
+    // Left uninitialized: the opening frame saves it before any read, and zeroing it on every script entry is measurable
+    stack_trace::resume_point _birthPoint;
+    // Resolved from the birth point only when a report reads the frames
+    mutable std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> _birthFrames;
+    mutable uint32_t _birthFrameCount {};
+    mutable bool _birthTruncated {};
+    mutable bool _birthResolved {};
     vector<pair<uint32_t, std::exception_ptr>> _crossedNativeExceptions {};
+
+    void ResolveBirthFrames() const noexcept;
 };
 
 // Per-thread chain of script entries; threads are partitioned by engine ownership, so the slot never observes a
@@ -495,6 +501,9 @@ static auto NativeGetHashStr(void* value) -> MonoString*;
 static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*;
 static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
 static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
+static void NativeSignalContinuationsReady(void* backend_ptr);
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*;
 static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
 static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool;
 static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t;
@@ -592,6 +601,7 @@ static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, u
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t;
 static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t;
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t;
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t;
 static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool;
 static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error);
@@ -619,6 +629,7 @@ static void AppendAlignedRawValue(vector<uint8_t>& data, const T& value, size_t 
 
 // Managed object creation and native<->managed values
 static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstring& value) -> MonoObject*;
+static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view text) -> MonoObject*;
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*;
 static auto CreatePropertyEnumObject(ptr<const ManagedScriptBackend> backend, string_view owner_type_name, ptr<const Property> prop) -> MonoObject*;
 static void InvokeManagedConstructor(ptr<const ManagedScriptBackend> backend, MonoClass* klass, MonoObject* obj, int32_t args_count, void** args, string_view context);
@@ -705,6 +716,7 @@ static auto CollectManagedInnerEntities(ptr<ManagedScriptBackend> backend, ptr<E
 static auto ExtractEntityPtr(MonoObject* obj) -> Entity*;
 static auto ExtractRefPtr(MonoObject* obj) -> void*;
 static auto ExtractNativeHstring(MonoObject* obj) -> hstring;
+static auto ExtractNativeAnyText(MonoObject* obj) -> string;
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring;
 
 // Assembly loading, runtime configuration and resource cache
@@ -1080,6 +1092,7 @@ struct ManagedBackendCaches
     std::atomic<bool> CountDispatches {};
     std::atomic<uint64_t> TypedCallbackDispatches {};
     std::atomic<uint64_t> BoxedCallbackDispatches {};
+    std::atomic<uint64_t> ContinuationPumps {};
 };
 
 // Built once per callback registration: the native signature, the frame layout it maps to and the generated adapter
@@ -1298,6 +1311,7 @@ static auto InvokeManagedScript(ptr<const ManagedScriptBackend> backend, MonoMet
     FO_STACK_TRACE_ENTRY();
 
     ManagedScriptEntryScope entry {method};
+    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, obj, args, &exception);
     entry.Leave();
@@ -1311,6 +1325,7 @@ static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend,
 
     // The delegate target is not known natively, so the entry claims whichever frames run under its invoke
     ManagedScriptEntryScope entry {nullptr};
+    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
     MonoObject* exception = nullptr;
     mono_runtime_delegate_invoke(delegate_obj, nullptr, &exception);
     entry.Leave();
@@ -1349,6 +1364,8 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<Ba
 
     if constexpr (!FO_DEBUG) {
         string entry_name = DescribeManagedScriptEntry(backend, get_entry);
+
+        engine->RegisterScriptOverrun(entry_name, execution_duration, lock_wait_duration);
 
         if (execution_overrun) {
             logging::write("Script execution overrun: {} (execution: {}, lock wait: {}, total: {})", entry_name, execution_duration, lock_wait_duration, total_duration);
@@ -1888,7 +1905,6 @@ ManagedScriptEntryScope::ManagedScriptEntryScope(nptr<MonoMethod> method) noexce
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    stack_trace::capture_native_frames(_birthFrames, _birthFrameCount, _birthTruncated, 1);
     CurrentScriptEntry = this;
 }
 
@@ -1934,6 +1950,7 @@ void ManagedScriptEntryScope::CopyBirthFrames(stack_trace::script_layer& layer) 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    ResolveBirthFrames();
     std::copy_n(_birthFrames.begin(), _birthFrameCount, layer.birth_native_frames.begin());
     layer.birth_native_frame_count = _birthFrameCount;
     layer.birth_native_truncated = _birthTruncated;
@@ -1943,7 +1960,21 @@ void ManagedScriptEntryScope::AppendBirthRuntimeFrames(MonoDomain* domain, stack
 {
     FO_STACK_TRACE_ENTRY();
 
+    ResolveBirthFrames();
     AppendRuntimeNativeFrames(domain, {_birthFrames.data(), _birthFrameCount}, layer);
+}
+
+// Runs on the entry's own thread while the opening frame is still active, which is what the birth point needs
+void ManagedScriptEntryScope::ResolveBirthFrames() const noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_birthResolved) {
+        return;
+    }
+
+    stack_trace::resolve_resume_point(_birthPoint, _birthFrames, _birthFrameCount, _birthTruncated);
+    _birthResolved = true;
 }
 
 void ManagedScriptEntryScope::SetCrossedNativeException(std::exception_ptr exception, MonoString* message)
@@ -2098,6 +2129,59 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     }
     catch (const std::exception& ex) {
         return MakeManagedNativeError(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static void NativeSignalContinuationsReady(void* backend_ptr)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Reached from every post, so it only raises the flag; the managed side passes nothing but its live bound backend
+    cast_from_void<ManagedScriptBackend*>(backend_ptr)->SignalContinuationsReady();
+}
+
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed dynamic assembly load error output is null");
+    *error = nullptr;
+
+    try {
+        FO_VERIFY_AND_THROW(image != nullptr, "Managed dynamic assembly image is null");
+
+        return ResolveBoundBackend(backend_ptr)->LoadDynamicAssembly(image, symbols).reinterpret_as<MonoObject>().get();
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return nullptr;
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed client scripts image error output is null");
+    *error = nullptr;
+
+    try {
+        ptr<ManagedScriptBackend> backend = ResolveBoundBackend(backend_ptr);
+        vector<uint8_t> image = backend->ReadClientScriptsImage();
+        MonoArray* array = mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), image.size());
+        FO_VERIFY_AND_THROW(array != nullptr, "Can't allocate Managed client scripts image", image.size());
+        memory::copy(mono_array_addr(array, uint8_t, 0), image.data(), image.size());
+        return array;
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return nullptr;
     }
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
@@ -2392,7 +2476,7 @@ static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t 
         // Setters may re-enter managed code; own the bytes before invoking them
         prop_data.Set(ptr<const void> {value}, prop->GetBaseSize());
         ValueToPropertyData(prop->GetBaseType(), prop_data.GetPtrAs<uint8_t>().get());
-        entity->SetValueFromData(prop, prop_data);
+        entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -2504,7 +2588,7 @@ static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
             }
         }
 
-        entity->SetValueFromData(prop, prop_data);
+        entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
         return nullptr;
     }
     catch (const std::exception& ex) {
@@ -2776,6 +2860,18 @@ static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64
     return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
 }
 
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto backend = ResolveBoundBackend(backend_ptr);
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    caches->CountDispatches.store(true, std::memory_order_relaxed);
+    return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+}
+
 // Interop probe: drives InteropProbe.AdaptProbe from a native loop over one transport and returns the loop time in
 // nanoseconds. Modes mirror InteropProbe.CallbackMode; the probe never touches a production registration
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t
@@ -2896,6 +2992,7 @@ static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler,
                 }
                 else if (callback_mode == ManagedProbeCallbackMode::EntryScopeOnly) {
                     ManagedScriptEntryScope entry {adapter};
+                    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
                     entry.Leave();
                 }
                 else if (callback_mode == ManagedProbeCallbackMode::AttachmentOnly) {
@@ -3798,7 +3895,7 @@ static void NativeSetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     }
 
     PropertyRawData prop_data = ConvertManagedObjectToPropertyData(backend, prop, value);
-    entity->SetValueFromData(prop, prop_data);
+    entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
 }
 
 static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*
@@ -4967,6 +5064,9 @@ static void RegisterInternalCalls()
     FO_STACK_TRACE_ENTRY();
 
     mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
+    mono_add_internal_call("FOnline.Native::SignalContinuationsReadyInternal", reinterpret_cast<const void*>(NativeSignalContinuationsReady));
+    mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
+    mono_add_internal_call("FOnline.Native::ReadClientScriptsImageInternal", reinterpret_cast<const void*>(NativeReadClientScriptsImage));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
     mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
     mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
@@ -5014,6 +5114,7 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisitsInternal", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
     mono_add_internal_call("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetTypedCallbackDispatches));
     mono_add_internal_call("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetBoxedCallbackDispatches));
+    mono_add_internal_call("FOnline.Native::GetAndResetContinuationPumpsInternal", reinterpret_cast<const void*>(NativeGetAndResetContinuationPumps));
     mono_add_internal_call("FOnline.Native::ProbeCallbackTransportInternal", reinterpret_cast<const void*>(NativeProbeCallbackTransport));
     mono_add_internal_call("FOnline.Native::ProbeTransportScenarioInternal", reinterpret_cast<const void*>(NativeProbeTransportScenario));
     mono_add_internal_call("FOnline.Native::ReadInteropCountersInternal", reinterpret_cast<const void*>(NativeReadInteropCounters));
@@ -5764,6 +5865,20 @@ static auto CreateHashObject(ptr<const ManagedScriptBackend> backend, const hstr
     return mono_value_box(domain, hash_class, &copy);
 }
 
+static auto CreateAnyObject(ptr<const ManagedScriptBackend> backend, string_view text) -> MonoObject*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    CountManagedObject();
+
+    // The managed `any` is one text reference, so its boxed form is that reference copied in place
+    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+    MonoClass* any_class = FindFOnlineClass(backend, "any");
+    FO_VERIFY_AND_THROW(mono_class_value_size(any_class, nullptr) == sizeof(MonoString*), "Managed any size does not match one text reference");
+    MonoString* managed_text = mono_string_new_len(domain, text.data(), numeric_cast<uint32_t>(text.size()));
+    return mono_value_box(domain, any_class, &managed_text);
+}
+
 static auto CreateEntityObject(ptr<const ManagedScriptBackend> backend, string_view type_name, nptr<Entity> entity) -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
@@ -6236,7 +6351,7 @@ static auto GetManagedClass(ptr<const ManagedScriptBackend> backend, const BaseT
     FO_STACK_TRACE_ENTRY();
 
     if (type.Name == "any") {
-        return mono_get_string_class();
+        return FindFOnlineClass(backend, "any");
     }
     if (type.IsString) {
         return mono_get_string_class();
@@ -6363,7 +6478,7 @@ static auto ConvertManagedSimpleObjectToNative(ptr<ManagedScriptBackend> backend
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.Name == "any") {
-        storage.Any = any_t(ManagedObjectToString(value));
+        storage.Any = any_t(ExtractNativeAnyText(value));
         return &storage.Any;
     }
     if (base_type.IsString) {
@@ -6504,7 +6619,7 @@ static auto CanConvertManagedSimpleObjectToNative(ptr<const ManagedScriptBackend
     FO_STACK_TRACE_ENTRY();
 
     if (base_type.Name == "any") {
-        return true;
+        return value != nullptr && ManagedObjectClassMatches(value, FindFOnlineClass(backend, "any"));
     }
     if (base_type.IsString) {
         return value == nullptr || ManagedObjectClassMatches(value, mono_get_string_class());
@@ -6557,9 +6672,9 @@ static auto BoxNativeSimpleValue(ptr<const ManagedScriptBackend> backend, const 
 
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
+    // Storage for an `any` is sometimes the string it derives from, which is all this reads
     if (base_type.Name == "any") {
-        const any_t& value = *static_cast<any_t*>(data);
-        return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size())));
+        return CreateAnyObject(backend, *static_cast<const string*>(data));
     }
     if (base_type.IsString) {
         const string& text = *static_cast<string*>(data);
@@ -6605,7 +6720,7 @@ static auto BoxSimplePropertyValue(ptr<const ManagedScriptBackend> backend, cons
     MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
 
     if (base_type.Name == "any") {
-        return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, reinterpret_cast<const char*>(raw_data.data()), numeric_cast<uint32_t>(raw_data.size())));
+        return CreateAnyObject(backend, string_view(reinterpret_cast<const char*>(raw_data.data()), raw_data.size()));
     }
     if (base_type.IsString) {
         return reinterpret_cast<MonoObject*>(mono_string_new_len(domain, reinterpret_cast<const char*>(raw_data.data()), numeric_cast<uint32_t>(raw_data.size())));
@@ -6770,7 +6885,7 @@ static auto ConvertManagedSimpleObjectToPropertyData(ptr<ManagedScriptBackend> b
     PropertyRawData prop_data;
 
     if (base_type.Name == "any") {
-        string text = ManagedObjectToString(value);
+        string text = ExtractNativeAnyText(value);
         prop_data.Set(text.data(), text.size());
     }
     else if (base_type.IsString) {
@@ -7560,6 +7675,17 @@ static auto ExtractNativeHstring(MonoObject* obj) -> hstring
     return value;
 }
 
+static auto ExtractNativeAnyText(MonoObject* obj) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(obj != nullptr, "Managed any value is null");
+    FO_VERIFY_AND_THROW(mono_class_value_size(mono_object_get_class(obj), nullptr) == sizeof(MonoString*), "Managed any size does not match one text reference");
+    MonoString* text = nullptr;
+    memory::copy(&text, mono_object_unbox(obj), sizeof(text));
+    return ToStringAndFree(text);
+}
+
 static auto ResolveManagedHashValue(ptr<const ManagedScriptBackend> backend, hstring::hash_t value) -> hstring
 {
     FO_STACK_TRACE_ENTRY();
@@ -7938,10 +8064,11 @@ static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesyste
         throw ScriptSystemException("Can't create Managed assembly path array");
     }
 
+    // The load-context host passes these to Mono's own file open, so they take the host assembly's form
     for (size_t i = 0; i < paths.size(); i++) {
         std::error_code ec;
         auto absolute_path = std::filesystem::absolute(paths[i], ec).lexically_normal();
-        string path = fs::path_to_string(ec ? paths[i].lexically_normal() : absolute_path);
+        string path = fs::make_io_path(fs::path_to_string(ec ? paths[i].lexically_normal() : absolute_path));
         MonoString* managed_path = mono_string_new(domain, path.c_str());
 
         if (managed_path == nullptr) {
@@ -8048,8 +8175,9 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
     FO_VERIFY_AND_THROW(_loadScopeGcHandle == 0, "Managed load scope is already created");
     scoped_lock load_locker {ManagedAssemblyLoadLocker};
 
+    // Mono opens assemblies through the C runtime, which stops at the Win32 path limit without the extended form
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
-    string host_path = fs::path_to_string(host_assembly_path);
+    string host_path = fs::make_io_path(fs::path_to_string(host_assembly_path));
     MonoAssembly* host_assembly = mono_domain_assembly_open(domain, host_path.c_str());
 
     if (host_assembly == nullptr) {
@@ -8256,8 +8384,15 @@ void ManagedScriptBackend::Process()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_continuationPumps.empty()) {
+    if (_continuationPumps.empty() || !_continuationsReady.exchange(false, std::memory_order_acq_rel)) {
         return;
+    }
+
+    // A pump that fails partway leaves ready work queued with no post left to announce it
+    auto rearm_on_failure = scope_fail([this]() noexcept { _continuationsReady.store(true, std::memory_order_release); });
+
+    if (_caches && _caches->CountDispatches.load(std::memory_order_relaxed)) {
+        _caches->ContinuationPumps.fetch_add(1, std::memory_order_relaxed);
     }
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
@@ -8266,6 +8401,13 @@ void ManagedScriptBackend::Process()
     for (nptr<void> pump : _continuationPumps) {
         (void)InvokeManagedScript(this, pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation pump failed");
     }
+}
+
+void ManagedScriptBackend::SignalContinuationsReady()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _continuationsReady.store(true, std::memory_order_release);
 }
 
 void ManagedScriptBackend::AdoptPersistentGcHandle(uint32_t gc_handle)
@@ -8624,6 +8766,72 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     // Armed here rather than asked for from the tracker's static constructor: those run while the initializator
     // walks every type, long before there is an active backend to ask
     EnableDeepEntityWrapperTracking();
+}
+
+auto ManagedScriptBackend::LoadDynamicAssembly(ptr<void> image, nptr<void> symbols) -> ptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The host refuses a taken name before loading, so the name is read here, from the image itself
+    ptr<MonoArray> image_array = image.reinterpret_as<MonoArray>();
+    const_span<uint8_t> image_data {mono_array_addr(image_array.get(), uint8_t, 0), mono_array_length(image_array.get())};
+    string assembly_name = ReadManagedAssemblyIdentity(image_data).Name;
+
+    scoped_lock load_locker {ManagedAssemblyLoadLocker};
+
+    FO_VERIFY_AND_THROW(_loadScopeGcHandle != 0, "Managed load scope is not created");
+    nptr<MonoImage> host_image = _managedHostImage.reinterpret_as<MonoImage>();
+    FO_VERIFY_AND_THROW(host_image, "Managed load-context host image is not loaded");
+
+    MonoClass* host_class = mono_class_from_name(host_image.get(), MANAGED_HOST_NAMESPACE.data(), MANAGED_HOST_CLASS_NAME.data());
+    MonoMethod* load_method = host_class != nullptr ? mono_class_get_method_from_name(host_class, "LoadDynamicAssembly", 4) : nullptr;
+    FO_VERIFY_AND_THROW(load_method != nullptr, "Managed load-context host method not found", "LoadDynamicAssembly");
+
+    MonoString* managed_assembly_name = mono_string_new(GetDomainOrThrow(_domain.get()), assembly_name.c_str());
+    FO_VERIFY_AND_THROW(managed_assembly_name != nullptr, "Can't create Managed dynamic assembly name", assembly_name);
+
+    // Read after the allocation above, which may have moved the scope
+    MonoObject* load_scope = mono_gchandle_get_target(_loadScopeGcHandle);
+    FO_VERIFY_AND_THROW(load_scope != nullptr, "Managed load-context scope was collected");
+
+    void* load_args[] = {load_scope, managed_assembly_name, image.get(), symbols.get()};
+    MonoObject* exception = nullptr;
+    MonoObject* assembly = mono_runtime_invoke(load_method, nullptr, load_args, &exception);
+    ThrowIfManagedException(this, exception, "Managed dynamic assembly load failed");
+    FO_VERIFY_AND_THROW(assembly != nullptr, "Managed load-context host returned a null assembly", assembly_name);
+
+    return assembly;
+}
+
+auto ManagedScriptBackend::ReadClientScriptsImage() -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nptr<GlobalSettings> settings = GetBackendSettings(this);
+    FO_VERIFY_AND_THROW(settings, "Managed client scripts image requires engine settings");
+
+    // The packs the updater hands out are what clients run; an unpackaged server has only the bake output
+    FileSystem distributed;
+
+    for (const string& pack : settings->GetClientResourcePacks()) {
+        distributed.AddPackSource(settings->Baking.ClientResources, pack, true);
+    }
+
+    for (ManagedAssemblyResource& resource : CollectAssemblyResources(distributed, "Client")) {
+        if (IsManagedEntryAssemblyFileName(resource.FileName, "Client")) {
+            return std::move(resource.Data);
+        }
+    }
+
+    for (const std::filesystem::path& assembly_path : CollectBakeOutputAssemblyPaths(settings->Baking.BakeOutput, "Client")) {
+        if (IsManagedEntryAssemblyFileName(fs::path_to_string(assembly_path.filename()), "Client")) {
+            auto image = fs::read_file(fs::path_to_string(assembly_path));
+            FO_VERIFY_AND_THROW(image.has_value(), "Can't read Managed client scripts image", fs::path_to_string(assembly_path));
+            return vector<uint8_t>(image->begin(), image->end());
+        }
+    }
+
+    throw ScriptSystemException("Managed client scripts image is not available", settings->Baking.ClientResources, settings->Baking.BakeOutput);
 }
 
 void ManagedScriptBackend::BindRequiredStuff()

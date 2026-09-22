@@ -10827,6 +10827,10 @@
           "source_sha256": "fad99e5ea0633ea1ddc4e4b66dca66fc56801c9b6e159f557c47a13d415a27d9",
           "translation": "Только для InputFloat(), InputInt(), InputScalar() и подобных функций: разбирает пустую строку как нулевое значение."
         },
+        "/symbols/@id=script.enum-value.ImGui_InputTextFlags.Password/description": {
+          "source_sha256": "7a25462727dbe2f6e14307cdeb3d3fc7d45ffccb856269dcedd7253e5894c5e2",
+          "translation": "Режим пароля: отображает все символы как '*', запрещает копирование."
+        },
         "/symbols/@id=script.enum-value.ImGui_InputTextFlags.ReadOnly/description": {
           "source_sha256": "d06de4d3927da7ccbc6a5fd82f3afd3d644b5f48536398d6fa09ea86735be344",
           "translation": "Включает режим только для чтения."
@@ -12614,6 +12618,10 @@
         "/symbols/@id=script.event.client.Game.OnScreenSizeChanged/description": {
           "source_sha256": "c6d92b55b5a6891b95bc63b867f2b2704b26c6fdcb1afa703b4587bb7af68ef0",
           "translation": "Выполняется после сообщения приложения об изменении размера экрана."
+        },
+        "/symbols/@id=script.event.client.Game.OnScriptOverrun/description": {
+          "source_sha256": "703454eeb2bdac4758a34b562edb007118082de1299e501ada2577202223b960",
+          "translation": "Перед следующим OnLoop сообщает ограниченную сводку превышений времени выполнения скрипта."
         },
         "/symbols/@id=script.event.client.Game.OnStart/description": {
           "source_sha256": "bd39c95ba2234ac90659a7e31caaaf51eb531d813d9c370813a7d27b32894f90",

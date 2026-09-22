@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"c0ae9ca65e7a7ef793d1dabbd9b6ffdcdd0566c23e0cd98a6e55a32c8f6cc53f"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"d6f76b33100f588167e37f19aebf9fb14d973a9b6589aa139ef4d9512b3e70fe"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -122,10 +122,10 @@ Workflow `validate.yml` выполняет их матрицей `unit-tests-san
 ветки блокирующие. MemorySanitizer подготавливает `Workspace/msan-libcxx` из
 инструментированных `libc++`, `libc++abi`, `libunwind` и передает
 `FO_MSAN_LIBCXX_ROOT`. Узкий libunwind ignorelist не дает unwinding-у исключений
-самому срабатывать на ABI snapshots. Native stack capture и backward-cpp signal
-handler отключаются под MSan и TSan, чтобы reports принадлежали runtimes
-sanitizer; кроме того, symbolization backward-cpp/libbfd под TSan приводит к
-неприемлемому росту shadow memory. Более медленный
+самому срабатывать на ABI snapshots. Native stack capture и crash handlers
+отключаются под MSan и TSan, чтобы reports принадлежали sanitizer runtimes.
+Bundled LLVM libunwind и libbacktrace собираются без instrumentation: crash path
+читает другие stack frames и debug data. Более медленный
 `unit-tests-san-memory-with-origins` предназначен для
 локальной диагностики. `San_DataFlow` не подключен: DataFlowSanitizer является
 taint framework, а не общим defect detector.
@@ -145,7 +145,8 @@ AngelScript вызывает зарегистрированные C-функци
 checks активны, а first-party Engine сохраняет и эти две проверки.
 
 LeakSanitizer входит в address leg с `detect_leaks=1` и без suppression list.
-Process-lifetime resolver backward-cpp остается достижим из static root, а
+Linux libbacktrace хранит прочитанные debug data в собственной mapped memory;
+его process-lifetime state остается достижимым через `StackTraceState`, а
 AngelScript preprocessor translator, SPARK converters и owning metadata
 containers освобождаются при shutdown. Новые утечки исправляются в источнике,
 а не скрываются.

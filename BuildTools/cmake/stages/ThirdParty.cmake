@@ -571,26 +571,49 @@ AddStaticThirdPartyLibrary(Catch2
     INCLUDE_DIRS "${FO_CATCH2_DIR}")
 TargetCompileDefinitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
 
-# Backward-cpp
-if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
-    SetValue(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
-    AddIncludeDirectories("${FO_BACKWARDCPP_DIR}")
+# Native stack traces on Linux: LLVM libunwind walks the stack, libbacktrace names the frames
+if(FO_LINUX)
+    enable_language(ASM)
+    SetValue(FO_LLVM_LIBUNWIND_DIR "${FO_ENGINE_ROOT}/ThirdParty/llvm-libunwind")
+    SetValue(FO_LLVM_LIBUNWIND_SOURCE
+        "${FO_LLVM_LIBUNWIND_DIR}/src/libunwind.cpp"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersRestore.S"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersSave.S")
+    AddStaticThirdPartyLibrary(llvm-libunwind
+        SOURCE_LIST FO_LLVM_LIBUNWIND_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(llvm-libunwind PRIVATE "${FO_LLVM_LIBUNWIND_DIR}/include" "${FO_LLVM_LIBUNWIND_DIR}/src")
+    TargetCompileDefinitions(llvm-libunwind PRIVATE _LIBUNWIND_IS_NATIVE_ONLY _LIBUNWIND_HIDE_SYMBOLS)
+    # _LIBUNWIND_HIDE_SYMBOLS expects the library to be built with hidden visibility; without it -rdynamic exports its API
+    TargetCompileOptions(llvm-libunwind PRIVATE -funwind-tables -fvisibility=hidden "$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions;-fno-rtti>")
 
-    if(NOT FO_WINDOWS)
-        check_include_file("libunwind.h" haveLibUnwind)
-        check_include_file("bfd.h" haveBFD)
+    SetValue(FO_LIBBACKTRACE_DIR "${FO_ENGINE_ROOT}/ThirdParty/libbacktrace")
+    SetValue(FO_LIBBACKTRACE_SOURCE
+        "${FO_LIBBACKTRACE_DIR}/atomic.c"
+        "${FO_LIBBACKTRACE_DIR}/dwarf.c"
+        "${FO_LIBBACKTRACE_DIR}/elf.c"
+        "${FO_LIBBACKTRACE_DIR}/fileline.c"
+        "${FO_LIBBACKTRACE_DIR}/mmap.c"
+        "${FO_LIBBACKTRACE_DIR}/mmapio.c"
+        "${FO_LIBBACKTRACE_DIR}/posix.c"
+        "${FO_LIBBACKTRACE_DIR}/sort.c"
+        "${FO_LIBBACKTRACE_DIR}/state.c")
+    AddStaticThirdPartyLibrary(libbacktrace
+        SOURCE_LIST FO_LIBBACKTRACE_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(libbacktrace PRIVATE "${FO_LIBBACKTRACE_DIR}")
+    TargetCompileOptions(libbacktrace PRIVATE -funwind-tables -fvisibility=hidden)
 
-        if(haveLibUnwind)
-            StatusMessage("+ Backward-cpp (with libunwind)")
-        elseif(haveBFD)
-            StatusMessage("+ Backward-cpp (with bfd)")
-            AppendList(FO_ESSENTIALS_SYSTEM_LIBS bfd)
-        else()
-            StatusMessage("+ Backward-cpp")
-        endif()
-    else()
-        StatusMessage("+ Backward-cpp")
-    endif()
+    # Both read other frames' stack and debug info from inside crash handlers, uninstrumented like the system code they replace
+    TargetCompileOptions(llvm-libunwind PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+    TargetCompileOptions(libbacktrace PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+
+    # Only the stack trace module sees the headers: the libunwind directory also holds an unwind.h that would shadow the
+    # compiler's one for every other library
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" INCLUDE_DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LLVM_LIBUNWIND_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LIBBACKTRACE_DIR}")
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" COMPILE_DEFINITIONS _LIBUNWIND_IS_NATIVE_ONLY)
 endif()
 
 # SPARK particle simulation runtime and XML/binary serializer

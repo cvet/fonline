@@ -281,7 +281,6 @@ LINUX_PACKAGE_GROUPS = {
 			'php-cli',
 			'wget',
 			'unzip',
-			'binutils-dev',
 		],
 	),
 	'linux-packages': (

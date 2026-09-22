@@ -176,6 +176,9 @@ public:
     // Runs for an informational message received from the server
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInfoMessage, EngineInfoMessage /*infoMessage*/, string /*extraText*/);
+    // Reports a bounded, drained script overrun summary before the next OnLoop callback
+    ///@ ExportEvent
+    FO_ENTITY_EVENT(OnScriptOverrun, string /*entry*/, timespan /*execution*/, timespan /*lockWait*/, int32_t /*count*/);
     // Runs once per client frame after networking, input, scheduled callbacks, and time events, before map processing
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnLoop);

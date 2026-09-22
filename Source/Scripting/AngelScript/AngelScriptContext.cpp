@@ -509,6 +509,8 @@ auto AngelScriptContextManager::RunContext(ptr<AngelScript::asIScriptContext> ct
                 if constexpr (!FO_DEBUG) {
                     string func_decl = ctx->GetFunction()->GetDeclaration(true, true);
 
+                    _engine->RegisterScriptOverrun(func_decl, execution_duration, lock_wait_duration);
+
                     if (execution_overrun) {
                         logging::write("Script execution overrun: {} (execution: {}, lock wait: {}, total: {})", func_decl, execution_duration, lock_wait_duration, total_duration);
                     }

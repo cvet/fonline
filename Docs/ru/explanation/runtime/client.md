@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"2aa23468e72fcd5a678706f9f5d1b424528adc988c3edd591800a38367628a38"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"675570e1a70669afad99f3439c96fd099e6c5b69d35bdfa043d327ed14d4e71f"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -115,6 +115,8 @@ permalink: /Docs/ru/explanation/runtime/client.html
 8. **Завершение работы** отключает сеть, уничтожает inner entities, очищает caches и render targets и освобождает frontend resources.
 
 При изменении startup или shutdown согласованно обновляйте script events, lifetime managers, регистрацию сущностей и network callbacks: эти пути тесно связаны.
+
+`ClientSessionMarker` — диагностический файл в writable root клиента, общий для host и runtime. Он хранит build/start time, идентификатор процесса (`Pid` и `ProcessStart`) и последнюю стадию shutdown: `MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`, `GlobalDataTeardown` (с именем текущего набора global data), `RuntimeReturned`, затем `ExitRequested`. Числовые значения стадий сохраняют исторический смысл, а не этот порядок. Host оставляет marker до завершения процесса: DLL detach и runtime callbacks ещё могут зависнуть. Следующий запуск молча удаляет marker на `ExitRequested` только если именно тот процесс уже завершился; иначе сообщает о всё ещё работающем предыдущем процессе либо некорректном завершении. Неизвестная/испорченная стадия и отсутствующий идентификатор процесса не доказывают чистый выход. Каждая запись проверяет identity, чтобы старый instance не завершил marker нового. Файл не является межпроцессным registry или lock. В Windows liveness определяется polling process handle, а не кодом выхода `259`.
 
 ## Подключение к серверу и отправка сообщений
 

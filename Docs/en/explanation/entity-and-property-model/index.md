@@ -111,6 +111,8 @@ clamping; NaN and infinity are errors, not values to coerce to an endpoint.
 
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
 
+An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
+
 ## Property runtime
 
 `Source/Common/Properties.h` defines four central pieces:

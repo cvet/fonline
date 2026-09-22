@@ -116,6 +116,8 @@ A typical client lifetime has these phases:
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
 
+`ClientSessionMarker` is a best-effort record in the writable client root, shared by the host and runtime. It records build/start time, process identity (`Pid` plus `ProcessStart`), and the last shutdown stage: `MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`, `GlobalDataTeardown` (with the active global-data set), `RuntimeReturned`, then `ExitRequested`. Numeric stage values retain their historical meanings rather than their order here. The host leaves the marker through process exit, because DLL detach and runtime callbacks can still hang. The next launch consumes a marker at `ExitRequested` silently only when its exact process is gone; other markers report either a still-running previous process or an unclean exit. An unknown/malformed stage or missing process identity cannot prove clean exit. Every write checks identity so an older instance cannot mark a newer instance's marker complete. This file is diagnostic, not a cross-process registry or lock. Windows liveness polls the handle rather than treating exit code `259` as proof of life.
+
 ## Server connection and message dispatch
 
 `ClientConnection` (`Source/Client/ClientConnection.h`, `Source/Client/ClientConnection.cpp`) owns the client-side transport state. It hides whether the current connection is interthread, TCP sockets, or UDP-capable sockets.

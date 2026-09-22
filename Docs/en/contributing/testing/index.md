@@ -99,10 +99,10 @@ ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator pr
 with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
-native stack capture and the backward-cpp signal handler are disabled under
-MSan and TSan so the sanitizer runtimes own their reports;
-backward-cpp/libbfd symbolization under TSan also produces prohibitive
-shadow-memory growth. `unit-tests-san-memory-with-origins`
+native stack capture and crash handlers are disabled under
+MSan and TSan so the sanitizer runtimes own their reports. Bundled LLVM libunwind
+and libbacktrace are built without instrumentation because their crash paths read
+other frames and debug data. `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
@@ -144,12 +144,10 @@ LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=d
 It runs with **no suppression list** — every leak it can report is fixed at the source rather than
 masked. Notable cases:
 
-- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
-  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
-  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
-  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
-  and those libbfd caches remain reachable — LSan does not report them.
+- Linux libbacktrace (`Source/Essentials/StackTrace.cpp`) retains debug information
+  in its own mapped memory for the life of the process. Its state remains reachable
+  through process-lifetime `StackTraceState`, serialized by `NativeResolverLocker`;
+  a module is read once and LSan has no allocated orphan to report.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
 - Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a

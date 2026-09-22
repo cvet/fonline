@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"c2fdee38757ae0b736d7c34fcab357969f08e1f632e4cee9771b70ce33554054"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"3f4e8ad9e5c72cda5c132f7434b4d171cd122d6c4ae7b1f28a0a5a7f6a4fbb17"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -86,9 +86,9 @@ Engine отвечает за:
 
 | Поверхность | Текущая возможность Engine | Граница evidence |
 |---|---|---|
-| Windows native | Application targets MSVC/clang-cl, PDB во всех конфигурациях кроме `MinSizeRel`, обнаружение отладчика, `DebugBreak`, диагностика SEH через backward-cpp, визуализаторы сгенерированного MSVC-проекта | Engine не создаёт и не хранит minidump-файлы и не обслуживает symbol server. |
+| Windows native | Application targets MSVC/clang-cl, PDB во всех конфигурациях кроме `MinSizeRel`, обнаружение отладчика, `DebugBreak`, диагностика SEH через Engine, визуализаторы сгенерированного MSVC-проекта | Engine не создаёт и не хранит minidump-файлы и не обслуживает symbol server. |
 | Linux native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, бинарные файлы для GDB/LLDB, обнаружение отладчика через `/proc/self/status`, диагностика signals/terminate | Включение и сбор core dump, хранение символов, container permissions и retention относятся к политике host/project. |
-| macOS native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, обнаружение через `sysctl(P_TRACED)`, debug trap, signal-диагностика backward-cpp | Репозиторий не поставляет проверенный Engine-профиль LLDB, архив crash reports или release-квалификацию. |
+| macOS native | Debug information во всех конфигурациях кроме `MinSizeRel`, `-rdynamic`, обнаружение через `sysctl(P_TRACED)`, debug trap, signal-диагностика Engine | Репозиторий не поставляет проверенный Engine-профиль LLDB, архив crash reports или release-квалификацию. |
 | AngelScript runtime | TCP endpoint с loopback по умолчанию, UDP discovery, line breakpoints, pause/continue/step, скриптовый стек, read-only locals, события stop/abort/error | Нет контракта authentication, encryption, опубликованного VSIX, закреплённого dependency lock, CI живого endpoint, просмотра globals, evaluation выражений или изменения состояния. |
 | Managed C# runtime | Diagnostics compile Roslyn/MSBuild, generated source/project/solution, логи managed baker/runtime, native host frames, load-context и scheduler tests, debugger-compatible assemblies | Engine не поставляет C# editor adapter, launch profile, symbol server, hot reload или gate живого managed-debugger acceptance. Адаптер `fos` предназначен только для AngelScript. |
 | Смешанный стек в логах | Скриптовые слои и нативные кадры, различение origin/catch, безопасный crash output и локальный для процесса cache разрешения | Качество нативных символов зависит от точных binary, libraries, debug data, platform unwinder и режима выполнения. MemorySanitizer и ThreadSanitizer отключают захват нативного стека. |
@@ -203,7 +203,7 @@ Engine записывает crash diagnostics в свой лог. Сейчас �
 
 `break_into_debugger()` выполняет `DebugBreak`, `__builtin_debugtrap` или `SIGTRAP`, только если закэшированный результат истинен. Поскольку exception handling задаёт этот вопрос во время ранней инициализации процесса, запуск вне нативного отладчика с последующим attach не гарантирует активацию Engine-triggered breaks.
 
-Когда отладчик обнаружен при запуске, Engine не устанавливает обработку fatal signals/SEH через backward-cpp. Это позволяет нативному отладчику получить fault напрямую, но означает, что обычный out-of-debugger fatal crash-to-log path не является ожидаемым evidence такого запуска. Сохраните отдельный запуск без отладчика, если проверяется сам crash-log контракт.
+Когда отладчик обнаружен при запуске, Engine не устанавливает свои обработчики fatal signals/SEH. Это позволяет нативному отладчику получить fault напрямую, но означает, что обычный out-of-debugger fatal crash-to-log path не является ожидаемым evidence такого запуска. Сохраните отдельный запуск без отладчика, если проверяется сам crash-log контракт.
 
 Отладчик AngelScript не зависит от `is_run_in_debugger`; подключение адаптера `fos` не делает процесс осведомлённым о нативном отладчике.
 
@@ -233,6 +233,8 @@ Engine записывает crash diagnostics в свой лог. Сейчас �
 ## Архитектура стека
 
 Engine захватывает ограниченный массив нативных return addresses и необязательные заранее разрешённые скриптовые слои в `StackTraceData`. Разрешение нативных символов откладывается до форматирования или явного resolve. Разрешённые нативные кадры кэшируются для всего процесса по instruction address в ограниченном cache, чтобы повторные reports не загружали одинаковую symbol information заново.
+
+Native capture теперь использует bundled LLVM libunwind на Linux, системный libunwind на macOS, Windows unwind tables на 64-bit и frame pointers на 32-bit; crash может начинаться с сохранённого POSIX/SEH register context. На Linux symbols разрешает bundled libbacktrace с fallback `dladdr` для позже загруженных modules; macOS использует `dladdr`, Windows — DbgHelp с каталогами executable/module в search path. Неопознанный frame сохраняет `module+offset` для offline lookup. Обычный trace начинается с вызвавшего capture кода, crash trace — с faulting instruction. Birth stacks managed entries сохраняются как resume points и разворачиваются только при подготовке отчёта, пока opening frame активен.
 
 `FO_STACK_TRACE_ENTRY()` не является ручным thread-local call stack. Вне конфигураций Tracy он не добавляет stack frame; с Tracy он раскрывается в profiling zone. Нативные call stacks получаются платформенным захватом в момент вызова `GetStackTrace()`.
 
@@ -288,7 +290,7 @@ Exception callback получает message, уже захваченный `Catc
 
 ### Гарантия crash-to-log и self-test
 
-Вне нативного отладчика backward-cpp обрабатывает поддерживаемые Windows SEH failures и POSIX fatal signals/termination на Windows, Linux и macOS. Engine добавляет причину crash, захватывает stack, переключается на synchronous log writes и завершает процесс по crash path. Долгоживущие Engine worker threads устанавливают POSIX alternate signal stack, чтобы диагностике stack overflow хватило места. Threads, созданным сторонними библиотеками, требуется такая же настройка до выполнения глубоко рекурсивной работы Engine.
+Вне нативного отладчика собственные handlers Engine обрабатывают поддерживаемые Windows SEH failures, POSIX fatal signals и termination. POSIX signal захватывается из `ucontext_t`, отчёт пишется синхронно, затем возвращается default action и signal вызывается снова. Windows SEH захватывает exception `CONTEXT`; отдельный reporter thread пишет отчёт даже при исчерпанном стеке faulting thread. Повторный crash не запускает рекурсивный отчёт. Долгоживущие Engine worker threads устанавливают POSIX alternate signal stack; threads сторонних библиотек требуют того же для глубокой рекурсии Engine. Контролируемые режимы `FO_SELFTEST_CRASH` включают `main_bad_call` и `thread_bad_call` для вызова null function pointer.
 
 `FO_SELFTEST_CRASH` является destructive diagnostic hook, задаваемым только через environment и запускаемым при инициализации приложения после готовности logging и exception callbacks. Поддержаны базовые режимы `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit` и `main_failure_exit`; замените `main_` на `thread_` для соответствующего worker-style thread route.
 

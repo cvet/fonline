@@ -86,9 +86,9 @@ The current contract was re-derived from:
 
 | Surface | Current Engine capability | Evidence limit |
 |---|---|---|
-| Windows native | MSVC/clang-cl application targets, PDB emission outside `MinSizeRel`, debugger detection, `DebugBreak`, backward-cpp SEH diagnostics, generated MSVC visualizers | The Engine does not create or retain minidump files or operate a symbol server. |
+| Windows native | MSVC/clang-cl application targets, PDB emission outside `MinSizeRel`, debugger detection, `DebugBreak`, Engine SEH diagnostics, generated MSVC visualizers | The Engine does not create or retain minidump files or operate a symbol server. |
 | Linux native | Debug information outside `MinSizeRel`, `-rdynamic`, GDB/LLDB-compatible binaries, `/proc/self/status` debugger detection, signal/terminate diagnostics | Core-dump enablement, collection, symbol storage, container permissions, and retention are host/project policy. |
-| macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, backward-cpp signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
+| macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, Engine signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
 | AngelScript runtime | Loopback-by-default TCP endpoint, UDP discovery, line breakpoints, pause/continue/step, script stack, read-only local values, stop/abort/error events | No authentication, encryption, published VSIX, pinned adapter dependency lock, live endpoint CI, global-value inspection, expression evaluation, or state mutation contract. |
 | Managed C# runtime | Roslyn/MSBuild compile diagnostics, generated source/project/solution, managed baker and runtime logs, native host frames, load-context and scheduler tests, and standard debugger-compatible assemblies | Engine ships no C# editor adapter, launch profile, symbol server, hot reload, or live managed-debugger acceptance gate. The `fos` adapter is AngelScript-only. |
 | Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
@@ -203,7 +203,7 @@ Do not describe a platform's default crash reporter as an Engine-owned guarantee
 
 `break_into_debugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when that cached result is true. Because exception handling asks this question during early process initialization, launching outside a native debugger and attaching later is not guaranteed to make Engine-triggered breaks active.
 
-When a debugger is detected at startup, the Engine does not install backward-cpp fatal signal/SEH handling. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
+When a debugger is detected at startup, the Engine does not install its fatal signal/SEH handlers. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
 
 The AngelScript debugger is independent of `is_run_in_debugger`; attaching the `fos` adapter does not make the process native-debugger-aware.
 
@@ -233,6 +233,8 @@ For MSVC CMake generators, a target should be created while its intended `CMAKE_
 ## Stack Trace Architecture
 
 The Engine captures a bounded native return-address array and optional pre-resolved script layers in `StackTraceData`. Native symbol resolution is deferred until formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address under a bounded cache so repeated reports do not reload the same symbol information unnecessarily.
+
+Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
 
 `FO_STACK_TRACE_ENTRY()` is not a manual thread-local call stack. Outside Tracy configurations it contributes no stack frame; under Tracy it expands to a profiling zone. Native call stacks come from platform capture at the moment `GetStackTrace()` runs.
 
@@ -288,7 +290,7 @@ Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAn
 
 ### Crash-to-log guarantee and self-test
 
-Outside a native debugger, backward-cpp handles supported Windows SEH failures and POSIX fatal signals/termination on Windows, Linux, and macOS. The Engine adds a crash reason, captures a stack, switches to synchronous log writes, and exits through the crash path. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run. Third-party-created threads need the same setup before executing deeply recursive Engine work.
+Outside a native debugger, the Engine's own handlers cover supported Windows SEH failures, POSIX fatal signals, and termination. POSIX signals capture from `ucontext_t`, write synchronously, restore the default action, and re-raise the signal. Windows SEH captures the exception `CONTEXT`; a reporter thread writes the report even if the faulting thread exhausted its stack. A second crash cannot recursively emit another report. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run; third-party-created threads need the same setup before deeply recursive Engine work. The controlled `FO_SELFTEST_CRASH` modes also include `main_bad_call` and `thread_bad_call` for a null function-pointer call.
 
 `FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
 

@@ -425,8 +425,8 @@ if(WIN32)
 	endif()
 
 	SetValue(CMAKE_SYSTEM_VERSION 6.1)
-	AddCompileDefinitionsList(_WIN32_WINNT=0x0601)
 	AddCompileDefinitionsList(
+		_WIN32_WINNT=0x0601
 		UNICODE
 		_UNICODE
 		_CRT_SECURE_NO_WARNINGS
@@ -450,6 +450,12 @@ if(WIN32)
 		$<$<NOT:${expr_FullOptimization}>:/fp:precise>
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	# Stack walking on 32-bit Windows follows the chain of saved frame pointers, and a function compiled without one
+	# drops itself and everyone it calls out of every trace; on 64-bit Windows the function tables carry the walk instead
+	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		AddCompileOptionsList(/Oy-)
+	endif()
 
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		AddCompileOptionsList(/MP /Zc:preprocessor)
@@ -686,8 +692,7 @@ AddCompileDefinitionsList(
 	FO_MAC=${FO_MAC}
 	FO_ANDROID=${FO_ANDROID}
 	FO_IOS=${FO_IOS}
-	FO_WEB=${FO_WEB})
-AddCompileDefinitionsList(
+	FO_WEB=${FO_WEB}
 	FO_HAVE_OPENGL=${FO_HAVE_OPENGL}
 	FO_OPENGL_ES=${FO_OPENGL_ES}
 	FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D}

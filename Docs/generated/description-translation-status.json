@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4790,
-    "current_count": 4790,
+    "entry_count": 4792,
+    "current_count": 4792,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2532,
-      "current_count": 2532,
+      "entry_count": 2534,
+      "current_count": 2534,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -3214,6 +3214,12 @@
           "locator": "/symbols/@id=script.enum-value.ImGui_InputTextFlags.ParseEmptyRefVal/description",
           "source": "InputFloat(), InputInt(), InputScalar() etc. only: parse empty string as zero value.",
           "source_sha256": "fad99e5ea0633ea1ddc4e4b66dca66fc56801c9b6e159f557c47a13d415a27d9",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.ImGui_InputTextFlags.Password/description",
+          "source": "Password mode, display all characters as '*', disable copy",
+          "source_sha256": "7a25462727dbe2f6e14307cdeb3d3fc7d45ffccb856269dcedd7253e5894c5e2",
           "status": "current"
         },
         {
@@ -6463,6 +6469,12 @@
           "locator": "/symbols/@id=script.event.client.Game.OnScreenSizeChanged/description",
           "source": "Runs after the application reports a screen-size change",
           "source_sha256": "c6d92b55b5a6891b95bc63b867f2b2704b26c6fdcb1afa703b4587bb7af68ef0",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.event.client.Game.OnScriptOverrun/description",
+          "source": "Reports a bounded, drained script overrun summary before the next OnLoop callback",
+          "source_sha256": "703454eeb2bdac4758a34b562edb007118082de1299e501ada2577202223b960",
           "status": "current"
         },
         {

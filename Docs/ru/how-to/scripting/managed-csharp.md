@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"fe58d5395276a40f9b70cd5d3ee1ebb387d4278a612e0ba4ced145f7d66943fd"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4ef6564d92f2cb681fbf59ef0b3588f2feada3f12439b54f248bdcaaab1ec07c"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -117,11 +117,15 @@ Entity-only post-set реакции могут возвращать `Task`; valu
 
 Inbound remote-call handlers могут возвращать `void`, `Task` или `Task<T>`. У remote call нет wire result, поэтому незавершённые tasks наблюдаются без блокировки network/client pump; значение `Task<T>` игнорируется. Named script function с non-generic `Task` использует ту же async boundary. `Task<T>` named function остаётся synchronous, когда native code нужен `T`.
 
+Аргументы callback и remote call сохраняют форму metadata: native `any[]` поступает как `List<any>`, а `string=>any` — как `Dictionary<string, any>`. Bridge не превращает их в `List<object>` или строковый словарь; указывайте точные generated types.
+
 ## Async и планирование continuations
 
 `Game.YieldAsync(milliseconds)` — managed-аналог приостановки скрипта. Он завершается через Engine time event и продолжается через принадлежащий backend `ScriptSynchronizationContext`. Не используйте `async void`; возвращайте `Task` или `Task<T>`, чтобы движок мог наблюдать completion и faults.
 
 Каждый backend владеет отдельной очередью continuation. `BaseEngine::FrameAdvance` обрабатывает только свои backend после освобождения frame-property lock. Каждая продолженная continuation снова входит в свой Engine через `RunScriptContext`; на сервере это создаёт новый synchronization context. Новая continuation ждёт следующего frame, поэтому yielding loop не может занять весь текущий frame.
+
+`Post` поднимает atomic ready flag backend, пока scheduler открыт; idle frame не входит в managed code ради проверки пустой очереди. Частично прерванный pump повторно сигнализирует об оставшейся работе для следующего frame. При shutdown scheduler закрывается до unbind, поэтому поздний post не обращается к освобождённому backend. `Native.GetAndResetContinuationPumps` даёт interop tests счётчик входов в pump.
 
 Synchronous native-result callbacks и module initialization используют private continuation queue и обрабатывают только continuations собственного await. `Game.YieldAsync` в таком контексте запрещён, потому что заблокированный caller не может продвинуть timer pump. Уже completed tasks остаются допустимыми.
 
@@ -149,11 +153,19 @@ cycles разрастаться экспоненциально. Analyzer self-te
 
 `Sync.Acquire` расширяет связанный cover на месте через `Game.SyncWiden`, не освобождая и не захватывая заново уже покрытые сущности. Нативный cover остаётся непрерывным при проходе по отношениям `[SyncWiden]`, без race window между двумя наборами.
 
+`FOSYNC010` запрещает отбрасывать boolean результат acquisition, включая отдельный вызов или присваивание `_`: отказ должен влиять на control flow. `FOSYNC011` требует, чтобы helper `Sync`, меняющий удерживаемый cover напрямую либо через другой effectful helper, объявил собственный `[CoverEffect]`. Analyzer считает эти findings ошибками сборки, а не advisory warnings; предложенные redundancy diagnostics `FOSYNC012`–`FOSYNC014` были отозваны.
+
 Attributes являются доказательством, а не операцией блокировки. Entry point отмечает entity, которую Engine уже синхронизировал. Обычный helper получает нужный cover или распространяет `[RequiresCover]` на caller.
+
+Собственный dispatcher может пометить свой marker attribute как `EntryPointMarker`, чтобы analyzer считал handlers entry points. `FOSYNC009` требует актуального cover после `await`: lock прежней переменной `map = cr.GetMap()` не доказывает заново cover `cr`; нужен текущий прямой alias, целая покрытая collection либо явная связь `PassesCover`/`RestoreCallerCover`. Отозванные правила избыточности `FOSYNC012`–`FOSYNC014` не входят в действующий контракт. Неуспешные приобретения `Sync` доступны подписчикам `Sync.OnFailure` как неизменяемые snapshots caller, причины, entities и stack; результат helper остаётся `false`. Без подписчиков snapshot не создаётся.
 
 ## Значения, коллекции, properties и lifetime
 
 Bridge преобразует поддерживаемые primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments и return values через Engine metadata. Зарегистрированный value type является plain packed data: каждое поле — primitive, enum, `hstring` или single-field value type; offset каждого поля выровнен по его размеру; полный размер не содержит tail padding; native twin trivially copyable и имеет тот же размер. Metadata registration отклоняет остальные формы. Generated C# structs используют sequential layout, а backend проверяет Mono value size до копирования байтов.
+
+Managed `FOnline.any` — value type с текстовым представлением Engine `any_t`, не `object` и не `string`. Преобразование в него неявно для поддерживаемых primitives, strings, enums и generated value structs; обратное преобразование явно и отклоняет неверный или выходящий за диапазон текст. Пустой текст читается как zero/false/empty text, числовое значение enum проверяется по диапазону базового типа, а numeric read принимает суффикс `f` в нижнем регистре. `ToEnum<T>()` принимает qualified member, простое имя или число. Equality сравнивает текст; `IsEmpty` проверяет пустоту. Используйте explicit operators, а не `System.Convert`/`IConvertible`. Collections используют `List<any>` и `Dictionary<K, any>`, а generated `GetAsAny`/`SetAsAny` обслуживают properties. Изменение этого представления требует совместного обновления native ABI и baked assemblies.
+
+Записи managed script properties через unboxed, fixed-list и converting paths идут через `Properties::SetValue`: сначала validation/clamping, неизменившиеся bytes завершают запись, и только изменение вызывает setters/post-setters (persistence и client sync). `SetValueFromData` служит для применения полученных по сети данных, не для script assignment.
 
 Generated entity properties имеют native backing. Dynamic ref types — managed DTO, значения которых материализуются из native property storage или присваиваются туда. Getter возвращает detached structured state; сохраняйте изменение через read-modify-reassign, если generated member сам не является live wrapper.
 
@@ -185,6 +197,10 @@ Mono инициализируется один раз на процесс. Пе�
 
 При запуске baked assemblies восстанавливаются в content-hashed подкаталоги writable `Cache/ManagedAssemblies/`. Уже совпадающие по байтам файлы переиспользуются, поэтому параллельные in-process Engine instances не перезаписывают загруженную Mono assembly. Отсутствие managed assemblies допустимо для tests/tools без baked scripts; настроенный gameplay project должен считать его ошибкой package или resource selection.
 
+`DynamicAssemblies.Load(image, symbols)` загружает post-bake PE image в non-collectible load context данного backend. Имя assembly должно быть новым `FOnline.Dynamic.*`; код разделяет script types и statics backend и остаётся загруженным до конца процесса. `RunEntryAsync(MethodInfo)` принимает static метод без параметров, возвращающий значение, `Task` или `Task<T>`, и запускает его как отдельный script entry с собственным server synchronization context; `async void` запрещён, reflection wrapper исключения снимается. `ScriptsVersionId` — MVID entry assembly. На сервере `ReadClientScriptsImage()` возвращает клиентскую entry image из updater (либо локального bake), чтобы компилировать fragment против соответствующей версии клиента. Dynamic assemblies участвуют в очистке script statics.
+
+Опциональная engine library `FOnline.ScriptCompiler` компилирует live fragments через Roslyn. Проект добавляет её `.csproj` через `ManagedScript.ExtraReferences` только в компилирующие targets; она и dependencies упаковываются рядом с их entry assemblies. `DynamicScriptCompiler.CompileAsync` работает вне Engine thread, создаёт уникальное имя `FOnline.Dynamic.*`, принимает body statements или expression, usings и symbols и привязывает diagnostics к строке/колонке fragment. Можно компилировать против текущих scripts или переданной image другого target. Компиляция допускает private/internal члены scripts, поэтому авторизация отправителя кода полностью принадлежит подключающему проекту. PDB не генерируется: embedded Mono может не содержать cryptography; compile diagnostics сохраняют строки, runtime frames — нет. Горячей выгрузки этих assemblies нет.
+
 Shutdown сначала вызывает `BeginManagedTeardown`, который до любой другой очистки выполняет `Native.BeginBackendTeardown` и делает `Native.IsBackendTearingDown` истинным, пока backend ещё bound. Так wrapper, завершённый во время обычного runtime, отличается от wrapper, ставшего недостижимым из-за самого teardown. Wrapper с thread-affine native resource, который нельзя освободить из finalizer thread, в последнем случае может не сообщать о leak, потому что владеющая Engine subsystem уже уничтожается. `Native.IsBackendAlive` не позволяет провести это различие: unbind намеренно остаётся более поздним шагом, чтобы собранные во время shutdown entity wrappers ещё могли вернуть свои native references.
 
 Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
@@ -194,6 +210,8 @@ Single-threaded browser runtime не имеет пригодных managed threa
 ## Сборка и baking
 
 Generated CMake target `CompileManagedScripts` запускает standalone `<ProjectDevName>_ManagedScriptBaker`. Он зависит от `ForceCodeGeneration`, загружает project configuration, готовит metadata, генерирует managed API/project, включая `*Abi.gen.cs`, и компилирует target assemblies без полного resource bake. Generated API files входят в assembly stamp.
+
+`.csproj` в `ManagedScript.ExtraReferences` строится как project reference, а package dependencies копируются для этого target. Каждый packed helper assembly объявляется bake output, в том числе если target актуален; freshness проверяется по pack output, не по временному MSBuild output directory, который может удалить outdated sweep.
 
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.
 
@@ -220,6 +238,8 @@ Web использует Mono interpreter и Engine JavaScript glue планир
 ## Диагностика и debugging
 
 Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. Факт создания assemblies не доказывает startup или callback dispatch. Для qualification client/device/browser, где нельзя запустить native test suite, задайте `ManagedScript.InteropProbeOnStart = True`: startup логирует строку `INTEROP-TRANSPORT` для каждого условия и финальный summary.
+
+Оба script backend хранят не более 32 разных имён overrun entry на каждый Engine, считают повторы и независимо сохраняют максимальные execution и lock-wait times. `TakeScriptOverruns()` забирает буфер. Клиент забирает его перед `OnLoop` и отправляет `OnScriptOverrun(entry, execution, lockWait, count)` вне lock буфера; server и mapper не публикуют event в своих циклах. Overrun из subscriber попадёт в следующую отправку. Прежние suppression по threshold и debugger сохраняются.
 
 `InteropProbe` сравнивает runtime invoke, classic thunk и `UnmanagedCallersOnly` transports там, где runtime их предоставляет, затем измеряет production dispatch и его части synchronization, attachment и overrun reporting. Каждая серия проверяет delivery/arguments и сообщает GC handles, metadata lookups, managed objects, wrapper construction и — под Tracy — native allocations per call. Counters thread-local и выключены вне measured stretch. Latency служит evidence для сравнения на quiet host, а не shared-CI threshold; allocation и delivery counts остаются hard assertions.
 

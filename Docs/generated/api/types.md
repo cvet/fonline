@@ -1305,6 +1305,9 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-imgui-inputtextflags-parseemptyrefval-f1215acf71"></a>
 - [`symbol-script-enum-value-imgui-inputtextflags-parseemptyrefval-f1215acf71`](../../en/reference/script-api/types.md#symbol-script-enum-value-imgui-inputtextflags-parseemptyrefval-f1215acf71)
 
+<a id="symbol-script-enum-value-imgui-inputtextflags-password-ceb77a942d"></a>
+- [`symbol-script-enum-value-imgui-inputtextflags-password-ceb77a942d`](../../en/reference/script-api/types.md#symbol-script-enum-value-imgui-inputtextflags-password-ceb77a942d)
+
 <a id="symbol-script-enum-value-imgui-inputtextflags-readonly-571617b475"></a>
 - [`symbol-script-enum-value-imgui-inputtextflags-readonly-571617b475`](../../en/reference/script-api/types.md#symbol-script-enum-value-imgui-inputtextflags-readonly-571617b475)
 

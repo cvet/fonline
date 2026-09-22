@@ -291,11 +291,11 @@ class DocumentationApiModelTests(unittest.TestCase):
             for symbol in model["symbols"]
             if symbol["kind"] == "enum-value" and symbol["receiver"].startswith("ImGui_")
         ]
-        self.assertEqual(len(imgui_values), 302)
+        self.assertEqual(len(imgui_values), 303)
         self.assertEqual([symbol["id"] for symbol in imgui_values if not symbol["description"]], [])
         self.assertEqual(
             sum(symbol["source"]["path"] == "ThirdParty/imgui/imgui.h" for symbol in imgui_values),
-            234,
+            235,
         )
         self.assertEqual(
             sum(symbol["source"]["path"] == "Source/Common/ImGuiExt/ImGuiStuff.h" for symbol in imgui_values),
@@ -344,11 +344,11 @@ class DocumentationApiModelTests(unittest.TestCase):
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
         self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 2)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2530)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2532)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2529, "internal": 1},
+            {"experimental": 2531, "internal": 1},
         )
         debugger_symbol = next(
             symbol for symbol in model["symbols"] if symbol["id"] == "script.method.common.Game.BreakIntoDebugger"

@@ -134,13 +134,15 @@ This list is intentionally exact rather than thematic. `Essentials.h` defines a 
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
+`global_data::destroy(observer, context)` calls the observer with each registered set name immediately before its delete callback. This makes a stuck teardown attributable to a set without letting the observer depend on global data that may already be gone. A host/runtime module must destroy only a set it created, and it must join its own workers before returning to a continuing host. Process-lifetime crash-record state stays outside this sweep.
+
 ## Subsystem map
 
 ### Platform and compiler gate
 
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
-`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` prefers environment values and is shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). When no environment path exists, Windows falls back to `SHGetKnownFolderPath` and supported POSIX hosts to `getpwuid_r`; a host without either source returns no path. Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
 
 `WinApi.*` and `Posix.*` own the operating-system calls behind the `winapi::`
 and `posix::` namespaces. Their public boundaries use engine strings, optionals,
@@ -153,6 +155,8 @@ order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
 wrappers themselves rather than ordinary consumers.
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
+
+`platform::process_identity` pairs PID with process start time. An ID alone can be reused, so client-session diagnostics match both values. On Windows the liveness check polls the process handle with zero timeout rather than reading exit code `259` (`STILL_ACTIVE`), which a terminated process can retain while another process holds its handle. `BuildTools/tests/test_process_identity.py` covers live and terminated retained-handle cases when `clang++` is available.
 
 ### Diagnostics and failure handling
 
@@ -298,6 +302,8 @@ storage.
 ### Filesystem, compression, sockets, and work threads
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking](../../explanation/authority-and-networking/), and `WorkThread.*` owns simple background-worker infrastructure.
+
+On Windows, `fs::make_io_path` presents a literal extended-length path to standard-library filesystem/file operations without changing the logical resource path. The disk tests exercise Unicode names past 320 native characters and Windows trailing-name behavior. Use this conversion at the native I/O boundary rather than truncating or shortening project paths.
 
 `Threading.h` exposes `coarse_sleep` and `precise_sleep`; Engine code does not
 use `std::this_thread::sleep_for`. `coarse_sleep` parks without consuming CPU

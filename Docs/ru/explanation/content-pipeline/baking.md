@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"dbc5e2f272f5561dc1adff8d19508631a8e4f94a3f90ff044741e0b503debd8e"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"9ced5c14108592427e932d34a5fc5b656574258fb00df60ed9f53ae63f07ac3a"} -->
 # Конвейер запекания ресурсов
 
 Этот документ описывает конвейер запекания ресурсов Engine: где он подключён, какие исходники определяют поведение baker-ов и как проверять изменения. Общая карта инструментов приведена в разделе [Tools](../../../Tools.md).
@@ -462,6 +462,8 @@ Generated Ozz rig является единственным production clip/pose
 
 - `CompileAngelScript` запускает AS compiler проекта при `FO_ANGELSCRIPT_SCRIPTING`;
 - `CompileManagedScripts` запускает standalone `ManagedScriptBaker` проекта после `ForceCodeGeneration` при включённом `FO_MANAGED_SCRIPTING`. Он компилирует настроенные `.cs` inputs в assemblies resource-pack/target и генерирует поверхность `.gen.cs` (включая target manifest привязки `*Abi.gen.cs`), `.gen.csproj`, `.gen.sln`. Generated API files входят в freshness stamp assembly после генерации, поэтому generator-only change не может оставить ранее собранный DLL актуальным; подготовка runtime payload остаётся отдельной стадией packaging.
+
+Каждая packed managed assembly, включая скопированные DLL package/project references, объявляется bake output. Актуальный target повторно заявляет assemblies, которые прежде поставил из pack output; временный каталог MSBuild output внутри pack может быть удалён outdated sweep и не является источником freshness. Dependency closure читает assembly identity и references через `Source/Scripting/Managed/ManagedAssemblyReferences.*`.
 
 Это отдельные targets от resource baking, но они находятся в одном preparation stage, потому что generated/baked runtime inputs образуют общий build workflow.
 

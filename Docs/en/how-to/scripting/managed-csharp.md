@@ -117,11 +117,15 @@ Entity-only post-set reactions may return `Task`; value-transforming setters wit
 
 Inbound remote-call handlers may return `void`, `Task`, or `Task<T>`. Remote calls have no wire result, so incomplete tasks are observed without blocking the network/client pump; a `Task<T>` value is ignored. A named script function returning non-generic `Task` follows the same asynchronous boundary. A `Task<T>` named function remains synchronous when native code requires `T`.
 
+Callback and remote-call arguments keep their metadata shape: native `any[]` arrives as `List<any>` and `string=>any` as `Dictionary<string, any>`. The bridge does not adapt these into `List<object>` or string dictionaries; declare the exact generated types.
+
 ## Async and continuation scheduling
 
 `Game.YieldAsync(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
 
 Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pumps only its backends after releasing the frame-property lock. Every resumed continuation re-enters the owning Engine through `RunScriptContext`; on the server this creates a fresh synchronization context. A newly posted continuation waits for a later frame, so a yielding loop cannot monopolize one frame.
+
+`Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
@@ -149,11 +153,19 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
 
+`FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
+
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
+
+Custom dispatchers can declare their marker attribute with `EntryPointMarker`, so the analyzer treats their handlers as entry points. `FOSYNC009` requires a current cover after `await`: locking an earlier `map = cr.GetMap()` does not re-prove `cr`; use the current direct alias, a whole covered collection, or an explicit `PassesCover`/`RestoreCallerCover` relationship. The withdrawn redundancy rules `FOSYNC012`–`FOSYNC014` are not part of the active contract. Failed `Sync` acquisitions may be observed through `Sync.OnFailure`; subscribers receive immutable caller, reason, entity, and stack snapshots without changing the helper's `false` result. With no subscribers, the diagnostic snapshot is not allocated.
 
 ## Values, collections, properties, and lifetime
 
 The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. A registered value type is plain packed data: every field is a primitive, enum, `hstring`, or single-field value type; every offset is aligned to the field size; the total size has no tail padding; and a native twin is trivially copyable with the same size. Metadata registration rejects every other shape. Generated C# structs use sequential layout, and the backend checks the Mono value size before copying their bytes.
+
+Managed `FOnline.any` is a value type holding the Engine's textual `any_t`, not `object` or `string`. Conversion into it is implicit for supported primitives, strings, enums, and generated value structs; conversion out is explicit and rejects invalid or out-of-range data. Empty text reads as zero/false/empty text, numeric enum reads validate the underlying range, and lowercase float suffixes are accepted for numeric reads. `ToEnum<T>()` accepts a qualified member, bare member, or numeric value. Equality compares the stored text; `IsEmpty` tests empty text. Use the explicit operators, not `System.Convert`/`IConvertible`. Collections use `List<any>` and `Dictionary<K, any>`, and generated `GetAsAny`/`SetAsAny` bridge properties. The managed ABI and baked assemblies must move together when this representation changes.
+
+Managed script property writes, including unboxed, fixed-list, and converting paths, use `Properties::SetValue`: validation/clamping happens first, unchanged stored bytes stop the write, and only a changed value runs setters and post-setters (persistence and client sync). `SetValueFromData` is for applying received network data, never a script assignment.
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
@@ -185,6 +197,10 @@ Before any code or type initializer runs from an entry assembly, the backend cal
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
+`DynamicAssemblies.Load(image, symbols)` loads a post-bake PE image into this backend's non-collectible load context. Its assembly name must be a fresh `FOnline.Dynamic.*` name; loaded code shares the backend's script types and statics and remains loaded for the process lifetime. `RunEntryAsync(MethodInfo)` accepts a static parameterless method returning a value, `Task`, or `Task<T>` and runs it as its own script entry and server synchronization context; it rejects `async void` and unwraps invocation exceptions. `ScriptsVersionId` is the entry assembly MVID. On a server, `ReadClientScriptsImage()` returns the client entry image used by the updater (or local bake), allowing a fragment compiler to target the matching client version. Dynamic assemblies participate in script-static cleanup.
+
+The optional engine-owned `FOnline.ScriptCompiler` library compiles live fragments with Roslyn. Projects add its `.csproj` through `ManagedScript.ExtraReferences` only for targets that compile fragments; it and its dependencies are then packed alongside those entry assemblies. `DynamicScriptCompiler.CompileAsync` works off the Engine thread, uses a unique `FOnline.Dynamic.*` name, accepts a statement body or expression plus usings/symbols, and maps compile diagnostics to fragment line/column. It can compile against the running scripts or a supplied other-target image. Compilation has access to private/internal script members, so authorization to submit code is entirely an embedding-project responsibility. The emitted image has no PDB because the embedded Mono runtime may lack cryptography; compile diagnostics retain source lines, runtime frames do not. These assemblies are not hot-unloadable.
+
 Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
 
 Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
@@ -194,6 +210,8 @@ The single-threaded browser runtime has neither a usable managed thread pool nor
 ## Build and bake workflow
 
 The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
+
+A `.csproj` in `ManagedScript.ExtraReferences` is built as a project reference and its package dependencies are copied for that target. Every packed helper assembly is claimed as a bake output, including on an up-to-date target; freshness checks use the pack output, not a temporary MSBuild output directory that the outdated sweep may remove.
 
 `BakeResources` and `ForceBakeResources` run the `Managed` baker as part of the selected resource pack. Use the compile target for a fast source/API check and the bake target for the real resource, assembly, runtime-payload, and metadata contract. After a force bake, run an ordinary incremental bake and require it to settle cleanly.
 
@@ -220,6 +238,8 @@ MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED
 ## Diagnostics and debugging
 
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
+
+Both script backends retain at most 32 distinct overrun entry names per Engine, counting repeats while preserving independent maximum execution and lock-wait times. `TakeScriptOverruns()` drains that buffer. The client drains before `OnLoop` and dispatches `OnScriptOverrun(entry, execution, lockWait, count)` outside the buffer lock; server and mapper do not publish the event in their loops. An overrun caused by a subscriber waits for the next drain. The usual threshold/debugger suppression still applies.
 
 `InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
 
@@ -249,6 +269,8 @@ First diagnosis routes:
 | Change | Required evidence |
 | --- | --- |
 | Managed CoreScripts or backend | C# format/style checks, CoreScripts tests, generated project build, focused native unit tests. |
+| Dynamic assemblies or live compiler | `test_managed_dynamic_assemblies.py`, `test_managed_script_compiler.py`, target package/closure check, and an embedding-project runtime authorization and execution test. |
+| Synchronization failures | `FOnline.Sync.Tests.csproj`, analyzer tests, and the embedding-project subscriber/log behavior. |
 | Generated API shape or native export | Codegen, managed baker, generated diff, API contract diff, both backend tests where the contract is shared. |
 | Attribute, event, callback, timer, or named call | Managed reflection/registration test plus the owning native/runtime dispatch. |
 | Async scheduler | `test_managed_async_callbacks.py`, backend-isolation/frame-pump tests, and an embedding-project awaited gameplay path. |

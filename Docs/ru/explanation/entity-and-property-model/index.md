@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"fbe82911b8dd868355ecfc1e50ffba33ff70b72ad4e17dcc55e1f2aefbe078d7"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"41137c9eb3420d880f80218a4e5f90d4c7e17f29dde38667cf62e226f329da7a"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -56,7 +56,7 @@ permalink: /Docs/ru/explanation/entity-and-property-model/
 
 - идентичность и тип: `GetName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
 - доступ к свойствам: `GetProperties()`, `GetPropertiesForEdit()`, `GetValueAsInt()`, `GetValueAsAny()`, `SetValueAsInt()`, `SetValueAsAny()`;
-- raw snapshots данных: `StoreData()`, `RestoreData()`, `SetValueFromData()`;
+- raw snapshots данных: `StoreData()`, `RestoreData()`, `SetValueFromData()` (безусловное применение полученного по сети значения);
 - состояние жизненного цикла: `IsDestroying()`, `IsDestroyed()`, `MarkAsDestroying()`, `MarkAsDestroyed()`;
 - граф владения: `AddInnerEntity()`, `RemoveInnerEntity()`, `ClearInnerEntities()`;
 - отправку событий: `SubscribeEvent()`, `UnsubscribeEvent()`, `FireEvent()`.
@@ -110,6 +110,8 @@ text/document load и payload после setter clamp-ятся до сравне
 NaN и infinity являются ошибкой, а не значениями для замены endpoint-ом.
 
 Хранилище raw-данных свойств имеет естественное выравнивание: storage blob и буферы `PropertyRawData` начинаются с максимального выравнивания, регистрация layout структуры проверяет выравнивание смещений полей, а overlay/POD offsets следуют выравниванию данных каждого свойства. Поэтому readers свойств используют обычные типизированные загрузки без обходов unaligned access и runtime-проверок выравнивания; нарушение контракта обнаруживают sanitizer-сборки. Равенство raw payload проверяется побайтно (`MemCompare`): общая длина payload не повышает требования к его выравниванию.
+
+Повторная запись того же значения скриптом ничего не делает. `Properties::SetValue` выполняет validation/clamping, сравнивает сохранённые bytes и при равенстве возвращается до setters, post-setters, persistence и client sync. Оба scripting backend и `SetAsInt`/`SetAsAny` идут этим путём; повторное присваивание не может вызвать callback или resend. `SetValueFromData` безусловно применяет полученное по сети значение. У virtual property нет сохранённого значения для сравнения. Native typed writes для string/`any_t` и vectors также не сравнивают равенство; raw payload сравнивается побайтно, а native floating-point typed write использует `is_float_equal`.
 
 ## Runtime свойств
 

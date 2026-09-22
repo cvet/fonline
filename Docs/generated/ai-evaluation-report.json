@@ -480,8 +480,8 @@
             "script-lifecycle-concurrency",
             "scripting-runtime",
             "nullability",
-            "baking-pipeline",
-            "exception-safety"
+            "testing",
+            "baking-pipeline"
           ]
         }
       ],
@@ -1379,7 +1379,7 @@
             "buildtools-readme",
             "generated-helper-cli-commands",
             "baking-pipeline",
-            "client-updater"
+            "managed-csharp-scripting"
           ]
         }
       ],
@@ -1468,8 +1468,8 @@
             "profiling",
             "generated-api-metadata",
             "debugging",
-            "android-debugging",
-            "managed-csharp-scripting"
+            "managed-csharp-scripting",
+            "android-debugging"
           ]
         }
       ],

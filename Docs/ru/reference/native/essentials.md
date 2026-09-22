@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"6c7953ca0cb21c6db8a7157b60a87d0ecd832eb45bb36f8b5a3ce49b399345d7"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"cc9de3520878f0f3695ae1890558f5e44094190e6b49e87d7be2e78dee8d1643"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -134,13 +134,15 @@ test Essentials не обходит contract-change gate.
 
 Новые API Essentials не должны зависеть от `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/` или заголовков встраиваемого проекта.
 
+`global_data::destroy(observer, context)` передаёт observer имя каждого зарегистрированного набора непосредственно перед его delete callback. Так зависший teardown можно связать с набором, не позволяя observer зависеть от уже уничтоженных global data. Host/runtime module уничтожает только созданный им набор и присоединяет свои workers до возврата в продолжающий работу host. Process-lifetime crash-record state остаётся вне этого sweep.
+
 ## Карта подсистем
 
 ### Граница платформы и компилятора
 
 `BasicCore.h` проверяет выбранный макрос ОС (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS` или `FO_WEB`) и требует C++20. Здесь же часто используемые стандартные типы вводятся в namespace движка и объявляются базовые макросы, включая `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL` и helpers для namespace. Средства подавления предупреждений также находятся здесь: `FO_DISABLE_WARNINGS_PUSH/POP` отключает все предупреждения при обёртывании third-party headers, а пары `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP` и `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` подавляют одно именованное предупреждение только в соответствующем компиляторе. Это позволяет изолировать false positive одного toolchain, не заставляя остальные отвергать неизвестный номер `-W` или warning. Сначала исправляйте причину предупреждения; per-compiler helper допустим только для документированного false positive компилятора.
 
-`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` намеренно использует только окружение, без shell и SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
+`Platform.h` / `.cpp` владеет небольшим набором host-specific helpers: информационным журналированием, именами потоков, поиском пути executable и пользовательского каталога данных, форматированием process id, fork там, где он доступен, использованием памяти процессом, CPU snapshots и загрузкой динамических модулей. `Platform::GetUserDataBase()` предпочитает окружение и не использует shell/SDL: Windows берёт `%LOCALAPPDATA%` с fallback на `%APPDATA%`, macOS/iOS использует `$HOME/Library/Application Support`, Linux/Android/прочие платформы используют `$XDG_DATA_HOME` с fallback на `$HOME/.local/share`. Если окружение не задаёт путь, Windows использует `SHGetKnownFolderPath`, а поддерживаемые POSIX hosts — `getpwuid_r`; host без обоих источников не возвращает путь. Вышележащий слой добавляет имя приложения и решает, является ли отсутствие пути фатальным. `Platform::GetCpuUsageSnapshot()` возвращает накопительные системные счётчики по ядрам и CPU time текущего процесса; вызывающий код сравнивает два snapshot для вычисления процентов и хранит sampling/cache state вне Platform. `Platform` находится выше `ExceptionHandling` и использует более ранний `FO_BASIC_STRONG_ASSERT` для terminating host-API invariants, не импортируя поздние exception macros. Platform-specific поведение приложения, окна и рендеринга находится в `Source/Frontend/`.
 
 `WinApi.*` и `Posix.*` владеют вызовами операционной системы за пространствами
 имён `winapi::` и `posix::`. Их публичные границы используют строки движка,
@@ -153,6 +155,8 @@ test Essentials не обходит contract-change gate.
 `NetSockets.*` и `ServerServiceApp.cpp`, сами являющиеся OS wrappers.
 
 Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Единый registry Windows build platforms владеет архитектурой CMake, toolset и канонической packaging-архитектурой обычных вариантов, `-clang` и `-win7`. Пара Win7 фиксирует MSVC 14.44, а `FO_BINARY_OUTPUT_POSTFIX` остаётся независимым от платформы. В package DSL конкретная запись `BINARY` может выбрать собственный postfix, например `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, не затрагивая соседние binaries. Проверки совместимости находятся вне application targets.
+
+`platform::process_identity` объединяет PID и время запуска процесса. Один ID может быть использован повторно, поэтому диагностика клиентской сессии сверяет оба поля. В Windows liveness проверяется zero-timeout polling process handle, а не кодом выхода `259` (`STILL_ACTIVE`), который может сохраняться у завершённого процесса при удержании handle другим процессом. `BuildTools/tests/test_process_identity.py` проверяет живой и завершённый retained-handle случаи при наличии `clang++`.
 
 ### Диагностика и обработка сбоев
 
@@ -308,6 +312,8 @@ standard stream копируется через `make_stream_string`,
 ### Файловая система, сжатие, сокеты и рабочие потоки
 
 `DiskFileSystem.*` является низкоуровневой абстракцией диска. Небольшой policy helper `fs_make_writable_path(user_writable_path, relative)` используется вышележащими слоями для writable overlay установленного клиента: пустой root или absolute input возвращает input без изменений, а relative path помещается под writable root. Вышележащее смонтированное представление ресурсов находится в `Source/Common/FileSystem.*` и описано в разделе [Конфигурация и источники данных](../settings/configuration-and-data-sources.md). `Compressor.*` владеет generic compression round trips, `NetSockets.*` содержит raw socket helpers ниже высокоуровневой модели network commands/connections из раздела [Сеть](../../explanation/authority-and-networking/), а `WorkThread.*` предоставляет простую инфраструктуру фоновых workers.
+
+В Windows `fs::make_io_path` передаёт standard-library filesystem/file operations буквальный extended-length path, не меняя логический resource path. Дисковые тесты проверяют Unicode names длиннее 320 native characters и поведение trailing names. Применяйте преобразование на native I/O boundary, а не сокращайте project paths.
 
 `Threading.h` экспортирует `coarse_sleep` и `precise_sleep`; код движка не
 использует `std::this_thread::sleep_for`. `coarse_sleep` паркует поток без

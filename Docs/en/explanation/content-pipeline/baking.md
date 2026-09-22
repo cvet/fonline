@@ -1103,6 +1103,8 @@ memory results.
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
 - `CompileManagedScripts` runs the standalone project `ManagedScriptBaker` after `ForceCodeGeneration` when `FO_MANAGED_SCRIPTING` is enabled. It compiles configured `.cs` inputs into resource-pack/target assemblies and generates the `.gen.cs` surface (including the target `*Abi.gen.cs` binding manifest), `.gen.csproj`, and `.gen.sln`. The generated API files are included in the assembly freshness stamp after generation, so generator-only changes cannot leave a previously compiled DLL current; runtime payload preparation remains a separate packaging stage.
 
+Every packed managed assembly, including copied package/project-reference DLLs, is claimed as an output of the bake. An up-to-date target reclaims the assemblies it previously shipped from the pack output; the temporary MSBuild output directory inside that pack may be removed by the outdated sweep and is not a freshness source. Dependency closure reads assembly identity and references through `Source/Scripting/Managed/ManagedAssemblyReferences.*`.
+
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
 ## Tests to inspect

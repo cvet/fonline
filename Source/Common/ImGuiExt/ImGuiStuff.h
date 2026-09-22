@@ -343,6 +343,7 @@ enum class ImGui_InputTextFlags : uint32_t
     CharsNoBlank = 16, // ImGuiInputTextFlags_CharsNoBlank
     EnterReturnsTrue = 64, // ImGuiInputTextFlags_EnterReturnsTrue
     ReadOnly = 512, // ImGuiInputTextFlags_ReadOnly
+    Password = 1024, // ImGuiInputTextFlags_Password
     AutoSelectAll = 4096, // ImGuiInputTextFlags_AutoSelectAll
     ParseEmptyRefVal = 8192, // ImGuiInputTextFlags_ParseEmptyRefVal
     DisplayEmptyRefVal = 16384, // ImGuiInputTextFlags_DisplayEmptyRefVal

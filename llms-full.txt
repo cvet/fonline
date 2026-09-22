@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 93dd1f1c588f39adcb802e0dc134e6c7e9205603eb7afa81836799e27612e3ae
+Content SHA-256: ed1da5a029ccd2bca99442de83cb236130487586ae6b951f73b456f0a9b85031
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2530**
-- Symbols with source-backed descriptions: **2530**
+- Discovered symbols: **2532**
+- Symbols with source-backed descriptions: **2532**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2530**
+- Explicitly classified symbols: **2532**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3551,7 +3551,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: fe58d5395276a40f9b70cd5d3ee1ebb387d4278a612e0ba4ced145f7d66943fd
+Content SHA-256: 4ef6564d92f2cb681fbf59ef0b3588f2feada3f12439b54f248bdcaaab1ec07c
 
 ---
 layout: default
@@ -3672,11 +3672,15 @@ Entity-only post-set reactions may return `Task`; value-transforming setters wit
 
 Inbound remote-call handlers may return `void`, `Task`, or `Task<T>`. Remote calls have no wire result, so incomplete tasks are observed without blocking the network/client pump; a `Task<T>` value is ignored. A named script function returning non-generic `Task` follows the same asynchronous boundary. A `Task<T>` named function remains synchronous when native code requires `T`.
 
+Callback and remote-call arguments keep their metadata shape: native `any[]` arrives as `List<any>` and `string=>any` as `Dictionary<string, any>`. The bridge does not adapt these into `List<object>` or string dictionaries; declare the exact generated types.
+
 ## Async and continuation scheduling
 
 `Game.YieldAsync(milliseconds)` is the managed equivalent of a script suspension. It completes from an Engine time event and resumes through the backend-owned `ScriptSynchronizationContext`. Do not use `async void`; return `Task` or `Task<T>` so the Engine can observe completion and faults.
 
 Each backend owns a separate continuation queue. `BaseEngine::FrameAdvance` pumps only its backends after releasing the frame-property lock. Every resumed continuation re-enters the owning Engine through `RunScriptContext`; on the server this creates a fresh synchronization context. A newly posted continuation waits for a later frame, so a yielding loop cannot monopolize one frame.
+
+`Post` raises an atomic backend-ready flag while the scheduler is open; an idle frame does not enter managed code just to find an empty queue. A partly failed pump signals remaining work for the next frame. Shutdown closes the scheduler before unbinding the backend, so a late post cannot signal released native state. `Native.GetAndResetContinuationPumps` exposes pump counts to interop tests.
 
 Synchronous native-result callbacks and module initialization use a private continuation queue and drain only their own awaited continuations. `Game.YieldAsync` is rejected in that context because the blocked caller cannot advance the timer pump. Completed tasks remain valid.
 
@@ -3704,11 +3708,19 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `Sync.Acquire` expands linked cover in place through `Game.SyncWiden`; it does not release and reacquire the already-held entities. This keeps the native cover continuous while following `[SyncWiden]` relationships and avoids a race window between the two sets.
 
+`FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
+
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
+
+Custom dispatchers can declare their marker attribute with `EntryPointMarker`, so the analyzer treats their handlers as entry points. `FOSYNC009` requires a current cover after `await`: locking an earlier `map = cr.GetMap()` does not re-prove `cr`; use the current direct alias, a whole covered collection, or an explicit `PassesCover`/`RestoreCallerCover` relationship. The withdrawn redundancy rules `FOSYNC012`–`FOSYNC014` are not part of the active contract. Failed `Sync` acquisitions may be observed through `Sync.OnFailure`; subscribers receive immutable caller, reason, entity, and stack snapshots without changing the helper's `false` result. With no subscribers, the diagnostic snapshot is not allocated.
 
 ## Values, collections, properties, and lifetime
 
 The bridge converts supported primitives, enums, strings, `hstring`, value types, entities, ref types, lists, dictionaries, delegates, mutable arguments, and return values through Engine metadata. A registered value type is plain packed data: every field is a primitive, enum, `hstring`, or single-field value type; every offset is aligned to the field size; the total size has no tail padding; and a native twin is trivially copyable with the same size. Metadata registration rejects every other shape. Generated C# structs use sequential layout, and the backend checks the Mono value size before copying their bytes.
+
+Managed `FOnline.any` is a value type holding the Engine's textual `any_t`, not `object` or `string`. Conversion into it is implicit for supported primitives, strings, enums, and generated value structs; conversion out is explicit and rejects invalid or out-of-range data. Empty text reads as zero/false/empty text, numeric enum reads validate the underlying range, and lowercase float suffixes are accepted for numeric reads. `ToEnum<T>()` accepts a qualified member, bare member, or numeric value. Equality compares the stored text; `IsEmpty` tests empty text. Use the explicit operators, not `System.Convert`/`IConvertible`. Collections use `List<any>` and `Dictionary<K, any>`, and generated `GetAsAny`/`SetAsAny` bridge properties. The managed ABI and baked assemblies must move together when this representation changes.
+
+Managed script property writes, including unboxed, fixed-list, and converting paths, use `Properties::SetValue`: validation/clamping happens first, unchanged stored bytes stop the write, and only a changed value runs setters and post-setters (persistence and client sync). `SetValueFromData` is for applying received network data, never a script assignment.
 
 Generated entity properties are native-backed. Dynamic ref types are managed DTOs whose values are materialized from or assigned to native property storage. A getter returns detached structured state; persist a mutation with read-modify-reassign unless the generated member itself is a live wrapper.
 
@@ -3740,6 +3752,10 @@ Before any code or type initializer runs from an entry assembly, the backend cal
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
+`DynamicAssemblies.Load(image, symbols)` loads a post-bake PE image into this backend's non-collectible load context. Its assembly name must be a fresh `FOnline.Dynamic.*` name; loaded code shares the backend's script types and statics and remains loaded for the process lifetime. `RunEntryAsync(MethodInfo)` accepts a static parameterless method returning a value, `Task`, or `Task<T>` and runs it as its own script entry and server synchronization context; it rejects `async void` and unwraps invocation exceptions. `ScriptsVersionId` is the entry assembly MVID. On a server, `ReadClientScriptsImage()` returns the client entry image used by the updater (or local bake), allowing a fragment compiler to target the matching client version. Dynamic assemblies participate in script-static cleanup.
+
+The optional engine-owned `FOnline.ScriptCompiler` library compiles live fragments with Roslyn. Projects add its `.csproj` through `ManagedScript.ExtraReferences` only for targets that compile fragments; it and its dependencies are then packed alongside those entry assemblies. `DynamicScriptCompiler.CompileAsync` works off the Engine thread, uses a unique `FOnline.Dynamic.*` name, accepts a statement body or expression plus usings/symbols, and maps compile diagnostics to fragment line/column. It can compile against the running scripts or a supplied other-target image. Compilation has access to private/internal script members, so authorization to submit code is entirely an embedding-project responsibility. The emitted image has no PDB because the embedded Mono runtime may lack cryptography; compile diagnostics retain source lines, runtime frames do not. These assemblies are not hot-unloadable.
+
 Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
 
 Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
@@ -3749,6 +3765,8 @@ The single-threaded browser runtime has neither a usable managed thread pool nor
 ## Build and bake workflow
 
 The generated CMake target `CompileManagedScripts` runs the standalone `<ProjectDevName>_ManagedScriptBaker`. It depends on `ForceCodeGeneration`, loads the project configuration, prepares metadata, generates the managed API/project including `*Abi.gen.cs`, and compiles target assemblies without a full resource bake. The generated API files are part of the assembly stamp.
+
+A `.csproj` in `ManagedScript.ExtraReferences` is built as a project reference and its package dependencies are copied for that target. Every packed helper assembly is claimed as a bake output, including on an up-to-date target; freshness checks use the pack output, not a temporary MSBuild output directory that the outdated sweep may remove.
 
 `BakeResources` and `ForceBakeResources` run the `Managed` baker as part of the selected resource pack. Use the compile target for a fast source/API check and the bake target for the real resource, assembly, runtime-payload, and metadata contract. After a force bake, run an ordinary incremental bake and require it to settle cleanly.
 
@@ -3775,6 +3793,8 @@ MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED
 ## Diagnostics and debugging
 
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
+
+Both script backends retain at most 32 distinct overrun entry names per Engine, counting repeats while preserving independent maximum execution and lock-wait times. `TakeScriptOverruns()` drains that buffer. The client drains before `OnLoop` and dispatches `OnScriptOverrun(entry, execution, lockWait, count)` outside the buffer lock; server and mapper do not publish the event in their loops. An overrun caused by a subscriber waits for the next drain. The usual threshold/debugger suppression still applies.
 
 `InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
 
@@ -3804,6 +3824,8 @@ First diagnosis routes:
 | Change | Required evidence |
 | --- | --- |
 | Managed CoreScripts or backend | C# format/style checks, CoreScripts tests, generated project build, focused native unit tests. |
+| Dynamic assemblies or live compiler | `test_managed_dynamic_assemblies.py`, `test_managed_script_compiler.py`, target package/closure check, and an embedding-project runtime authorization and execution test. |
+| Synchronization failures | `FOnline.Sync.Tests.csproj`, analyzer tests, and the embedding-project subscriber/log behavior. |
 | Generated API shape or native export | Codegen, managed baker, generated diff, API contract diff, both backend tests where the contract is shared. |
 | Attribute, event, callback, timer, or named call | Managed reflection/registration test plus the owning native/runtime dispatch. |
 | Async scheduler | `test_managed_async_callbacks.py`, backend-isolation/frame-pump tests, and an embedding-project awaited gameplay path. |
@@ -4630,7 +4652,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: c0ae9ca65e7a7ef793d1dabbd9b6ffdcdd0566c23e0cd98a6e55a32c8f6cc53f
+Content SHA-256: d6f76b33100f588167e37f19aebf9fb14d973a9b6589aa139ef4d9512b3e70fe
 
 ---
 layout: default
@@ -4733,10 +4755,10 @@ ASan/MSan/UBSan/TSan are blocking legs. The `unit-tests-san-memory` validator pr
 with MSan instrumentation, then configures `San_Memory` with `FO_MSAN_LIBCXX_ROOT`.
 The runtime build applies a narrow libunwind ignorelist so C++ exception and
 sanitizer-report unwinding do not self-report on ABI register snapshots. Engine
-native stack capture and the backward-cpp signal handler are disabled under
-MSan and TSan so the sanitizer runtimes own their reports;
-backward-cpp/libbfd symbolization under TSan also produces prohibitive
-shadow-memory growth. `unit-tests-san-memory-with-origins`
+native stack capture and crash handlers are disabled under
+MSan and TSan so the sanitizer runtimes own their reports. Bundled LLVM libunwind
+and libbacktrace are built without instrumentation because their crash paths read
+other frames and debug data. `unit-tests-san-memory-with-origins`
 is available locally as the slower diagnostic variant when a future MSan finding
 needs origin tracking. `San_DataFlow` remains
 intentionally unwired: DataFlowSanitizer is a taint-tracking framework, not a
@@ -4778,12 +4800,10 @@ LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=d
 It runs with **no suppression list** — every leak it can report is fixed at the source rather than
 masked. Notable cases:
 
-- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
-  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
-  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`GetNativeTraceResolver`, serialized by `StackTraceState::NativeResolverLocker`): it is created
-  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
-  and those libbfd caches remain reachable — LSan does not report them.
+- Linux libbacktrace (`Source/Essentials/StackTrace.cpp`) retains debug information
+  in its own mapped memory for the life of the process. Its state remains reachable
+  through process-lifetime `StackTraceState`, serialized by `NativeResolverLocker`;
+  a module is read once and LSan has no allocated orphan to report.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
 - Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
@@ -15540,7 +15560,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: dbc5e2f272f5561dc1adff8d19508631a8e4f94a3f90ff044741e0b503debd8e
+Content SHA-256: 9ced5c14108592427e932d34a5fc5b656574258fb00df60ed9f53ae63f07ac3a
 
 ---
 layout: default
@@ -16647,6 +16667,8 @@ memory results.
 - `CompileAngelScript` runs the project AS compiler target when `FO_ANGELSCRIPT_SCRIPTING` is enabled.
 - `CompileManagedScripts` runs the standalone project `ManagedScriptBaker` after `ForceCodeGeneration` when `FO_MANAGED_SCRIPTING` is enabled. It compiles configured `.cs` inputs into resource-pack/target assemblies and generates the `.gen.cs` surface (including the target `*Abi.gen.cs` binding manifest), `.gen.csproj`, and `.gen.sln`. The generated API files are included in the assembly freshness stamp after generation, so generator-only changes cannot leave a previously compiled DLL current; runtime payload preparation remains a separate packaging stage.
 
+Every packed managed assembly, including copied package/project-reference DLLs, is claimed as an output of the bake. An up-to-date target reclaims the assemblies it previously shipped from the pack output; the temporary MSBuild output directory inside that pack may be removed by the outdated sweep and is not a freshness source. Dependency closure reads assembly identity and references through `Source/Scripting/Managed/ManagedAssemblyReferences.*`.
+
 These are separate command targets from resource baking, but they share the same stage because generated/baked runtime inputs are part of the same build preparation workflow.
 
 ## Tests to inspect
@@ -16710,7 +16732,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: fbe82911b8dd868355ecfc1e50ffba33ff70b72ad4e17dcc55e1f2aefbe078d7
+Content SHA-256: 41137c9eb3420d880f80218a4e5f90d4c7e17f29dde38667cf62e226f329da7a
 
 ---
 layout: default
@@ -16824,6 +16846,8 @@ post-setter change notification. Non-finite validation still runs before float
 clamping; NaN and infinity are errors, not values to coerce to an endpoint.
 
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`MemCompare`): the total byte length of a payload does not raise its alignment requirement.
+
+An unchanged script property assignment is a no-op. `Properties::SetValue` validates/clamps, compares stored bytes, then returns before setters, post-setters, persistence, or client sync if equal. Both scripting backends and `SetAsInt`/`SetAsAny` use this path; reassigning cannot force a callback or resend. `SetValueFromData` instead applies a received network value unconditionally. Virtual properties have no stored value to compare. Native typed writes of string/`any_t` and vectors also do not make this equality comparison; raw payload comparison is bytewise, while native floating-point typed writes use `is_float_equal`.
 
 ## Property runtime
 
@@ -18478,7 +18502,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 2ea91db3c59759901ef6eb45b5cd789faf1b3413c8415c9aa79e57b48d9c07a5
+Content SHA-256: 40488cb0c7caca773d34e5e3e19aa2e23d57b06cb254ff2eafccc451ead98c8e
 
 ---
 layout: default
@@ -18952,7 +18976,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Server packages** also stage every available client runtime library under `<Settings.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
 - **Managed resource payloads** are rebuilt per distributed client target and staged below `PlatformBinaries/<target>/`. When several native binary variants share one updater target, the least-qualified matching entry, normally default Release, supplies the one target-wide pack; independently built equivalent CoreLib payloads need not be byte-identical.
 - **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. Windows `light` retries once with `-sval` only for the exact Windows Installer service-unavailable diagnostic; other linker/ICE failures and a failed fallback remain fatal. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
-- **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
+- **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
@@ -19102,7 +19126,7 @@ instead of looping back to the game which would only reject the connection again
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next client-host startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
 | Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |
 | Self-update downloads and then waits on the update screen | This is the expected native flow. Close the client after the restart prompt; the host promotes the staged runtime and exits, and the next user launch starts the updated runtime with one clean `InitApp`. Hosts predating this policy are rejected by updater generation 2 / runtime ABI 3 and require the latest full client package instead of attempting the unsafe second initialization |
-| Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), `dbghelp`/`backward-cpp` cannot find the PDB and frames in the runtime resolve to addresses only |
+| Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), DbgHelp cannot find the PDB and frames in the runtime resolve to addresses only |
 | Stack trace shows raw addresses for **host** (`<host>.exe`) frames after a self-update, while runtime-DLL frames resolve | The on-disk `<host_name>.pdb` doesn't match the frozen exe (CodeView GUID differs) — typically a leftover from an old updater build that clobbered the matching host PDB with a newer server-build one. The current updater never overwrites a present host PDB and fetches one only when the local copy is missing, so the fix is to delete the mismatched `<host_name>.pdb`: an up-to-date host then re-downloads the matching one; otherwise restore the host PDB shipped with that exe build (matching CodeView GUID). A mis-walked stack through unsymbolized host frames can also surface bogus top frames (e.g. attributing the fault to an unrelated system DLL) |
 
 Local validation steps:
@@ -19132,7 +19156,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 2aa23468e72fcd5a678706f9f5d1b424528adc988c3edd591800a38367628a38
+Content SHA-256: 675570e1a70669afad99f3439c96fd099e6c5b69d35bdfa043d327ed14d4e71f
 
 ---
 layout: default
@@ -19251,6 +19275,8 @@ A typical client lifetime has these phases:
 8. **Shutdown** disconnects networking, destroys inner entities, clears caches and render targets, and releases frontend resources.
 
 When changing startup or shutdown behavior, keep script events, manager lifetime, entity registration, and network callbacks in sync; these paths are tightly coupled.
+
+`ClientSessionMarker` is a best-effort record in the writable client root, shared by the host and runtime. It records build/start time, process identity (`Pid` plus `ProcessStart`), and the last shutdown stage: `MainLoopExited`, `ClientStopped`, `ApplicationReset`, `ShutdownHookDone`, `GlobalDataTeardown` (with the active global-data set), `RuntimeReturned`, then `ExitRequested`. Numeric stage values retain their historical meanings rather than their order here. The host leaves the marker through process exit, because DLL detach and runtime callbacks can still hang. The next launch consumes a marker at `ExitRequested` silently only when its exact process is gone; other markers report either a still-running previous process or an unclean exit. An unknown/malformed stage or missing process identity cannot prove clean exit. Every write checks identity so an older instance cannot mark a newer instance's marker complete. This file is diagnostic, not a cross-process registry or lock. Windows liveness polls the handle rather than treating exit code `259` as proof of life.
 
 ## Server connection and message dispatch
 
@@ -19693,7 +19719,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 7286188432033b8d2de248cbde6d07db5dc0a96b04e76456e3df7f6a4c725b00
+Content SHA-256: dabc1f24be195a1a5553750ec71630c6a2c1a703509edc692eb4337956ac9f67
 
 ---
 layout: default
@@ -19884,6 +19910,10 @@ Typed entity destruction has a single active owner once the target is marked `De
 `WorkThread` and `WorkerPool` each expose a raw completed-job counter through a `GetDiagnostics()` snapshot. `ServerEngine` keeps a separate throughput counter for jobs that should be visible in server stats: the `_starter` initialization sequence is excluded, and recurring service jobs that mostly reflect scheduler cadence (`SyncPointJob`, `TimeEventJob`, `FrameTimeJob`, `HealthFileJob`, and `HealthFileWriteJob`) are excluded too. The always-open Info summary reports jobs per second, jobs per minute, total completed visible jobs, and CPU load for the machine and current process. The separate `Performance details` panel is closed by default and expands raw per-executor job counts, worker-pool internals, and per-core system CPU load. Job throughput is the live server cadence metric. The former loop-based metrics — per-loop time statistics (average/min/max/last loop time), the loops-per-second counter (and its Tracy plot), and the `Server.LoopAverageTimeInterval` setting — were all removed as the server moves from loop-based to event-based execution; only the `Tracy` "Server jobs per second" plot remains.
 
 `FrameTimeJob` updates the engine `FrameTime` cache on a dedicated high-frequency `Server.FrameTimePeriodNs` cadence. Server movement uses this cached frame time for `MovingContext` start times, speed changes, step advancement, and outgoing movement snapshots instead of calling `nanotime::now()` in those hot paths.
+
+Every frame writes frame-time properties while holding the `Game` entity lock exclusively, then pumps script continuations. A microsecond-scale period therefore adds contention for every reader of `Game` properties without improving movement; tune this cadence as a lock and worker-load setting, not only a clock precision setting.
+
+Managed `Sync` acquisition/restoration helpers publish an externally returned `false` to `Sync.OnFailure` (`Action<Sync.FailureInfo>`). No subscriber means no snapshot, entity-context read, or stack capture. With subscribers, each receives the same immutable operation, caller file/member/line, terminal reason/helper location, entity IDs and lifecycle snapshots, proto IDs, and managed stack. Subscriptions are synchronous and unsampled; an observer must not acquire cover, mutate gameplay state, or use `async void`. Its exception is reported and counted without suppressing other observers or changing the helper's `false`. Successful calls, recovered internal retries, probes, and best-effort cleanup are silent; native acquisition exceptions still propagate. This event proves a particular call refused cover, not that a gameplay transaction failed or rolled back. Validate with `dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj` and the embedding project's subscriber route.
 
 CPU percentages come from `Platform::GetCpuUsageSnapshot()`: `ServerEngine` samples it about once per second and diffs consecutive snapshots. System load is the busy fraction of the whole machine (and per core); process load is this process's share normalized to one machine's worth of capacity, while `Performance details` also shows the un-normalized "process core load" (which can exceed 100% on multiple cores, like `top`).
 
@@ -25183,7 +25213,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 6c7953ca0cb21c6db8a7157b60a87d0ecd832eb45bb36f8b5a3ce49b399345d7
+Content SHA-256: cc9de3520878f0f3695ae1890558f5e44094190e6b49e87d7be2e78dee8d1643
 
 ---
 layout: default
@@ -25321,13 +25351,15 @@ This list is intentionally exact rather than thematic. `Essentials.h` defines a 
 
 Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
+`global_data::destroy(observer, context)` calls the observer with each registered set name immediately before its delete callback. This makes a stuck teardown attributable to a set without letting the observer depend on global data that may already be gone. A host/runtime module must destroy only a set it created, and it must join its own workers before returning to a continuing host. Process-lifetime crash-record state stays outside this sweep.
+
 ## Subsystem map
 
 ### Platform and compiler gate
 
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
-`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` is intentionally environment-only and shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+`Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` prefers environment values and is shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). When no environment path exists, Windows falls back to `SHGetKnownFolderPath` and supported POSIX hosts to `getpwuid_r`; a host without either source returns no path. Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
 
 `WinApi.*` and `Posix.*` own the operating-system calls behind the `winapi::`
 and `posix::` namespaces. Their public boundaries use engine strings, optionals,
@@ -25340,6 +25372,8 @@ order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
 wrappers themselves rather than ordinary consumers.
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
+
+`platform::process_identity` pairs PID with process start time. An ID alone can be reused, so client-session diagnostics match both values. On Windows the liveness check polls the process handle with zero timeout rather than reading exit code `259` (`STILL_ACTIVE`), which a terminated process can retain while another process holds its handle. `BuildTools/tests/test_process_identity.py` covers live and terminated retained-handle cases when `clang++` is available.
 
 ### Diagnostics and failure handling
 
@@ -25485,6 +25519,8 @@ storage.
 ### Filesystem, compression, sockets, and work threads
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking](../../explanation/authority-and-networking/), and `WorkThread.*` owns simple background-worker infrastructure.
+
+On Windows, `fs::make_io_path` presents a literal extended-length path to standard-library filesystem/file operations without changing the logical resource path. The disk tests exercise Unicode names past 320 native characters and Windows trailing-name behavior. Use this conversion at the native I/O boundary rather than truncating or shortening project paths.
 
 `Threading.h` exposes `coarse_sleep` and `precise_sleep`; Engine code does not
 use `std::this_thread::sleep_for`. `coarse_sleep` parks without consuming CPU
@@ -25931,7 +25967,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 87413dedb17d0dda1d4aabbe5ffeea1f9f26fed0a013e42754855e65d3cdd328
+Content SHA-256: 3c8f0390f41bb6065d025b58e28d7fd8b82623cf5b6adc643b1c3552ba855995
 
 ---
 title: Generated API Reference
@@ -25950,8 +25986,8 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | --- | --- | --- |
 | [Native script methods](methods.md) | 990 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
-| [Engine events](events.md) | 121 | Server, client, common, and mapper events. |
-| [Script types](types.md) | 993 | Entities, enums, value types, reference types, fields, and methods. |
+| [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
+| [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
 | [Engine settings](settings.md) | 266 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
@@ -25959,25 +25995,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2530 |
-| Symbols with descriptions | 2530 |
+| Addressable symbols | 2532 |
+| Symbols with descriptions | 2532 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2530 |
+| Explicitly classified symbols | 2532 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2529 |
+| <code>experimental</code> | 2531 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2530 stable IDs with SHA-256 <code>e7d48961fd1ed4025d05559208ee49db3fda8ba32bf613ceb1af8d6807bfcc43</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2532 stable IDs with SHA-256 <code>7c6b1ce985128b9da3be5ce578458d68584b9e95ec09f613b46431fa4a40d136</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -26704,7 +26740,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: c2fdee38757ae0b736d7c34fcab357969f08e1f632e4cee9771b70ce33554054
+Content SHA-256: 3f4e8ad9e5c72cda5c132f7434b4d171cd122d6c4ae7b1f28a0a5a7f6a4fbb17
 
 ---
 layout: default
@@ -26794,9 +26830,9 @@ The current contract was re-derived from:
 
 | Surface | Current Engine capability | Evidence limit |
 |---|---|---|
-| Windows native | MSVC/clang-cl application targets, PDB emission outside `MinSizeRel`, debugger detection, `DebugBreak`, backward-cpp SEH diagnostics, generated MSVC visualizers | The Engine does not create or retain minidump files or operate a symbol server. |
+| Windows native | MSVC/clang-cl application targets, PDB emission outside `MinSizeRel`, debugger detection, `DebugBreak`, Engine SEH diagnostics, generated MSVC visualizers | The Engine does not create or retain minidump files or operate a symbol server. |
 | Linux native | Debug information outside `MinSizeRel`, `-rdynamic`, GDB/LLDB-compatible binaries, `/proc/self/status` debugger detection, signal/terminate diagnostics | Core-dump enablement, collection, symbol storage, container permissions, and retention are host/project policy. |
-| macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, backward-cpp signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
+| macOS native | Debug information outside `MinSizeRel`, `-rdynamic`, `sysctl(P_TRACED)` detection, debug trap, Engine signal diagnostics | No checked Engine LLDB launch profile, crash-report archive, or release qualification is supplied. |
 | AngelScript runtime | Loopback-by-default TCP endpoint, UDP discovery, line breakpoints, pause/continue/step, script stack, read-only local values, stop/abort/error events | No authentication, encryption, published VSIX, pinned adapter dependency lock, live endpoint CI, global-value inspection, expression evaluation, or state mutation contract. |
 | Managed C# runtime | Roslyn/MSBuild compile diagnostics, generated source/project/solution, managed baker and runtime logs, native host frames, load-context and scheduler tests, and standard debugger-compatible assemblies | Engine ships no C# editor adapter, launch profile, symbol server, hot reload, or live managed-debugger acceptance gate. The `fos` adapter is AngelScript-only. |
 | Mixed stack in logs | Script layers plus native frames, origin/catch distinction, safe crash-path output and process-local resolution cache | Native symbol quality depends on the exact binary, libraries, debug data, platform unwinder, and execution mode. MemorySanitizer and ThreadSanitizer disable native stack capture. |
@@ -26911,7 +26947,7 @@ Do not describe a platform's default crash reporter as an Engine-owned guarantee
 
 `break_into_debugger()` emits `DebugBreak`, `__builtin_debugtrap`, or `SIGTRAP` only when that cached result is true. Because exception handling asks this question during early process initialization, launching outside a native debugger and attaching later is not guaranteed to make Engine-triggered breaks active.
 
-When a debugger is detected at startup, the Engine does not install backward-cpp fatal signal/SEH handling. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
+When a debugger is detected at startup, the Engine does not install its fatal signal/SEH handlers. This lets the native debugger receive the fault directly, but it also means the normal out-of-debugger fatal crash-to-log path is not the evidence to expect from that run. Preserve one non-debugger crash run when the crash-log contract itself is under test.
 
 The AngelScript debugger is independent of `is_run_in_debugger`; attaching the `fos` adapter does not make the process native-debugger-aware.
 
@@ -26941,6 +26977,8 @@ For MSVC CMake generators, a target should be created while its intended `CMAKE_
 ## Stack Trace Architecture
 
 The Engine captures a bounded native return-address array and optional pre-resolved script layers in `StackTraceData`. Native symbol resolution is deferred until formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address under a bounded cache so repeated reports do not reload the same symbol information unnecessarily.
+
+Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
 
 `FO_STACK_TRACE_ENTRY()` is not a manual thread-local call stack. Outside Tracy configurations it contributes no stack frame; under Tracy it expands to a profiling zone. Native call stacks come from platform capture at the moment `GetStackTrace()` runs.
 
@@ -26996,7 +27034,7 @@ Explicit low-level fatal exits use `ReportFatalAndExit` or `ReportStrongAssertAn
 
 ### Crash-to-log guarantee and self-test
 
-Outside a native debugger, backward-cpp handles supported Windows SEH failures and POSIX fatal signals/termination on Windows, Linux, and macOS. The Engine adds a crash reason, captures a stack, switches to synchronous log writes, and exits through the crash path. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run. Third-party-created threads need the same setup before executing deeply recursive Engine work.
+Outside a native debugger, the Engine's own handlers cover supported Windows SEH failures, POSIX fatal signals, and termination. POSIX signals capture from `ucontext_t`, write synchronously, restore the default action, and re-raise the signal. Windows SEH captures the exception `CONTEXT`; a reporter thread writes the report even if the faulting thread exhausted its stack. A second crash cannot recursively emit another report. Long-lived Engine worker threads install a POSIX alternate signal stack so stack-overflow diagnostics have space to run; third-party-created threads need the same setup before deeply recursive Engine work. The controlled `FO_SELFTEST_CRASH` modes also include `main_bad_call` and `thread_bad_call` for a null function-pointer call.
 
 `FO_SELFTEST_CRASH` is an environment-only destructive diagnostic hook run during application initialization after logging and exception callbacks are ready. Supported base modes are `main_null_read`, `main_null_write`, `main_wild_write`, `main_stack_overflow`, `main_fpe`, `main_abort`, `main_noexcept_throw`, `main_throw`, `main_strong_assert`, `main_basic_strong_assert`, `main_fatal_exit`, and `main_failure_exit`; replace `main_` with `thread_` to run the corresponding worker-style thread route.
 
