@@ -7988,10 +7988,11 @@ static auto MakeManagedPathArray(MonoDomain* domain, const vector<std::filesyste
         throw ScriptSystemException("Can't create Managed assembly path array");
     }
 
+    // The load-context host passes these to Mono's own file open, so they take the host assembly's form
     for (size_t i = 0; i < paths.size(); i++) {
         std::error_code ec;
         auto absolute_path = std::filesystem::absolute(paths[i], ec).lexically_normal();
-        string path = fs::path_to_string(ec ? paths[i].lexically_normal() : absolute_path);
+        string path = fs::make_io_path(fs::path_to_string(ec ? paths[i].lexically_normal() : absolute_path));
         MonoString* managed_path = mono_string_new(domain, path.c_str());
 
         if (managed_path == nullptr) {
@@ -8098,8 +8099,9 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
     FO_VERIFY_AND_THROW(_loadScopeGcHandle == 0, "Managed load scope is already created");
     scoped_lock load_locker {ManagedAssemblyLoadLocker};
 
+    // Mono opens assemblies through the C runtime, which stops at the Win32 path limit without the extended form
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
-    string host_path = fs::path_to_string(host_assembly_path);
+    string host_path = fs::make_io_path(fs::path_to_string(host_assembly_path));
     MonoAssembly* host_assembly = mono_domain_assembly_open(domain, host_path.c_str());
 
     if (host_assembly == nullptr) {
