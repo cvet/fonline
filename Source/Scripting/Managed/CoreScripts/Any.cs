@@ -84,8 +84,9 @@ public readonly struct any : IEquatable<any>
     {
         string text = ToString().Trim();
 
-        if (TryParseInteger(text, out long number) && !text.Contains('.')) {
-            object numbered = Enum.ToObject(enumType, number);
+        if (TryParseInteger(text, out _) && !text.Contains('.')) {
+            // Enum.ToObject truncates to the underlying storage, so validate that range before boxing the enum
+            object numbered = Enum.ToObject(enumType, ToObject(Enum.GetUnderlyingType(enumType)));
             Invariant.Verify(Enum.IsDefined(enumType, numbered),
                              "Any value is not a member of the enum",
                              text,
@@ -403,7 +404,10 @@ public readonly struct any : IEquatable<any>
             return true;
         }
 
-        if (double.TryParse(trimmed, NumberStyles.Float, CultureInfo.InvariantCulture, out double fraction) &&
+        string digits =
+            trimmed.Length > 1 && trimmed.EndsWith('f') ? trimmed.Substring(0, trimmed.Length - 1) : trimmed;
+
+        if (double.TryParse(digits, NumberStyles.Float, CultureInfo.InvariantCulture, out double fraction) &&
             double.IsFinite(fraction)) {
             number = fraction >= long.MaxValue ? long.MaxValue
                    : fraction <= long.MinValue ? long.MinValue
@@ -422,3 +426,4 @@ public readonly struct any : IEquatable<any>
                (trimmed[start + 1] == 'x' || trimmed[start + 1] == 'X');
     }
 }
+

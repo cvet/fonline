@@ -310,6 +310,26 @@ internal static class Program
                                                              ((any) "TextPackName::Game").ToEnum<CritterProperty>(),
                                                          "A member of another enum was accepted");
              }),
+            ("any refuses enum numbers that overflow their storage",
+             () =>
+             {
+                 foreach (string text in new[] { "4294967303", "-4294967289", "0x100000007" }) {
+                     ExpectThrows<InvalidOperationException>(() => _ = ((any)text).ToEnum<CritterProperty>(),
+                                                             "An overflowing number aliased an enum member: " + text);
+                 }
+
+                 ExpectThrows<InvalidOperationException>(() => _ = ((any) "263").ToEnum<ExampleGame.ByteEnum>(),
+                                                         "An overflowing byte aliased an enum member");
+                 Check(((any) "7").ToEnum<ExampleGame.ByteEnum>() == ExampleGame.ByteEnum.Value,
+                       "A valid narrow enum member was rejected");
+             }),
+            ("any integer conversions accept the engine float suffix",
+             () =>
+             {
+                 Check((int)(any) "2.9f" == 2 && (int)(any) "-2.9f" == -2,
+                       "A suffixed fraction was not truncated toward zero");
+                 Check((bool)(any) "1f" && !(bool)(any) "0f", "A suffixed boolean number was refused");
+             }),
             ("any carries a value type field by field",
              () =>
              {
@@ -430,6 +450,11 @@ internal sealed class CheckFailedException : Exception
 
 namespace ExampleGame
 {
+public enum ByteEnum : byte
+{
+    Value = 7
+}
+
 public sealed class First
 {
 }
@@ -570,3 +595,4 @@ public enum Shared
     Value = 2
 }
 }
+
