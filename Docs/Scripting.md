@@ -704,8 +704,8 @@ Exported value metadata records the native size and fixed field layout, includin
 after the bake into the running backend and runs its entries. It is the engine half of fixing a live game without a
 rebuild: compiling the source, and deciding who may send it, belong to the embedding project.
 
-- `Load(image, symbols)` hands the PE image and an optional portable PDB to the `Native.LoadDynamicAssembly` internal
-  call. `ManagedScriptBackend::LoadDynamicAssembly` reads the assembly name from the image with
+- `Load(image, symbols)` hands the PE image and an optional portable PDB (null or empty for none) to the
+  `Native.LoadDynamicAssembly` internal call. `ManagedScriptBackend::LoadDynamicAssembly` reads the assembly name from the image with
   `ReadManagedAssemblyIdentity` (`Source/Scripting/Managed/ManagedAssemblyReferences.*`) before anything is loaded, then,
   under the process-wide assembly load lock, asks `ManagedLoadContextHost.LoadDynamicAssembly` to load it into the
   backend's own `AssemblyLoadContext`. The loaded code therefore binds to the backend's script assembly, shares its
@@ -759,6 +759,11 @@ selected again per target, does not carry them.
   binder flag Roslyn keeps for its own scripting, and the fragment declares `IgnoresAccessChecksTo(<scripts>)`, which
   embedded Mono honours at run time for internal and private access alike.
 - Every fragment gets a new `FOnline.Dynamic.<guid>` name, so `DynamicAssemblies.Load` accepts it.
+- Emitting a fragment hashes nothing, because the embedded runtime may carry no cryptography: Linux links only the
+  `System.Native` and `System.Globalization.Native` interop shims, and Roslyn needs a hash for the PDB checksum
+  (`CS8113` otherwise) and for every document a PDB lists. A fragment is therefore emitted without a PDB, with a
+  time-based MVID (compilation is not deterministic), and `DynamicCompileResult.Symbols` is empty; its stack frames
+  carry no line numbers, while its compile diagnostics keep the author's lines.
 
 `BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
 script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another

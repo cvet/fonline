@@ -91,7 +91,11 @@ internal static class Program
             throw new InvalidOperationException(string.Join(" | ", result.Errors));
         }
 
-        Assembly fragment = (context ?? AssemblyLoadContext.Default).LoadFromStream(new MemoryStream(result.Image), new MemoryStream(result.Symbols));
+        if (result.Symbols.Length != 0) {
+            throw new InvalidOperationException("A fragment must be emitted without a PDB");
+        }
+
+        Assembly fragment = (context ?? AssemblyLoadContext.Default).LoadFromStream(new MemoryStream(result.Image));
         MethodInfo entry = fragment.GetType(DynamicScriptCompiler.EntryTypeName)?.GetMethod(DynamicScriptCompiler.EntryMethodName) ??
                            throw new InvalidOperationException("Fragment entry is missing");
         return await (Task<object>)(entry.Invoke(null, null) ?? throw new InvalidOperationException("Entry returned no task"));
