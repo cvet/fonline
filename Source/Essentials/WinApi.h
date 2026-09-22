@@ -103,6 +103,18 @@ namespace winapi
     auto set_relative_timer(nptr<void> timer, int64_t delay_100ns) noexcept -> bool;
     void wait_for_object(nptr<void> handle) noexcept;
     void close_handle(nptr<void> handle) noexcept;
+
+    // The exception handler runs on the faulting thread, the report handler after it on a thread of its own with that
+    // thread's CONTEXT and handle, so a stack overflow is still reported
+    struct crash_handlers
+    {
+        void (*on_exception)(uint32_t code, uint32_t flags, nptr<const void> address, nptr<const void> context) noexcept {};
+        void (*on_report)(nptr<const void> context, nptr<void> thread) noexcept {};
+        void (*on_signal)(int32_t signum) noexcept {};
+        void (*on_runtime_error)(string_view reason) noexcept {};
+    };
+
+    void install_crash_handlers(const crash_handlers& handlers) noexcept;
 }
 
 FO_END_NAMESPACE

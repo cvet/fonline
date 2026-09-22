@@ -70,6 +70,36 @@ namespace
         layer.script_frames.assign(frames);
         return layer;
     }
+
+    struct CapturedFrames
+    {
+        std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> frames {};
+        uint32_t count {};
+        bool truncated {};
+    };
+
+    // Resolves from a call made after the capture has reused the stack below the saving frame
+    FO_NO_INLINE void ResolveFromDeeperCall(const stack_trace::resume_point& point, CapturedFrames& out)
+    {
+        stack_trace::resolve_resume_point(point, out.frames, out.count, out.truncated);
+    }
+
+    // One frame saves a resume point and takes an eager capture, then resolves the point while it is still active
+    FO_NO_INLINE void SaveCaptureAndResolve(CapturedFrames& eager, CapturedFrames& resolved)
+    {
+        stack_trace::resume_point point;
+        (void)stack_trace::save_resume_point(&point);
+        stack_trace::capture_native_frames(eager.frames, eager.count, eager.truncated, 0);
+        ResolveFromDeeperCall(point, resolved);
+    }
+
+    auto ResolveFunctionName(stack_trace::native_frame_address addr) -> std::string
+    {
+        stack_trace::data st {};
+        st.native_frames[0] = addr;
+        st.native_frame_count = 1;
+        return stack_trace::resolve(st).front().function;
+    }
 }
 
 TEST_CASE("StackTrace")
@@ -364,6 +394,36 @@ TEST_CASE("StackTrace")
         CHECK(count > 0);
         CHECK(count < stack_trace::MAX_NATIVE_FRAMES);
 #endif
+    }
+
+    SECTION("ResumePointResolvesToTheStackOfItsSavingFrame")
+    {
+        CapturedFrames eager;
+        CapturedFrames resolved;
+        SaveCaptureAndResolve(eager, resolved);
+
+        // A system unwinder may close the trace with a frame past the thread entry; the saved context stops at it
+        uint32_t eager_count = eager.count;
+
+        while (eager_count != 0 && eager.frames[eager_count - 1] == std::numeric_limits<stack_trace::native_frame_address>::max()) {
+            eager_count--;
+        }
+
+        CHECK_FALSE(resolved.truncated);
+
+        // Both lists start at the saving frame, at the two different calls made there, unless inlining folded a frame
+        // away on one side, so they are compared at whichever offset lines them up
+        uint32_t offset = resolved.count > 1 && eager_count != 0 && resolved.frames[1] == eager.frames[0] ? 1 : 0;
+
+        REQUIRE(resolved.count == eager_count + offset);
+
+        if (offset == 0 && resolved.count != 0) {
+            CHECK(ResolveFunctionName(resolved.frames[0]) == ResolveFunctionName(eager.frames[0]));
+        }
+
+        for (uint32_t i = offset == 0 ? 1 : 0; i < eager_count; i++) {
+            CHECK(resolved.frames[i + offset] == eager.frames[i]);
+        }
     }
 
     SECTION("CaptureOverflowReadsBelowTheLayerFromItsBirthFrames")

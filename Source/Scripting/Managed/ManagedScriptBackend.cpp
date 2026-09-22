@@ -320,8 +320,7 @@ private:
 class ManagedScriptEntryScope final
 {
 public:
-    // Not inlined, so the birth capture can skip exactly the constructor frame
-    FO_NO_INLINE explicit ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept;
+    explicit ManagedScriptEntryScope(nptr<MonoMethod> method) noexcept;
     ManagedScriptEntryScope(const ManagedScriptEntryScope&) = delete;
     ManagedScriptEntryScope(ManagedScriptEntryScope&&) noexcept = delete;
     auto operator=(const ManagedScriptEntryScope&) = delete;
@@ -331,6 +330,8 @@ public:
     [[nodiscard]] static auto GetInnermostRunning() noexcept -> nptr<ManagedScriptEntryScope>;
     [[nodiscard]] auto GetMethod() const noexcept -> nptr<MonoMethod> { return _method; }
     [[nodiscard]] auto GetNextRunning() const noexcept -> nptr<ManagedScriptEntryScope>;
+    // The frame that opened the entry saves this point itself, since the point records the registers of its caller
+    [[nodiscard]] auto GetBirthPoint() noexcept -> stack_trace::resume_point* { return &_birthPoint; }
 
     void CopyBirthFrames(stack_trace::script_layer& layer) const noexcept;
     void AppendBirthRuntimeFrames(MonoDomain* domain, stack_trace::script_layer& layer) const;
@@ -342,12 +343,16 @@ private:
     nptr<MonoMethod> _method {};
     nptr<ManagedScriptEntryScope> _parent {};
     bool _running {true};
-    // Left uninitialized: the capture fills the first _birthFrameCount slots and nothing reads past them, while
-    // zeroing a kilobyte on every script entry is measurable
-    std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> _birthFrames;
-    uint32_t _birthFrameCount {};
-    bool _birthTruncated {};
+    // Left uninitialized: the opening frame saves it before any read, and zeroing it on every script entry is measurable
+    stack_trace::resume_point _birthPoint;
+    // Resolved from the birth point only when a report reads the frames
+    mutable std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES> _birthFrames;
+    mutable uint32_t _birthFrameCount {};
+    mutable bool _birthTruncated {};
+    mutable bool _birthResolved {};
     vector<pair<uint32_t, std::exception_ptr>> _crossedNativeExceptions {};
+
+    void ResolveBirthFrames() const noexcept;
 };
 
 // Per-thread chain of script entries; threads are partitioned by engine ownership, so the slot never observes a
@@ -496,6 +501,7 @@ static auto NativeGetHashStr(void* value) -> MonoString*;
 static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*;
 static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
 static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
+static void NativeSignalContinuationsReady(void* backend_ptr);
 static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
 static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*;
 static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
@@ -595,6 +601,7 @@ static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, u
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t;
 static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t;
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t;
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t;
 static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool;
 static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error);
@@ -1085,6 +1092,7 @@ struct ManagedBackendCaches
     std::atomic<bool> CountDispatches {};
     std::atomic<uint64_t> TypedCallbackDispatches {};
     std::atomic<uint64_t> BoxedCallbackDispatches {};
+    std::atomic<uint64_t> ContinuationPumps {};
 };
 
 // Built once per callback registration: the native signature, the frame layout it maps to and the generated adapter
@@ -1303,6 +1311,7 @@ static auto InvokeManagedScript(ptr<const ManagedScriptBackend> backend, MonoMet
     FO_STACK_TRACE_ENTRY();
 
     ManagedScriptEntryScope entry {method};
+    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, obj, args, &exception);
     entry.Leave();
@@ -1316,6 +1325,7 @@ static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend,
 
     // The delegate target is not known natively, so the entry claims whichever frames run under its invoke
     ManagedScriptEntryScope entry {nullptr};
+    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
     MonoObject* exception = nullptr;
     mono_runtime_delegate_invoke(delegate_obj, nullptr, &exception);
     entry.Leave();
@@ -1895,7 +1905,6 @@ ManagedScriptEntryScope::ManagedScriptEntryScope(nptr<MonoMethod> method) noexce
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    stack_trace::capture_native_frames(_birthFrames, _birthFrameCount, _birthTruncated, 1);
     CurrentScriptEntry = this;
 }
 
@@ -1941,6 +1950,7 @@ void ManagedScriptEntryScope::CopyBirthFrames(stack_trace::script_layer& layer) 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+    ResolveBirthFrames();
     std::copy_n(_birthFrames.begin(), _birthFrameCount, layer.birth_native_frames.begin());
     layer.birth_native_frame_count = _birthFrameCount;
     layer.birth_native_truncated = _birthTruncated;
@@ -1950,7 +1960,21 @@ void ManagedScriptEntryScope::AppendBirthRuntimeFrames(MonoDomain* domain, stack
 {
     FO_STACK_TRACE_ENTRY();
 
+    ResolveBirthFrames();
     AppendRuntimeNativeFrames(domain, {_birthFrames.data(), _birthFrameCount}, layer);
+}
+
+// Runs on the entry's own thread while the opening frame is still active, which is what the birth point needs
+void ManagedScriptEntryScope::ResolveBirthFrames() const noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (_birthResolved) {
+        return;
+    }
+
+    stack_trace::resolve_resume_point(_birthPoint, _birthFrames, _birthFrameCount, _birthTruncated);
+    _birthResolved = true;
 }
 
 void ManagedScriptEntryScope::SetCrossedNativeException(std::exception_ptr exception, MonoString* message)
@@ -2109,6 +2133,14 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     catch (...) {
         FO_UNKNOWN_EXCEPTION();
     }
+}
+
+static void NativeSignalContinuationsReady(void* backend_ptr)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Reached from every post, so it only raises the flag; the managed side passes nothing but its live bound backend
+    cast_from_void<ManagedScriptBackend*>(backend_ptr)->SignalContinuationsReady();
 }
 
 static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*
@@ -2828,6 +2860,18 @@ static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64
     return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
 }
 
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto backend = ResolveBoundBackend(backend_ptr);
+    auto caches = backend->GetCaches();
+    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+    caches->CountDispatches.store(true, std::memory_order_relaxed);
+    return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+}
+
 // Interop probe: drives InteropProbe.AdaptProbe from a native loop over one transport and returns the loop time in
 // nanoseconds. Modes mirror InteropProbe.CallbackMode; the probe never touches a production registration
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t
@@ -2948,6 +2992,7 @@ static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler,
                 }
                 else if (callback_mode == ManagedProbeCallbackMode::EntryScopeOnly) {
                     ManagedScriptEntryScope entry {adapter};
+                    (void)stack_trace::save_resume_point(entry.GetBirthPoint());
                     entry.Leave();
                 }
                 else if (callback_mode == ManagedProbeCallbackMode::AttachmentOnly) {
@@ -5019,6 +5064,7 @@ static void RegisterInternalCalls()
     FO_STACK_TRACE_ENTRY();
 
     mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
+    mono_add_internal_call("FOnline.Native::SignalContinuationsReadyInternal", reinterpret_cast<const void*>(NativeSignalContinuationsReady));
     mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
     mono_add_internal_call("FOnline.Native::ReadClientScriptsImageInternal", reinterpret_cast<const void*>(NativeReadClientScriptsImage));
     mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
@@ -5068,6 +5114,7 @@ static void RegisterInternalCalls()
     mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisitsInternal", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
     mono_add_internal_call("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetTypedCallbackDispatches));
     mono_add_internal_call("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetBoxedCallbackDispatches));
+    mono_add_internal_call("FOnline.Native::GetAndResetContinuationPumpsInternal", reinterpret_cast<const void*>(NativeGetAndResetContinuationPumps));
     mono_add_internal_call("FOnline.Native::ProbeCallbackTransportInternal", reinterpret_cast<const void*>(NativeProbeCallbackTransport));
     mono_add_internal_call("FOnline.Native::ProbeTransportScenarioInternal", reinterpret_cast<const void*>(NativeProbeTransportScenario));
     mono_add_internal_call("FOnline.Native::ReadInteropCountersInternal", reinterpret_cast<const void*>(NativeReadInteropCounters));
@@ -8337,8 +8384,15 @@ void ManagedScriptBackend::Process()
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (_continuationPumps.empty()) {
+    if (_continuationPumps.empty() || !_continuationsReady.exchange(false, std::memory_order_acq_rel)) {
         return;
+    }
+
+    // A pump that fails partway leaves ready work queued with no post left to announce it
+    auto rearm_on_failure = scope_fail([this]() noexcept { _continuationsReady.store(true, std::memory_order_release); });
+
+    if (_caches && _caches->CountDispatches.load(std::memory_order_relaxed)) {
+        _caches->ContinuationPumps.fetch_add(1, std::memory_order_relaxed);
     }
 
     MonoDomain* domain = GetDomainOrThrow(_domain.get());
@@ -8347,6 +8401,13 @@ void ManagedScriptBackend::Process()
     for (nptr<void> pump : _continuationPumps) {
         (void)InvokeManagedScript(this, pump.reinterpret_as<MonoMethod>().get(), nullptr, nullptr, "Managed continuation pump failed");
     }
+}
+
+void ManagedScriptBackend::SignalContinuationsReady()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    _continuationsReady.store(true, std::memory_order_release);
 }
 
 void ManagedScriptBackend::AdoptPersistentGcHandle(uint32_t gc_handle)

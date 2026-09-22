@@ -45,6 +45,8 @@
 
 #if FO_LINUX || FO_MAC
 #include <dlfcn.h>
+#include <pthread.h>
+#include <signal.h>
 #endif
 
 #if FO_ANDROID
@@ -64,6 +66,28 @@
 #if !FO_WINDOWS
 
 FO_BEGIN_NAMESPACE
+
+#if FO_LINUX || FO_MAC
+// Retires the sigaltstack registration before its pages are released: freeing first leaves the kernel aiming the
+// signal stack at reclaimed memory, and an instrumented allocator then unmaps the same region twice
+class alt_signal_stack_releaser final
+{
+public:
+    void operator()(uint8_t* buffer) const noexcept
+    {
+        stack_t ss {};
+        ss.ss_flags = SS_DISABLE;
+        (void)::sigaltstack(&ss, nullptr);
+
+        delete[] buffer;
+    }
+};
+
+static void on_crash_signal(int32_t signum, siginfo_t* info, void* context);
+
+// Signal dispositions belong to the process, so the handler they lead to lives as long as the process does
+static std::atomic<posix::crash_signal_handler> installed_crash_signal_handler {};
+#endif
 
 // The kernel counters arrive as decimal text, and a field that is not a whole number is a field we misread
 static auto parse_counter(string_view text, uint64_t& value) noexcept -> bool
@@ -674,6 +698,111 @@ auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_na
     return nullptr;
 #endif
 }
+
+void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX || FO_MAC
+    installed_crash_signal_handler.store(handler);
+
+    constexpr std::array CRASH_SIGNALS = {
+        SIGABRT,
+        SIGBUS,
+        SIGFPE,
+        SIGILL,
+        SIGQUIT,
+        SIGSEGV,
+        SIGSYS,
+        SIGTRAP,
+        SIGXCPU,
+        SIGXFSZ,
+#if FO_MAC
+        SIGEMT,
+#endif
+    };
+
+    for (int32_t signum : CRASH_SIGNALS) {
+        struct sigaction action {};
+        action.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_NODEFER | SA_RESETHAND;
+        action.sa_sigaction = &on_crash_signal;
+        (void)::sigfillset(&action.sa_mask);
+        (void)::sigdelset(&action.sa_mask, signum);
+        (void)::sigaction(signum, &action, nullptr);
+    }
+
+#else
+    ignore_unused(handler);
+#endif
+}
+
+void posix::install_crash_signal_stack() noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX || FO_MAC
+    // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
+    // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
+    constexpr size_t stack_size = size_t {2} * 1024 * 1024;
+
+    // The kernel drops the sigaltstack registration only when the thread ends — later than this destructor — so
+    // the releaser retires it before the pages go back; std::unique_ptr, not the engine alias, supports array storage
+    static thread_local std::unique_ptr<uint8_t[], alt_signal_stack_releaser> alt_stack_buffer;
+
+    if (alt_stack_buffer) {
+        return; // already installed on this thread
+    }
+
+    alt_stack_buffer = std::unique_ptr<uint8_t[], alt_signal_stack_releaser> {new (std::nothrow) uint8_t[stack_size]};
+
+    if (!alt_stack_buffer) {
+        return;
+    }
+
+    stack_t ss {};
+    ss.ss_sp = alt_stack_buffer.get();
+    ss.ss_size = stack_size;
+    ss.ss_flags = 0;
+
+    if (::sigaltstack(&ss, nullptr) != 0) {
+        alt_stack_buffer.reset();
+    }
+#endif
+}
+
+#if FO_LINUX || FO_MAC
+static void on_crash_signal(int32_t signum, siginfo_t* info, void* context)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (posix::crash_signal_handler handler = installed_crash_signal_handler.load()) {
+        int32_t code = 0;
+        nptr<const void> address;
+
+        if (info != nullptr) {
+            code = info->si_code;
+            address = info->si_addr;
+        }
+
+        handler(signum, code, address, context);
+    }
+
+    // A script runtime that installed its own handler later chains to this one and still holds the signal, so the
+    // default action is put back explicitly before the signal is raised again
+    struct sigaction default_action {};
+    default_action.sa_handler = SIG_DFL;
+    (void)::sigemptyset(&default_action.sa_mask);
+    (void)::sigaction(signum, &default_action, nullptr);
+
+    sigset_t unblocked {};
+    (void)::sigemptyset(&unblocked);
+    (void)::sigaddset(&unblocked, signum);
+    (void)::pthread_sigmask(SIG_UNBLOCK, &unblocked, nullptr);
+
+    (void)::raise(signum);
+    ::_exit(EXIT_FAILURE);
+}
+#endif
 
 FO_END_NAMESPACE
 

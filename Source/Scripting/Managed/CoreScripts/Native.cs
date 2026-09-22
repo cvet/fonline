@@ -305,6 +305,19 @@ internal static class Native
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);
 
+    // A continuation posted after the engine is gone has no pump left to wake
+    internal static void SignalContinuationsReady()
+    {
+        IntPtr backend = BoundBackend;
+
+        if (backend != IntPtr.Zero) {
+            SignalContinuationsReadyInternal(backend);
+        }
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern void SignalContinuationsReadyInternal(IntPtr backend);
+
     internal static Assembly LoadDynamicAssembly(byte[] image, byte[]? symbols)
     {
         string ? error;
@@ -846,6 +859,15 @@ internal static class Native
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern long GetAndResetBoxedCallbackDispatchesInternal(IntPtr backend);
+
+    // How many frames entered managed code to pump continuations since the last read; counting starts at the first read
+    internal static long GetAndResetContinuationPumps()
+    {
+        return GetAndResetContinuationPumpsInternal(BoundBackend);
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern long GetAndResetContinuationPumpsInternal(IntPtr backend);
 
     // Drives the InteropProbe adapter from a native loop over one transport and returns the loop time in nanoseconds
     internal static long ProbeCallbackTransport(Delegate handler, int mode, int iterations, IntPtr ucoEntry,

@@ -135,6 +135,10 @@ macro(SetTargetProperties target)
 	set_target_properties(${target} PROPERTIES ${ARGN})
 endmacro()
 
+macro(AppendSourceProperty sourceFile property)
+	set_property(SOURCE ${sourceFile} APPEND PROPERTY ${property} ${ARGN})
+endmacro()
+
 macro(AddCustomCommand)
 	add_custom_command(${ARGV})
 endmacro()

@@ -34,19 +34,27 @@
 #include "StackTrace.h"
 
 #if (FO_WINDOWS || FO_LINUX || FO_MAC) && !FO_MEMORY_SANITIZER && !FO_THREAD_SANITIZER
-#if !FO_WINDOWS
-#if __has_include(<libunwind.h>) && !(FO_MAC && defined(__aarch64__))
-#define BACKWARD_HAS_LIBUNWIND 1
-#elif __has_include(<bfd.h>)
-#define BACKWARD_HAS_BFD 1
-#endif
-#endif
-FO_DISABLE_WARNINGS_PUSH()
-#include "backward.hpp"
-FO_DISABLE_WARNINGS_POP()
 #define HAS_NATIVE_TRACE 1
 #else
 #define HAS_NATIVE_TRACE 0
+#endif
+
+// Stack walking and symbol lookup sit below the operating system modules in the Essentials order, so this module calls
+// the platform itself
+#if HAS_NATIVE_TRACE
+#if FO_WINDOWS
+#include <Windows.h>
+#include <dbghelp.h>
+#else
+#include <cxxabi.h>
+#include <dlfcn.h>
+#if FO_LINUX
+#include "backtrace.h"
+#include "libunwind.h"
+#elif FO_MAC
+#include <libunwind.h>
+#endif
+#endif
 #endif
 
 #include "WinApiUndef.inc"
@@ -55,7 +63,8 @@ FO_BEGIN_NAMESPACE
 
 struct resolved_native_frame_cache_entry
 {
-    stack_trace::frame frame {};
+    // Innermost inlined call first, the function that owns the machine frame last
+    std::vector<stack_trace::frame> frames {};
     uintptr_t function_key {};
 };
 
@@ -67,21 +76,63 @@ struct stack_trace_state
     std::unordered_map<uintptr_t, resolved_native_frame_cache_entry> resolved_native_frames {};
     std::deque<uintptr_t> resolved_native_frame_order {};
 #if HAS_NATIVE_TRACE
+    // Serializes the symbol engines below, neither of which is thread safe
     std::mutex native_resolver_locker {};
+#endif
+#if HAS_NATIVE_TRACE && FO_WINDOWS
+    bool dbghelp_ready {};
+#endif
+#if HAS_NATIVE_TRACE && FO_LINUX
+    bool backtrace_created {};
+    backtrace_state* backtrace {};
 #endif
 };
 
+#if HAS_NATIVE_TRACE && !FO_WINDOWS
+enum class native_first_frame : uint8_t
+{
+    omitted,
+    call_site,
+    faulting,
+};
+#endif
+
+static void attach_script_layers(stack_trace::data& st) noexcept;
+static void drop_requesting_constructors(const stack_trace::data& st, std::vector<stack_trace::frame>& frames) noexcept;
 static void collect_script_layers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept;
-static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address> source, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, const stack_trace::script_layer& layer, std::vector<stack_trace::frame>& out);
-static void resolve_native_range(std::span<const stack_trace::native_frame_address> frames, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, std::vector<stack_trace::frame>& out) noexcept;
+static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address> source, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, const stack_trace::script_layer& layer, bool collapse_head, std::vector<stack_trace::frame>& out);
+static void resolve_native_range(std::span<const stack_trace::native_frame_address> frames, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, bool collapse_head, std::vector<stack_trace::frame>& out) noexcept;
 static auto find_layer_native_anchor(std::span<const stack_trace::native_frame_address> trace, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t;
 static auto FindLayerBirthOverlap(std::span<const stack_trace::native_frame_address> trace, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t;
 static auto same_frame_function(stack_trace::native_frame_address a, stack_trace::native_frame_address b) noexcept -> bool;
 static auto resolve_function_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t;
-static auto resolve_native_frame(stack_trace::native_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry;
-static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry;
-#if HAS_NATIVE_TRACE
-static auto get_native_trace_resolver() noexcept -> backward::TraceResolver&;
+static auto resolve_native_frame(stack_trace::native_frame_address addr) -> resolved_native_frame_cache_entry;
+static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry;
+#if HAS_NATIVE_TRACE && FO_WINDOWS
+static void walk_windows_context(const CONTEXT& source, HANDLE thread, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept;
+static auto resolve_windows_symbol(stack_trace_state& state, stack_trace::native_frame_address addr, stack_trace::frame& out_frame) noexcept -> bool;
+static void prepare_dbghelp(stack_trace_state& state) noexcept;
+static auto make_symbol_search_path(const void* module_anchor) -> std::wstring;
+#if defined(_M_IX86)
+static void walk_windows_frame_chain(uintptr_t pc, uintptr_t frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept;
+#else
+static void walk_windows_function_tables(CONTEXT& context, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept;
+static auto unwind_windows_frame(CONTEXT& context) noexcept -> bool;
+static void store_resume_registers(const CONTEXT& context, stack_trace::resume_point& point) noexcept;
+static void load_resume_registers(const stack_trace::resume_point& point, CONTEXT& context) noexcept;
+#endif
+#elif HAS_NATIVE_TRACE
+static void walk_native_cursor(unw_cursor_t& cursor, native_first_frame first, bool from_signal_frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept;
+static auto walk_signal_context(const ucontext_t& uctx, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept -> bool;
+static void resolve_posix_frames(stack_trace_state& state, stack_trace::native_frame_address addr, std::vector<stack_trace::frame>& out_frames);
+static auto resolve_dynamic_symbol(stack_trace::native_frame_address addr) -> std::string;
+static auto demangle_native_name(const char* name) -> std::string;
+#endif
+#if HAS_NATIVE_TRACE && FO_LINUX
+static auto get_backtrace_state(stack_trace_state& state) noexcept -> backtrace_state*;
+static auto on_backtrace_frame(void* data, uintptr_t pc, const char* filename, int32_t lineno, const char* function) -> int32_t;
+static void on_backtrace_symbol(void* data, uintptr_t pc, const char* symname, uintptr_t symval, uintptr_t symsize);
+static void on_backtrace_error(void* data, const char* msg, int32_t errnum);
 #endif
 static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>;
 static void store_resolved_native_frame_in_cache(stack_trace::native_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept;
@@ -91,28 +142,32 @@ static auto make_native_function_key(stack_trace::native_frame_address addr, std
 static auto make_native_address_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t;
 static auto is_low_native_address(stack_trace::native_frame_address addr) noexcept -> bool;
 static auto is_unresolved_native_name(std::string_view s) noexcept -> bool;
+static auto is_constructor_name(std::string_view name) noexcept -> bool;
 static void trim_in_place(std::string& s) noexcept;
 static auto get_stack_trace_state() noexcept -> stack_trace_state&;
 
-auto stack_trace::get() noexcept -> stack_trace::data
+// Kept out of line so that its own frame is the one the capture skips
+FO_NO_INLINE auto stack_trace::get() noexcept -> stack_trace::data
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     stack_trace::data st;
 
     stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
+    st.native_head_is_request = true;
+    attach_script_layers(st);
 
-    try {
-        std::vector<stack_trace::script_layer> script_layers;
-        collect_script_layers(st, script_layers);
+    return st;
+}
 
-        if (!script_layers.empty()) {
-            st.script_layers = std::make_shared<const std::vector<stack_trace::script_layer>>(std::move(script_layers));
-        }
-    }
-    catch (...) {
-        break_into_debugger();
-    }
+auto stack_trace::get_from_context(const void* os_context, void* os_thread) noexcept -> stack_trace::data
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    stack_trace::data st;
+
+    stack_trace::capture_native_frames_from_context(os_context, os_thread, st.native_frames, st.native_frame_count, st.native_truncated);
+    attach_script_layers(st);
 
     return st;
 }
@@ -175,10 +230,12 @@ auto stack_trace::resolve(const stack_trace::data& st) -> std::vector<stack_trac
 
     std::vector<stack_trace::frame> frames;
     std::span<const stack_trace::native_frame_address> source {st.native_frames.data(), st.native_frame_count};
+    bool collapse_head = st.native_head_is_request;
 
     if (!st.script_layers || st.script_layers->empty()) {
         frames.reserve(source.size());
-        resolve_native_range(source, 0, st.native_frame_count, {}, frames);
+        resolve_native_range(source, 0, st.native_frame_count, {}, collapse_head, frames);
+        drop_requesting_constructors(st, frames);
         return frames;
     }
 
@@ -200,22 +257,24 @@ auto stack_trace::resolve(const stack_trace::data& st) -> std::vector<stack_trac
         uint32_t anchor = find_layer_native_anchor(source, layer, pos);
 
         if (anchor < source.size()) {
-            ResolveLayerRegion(source, pos, anchor, hidden, layer, frames);
+            ResolveLayerRegion(source, pos, anchor, hidden, layer, collapse_head, frames);
             pos = anchor;
         }
         else if (layer.birth_native_frame_count != 0) {
             // The trace ends above the frame that entered this layer, as it does when the native unwinder cannot step
             // through script-runtime generated code, so the stack below the layer is read from its own birth capture
-            ResolveLayerRegion(source, pos, FindLayerBirthOverlap(source, layer, pos), hidden, layer, frames);
+            ResolveLayerRegion(source, pos, FindLayerBirthOverlap(source, layer, pos), hidden, layer, collapse_head, frames);
             source = std::span<const stack_trace::native_frame_address> {layer.birth_native_frames.data(), layer.birth_native_frame_count};
             pos = 0;
+            collapse_head = false;
         }
         else {
-            ResolveLayerRegion(source, pos, pos, hidden, layer, frames);
+            ResolveLayerRegion(source, pos, pos, hidden, layer, collapse_head, frames);
         }
     }
 
-    resolve_native_range(source, pos, static_cast<uint32_t>(source.size()), hidden, frames);
+    resolve_native_range(source, pos, static_cast<uint32_t>(source.size()), hidden, collapse_head, frames);
+    drop_requesting_constructors(st, frames);
     return frames;
 }
 
@@ -297,49 +356,179 @@ auto stack_trace::get_entry(uint32_t deep) noexcept -> std::optional<stack_trace
     return std::nullopt;
 }
 
-void stack_trace::capture_native_frames(std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
+// Kept out of line: the walk starts in this frame, and the frames skipped are counted from its caller
+FO_NO_INLINE void stack_trace::capture_native_frames(std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     out_count = 0;
     out_truncated = false;
 
-#if FO_WINDOWS
-    ULONG skip_count = 1u + skip;
-    constexpr ULONG REQUEST_COUNT = static_cast<ULONG>(stack_trace::MAX_NATIVE_FRAMES) + 1u;
-    void* raw_frames[REQUEST_COUNT];
-    USHORT captured = RtlCaptureStackBackTrace(skip_count, REQUEST_COUNT, raw_frames, nullptr);
-    out_truncated = captured > stack_trace::MAX_NATIVE_FRAMES;
-    uint32_t n = std::min<uint32_t>(captured, static_cast<uint32_t>(stack_trace::MAX_NATIVE_FRAMES));
+#if HAS_NATIVE_TRACE && FO_WINDOWS && defined(_M_IX86)
+    // The same walk a resume point gets, so the two agree; it starts in this frame, which the skip leaves out too
+    stack_trace::resume_point here;
+    (void)stack_trace::save_resume_point(&here);
+    walk_windows_frame_chain(static_cast<uintptr_t>(here.context[0]), static_cast<uintptr_t>(here.context[2]), 1 + skip, out_frames, out_count, out_truncated);
 
-    for (uint32_t i = 0; i < n; i++) {
-        out_frames[i] = std::bit_cast<stack_trace::native_frame_address>(raw_frames[i]);
-    }
-
-    out_count = n;
+#elif HAS_NATIVE_TRACE && FO_WINDOWS
+    // The same walk a resume point gets, so the two agree; it starts in this frame, which the skip leaves out too
+    CONTEXT context;
+    RtlCaptureContext(&context);
+    walk_windows_function_tables(context, 1 + skip, out_frames, out_count, out_truncated);
 
 #elif HAS_NATIVE_TRACE
-    try {
-        backward::StackTrace native;
-        size_t skip_count = static_cast<size_t>(2) + skip;
-        native.load_here(stack_trace::MAX_NATIVE_FRAMES + skip_count + 1);
-        native.skip_n_firsts(skip_count);
-        out_truncated = native.size() > stack_trace::MAX_NATIVE_FRAMES;
-        size_t count = std::min(native.size(), stack_trace::MAX_NATIVE_FRAMES);
+    unw_context_t context;
+    unw_cursor_t cursor;
 
-        for (size_t i = 0; i < count; i++) {
-            out_frames[i] = std::bit_cast<stack_trace::native_frame_address>(native[i].addr);
-        }
+    if (unw_getcontext(&context) != UNW_ESUCCESS || unw_init_local(&cursor, &context) != UNW_ESUCCESS) {
+        return;
+    }
 
-        out_count = static_cast<uint32_t>(count);
-    }
-    catch (...) {
-        out_count = 0;
-    }
+    walk_native_cursor(cursor, native_first_frame::omitted, false, skip, out_frames, out_count, out_truncated);
 
 #else
     (void)out_frames;
     (void)skip;
+#endif
+}
+
+void stack_trace::capture_native_frames_from_context(const void* os_context, void* os_thread, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    out_count = 0;
+    out_truncated = false;
+
+#if HAS_NATIVE_TRACE && FO_WINDOWS
+    if (os_context == nullptr) {
+        stack_trace::capture_native_frames(out_frames, out_count, out_truncated);
+        return;
+    }
+
+    walk_windows_context(*static_cast<const CONTEXT*>(os_context), static_cast<HANDLE>(os_thread), out_frames, out_count, out_truncated);
+
+#elif HAS_NATIVE_TRACE
+    (void)os_thread;
+
+    if (os_context != nullptr && walk_signal_context(*static_cast<const ucontext_t*>(os_context), out_frames, out_count, out_truncated)) {
+        return;
+    }
+
+    // Without a register layout to start from, the live stack is walked through the signal trampoline and kept from
+    // the frame the signal interrupted; a walk that never meets that frame is kept whole
+    unw_context_t context;
+    unw_cursor_t cursor;
+
+    if (unw_getcontext(&context) != UNW_ESUCCESS || unw_init_local(&cursor, &context) != UNW_ESUCCESS) {
+        return;
+    }
+
+    walk_native_cursor(cursor, native_first_frame::omitted, true, 0, out_frames, out_count, out_truncated);
+
+    if (out_count == 0) {
+        stack_trace::capture_native_frames(out_frames, out_count, out_truncated);
+    }
+
+#else
+    (void)os_context;
+    (void)os_thread;
+    (void)out_frames;
+#endif
+}
+
+#if FO_STACK_TRACE_RESUME_CONTEXT && FO_WINDOWS && defined(_M_IX86)
+// No prologue: the frame pointer is still the caller's and the stack pointer points at its return address; the words
+// kept are the return address, the caller's stack pointer after the return and its frame pointer
+__declspec(naked) auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // clang-format off
+    __asm {
+        mov eax, [esp + 4]
+        mov ecx, [esp]
+        mov [eax], ecx
+        mov dword ptr [eax + 4], 0
+        lea ecx, [esp + 4]
+        mov [eax + 8], ecx
+        mov dword ptr [eax + 12], 0
+        mov [eax + 16], ebp
+        mov dword ptr [eax + 20], 0
+        xor eax, eax
+        ret
+    }
+    // clang-format on
+}
+
+#elif FO_STACK_TRACE_RESUME_CONTEXT && FO_WINDOWS
+// Kept out of line: it captures its own frame and steps back once, to the frame that called it
+FO_NO_INLINE auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    CONTEXT context;
+    RtlCaptureContext(&context);
+
+    if (!unwind_windows_frame(context)) {
+        point->context.fill(0);
+        return -1;
+    }
+
+    store_resume_registers(context, *point);
+    return 0;
+}
+
+#elif FO_STACK_TRACE_RESUME_CONTEXT
+static_assert(sizeof(unw_context_t) <= sizeof(stack_trace::resume_point::context) && alignof(unw_context_t) <= alignof(stack_trace::resume_point), "Resume point must hold an unwind context");
+#else
+// Kept out of line so that the frame the capture skips is this one and not the opening frame it was inlined into
+FO_NO_INLINE auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    capture_native_frames(point->frames, point->frame_count, point->truncated, 1);
+    return 0;
+}
+#endif
+
+void stack_trace::resolve_resume_point(const stack_trace::resume_point& point, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_STACK_TRACE_RESUME_CONTEXT && FO_WINDOWS && defined(_M_IX86)
+    out_count = 0;
+    out_truncated = false;
+
+    walk_windows_frame_chain(static_cast<uintptr_t>(point.context[0]), static_cast<uintptr_t>(point.context[2]), 0, out_frames, out_count, out_truncated);
+
+#elif FO_STACK_TRACE_RESUME_CONTEXT && FO_WINDOWS
+    out_count = 0;
+    out_truncated = false;
+
+    CONTEXT context {};
+    load_resume_registers(point, context);
+
+    walk_windows_function_tables(context, 0, out_frames, out_count, out_truncated);
+
+#elif FO_STACK_TRACE_RESUME_CONTEXT
+    out_count = 0;
+    out_truncated = false;
+
+    unw_context_t context;
+    std::memcpy(&context, point.context.data(), sizeof(context));
+    unw_cursor_t cursor;
+
+    if (unw_init_local(&cursor, &context) != UNW_ESUCCESS) {
+        return;
+    }
+
+    // The saved instruction pointer is the return address of the call that saved the point
+    walk_native_cursor(cursor, native_first_frame::call_site, false, 0, out_frames, out_count, out_truncated);
+
+#else
+    std::copy_n(point.frames.begin(), point.frame_count, out_frames.begin());
+    out_count = point.frame_count;
+    out_truncated = point.truncated;
 #endif
 }
 
@@ -414,6 +603,23 @@ auto stack_trace::get_resolved_cache_size() noexcept -> size_t
     return 0;
 }
 
+static void attach_script_layers(stack_trace::data& st) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        std::vector<stack_trace::script_layer> script_layers;
+        collect_script_layers(st, script_layers);
+
+        if (!script_layers.empty()) {
+            st.script_layers = std::make_shared<const std::vector<stack_trace::script_layer>>(std::move(script_layers));
+        }
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+}
+
 static void collect_script_layers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -457,9 +663,22 @@ static void collect_script_layers(const stack_trace::data& st, std::vector<stack
     }
 }
 
+// A trace asked for while an object is under construction, an exception above all, starts at the code that constructs it
+static void drop_requesting_constructors(const stack_trace::data& st, std::vector<stack_trace::frame>& frames) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!st.native_head_is_request) {
+        return;
+    }
+
+    auto first_kept = std::ranges::find_if(frames, [](const stack_trace::frame& frame) { return frame.type != stack_trace::frame::frame_type::native || !is_constructor_name(frame.function); });
+    frames.erase(frames.begin(), first_kept);
+}
+
 // The native frames above a layer's anchor hold the script-runtime frames of that layer: natives above them were called
 // by script, natives below them are the runtime entering it, so the script frames go where the runtime frames are
-static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address> source, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, const stack_trace::script_layer& layer, std::vector<stack_trace::frame>& out)
+static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address> source, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, const stack_trace::script_layer& layer, bool collapse_head, std::vector<stack_trace::frame>& out)
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -477,15 +696,17 @@ static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address
         last_runtime = i;
     }
 
-    resolve_native_range(source, from, first_runtime, hidden, out);
+    resolve_native_range(source, from, first_runtime, hidden, collapse_head, out);
     out.insert(out.end(), layer.script_frames.begin(), layer.script_frames.end());
 
     if (last_runtime != to) {
-        resolve_native_range(source, last_runtime + 1, to, hidden, out);
+        resolve_native_range(source, last_runtime + 1, to, hidden, collapse_head, out);
     }
 }
 
-static void resolve_native_range(std::span<const stack_trace::native_frame_address> frames, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, std::vector<stack_trace::frame>& out) noexcept
+// A collapsed head keeps the function that owns the first frame and drops the code inlined into it on the way to the
+// capture, which for an exception is its own constructor chain
+static void resolve_native_range(std::span<const stack_trace::native_frame_address> frames, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, bool collapse_head, std::vector<stack_trace::frame>& out) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -501,7 +722,14 @@ static void resolve_native_range(std::span<const stack_trace::native_frame_addre
                 continue;
             }
 
-            out.emplace_back(resolve_native_frame(addr, i).frame);
+            resolved_native_frame_cache_entry entry = resolve_native_frame(addr);
+
+            if (collapse_head && i == 0) {
+                out.emplace_back(std::move(entry.frames.back()));
+            }
+            else {
+                out.insert(out.end(), std::make_move_iterator(entry.frames.begin()), std::make_move_iterator(entry.frames.end()));
+            }
         }
     }
     catch (...) {
@@ -598,14 +826,14 @@ static auto resolve_function_key(stack_trace::native_frame_address addr) noexcep
 
     try {
         // POSIX exposes object-relative function entries; Windows approximates them by symbol name
-        return resolve_native_frame(addr, 0).function_key;
+        return resolve_native_frame(addr).function_key;
     }
     catch (...) {
         return make_native_address_key(addr);
     }
 }
 
-static auto resolve_native_frame(stack_trace::native_frame_address addr, uint32_t index) -> resolved_native_frame_cache_entry
+static auto resolve_native_frame(stack_trace::native_frame_address addr) -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -621,68 +849,71 @@ static auto resolve_native_frame(stack_trace::native_frame_address addr, uint32_
         return entry;
     }
 
-    resolved_native_frame_cache_entry entry = resolve_native_frame_uncached(addr, index);
+    resolved_native_frame_cache_entry entry = resolve_native_frame_uncached(addr);
     store_resolved_native_frame_in_cache(addr, entry);
     return entry;
 }
 
-#if HAS_NATIVE_TRACE
-static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
+static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry
 {
     FO_NO_STACK_TRACE_ENTRY();
 
+#if HAS_NATIVE_TRACE
     if (is_low_native_address(addr)) {
         return make_native_address_cache_entry(addr);
     }
 
     try {
-        backward::ResolvedTrace resolved;
+        resolved_native_frame_cache_entry entry;
+        stack_trace_state& state = get_stack_trace_state();
 
         {
-            stack_trace_state& state = get_stack_trace_state();
             std::scoped_lock locker {state.native_resolver_locker};
 
-            resolved = get_native_trace_resolver().resolve(backward::Trace(std::bit_cast<void*>(addr), index));
+#if FO_WINDOWS
+            stack_trace::frame frame;
+
+            if (resolve_windows_symbol(state, addr, frame)) {
+                entry.frames.emplace_back(std::move(frame));
+            }
+#else
+            resolve_posix_frames(state, addr, entry.frames);
+#endif
         }
 
-        stack_trace::frame frame;
-        frame.type = stack_trace::frame::frame_type::native;
-        frame.function = resolved.source.function.empty() ? resolved.object_function : resolved.source.function;
-        frame.file = resolved.source.filename;
-        frame.line = resolved.source.line;
+        for (stack_trace::frame& frame : entry.frames) {
+            frame.type = stack_trace::frame::frame_type::native;
+            trim_in_place(frame.function);
+            trim_in_place(frame.file);
 
-        trim_in_place(frame.function);
-        trim_in_place(frame.file);
+            if (is_unresolved_native_name(frame.file)) {
+                frame.file.clear();
+                frame.line = 0;
+            }
+        }
 
-        if (is_unresolved_native_name(frame.function)) {
+        if (entry.frames.empty() || is_unresolved_native_name(entry.frames.back().function)) {
             return make_native_address_cache_entry(addr);
         }
 
-        if (is_unresolved_native_name(frame.file)) {
-            frame.file.clear();
-            frame.line = 0;
-        }
+        stack_trace::frame own_frame = std::move(entry.frames.back());
+        entry.frames.pop_back();
 
-        resolved_native_frame_cache_entry entry;
-        entry.function_key = make_native_function_key(addr, frame.function);
-        entry.frame = std::move(frame);
+        // Standard library code inlined on the way to a call is plumbing; the function that owns the frame stays
+        std::erase_if(entry.frames, [](const stack_trace::frame& frame) { return is_unresolved_native_name(frame.function) || frame.file.find("/include/c++/") != std::string::npos; });
+        entry.frames.emplace_back(std::move(own_frame));
+        entry.function_key = make_native_function_key(addr, entry.frames.back().function);
         return entry;
     }
     catch (...) {
         break_into_debugger();
         return make_native_address_cache_entry(addr);
     }
-}
 
 #else
-static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr, uint32_t index) noexcept -> resolved_native_frame_cache_entry
-{
-    FO_NO_STACK_TRACE_ENTRY();
-
-    ignore_unused(index);
     return make_native_address_cache_entry(addr);
-}
 #endif
+}
 
 static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>
 {
@@ -738,7 +969,7 @@ static auto make_native_address_cache_entry(stack_trace::native_frame_address ad
     FO_NO_STACK_TRACE_ENTRY();
 
     resolved_native_frame_cache_entry entry;
-    entry.frame = make_native_address_frame(addr);
+    entry.frames.emplace_back(make_native_address_frame(addr));
     entry.function_key = make_native_address_key(addr);
     return entry;
 }
@@ -791,6 +1022,51 @@ static auto is_unresolved_native_name(std::string_view s) noexcept -> bool
     return s.empty() || s == "??" || s == "???" || s == "??:0";
 }
 
+// Reads a demangled name as scope::Type::Type, with template arguments and the parameter list after either part
+static auto is_constructor_name(std::string_view name) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (name.find("operator") != std::string_view::npos || name.find('{') != std::string_view::npos) {
+        return false;
+    }
+
+    // Everything outside template arguments, up to the parameter list
+    std::string qualified;
+    int32_t template_depth = 0;
+
+    for (char c : name) {
+        if (c == '<') {
+            template_depth++;
+        }
+        else if (c == '>') {
+            template_depth--;
+        }
+        else if (template_depth == 0) {
+            if (c == '(') {
+                break;
+            }
+
+            qualified.push_back(c);
+        }
+    }
+
+    size_t last_separator = qualified.rfind("::");
+
+    if (last_separator == std::string::npos || last_separator == 0) {
+        return false;
+    }
+
+    std::string_view scope {qualified.data(), last_separator};
+    std::string_view member = std::string_view {qualified}.substr(last_separator + 2);
+
+    if (size_t scope_separator = scope.rfind("::"); scope_separator != std::string_view::npos) {
+        scope = scope.substr(scope_separator + 2);
+    }
+
+    return !member.empty() && member == scope;
+}
+
 static void trim_in_place(std::string& s) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
@@ -815,15 +1091,669 @@ static auto get_stack_trace_state() noexcept -> stack_trace_state&
     return state;
 }
 
-#if HAS_NATIVE_TRACE
-static auto get_native_trace_resolver() noexcept -> backward::TraceResolver&
+#if HAS_NATIVE_TRACE && FO_WINDOWS
+static void walk_windows_context(const CONTEXT& source, HANDLE thread, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Keep one process-lifetime resolver so libbfd caches each binary once and remains reachable to LeakSanitizer.
-    // native_resolver_locker serializes this non-thread-safe object
-    static backward::TraceResolver* resolver = new backward::TraceResolver();
-    return *resolver;
+    CONTEXT context;
+    std::memcpy(&context, &source, sizeof(context));
+    bool resumed_after_call = false;
+
+    // A call through a null function pointer leaves no frame of its own. On x64 and x86 the return address it pushed is
+    // still on top of the stack, so popping it the way a return would recovers the caller; ARM64 keeps it in a register
+#if defined(_M_X64)
+    if (context.Rip == 0 && context.Rsp != 0) {
+        std::memcpy(&context.Rip, std::bit_cast<const void*>(static_cast<uintptr_t>(context.Rsp)), sizeof(context.Rip));
+        context.Rsp += sizeof(context.Rip);
+        resumed_after_call = true;
+    }
+#elif defined(_M_ARM64)
+    if (context.Pc == 0 && context.Lr != 0) {
+        context.Pc = context.Lr;
+        resumed_after_call = true;
+    }
+#else
+    if (context.Eip == 0 && context.Esp != 0) {
+        std::memcpy(&context.Eip, std::bit_cast<const void*>(static_cast<uintptr_t>(context.Esp)), sizeof(context.Eip));
+        context.Esp += sizeof(context.Eip);
+        resumed_after_call = true;
+    }
+#endif
+
+    STACKFRAME64 frame {};
+    frame.AddrPC.Mode = AddrModeFlat;
+    frame.AddrStack.Mode = AddrModeFlat;
+    frame.AddrFrame.Mode = AddrModeFlat;
+
+#if defined(_M_X64)
+    constexpr DWORD MACHINE = IMAGE_FILE_MACHINE_AMD64;
+    frame.AddrPC.Offset = context.Rip;
+    frame.AddrStack.Offset = context.Rsp;
+    frame.AddrFrame.Offset = context.Rbp;
+#elif defined(_M_ARM64)
+    constexpr DWORD MACHINE = IMAGE_FILE_MACHINE_ARM64;
+    frame.AddrPC.Offset = context.Pc;
+    frame.AddrStack.Offset = context.Sp;
+    frame.AddrFrame.Offset = context.Fp;
+#else
+    constexpr DWORD MACHINE = IMAGE_FILE_MACHINE_I386;
+    frame.AddrPC.Offset = context.Eip;
+    frame.AddrStack.Offset = context.Esp;
+    frame.AddrFrame.Offset = context.Ebp;
+#endif
+
+    try {
+        stack_trace_state& state = get_stack_trace_state();
+        std::scoped_lock locker {state.native_resolver_locker};
+
+        // The walk reads the function tables through the symbol handler
+        prepare_dbghelp(state);
+
+        HANDLE process = GetCurrentProcess();
+        HANDLE walked_thread = thread != nullptr ? thread : GetCurrentThread();
+
+        while (StackWalk64(MACHINE, process, walked_thread, &frame, &context, nullptr, SymFunctionTableAccess64, SymGetModuleBase64, nullptr) != FALSE) {
+            DWORD64 pc = frame.AddrPC.Offset;
+
+            if (pc == 0) {
+                break;
+            }
+            if (out_count == stack_trace::MAX_NATIVE_FRAMES) {
+                out_truncated = true;
+                break;
+            }
+
+            // The faulting instruction is exact, every later frame holds a return address
+            bool exact = out_count == 0 && !resumed_after_call;
+            out_frames[out_count++] = static_cast<stack_trace::native_frame_address>(exact ? pc : pc - 1);
+
+            if (frame.AddrReturn.Offset == 0) {
+                break;
+            }
+        }
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+}
+
+static auto resolve_windows_symbol(stack_trace_state& state, stack_trace::native_frame_address addr, stack_trace::frame& out_frame) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    prepare_dbghelp(state);
+
+    constexpr size_t NAME_CAPACITY = 1024;
+    alignas(SYMBOL_INFO) std::array<char, sizeof(SYMBOL_INFO) + NAME_CAPACITY> symbol_buffer {};
+    SYMBOL_INFO* symbol = reinterpret_cast<SYMBOL_INFO*>(symbol_buffer.data());
+    symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+    symbol->MaxNameLen = static_cast<ULONG>(NAME_CAPACITY);
+
+    HANDLE process = GetCurrentProcess();
+    DWORD64 displacement = 0;
+
+    if (SymFromAddr(process, addr, &displacement, symbol) == FALSE) {
+        // A module loaded after the handler took its module list is picked up here; code outside every module
+        // (script-runtime output) is not worth a refresh
+        HMODULE module = nullptr;
+        bool in_module = GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, std::bit_cast<LPCWSTR>(addr), &module) != FALSE;
+
+        if (!in_module || SymRefreshModuleList(process) == FALSE || SymFromAddr(process, addr, &displacement, symbol) == FALSE) {
+            return false;
+        }
+    }
+
+    try {
+        out_frame.function.assign(symbol->Name, strnlen(symbol->Name, NAME_CAPACITY));
+
+        IMAGEHLP_LINE64 line {};
+        line.SizeOfStruct = sizeof(line);
+        DWORD line_displacement = 0;
+
+        if (SymGetLineFromAddr64(process, addr, &line_displacement, &line) != FALSE && line.FileName != nullptr) {
+            out_frame.file = line.FileName;
+            out_frame.line = static_cast<uint32_t>(line.LineNumber);
+        }
+    }
+    catch (...) {
+        break_into_debugger();
+        return false;
+    }
+
+    return true;
+}
+
+static void prepare_dbghelp(stack_trace_state& state) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (state.dbghelp_ready) {
+        return;
+    }
+
+    state.dbghelp_ready = true;
+    (void)SymSetOptions(SymGetOptions() | SYMOPT_UNDNAME | SYMOPT_LOAD_LINES | SYMOPT_DEFERRED_LOADS | SYMOPT_FAIL_CRITICAL_ERRORS | SYMOPT_NO_PROMPTS);
+
+    std::wstring search_path;
+
+    try {
+        search_path = make_symbol_search_path(&state);
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+
+    HANDLE process = GetCurrentProcess();
+
+    // The engine modules of a process share one symbol handler, so a module that finds it initialized only brings
+    // the module list up to date
+    if (SymInitializeW(process, search_path.empty() ? nullptr : search_path.c_str(), TRUE) == FALSE) {
+        (void)SymRefreshModuleList(process);
+    }
+}
+
+// A PDB ships beside its module, which the default search path, the working directory, misses whenever a process
+// starts from elsewhere
+static auto make_symbol_search_path(const void* module_anchor) -> std::wstring
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    std::wstring search_path;
+
+    auto append_module_dir = [&search_path](HMODULE module) {
+        std::array<wchar_t, 4096> file_name {};
+        DWORD length = GetModuleFileNameW(module, file_name.data(), static_cast<DWORD>(file_name.size()));
+
+        if (length == 0 || length >= file_name.size()) {
+            return;
+        }
+
+        std::wstring_view file {file_name.data(), length};
+        size_t separator = file.find_last_of(L"\\/");
+
+        if (separator == std::wstring_view::npos) {
+            return;
+        }
+
+        search_path.append(file.substr(0, separator));
+        search_path.push_back(L';');
+    };
+
+    append_module_dir(nullptr);
+
+    HMODULE own_module = nullptr;
+
+    if (GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT, static_cast<LPCWSTR>(module_anchor), &own_module) != FALSE) {
+        append_module_dir(own_module);
+    }
+
+    search_path.push_back(L'.');
+
+    // A search path of our own replaces the default one, which also reads these variables
+    constexpr std::array<std::wstring_view, 2> PATH_VARIABLES = {L"_NT_SYMBOL_PATH", L"_NT_ALTERNATE_SYMBOL_PATH"};
+
+    for (std::wstring_view variable : PATH_VARIABLES) {
+        std::array<wchar_t, 4096> value {};
+        DWORD length = GetEnvironmentVariableW(variable.data(), value.data(), static_cast<DWORD>(value.size()));
+
+        if (length != 0 && length < value.size()) {
+            search_path.push_back(L';');
+            search_path.append(value.data(), length);
+        }
+    }
+
+    return search_path;
+}
+
+#if defined(_M_IX86)
+// Follows the saved frame pointers the way RtlCaptureStackBackTrace does here; the first address is a return address of
+// the frame that saved it, as every later one is
+static void walk_windows_frame_chain(uintptr_t pc, uintptr_t frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const NT_TIB* thread_block = reinterpret_cast<const NT_TIB*>(NtCurrentTeb());
+    auto stack_low = reinterpret_cast<uintptr_t>(thread_block->StackLimit);
+    auto stack_high = reinterpret_cast<uintptr_t>(thread_block->StackBase);
+    uint32_t to_skip = skip;
+
+    while (pc != 0) {
+        if (to_skip != 0) {
+            to_skip--;
+        }
+        else if (out_count == stack_trace::MAX_NATIVE_FRAMES) {
+            out_truncated = true;
+            break;
+        }
+        else {
+            out_frames[out_count++] = static_cast<stack_trace::native_frame_address>(pc - 1);
+        }
+
+        // A frame record is the saved frame pointer of the caller followed by the return address into it, and the chain
+        // only moves toward the stack base
+        std::array<uintptr_t, 2> record {};
+
+        if (frame < stack_low || frame > stack_high - sizeof(record) || frame % sizeof(uintptr_t) != 0) {
+            break;
+        }
+
+        std::memcpy(record.data(), std::bit_cast<const void*>(frame), sizeof(record));
+
+        if (record[0] <= frame) {
+            break;
+        }
+
+        pc = record[1];
+        frame = record[0];
+    }
+}
+
+#else
+// Steps the frames through the function tables the way RtlCaptureStackBackTrace does; the first address is a return
+// address of the frame the context was taken in, as every later one is
+static void walk_windows_function_tables(CONTEXT& context, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    const NT_TIB* thread_block = reinterpret_cast<const NT_TIB*>(NtCurrentTeb());
+    auto stack_low = reinterpret_cast<DWORD64>(thread_block->StackLimit);
+    auto stack_high = reinterpret_cast<DWORD64>(thread_block->StackBase);
+    uint32_t to_skip = skip;
+
+    while (true) {
+#if defined(_M_X64)
+        DWORD64 pc = context.Rip;
+        DWORD64 sp = context.Rsp;
+#else
+        DWORD64 pc = context.Pc;
+        DWORD64 sp = context.Sp;
+#endif
+
+        if (pc == 0 || sp < stack_low || sp >= stack_high) {
+            break;
+        }
+
+        if (to_skip != 0) {
+            to_skip--;
+        }
+        else if (out_count == stack_trace::MAX_NATIVE_FRAMES) {
+            out_truncated = true;
+            break;
+        }
+        else {
+            out_frames[out_count++] = static_cast<stack_trace::native_frame_address>(pc - 1);
+        }
+
+        // Code without unwind data (script-runtime output nobody registered) ends the walk, as it ends the other walkers
+        if (!unwind_windows_frame(context)) {
+            break;
+        }
+    }
+}
+
+// Moves the context from a frame to its caller through the function table entry of the code it is in
+static auto unwind_windows_frame(CONTEXT& context) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if defined(_M_X64)
+    DWORD64 pc = context.Rip;
+#else
+    DWORD64 pc = context.Pc;
+#endif
+
+    DWORD64 image_base = 0;
+    PRUNTIME_FUNCTION function_entry = RtlLookupFunctionEntry(pc, &image_base, nullptr);
+
+    if (function_entry == nullptr) {
+        return false;
+    }
+
+    PVOID handler_data = nullptr;
+    DWORD64 establisher_frame = 0;
+    (void)RtlVirtualUnwind(UNW_FLAG_NHANDLER, image_base, pc, function_entry, &context, &handler_data, &establisher_frame, nullptr);
+    return true;
+}
+
+// Only what the function tables need to go on unwinding: the instruction and stack pointers and the callee-saved registers
+static void store_resume_registers(const CONTEXT& context, stack_trace::resume_point& point) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if defined(_M_X64)
+    point.context = {context.Rip, context.Rsp, context.Rbp, context.Rbx, context.Rsi, context.Rdi, context.R12, context.R13, context.R14, context.R15};
+#else
+    point.context = {context.Pc, context.Sp, context.Fp, context.Lr};
+
+    for (size_t i = 0; i < 10; i++) {
+        point.context[4 + i] = context.X[19 + i];
+    }
+#endif
+}
+
+static void load_resume_registers(const stack_trace::resume_point& point, CONTEXT& context) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if defined(_M_X64)
+    context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+    context.Rip = point.context[0];
+    context.Rsp = point.context[1];
+    context.Rbp = point.context[2];
+    context.Rbx = point.context[3];
+    context.Rsi = point.context[4];
+    context.Rdi = point.context[5];
+    context.R12 = point.context[6];
+    context.R13 = point.context[7];
+    context.R14 = point.context[8];
+    context.R15 = point.context[9];
+#else
+    context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+    context.Pc = point.context[0];
+    context.Sp = point.context[1];
+    context.Fp = point.context[2];
+    context.Lr = point.context[3];
+
+    for (size_t i = 0; i < 10; i++) {
+        context.X[19 + i] = point.context[4 + i];
+    }
+#endif
+}
+#endif
+
+#elif HAS_NATIVE_TRACE
+static void walk_native_cursor(unw_cursor_t& cursor, native_first_frame first, bool from_signal_frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    uint32_t to_skip = skip;
+    bool recording = !from_signal_frame;
+
+    // Answers false once the list is full
+    auto record = [&](unw_word_t address) -> bool {
+        if (to_skip != 0) {
+            to_skip--;
+            return true;
+        }
+
+        if (out_count == stack_trace::MAX_NATIVE_FRAMES) {
+            out_truncated = true;
+            return false;
+        }
+
+        out_frames[out_count++] = static_cast<stack_trace::native_frame_address>(address);
+        return true;
+    };
+
+    unw_word_t ip = 0;
+
+    if (unw_get_reg(&cursor, UNW_REG_IP, &ip) != UNW_ESUCCESS || ip == 0) {
+        return;
+    }
+
+    if (first != native_first_frame::omitted && !record(first == native_first_frame::faulting ? ip : ip - 1)) {
+        return;
+    }
+
+    while (true) {
+        int32_t step = unw_step(&cursor);
+        unw_word_t next_ip = 0;
+
+        // A step onto code without unwind info (script-runtime output) ends the walk but still lands on that frame
+        if (step < 0 || unw_get_reg(&cursor, UNW_REG_IP, &next_ip) != UNW_ESUCCESS || next_ip == 0 || (step == 0 && next_ip == ip)) {
+            break;
+        }
+
+        ip = next_ip;
+
+        // A frame a signal interrupted holds the faulting instruction itself, every other frame a return address
+        bool interrupted = unw_is_signal_frame(&cursor) > 0;
+        recording = recording || interrupted;
+
+        if (recording && !record(interrupted ? ip : ip - 1)) {
+            break;
+        }
+        if (step == 0) {
+            break;
+        }
+    }
+
+    if (!recording) {
+        out_count = 0;
+    }
+}
+
+static auto walk_signal_context(const ucontext_t& uctx, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX && (defined(__x86_64__) || defined(__aarch64__))
+    unw_context_t context;
+
+    if (unw_getcontext(&context) != UNW_ESUCCESS) {
+        return false;
+    }
+
+    bool resumed_after_call = false;
+
+#if defined(__x86_64__)
+    // Registers_x86_64 keeps rax, rbx, rcx, rdx, rdi, rsi, rbp, rsp, r8-r15 and rip in this order
+    constexpr std::array<int32_t, 17> REGISTERS = {REG_RAX, REG_RBX, REG_RCX, REG_RDX, REG_RDI, REG_RSI, REG_RBP, REG_RSP, REG_R8, REG_R9, REG_R10, REG_R11, REG_R12, REG_R13, REG_R14, REG_R15, REG_RIP};
+    constexpr size_t SP_INDEX = 7;
+    constexpr size_t IP_INDEX = 16;
+
+    for (size_t i = 0; i < REGISTERS.size(); i++) {
+        context.data[i] = static_cast<uint64_t>(uctx.uc_mcontext.gregs[REGISTERS[i]]);
+    }
+
+    // A page fault on an instruction fetch means a call went where no code is; the return address it pushed is still
+    // on top of the stack, so popping it the way a return would recovers the caller
+    constexpr greg_t PAGE_FAULT_TRAP = 14;
+    constexpr greg_t INSTRUCTION_FETCH_ERROR = 0x10;
+    bool fetch_fault = uctx.uc_mcontext.gregs[REG_TRAPNO] == PAGE_FAULT_TRAP && (uctx.uc_mcontext.gregs[REG_ERR] & INSTRUCTION_FETCH_ERROR) != 0;
+
+    if ((context.data[IP_INDEX] == 0 || fetch_fault) && context.data[SP_INDEX] != 0) {
+        std::memcpy(&context.data[IP_INDEX], std::bit_cast<const void*>(static_cast<uintptr_t>(context.data[SP_INDEX])), sizeof(uint64_t));
+        context.data[SP_INDEX] += sizeof(uint64_t);
+        resumed_after_call = true;
+    }
+
+#else
+    // Registers_arm64 keeps x0-x28, fp, lr, sp and pc in this order
+    constexpr size_t LR_INDEX = 30;
+    constexpr size_t SP_INDEX = 31;
+    constexpr size_t PC_INDEX = 32;
+
+    for (size_t i = 0; i <= LR_INDEX; i++) {
+        context.data[i] = uctx.uc_mcontext.regs[i];
+    }
+
+    context.data[SP_INDEX] = uctx.uc_mcontext.sp;
+    context.data[PC_INDEX] = uctx.uc_mcontext.pc;
+
+    // A call through a null function pointer left the return address in the link register
+    if (context.data[PC_INDEX] == 0) {
+        context.data[PC_INDEX] = context.data[LR_INDEX];
+        resumed_after_call = true;
+    }
+#endif
+
+    unw_cursor_t cursor;
+
+    if (unw_init_local(&cursor, &context) != UNW_ESUCCESS) {
+        return false;
+    }
+
+    walk_native_cursor(cursor, resumed_after_call ? native_first_frame::call_site : native_first_frame::faulting, false, 0, out_frames, out_count, out_truncated);
+    return out_count != 0;
+
+#else
+    (void)uctx;
+    (void)out_frames;
+    (void)out_count;
+    (void)out_truncated;
+    return false;
+#endif
+}
+
+static void resolve_posix_frames(stack_trace_state& state, stack_trace::native_frame_address addr, std::vector<stack_trace::frame>& out_frames)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+#if FO_LINUX
+    if (backtrace_state* backtrace = get_backtrace_state(state); backtrace != nullptr) {
+        (void)backtrace_pcinfo(backtrace, addr, &on_backtrace_frame, &on_backtrace_error, &out_frames);
+
+        // Code without debug info still has its symbol table entry
+        if (out_frames.empty() || out_frames.back().function.empty()) {
+            std::string symbol;
+            (void)backtrace_syminfo(backtrace, addr, &on_backtrace_symbol, &on_backtrace_error, &symbol);
+
+            if (!symbol.empty()) {
+                if (out_frames.empty()) {
+                    out_frames.emplace_back();
+                }
+
+                out_frames.back().function = std::move(symbol);
+            }
+        }
+    }
+#else
+    (void)state;
+#endif
+
+    // The dynamic linker knows every loaded module, those loaded after the debug info was read included
+    if (out_frames.empty() || out_frames.back().function.empty()) {
+        std::string symbol = resolve_dynamic_symbol(addr);
+
+        if (!symbol.empty()) {
+            if (out_frames.empty()) {
+                out_frames.emplace_back();
+            }
+
+            out_frames.back().function = std::move(symbol);
+        }
+    }
+}
+
+static auto resolve_dynamic_symbol(stack_trace::native_frame_address addr) -> std::string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    Dl_info info {};
+
+    if (dladdr(std::bit_cast<const void*>(addr), &info) == 0) {
+        return {};
+    }
+
+    if (info.dli_sname != nullptr) {
+        return demangle_native_name(info.dli_sname);
+    }
+
+    // Without a symbol the module and the offset into it still locate the code for an offline lookup
+    if (info.dli_fname == nullptr || info.dli_fbase == nullptr) {
+        return {};
+    }
+
+    std::string_view module_name {info.dli_fname};
+
+    if (size_t separator = module_name.find_last_of('/'); separator != std::string_view::npos) {
+        module_name = module_name.substr(separator + 1);
+    }
+
+    std::array<char, 32> offset {};
+    (void)std::snprintf(offset.data(), offset.size(), "+0x%zx", static_cast<size_t>(addr - std::bit_cast<uintptr_t>(info.dli_fbase)));
+    return std::string {module_name}.append(offset.data());
+}
+
+static auto demangle_native_name(const char* name) -> std::string
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (name == nullptr) {
+        return {};
+    }
+
+    int32_t status = 0;
+    char* demangled = abi::__cxa_demangle(name, nullptr, nullptr, &status);
+
+    if (demangled == nullptr) {
+        return name;
+    }
+
+    std::string result {demangled};
+
+    // The C++ runtime hands the demangled name over in malloc memory
+    std::free(demangled);
+    return result;
+}
+#endif
+
+#if HAS_NATIVE_TRACE && FO_LINUX
+// Created on first use rather than at startup: reading the debug info of every module costs time and memory a process
+// that never resolves a frame should not pay
+static auto get_backtrace_state(stack_trace_state& state) noexcept -> backtrace_state*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (!state.backtrace_created) {
+        state.backtrace_created = true;
+        state.backtrace = backtrace_create_state(nullptr, 1, &on_backtrace_error, nullptr);
+    }
+
+    return state.backtrace;
+}
+
+// Called for the innermost inlined call first and for the function that owns the machine frame last
+static auto on_backtrace_frame(void* data, uintptr_t pc, const char* filename, int32_t lineno, const char* function) -> int32_t
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    (void)pc;
+
+    if (filename == nullptr && function == nullptr) {
+        return 0;
+    }
+
+    try {
+        stack_trace::frame frame;
+        frame.function = demangle_native_name(function);
+        frame.file = filename != nullptr ? filename : "";
+        frame.line = lineno > 0 ? static_cast<uint32_t>(lineno) : 0;
+        static_cast<std::vector<stack_trace::frame>*>(data)->emplace_back(std::move(frame));
+        return 0;
+    }
+    catch (...) {
+        break_into_debugger();
+        return 1;
+    }
+}
+
+static void on_backtrace_symbol(void* data, uintptr_t pc, const char* symname, uintptr_t symval, uintptr_t symsize)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    (void)pc;
+    (void)symval;
+    (void)symsize;
+
+    try {
+        *static_cast<std::string*>(data) = demangle_native_name(symname);
+    }
+    catch (...) {
+        break_into_debugger();
+    }
+}
+
+// Missing debug info is an ordinary answer here, the fallbacks after libbacktrace cover it
+static void on_backtrace_error(void* data, const char* msg, int32_t errnum)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    (void)data;
+    (void)msg;
+    (void)errnum;
 }
 #endif
 
