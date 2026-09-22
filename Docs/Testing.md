@@ -145,6 +145,20 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
+The synchronization harness compiles the real `Sync` helpers with deterministic native-acquisition fixtures:
+
+```bash
+dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
+```
+
+It proves one report per externally returned false across every acquisition overload when subscribed,
+unchanged results without subscribers, multiple independent subscribers, unsubscription and callback-fault
+isolation with exception accounting. It also covers caller metadata forwarding, phase/entity information,
+successful retry and best-effort silence, partial restoration, native exception propagation, unchanged caller
+strings, typed IDs/prototypes and immutable snapshots across subscribers. Its fixture exposes neither a logging
+API nor a diagnostics setting to Sync. The data contract lives in
+[ServerRuntime.md](ServerRuntime.md#managed-synchronization-failure-diagnostics).
+
 `Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and value-type accessors and component
 presence checks must use the indexed unboxed bridge, while complex properties retain conversion. It also pins
 dense ABI ids (no name-based `CallMethod`/`FireEvent`/`GetInnerEntityAt` on generated hot paths), `EnumToInt32`

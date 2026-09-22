@@ -287,6 +287,67 @@ reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/C
 (`ServerEngineSyncContextReparentStress`) and the link pin itself
 (`ServerEngineEntityLinkPinSurvivesConcurrentDetach`).
 
+### Managed synchronization failure diagnostics
+
+Every public `Task<bool>` acquisition/restoration helper in managed `CoreScripts/Sync.cs` publishes an
+externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`). Each
+subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
+and owns no enable/disable setting; the embedding project chooses its subscribers and reactions with
+`Sync.OnFailure += HandleFailure` and can unsubscribe with `-=`. The handler receives data directly and
+chooses its own text, JSON, metrics or other representation.
+
+With no subscribers, the reporter returns before allocating the snapshot, reading entity context or
+capturing the stack. Subscriptions are snapshotted once per failure; reports are synchronous and unsampled.
+Callbacks are observers: they should not acquire cover, mutate gameplay state or use `async void`.
+A callback exception is reported through `ScriptExceptions.Report` and counted normally, without stopping
+the other subscribers or replacing the helper's `false` result. Successful acquisitions, recovered internal
+retries, boolean coverage/membership probes and deliberately best-effort cleanup stay silent. Native
+acquisition exceptions continue through their existing exception-reporting path; they are not converted to `false`.
+
+`Sync.FailureInfo` exposes get-only properties:
+
+- `Operation`: the helper that ultimately reports the refusal. Delegating overloads forward caller metadata,
+  so this can be the implementation helper rather than the facade's name.
+- `CallerFile`, `CallerMember`, `CallerLine`: compiler-supplied location of the external call, retained across
+  awaits and overload forwarding. Paths and names are passed unchanged; no PDB is required.
+- `Reason`: `entity_unavailable_before_acquire`, `entity_unavailable_after_acquire`, `entity_unavailable`,
+  `dependency_unavailable`, `snapshot_incomplete`, `holder_missing`, `mapped_critter`, `group_member_missing`,
+  `attachment_master_missing`, `graph_changed`, `group_not_covered`, or `retry_exhausted`.
+- `HelperFile`, `HelperLine`: the precise terminal branch in the compiled Sync source.
+- `Entities`: a read-only collection of `Sync.FailureEntity` snapshots with `TypeName`, `Id` (`ident`),
+  `IsDestroyed` and `IsDestroying`. Only cover-free identity/lifecycle accessors are read; diagnostics neither
+  acquire cover nor inspect mutable gameplay properties. Entries may repeat; no live entity references are retained.
+- `EntityIds`, `ProtoIds`: read-only snapshots of relevant `ident` and `hstring` values from that branch.
+  These are typed values, not rendered strings or references to the helper's mutable collections.
+- `StackTrace`: the managed stack at the failure. After a deferred await it describes the current continuation,
+  not a reconstructed history of previous asynchronous callers.
+
+All context is captured before dispatch, so later subscribers observe the same data even if source entities
+or collections have changed. Presentation choices, including path shortening and escaping, belong to subscribers.
+
+The caller attributes are optional parameters; existing ordinary call syntax is unchanged. Inside Sync,
+terminal delegation forwards them, while speculative acquisitions and best-effort cleanup use their own
+compiler-supplied `Sync.cs` location. The reporter compares that internal source location to its helper
+location and suppresses the speculative result. Keep this distinction when adding helpers: a recovered
+inner refusal must never be counted as an external failure. The per-call diagnostic helper is a stack/value object;
+success constructs no report objects, stack traces, shared counters or ambient asynchronous state.
+
+A diagnostic proves that this Sync call returned `false`. Its caller may return, retry or recover. It does not
+prove rollback, lost rewards, or the eventual outcome of a quest. Investigate the exact deployed source
+revision, the caller's preceding mutations and the code after the failed guard, then correlate entity IDs
+and the log timestamp with domain logs. Counts describe the captured failures; without a success counter
+they cannot provide a percentage of all acquisition attempts.
+
+Offline regression coverage compiles the actual helpers against an acquisition fixture:
+
+```bash
+dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
+```
+
+It checks all boolean acquisition overloads, caller forwarding, destruction during acquisition, recovered
+map migration, best-effort silence, partial restoration, reason distinctions, JSON escaping and exception
+propagation. Embedding projects also validate their baked scripts on the native backend.
+
 ### Single-threaded logic
 
 `Server.SingleThreadedLogic` is a fixed setting that trades the concurrency for the contract. When it is on,
