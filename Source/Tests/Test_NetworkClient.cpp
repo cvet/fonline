@@ -223,9 +223,13 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
 {
     auto settings = MakeClientNetworkSettings();
     auto port = TestClientPort.fetch_add(1);
+    BakerTests::ApplyTestChannelKeys(settings);
     BakerTests::OverrideSetting(settings.Network.ServerPort, port);
     BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, false);
 
+    // The garbage has to arrive inside a valid channel, or the channel rejects it before any decompression
+    SecureChannelIdentity server_identity {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_SECRET_KEY, "Test")};
+    SecureChannel server_channel {server_identity};
     InterthreadDataCallback server_send_to_client;
     size_t client_disconnect_count = 0;
 
@@ -235,6 +239,10 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
         return [&](const_span<uint8_t> buf) {
             if (buf.empty()) {
                 client_disconnect_count++;
+            }
+            else {
+                vector<uint8_t> plaintext;
+                server_channel.Receive(buf, plaintext);
             }
         };
     }));
@@ -247,8 +255,12 @@ TEST_CASE("ClientConnectionDisconnectsOnMalformedCompressedInput")
     client.Connect();
     REQUIRE(server_send_to_client);
 
-    vector<uint8_t> invalid = {0x00, 0x00};
-    server_send_to_client(invalid);
+    CHECK_NOTHROW(client.Process());
+    REQUIRE(server_channel.IsEstablished());
+
+    vector<uint8_t> answer_and_invalid;
+    server_channel.Seal(vector<uint8_t> {0x00, 0x00}, answer_and_invalid);
+    server_send_to_client(answer_and_invalid);
 
     CHECK_NOTHROW(client.Process());
     CHECK_FALSE(client.IsConnecting());

@@ -302,8 +302,11 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) i
 Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Gameplay compatibility (`Settings.Network.CompatibilityVersion`) is separate and
-changes with every build.
+in-process runtime reload. Generation 3 runs the whole exchange inside the secure channel
+([Networking.md](Networking.md#secure-channel)) and drops the session keys the handshake used to carry; a
+generation-2 runtime cannot complete that channel, so it fails to connect instead of receiving `updater_outdated`,
+and needs the latest full client package once. Gameplay compatibility (`Settings.Network.CompatibilityVersion`) is
+separate and changes with every build.
 
 ### Handshake
 
@@ -313,12 +316,10 @@ changes with every build.
 | client â†’ server | `MetadataVersion` | `string` | baked metadata version, empty while the updater has no resources of its own |
 | client â†’ server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client â†’ server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
-| client â†’ server | `in_encrypt_key` | `uint32` | session keys |
 | server â†’ client | `compatibility_outdated` | `bool` | gameplay version mismatch |
 | server â†’ client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch â€” protocol is unusable |
 | server â†’ client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server â†’ client | `MetadataVersion` | `string` | the metadata version the server itself runs on |
-| server â†’ client | `out_encrypt_key` | `uint32` | session keys |
 
 `updater_outdated == true` is fatal to the connection â€” the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 

@@ -51,12 +51,19 @@ namespace
     class TestNetworkConnection final : public NetworkServerConnection
     {
     public:
+        // Plays the client half of the secure channel; the offer waits in the connection until a ServerConnection
+        // takes it over, whose answer then opens the channel before any message is written
         explicit TestNetworkConnection(ptr<ServerNetworkSettings> settings) :
-            NetworkServerConnection(settings)
+            NetworkServerConnection(settings),
+            _clientChannel {vector<crypto::key_bytes> {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")}}
         {
             FO_STACK_TRACE_ENTRY();
 
             _host = "Test";
+
+            vector<uint8_t> offer;
+            _clientChannel.TakeHandshakeOutput(offer);
+            ReceiveCallback(offer);
         }
         TestNetworkConnection(const TestNetworkConnection&) = delete;
         TestNetworkConnection(TestNetworkConnection&&) noexcept = delete;
@@ -68,7 +75,15 @@ namespace
         {
             FO_STACK_TRACE_ENTRY();
 
-            ReceiveCallback(buf);
+            vector<uint8_t> sealed;
+
+            {
+                scoped_lock locker {_clientChannelLocker};
+
+                _clientChannel.Seal(buf, sealed);
+            }
+
+            ReceiveCallback(sealed);
         }
 
         void ResetSentPacketCount() noexcept
@@ -141,14 +156,22 @@ namespace
         {
             FO_NO_STACK_TRACE_ENTRY();
 
+            // Held across the pull and the decode, so frames are opened in the order the server sealed them
+            scoped_lock locker {_clientChannelLocker};
+
             vector<uint8_t> encoded_data = SendCallback();
+            _plainData.clear();
 
             if (!encoded_data.empty()) {
+                _clientChannel.Receive(encoded_data, _plainData);
+            }
+
+            if (!_plainData.empty()) {
                 _sentPacketCount.fetch_add(1, std::memory_order_relaxed);
 
-                const_span<uint8_t> data = encoded_data;
+                const_span<uint8_t> data = _plainData;
                 if (!_settings->Network.DisableZlibCompression) {
-                    _decompressor.decompress(encoded_data, _unpackedData);
+                    _decompressor.decompress(_plainData, _unpackedData);
                     data = _unpackedData;
                 }
 
@@ -210,6 +233,9 @@ namespace
         std::atomic<size_t> _sentInfoMessageCount {};
         std::atomic<size_t> _sentDisconnectCount {};
         std::atomic<EngineInfoMessage> _lastSentInfoMessage {};
+        mutex _clientChannelLocker {};
+        SecureChannel _clientChannel;
+        vector<uint8_t> _plainData {};
         stream_decompressor _decompressor {};
         vector<uint8_t> _unpackedData {};
         std::atomic<size_t> _sentTrackedMessageCount {};
@@ -672,7 +698,7 @@ namespace EntityLifecycle
     static auto MakeSpectatorPlayer(ptr<ServerEngine> server) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
 
         return safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
     }
@@ -1864,7 +1890,7 @@ TEST_CASE("PlayerRegistrationCppApi")
         auto registered_player = CreateLoggedPlayer(server, "RegisteredPlayer").hold_ref();
         ident_t registered_id = registered_player->GetId();
         auto net_connection = NetworkServer::CreateDummyConnection(server->Settings, NetworkServer::DummyConnectionState::Connected);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
         auto candidate = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
         server->RequireCurrentSyncContext()->SyncEntity(candidate);
 

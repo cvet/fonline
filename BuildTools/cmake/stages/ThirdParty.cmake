@@ -144,6 +144,16 @@ macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
 endmacro()
 RegisterFindPackageHandler(ZLIB _FoEngineHandleZlibFindPackage)
 
+# Monocypher
+SetValue(FO_MONOCYPHER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Monocypher")
+SetValue(FO_MONOCYPHER_SOURCE
+    "${FO_MONOCYPHER_DIR}/src/monocypher.h"
+    "${FO_MONOCYPHER_DIR}/src/monocypher.c")
+AddStaticThirdPartyLibrary(Monocypher
+    SOURCE_LIST FO_MONOCYPHER_SOURCE
+    APPEND_TO FO_ESSENTIALS_LIBS
+    INCLUDE_DIRS "${FO_MONOCYPHER_DIR}/src")
+
 # LibPNG
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ LibPNG")
@@ -777,6 +787,7 @@ if(FO_MANAGED_SCRIPTING)
     file(STRINGS "${FO_ENGINE_ROOT}/ThirdParty/dotnet-runtime" FO_MONO_RUNTIME_VERSION LIMIT_COUNT 1)
     string(REPLACE "/" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
     string(REPLACE "\\" "_" FO_MONO_RUNTIME_VERSION "${FO_MONO_RUNTIME_VERSION}")
+
     # Keep in sync with buildtools.py so subset, cmake args, and source patches invalidate only their platforms
     if(FO_WEB)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id)
@@ -787,7 +798,7 @@ if(FO_MANAGED_SCRIPTING)
     elseif(FO_LINUX)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_linux_signal_actions)
     elseif(FO_WINDOWS)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback_suspend_retry)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback_suspend_retry_win7_stack_bounds)
     else()
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators)
     endif()

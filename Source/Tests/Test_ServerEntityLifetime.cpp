@@ -125,7 +125,7 @@ static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticM
     entities.emplace_back(safe_alloc::make_refcounted<Location>(server, ident_t {4}, location_proto));
 
     auto network = NetworkServer::CreateDummyConnection(server->Settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network));
+    auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity());
     entities.emplace_back(safe_alloc::make_refcounted<Player>(server, ident_t {5}, std::move(connection)));
     return entities;
 }

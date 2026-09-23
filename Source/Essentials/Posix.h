@@ -69,6 +69,7 @@ namespace posix
     auto get_process_cpu_time_ns() noexcept -> optional<uint64_t>;
     auto get_logical_core_count() noexcept -> uint32_t;
     auto get_system_cpu_times() noexcept -> vector<cpu_core_times>;
+    auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
 
     // A file this process holds alone: a second opener is refused rather than allowed to share it. The
     // descriptor is the platform's own, and -1 means the open failed

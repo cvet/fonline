@@ -383,8 +383,14 @@ auto ServerEngine::InitNetworkingJob() -> std::optional<timespan>
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxRemoteCallPayloadSize >= 0, "ServerNetwork.MaxRemoteCallPayloadSize must not be negative", Settings->ServerNetwork.MaxRemoteCallPayloadSize);
     FO_VERIFY_AND_THROW(Settings->ServerNetwork.MaxBufferedInputSize == 0 || Settings->ServerNetwork.MaxMessageSize == 0 || Settings->ServerNetwork.MaxBufferedInputSize >= Settings->ServerNetwork.MaxMessageSize, "ServerNetwork.MaxBufferedInputSize must be zero or at least ServerNetwork.MaxMessageSize", Settings->ServerNetwork.MaxBufferedInputSize, Settings->ServerNetwork.MaxMessageSize);
 
-    unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
-    _connectionServers.emplace_back(std::move(interthread_server));
+    // Every connection runs the secure channel, so a server without its key must not accept anyone
+    _channelIdentity.emplace(ParseSecureChannelKey(Settings->ServerNetwork.ChannelSecretKey, "ServerNetwork.ChannelSecretKey"));
+    logging::write("Secure channel public key {}", crypto::format_key(_channelIdentity->GetPublicKey()));
+
+    if (!Settings->Network.DisableInterthreadCommunication) {
+        unique_ptr<NetworkServer> interthread_server = NetworkServer::StartInterthreadServer(Settings, [this](shared_ptr<NetworkServerConnection> net_connection) FO_DEFERRED { OnNewConnection(std::move(net_connection)); });
+        _connectionServers.emplace_back(std::move(interthread_server));
+    }
 
     if (Settings->ServerNetwork.DisableNetworking) {
         logging::write("Skip remote networking startup");
@@ -2212,7 +2218,8 @@ auto ServerEngine::CreateNotLoggedInPlayer(shared_ptr<NetworkServerConnection> n
     ptr<Player> not_logged_in_player = [&]() -> ptr<Player> {
         scoped_lock locker {_notLoggedInPlayersLocker};
 
-        auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection));
+        FO_VERIFY_AND_THROW(_channelIdentity.has_value(), "Connection accepted before the secure channel identity was loaded");
+        auto connection = safe_alloc::make_unique<ServerConnection>(Settings, std::move(net_connection), _channelIdentity.value());
         auto new_player = safe_alloc::make_refcounted<Player>(this, ident_t {}, std::move(connection));
         _notLoggedInPlayers.emplace_back(std::move(new_player));
         return _notLoggedInPlayers.back();
@@ -2416,10 +2423,10 @@ void ServerEngine::ProcessConnection(ptr<Player> player)
         return;
     }
 
-    // The network thread can only latch an input overflow: it detects one inside the transport receive
-    // lock that a disconnect would take again, so the disconnect itself belongs to this worker pass
-    if (connection->IsInputOverflowed()) {
-        logging::write("Connection input buffer overflow from host '{}'", connection->GetHost());
+    // The network thread can only latch rejected input: it detects an overflow or a failed secure channel inside
+    // the transport receive lock that a disconnect would take again, so the disconnect belongs to this worker pass
+    if (connection->IsInputRejected()) {
+        logging::write("Connection input rejected from host '{}'", connection->GetHost());
         connection->HardDisconnect(DisconnectReason::ProtocolError);
         return;
     }
@@ -2922,26 +2929,9 @@ void ServerEngine::Process_Handshake(ptr<Player> player)
     // compare yet" - it still receives our version in the answer and verifies it once the sync is done
     bool metadata_outdated = !metadata_version.empty() && metadata_version != GetMetadataVersion();
 
-    // Begin data encrypting
-    auto in_encrypt_key = in_buf->Read<uint32_t>();
-
-    if (in_encrypt_key == 0) {
-        logging::write("Process_Handshake: zero encrypt key from host '{}'", connection->GetHost());
-        connection->HardDisconnect(DisconnectReason::ProtocolError);
-        return;
-    }
-
-    in_buf->SetEncryptKey(in_encrypt_key);
-
     in_buf.Unlock();
 
-    uint32_t out_encrypt_key = //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 24) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 16) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 8) | //
-        (numeric_cast<uint32_t>(Random(1, 255)) << 0);
-
-    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, metadata_outdated, GetMetadataVersion(), out_encrypt_key);
+    player->Send_HandshakeAnswer(compatibility_outdated, updater_outdated, metadata_outdated, GetMetadataVersion());
 
     if (updater_outdated) {
         logging::write("Connected client {} has outdated updater version {}", connection->GetHost(), updater_version);

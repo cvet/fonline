@@ -25,10 +25,10 @@ Use this page when choosing validation for an engine change or when adding/remov
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. It rejects the reported `CreateFile2` import; embedding-project CI should run it after linking and before packaging.
-
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
+
+`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. The loader resolves every static import before the process runs, so a single export Windows 7 SP1 lacks stops the start with "entry point not found". The check rejects imports of the listed `kernel32` / `user32` / `dxgi` / `d3d11` exports added in Windows 8 and later (`CreateFile2`, `GetCurrentThreadStackLimits`, `GetSystemTimePreciseAsFileTime`, `SetThreadDescription`, the per-monitor DPI functions and others), any import from a library Windows 7 does not ship (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`), and any API-set contract other than the Universal CRT forwarders (`api-ms-win-crt-*`). The list is curated, not derived, so a newly met Windows 8+ export is added to it together with the fix that removes its import. Statically linked third-party archives - the managed runtime among them - land in the same import table and are covered by the same check. Embedding-project CI should run it after linking and before packaging.
 
 For an embedding project with dev name `LF`, the standard generated names are `LF_UnitTests`, `RunUnitTests`, `LF_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
@@ -669,7 +669,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **108** `Test_*.cpp` suites.
+Current count: **118** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -678,6 +678,7 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -747,6 +748,8 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`

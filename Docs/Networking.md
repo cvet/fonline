@@ -1,8 +1,8 @@
 # Networking
 
-This document explains the reusable engine networking layers: message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
+This document explains the reusable engine networking layers: the secure channel, message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
 
-Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
+Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `NoiseProtocol.*`, `SecureChannel.*`, `Source/Essentials/Cryptography.*`, `Source/Client/NetworkClient*`, `Source/Client/ClientConnection.*`, `Source/Server/NetworkServer*`, `Source/Server/ServerConnection.*`, or network tests.
 
 ## Ownership model
 
@@ -16,6 +16,14 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Common/NetBuffer.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
+- `Source/Common/NoiseProtocol.h`
+- `Source/Common/NoiseProtocol.cpp`
+- `Source/Common/SecureChannel.h`
+- `Source/Common/SecureChannel.cpp`
+- `Source/Essentials/Cryptography.h`
+- `Source/Essentials/Cryptography.cpp`
+- `Source/Client/ClientConnection.h`
+- `Source/Client/ClientConnection.cpp`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -25,23 +33,115 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Server/NetworkServer-UdpSockets.cpp`
 - `Source/Server/NetworkServer-Asio.cpp`
 - `Source/Server/NetworkServer-WebSockets.cpp`
+- `Source/Server/ServerConnection.h`
+- `Source/Server/ServerConnection.cpp`
+- `BuildTools/secure_channel_key.py`
+- `Source/Tests/Test_Cryptography.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
 
+## Secure channel
+
+Every connection that crosses a network carries its bytes inside a Noise channel: the protocol
+`Noise_NK_25519_ChaChaPoly_BLAKE2b` (Noise Protocol Framework, revision 34). NK fits the game's shape: a client has no
+identity of its own before it logs in, while the server's static key is known in advance and pinned in the client.
+One round trip therefore authenticates the server, derives fresh session keys (so a later theft of the server key
+does not open recorded sessions), and from then on every byte is encrypted and authenticated in each direction, with
+per-direction nonce counters that reject a replayed, reordered, dropped or reflected frame.
+
+What it protects against: an observer or a man in the middle on the path (public Wi-Fi, a provider, forged DNS), and a
+forged server — a client never speaks to a server that cannot prove it holds a pinned key, so such a server can
+neither read the login nor call the client's remote calls. What it cannot protect against: the owner of the client
+machine. Whoever controls the process can patch it, read the session keys from memory and send forged messages
+through a genuine session; server authority and the inbound hardening below remain the defence there.
+
+### Where it sits
+
+The channel wraps the ordered byte stream every transport already provides (TCP, ordered UDP, WebSocket and the
+in-process interthread one), so the engine has one path for all of them, and WebSocket clients are pinned to the
+server key independently of the Web PKI that WSS uses underneath. The channel handshake runs before `NetMessage::Handshake`, so nothing travels in the
+clear — updater traffic included. Order in the stack:
+
+- server to client: `NetOutBuffer` messages → zlib stream → sealed frames → transport;
+- client to server: `NetOutBuffer` messages (not compressed) → sealed frames → transport.
+
+Sealing traffic that never leaves the process protects nothing, since whoever can read it can read the session keys
+too. The interthread transport runs the channel anyway, so every embedded client — in tests, tools and development
+launches — takes the path a remote player does. There is no exception at all: every `ServerConnection` owns a channel,
+and a stand-in with no peer behind it (`NetworkServer::CreateDummyConnection()`) simply never receives an offer, so
+whatever is written to it stays sealed away in its output buffer.
+
+### Wire format
+
+Every frame is a big-endian 16-bit length followed by that many bytes. The prologue of every handshake is the fixed
+string `SecureChannel::PROLOGUE`, and both handshake messages carry empty payloads.
+
+| Frame | Sender | Body |
+|---|---|---|
+| Offer | client, first | a count `n` (1 to `SecureChannel::MAX_OFFERED_KEYS`), then `n` first NK messages (`e`, `es`: 32-byte key + 16-byte tag), one per pinned server key |
+| Answer | server | the index of the offer its key opened, then the second NK message (`e`, `ee`: 48 bytes) |
+| Transport | both, afterwards | one Noise transport message: at most 65519 bytes of plaintext and its 16-byte tag |
+
+The client offers every pinned key at once, each with its own ephemeral key, and the server answers the one it can
+open. A server that opens none sends nothing and drops the connection. Frame sizes are checked at the header, before
+the body is buffered: a handshake frame of a size no valid offer or answer has, or a transport frame shorter than a
+tag, fails the channel at once.
+
+### Keys
+
+| Setting | Side | Meaning |
+|---|---|---|
+| `ServerNetwork.ChannelSecretKey` | server | the static X25519 secret key, 64 hex digits; every server needs it, one that listens on nothing included, since every connection it creates owns a channel; the server logs its public half at networking start |
+| `ClientNetwork.ChannelServerKeys` | client | the pinned server public keys, 64 hex digits each, at most `SecureChannel::MAX_OFFERED_KEYS` |
+
+A server refuses to start without a valid key, and a client without a valid pin fails the connect: there is no
+unprotected fallback. Engine tests share `BakerTests::TEST_CHANNEL_SECRET_KEY` and its public half,
+which `ApplySelfContainedServerSettings()` and `ApplySelfContainedClientSettings()` apply; a `ServerConnection` a test
+builds by hand takes `BakerTests::MakeTestChannelIdentity()`. The secret key is a credential — keep it out of the repository and
+supply it at run time, for example through `$TARGET_FILE{...}` (see
+[ConfigurationAndDataSources.md](ConfigurationAndDataSources.md#runtime-settings)), which reads it on the target host
+and never at bake time. `BuildTools/secure_channel_key.py generate <file>` writes a new secret key readable by its owner only (it never
+overwrites an existing file) and prints the public key; `public <file>` prints the public key of an existing one.
+
+Rotation needs no downtime because the client offers all its pins: ship clients that pin both the current and the next
+key, switch the server to the next key once those clients are out, and drop the old pin later.
+
+### Connection integration
+
+`ClientConnection` starts the channel when the transport connects and writes `NetMessage::Handshake` the moment the
+channel is established; its ping waits for the same point, so the server never reads anything before the handshake
+message. A UDP connect that falls back to TCP starts a new channel and a new compressed stream on the new connection.
+Any channel failure is a `NoiseException` (`SecureChannelException` derives from it) and ends in `Disconnect()`.
+
+`ServerConnection` keeps the channel under its own mutex, taken inside either buffer lock and never around another:
+the network thread decrypts under the input lock, the transport's send path seals under the output lock. The answer to
+an offer is dispatched from the receive path at once. A message written before the channel stands stays in the output
+buffer and leaves sealed afterwards. A channel failure is latched the same way as an input overflow
+(`IsInputRejected()`), because it is detected inside the transport receive lock a disconnect would take again; the
+owning worker pass then disconnects with `DisconnectReason::ProtocolError`. A failed channel is logged as a warning, not
+reported as an exception: a stranger, a scanner or a client pinned to another key produces exactly that.
+
+The ordered UDP transport's own header (sequence, acknowledgement, session) stays outside the channel. Forging it can
+disturb delivery, which an on-path attacker can do anyway, but cannot inject content: every payload byte still has to
+pass the channel. The same holds for TCP resets.
+
+Compression runs before encryption only on the server-to-client stream; the client's own stream — logins and tokens —
+is never compressed, so its length reveals nothing about repeated secrets.
+
 ## Message buffers
 
 `Source/Common/NetBuffer.h` defines the shared binary message layer:
 
-- `NetBuffer` — common storage, growth, encryption-key state, and raw copy support.
+- `NetBuffer` — common storage, growth, and raw copy support.
 - `NetOutBuffer` — write/framing helper for outgoing messages.
 - `NetInBuffer` — read/framing helper for incoming messages.
 
-Important constants:
-
-- `CRYPT_KEYS_COUNT = 50`
-- `NETMSG_SIGNATURE = 0x011E9422`
+Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker every framed message starts with. The buffers hold
+plaintext; confidentiality and integrity belong to the secure channel above.
 
 `NetOutBuffer` responsibilities:
 
@@ -70,7 +170,7 @@ The server treats all inbound bytes as hostile. Two layers guard against resourc
 
 - **Length-before-allocation rule.** Any peer-declared length/count must be validated against the bytes actually remaining in the *current frame* before allocation or iteration. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message cannot borrow bytes from the next coalesced frame or amplify into a multi-GB allocation. Inbound remote-call decoding uses a read-only `data_reader`: string bytes are bounds-checked as a borrowed view before constructing the owned string, while array, dict, and dict-of-array counts are charged against the remaining payload using each value type's minimum wire size before `Reserve()`, container creation, or a count-driven loop. The server-side content validator performs the same count preflight.
 - **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
-- **Maximum retained input.** `NetInBuffer::SetMaxBufLen(len)` caps total unread bytes retained across coalesced/partial frames, so a peer cannot grow the receive buffer by never completing a message. The server applies `ServerNetwork.MaxBufferedInputSize` to the TCP/UDP/interthread buffers and to the WebSocket endpoint's per-message cap; the limit must be zero (unlimited) or at least `MaxMessageSize`, and `InitNetworkingJob()` fails server startup otherwise. `AddData()` throws `NetBufferException` over the cap, but it runs on the network thread inside the same transport receive lock a disconnect would take again, so `ServerConnection` only latches the overflow (reporting it once) and `ServerEngine::ProcessConnection()` performs the hard disconnect on the owning worker pass.
+- **Maximum retained input.** `NetInBuffer::SetMaxBufLen(len)` caps total unread bytes retained across coalesced/partial frames, so a peer cannot grow the receive buffer by never completing a message. The server applies `ServerNetwork.MaxBufferedInputSize` to the TCP/UDP/interthread buffers and to the WebSocket endpoint's per-message cap; the limit must be zero (unlimited) or at least `MaxMessageSize`, and `InitNetworkingJob()` fails server startup otherwise. `AddData()` throws `NetBufferException` over the cap, but it runs on the network thread inside the same transport receive lock a disconnect would take again, so `ServerConnection` only latches the rejection (reporting an overflow once) and `ServerEngine::ProcessConnection()` performs the hard disconnect on the owning worker pass. A connection whose input was rejected takes no further input. The secure channel's own buffer holds at most one partial frame, so it adds no unbounded retention of its own.
 - **Remote-call structural limits.** A `///@ RemoteCall` may declare `MaxBytes N` and `MaxCollectionSize N`. Metadata carries both limits for every call - a call that declares neither is baked with an explicit `Limits 0 0` trailer, and a record without it is rejected at registration - and the server resolves the call name and rejects its payload before construction, while both the content validator and the AngelScript decoder enforce the collection limit before reserve/container creation, including nested dict arrays. Unknown calls are rejected before allocating their body. Adding these fields changed compatibility metadata and therefore requires the corresponding compatibility-version bump.
 - **Remote-call runtime ceiling.** `ServerNetwork.MaxRemoteCallPayloadSize` is the server-wide decoded RPC ceiling. The effective payload limit is the smaller non-zero structural/runtime limit; a call-specific `MaxBytes` is the semantic protocol boundary, not a substitute for the global hostile-input ceiling.
 - **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
@@ -343,6 +443,10 @@ The source tree supports several connection families:
 - ASIO server support when built with `FO_HAVE_ASIO`;
 - WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
 
+A client in the server's own process takes the interthread transport whenever the server registered its listener
+on `Network.ServerPort`. `Network.DisableInterthreadCommunication` keeps `ServerEngine::InitNetworkingJob()` from
+registering it, so such a client connects over UDP or TCP and goes through a real socket.
+
 Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [BuildWorkflow.md](BuildWorkflow.md) and [BuildToolsPipeline.md](BuildToolsPipeline.md).
 
 ### A listener that cannot bind is retried before the startup gives up
@@ -362,6 +466,9 @@ binds nothing another process could hold, so a failure there is a defect rather 
 
 Relevant tests include:
 
+- `Source/Tests/Test_Cryptography.cpp` for the primitives against RFC 7748, RFC 8439 and reference BLAKE2b/HMAC values;
+- `Source/Tests/Test_NoiseProtocol.cpp` for `Noise_NK_25519_ChaChaPoly_BLAKE2b` against the published cacophony, snow and noise-c vectors, and refusal of a foreign key, a changed prologue, tampering, truncation and nonce reuse;
+- `Source/Tests/Test_SecureChannel.cpp` for framing in any chunking, offering several pins, refusal of an unpinned server, malformed frames, tampering, replay and loss, a handshake cut off halfway, and real client/server connections over TCP, UDP and WebSocket;
 - `Source/Tests/Test_NetworkUdp.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
@@ -369,7 +476,8 @@ Relevant tests include:
 
 ## Change routing
 
-- Binary framing/encryption/hash serialization: `Source/Common/NetBuffer.*`.
+- Secure channel framing and handshake: `Source/Common/SecureChannel.*`; the Noise state machine: `Source/Common/NoiseProtocol.*`; the primitives and OS randomness: `Source/Essentials/Cryptography.*`.
+- Binary message framing/hash serialization: `Source/Common/NetBuffer.*`.
 - Ordered UDP behavior: `Source/Common/NetworkUdp.*`.
 - Client transport abstraction and implementations: `Source/Client/NetworkClient*`.
 - Server transport abstraction and implementations: `Source/Server/NetworkServer*`.
@@ -378,7 +486,7 @@ Relevant tests include:
 
 ## Validation checklist
 
-1. Run UDP, client, and server network tests relevant to the changed transport.
+1. Run UDP, client, and server network tests relevant to the changed transport, and `Test_SecureChannel` for any change that touches the byte stream a transport carries.
 2. Validate both connect/accept and disconnect paths.
 3. Validate partial receives and message framing when changing `NetInBuffer` / `NetOutBuffer`.
 4. Validate hash resolution/debug-hash behavior across client and server builds.

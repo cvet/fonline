@@ -284,6 +284,15 @@ resolved in `mono_threads_suspend_init`. A thread inside its kernel exit refuses
 finish, which took at most 81 ms across about a million such refusals provoked under load; five seconds covers
 the four after which Windows boosts a starved ready thread. Each anchor must appear exactly once.
 
+Windows runtimes read a thread's stack bounds the way Windows 7 can. Mono compiles for Windows 8 (its `config.h`
+refuses a lower `_WIN32_WINNT`), and `mono_threads_platform_get_stack_bounds` in
+`src/mono/mono/utils/mono-threads-windows.c` then takes the branch calling `GetCurrentThreadStackLimits`, the only
+Windows 8 export the runtime imports. The runtime is linked statically, so that import sits in the client's own import
+table and the Windows 7 loader refuses the executable before it runs: "The procedure entry point
+GetCurrentThreadStackLimits could not be located in KERNEL32.dll". The patch turns that branch off in favour of the
+upstream `VirtualQuery` one beside it, which works on every later Windows as well and costs one system call per
+attached thread. The anchor must appear exactly once. `check_windows7_imports.py` is the proof on the linked binary.
+
 Before every runtime build the tree's repo-local tasks mark (`artifacts/obj/tasks/<Config>/build-semaphore.txt`)
 is discarded. dotnet builds those MSBuild tasks once per tree behind that mark, but which task projects the set holds
 depends on the target: the Android ones (`AndroidAppBuilder` and friends) join it only for mobile targets. A tree whose
@@ -295,8 +304,9 @@ Browser, Android, Apple, Linux, and Windows source-patch contracts have separate
 target. Existing browser caches ending in `_wasmglue` rebuild and republish once
 with the ASM identification patch; Windows caches without `_embedded_debug_info`
 rebuild and republish once with embedded debug information, Windows and Android caches
-without `_isa_fallback` once with the `IsSupported` fallback, and Windows caches without
-`_suspend_retry` once with the suspension retry. All keep the cloned source.
+without `_isa_fallback` once with the `IsSupported` fallback, Windows caches without
+`_suspend_retry` once with the suspension retry, and Windows caches without `_win7_stack_bounds` once
+with the Windows 7 stack bounds. All keep the cloned source.
 A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
 on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.

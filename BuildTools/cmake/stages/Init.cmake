@@ -481,7 +481,7 @@ if(WIN32)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
 	endif()
 
-	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
+	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "bcrypt")
 
 	if(NOT FO_HEADLESS_ONLY)
 		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")

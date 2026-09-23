@@ -111,6 +111,32 @@ namespace
         void DispatchImpl() override { }
         void DisconnectImpl() override { }
     };
+
+    static auto MakeTestChannelKey(uint8_t fill) -> crypto::key_bytes
+    {
+        crypto::key_bytes secret_key {};
+        secret_key.fill(fill);
+        return secret_key;
+    }
+
+    // Plays the client half of the handshake against a connection whose transport the test drives by hand
+    static auto EstablishClientChannel(SendProbeConnection& net_connection, const crypto::key_bytes& server_public_key) -> unique_ptr<SecureChannel>
+    {
+        vector<crypto::key_bytes> server_keys {server_public_key};
+        auto client_channel = safe_alloc::make_unique<SecureChannel>(server_keys);
+
+        vector<uint8_t> offer;
+        client_channel->TakeHandshakeOutput(offer);
+        net_connection.Receive(offer);
+
+        vector<uint8_t> answer = net_connection.SendCallback();
+        vector<uint8_t> plaintext;
+        client_channel->Receive(answer, plaintext);
+
+        FO_VERIFY_AND_THROW(client_channel->IsEstablished(), "Test client channel did not complete its handshake");
+        FO_VERIFY_AND_THROW(plaintext.empty(), "Test server sent data before the client spoke");
+        return client_channel;
+    }
 }
 
 TEST_CASE("NetworkServerStopsPullingOutgoingDataAfterDisconnect")
@@ -162,8 +188,9 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("a live connection has no reason yet")
     {
         auto settings = MakeServerNetworkSettings();
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
         auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
 
         CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
     }
@@ -171,8 +198,9 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("the peer going away on its own is recorded as a client-side close")
     {
         auto settings = MakeServerNetworkSettings();
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
         auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
 
         net_connection->Disconnect();
 
@@ -182,8 +210,9 @@ TEST_CASE("ServerConnectionRecordsWhyItWasDisconnected")
     SECTION("the deciding path wins over the transport teardown that follows it")
     {
         auto settings = MakeServerNetworkSettings();
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
         auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
 
         // The transport close callback records ClientClosed of its own accord; without first-wins that
         // generic cause would bury the real one and the logout would read as a player who simply left
@@ -204,25 +233,30 @@ TEST_CASE("ServerConnectionLatchesInputOverflowForItsOwningWorker")
     BakerTests::OverrideSetting(settings.ServerNetwork.MaxMessageSize, 64);
     BakerTests::OverrideSetting(settings.ServerNetwork.MaxBufferedInputSize, 64);
 
+    SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
     auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
+    unique_ptr<SecureChannel> client_channel = EstablishClientChannel(*net_connection, identity.GetPublicKey());
 
-    CHECK_FALSE(connection->IsInputOverflowed());
+    CHECK_FALSE(connection->IsInputRejected());
 
     // An escaping overflow would unwind the transport read chain before it re-arms, and disconnecting
     // from here would deadlock on the receive lock the callback already holds
     vector<uint8_t> flood(128, uint8_t {0xAB});
+    vector<uint8_t> sealed_flood;
+    client_channel->Seal(flood, sealed_flood);
 
-    CHECK_NOTHROW(net_connection->Receive(flood));
-    CHECK(connection->IsInputOverflowed());
+    CHECK_NOTHROW(net_connection->Receive(sealed_flood));
+    CHECK(connection->IsInputRejected());
     CHECK(connection->GetDisconnectReason() == DisconnectReason::None);
 }
 
 TEST_CASE("ServerConnectionDestructionWaitsForRunningNetworkCallback")
 {
     auto settings = MakeServerNetworkSettings();
+    SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
     auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
     std::promise<void> callback_entered_promise;
     std::future<void> callback_entered = callback_entered_promise.get_future();
     std::promise<void> release_callback_promise;
@@ -300,8 +334,9 @@ TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
     SECTION("ordinary transports retain the remote-peer watchdog")
     {
         auto settings = MakeServerNetworkSettings();
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
         auto net_connection = safe_alloc::make_shared<SendProbeConnection>(&settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection);
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
 
         REQUIRE(net_connection->NeedsPingWatchdog());
         connection->MarkHandshakeComplete();
@@ -324,7 +359,8 @@ TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
         REQUIRE(client_send);
         CHECK_FALSE(accepted_conn->NeedsPingWatchdog());
 
-        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, accepted_conn);
+        SecureChannelIdentity identity {MakeTestChannelKey(0x42)};
+        auto connection = safe_alloc::make_unique<ServerConnection>(&settings, accepted_conn, identity);
         connection->MarkHandshakeComplete();
 
         CHECK_FALSE(connection->NeedPing(nanotime {}));

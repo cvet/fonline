@@ -43,7 +43,6 @@ FO_DECLARE_EXCEPTION_EXT(UnknownMessageException, NetBufferException);
 class NetBuffer
 {
 public:
-    static constexpr size_t CRYPT_KEYS_COUNT = 50;
     static constexpr uint32_t NETMSG_SIGNATURE = 0x011E9422;
 
     explicit NetBuffer(size_t buf_len);
@@ -56,20 +55,13 @@ public:
     [[nodiscard]] auto GetData() noexcept -> const_span<uint8_t>;
     [[nodiscard]] auto GetDataSize() const noexcept -> size_t { return _bufEndPos; }
 
-    void SetEncryptKey(uint32_t seed);
     virtual void ResetBuf() noexcept;
     void GrowBuf(size_t len);
 
 protected:
-    auto EncryptKey(int32_t move) noexcept -> uint8_t;
-    void CopyBuf(ptr<const void> from, ptr<void> to, uint8_t crypt_key, size_t len) const noexcept;
-
     vector<uint8_t> _bufData {};
     size_t _defaultBufLen {};
     size_t _bufEndPos {};
-    bool _encryptActive {};
-    int32_t _encryptKeyPos {};
-    uint8_t _encryptKeys[CRYPT_KEYS_COUNT] {};
 };
 
 class NetOutBuffer final : public NetBuffer

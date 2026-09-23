@@ -53,6 +53,14 @@
 #include <unistd.h>
 #endif
 
+#if FO_WEB
+#include <unistd.h>
+#endif
+
+#if FO_MAC || FO_IOS || FO_ANDROID
+#include <stdlib.h>
+#endif
+
 #if FO_MAC
 #include <libproc.h>
 #include <mach/mach.h>
@@ -505,6 +513,37 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
 #endif
 
     return result;
+}
+
+auto posix::fill_system_random(span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_MAC || FO_IOS || FO_ANDROID
+    // Seeded and reseeded by the kernel, and unlike getentropy present on every Android level the engine supports
+    if (!buf.empty()) {
+        ::arc4random_buf(buf.data(), buf.size());
+    }
+
+    return true;
+
+#else
+    // getentropy refuses a request above 256 bytes
+    constexpr size_t max_request_size = 256;
+    size_t offset = 0;
+
+    while (offset < buf.size()) {
+        size_t request_size = std::min(buf.size() - offset, max_request_size);
+
+        if (::getentropy(buf.data() + offset, request_size) != 0) {
+            return false;
+        }
+
+        offset += request_size;
+    }
+
+    return true;
+#endif
 }
 
 auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
