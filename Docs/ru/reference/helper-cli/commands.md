@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"6aea91191dbd280eac7b426dfe3f5dd09994f709dc5d7a52febc6ccdadb0cdda"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"a01a1ca6a127fd9fadf7d1723a9a3db428c1e41b14bcea9cc6c0e9df2b4ac2b8"} -->
 
 # Команды вспомогательных CLI
 
@@ -524,7 +524,7 @@ options:
 ```text
 usage: check_windows7_imports.py [-h] binaries [binaries ...]
 
-Reject CreateFile2 from Windows 7-compatible PE binaries
+Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries
 
 positional arguments:
   binaries    linked PE executable or DLL to inspect

@@ -3,7 +3,7 @@
   "generated_by": "BuildTools/docs_snippets.py",
   "manifest_path": "Docs/documentation-manifest.json",
   "policy_path": "BuildTools/SnippetPolicy.json",
-  "corpus_sha256": "8f2895689d35f3b73289b69b7b1a6f4aa08e38181d270a452f64fdddc14edb3c",
+  "corpus_sha256": "c11ac9a0cac2a2067f25c8a82426dc09334cd63677f42ce1fc0b68bc57186840",
   "document_count": 191,
   "snippet_count": 462,
   "validated_count": 462,
@@ -1269,8 +1269,8 @@
       "path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "heading": "Stage hooks",
       "anchor": "stage-hooks",
-      "start_line": 251,
-      "end_line": 253,
+      "start_line": 257,
+      "end_line": 259,
       "language": "cmake",
       "contract": "normative",
       "harness": "cmake-parse",
@@ -3423,7 +3423,7 @@
       "status": "passed"
     },
     {
-      "id": "generated-helper-cli-commands-3f4b36ff6d70",
+      "id": "generated-helper-cli-commands-c2111a994c7b",
       "document_id": "generated-helper-cli-commands",
       "path": "Docs/en/reference/helper-cli/commands.md",
       "heading": "Exact top-level `--help` output",
@@ -3435,8 +3435,8 @@
       "harness": "text-contract",
       "template": true,
       "line_count": 9,
-      "byte_count": 252,
-      "sha256": "3f4b36ff6d705cb69ad8f1855d52737727ce0f3870bedac649c29a4b58923de0",
+      "byte_count": 277,
+      "sha256": "c2111a994c7b7e2717ee9c367bcbbafb17b31e77a09cc8dcfc694470e5c9edae",
       "status": "passed"
     },
     {

@@ -2,6 +2,24 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-23 - Windows 7 managed-runtime loader reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation branch head `4419e5ed0947471e458e36331919b34c56693606` with Engine `origin/master` through `a34b7fc77223bb36f0fd9b0f3346759d397490d2` (one incoming commit from merge base `6cc051acca2f05177515aa44ee6dcccddfe4fbe3`).
+- Audited the Windows Mono stack-bounds patch, `_win7_stack_bounds` runtime ready marker, expanded PE import gate, and their source tests. The incoming changes to two legacy documentation pages were moved into the canonical English/Russian guides; the legacy routes remain redirects.
+
+Documentation and contract reconciliation:
+
+- Updated the BuildTools pipeline, build workflow, and testing guides in both locales. The static import gate covers the linked Mono archive but does not establish runtime behavior on a real Windows 7 SP1 host.
+- Regenerated the helper CLI model and EN/RU references, snippets, translation status, site/search, AI evaluation, and AI delivery. The aggregate contract diff against the prior documentation head reports one internal helper-CLI help-text change across 17 domains, with no required disposition.
+- Updated two previously stale documentation-test inventory assertions to match the current 4,794 translated descriptions and 462 snippets.
+
+Validation and limits:
+
+- The Win7 PE checker passes 16 focused tests, and four focused managed-runtime patch/marker tests pass. The seven focused documentation test modules pass 50 tests and 58 subtests; the full Markdown validator passes 406 entries. The 306 normative, 156 evidence, and 180 external-parser snippets validate.
+- Three unrelated CMake fixture tests in the broader managed-runtime Python file cannot configure on this host because no C compiler is available in `PATH`; this is not evidence about the linked Win7 binaries. Actual Windows 7 SP1 startup and managed gameplay remain external acceptance gates.
+
 ## 2026-09-23 - Noise NK secure-channel reconciliation
 
 Scope and source revisions:

@@ -21,7 +21,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>aec2b08d249c60c78f7fc9160df0f999c2f7c35509996bb49896206b607049f4</code> |
+| Contract digest | <code>1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14</code> |
 
 ## Inventory
 

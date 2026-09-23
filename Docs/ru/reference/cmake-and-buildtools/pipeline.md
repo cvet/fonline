@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"60ade1a45e8c340a86084e751762c9f2363bf9179afd49b031e2a72717b0a730"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"ee5f3c5d4db3407226ebcb0a1b927a5e9e387fb460128e429deba0dd19fa5d8f"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -153,8 +153,14 @@ prebuilt runtime уже должен его содержать.
 Windows Mono также повторяет отказавшие suspension/context reads во время
 stop-the-world, пока thread жив, сообщает о каждом отказе и после пяти секунд
 завершает процесс вместо пропуска работающего thread. Ready marker
-`_suspend_retry` заставляет пересобрать Windows runtime; prebuilt runtime
-принимается как есть и уже должен содержать патч. Linux managed builds
+`_suspend_retry` заставляет пересобрать Windows runtime. Кроме того, Windows
+Mono использует существующий путь определения границ стека через `VirtualQuery`
+вместо экспорта `GetCurrentThreadStackLimits`, появившегося в Windows 8. Иначе
+статический импорт не даст загрузчику Windows 7 запустить клиент ещё до кода
+движка. Суффикс ready marker `_win7_stack_bounds` заставляет пересобрать Windows
+runtime; prebuilt runtime принимается как есть и уже должен содержать оба патча.
+Проверка импортов итогового PE охватывает и статически связанный runtime, но не
+заменяет запуск на настоящей Windows 7. Linux managed builds
 подключают OpenSSL cryptography shim вместе с native и globalization shims.
 Контракт runtime safety и компиляции fragments описан в
 [руководстве Managed C#](../../how-to/scripting/managed-csharp.md#runtime-loading-изоляция-и-shutdown).

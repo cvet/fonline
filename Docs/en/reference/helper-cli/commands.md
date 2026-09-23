@@ -522,7 +522,7 @@ Inspect linked PE files and reject imports that are unavailable on Windows 7.
 ```text
 usage: check_windows7_imports.py [-h] binaries [binaries ...]
 
-Reject CreateFile2 from Windows 7-compatible PE binaries
+Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries
 
 positional arguments:
   binaries    linked PE executable or DLL to inspect

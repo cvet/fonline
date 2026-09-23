@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"2f6953385814f14a1b966c7712452bf35c7f4aa0cbff84c58525fb78a5f87238"} -->
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 
@@ -140,10 +140,12 @@ lanes с toolset `v143,version=14.44`; на не-Windows host они завер�
 python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 ```
 
-Проверка разбирает PE imports и отклоняет `CreateFile2`, текущий запрещенный
-Windows 8+ import. Конкретная установка toolset, binary paths, package matrix и
-CI gate принадлежат игровому проекту; переиспользуемое правило проверки
-определяет [Тестирование](../../contributing/testing/).
+Проверка разбирает PE imports и отклоняет перечисленные в разделе
+[Тестирование](../../contributing/testing/) экспорты Windows 8+, отсутствующие
+библиотеки и неподдерживаемые API-set contracts. Это относится и к статически
+связанному managed runtime. Успешная статическая проверка не заменяет запуск
+на настоящей Windows 7 SP1. Установка toolset, пути к binary, package matrix,
+CI gate и приёмка на живом хосте принадлежат игровому проекту.
 
 ## Загрузка через собственное зеркало
 

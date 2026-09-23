@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"964f0a49364c9c03483994b4e2fe584853fed9ffc0f39f43f60a6cd9474e5111"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"5fbb100b4d38bfaae76c76737b0af2ef4faeace7149ff32e55de46e9b7355120"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -53,8 +53,15 @@ permalink: /Docs/ru/contributing/testing/
 
 Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
 или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
-импорт `CreateFile2`. Проектная CI-ветка Windows 7 должна запускать его для всех
-связанных executable и runtime DLL после линковки и до упаковки; см.
+поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
+`d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`), отсутствующие
+в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`)
+и API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Новый
+несовместимый экспорт добавляют в список одновременно с исправлением импорта.
+Статически связанные библиотеки, включая managed runtime, попадают в таблицу
+импортов итогового PE. Проектная CI-ветка Windows 7 должна проверять каждый
+связанный executable и DLL после линковки и до упаковки. Статическая проверка
+не доказывает работу на настоящей Windows 7 SP1; см.
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
 
 ## Запуск тестов

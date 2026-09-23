@@ -123,7 +123,7 @@ Before packaging or publishing that lane, inspect every linked EXE and DLL:
 python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 ```
 
-The check parses PE imports and fails on `CreateFile2`, the currently forbidden Windows 8+ import. The embedding project owns the concrete toolset installation, binary paths, package matrix, and CI gate; [Testing](../../contributing/testing/) owns the reusable validation rule.
+The check parses PE imports and rejects the curated Windows 8+ exports, absent libraries, and unsupported API-set contracts described in [Testing](../../contributing/testing/). This includes imports from a statically linked managed runtime. A passing static check is not a live Windows 7 SP1 startup test. The embedding project owns the concrete toolset installation, binary paths, package matrix, CI gate, and live-host acceptance.
 
 ## Fetching through a mirror of your own
 

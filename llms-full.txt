@@ -1238,7 +1238,7 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b
+Content SHA-256: 2f6953385814f14a1b966c7712452bf35c7f4aa0cbff84c58525fb78a5f87238
 
 ---
 layout: default
@@ -1365,7 +1365,7 @@ Before packaging or publishing that lane, inspect every linked EXE and DLL:
 python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 ```
 
-The check parses PE imports and fails on `CreateFile2`, the currently forbidden Windows 8+ import. The embedding project owns the concrete toolset installation, binary paths, package matrix, and CI gate; [Testing](../../contributing/testing/) owns the reusable validation rule.
+The check parses PE imports and rejects the curated Windows 8+ exports, absent libraries, and unsupported API-set contracts described in [Testing](../../contributing/testing/). This includes imports from a statically linked managed runtime. A passing static check is not a live Windows 7 SP1 startup test. The embedding project owns the concrete toolset installation, binary paths, package matrix, CI gate, and live-host acceptance.
 
 ## Fetching through a mirror of your own
 
@@ -4672,7 +4672,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 964f0a49364c9c03483994b4e2fe584853fed9ffc0f39f43f60a6cd9474e5111
+Content SHA-256: 5fbb100b4d38bfaae76c76737b0af2ef4faeace7149ff32e55de46e9b7355120
 
 ---
 layout: default
@@ -4709,7 +4709,7 @@ Use this page when choosing native validation for an engine change or when addin
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files, fails closed on unreadable or malformed input, and rejects every reported `CreateFile2` import. Embedding-project CI should run it against all linked Win7 executables and runtime DLLs after linking and before packaging; see the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
+`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files and fails closed on unreadable or malformed input. It rejects a curated set of Windows 8+ `kernel32`, `user32`, `dxgi`, and `d3d11` exports (including `CreateFile2` and `GetCurrentThreadStackLimits`), libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`), and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add any newly discovered incompatible export to the list with its import fix. Static third-party libraries, including the managed runtime, contribute to the same final PE import table. Embedding-project CI should check every linked Win7 executable and DLL after linking and before packaging; this static gate does not prove runtime behavior on a real Windows 7 SP1 host. See the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
@@ -23380,7 +23380,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 60ade1a45e8c340a86084e751762c9f2363bf9179afd49b031e2a72717b0a730
+Content SHA-256: ee5f3c5d4db3407226ebcb0a1b927a5e9e387fb460128e429deba0dd19fa5d8f
 
 ---
 layout: default
@@ -23499,8 +23499,14 @@ prebuilt runtimes must already contain it.
 Windows Mono also retries refused stop-the-world thread suspension/context
 reads while the thread remains alive, reporting any refusal and aborting after
 five seconds rather than skipping a running thread. Its `_suspend_retry` ready
-marker forces a rebuilt Windows runtime; prebuilt runtimes are adopted as given
-and must already include the patch. Linux managed builds link the OpenSSL
+marker forces a rebuilt Windows runtime. Windows Mono also uses its upstream
+`VirtualQuery` stack-bounds path instead of the Windows 8-only
+`GetCurrentThreadStackLimits` export. Otherwise that static import prevents a
+Windows 7 loader from starting the client before any engine code runs. The
+`_win7_stack_bounds` ready-marker suffix forces a rebuilt Windows runtime;
+prebuilt runtimes are adopted as given and must already include both patches.
+The linked PE import check covers the statically linked runtime too, but does
+not replace a live Windows 7 startup test. Linux managed builds link the OpenSSL
 cryptography shim in addition to the native and globalization shims. See
 [Managed C# scripting](../../how-to/scripting/managed-csharp.md#runtime-loading-isolation-and-shutdown)
 for the runtime safety and fragment-compilation contract.
@@ -23871,7 +23877,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-helper-cli-index =====
 Source: Docs/en/reference/helper-cli/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/helper-cli/
-Content SHA-256: 808340a9d43f0004fb672a168a56fe886cc4e06f868295a4382989552f22c3dd
+Content SHA-256: 67257d87ab6bd7730de517dc3532e93552c9963c5e38036b850d8aeb28cc47f8
 
 ---
 title: Generated Helper CLI Reference
@@ -23896,7 +23902,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>aec2b08d249c60c78f7fc9160df0f999c2f7c35509996bb49896206b607049f4</code> |
+| Contract digest | <code>1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14</code> |
 
 ## Inventory
 

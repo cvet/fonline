@@ -9,7 +9,53 @@ import struct
 import sys
 
 
-FORBIDDEN_IMPORTS = frozenset({"CreateFile2"})
+# Exports gained after Windows 7 SP1, by lower-case library name. The loader resolves static imports before the process
+# runs, so one of these stops a Windows 7 start; code that needs one resolves it with GetProcAddress
+POST_WINDOWS7_IMPORTS: dict[str, frozenset[str]] = {
+    "kernel32.dll": frozenset({
+        # Windows 8
+        "AddDllDirectory", "CopyFile2", "CreateFile2", "CreateFileMappingFromApp", "DeleteSynchronizationBarrier",
+        "EnterSynchronizationBarrier", "GetApplicationUserModelId", "GetCurrentApplicationUserModelId",
+        "GetCurrentPackageFamilyName", "GetCurrentPackageFullName", "GetCurrentPackageId", "GetCurrentPackagePath",
+        "GetCurrentThreadStackLimits", "GetFirmwareEnvironmentVariableExA", "GetFirmwareEnvironmentVariableExW",
+        "GetFirmwareType", "GetMemoryErrorHandlingCapabilities", "GetOverlappedResultEx", "GetPackageFamilyName",
+        "GetPackageFullName", "GetPackageId", "GetPackagePath", "GetProcessInformation", "GetProcessMitigationPolicy",
+        "GetSystemTimePreciseAsFileTime", "GetThreadInformation", "InitializeSynchronizationBarrier",
+        "MapViewOfFileFromApp", "PrefetchVirtualMemory", "RegisterBadMemoryNotification", "RemoveDllDirectory",
+        "SetDefaultDllDirectories", "SetFirmwareEnvironmentVariableExA", "SetFirmwareEnvironmentVariableExW",
+        "SetProcessInformation", "SetProcessMitigationPolicy", "SetThreadInformation", "UnmapViewOfFileEx",
+        "UnregisterBadMemoryNotification",
+        # Windows 8.1
+        "DiscardVirtualMemory", "OfferVirtualMemory", "ReclaimVirtualMemory",
+        # Windows 10 and 11
+        "ClosePseudoConsole", "CreatePseudoConsole", "GetProcessDefaultCpuSets", "GetSystemCpuSetInformation",
+        "GetSystemLeapSecondInformation", "GetSystemTimeAdjustmentPrecise", "GetTempPath2A", "GetTempPath2W",
+        "GetThreadDescription", "GetThreadSelectedCpuSets", "IsWow64Process2", "ResizePseudoConsole",
+        "SetProcessDefaultCpuSets", "SetThreadDescription", "SetThreadSelectedCpuSets",
+    }),
+    "user32.dll": frozenset({
+        # Windows 8 and 8.1
+        "EnableMouseInPointer", "GetCurrentInputMessageSource", "GetDisplayAutoRotationPreferences", "GetPointerInfo",
+        "GetPointerPenInfo", "GetPointerTouchInfo", "GetPointerType", "IsImmersiveProcess",
+        "LogicalToPhysicalPointForPerMonitorDPI", "PhysicalToLogicalPointForPerMonitorDPI",
+        "SetDisplayAutoRotationPreferences",
+        # Windows 10
+        "AdjustWindowRectExForDpi", "AreDpiAwarenessContextsEqual", "EnableNonClientDpiScaling",
+        "GetAwarenessFromDpiAwarenessContext", "GetDpiForSystem", "GetDpiForWindow", "GetSystemMetricsForDpi",
+        "GetThreadDpiAwarenessContext", "GetWindowDpiAwarenessContext", "SetProcessDpiAwarenessContext",
+        "SetThreadDpiAwarenessContext", "SystemParametersInfoForDpi",
+    }),
+    "dxgi.dll": frozenset({"CreateDXGIFactory2", "DXGIGetDebugInterface1"}),
+    "d3d11.dll": frozenset({"D3D11On12CreateDevice"}),
+}
+
+# Libraries Windows 7 SP1 does not have at all
+POST_WINDOWS7_LIBRARIES = frozenset({"combase.dll", "d3d12.dll", "dcomp.dll", "shcore.dll"})
+
+# Umbrella libraries (onecore.lib, mincore.lib) bind API-set contracts at their newest versions; only the Universal CRT
+# forwarders are redistributed down to Windows 7
+API_SET_PREFIXES = ("api-ms-win-", "ext-ms-win-")
+WINDOWS7_API_SET_PREFIXES = ("api-ms-win-crt-",)
 
 
 class PeFormatError(ValueError):
@@ -116,12 +162,24 @@ def read_imports(binary: Path) -> set[ImportedSymbol]:
     return imports
 
 
+def is_unavailable_on_windows7(item: ImportedSymbol) -> bool:
+    library = item.library.lower()
+
+    if library in POST_WINDOWS7_LIBRARIES:
+        return True
+
+    if library.startswith(API_SET_PREFIXES) and not library.startswith(WINDOWS7_API_SET_PREFIXES):
+        return True
+
+    return item.name in POST_WINDOWS7_IMPORTS.get(library, frozenset())
+
+
 def check_binary(binary: Path) -> list[ImportedSymbol]:
-    return sorted((item for item in read_imports(binary) if item.name in FORBIDDEN_IMPORTS), key=lambda item: (item.library, item.name))
+    return sorted((item for item in read_imports(binary) if is_unavailable_on_windows7(item)), key=lambda item: (item.library, item.name))
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject CreateFile2 from Windows 7-compatible PE binaries")
+    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
     parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
     return parser
 

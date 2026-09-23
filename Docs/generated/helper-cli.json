@@ -1178,9 +1178,9 @@
       ],
       "invocation_owner": "embedding-project Windows 7 CI and release validation",
       "description": "Inspect linked PE files and reject imports that are unavailable on Windows 7.",
-      "parser_description": "Reject CreateFile2 from Windows 7-compatible PE binaries",
+      "parser_description": "Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries",
       "usage": "usage: check_windows7_imports.py [-h] binaries [binaries ...]",
-      "help_output": "usage: check_windows7_imports.py [-h] binaries [binaries ...]\n\nReject CreateFile2 from Windows 7-compatible PE binaries\n\npositional arguments:\n  binaries    linked PE executable or DLL to inspect\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "help_output": "usage: check_windows7_imports.py [-h] binaries [binaries ...]\n\nReject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries\n\npositional arguments:\n  binaries    linked PE executable or DLL to inspect\n\noptions:\n  -h, --help  show this help message and exit\n",
       "global_arguments": [
         {
           "id": "helper-cli.windows7-import-check.argument.binaries",
@@ -1590,5 +1590,5 @@
     "global_argument_count": 24,
     "command_argument_count": 52
   },
-  "contract_digest": "aec2b08d249c60c78f7fc9160df0f999c2f7c35509996bb49896206b607049f4"
+  "contract_digest": "1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14"
 }

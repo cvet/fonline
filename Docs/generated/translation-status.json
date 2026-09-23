@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "964f0a49364c9c03483994b4e2fe584853fed9ffc0f39f43f60a6cd9474e5111",
-      "source_bytes": 28426,
+      "source_sha256": "5fbb100b4d38bfaae76c76737b0af2ef4faeace7149ff32e55de46e9b7355120",
+      "source_bytes": 28942,
       "status": "current"
     },
     {
@@ -482,8 +482,8 @@
       "english_path": "Docs/en/how-to/build/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/index.md",
-      "source_sha256": "e1cfaa86333e84c0584be14aa417263aa6b5c56053cf43f7bd8b10b4f551f32b",
-      "source_bytes": 13712,
+      "source_sha256": "2f6953385814f14a1b966c7712452bf35c7f4aa0cbff84c58525fb78a5f87238",
+      "source_bytes": 13867,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "60ade1a45e8c340a86084e751762c9f2363bf9179afd49b031e2a72717b0a730",
-      "source_bytes": 25332,
+      "source_sha256": "ee5f3c5d4db3407226ebcb0a1b927a5e9e387fb460128e429deba0dd19fa5d8f",
+      "source_bytes": 25783,
       "status": "current"
     },
     {
@@ -1392,8 +1392,8 @@
       "english_path": "Docs/en/reference/helper-cli/commands.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/commands.md",
-      "source_sha256": "6aea91191dbd280eac7b426dfe3f5dd09994f709dc5d7a52febc6ccdadb0cdda",
-      "source_bytes": 46524,
+      "source_sha256": "a01a1ca6a127fd9fadf7d1723a9a3db428c1e41b14bcea9cc6c0e9df2b4ac2b8",
+      "source_bytes": 46549,
       "status": "current"
     },
     {
@@ -1405,7 +1405,7 @@
       "english_path": "Docs/en/reference/helper-cli/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/helper-cli/index.md",
-      "source_sha256": "808340a9d43f0004fb672a168a56fe886cc4e06f868295a4382989552f22c3dd",
+      "source_sha256": "67257d87ab6bd7730de517dc3532e93552c9963c5e38036b850d8aeb28cc47f8",
       "source_bytes": 4913,
       "status": "current"
     },

@@ -115,8 +115,14 @@ prebuilt runtimes must already contain it.
 Windows Mono also retries refused stop-the-world thread suspension/context
 reads while the thread remains alive, reporting any refusal and aborting after
 five seconds rather than skipping a running thread. Its `_suspend_retry` ready
-marker forces a rebuilt Windows runtime; prebuilt runtimes are adopted as given
-and must already include the patch. Linux managed builds link the OpenSSL
+marker forces a rebuilt Windows runtime. Windows Mono also uses its upstream
+`VirtualQuery` stack-bounds path instead of the Windows 8-only
+`GetCurrentThreadStackLimits` export. Otherwise that static import prevents a
+Windows 7 loader from starting the client before any engine code runs. The
+`_win7_stack_bounds` ready-marker suffix forces a rebuilt Windows runtime;
+prebuilt runtimes are adopted as given and must already include both patches.
+The linked PE import check covers the statically linked runtime too, but does
+not replace a live Windows 7 startup test. Linux managed builds link the OpenSSL
 cryptography shim in addition to the native and globalization shims. See
 [Managed C# scripting](../../how-to/scripting/managed-csharp.md#runtime-loading-isolation-and-shutdown)
 for the runtime safety and fragment-compilation contract.
