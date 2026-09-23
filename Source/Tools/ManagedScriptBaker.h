@@ -43,8 +43,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ManagedScriptBakerException);
 
-// Analysis profile of the generated managed script project, from the ManagedScript.* settings. An
-// empty field emits nothing, and the profile covers the script project only, never the managed host
+// Analysis and post-compile profile of the generated managed script project, from the ManagedScript.* settings.
+// An empty field emits nothing, and the profile covers the script project only, never the managed host
 struct ManagedProjectAnalysis
 {
     string Level {};
@@ -52,6 +52,7 @@ struct ManagedProjectAnalysis
     vector<string> AnalyzerProjects {};
     vector<pair<string, string>> AnalyzerPackages {};
     vector<string> AdditionalFiles {};
+    string PatchPointWeaver {};
 };
 
 class ManagedScriptBaker final : public BaseBaker

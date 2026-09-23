@@ -1,0 +1,33 @@
+<!--
+  Weaves a patch point into every eligible method of a compiled script assembly (see Docs/Scripting.md, "Patch
+  points"). The generated script project builds this tool and runs it on its intermediate assembly after compilation
+  when ManagedScript.PatchPointWeaver names this project.
+
+  The script build drops its own Configuration (Server/Client) when it builds this tool, so the tool builds under the
+  SDK default one, optimized because Optimize is set here.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AssemblyName>FOnline.PatchPointWeaver</AssemblyName>
+    <RootNamespace>FOnline.PatchPointWeaver</RootNamespace>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <DebugType>embedded</DebugType>
+    <Optimize>true</Optimize>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="PatchPointWeaver.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Mono.Cecil" Version="0.11.6" />
+  </ItemGroup>
+</Project>

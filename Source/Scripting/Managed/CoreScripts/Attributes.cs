@@ -52,6 +52,29 @@ public sealed class CallableByEngineAttribute : Attribute
 {
 }
 
+// Names the script method a static method of a patch assembly replaces (ScriptPatches.Apply). The replacement takes the
+// target's parameters, preceded by the target object for an instance method (by ref for a struct)
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class ReplacesMethodAttribute : Attribute
+{
+    public ReplacesMethodAttribute(Type type, string name)
+    {
+        Type = type;
+        Name = name;
+    }
+
+    public Type Type { get; }
+
+    public string Name { get; }
+}
+
+// Keeps the patch point weaver away from a method, for a hot one whose cost a profile has shown; a bug in it is then
+// fixed by patching its callers
+[AttributeUsage(AttributeTargets.Method)]
+public sealed class NoPatchPointAttribute : Attribute
+{
+}
+
 // Marks a static parameterless method that registers attributed script functions into the engine's
 // cross-backend function registry (ScriptFuncRegistration.RegisterAttributedScriptFuncs with
 // project-supplied attribute types, e.g. dialog demand/result markers). Registrars run in the

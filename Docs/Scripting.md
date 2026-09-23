@@ -573,6 +573,10 @@ Three rules are enforced by the baker rather than left to the embedder:
   project or a banned-symbols list recompiles the scripts. Without that, a newly added rule stays silent
   until an unrelated source file changes, which is indistinguishable from a rule that found nothing.
 
+One more setting shapes the generated project without being analysis: `ManagedScript.PatchPointWeaver` adds the
+weaver as a build-only project reference and a target that weaves the intermediate assembly after compilation (see
+[Patch points](#patch-points)); its project and sources take part in the incremental bake check the same way.
+
 Severities are not part of this surface: they come from the embedding project's `.editorconfig`, which Roslyn
 resolves per source file, so the file governing `Scripts/**` is the one above those sources rather than one
 beside the generated project. Because the project sets `TreatWarningsAsErrors`, promoting a rule to `warning`
@@ -770,10 +774,122 @@ selected again per target, does not carry them.
   `libssl` on first use, so a Linux host that compiles fragments needs OpenSSL installed. `Init.cmake` keeps the
   static LibreSSL out of the executable's dynamic symbol table (`--exclude-libs`); otherwise that system libcrypto
   would bind its own internal calls to LibreSSL's unversioned definitions. Other platforms link no crypto shim.
+- A request with `Kind = DynamicCompileKind.Patch` compiles a patch instead of a fragment; see
+  [Patch points](#patch-points).
 
 `BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
 script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another
 side's image.
+
+### Patch points
+
+A fragment can change state and swap engine-dispatched handlers, but it cannot change the body of a script method that
+other script code calls directly. Patch points close that gap: the bake weaves one into every eligible script method, and
+a patch assembly compiled after the bake redirects the method to a replacement for as long as the patch stays applied.
+This is not Mono hot reload, which the engine cannot use: after a metadata update Mono only discards methods its
+interpreter transformed (`metadata_update_published` → `invalidate_transformed`), so JIT code keeps running the old body,
+and it accepts updates only for assemblies built without optimizations.
+
+**Weaving.** `ManagedScript.PatchPointWeaver` names the weaver project
+(`Source/Scripting/Managed/PatchPoints/FOnline.PatchPointWeaver.csproj`); when it is set, the generated script project
+builds the weaver inside a target of its own and runs it on the intermediate assembly of the server and client scripts
+right after compilation, so every later step of the build sees the woven assembly. The mapper never applies a patch and
+is not woven. The weaver is built there rather than referenced, because a reference to an executable project copies the
+weaver, Mono.Cecil and their runtime files into the script output. It rewrites the assembly in place with Mono.Cecil,
+keeps its embedded PDB and MVID, and leaves an assembly it already wove alone, because the target runs after a compile
+that found nothing to do as well. The weaver project and its sources are therefore `CustomAdditionalCompileInputs` of
+the script project, so changing the weaver compiles and weaves again, and they are inputs of the managed bake stamp.
+
+Eligible are the methods with a body outside the `FOnline` namespace, which holds CoreScripts and the generated API:
+constructors, generic methods and methods of generic types, varargs methods, compiler-generated bodies (lambdas, local
+functions, state machine `MoveNext`, auto-properties) and methods marked `[NoPatchPoint]` are left alone. A lambda or a
+state machine is replaced together with the method that creates it; an async or iterator method is patched at its kickoff
+method, so a call already suspended in it finishes the old body. `[NoPatchPoint]` is for a hot method whose cost a
+profile has shown; a bug in it is then fixed by patching its callers.
+
+The prologue reads one static field and branches:
+
+```text
+    ldsfld  PatchPointSlots::Active     // false while no patch is applied
+    brtrue  CHECK
+BODY:  <original body>
+CHECK: ldc.i4 <slot>; call PatchPointRedirects::Slot; brfalse BODY
+       <arguments>; ldc.i4 <slot>; ldtoken <method>; call PatchPointRedirects::R<n>(..., slot, self); ret
+```
+
+- No value crosses a branch: Mono assigns a value that crosses basic blocks to a callee-saved register
+  (`mono_arch_get_global_int_regs`), whose save and restore in the method prologue every call would pay. The cold path
+  therefore reads the slot through the inlined `Slot` helper, and the redirect reads it again instead of receiving it.
+- `self` is the method's handle, a constant: `ldftn` would cost a runtime call (`mono_ldftn`) on every patched call.
+- The `calli` that reaches the replacement lives in a redirect shared by every method with the same signature, with
+  class types erased to `object`, because Mono refuses to inline a method that contains an indirect call
+  (`INLINE_FAILURE ("indirect call")` in `method-to-ir.c`). A method whose IL fits Mono's inline limit (20 bytes, not an
+  async or iterator kickoff) is marked `AggressiveInlining`, so it stays inlined together with its check.
+- Signatures carrying custom modifiers are preserved in the redirect. In particular, `ref readonly` returns wrap the
+  by-reference type in a required modifier; erasing that wrapper to `object` would make the method's IL invalid.
+- A revert between the two reads hands the redirect an empty slot; the redirect then calls the method itself through
+  `self.GetFunctionPointer()`, and its check, which now finds the slot empty, runs the original body. That pointer is
+  native code, which is what `calli` takes on the JIT; the race needs a second thread, which the single-threaded Web
+  interpreter does not have.
+- The weaver writes the metadata token of every woven method, by slot, into the `FOnline.PatchPoints.Table` manifest
+  resource. It writes the module twice, because tokens are known only once Cecil has laid the tables out, and verifies
+  that every slot still names its method.
+- `PatchPointSlots.Slots` is the address of a native table of function pointers, indexed with `sizeof(native int)` so
+  one assembly serves 32- and 64-bit runtimes. `PatchPointSlots` has no static initializer, so reading `Active` and
+  `Slots` needs no class-init check.
+
+**Applying a patch.** A patch assembly declares static replacement methods marked
+`[ReplacesMethod(typeof(T), "Name")]`. A replacement takes the target's parameters, preceded by the target object for an
+instance method (`ref` for a struct), and returns the target's type. The patch also carries a manifest,
+`DynamicPatchManifest.GetFunctions()`, that returns one `ScriptPatchFunction` per replacement: the replacement's
+`MethodInfo` and its function pointer taken with `ldftn` inside the patch. The pointer comes from the patch itself because
+the interpreter (Web) expects its own method handle where the JIT expects code, and
+`RuntimeMethodHandle.GetFunctionPointer` returns a native entry point in either mode.
+
+- `ScriptPatches.Apply(assembly)` checks every replacement (static, non-generic, one target with exactly the matching
+  signature, a patch point on that target in the running script module) before any of them takes effect, then publishes
+  a new table with a single write, so a call sees either every function of the patch or none of them. `Revert(set)` and
+  `RevertAll()` publish again. A later patch of a method wins, and reverting it restores the earlier one. A call already
+  running keeps the body it started with.
+- `Active` is set once the table is published and cleared with the last revert, which restores the plain prologue. A
+  call may still read `Slots` after `Active` was cleared, so a published table is never freed and `Slots` never returns
+  to zero; each publication keeps one table of `sizeof(native int)` per patch point.
+- The prologue loads `Active` and then `Slots` with plain loads, which ARM64 may reorder; the first publication issues
+  `Interlocked.MemoryBarrierProcessWide` between writing `Slots` and setting `Active`, so no core sees `Active` without
+  a table. The slot is read through the address just loaded from `Slots`, a dependent load; a thread that still sees
+  the previous table calls the previous function or the original body.
+- Each side has its own switch: `ManagedScript.ServerPatchesEnabled` on the server and
+  `ManagedScript.ClientPatchesEnabled` on a client, read from that side's own config, so a client can refuse whatever its
+  server sends. `Apply` throws while the switch of its side is off, the mapper never applies a patch, and the woven
+  prologue costs the same either way.
+- `IsAvailable`, `PatchPointCount` and `HasPatchPoint(method)` read the table; `Applied` lists the patch sets in effect.
+
+**Compiling a patch.** `DynamicScriptCompiler` with `Kind = DynamicCompileKind.Patch` compiles a compilation unit rather
+than a method body: the request's usings become global usings, and diagnostics name `patch(line,column)`. The first pass
+binds every `[ReplacesMethod]` method to its target and refuses one that is not static, is generic, matches no or several
+targets, or targets a method outside the script assembly or without a patch point (`FOPATCH002`, read from the table of
+the running assembly or of the other side's image); a patch without replacements is `FOPATCH001`. A replacement may be
+private — that is what lets its signature name a private script type — so the patch declares `IgnoresAccessChecksTo`
+for itself as well as for the scripts, and the manifest's `ldftn` passes the runtime access check. The second pass adds
+the manifest and emits an optimized assembly, since a replacement keeps running where the original ran. Escaped C#
+identifiers such as `@return` remain escaped when the manifest takes the replacement's address.
+
+**Cost.** On the embedded Mono JIT, with no patch applied, the check adds about 0.1 ns to a small inlined method, 0.4 ns
+to a call of a static method and 0.6 ns to an instance method; the cold path makes the method call out, so it keeps a
+frame. While another method is patched a call pays 0.3–0.6 ns, and a patched call about 2 ns for the redirect. The
+assembly grows by about 45 bytes of IL per woven method, the shared redirects and the 4-byte table entry (Last Frontier:
++4.6% server, +8.7% client scripts). JIT code grows only for the methods a process runs: each compiled woven method is
+about 110–290 bytes larger on x64, and each inlined copy of a small method carries its own check, so code made of small
+methods grows the most (Last Frontier: server JIT code +10–12%, client +55–64%; image and JIT code together add
+1.2–1.7 MB to a process).
+
+`BuildTools/tests/test_managed_patch_points.py` weaves a stand-in script assembly with the production weaver, compiles
+patches with the production compiler and applies them under the .NET SDK: static, instance, struct, async, `ref`/`out`,
+private-target, reference-returning and `ref readonly` replacements, explicit property accessors, escaped identifiers,
+an inlined small method and a loop observing a concurrent patch, a delegate created before the patch, layered patches
+and their reverts, static and struct redirects handed an empty slot, a foreign-module token collision, the compiler's
+refusals and a process with patches disabled. The embedded-Mono path is covered by the embedding project's gameplay
+suite (Last Frontier: `admin_code`).
 
 ### Managed continuation scheduling
 
