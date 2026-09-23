@@ -62,7 +62,7 @@ public:
 
     // 0 stays serial, AUTO asks the machine, a positive value is taken as written. Anything else throws: a client
     // that silently ran serial after being told to use eight workers would look enabled while doing nothing
-    [[nodiscard]] static auto ResolveWorkerCount(int32_t configured_worker_threads) -> int32_t;
+    static auto ResolveWorkerCount(int32_t configured_worker_threads) -> int32_t;
 
     explicit WorkScheduler(string_view name, int32_t worker_count);
     WorkScheduler(const WorkScheduler&) = delete;
@@ -71,13 +71,13 @@ public:
     auto operator=(WorkScheduler&&) noexcept -> WorkScheduler& = delete;
     ~WorkScheduler();
 
-    [[nodiscard]] auto GetWorkerCount() const noexcept -> int32_t { return _workerCount; }
     [[nodiscard]] auto IsParallel() const noexcept -> bool { return _workerCount > 0; }
+    [[nodiscard]] auto GetWorkerCount() const noexcept -> int32_t { return _workerCount; }
     [[nodiscard]] auto GetDiagnostics() const noexcept -> Diagnostics;
 
     // The branch an eligible stage takes: false means call the kernel directly, in the caller own loop, without
     // building a batch at all. Below the threshold a batch costs more than the work it spreads
-    [[nodiscard]] auto ShouldRunParallel(size_t item_count, size_t min_parallel_items) const noexcept -> bool;
+    auto ShouldRunParallel(size_t item_count, size_t min_parallel_items) const noexcept -> bool;
 
     // Runs item_work over 0..item_count-1 across the workers and the calling thread, and returns only once every
     // item has completed. The first exception an item throws is rethrown here, on the owner, after the batch drained

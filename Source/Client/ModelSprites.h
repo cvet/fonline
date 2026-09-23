@@ -105,8 +105,6 @@ private:
     isize32 _frameSize {};
     irect32 _cropRect {};
     optional<isize32> _requestedFrameSize {};
-    // What PrepareUpdate decided for this frame. The draw decision is read back in Update because posing the model
-    // clears the force flag and moves the last-draw time, so the predicate cannot be asked twice
     bool _frameUpdatePrepared {};
     bool _frameAtlasDrawPending {};
     bool _frameCpuPosePrepared {};

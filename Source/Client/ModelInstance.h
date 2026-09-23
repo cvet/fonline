@@ -134,8 +134,6 @@ public:
     void SetSpeed(float32_t speed);
     void EnableShadow(bool enabled);
     void PoseSpriteFrame(bool advance_animation);
-    // The same sprite-frame pose, split so the evaluation between them can run on a client worker thread. Prepare
-    // and finalize belong to the application thread; evaluate touches only this hierarchy own pose buffers
     void PrepareSpriteFramePose(bool advance_animation);
     void EvaluateFramePose();
     void FinalizeFramePose();
