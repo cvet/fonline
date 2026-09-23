@@ -316,6 +316,50 @@ TEST_CASE("Settings")
         CHECK(settings.Common.GameName == "Tag Tag");
     }
 
+    SECTION("StringSettingsKeepBackslashesAsWritten")
+    {
+        // Each path holds a sequence the AnyData coded-string grammar rewrites: \n, \r and a doubled backslash
+        string unc_path = R"(\\server\share\none\runs\Baking)";
+        string drive_path = R"(C:\work\none\Baking)";
+
+        GlobalSettings from_command_line {false};
+        from_command_line.ApplyDefaultSettings();
+        string path_arg = unc_path;
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Baking.BakeOutput"), path_arg.data()};
+        from_command_line.ApplyCommandLine(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
+
+        CHECK(from_command_line.Baking.BakeOutput == unc_path);
+
+        GlobalSettings from_config {false};
+        from_config.ApplyDefaultSettings();
+        ConfigFile config {strex("Baking.BakeOutput = {}\nManagedScript.Dirs = {}\t{}\n", drive_path, drive_path, unc_path).str()};
+        from_config.ApplyConfigFile(config, "");
+
+        CHECK(from_config.Baking.BakeOutput == drive_path);
+        CHECK(from_config.ManagedScript.Dirs == vector<string> {drive_path, unc_path});
+    }
+
+    SECTION("StringSettingsSurviveTheBakedConfigRoundTrip")
+    {
+        // The config baker writes Save() as key=value lines that a packaged application parses back, so a value
+        // rewritten on read would drift further with every bake
+        string unc_path = R"(\\server\share\none\runs\Baking)";
+
+        GlobalSettings baking {true};
+        baking.ApplyDefaultSettings();
+        ConfigFile authored {strex("Baking.BakeOutput = {}\nManagedScript.Dirs = {} Scripts\n", unc_path, unc_path).str()};
+        baking.ApplyConfigFile(authored, "");
+        auto saved = baking.Save();
+
+        GlobalSettings packaged {false};
+        packaged.ApplyDefaultSettings();
+        ConfigFile baked {strex("Baking.BakeOutput={}\nManagedScript.Dirs={}\n", saved.at("Baking.BakeOutput"), saved.at("ManagedScript.Dirs")).str()};
+        packaged.ApplyConfigFile(baked, "");
+
+        CHECK(packaged.Baking.BakeOutput == unc_path);
+        CHECK(packaged.ManagedScript.Dirs == vector<string> {unc_path, "Scripts"});
+    }
+
     SECTION("ApplyConfigAtPathResolvesFileVariables")
     {
         string temp_dir = MakeTempSettingsDir("settings_config");
