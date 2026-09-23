@@ -13,6 +13,15 @@ public sealed class ModuleInitAttribute : Attribute
     public int Priority { get; private set; }
 }
 
+// On a marker ATTRIBUTE, not on a method: methods carrying that marker begin an execution context, and the dispatcher
+// has synchronized the subject it hands them before they run (FOSYNC003). The engine marks its own entry markers
+// here; an embedding project marks its own the same way, so the analysis never holds a list of names
+[AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
+public sealed class EntryPointMarkerAttribute : Attribute
+{
+}
+
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class EventAttribute : Attribute
 {
@@ -60,6 +69,7 @@ public sealed class ScriptFuncRegistrarAttribute : Attribute
 // time events, property getters/setters, remote calls, item triggers, etc. They are markers (no arguments);
 // AttributeTargets.All keeps them permissive across the targets they decorate. Markers for project-specific
 // extensions live in the embedding project, not here.
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class TimeEventAttribute : Attribute
 {
@@ -75,46 +85,55 @@ public sealed class PropertySetterAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class ServerRemoteCallAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class ClientRemoteCallAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class AdminRemoteCallAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class ItemTriggerAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class ItemInitAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class ItemStaticAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class CritterInitAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class MapInitAttribute : Attribute
 {
 }
 
+[EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class LocationInitAttribute : Attribute
 {

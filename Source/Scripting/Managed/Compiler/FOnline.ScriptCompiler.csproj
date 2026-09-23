@@ -1,0 +1,38 @@
+<!--
+  Compiles C# fragments at run time against the script assembly of the backend that loads them (see
+  Docs/Scripting.md, "Compiling code after the bake"). An embedding project references this project from the script
+  targets that compile fragments through ManagedScript.ExtraReferences; the script build then copies it and the Roslyn
+  assemblies it depends on beside the entry assembly of those targets only.
+
+  The script build invokes this project with its own Configuration (Server/Client/Mapper), so the reference drops the
+  inherited Configuration and the project builds under the SDK default one, optimized because Optimize is set here.
+  Sources are listed explicitly for the same reason the analyzer project lists them: a second obj/<Config> tree would
+  otherwise contribute its AssemblyInfo twice.
+-->
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <OutputType>Library</OutputType>
+    <AssemblyName>FOnline.ScriptCompiler</AssemblyName>
+    <RootNamespace>FOnline.ScriptCompiler</RootNamespace>
+    <EnableDefaultItems>false</EnableDefaultItems>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <ImplicitUsings>false</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <DebugType>embedded</DebugType>
+    <Optimize>true</Optimize>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="DynamicScriptCompiler.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- The version the .NET SDK that builds the scripts ships, so a fragment reads the script assembly with the
+         same language the scripts were written in -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.6.0" />
+  </ItemGroup>
+</Project>

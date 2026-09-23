@@ -71,6 +71,28 @@ TEST_CASE("Platform")
 #endif
     }
 
+    SECTION("ProcessIdentityNamesOneRunningProcess")
+    {
+        platform::process_identity identity = platform::get_current_process_identity();
+
+#if FO_WINDOWS || FO_LINUX || FO_MAC
+        CHECK(strex("{}", identity.pid).str() == platform::get_current_process_id_str());
+        REQUIRE(identity.start_time != 0);
+        CHECK(platform::is_process_running(identity));
+
+        // The same id with another start time is a later process that inherited the id, not this one
+        platform::process_identity successor = identity;
+        successor.start_time++;
+        CHECK_FALSE(platform::is_process_running(successor));
+#endif
+
+        // An identity the platform could not tell is never taken for a running process
+        platform::process_identity unknown = identity;
+        unknown.start_time = 0;
+        CHECK_FALSE(platform::is_process_running(unknown));
+        CHECK_FALSE(platform::is_process_running(platform::process_identity {}));
+    }
+
     SECTION("GetFuncAddrCanResolveProcessSymbols")
     {
         using FuncPtr = void (*)();

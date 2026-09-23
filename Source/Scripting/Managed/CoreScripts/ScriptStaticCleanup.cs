@@ -20,29 +20,48 @@ using System.Text;
 // down through its own steps, and nulling the continuation scheduler's queues from under it is fatal
 internal static class ScriptStaticCleanup
 {
+    private static readonly List<Assembly> LoadedDynamicAssemblies = new List<Assembly>();
+
+    // Code loaded after the bake keeps statics of its own, and they root entity wrappers exactly as script ones do
+    internal static void TrackDynamicAssembly(Assembly assembly)
+    {
+        lock (LoadedDynamicAssemblies)
+        {
+            LoadedDynamicAssemblies.Add(assembly);
+        }
+    }
+
     [CallableByEngine]
     internal static string ClearScriptStatics()
     {
         List<string> cleared = new List<string>();
         List<string> unreachable = new List<string>();
+        List<Assembly> assemblies = new List<Assembly> { typeof(ScriptStaticCleanup).Assembly };
 
-        foreach (Type type in typeof(ScriptStaticCleanup).Assembly.GetTypes()) {
-            // A compiler-generated type holds closure caches and literal blobs, not script state, and its
-            // init-only singletons would otherwise fill the report with names nobody can act on
-            if (IsEngineNamespace(type.Namespace) || type.ContainsGenericParameters ||
-                type.IsDefined(typeof(CompilerGeneratedAttribute), false)) {
-                continue;
-            }
+        lock (LoadedDynamicAssemblies)
+        {
+            assemblies.AddRange(LoadedDynamicAssemblies);
+        }
 
-            foreach (FieldInfo field in type.GetFields(BindingFlags.Static | BindingFlags.Public |
-                                                       BindingFlags.NonPublic | BindingFlags.DeclaredOnly)) {
-                // One field that refuses to be read or written - a type initializer that fails this late, a
-                // field the runtime will not let go of - must not take the rest of the cleanup with it
-                try {
-                    ClearField(type, field, cleared, unreachable);
+        foreach (Assembly assembly in assemblies) {
+            foreach (Type type in GetTypes(assembly, unreachable)) {
+                // A compiler-generated type holds closure caches and literal blobs, not script state, and its
+                // init-only singletons would otherwise fill the report with names nobody can act on
+                if (IsEngineNamespace(type.Namespace) || type.ContainsGenericParameters ||
+                    type.IsDefined(typeof(CompilerGeneratedAttribute), false)) {
+                    continue;
                 }
-                catch (Exception ex) {
-                    unreachable.Add(type.FullName + "::" + field.Name + "(" + ex.GetType().Name + ")");
+
+                foreach (FieldInfo field in type.GetFields(BindingFlags.Static | BindingFlags.Public |
+                                                           BindingFlags.NonPublic | BindingFlags.DeclaredOnly)) {
+                    // One field that refuses to be read or written - a type initializer that fails this late, a
+                    // field the runtime will not let go of - must not take the rest of the cleanup with it
+                    try {
+                        ClearField(type, field, cleared, unreachable);
+                    }
+                    catch (Exception ex) {
+                        unreachable.Add(type.FullName + "::" + field.Name + "(" + ex.GetType().Name + ")");
+                    }
                 }
             }
         }
@@ -150,6 +169,27 @@ internal static class ScriptStaticCleanup
         }
 
         return false;
+    }
+
+    // A dynamic assembly can hold a type that no longer loads, while its other types still need clearing
+    private static List<Type> GetTypes(Assembly assembly, List<string> unreachable)
+    {
+        try {
+            return new List<Type>(assembly.GetTypes());
+        }
+        catch (ReflectionTypeLoadException ex) {
+            unreachable.Add(assembly.GetName().Name + "(" + ex.GetType().Name + ")");
+
+            List<Type> loaded = new List<Type>();
+
+            foreach (Type? type in ex.Types) {
+                if (type != null) {
+                    loaded.Add(type);
+                }
+            }
+
+            return loaded;
+        }
     }
 
     private static bool IsEngineNamespace(string? value)

@@ -348,6 +348,14 @@ public static class ScriptFunc
         }
 
         Type nonNullableTarget = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        if (nonNullableTarget == typeof(any)) {
+            return any.TryFromObject(value, out _);
+        }
+
+        if (value is any) {
+            return any.ConvertsTo(nonNullableTarget);
+        }
+
         if (nonNullableTarget == typeof(hstring) && value is string) {
             return true;
         }
@@ -375,6 +383,16 @@ public static class ScriptFunc
         }
 
         Type nonNullableTarget = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        if (nonNullableTarget == typeof(any)) {
+            bool converted = any.TryFromObject(value, out any anyValue);
+            Invariant.Verify(converted, "Argument has no any form", value.GetType().Name);
+            return anyValue;
+        }
+
+        if (value is any anyArg) {
+            return anyArg.ToObject(nonNullableTarget);
+        }
+
         if (nonNullableTarget == typeof(hstring) && value is string text) {
             return hstring.FromString(text);
         }

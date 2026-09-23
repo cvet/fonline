@@ -37,6 +37,7 @@ FO_BEGIN_NAMESPACE
 
 static void RunSelfTestCrash(string_view mode);
 [[noreturn]] static void CrashByBadPointerAccess(uintptr_t address, bool write);
+[[noreturn]] static void CrashByBadCall();
 [[noreturn]] static void CrashByStackOverflow();
 [[noreturn]] static void CrashByIntegerDivideByZero();
 [[noreturn]] static void CrashByAbort();
@@ -94,6 +95,9 @@ static void RunSelfTestCrash(string_view mode)
     else if (mode == "main_wild_write") {
         CrashByBadPointerAccess(0xDEADBEEF, true);
     }
+    else if (mode == "main_bad_call") {
+        CrashByBadCall();
+    }
     else if (mode == "main_stack_overflow") {
         CrashByStackOverflow();
     }
@@ -145,6 +149,21 @@ static void CrashByBadPointerAccess(uintptr_t address, bool write)
     }
 
     // Unreachable on any real platform; abort loudly if the access was somehow tolerated
+    std::abort();
+}
+
+static void CrashByBadCall()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // A function pointer read back through volatile cannot be proven null, so the call is emitted and faults on the
+    // instruction fetch, leaving no frame of its own
+    using CrashTarget = void (*)();
+    volatile uintptr_t laundered = 0;
+    auto target = std::bit_cast<CrashTarget>(static_cast<uintptr_t>(laundered));
+    target();
+
+    // Unreachable on any real platform; abort loudly if the call was somehow tolerated
     std::abort();
 }
 

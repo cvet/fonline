@@ -41,11 +41,14 @@ namespace global_data
 {
     constexpr auto MAX_CALLBACKS = 40;
     using callback = void (*)() noexcept;
+    // Told the name of each set just before its delete callback runs, so a teardown that never returns names the
+    // set it stopped in. It runs inside the sweep and must touch no global data
+    using teardown_observer = void (*)(void* context, const char* set_name) noexcept;
 
     // True when this call built the set, false when it already existed: an entry point that did not build the set
     // must not tear it down, since whoever did is still using it
     auto create() -> bool;
-    void destroy();
+    void destroy(teardown_observer observer = nullptr, void* observer_context = nullptr);
 
     // Reaching for global data outside its lifetime is a startup or teardown ordering defect, and carrying on
     // with a null pointer only moves the crash somewhere the cause is no longer visible, so it ends the run
@@ -53,6 +56,7 @@ namespace global_data
 
     extern callback create_callbacks[MAX_CALLBACKS];
     extern callback delete_callbacks[MAX_CALLBACKS];
+    extern const char* callback_names[MAX_CALLBACKS];
     extern int32_t callbacks_count;
 
     // Holds one global data instance, as a raw pointer because this header sits above SmartPointers in the
@@ -128,6 +132,7 @@ namespace global_data
             } \
             FO_NAMESPACE global_data::create_callbacks[FO_NAMESPACE global_data::callbacks_count] = FO_CONCAT(Create_, class_name); \
             FO_NAMESPACE global_data::delete_callbacks[FO_NAMESPACE global_data::callbacks_count] = FO_CONCAT(Delete_, class_name); \
+            FO_NAMESPACE global_data::callback_names[FO_NAMESPACE global_data::callbacks_count] = #class_name; \
             FO_NAMESPACE global_data::callbacks_count++; \
         } \
     }; \

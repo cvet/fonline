@@ -37,6 +37,7 @@ FO_BEGIN_NAMESPACE
 
 global_data::callback global_data::create_callbacks[global_data::MAX_CALLBACKS];
 global_data::callback global_data::delete_callbacks[global_data::MAX_CALLBACKS];
+const char* global_data::callback_names[global_data::MAX_CALLBACKS];
 int32_t global_data::callbacks_count;
 
 // This module is the process-wide bootstrap registry that every engine instance is built on, so its state
@@ -77,7 +78,7 @@ auto global_data::create() -> bool
     return true;
 }
 
-void global_data::destroy()
+void global_data::destroy(teardown_observer observer, void* observer_context)
 {
     std::scoped_lock locker {global_data_locker};
 
@@ -91,6 +92,10 @@ void global_data::destroy()
     global_data_sweeping = true;
 
     for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+        if (observer != nullptr) {
+            observer(observer_context, global_data::callback_names[i] != nullptr ? global_data::callback_names[i] : "");
+        }
+
         global_data::delete_callbacks[i]();
     }
 

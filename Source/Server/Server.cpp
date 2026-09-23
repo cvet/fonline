@@ -96,8 +96,6 @@ ServerEngine::ServerEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetStartingUp(true);
-
     logging::write("Start server");
     logging::write("Updater version: {}", FO_UPDATER_VERSION);
     logging::write("Compatibility version: {}", Settings->Network.CompatibilityVersion);
@@ -804,7 +802,7 @@ auto ServerEngine::InitDoneJob() -> std::optional<timespan>
 
     // Set started flag AFTER workerPool is resumed and mainWorker has jobs queued so
     // external observers (tests, network OnNewConnection) only see a fully-running server
-    SetStartingUp(false);
+    FinishStartingUp();
     _started = true;
 
     return std::nullopt;

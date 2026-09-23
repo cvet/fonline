@@ -48,7 +48,7 @@ Important accessors and mutation paths include:
 
 - identity/type: `GetName()`, `GetId()`, `IsGlobal()`, `GetTypeName()`, `GetTypeNamePlural()`;
 - property access: `GetProperties()`, `GetPropertiesForEdit()`, `GetValueAsInt()`, `GetValueAsAny()`, `SetValueAsInt()`, `SetValueAsAny()`;
-- raw data snapshots: `StoreData()`, `RestoreData()`, `SetValueFromData()`;
+- raw data snapshots: `StoreData()`, `RestoreData()`, `SetValueFromData()` (applies a value received over the network unconditionally; a script write goes through `Properties::SetValue()`, which ignores a value equal to the stored one, so no setter, persistence or client sync runs for it);
 - lifecycle state: `IsDestroying()`, `IsDestroyed()`, `MarkAsDestroying()`, `MarkAsDestroyed()`;
 - ownership graph: `AddInnerEntity()`, `RemoveInnerEntity()`, `ClearInnerEntities()`;
 - event dispatch: `SubscribeEvent()`, `UnsubscribeEvent()`, `FireEvent()`.
@@ -119,6 +119,24 @@ Trusted binary restore (`RestoreData()` / `RestoreAllData()`) does not re-clamp:
 fall outside a newly tightened range belong to the migration layer, not to per-write clamping.
 
 Property raw data storage is naturally aligned: the storage blob and `PropertyRawData` buffers start max-aligned, struct layout registration enforces field-offset alignment, and overlay/pod offsets follow each property's data alignment. Property readers therefore use plain typed loads with no unaligned-access shims or runtime alignment checks — sanitizer builds are the guard that flags any path violating the alignment contract. Raw payload equality is bytewise (`memory::compare`): the total byte length of a payload does not raise its alignment requirement.
+
+### Unchanged writes are a no-op
+
+Writing the value a property already holds does nothing. `Properties::SetValue` validates and clamps the
+incoming value, compares it with the stored bytes and, when they are equal, returns before anything else
+happens: no setter runs and no post-setter runs, so nothing is persisted and nothing is sent to clients.
+Code relies on this: an unconditional reset, such as clearing a flag on every dialog start, is free and
+invisible, and re-assigning a value can never be used to re-run a setter or force a resend. Script writes
+reach this comparison on every backend — the AngelScript property setter, every managed bridge (unboxed
+scalar, fixed-value list, converting) and the `SetAsInt` / `SetAsAny` helpers — as do native typed writes of
+plain values and `hstring`. The comparison is bytewise for raw payloads; the native typed write of a
+floating-point value compares with `is_float_equal`.
+
+Three writes stand apart. `SetValueFromData()` applies a property message received over the network
+(`ClientEngine::Net_OnProperty`, `ServerEngine::Process_Property`) as it arrived, without the comparison. A
+virtual property has no stored value to compare with, so every write reaches its setters. The native typed
+overloads for `string` / `any_t` and for vectors do not make the comparison, so a native write of an
+unchanged string or array still runs its callbacks.
 
 ## Property runtime
 

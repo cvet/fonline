@@ -25,6 +25,7 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="CoverVocabulary.cs" />
     <Compile Include="SyncCoverAnalyzer.cs" />
   </ItemGroup>
   <ItemGroup>

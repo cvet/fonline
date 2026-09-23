@@ -70,16 +70,31 @@ namespace
         DeleteCallOrder.emplace_back(3);
     }
 
+    // Each entry pairs the set name the observer was told with how many sets had been deleted by then
+    struct ObservedTeardown
+    {
+        string Name {};
+        int32_t DeletedBefore {};
+    };
+
+    void RecordTeardown(void* context, const char* set_name) noexcept
+    {
+        auto observed = static_cast<vector<ObservedTeardown>*>(context);
+        observed->emplace_back(ObservedTeardown {.Name = string(set_name), .DeletedBefore = DeleteCallCount});
+    }
+
     struct GlobalDataCallbacksGuard final
     {
         std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedCreate {};
         std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
         int32_t SavedCount {};
 
         GlobalDataCallbacksGuard()
         {
             std::copy(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), SavedCreate.begin());
             std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
             SavedCount = global_data::callbacks_count;
         }
 
@@ -92,6 +107,7 @@ namespace
 
             std::copy(SavedCreate.begin(), SavedCreate.end(), std::begin(global_data::create_callbacks));
             std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
             global_data::callbacks_count = SavedCount;
         }
     };
@@ -107,6 +123,7 @@ TEST_CASE("GlobalData")
 
     std::fill(std::begin(global_data::create_callbacks), std::end(global_data::create_callbacks), nullptr);
     std::fill(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), nullptr);
+    std::fill(std::begin(global_data::callback_names), std::end(global_data::callback_names), nullptr);
 
     SECTION("DeleteGlobalDataCallsRegisteredCallbacksInOrder")
     {
@@ -120,6 +137,32 @@ TEST_CASE("GlobalData")
         CHECK(DeleteCallCount == 3);
         CHECK(DeleteCallOrder == vector<int32_t> {1, 2, 3});
         CHECK(global_data::callbacks_count == 3);
+    }
+
+    SECTION("TeardownObserverNamesEverySetBeforeItIsDeleted")
+    {
+        // A teardown that never returns is traced by the last name the observer wrote down, so each name must
+        // arrive before its own delete callback runs and after the previous one has finished
+        global_data::callbacks_count = 3;
+        global_data::delete_callbacks[0] = &DeleteCallbackA;
+        global_data::delete_callbacks[1] = &DeleteCallbackB;
+        global_data::delete_callbacks[2] = &DeleteCallbackC;
+        global_data::callback_names[0] = "SetA";
+        global_data::callback_names[1] = "SetB";
+        global_data::callback_names[2] = nullptr;
+
+        vector<ObservedTeardown> observed;
+        global_data::destroy(&RecordTeardown, &observed);
+
+        REQUIRE(observed.size() == 3);
+        CHECK(observed[0].Name == "SetA");
+        CHECK(observed[0].DeletedBefore == 0);
+        CHECK(observed[1].Name == "SetB");
+        CHECK(observed[1].DeletedBefore == 1);
+        // A set registered without a name is still announced, so the count of announcements stays exact
+        CHECK(observed[2].Name.empty());
+        CHECK(observed[2].DeletedBefore == 2);
+        CHECK(DeleteCallOrder == vector<int32_t> {1, 2, 3});
     }
 
     SECTION("DeleteGlobalDataWithNoCallbacksIsNoop")
@@ -210,6 +253,21 @@ TEST_CASE("GlobalData")
         // Exactly one caller is told the set is its own, so exactly one tears it down
         CHECK(builders.load(std::memory_order_relaxed) == 1);
     }
+}
+
+TEST_CASE("GlobalDataRegisteredSetsCarryTheirNames")
+{
+    // The names are what a stuck teardown is reported by, so every set the macro registered must have one
+    REQUIRE(global_data::callbacks_count > 0);
+    bool has_pools = false;
+
+    for (int32_t i = 0; i < global_data::callbacks_count; i++) {
+        REQUIRE(global_data::callback_names[i] != nullptr);
+        CHECK(string_view(global_data::callback_names[i]).size() != 0);
+        has_pools = has_pools || string_view(global_data::callback_names[i]) == "global_pools";
+    }
+
+    CHECK(has_pools);
 }
 
 FO_END_NAMESPACE

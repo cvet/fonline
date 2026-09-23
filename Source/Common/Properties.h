@@ -349,6 +349,9 @@ public:
     void CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept;
     void VerifyRestoredPropertyData(ptr<const Property> prop, size_t data_size) const;
     void SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept;
+
+    // Applies a value received over the network even when it equals the stored one; script writes go through
+    // SetValue instead, which ignores an unchanged value so no setter, persistence or client sync runs for it
     void SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data);
     void SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value);
     void SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& value);

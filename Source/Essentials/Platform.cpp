@@ -148,6 +148,45 @@ auto platform::get_current_process_id_str() noexcept -> string
 #endif
 }
 
+auto platform::get_current_process_identity() noexcept -> process_identity
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    uint32_t pid = winapi::get_current_process_id();
+    return process_identity {.pid = pid, .start_time = winapi::get_running_process_start_time(pid).value_or(0)};
+#else
+    int32_t pid = posix::get_current_process_id();
+    return process_identity {.pid = pid, .start_time = posix::get_running_process_start_time(pid).value_or(0)};
+#endif
+}
+
+auto platform::is_process_running(const process_identity& identity) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (identity.pid <= 0 || identity.start_time == 0) {
+        return false;
+    }
+
+    // Checked by hand and then cast: this layer sits below numeric_cast in the Essentials order
+#if FO_WINDOWS
+    if (identity.pid > std::numeric_limits<uint32_t>::max()) {
+        return false;
+    }
+
+    optional<uint64_t> start_time = winapi::get_running_process_start_time(static_cast<uint32_t>(identity.pid));
+#else
+    if (identity.pid > std::numeric_limits<int32_t>::max()) {
+        return false;
+    }
+
+    optional<uint64_t> start_time = posix::get_running_process_start_time(static_cast<int32_t>(identity.pid));
+#endif
+
+    return start_time.has_value() && start_time.value() == identity.start_time;
+}
+
 auto platform::get_process_memory_usage() noexcept -> size_t
 {
     FO_STACK_TRACE_ENTRY();

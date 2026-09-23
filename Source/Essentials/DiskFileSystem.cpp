@@ -62,6 +62,17 @@ auto fs::resolve_path(string_view path) -> string
     return !ec ? fs::path_to_string(resolved) : strex(path).normalize_path_slashes();
 }
 
+// The form for a library that opens the file itself, so its separators are left as the conversion made them:
+// an extended-length Windows path is literal and does not accept forward slashes
+auto fs::make_io_path(string_view path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    std::error_code ec;
+    auto u8_str = fs_make_io_path(path, ec).u8string();
+    return string(u8_str.begin(), u8_str.end());
+}
+
 auto fs::exists(string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();

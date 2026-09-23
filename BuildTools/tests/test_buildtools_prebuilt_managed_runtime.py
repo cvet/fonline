@@ -180,6 +180,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         "patch_runtime_android_sources",
         "patch_runtime_android_x86_atomics",
         "patch_runtime_windows_embedded_debug_info",
+        "patch_runtime_windows_suspend_retry",
         "patch_runtime_isa_is_supported_fallback",
     )
     for name in patch_names:
@@ -198,7 +199,8 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
                       ["patch_runtime_linux_signal_actions"] if target == "linux" else
                       ["patch_runtime_android_sources", "patch_runtime_android_x86_atomics",
                        "patch_runtime_isa_is_supported_fallback"] if target == "android" else
-                      ["patch_runtime_windows_embedded_debug_info", "patch_runtime_isa_is_supported_fallback"]
+                      ["patch_runtime_windows_embedded_debug_info", "patch_runtime_windows_suspend_retry",
+                       "patch_runtime_isa_is_supported_fallback"]
                       if target == "windows" else
                       ["patch_runtime_apple_sources"])
     if target in ("ios", "iossimulator"):
@@ -223,6 +225,63 @@ def test_isa_is_supported_fallback_answers_false_once(tmp_path: Path) -> None:
     assert text.count(_buildtools.MONO_ISA_FALLBACK_PATCH_MARKER) == 1
     assert text.index("System.Runtime.Intrinsics.X86") < text.index("/* Fallback if SIMD is disabled */")
     assert "m_class_get_nested_in (isa_klass)" in text
+
+
+WINDOWS_SUSPEND_SOURCE = (
+    "void\nmono_threads_suspend_init (void)\n{\n}\n\n"
+    "gboolean\nmono_threads_suspend_begin_async_suspend (MonoThreadInfo *info, gboolean interrupt_kernel)\n{\n"
+    "\tresult = SuspendThread (handle);\n"
+    "\tTHREADS_SUSPEND_DEBUG (\"SUSPEND %p -> %u\\n\", GUINT_TO_POINTER (id), result);\n"
+    "\tif (result == (DWORD)-1) {\n\t}\n"
+    "\tif (!GetThreadContext (handle, context)) {\n\t\tresult = ResumeThread (handle);\n\t}\n}\n"
+)
+
+
+def write_windows_suspend_source(root: Path, text: str) -> Path:
+    source = root / "src" / "mono" / "mono" / "utils" / "mono-threads-windows.c"
+    source.parent.mkdir(parents=True)
+    source.write_text(text, encoding="utf-8")
+    return source
+
+
+def test_windows_suspend_retry_replaces_both_refusals_once(tmp_path: Path) -> None:
+    # A stop-the-world that skips a running thread leaves the heap corrupt, so neither refusal may reach the skip unretried
+    source = write_windows_suspend_source(tmp_path, WINDOWS_SUSPEND_SOURCE)
+    _buildtools.patch_runtime_windows_suspend_retry(tmp_path)
+    _buildtools.patch_runtime_windows_suspend_retry(tmp_path)
+    text = source.read_text(encoding="utf-8")
+    assert text.count(_buildtools.MONO_WINDOWS_SUSPEND_RETRY_PATCH_MARKER) == 1
+    assert "result = SuspendThread (handle);" not in text.split("mono_threads_suspend_begin_async_suspend (")[1]
+    assert "result = fo_suspend_thread_retrying (handle, id);" in text
+    assert "if (!fo_get_thread_context_retrying (handle, id, context)) {" in text
+    assert text.index("fo_thread_is_alive (HANDLE handle)") < text.index("mono_threads_suspend_begin_async_suspend (")
+    assert text.count("mono_threads_suspend_init (void)") == 1
+
+
+def test_windows_suspend_retry_reports_without_heap_or_locks(tmp_path: Path) -> None:
+    # A thread already stopped may hold the heap, a stdio or the loader lock, so a report that took one would hang the collection
+    source = write_windows_suspend_source(tmp_path, WINDOWS_SUSPEND_SOURCE)
+    _buildtools.patch_runtime_windows_suspend_retry(tmp_path)
+    text = source.read_text(encoding="utf-8")
+    helpers = text.split("mono_threads_suspend_begin_async_suspend (")[0]
+    retrying = helpers.split("fo_thread_is_alive (HANDLE handle)")[1]
+    assert "WriteFile (GetStdHandle (STD_ERROR_HANDLE)" in retrying
+    assert "GetProcAddress" not in retrying
+    for call in ("g_error", "g_warning", "g_strdup", "printf", "malloc", "GetThreadDescription", "LocalFree"):
+        assert call not in retrying
+
+
+@pytest.mark.parametrize(
+    ("needle", "moved"),
+    [
+        ("result = SuspendThread (handle);", "result = SuspendThreadEx (handle);"),
+        ("mono_threads_suspend_init (void)\n{\n}", "mono_threads_suspend_init (void)\n{\n\tinit ();\n}"),
+    ],
+)
+def test_windows_suspend_retry_refuses_a_moved_anchor(tmp_path: Path, needle: str, moved: str) -> None:
+    write_windows_suspend_source(tmp_path, WINDOWS_SUSPEND_SOURCE.replace(needle, moved))
+    with pytest.raises(SystemExit, match="Mono Windows thread suspension"):
+        _buildtools.patch_runtime_windows_suspend_retry(tmp_path)
 
 
 def test_local_tasks_mark_is_discarded_for_every_configuration(tmp_path: Path) -> None:

@@ -131,9 +131,9 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
         auto loaded_result = RunClientRuntimeHostPass(loaded_runtime_result, PromoteStagedReloadForRestart);
 
         if (loaded_result.has_value()) {
-            // Cleared once nothing else can hang: a marker still on disk past this point is exactly
-            // what the next run reports
-            EndClientSession(session_marker);
+            // Recorded rather than cleared: the process teardown that follows can hang too, and the next run tells
+            // an exit that finished from one stuck in it by whether this process is still alive
+            SetClientShutdownStage(session_marker, ClientShutdownStage::ExitRequested);
             return loaded_result.value();
         }
 
@@ -152,7 +152,7 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
     auto embedded_result = RunClientRuntimeHostPass(embedded_runtime_result, PromoteStagedReloadForRestart);
 
     FO_VERIFY_AND_THROW(embedded_result.has_value(), "Embedded client runtime pass did not return a result");
-    EndClientSession(session_marker);
+    SetClientShutdownStage(session_marker, ClientShutdownStage::ExitRequested);
     return embedded_result.value();
 }
 

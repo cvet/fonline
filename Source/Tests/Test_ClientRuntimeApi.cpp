@@ -370,31 +370,250 @@ TEST_CASE("ClientSessionMarkerRecordsShutdownStageAcrossRuns")
     CHECK(interrupted->StageName == "ShutdownHookDone");
     CHECK(interrupted->BuildHash == string(FO_BUILD_HASH));
     CHECK(!interrupted->StartedAt.empty());
+    CHECK(interrupted->TeardownSet.empty());
+    // The marker names the process that wrote it; that process is this one, so it does not count as a survivor
+    CHECK(strex("{}", interrupted->Pid).str() == platform::get_current_process_id_str());
+    CHECK_FALSE(interrupted->StillRunning);
 
     // Taking it consumes it: the same interrupted run must not be reported by every later launch
     CHECK(!fs::exists(marker));
     CHECK(!TakePreviousClientSession(marker).has_value());
 
-    // A clean exit leaves nothing for the next run to find
+    // A finished exit keeps its marker, so an exit that hangs in the process teardown stays visible; once the
+    // process is gone the next run consumes it without a report
     BeginClientSession(marker);
     SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
-    EndClientSession(marker);
+    SetClientShutdownStage(marker, ClientShutdownStage::ExitRequested);
+    CHECK(fs::exists(marker));
+    auto exited = TakePreviousClientSession(marker);
+    platform::process_identity process = platform::get_current_process_identity();
+
+    if (process.pid > 0 && process.start_time != 0) {
+        CHECK(!exited.has_value());
+    }
+    else {
+        REQUIRE(exited.has_value());
+        CHECK(exited->Stage == ClientShutdownStage::ExitRequested);
+    }
+
     CHECK(!fs::exists(marker));
-    CHECK(!TakePreviousClientSession(marker).has_value());
 
     // Staging a marker that was never begun writes nothing: the host records stages after the runtime
-    // returned, and by then a clean exit may already have cleared the file
-    SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
+    // returned, and a runtime that failed before its settings never began one
+    SetClientShutdownStage(marker, ClientShutdownStage::ExitRequested);
     CHECK(!fs::exists(marker));
+
+    // A marker from a process that is gone, stopped before it asked to exit, is the unclean run it always was
+    REQUIRE(fs::write_file(marker, "Stage: 6\nBuild: previous\nStarted: 2026-09-19 10:00:00\nPid: 1\nProcessStart: 1\nTeardown: global_pools\n"));
+    auto stopped_in_teardown = TakePreviousClientSession(marker);
+    REQUIRE(stopped_in_teardown.has_value());
+    CHECK(stopped_in_teardown->Stage == ClientShutdownStage::GlobalDataTeardown);
+    CHECK(stopped_in_teardown->StageName == "GlobalDataTeardown");
+    CHECK(stopped_in_teardown->TeardownSet == "global_pools");
+    CHECK(stopped_in_teardown->Pid == 1);
+    CHECK_FALSE(stopped_in_teardown->StillRunning);
+
+    // A marker an older build left, with no process named, keeps its old meaning
+    REQUIRE(fs::write_file(marker, "Stage: 4\nBuild: previous\nStarted: 2026-09-19 10:00:00\n"));
+    auto older_marker = TakePreviousClientSession(marker);
+    REQUIRE(older_marker.has_value());
+    CHECK(older_marker->Stage == ClientShutdownStage::ShutdownHookDone);
+    CHECK(older_marker->Pid == 0);
+    CHECK_FALSE(older_marker->StillRunning);
 
     // An unreadable marker is consumed rather than reported for ever
     REQUIRE(fs::write_file(marker, "not a marker"));
     auto unparsable = TakePreviousClientSession(marker);
     REQUIRE(unparsable.has_value());
-    CHECK(unparsable->Stage == ClientShutdownStage::Running);
+    CHECK(unparsable->Stage == ClientShutdownStage::Unknown);
     CHECK(!fs::exists(marker));
 
     CHECK(fs::remove_dir_tree(temp_dir));
+}
+
+TEST_CASE("ClientSessionMarkerDoesNotInventACleanExit")
+{
+    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_session_invalid_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string temp_dir = fs::path_to_string(base);
+    string marker = MakeClientSessionMarkerPath(temp_dir);
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+
+    SECTION("UnknownStageIsNotExitRequested")
+    {
+        string_view stage = GENERATE("99", "-1", "256", "7.5", "7x", "");
+        REQUIRE(fs::write_file(marker, strex("Stage: {}\nBuild: previous\nPid: 1\nProcessStart: 1\n", stage).str()));
+        auto previous = TakePreviousClientSession(marker);
+        REQUIRE(previous.has_value());
+        CHECK(previous->StageName == "Unknown");
+    }
+
+    SECTION("ExitWithoutProcessIdentityIsNotProvenClean")
+    {
+        REQUIRE(fs::write_file(marker, "Stage: 7\nBuild: previous\n"));
+        auto previous = TakePreviousClientSession(marker);
+        REQUIRE(previous.has_value());
+        CHECK(previous->Stage == ClientShutdownStage::ExitRequested);
+    }
+
+    SECTION("AnotherClientCannotFinishThisSession")
+    {
+        platform::process_identity process = platform::get_current_process_identity();
+        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        REQUIRE(fs::write_file(marker, foreign_marker));
+        SetClientShutdownStage(marker, ClientShutdownStage::ExitRequested);
+        CHECK(fs::read_file(marker).value_or("") == foreign_marker);
+    }
+}
+
+namespace
+{
+    // What the marker said at the moment each fake set was torn down, read from inside its delete callback
+    string TeardownMarkerPath {};
+    vector<string> TeardownMarkerSnapshots {};
+    string TeardownMarkerReplacement {};
+
+    void SnapshotTeardownMarker() noexcept
+    {
+        TeardownMarkerSnapshots.emplace_back(fs::read_file(TeardownMarkerPath).value_or(""));
+
+        if (!TeardownMarkerReplacement.empty()) {
+            (void)fs::write_file(TeardownMarkerPath, TeardownMarkerReplacement);
+            TeardownMarkerReplacement.clear();
+        }
+    }
+
+    // Stands in for the real sweep: it builds nothing, and afterwards hands the set back as created without
+    // running a constructor, since the real globals of the test process were never touched
+    struct FakeGlobalDataSweep final
+    {
+        std::array<global_data::callback, global_data::MAX_CALLBACKS> SavedDelete {};
+        std::array<const char*, global_data::MAX_CALLBACKS> SavedNames {};
+        int32_t SavedCount {};
+
+        FakeGlobalDataSweep()
+        {
+            std::copy(std::begin(global_data::delete_callbacks), std::end(global_data::delete_callbacks), SavedDelete.begin());
+            std::copy(std::begin(global_data::callback_names), std::end(global_data::callback_names), SavedNames.begin());
+            SavedCount = global_data::callbacks_count;
+
+            global_data::callbacks_count = 2;
+            global_data::delete_callbacks[0] = &SnapshotTeardownMarker;
+            global_data::delete_callbacks[1] = &SnapshotTeardownMarker;
+            global_data::callback_names[0] = "FakeSetA";
+            global_data::callback_names[1] = "FakeSetB";
+        }
+
+        ~FakeGlobalDataSweep()
+        {
+            global_data::callbacks_count = 0;
+            (void)global_data::create();
+
+            std::copy(SavedDelete.begin(), SavedDelete.end(), std::begin(global_data::delete_callbacks));
+            std::copy(SavedNames.begin(), SavedNames.end(), std::begin(global_data::callback_names));
+            global_data::callbacks_count = SavedCount;
+        }
+    };
+}
+
+TEST_CASE("ClientSessionMarkerNamesTheGlobalDataPartTeardownStoppedIn")
+{
+    std::filesystem::path base = std::filesystem::temp_directory_path() / std::format("lf_client_teardown_{}", std::chrono::steady_clock::now().time_since_epoch().count());
+    string temp_dir = fs::path_to_string(base);
+    string marker = MakeClientSessionMarkerPath(fs::resolve_path(strex(temp_dir).combine_path("client.session").str()));
+    ignore_unused(fs::remove_dir_tree(temp_dir));
+
+    TeardownMarkerPath = marker;
+    TeardownMarkerSnapshots.clear();
+    TeardownMarkerReplacement.clear();
+
+    SECTION("EachPartIsNamedBeforeItGoes")
+    {
+        BeginClientSession(marker);
+        SetClientShutdownStage(marker, ClientShutdownStage::ShutdownHookDone);
+
+        {
+            FakeGlobalDataSweep sweep;
+            DestroyGlobalDataRecordingTeardown(marker);
+        }
+
+        // Each delete callback saw the stage and its own name, which is what a run stuck inside it leaves behind
+        REQUIRE(TeardownMarkerSnapshots.size() == 2);
+        CHECK(TeardownMarkerSnapshots[0].find("Stage: 6\n") == 0);
+        CHECK(TeardownMarkerSnapshots[0].find("Teardown: FakeSetA\n") != string::npos);
+        CHECK(TeardownMarkerSnapshots[1].find("Teardown: FakeSetB\n") != string::npos);
+        CHECK(TeardownMarkerSnapshots[1].find("FakeSetA") == string::npos);
+        CHECK(TeardownMarkerSnapshots[1].find("Build: ") != string::npos);
+
+        // Past the last part the name is gone again: a stop there is on the way back to the host
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("stuck.session").str(), TeardownMarkerSnapshots[1]));
+        auto stuck = TakePreviousClientSession(strex(temp_dir).combine_path("stuck.session").str());
+        REQUIRE(stuck.has_value());
+        CHECK(stuck->Stage == ClientShutdownStage::GlobalDataTeardown);
+        CHECK(stuck->TeardownSet == "FakeSetB");
+
+        auto finished = TakePreviousClientSession(marker);
+        REQUIRE(finished.has_value());
+        CHECK(finished->Stage == ClientShutdownStage::GlobalDataTeardown);
+        CHECK(finished->TeardownSet.empty());
+
+        // The host records its own stage next, and the teardown line does not ride along into it
+        BeginClientSession(marker);
+        {
+            FakeGlobalDataSweep sweep;
+            DestroyGlobalDataRecordingTeardown(marker);
+        }
+        SetClientShutdownStage(marker, ClientShutdownStage::RuntimeReturned);
+        CHECK(fs::read_file(marker).value_or("").find("Teardown:") == string::npos);
+    }
+
+    SECTION("WithoutAMarkerTheSetIsStillTornDown")
+    {
+        {
+            FakeGlobalDataSweep sweep;
+            TeardownMarkerPath = strex(temp_dir).combine_path("absent.session").str();
+            DestroyGlobalDataRecordingTeardown("");
+        }
+
+        CHECK(TeardownMarkerSnapshots.size() == 2);
+        CHECK(!fs::exists(marker));
+    }
+
+    SECTION("AnotherClientsMarkerSurvivesTeardown")
+    {
+        platform::process_identity process = platform::get_current_process_identity();
+        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        REQUIRE(fs::write_file(marker, foreign_marker));
+
+        {
+            FakeGlobalDataSweep sweep;
+            DestroyGlobalDataRecordingTeardown(marker);
+        }
+
+        REQUIRE(TeardownMarkerSnapshots.size() == 2);
+        CHECK(TeardownMarkerSnapshots[0] == foreign_marker);
+        CHECK(TeardownMarkerSnapshots[1] == foreign_marker);
+        CHECK(fs::read_file(marker).value_or("") == foreign_marker);
+    }
+
+    SECTION("MarkerReplacedBetweenSetsSurvivesRemainingTeardown")
+    {
+        BeginClientSession(marker);
+        platform::process_identity process = platform::get_current_process_identity();
+        string foreign_marker = strex("Stage: 0\nBuild: other\nPid: {}\nProcessStart: {}\n", process.pid, process.start_time + 1).str();
+        TeardownMarkerReplacement = foreign_marker;
+
+        {
+            FakeGlobalDataSweep sweep;
+            DestroyGlobalDataRecordingTeardown(marker);
+        }
+
+        REQUIRE(TeardownMarkerSnapshots.size() == 2);
+        CHECK(TeardownMarkerSnapshots[0].find("Teardown: FakeSetA\n") != string::npos);
+        CHECK(TeardownMarkerSnapshots[1] == foreign_marker);
+        CHECK(fs::read_file(marker).value_or("") == foreign_marker);
+    }
+
+    ignore_unused(fs::remove_dir_tree(temp_dir));
 }
 
 FO_END_NAMESPACE

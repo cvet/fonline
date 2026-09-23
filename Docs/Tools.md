@@ -106,7 +106,7 @@ Built-in baker implementations:
 - `Source/Tools/ModelInfoBaker.*` — bakes model descriptions and the common model-animation duration table when 3D support is enabled.
 - `Source/Tools/AngelScriptBaker.*` — compiles/bakes AngelScript bytecode resources when AngelScript support is enabled.
 - `Source/Tools/ManagedScriptBaker.*` — when Managed support is enabled, generates C# API scaffolding from engine metadata, copies managed core support into project-local generated C# files, writes one unified IDE project (`.gen.csproj`, with per-target `Configuration` blocks) plus a matching solution (`.gen.sln`), compiles target-specific managed assemblies, and writes the class libraries of the payload prepared by `PrepareManagedRuntimePayload` that those assemblies reach by reference under `ManagedRuntime/` in the same resource pack.
-- `Source/Tools/ManagedAssemblyReferences.*` — reads an assembly's name and `AssemblyRef` table from a PE image and computes the reference closure the Managed baker ships; `BuildTools/managed_runtime_payload.py` holds the matching reader `package.py` uses per target.
+- `Source/Scripting/Managed/ManagedAssemblyReferences.*` (runtime layer, since the managed backend reads a dynamic assembly's name with it) — reads an assembly's name and `AssemblyRef` table from a PE image and computes the reference closure the Managed baker ships; `BuildTools/managed_runtime_payload.py` holds the matching reader `package.py` uses per target.
 
 Detailed bake ordering, settings, output writing, and validation live in [BakingPipeline.md](BakingPipeline.md).
 

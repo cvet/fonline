@@ -114,6 +114,40 @@ TEST_CASE("EngineFramePumpsOnlyItsOwnScriptBackends")
     }
 }
 
+TEST_CASE("ScriptOverrunsAreBoundedAndEngineLocal")
+{
+    GlobalSettings settings {false};
+    settings.ApplyDefaultSettings();
+    FramePumpTestEngine first {&settings, EngineSideKind::ClientSide};
+    FramePumpTestEngine second {&settings, EngineSideKind::ClientSide};
+    first.RegisterScriptOverrun("Entry", timespan {std::chrono::milliseconds {120}}, timespan {std::chrono::milliseconds {5}});
+    first.RegisterScriptOverrun("Entry", timespan {std::chrono::milliseconds {50}}, timespan {std::chrono::milliseconds {30}});
+    CHECK(second.TakeScriptOverruns().empty());
+    auto records = first.TakeScriptOverruns();
+    REQUIRE(records.size() == 1);
+    CHECK(records[0].Entry == "Entry");
+    CHECK(records[0].Count == 2);
+    CHECK(records[0].MaxExecution == timespan {std::chrono::milliseconds {120}});
+    CHECK(records[0].MaxLockWait == timespan {std::chrono::milliseconds {30}});
+    CHECK(first.TakeScriptOverruns().empty());
+
+    for (int32_t i = 0; i < 40; i++) {
+        first.RegisterScriptOverrun(strex("Entry{}", i), timespan {std::chrono::milliseconds {i}}, {});
+    }
+
+    first.RegisterScriptOverrun("Entry0", timespan {std::chrono::milliseconds {200}}, {});
+    records = first.TakeScriptOverruns();
+    REQUIRE(records.size() == 32);
+    CHECK(records[0].Count == 2);
+    CHECK(records[0].MaxExecution == timespan {std::chrono::milliseconds {200}});
+    CHECK(records.back().Entry == "Entry31");
+    first.RegisterScriptOverrun("AfterDrain", {}, {});
+    records = first.TakeScriptOverruns();
+    REQUIRE(records.size() == 1);
+    CHECK(records[0].Entry == "AfterDrain");
+    CHECK(records[0].Count == 1);
+}
+
 TEST_CASE("CommonEvents")
 {
     SECTION("DispatchAndManualUnsubscribe")

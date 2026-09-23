@@ -50,6 +50,12 @@ namespace exceptions
     void set_callback(callback handler) noexcept;
     auto get_callback() noexcept -> callback;
     void install_crash_handler_stack() noexcept;
+
+    // What the crash handlers record and write, open so the report can be checked without a crash
+    void set_crash_signal_reason(int32_t signum, int32_t code, nptr<const void> address) noexcept;
+    void set_crash_exception_reason(uint32_t code, uint32_t flags, nptr<const void> address) noexcept;
+    void set_crash_termination_reason(string_view reason) noexcept;
+    void write_crash_report(const stack_trace::data& st) noexcept;
 }
 
 #define FO_DECLARE_EXCEPTION(exception_name) FO_DECLARE_EXCEPTION_EXT(exception_name, FO_NAMESPACE BaseEngineException)

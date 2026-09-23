@@ -948,6 +948,18 @@ namespace MapperMergeTest
     }
 }
 
+TEST_CASE("MapperEngineClearsTheStartingUpFlagOnceItRuns")
+{
+    // The client constructor deliberately does not finish start-up, because the mapper keeps coming up
+    // through its own body; construction itself proves it, since a second finish would throw
+    auto settings = MakeMapperTestSettings();
+    auto mapper = safe_alloc::make_refcounted<MapperEngine>(&settings, MakeMapperTestResources(), &GetApp()->MainWindow);
+
+    auto shutdown = scope_exit([&mapper]() noexcept { safe_call([&mapper] { mapper->Shutdown(); }); });
+
+    CHECK_FALSE(mapper->IsStartingUp());
+}
+
 TEST_CASE("MapperMultihexMeshMerge")
 {
     auto settings = MakeMapperTestSettings();

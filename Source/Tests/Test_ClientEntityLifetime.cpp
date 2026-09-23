@@ -73,6 +73,20 @@ static auto MakeClientLifetimeEngine(GlobalSettings& settings) -> refcount_ptr<C
     return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
 }
 
+TEST_CASE("ClientEngineFinishesStartingUpOnceItRuns")
+{
+    // An engine is starting up from the moment it exists, so the client owes the finish; one that never
+    // performed it reported every one-shot load of its own construction as a responsiveness failure
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    CHECK_FALSE(client->IsStartingUp());
+
+    // There is no way back into the state, so a second finish is a start path running twice
+    CHECK_THROWS_AS(client->FinishStartingUp(), VerificationException);
+}
+
 TEST_CASE("ClientEntityLookupRetainsUntilCallerFinishes")
 {
     auto settings = MakeClientLifetimeSettings();

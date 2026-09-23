@@ -171,6 +171,8 @@ if(FO_MANAGED_SCRIPTING)
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScripting.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedRuntime.cpp"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedAssemblyReferences.h"
+        "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedAssemblyReferences.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.h"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedScriptBackend.cpp"
         "${FO_ENGINE_ROOT}/Source/Scripting/Managed/ManagedInteropAbi.h"
@@ -402,8 +404,6 @@ AppendList(FO_BAKER_SOURCE
 
 if(FO_MANAGED_SCRIPTING)
     AppendList(FO_BAKER_SOURCE
-        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.h"
-        "${FO_ENGINE_ROOT}/Source/Tools/ManagedAssemblyReferences.cpp"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.h"
         "${FO_ENGINE_ROOT}/Source/Tools/ManagedScriptBaker.cpp")
 endif()

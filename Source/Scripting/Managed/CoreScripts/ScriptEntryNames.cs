@@ -4,6 +4,12 @@ using System;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
+// A runner that executes a method on behalf of its caller, so the entry is named after that method, not the runner
+internal interface INamedScriptEntry
+{
+    MethodInfo Entry { get; }
+}
+
 // Names the script code a native entry runs, the way scripts name functions for dispatch by name ("Type::Method").
 // Engine diagnostics such as run overruns ask for it only after the fact, so the reflection stays off the hot path
 internal static class ScriptEntryNames
@@ -14,6 +20,9 @@ internal static class ScriptEntryNames
             // The script pump runs a posted continuation through a delegate bound to it
             if (handler.Target is ScriptSynchronizationContext.PostedContinuation continuation) {
                 return DescribeContinuation(continuation);
+            }
+            if (handler.Target is INamedScriptEntry named) {
+                return DescribeMethod(named.Entry);
             }
 
             return DescribeDelegate(handler);

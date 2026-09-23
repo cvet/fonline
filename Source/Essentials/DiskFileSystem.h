@@ -50,6 +50,7 @@ namespace fs
     auto make_path(string_view path) -> std::u8string;
     auto path_to_string(const std::filesystem::path& path) -> string;
     auto resolve_path(string_view path) -> string;
+    auto make_io_path(string_view path) -> string;
     auto exists(string_view path) noexcept -> bool;
     auto is_dir(string_view path) noexcept -> bool;
     auto is_absolute_path(string_view path) noexcept -> bool;

@@ -2220,6 +2220,7 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     field->HasTransparentWall = false;
     field->HasScenery = false;
     field->MoveBlocked = field->ScrollBlock;
+    field->MovableWithGag = !field->ScrollBlock;
     field->ShootBlocked = false;
     field->LightBlocked = false;
     field->Corner = CornerType::NorthSouth;
@@ -2242,11 +2243,13 @@ void MapView::RecacheHexFlags(ptr<Field> field)
                 }
             }
 
-            if (!field->MoveBlocked && !item->GetNoBlock()) {
+            if (!item->GetNoBlock()) {
                 field->MoveBlocked = true;
+                field->MovableWithGag = field->MovableWithGag && item->GetIsGag();
             }
-            if (!field->ShootBlocked && !item->GetShootThru()) {
+            if (!item->GetShootThru()) {
                 field->ShootBlocked = true;
+                field->MovableWithGag = field->MovableWithGag && item->GetIsGag();
             }
             if (!field->LightBlocked && !item->GetLightThru()) {
                 field->LightBlocked = true;
@@ -2266,6 +2269,8 @@ void MapView::RecacheHexFlags(ptr<Field> field)
     if (field->ShootBlocked) {
         field->MoveBlocked = true;
     }
+
+    field->MovableWithGag = field->MovableWithGag && field->MoveBlocked;
 }
 
 void MapView::RecacheScrollBlocks()
@@ -3894,7 +3899,26 @@ auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool che
     }
 }
 
-auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset) -> optional<FindPathResult>
+auto MapView::CheckGagItem(mpos hex, const function<bool(ptr<const ItemHexView>)>& gag_callback) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const auto& field = _hexField->GetCellForReading(hex);
+
+    if (!field.MovableWithGag) {
+        return false;
+    }
+
+    for (ptr<const ItemHexView> item : field.Items) {
+        if (item->GetIsGag() && !gag_callback(item)) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& target_hex, int32_t cut, ipos16 target_hex_offset, const function<bool(ptr<const ItemHexView>)>& gag_callback) -> optional<FindPathResult>
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3927,6 +3951,10 @@ auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& targe
         const auto& cell = _hexField->GetCellForReading(hex);
 
         if (cell.MoveBlocked) {
+            if (gag_callback && CheckGagItem(hex, gag_callback)) {
+                return HexBlockResult::DeferGag;
+            }
+
             return HexBlockResult::Blocked;
         }
 

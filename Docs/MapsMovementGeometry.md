@@ -190,6 +190,8 @@ When gameplay code changes blocker semantics, update the callback provider and t
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
 
+`DeferGag` is available on both sides and is opt-in per search: `Map::CheckGagItem()` and `MapView::CheckGagItem()` answer it from the field flag `MovableWithGag` — set while every blocking item on the hex is a gag item — plus a caller predicate deciding whether that particular gag may be passed. `MapManager::FindPath()` and `MapView::FindPath()` take that predicate as their trailing `gag_callback` argument and return `Blocked` for the same hex without one, so an ordinary movement request is unaffected. The script surface mirrors it on both sides: the `Map.GetPath` / `Map.GetPathLength` overloads taking a `gagCallback` ask for a route that may pass gag items, which is how a caller distinguishes a target sealed by walls from one merely shut behind a door.
+
 ## Static item removal
 
 Baked static items live in `StaticMap` (`Source/Server/StaticMap.h`), which `MapManager` keys by `ProtoMap` and shares across **every** live instance of that map. A map instance can still drop individual static items, and it does so without touching that shared data.
