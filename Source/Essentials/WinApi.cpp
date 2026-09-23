@@ -41,6 +41,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <bcrypt.h>
 #include <fcntl.h>
 #include <io.h>
 #include <psapi.h>
@@ -53,6 +54,24 @@
 FO_BEGIN_NAMESPACE
 
 // WinApiUndef.inc removes the unsuffixed macro names, so every call below names the wide entry point it means
+
+static auto WINAPI on_unhandled_exception(EXCEPTION_POINTERS* info) -> LONG;
+static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD;
+static void on_abort_signal(int32_t signum);
+static void on_invalid_parameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, uint32_t line, uintptr_t reserved);
+static void on_pure_call();
+
+// The unhandled exception filter belongs to the process, so what it leads to lives as long as the process does. Plain
+// handles rather than C++ synchronization objects: nothing here is destroyed under a reporter still waiting at exit
+static winapi::crash_handlers installed_crash_handlers {};
+static std::atomic_flag crash_claimed {};
+// Each is written by the thread it names, which is also the only one that ever finds its own id there
+static std::atomic<DWORD> crash_claiming_thread_id {};
+static std::atomic<DWORD> crash_reporter_thread_id {};
+static HANDLE crash_report_requested {};
+static HANDLE crash_report_done {};
+static HANDLE crash_thread {};
+static CONTEXT crash_context {};
 
 static auto resolve_kernel_entry(const char* func_name) noexcept -> FARPROC
 {
@@ -311,6 +330,25 @@ auto winapi::get_system_cpu_times() noexcept -> optional<winapi::cpu_core_times>
         .idle_time = file_time_to_ticks(idle_time),
         .total_time = file_time_to_ticks(kernel_time) + file_time_to_ticks(user_time),
     };
+}
+
+auto winapi::fill_system_random(span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t offset = 0;
+
+    while (offset < buf.size()) {
+        auto request_size = static_cast<ULONG>(std::min<size_t>(buf.size() - offset, std::numeric_limits<ULONG>::max()));
+
+        if (!BCRYPT_SUCCESS(::BCryptGenRandom(nullptr, buf.data() + offset, request_size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
+            return false;
+        }
+
+        offset += request_size;
+    }
+
+    return true;
 }
 
 auto winapi::load_library(const string& path) noexcept -> nptr<void>
@@ -760,6 +798,135 @@ void winapi::close_handle(nptr<void> handle) noexcept
     FO_STACK_TRACE_ENTRY();
 
     (void)::CloseHandle(handle.get());
+}
+
+void winapi::install_crash_handlers(const crash_handlers& handlers) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    installed_crash_handlers = handlers;
+
+    // The report runs on a thread of its own, which keeps working after a stack overflow left the faulting thread no room
+    if (crash_report_requested == nullptr) {
+        crash_report_requested = ::CreateEventW(nullptr, FALSE, FALSE, nullptr);
+        crash_report_done = ::CreateEventW(nullptr, TRUE, FALSE, nullptr);
+
+        constexpr SIZE_T reporter_stack_size = SIZE_T {4} * 1024 * 1024;
+        HANDLE reporter = crash_report_requested != nullptr && crash_report_done != nullptr ? ::CreateThread(nullptr, reporter_stack_size, &run_crash_reporter, nullptr, STACK_SIZE_PARAM_IS_A_RESERVATION, nullptr) : nullptr;
+
+        if (reporter != nullptr) {
+            (void)::CloseHandle(reporter);
+        }
+        else {
+            crash_report_requested = nullptr;
+        }
+    }
+
+    (void)::SetUnhandledExceptionFilter(&on_unhandled_exception);
+    (void)std::signal(SIGABRT, &on_abort_signal);
+    (void)::_set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    (void)::_set_purecall_handler(&on_pure_call);
+    (void)::_set_invalid_parameter_handler(&on_invalid_parameter);
+}
+
+static auto WINAPI on_unhandled_exception(EXCEPTION_POINTERS* info) -> LONG
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // A second crash on another thread waits for the report instead of ending the process under it. A crash inside the
+    // report itself ends the process: that thread would only be waiting for itself
+    if (crash_claimed.test_and_set()) {
+        DWORD thread_id = ::GetCurrentThreadId();
+        bool inside_report = thread_id == crash_claiming_thread_id.load() || thread_id == crash_reporter_thread_id.load();
+
+        if (!inside_report && crash_report_done != nullptr) {
+            (void)::WaitForSingleObject(crash_report_done, INFINITE);
+        }
+
+        return EXCEPTION_CONTINUE_SEARCH;
+    }
+
+    crash_claiming_thread_id.store(::GetCurrentThreadId());
+
+    const EXCEPTION_RECORD* record = info != nullptr ? info->ExceptionRecord : nullptr;
+    const CONTEXT* context = info != nullptr ? info->ContextRecord : nullptr;
+
+    if (installed_crash_handlers.on_exception != nullptr) {
+        uint32_t code = 0;
+        uint32_t flags = 0;
+        nptr<const void> address;
+
+        if (record != nullptr) {
+            code = static_cast<uint32_t>(record->ExceptionCode);
+            flags = static_cast<uint32_t>(record->ExceptionFlags);
+            address = record->ExceptionAddress;
+        }
+
+        installed_crash_handlers.on_exception(code, flags, address, context);
+    }
+
+    if (context != nullptr && crash_report_requested != nullptr) {
+        std::memcpy(&crash_context, context, sizeof(CONTEXT));
+        (void)::DuplicateHandle(::GetCurrentProcess(), ::GetCurrentThread(), ::GetCurrentProcess(), &crash_thread, 0, FALSE, DUPLICATE_SAME_ACCESS);
+        (void)::SetEvent(crash_report_requested);
+        (void)::WaitForSingleObject(crash_report_done, INFINITE);
+    }
+    else if (installed_crash_handlers.on_report != nullptr) {
+        installed_crash_handlers.on_report(context, nullptr);
+    }
+
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+static auto WINAPI run_crash_reporter(LPVOID param) -> DWORD
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(param);
+
+    crash_reporter_thread_id.store(::GetCurrentThreadId());
+    (void)::WaitForSingleObject(crash_report_requested, INFINITE);
+
+    if (installed_crash_handlers.on_report != nullptr) {
+        installed_crash_handlers.on_report(&crash_context, crash_thread);
+    }
+
+    (void)::SetEvent(crash_report_done);
+    return 0;
+}
+
+// After the handler returns, abort ends the process itself
+static void on_abort_signal(int32_t signum)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (installed_crash_handlers.on_signal != nullptr) {
+        installed_crash_handlers.on_signal(signum);
+    }
+}
+
+static void on_invalid_parameter(const wchar_t* expression, const wchar_t* function, const wchar_t* file, uint32_t line, uintptr_t reserved)
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    ignore_unused(expression, function, file, line, reserved);
+
+    if (installed_crash_handlers.on_runtime_error != nullptr) {
+        installed_crash_handlers.on_runtime_error("invalid CRT parameter");
+    }
+
+    std::_Exit(EXIT_FAILURE);
+}
+
+static void on_pure_call()
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    if (installed_crash_handlers.on_runtime_error != nullptr) {
+        installed_crash_handlers.on_runtime_error("pure virtual call");
+    }
+
+    std::_Exit(EXIT_FAILURE);
 }
 
 FO_END_NAMESPACE

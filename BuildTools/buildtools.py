@@ -281,7 +281,6 @@ LINUX_PACKAGE_GROUPS = {
 			'php-cli',
 			'wget',
 			'unzip',
-			'binutils-dev',
 		],
 	),
 	'linux-packages': (
@@ -2527,7 +2526,7 @@ MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_i
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
-MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry_win7_stack_bounds'
 MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
@@ -2751,6 +2750,29 @@ def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
 		log('Patched', path, '- C and C++ objects embed their debug info')
 
 
+MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER = '(FOnline Patch) Stack bounds come from VirtualQuery, which Windows 7 has'
+
+
+def patch_runtime_windows_7_stack_bounds(runtime_root: Path) -> None:
+	# Mono compiles for Windows 8, and this branch is its one GetCurrentThreadStackLimits import: linked statically, it lands
+	# in the executable, which Windows 7 then refuses to load. The VirtualQuery branch beside it works on every version
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'mono-threads-windows.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = '#if _WIN32_WINNT >= 0x0602 // Windows 8 or newer and very fast, just a few instructions, no syscall.\n'
+
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the Mono Windows stack bounds, unique anchor not found in {path}: {anchor.strip()}')
+
+	path.write_text(text.replace(anchor, f'/* {marker} */\n#if 0 // Windows 8 or newer: GetCurrentThreadStackLimits\n', 1), encoding='utf-8')
+	log('Patched', path, '- thread stack bounds no longer import GetCurrentThreadStackLimits')
+
+
 MONO_ISA_FALLBACK_PATCH_MARKER = '(FOnline Patch) An ISA class the JIT does not implement reports IsSupported as false'
 
 
@@ -2787,6 +2809,205 @@ def patch_runtime_isa_is_supported_fallback(runtime_root: Path) -> None:
 
 	path.write_text(text.replace(anchor, patch + anchor, 1), encoding='utf-8')
 	log('Patched', path, '- unimplemented ISA classes report IsSupported as false')
+
+
+MONO_WINDOWS_SUSPEND_RETRY_PATCH_MARKER = '(FOnline Patch) A thread the OS refuses to stop is retried while it lives'
+
+
+def patch_runtime_windows_suspend_retry(runtime_root: Path) -> None:
+	# The preemptive stop-the-world stops every thread with SuspendThread and GetThreadContext, and when either call fails
+	# it skips the thread: its stack and handles go unscanned. A skipped thread that keeps running then holds references
+	# the collection moved or freed, and the corruption surfaces anywhere later - in a card-table scan, in finalization,
+	# as a boxed value of the wrong type. A refusal is only safe to accept from a thread that has exited and never runs
+	# again, so a live thread is retried, and one that stays unstoppable ends the process naming the thread and the error.
+	# A live thread stopped only after refusals is reported as well, because that refusal would have been a skip before.
+	# A thread inside its kernel exit refuses too until it is scheduled to finish; a ready thread starves for at most
+	# about four seconds before the balance-set manager boosts it, so the budget is five
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'mono-threads-windows.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_WINDOWS_SUSPEND_RETRY_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	# The world is partly stopped while these run, and a thread already stopped may hold the heap, a stdio or the loader
+	# lock, so the report allocates nothing, formats by hand and writes straight to the handle, and the one export it
+	# needs is resolved at runtime initialization
+	init_anchor = 'void\nmono_threads_suspend_init (void)\n{\n}\n'
+	helpers = f'''/* {marker} */
+#define FO_SUSPEND_RETRY_MS 5000
+
+typedef LONG (WINAPI *fo_query_thread_fn) (HANDLE, ULONG, PVOID, ULONG, PULONG);
+static fo_query_thread_fn fo_query_thread;
+
+void
+mono_threads_suspend_init (void)
+{{
+	fo_query_thread = (fo_query_thread_fn) GetProcAddress (GetModuleHandleW (L"ntdll.dll"), "NtQueryInformationThread");
+}}
+
+static gboolean
+fo_thread_is_alive (HANDLE handle)
+{{
+	return WaitForSingleObject (handle, 0) == WAIT_TIMEOUT;
+}}
+
+static char *
+fo_append_text (char *out, char *end, const char *text)
+{{
+	while (*text && out < end)
+		*out++ = *text++;
+
+	return out;
+}}
+
+static char *
+fo_append_number (char *out, char *end, ULONGLONG value)
+{{
+	char digits [24];
+	int count = 0;
+
+	do {{
+		digits [count++] = (char) ('0' + value % 10);
+		value /= 10;
+	}} while (value);
+
+	while (count && out < end)
+		*out++ = digits [--count];
+
+	return out;
+}}
+
+static char *
+fo_append_thread_name (char *out, char *end, HANDLE handle)
+{{
+	/* THREAD_NAME_INFORMATION: a UNICODE_STRING whose buffer follows it */
+	typedef struct {{ USHORT length; USHORT maximum_length; PWSTR buffer; }} fo_thread_name;
+	ULONGLONG storage [72];
+	fo_thread_name *name = (fo_thread_name *) storage;
+	ULONG size = 0;
+	int count;
+
+	if (!fo_query_thread || fo_query_thread (handle, 38 /* ThreadNameInformation */, storage, (ULONG) sizeof (storage), &size) < 0)
+		return out;
+
+	count = name->length / 2;
+	for (int i = 0; i < count && out < end; i++)
+		*out++ = name->buffer [i] < 0x80 ? (char) name->buffer [i] : '?';
+
+	return out;
+}}
+
+static void
+fo_report_refusals (HANDLE handle, DWORD id, const char *what, DWORD error, ULONGLONG elapsed, gboolean fatal)
+{{
+	char message [512];
+	char *out = message;
+	char *end = message + sizeof (message) - 1;
+	DWORD written = 0;
+
+	if (fatal) {{
+		out = fo_append_text (out, end, "* Cannot ");
+		out = fo_append_text (out, end, what);
+		out = fo_append_text (out, end, " running thread ");
+	}} else {{
+		out = fo_append_text (out, end, "* Stopped running thread ");
+	}}
+
+	out = fo_append_number (out, end, id);
+	out = fo_append_text (out, end, " ('");
+	out = fo_append_thread_name (out, end, handle);
+	out = fo_append_text (out, end, fatal ? "') after " : "') only after ");
+	out = fo_append_number (out, end, elapsed);
+	out = fo_append_text (out, end, " ms of refusals");
+
+	if (!fatal) {{
+		out = fo_append_text (out, end, " to ");
+		out = fo_append_text (out, end, what);
+		out = fo_append_text (out, end, " it");
+	}}
+
+	out = fo_append_text (out, end, " (Windows error ");
+	out = fo_append_number (out, end, error);
+	out = fo_append_text (out, end, fatal ? "); skipping a running thread would corrupt the managed heap" : ")");
+	*out++ = '\\n';
+	WriteFile (GetStdHandle (STD_ERROR_HANDLE), message, (DWORD) (out - message), &written, NULL);
+
+	if (fatal)
+		abort ();
+}}
+
+static DWORD
+fo_suspend_thread_retrying (HANDLE handle, DWORD id)
+{{
+	DWORD result = SuspendThread (handle);
+	ULONGLONG started = 0;
+	DWORD error = 0;
+
+	while (result == (DWORD)-1) {{
+		error = GetLastError ();
+
+		if (!fo_thread_is_alive (handle))
+			return result;
+
+		if (!started)
+			started = GetTickCount64 ();
+		else if (GetTickCount64 () - started >= FO_SUSPEND_RETRY_MS)
+			fo_report_refusals (handle, id, "suspend", error, GetTickCount64 () - started, TRUE);
+
+		SwitchToThread ();
+		result = SuspendThread (handle);
+	}}
+
+	if (started)
+		fo_report_refusals (handle, id, "suspend", error, GetTickCount64 () - started, FALSE);
+
+	return result;
+}}
+
+static BOOL
+fo_get_thread_context_retrying (HANDLE handle, DWORD id, PCONTEXT context)
+{{
+	ULONGLONG started = 0;
+	DWORD error = 0;
+
+	while (!GetThreadContext (handle, context)) {{
+		error = GetLastError ();
+
+		if (!fo_thread_is_alive (handle))
+			return FALSE;
+
+		if (!started)
+			started = GetTickCount64 ();
+		else if (GetTickCount64 () - started >= FO_SUSPEND_RETRY_MS)
+			fo_report_refusals (handle, id, "read the context of", error, GetTickCount64 () - started, TRUE);
+
+		SwitchToThread ();
+	}}
+
+	if (started)
+		fo_report_refusals (handle, id, "read the context of", error, GetTickCount64 () - started, FALSE);
+
+	return TRUE;
+}}
+'''
+	patches = (
+		(init_anchor, helpers),
+		('\tresult = SuspendThread (handle);\n\tTHREADS_SUSPEND_DEBUG ("SUSPEND %p -> %u\\n", GUINT_TO_POINTER (id), result);\n',
+		 '\tresult = fo_suspend_thread_retrying (handle, id);\n\tTHREADS_SUSPEND_DEBUG ("SUSPEND %p -> %u\\n", GUINT_TO_POINTER (id), result);\n'),
+		('\tif (!GetThreadContext (handle, context)) {\n\t\tresult = ResumeThread (handle);\n',
+		 '\tif (!fo_get_thread_context_retrying (handle, id, context)) {\n\t\tresult = ResumeThread (handle);\n'),
+	)
+
+	for needle, replacement in patches:
+		if text.count(needle) != 1:
+			raise SystemExit(f'Cannot patch the Mono Windows thread suspension, unique anchor not found in {path}: {needle.splitlines()[0]}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched', path, '- a live thread is never skipped by the stop-the-world')
 
 
 def discard_runtime_local_tasks_semaphore(runtime_root: Path) -> None:
@@ -3283,6 +3504,8 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
+			patch_runtime_windows_7_stack_bounds(runtime_root)
+			patch_runtime_windows_suspend_retry(runtime_root)
 
 		# The targets with a 32-bit architecture, where the JIT implements no hardware intrinsic class
 		if os_name in ('windows', 'android'):

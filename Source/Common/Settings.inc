@@ -125,6 +125,7 @@ SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in milliseconds
 SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
+SETTING(string, ServerNetwork, ChannelSecretKey, ""); // Secure channel static X25519 secret key, 64 hex digits; every server needs it, in-process connections included
 SETTING_GROUP_END(ServerNetwork);
 
 ///@ ExportSettings Client
@@ -132,7 +133,7 @@ SETTING_GROUP(ClientNetwork, virtual NetworkSettings)
 SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
 SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
-SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
+SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
@@ -140,6 +141,7 @@ SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
 SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
 SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
+SETTING(vector<string>, ClientNetwork, ChannelServerKeys); // Pinned secure channel server public keys, 64 hex digits each; all are offered at once, so the next key can be pinned ahead of a rotation
 SETTING_GROUP_END(ClientNetwork);
 
 ///@ ExportSettings Client

@@ -1151,6 +1151,82 @@ End
         return false;
     }
 
+    // Talks to the server's interthread listener by hand, so a test can write raw messages; the secure channel runs
+    // underneath as on every connection. The listener callback shares the state, so it may outlive this object
+    class RawChannelClient final
+    {
+    public:
+        explicit RawChannelClient(uint16_t port) :
+            _state {safe_alloc::make_shared<State>()}
+        {
+            vector<crypto::key_bytes> server_keys {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")};
+            _channel.emplace(server_keys);
+
+            _send = FindInterthreadListener(port).value()([state = _state](const_span<uint8_t> data) mutable {
+                scoped_lock locker {state->Locker};
+
+                if (data.empty()) {
+                    state->Disconnected = true;
+                }
+                else {
+                    state->Received.insert(state->Received.end(), data.begin(), data.end());
+                }
+            });
+
+            vector<uint8_t> offer;
+            _channel->TakeHandshakeOutput(offer);
+            _send(offer);
+        }
+
+        [[nodiscard]] auto IsDisconnected() -> bool
+        {
+            scoped_lock locker {_state->Locker};
+
+            return _state->Disconnected;
+        }
+
+        // Everything the server has sent so far, decrypted
+        [[nodiscard]] auto GetPlaintext() -> vector<uint8_t>
+        {
+            vector<uint8_t> received;
+
+            {
+                scoped_lock locker {_state->Locker};
+
+                received = std::move(_state->Received);
+                _state->Received.clear();
+            }
+
+            _channel->Receive(received, _plaintext);
+            return _plaintext;
+        }
+
+        void Send(const_span<uint8_t> plaintext)
+        {
+            (void)GetPlaintext();
+            REQUIRE(_channel->IsEstablished());
+
+            vector<uint8_t> sealed;
+            _channel->Seal(plaintext, sealed);
+            _send(sealed);
+        }
+
+        void Close() { _send({}); }
+
+    private:
+        struct State
+        {
+            mutex Locker {};
+            vector<uint8_t> Received {};
+            bool Disconnected {};
+        };
+
+        shared_ptr<State> _state;
+        optional<SecureChannel> _channel {};
+        vector<uint8_t> _plaintext {};
+        InterthreadDataCallback _send {};
+    };
+
     static auto WaitForConnected(ptr<ClientEngine> client, ptr<ServerEngine> server, size_t expected_connections = 1) -> bool
     {
         for (int32_t i = 0; i < 2000; i++) {
@@ -1780,13 +1856,7 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     exceptions::set_callback([&exception_reports](string_view, const stack_trace::catched_data&, bool) { exception_reports.fetch_add(1); });
     auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
 
-    std::atomic_bool disconnected {};
-    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
-        if (data.empty()) {
-            disconnected.store(true);
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     auto malformed_handshake = NetOutBuffer(64);
@@ -1794,10 +1864,10 @@ TEST_CASE("ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport")
     malformed_handshake.Write<uint32_t>(std::numeric_limits<uint32_t>::max());
     malformed_handshake.Write<uint16_t>(uint16_t {0});
     malformed_handshake.EndMsg();
-    send_to_server(malformed_handshake.GetData());
+    client.Send(malformed_handshake.GetData());
 
     REQUIRE(WaitForServerConnectionCount(server, 0));
-    CHECK(disconnected.load());
+    CHECK(client.IsDisconnected());
     CHECK(exception_reports.load() == 0);
 }
 
@@ -1824,20 +1894,14 @@ TEST_CASE("ServerDisconnectsPreLoginConnectionAfterLoginTimeout")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    std::atomic_bool disconnected {};
-    auto send_to_server = FindInterthreadListener(port).value()([&disconnected](const_span<uint8_t> data) {
-        if (data.empty()) {
-            disconnected.store(true);
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
-    for (int32_t i = 0; i < 2000 && !disconnected.load(); i++) {
+    for (int32_t i = 0; i < 2000 && !client.IsDisconnected(); i++) {
         std::this_thread::sleep_for(std::chrono::milliseconds {2});
     }
 
-    CHECK(disconnected.load());
+    CHECK(client.IsDisconnected());
     CHECK(WaitForServerConnectionCount(server, 0));
 }
 
@@ -1863,15 +1927,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    mutex received_data_lock;
-    vector<uint8_t> received_data;
-    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
-        if (!data.empty()) {
-            scoped_lock locker {received_data_lock};
-            received_data.insert(received_data.end(), data.begin(), data.end());
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     // A binary-compatible client whose resources come from another bake: the layout verdict is what keeps its
@@ -1883,18 +1939,13 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     handshake.Write<string_view>("0123456789abcdef");
     handshake.Write<uint32_t>(FO_UPDATER_VERSION);
     handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
-    send_to_server(handshake.GetData());
+    client.Send(handshake.GetData());
 
     bool received_answer = false;
 
     for (int32_t i = 0; i < 2000 && !received_answer; i++) {
-        vector<uint8_t> response_data;
-        {
-            scoped_lock locker {received_data_lock};
-            response_data = received_data;
-        }
+        vector<uint8_t> response_data = client.GetPlaintext();
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -1906,8 +1957,6 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<bool>());
                 CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
-                CHECK(response_encrypt_key != 0);
                 received_answer = true;
             }
         }
@@ -1918,7 +1967,7 @@ TEST_CASE("ServerReportsMetadataMismatchInHandshake")
     }
 
     REQUIRE(received_answer);
-    send_to_server({});
+    client.Close();
     CHECK(WaitForServerConnectionCount(server, 0));
 }
 
@@ -1944,15 +1993,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     REQUIRE(startup_error.empty());
     REQUIRE(HasInterthreadListener(port));
 
-    mutex received_data_lock;
-    vector<uint8_t> received_data;
-    auto send_to_server = FindInterthreadListener(port).value()([&received_data_lock, &received_data](const_span<uint8_t> data) {
-        if (!data.empty()) {
-            scoped_lock locker {received_data_lock};
-            received_data.insert(received_data.end(), data.begin(), data.end());
-        }
-    });
-    REQUIRE(send_to_server);
+    RawChannelClient client {port};
     REQUIRE(WaitForServerConnectionCount(server, 1));
 
     static_assert(FO_UPDATER_VERSION > 1);
@@ -1962,17 +2003,12 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     handshake.Write(server->GetMetadataVersion());
     handshake.Write<uint32_t>(FO_UPDATER_VERSION - 1);
     handshake.Write<string_view>("Linux-x64");
-    handshake.Write<uint32_t>(0x12345678);
     handshake.EndMsg();
-    send_to_server(handshake.GetData());
+    client.Send(handshake.GetData());
 
     bool received_rejection = false;
     for (int32_t i = 0; i < 2000 && !received_rejection; i++) {
-        vector<uint8_t> response_data;
-        {
-            scoped_lock locker {received_data_lock};
-            response_data = received_data;
-        }
+        vector<uint8_t> response_data = client.GetPlaintext();
 
         if (!response_data.empty()) {
             NetInBuffer response {response_data.size()};
@@ -1984,9 +2020,6 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
                 CHECK(response.Read<bool>());
                 CHECK_FALSE(response.Read<bool>());
                 CHECK(response.Read<string>() == server->GetMetadataVersion());
-                uint32_t response_encrypt_key = response.Read<uint32_t>();
-                CHECK(response_encrypt_key != 0);
-                response.SetEncryptKey(response_encrypt_key);
 
                 if (response.NeedProcess()) {
                     REQUIRE(response.ReadMsg() == NetMessage::Disconnect);
@@ -2003,7 +2036,7 @@ TEST_CASE("ServerRejectsUnsafeUpdaterGenerationBeforeInitData")
     }
 
     REQUIRE(received_rejection);
-    send_to_server({});
+    client.Close();
     REQUIRE(WaitForServerConnectionCount(server, 0));
 }
 

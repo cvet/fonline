@@ -37,6 +37,7 @@
 
 #include "NetBuffer.h"
 #include "NetworkClient.h"
+#include "SecureChannel.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -89,6 +90,8 @@ public:
 
 private:
     void CreateNetworkConnection(bool use_udp);
+    void StartSecureChannel();
+    void ResetConnectionState() noexcept;
     void ProcessConnection();
     auto ReceiveData() -> bool;
     void SendData();
@@ -103,6 +106,9 @@ private:
 
     ptr<ClientNetworkSettings> _settings;
     unique_nptr<NetworkClientConnection> _netConnection {};
+    optional<SecureChannel> _channel {};
+    vector<uint8_t> _channelPlaintext {};
+    vector<uint8_t> _sealedOut {};
     bool _connectingOverUdp {};
     bool _connectingHandled {};
     bool _udpFallbackTried {};

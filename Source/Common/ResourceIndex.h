@@ -43,7 +43,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(ResourceIndexException);
 
 // The merged resource tree: one file naming every path the packs present and where its bytes live, carried by
-// a `.foindex` file. It holds references only - no payload. Full contract: Docs/ResourcePackFormat.md
+// a `.foindex` file. It holds references only - no payload
 constexpr uint32_t RESOURCE_INDEX_MAGIC = 0x58494F46; // "FOIX"
 constexpr uint16_t RESOURCE_INDEX_VERSION_MAJOR = 2;
 constexpr uint16_t RESOURCE_INDEX_VERSION_MINOR = 0;

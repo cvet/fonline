@@ -707,7 +707,7 @@ void Updater::GetNextFile()
             }
 
             // Refusing a pack that will not fit leaves the installed one alone, where running the volume dry
-            // mid-transfer leaves a temp file and a download to repeat. See Docs/ClientUpdater.md
+            // mid-transfer leaves a temp file and a download to repeat
             auto available = fs::available_space(dir);
 
             if (available.has_value() && *available < next_update_file.RemaningSize) {

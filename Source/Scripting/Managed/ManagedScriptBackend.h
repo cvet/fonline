@@ -64,6 +64,7 @@ public:
     auto ReadClientScriptsImage() -> vector<uint8_t>;
     void BindRequiredStuff();
     void Process() override;
+    void SignalContinuationsReady();
     void AddManagedGlobalFunc(unique_ptr<ScriptFuncDesc> desc);
     void AdoptPersistentGcHandle(uint32_t gc_handle);
     void BuildAbiTables();
@@ -86,6 +87,7 @@ private:
     vector<nptr<void>> _images {};
     vector<nptr<void>> _continuationPumps {};
     vector<nptr<void>> _continuationShutdowns {};
+    std::atomic<bool> _continuationsReady {};
     vector<nptr<void>> _backendUnbinds {};
     vector<unique_ptr<ScriptFuncDesc>> _globalFuncs {};
     vector<uint32_t> _persistentGcHandles {};

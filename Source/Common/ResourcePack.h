@@ -45,7 +45,7 @@ FO_DECLARE_EXCEPTION(ResourcePackException);
 constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = ".fobackup";
 
 // The engine resource pack format: a header, the payload blobs and the index over them in one file, carried
-// by a `.fores` file. Full contract: Docs/ResourcePackFormat.md
+// by a `.fores` file
 constexpr uint32_t RESOURCE_PACK_MAGIC = 0x53524F46; // "FORS"
 constexpr uint16_t RESOURCE_PACK_VERSION_MAJOR = 2;
 constexpr uint16_t RESOURCE_PACK_VERSION_MINOR = 0;
@@ -260,7 +260,7 @@ private:
 };
 
 // Proves that a local pair reads back as what it claims, a bounded slice at a time, so a caller can keep a screen and a
-// connection alive over a large pack. See Docs/ResourcePackFormat.md
+// connection alive over a large pack
 class ResourcePairVerifier final
 {
 public:

@@ -425,8 +425,8 @@ if(WIN32)
 	endif()
 
 	SetValue(CMAKE_SYSTEM_VERSION 6.1)
-	AddCompileDefinitionsList(_WIN32_WINNT=0x0601)
 	AddCompileDefinitionsList(
+		_WIN32_WINNT=0x0601
 		UNICODE
 		_UNICODE
 		_CRT_SECURE_NO_WARNINGS
@@ -450,6 +450,12 @@ if(WIN32)
 		$<$<NOT:${expr_FullOptimization}>:/fp:precise>
 		$<${expr_FullOptimization}:/GL>
 		$<${expr_DebugInfo}:/Zi>)
+
+	# Stack walking on 32-bit Windows follows the chain of saved frame pointers, and a function compiled without one
+	# drops itself and everyone it calls out of every trace; on 64-bit Windows the function tables carry the walk instead
+	if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+		AddCompileOptionsList(/Oy-)
+	endif()
 
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		AddCompileOptionsList(/MP /Zc:preprocessor)
@@ -475,7 +481,7 @@ if(WIN32)
 		AddCompileOptionsList($<${expr_DebugBuild}:/MDd> $<$<NOT:${expr_DebugBuild}>:/MD>)
 	endif()
 
-	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi")
+	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "bcrypt")
 
 	if(NOT FO_HEADLESS_ONLY)
 		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")
@@ -494,6 +500,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
+
+	# -rdynamic would also export the static LibreSSL, and a system libcrypto loaded later (the managed crypto shim
+	# opens libssl itself) would bind its own internal calls to those unversioned definitions
+	AddLinkOptionsList(-Wl,--exclude-libs,libssl.a:libcrypto.a:libtls.a)
 
 	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList(-fPIC)
@@ -686,8 +696,7 @@ AddCompileDefinitionsList(
 	FO_MAC=${FO_MAC}
 	FO_ANDROID=${FO_ANDROID}
 	FO_IOS=${FO_IOS}
-	FO_WEB=${FO_WEB})
-AddCompileDefinitionsList(
+	FO_WEB=${FO_WEB}
 	FO_HAVE_OPENGL=${FO_HAVE_OPENGL}
 	FO_OPENGL_ES=${FO_OPENGL_ES}
 	FO_HAVE_DIRECT_3D=${FO_HAVE_DIRECT_3D}

@@ -189,8 +189,8 @@ lock, when the host exits.
 before it even queries the exports, and does not unload it when the runtime is rejected or returns.
 The runtimes statically linked into it install process-wide hooks during the library's own static
 initialization and first run that cannot be withdrawn — Mono's vectored exception handler and
-unhandled-exception filter, rpmalloc's per-thread FLS cleanup callback, the backward-cpp crash
-filter — so unmapping the library would leave them pointing at nothing. (With the static CRT a
+unhandled-exception filter, rpmalloc's per-thread FLS cleanup callback, the engine's crash
+filter and its reporter thread — so unmapping the library would leave them pointing at nothing. (With the static CRT a
 running `std::thread` also keeps its module mapped, which is why an earlier `FreeLibrary` here never
 actually unloaded anything.) Two consequences follow. The strings a `ClientRuntimeResult` points at
 are published into storage the library owns (`CaptureClientRuntimeResultStrings`), because the
@@ -308,11 +308,15 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `LastFrontier.dll.pdb`) i
 Versioned by `FO_UPDATER_VERSION` ([../Source/Common/Common.h](../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Generation 3 changes what `hash` means for a resource pack entry - the header
-`PackHash` rather than the whole-file digest - which a generation-2 client would compare against a digest it
-computes itself and re-download for ever, so it is refused the same way. Generation 4 adds each resource
-base's header to the descriptor and turns `GetUpdateFile` into a bounded range request (`requested_size`,
-`expected_hash`), which the per-resource patch sync below needs. Gameplay compatibility
+in-process runtime reload. Generation 3 runs the whole exchange inside the secure channel
+([Networking.md](Networking.md#secure-channel)) and drops the session keys the handshake used to carry; a
+generation-2 runtime cannot complete that channel, so it fails to connect instead of receiving `updater_outdated`.
+Generation 4 is the `.fores` resource format built beside it without the channel: `hash` of a resource pack entry
+is the header `PackHash` rather than the whole-file digest, the descriptor carries each resource base's header, and
+`GetUpdateFile` is a bounded range request (`requested_size`, `expected_hash`), which the per-resource patch sync
+below needs. Generation 5 is the two together. A generation-3 client is refused before any transfer, since it would
+compare `PackHash` against a digest it computes itself and re-download for ever, and a generation-4 one cannot
+complete the channel; each of them needs the latest full client package once. Gameplay compatibility
 (`Settings.Network.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake
@@ -323,12 +327,10 @@ base's header to the descriptor and turns `GetUpdateFile` into a bounded range r
 | client â†’ server | `MetadataVersion` | `string` | baked metadata version, empty while the updater has no resources of its own |
 | client â†’ server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client â†’ server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
-| client â†’ server | `in_encrypt_key` | `uint32` | session keys |
 | server â†’ client | `compatibility_outdated` | `bool` | gameplay version mismatch |
 | server â†’ client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch â€” protocol is unusable |
 | server â†’ client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server â†’ client | `MetadataVersion` | `string` | the metadata version the server itself runs on |
-| server â†’ client | `out_encrypt_key` | `uint32` | session keys |
 
 `updater_outdated == true` is fatal to the connection â€” the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 
@@ -620,7 +622,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Server packages** also stage every available client runtime library under `<Settings.Baking.PlatformBinaries>/<binary_target>/<output_name><runtime_ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) so a different-platform client connecting to this server can self-update its native modules.
 - **Managed class libraries are platform-specific resource data.** The Managed baker places the filtered payload under `ManagedRuntime/` in its resource pack and tags each managed assembly directory with the standard resource-role suffix. `package.py` filters those directory components, keeps only `Assemblies/Assemblies-client/` in each Client copy, rebuilds it with that target's side-by-side clean payload, and stages corresponding Server updater copies under `PlatformBinaries/<target>/<pack>.fores`; Server and Mapper assemblies are not delivered to clients, the side-by-side directory is not shipped, and native Mono files are not hoisted into package roots. Web and Android use the same resource path but receive their own target contents.
 - **Windows Client packages with the `Wix` pack** build an additive MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or explicit command-line/UI choice still overrides that default. WiX/wixl and the generated MSI are required when the pack requests `Wix`; a missing toolset or generator failure aborts the package instead of silently publishing only Raw/Zip.
-- **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp / `backward-cpp` resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
+- **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (e.g. `LastFrontier.dll.pdb`) â€” both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp resolves symbols automatically (`StackTrace.cpp` also puts each module's directory on the DbgHelp search path) without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging â€” symbol gaps are never silently tolerated.
 - **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
@@ -720,7 +722,7 @@ instead of looping back to the game which would only reject the connection again
 | Stale staging file | `<live>-staging` survived a previous failed swap; the next `LF_Client.exe` startup promotes it via `ApplyStagedBinaryUpdate` before loading the runtime |
 | Linux host logs `LoadModule failed` for a present, valid runtime `.so`, then `trying embedded fallback` on every launch | `dlopen` rejected the module. Two engine build rules must hold (see "Linux module isolation" above): the module is linked with `-Wl,-Bsymbolic` (`AddSharedApplication`), and no vendored code forces initial-exec TLS on Linux — an IE-model TLS relocation fails `dlopen` with `cannot allocate memory in static TLS block` (diagnose with a standalone `dlopen` of the `.so`, e.g. via `python3 -c "import ctypes; ctypes.CDLL('./<runtime>.so')"`). A silently-engaged embedded fallback makes a native self-update loop: the downloaded `.so` is promoted on disk but never executed |
 | Self-update downloads and then waits on the update screen | This is the expected native flow. Close the client after the restart prompt; the host promotes the staged runtime and exits, and the next user launch starts the updated runtime with one clean `InitApp`. Hosts predating this policy are rejected by updater generation 2 / runtime ABI 3 and require the latest full client package instead of attempting the unsafe second initialization |
-| Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), `dbghelp`/`backward-cpp` cannot find the PDB and frames in the runtime resolve to addresses only |
+| Stack trace shows raw addresses for the new runtime DLL | After a binary self-update the renamed `<live>.dll`'s CodeView entry must reference its sibling `<live>.dll.pdb`. If `package.py` skipped the RSDS patch (it will assert when this happens), DbgHelp cannot find the PDB and frames in the runtime resolve to addresses only |
 | Stack trace shows raw addresses for **host** (`<host>.exe`) frames after a self-update, while runtime-DLL frames resolve | The on-disk `<host_name>.pdb` doesn't match the frozen exe (CodeView GUID differs) — typically a leftover from an old updater build that clobbered the matching host PDB with a newer server-build one. The current updater never overwrites a present host PDB and fetches one only when the local copy is missing, so the fix is to delete the mismatched `<host_name>.pdb`: an up-to-date host then re-downloads the matching one; otherwise restore the host PDB shipped with that exe build (matching CodeView GUID). A mis-walked stack through unsymbolized host frames can also surface bogus top frames (e.g. attributing the fault to an unrelated system DLL) |
 
 Local validation steps:

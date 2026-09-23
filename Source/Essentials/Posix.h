@@ -69,6 +69,7 @@ namespace posix
     auto get_process_cpu_time_ns() noexcept -> optional<uint64_t>;
     auto get_logical_core_count() noexcept -> uint32_t;
     auto get_system_cpu_times() noexcept -> vector<cpu_core_times>;
+    auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
 
     // A file this process holds alone: a second opener is refused rather than allowed to share it. Absent on
     // the web build, which has no advisory lock to hold it with
@@ -113,6 +114,13 @@ namespace posix
     // A null module handle searches the default scope, which is how the engine reaches its own exports
     auto get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>;
 #endif
+
+    // The handler runs on the thread that raised the signal, on its crash stack, with the signal's ucontext_t as the
+    // context; once it returns the signal takes its default action. Installed for the life of the process
+    using crash_signal_handler = void (*)(int32_t signum, int32_t code, nptr<const void> address, nptr<const void> context) noexcept;
+    void install_crash_signal_handlers(crash_signal_handler handler) noexcept;
+    // Gives the calling thread a stack of its own for the crash handler, so a stack overflow can still be reported
+    void install_crash_signal_stack() noexcept;
 }
 
 FO_END_NAMESPACE

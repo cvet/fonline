@@ -15,7 +15,7 @@ In Last Frontier-style builds the dev-name prefix is `LF`, so the common target 
 
 ## Current test suites
 
-Current count: **113** `Test_*.cpp` suites.
+Current count: **118** `Test_*.cpp` suites.
 
 `Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
 retain their result across another thread's final release and that an older entity cannot unregister
@@ -32,6 +32,7 @@ when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always presen
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`
@@ -95,6 +96,8 @@ when `FO_MANAGED_SCRIPTING` is enabled. Backend-neutral suites are always presen
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEventContracts.cpp`

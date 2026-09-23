@@ -25,10 +25,10 @@ Use this page when choosing validation for an engine change or when adding/remov
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. It rejects the reported `CreateFile2` import; embedding-project CI should run it after linking and before packaging.
-
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
+
+`BuildTools/check_windows7_imports.py <binary> [...]` is a standalone PE-level regression check for Windows 7 artifacts. The loader resolves every static import before the process runs, so a single export Windows 7 SP1 lacks stops the start with "entry point not found". The check rejects imports of the listed `kernel32` / `user32` / `dxgi` / `d3d11` exports added in Windows 8 and later (`CreateFile2`, `GetCurrentThreadStackLimits`, `GetSystemTimePreciseAsFileTime`, `SetThreadDescription`, the per-monitor DPI functions and others), any import from a library Windows 7 does not ship (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`), and any API-set contract other than the Universal CRT forwarders (`api-ms-win-crt-*`). The list is curated, not derived, so a newly met Windows 8+ export is added to it together with the fix that removes its import. Statically linked third-party archives - the managed runtime among them - land in the same import table and are covered by the same check. Embedding-project CI should run it after linking and before packaging.
 
 For an embedding project with dev name `LF`, the standard generated names are `LF_UnitTests`, `RunUnitTests`, `LF_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
@@ -274,9 +274,10 @@ sanitizer-report unwinding do not self-report on ABI register snapshots. `San_Me
 also configures libbson without `strlcpy`: MSan does not intercept the glibc function, so
 every string libbson copies with it (MongoDB URI option keys among them) would read as
 uninitialized, while its `strncpy` fallback is intercepted. Engine
-native stack capture and the backward-cpp signal handler are disabled under MSan and
-TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
-under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive and
+native stack capture and the crash handlers are disabled under MSan and
+TSan so the sanitizer runtimes own their reports. The bundled LLVM libunwind and libbacktrace that
+walk and name those stacks on Linux are compiled without instrumentation, as the system code they
+replaced was, because they read other frames' stack and debug info from inside crash handlers. The embedded Mono archive and
 its generated JIT code are not instrumented by the host sanitizer toolchain. Managed-script
 builds therefore reject `San_Memory*`: valid runtime writes otherwise retain poisoned shadow
 bytes and report as soon as Mono loads CoreLib. They also reject `San_Thread`: Mono suspends
@@ -340,12 +341,11 @@ LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=d
 It runs with **no suppression list** — every leak it can report is fixed at the source rather than
 masked. Notable cases:
 
-- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
-  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
-  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`get_native_trace_resolver`, serialized by `stack_trace_state::native_resolver_locker`): it is created
-  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
-  and those libbfd caches remain reachable — LSan does not report them.
+- The libbacktrace state that names native frames on Linux (`Source/Essentials/StackTrace.cpp`) keeps the
+  debug info it read for the life of the process, in memory it maps itself rather than through `malloc`,
+  and the state stays reachable from the process-lifetime `stack_trace_state`
+  (serialized by `stack_trace_state::native_resolver_locker`), so each binary is read once and LSan has
+  nothing to report.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
 - Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
@@ -524,18 +524,17 @@ failed - drive only what is reachable.
 
 ### Covering the crash reporter
 
-`ExceptionHandling.cpp` publishes `SetCrashStackTrace`, `SetCrashSignalInfo`,
-`SetCrashSehInfo`, `SetCrashTerminationInfo` and `GetCrashStream` to
-`backward.hpp` only — they carry no engine namespace and appear in no engine
-header, so a test declares them exactly as that header does. The report is
-emitted through the base log on the first write to the crash stream, so point
-`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
-the report back instead of letting "FATAL ERROR!" leak into the test console.
+The crash handlers record their reason through `exceptions::set_crash_signal_reason`,
+`set_crash_exception_reason` and `set_crash_termination_reason` and write the report with
+`exceptions::write_crash_report(st)`, which a test calls directly. The report goes through the
+base log, so point `logging::to_file` at a private file and read the report back instead of
+letting "FATAL ERROR!" leak into the test console.
 Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
 through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
-layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
+layer, `main_bad_call` covers the walk that recovers the callers of a call through a null function
+pointer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's
 `Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
 contracts without killing the unit-test process.
@@ -670,7 +669,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **108** `Test_*.cpp` suites.
+Current count: **118** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -679,6 +678,7 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -747,6 +747,8 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`

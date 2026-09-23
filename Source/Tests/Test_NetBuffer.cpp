@@ -101,32 +101,6 @@ TEST_CASE("NetBuffer")
         CHECK(in_buf.GetReadPos() == 0);
     }
 
-    SECTION("EncryptionRoundtripPreservesPayload")
-    {
-        NetOutBuffer out_buf {8};
-        out_buf.SetEncryptKey(123456);
-        out_buf.StartMsg(NetMessage::RemoteCall);
-        out_buf.Write<uint32_t>(0xABCD1234);
-        out_buf.Write<string_view>("secret");
-        out_buf.EndMsg();
-
-        auto data = out_buf.GetData();
-        CHECK(data.size() > sizeof(uint32_t));
-
-        uint32_t stored_signature = 0;
-        std::memcpy(&stored_signature, data.data(), sizeof(stored_signature));
-        CHECK(stored_signature != NetBuffer::NETMSG_SIGNATURE);
-
-        NetInBuffer in_buf {8};
-        in_buf.SetEncryptKey(123456);
-        in_buf.AddData(data);
-
-        CHECK(in_buf.NeedProcess());
-        CHECK(in_buf.ReadMsg() == NetMessage::RemoteCall);
-        CHECK(in_buf.Read<uint32_t>() == 0xABCD1234);
-        CHECK(in_buf.Read<string>() == "secret");
-    }
-
     SECTION("HashedStringRoundtrip")
     {
         hash_storage hashes {};
@@ -292,15 +266,12 @@ TEST_CASE("NetBuffer")
 
 TEST_CASE("NetBufferAdversarial")
 {
-    // Deterministically corrupt encrypted frames through the full receive pipeline.
-    // Parsing may succeed or throw a known exception, but must not over-read, hit UB, or desync the key
+    // Deterministically corrupt frames through the full receive pipeline.
+    // Parsing may succeed or throw a known exception, but must not over-read or hit UB
     SECTION("CorruptedFramesNeverOverread")
     {
-        constexpr uint32_t key = 0x00BEEF01;
-
         auto build_frame = [&](uint32_t variant) {
             NetOutBuffer out {16};
-            out.SetEncryptKey(key);
             out.StartMsg(NetMessage::RemoteCall);
             out.Write<uint32_t>(variant * 2654435761U);
             out.Write<string_view>(variant % 2 == 0 ? "payload-string" : "");
@@ -331,7 +302,6 @@ TEST_CASE("NetBufferAdversarial")
             }
 
             NetInBuffer in {16};
-            in.SetEncryptKey(key);
             in.AddData({frame.data(), frame.size()});
 
             try {

@@ -60,8 +60,8 @@ static void SetEntry(T& entry, string_view value, bool append)
             entry += " ";
         }
 
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        entry += any_value.AsString();
+        // Taken as written, not as an AnyData coded string: the backslash of a Windows path is not an escape
+        entry += value;
     }
     else if constexpr (std::same_as<T, bool>) {
         auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::Bool);
@@ -80,8 +80,7 @@ static void SetEntry(T& entry, string_view value, bool append)
         entry = T {numeric_cast<typename T::underlying_type>(any_value.AsInt64())};
     }
     else if constexpr (some_property_plain_type<T>) {
-        auto any_value = AnyData::ParseValue(string(value), false, false, AnyData::ValueType::String);
-        istringstream istr {make_stream_string(any_value.AsString())};
+        istringstream istr {make_stream_string(value)};
         istr >> entry;
     }
     else {
@@ -100,11 +99,9 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
     }
 
     if constexpr (std::same_as<T, string>) {
-        auto arr_value = AnyData::ParseValue(string(value), false, true, AnyData::ValueType::String);
-        const auto& arr = arr_value.AsArray();
-
-        for (const auto& arr_entry : arr) {
-            entry.emplace_back(arr_entry.AsString());
+        // Split at whitespace and taken as written, the form Save() joins the elements back into
+        for (string& arr_entry : strex(value).replace('\t', ' ').split(' ')) {
+            entry.emplace_back(std::move(arr_entry));
         }
     }
     else if constexpr (std::same_as<T, bool>) {
@@ -258,8 +255,8 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
             string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
             string value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
 
-            // The writable root was taken from this argument verbatim and resolved before anything was read; parsed
-            // again as a setting value it would lose that resolution and read a backslash in a Windows path as an escape
+            // The writable root was taken from this argument and resolved before anything was read, and applied again
+            // as a setting value it would lose that resolution
             if (key != "ApplyConfig" && key != "ApplySubConfig" && key != "Common.UserWritablePath") {
                 string shown = IsSecretSettingName(key) ? string("***") : value;
                 logging::write(logging::type::info, "Set {} to {}", key, shown);

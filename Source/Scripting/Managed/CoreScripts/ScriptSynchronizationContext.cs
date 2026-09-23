@@ -74,7 +74,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
             }
             else {
                 EnqueueContinuation(new PostedContinuation(this, callback, state));
-                ReadyContexts.Enqueue(this);
+                MarkReady(this);
             }
 
             Monitor.PulseAll(SchedulerGate);
@@ -103,7 +103,7 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
                 if (!Closed) {
                     for (int i = 0; i < ContinuationCount; i++) {
-                        ReadyContexts.Enqueue(this);
+                        MarkReady(this);
                     }
                 }
             }
@@ -197,6 +197,14 @@ internal sealed class ScriptSynchronizationContext : SynchronizationContext, IDi
 
     // Callers hold SchedulerGate
     private int ContinuationCount => Continuations?.Count ?? 0;
+
+    // The engine pumps only after a signal, so a frame with nothing ready never enters managed code. Callers hold
+    // SchedulerGate
+    private static void MarkReady(ScriptSynchronizationContext context)
+    {
+        ReadyContexts.Enqueue(context);
+        Native.SignalContinuationsReady();
+    }
 
     private void EnqueueContinuation(PostedContinuation continuation)
     {

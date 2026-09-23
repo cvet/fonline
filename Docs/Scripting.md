@@ -362,12 +362,15 @@ lifetime of the thread; every later entry only enters GC-unsafe mode around the 
 and parks GC-safe again on the way out, so a worker parked on an engine lock cannot block a
 later stop-the-world collection. Reentrant calls use the cached or inherited attachment and
 leave its ownership unchanged. Attaching per entry instead is what this did until a parallel
-gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread:
-each pair creates a finalizable managed `Thread` object and allocates a handle stack, and it
-returns the thread to the registration window where a stop-the-world may fail to suspend it.
-SGen marks such a thread skipped, and its assertion in `sgen_client_scan_thread_data` rejects
-a skipped thread that still owns a non-empty handle stack, because the collector may then move
-an object and leave that handle stale — which surfaced as heap corruption elsewhere entirely.
+gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread,
+each creating a finalizable managed `Thread` object. Detaching never took a thread out of the
+collector's reach, though: under the preemptive suspension the engine forces,
+`mono_thread_detach` drops only the managed `Thread`, and the native registration stays until
+the OS thread exits, so every stop-the-world suspends an attached-once worker exactly as it did
+a per-entry one. A stop-the-world that cannot suspend a live thread is a runtime concern: the
+Windows runtime is patched to retry and then abort rather than skip it (see
+[BuildToolsPipeline.md](BuildToolsPipeline.md)), because a skipped thread's handles go stale
+when the collector moves what they point at.
 The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
 implicitly attaches its native caller, so the initialization scope explicitly adopts and
 releases that attachment after loading the first backend.
@@ -759,11 +762,12 @@ selected again per target, does not carry them.
   binder flag Roslyn keeps for its own scripting, and the fragment declares `IgnoresAccessChecksTo(<scripts>)`, which
   embedded Mono honours at run time for internal and private access alike.
 - Every fragment gets a new `FOnline.Dynamic.<guid>` name, so `DynamicAssemblies.Load` accepts it.
-- Emitting a fragment hashes nothing, because the embedded runtime may carry no cryptography: Linux links only the
-  `System.Native` and `System.Globalization.Native` interop shims, and Roslyn needs a hash for the PDB checksum
-  (`CS8113` otherwise) and for every document a PDB lists. A fragment is therefore emitted without a PDB, with a
-  time-based MVID (compilation is not deterministic), and `DynamicCompileResult.Symbols` is empty; its stack frames
-  carry no line numbers, while its compile diagnostics keep the author's lines.
+- Roslyn cannot compile without cryptography: it takes the SHA-1 of every strong-named reference's public key while
+  binding references, and the portable PDB needs a checksum. CoreLib reaches it through Win32 on Windows and, on Linux,
+  through the statically linked `System.Security.Cryptography.Native.OpenSsl` interop shim, which opens the system
+  `libssl` on first use, so a Linux host that compiles fragments needs OpenSSL installed. `Init.cmake` keeps the
+  static LibreSSL out of the executable's dynamic symbol table (`--exclude-libs`); otherwise that system libcrypto
+  would bind its own internal calls to LibreSSL's unversioned definitions. Other platforms link no crypto shim.
 
 `BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
 script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another
@@ -771,7 +775,7 @@ side's image.
 
 ### Managed continuation scheduling
 
-Each backend loads its core scripts into a separate entry assembly in its own non-collectible load context. `ScriptSynchronizationContext` therefore owns a separate managed continuation queue for each backend, including multiple embedded clients in one process. Native callback and event entry installs an invocation context; `Post` only queues managed work and never dereferences a native engine from a ThreadPool thread. `BaseEngine::FrameAdvance` pumps that backend after releasing the frame-property lock on server, client, and mapper. Each resumed continuation enters `BaseEngine::RunScriptContext` for the backend its assembly is bound to; on the server this creates a fresh nested entity-sync context. A suspended method must reacquire and revalidate its entities before using them again. This also covers late Task continuation registration and nested awaits, which cannot safely rely on inline `TaskCompletionSource` completion. `ConfigureAwait(false)` and manually dispatched ThreadPool work deliberately bypass this context and must not call engine APIs. The engine does not detect such a call on every path: the bound backend answers "which engine" on any thread, so only a server entity access fails there (its sync check reports `Entity access without sync`). Embedding projects keep these APIs out of script code statically (Last Frontier bans them in `Scripts/BannedSymbols.txt`).
+Each backend loads its core scripts into a separate entry assembly in its own non-collectible load context. `ScriptSynchronizationContext` therefore owns a separate managed continuation queue for each backend, including multiple embedded clients in one process. Native callback and event entry installs an invocation context; `Post` queues managed work and, from whatever thread posts, raises one atomic ready flag on the backend (`Native.SignalContinuationsReady`) — the only native state it touches. The flag is raised under the scheduler gate and only while the scheduler is open, and the backend closes the scheduler (`ShutdownContinuations`) before it unbinds and is destroyed, so a late post never reaches a freed backend. `BaseEngine::FrameAdvance` pumps that backend after releasing the frame-property lock on server, client, and mapper. The pump enters managed code only when the flag is up, so a frame with nothing queued stays native; a pump that throws partway raises the flag again, so the work it left queued is pumped on the next frame. `Native.GetAndResetContinuationPumps` counts the pump entries for the interop tests. Each resumed continuation enters `BaseEngine::RunScriptContext` for the backend its assembly is bound to; on the server this creates a fresh nested entity-sync context. A suspended method must reacquire and revalidate its entities before using them again. This also covers late Task continuation registration and nested awaits, which cannot safely rely on inline `TaskCompletionSource` completion. `ConfigureAwait(false)` and manually dispatched ThreadPool work deliberately bypass this context and must not call engine APIs. The engine does not detect such a call on every path: the bound backend answers "which engine" on any thread, so only a server entity access fails there (its sync check reports `Entity access without sync`). Embedding projects keep these APIs out of script code statically (Last Frontier bans them in `Scripts/BannedSymbols.txt`).
 
 A native result callback (`Task<T>` or `Task<EventResult>`) and module initialization remain synchronous. Their invocation has a private continuation queue: while awaiting an external Task completion, the owning thread drains only that queue, with a fresh native script context for each continuation. Nested no-result callbacks inherit the active synchronous owner and post into that same private queue. Once the owner returns, a detached child resumes through the normal frame pump and can yield engine timers. Other pending script callbacks are left to the regular frame pump. `ScriptTask.Delay` rejects these synchronous contexts before registering a timer, with `A synchronous script callback cannot yield an engine timer`; the blocked native caller cannot advance the client/mapper timer pump. Completed Task results retain their ordinary synchronous behavior, and a covariant `Task<T>` method bound to a void-returning Task delegate remains asynchronous.
 

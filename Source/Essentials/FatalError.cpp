@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
     logging::write_base("\n\n");
 
     stack_trace::data st;
-    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
     logging::safe_write_stack_trace(st);
 
     break_into_debugger();
@@ -73,7 +73,7 @@ FO_BEGIN_NAMESPACE
     logging::write_base("\n\n");
 
     stack_trace::data st;
-    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 2);
+    stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
     logging::safe_write_stack_trace(st);
 
     break_into_debugger();
