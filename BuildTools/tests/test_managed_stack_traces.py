@@ -78,6 +78,7 @@ def test_exception_description_preserves_causes(description_probe, kind):
 
 
 NATIVE_FIXTURE = r'''
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <cstdint>
@@ -107,11 +108,13 @@ struct script_layer {
     uint32_t birth_native_frame_count {};
     bool birth_native_truncated {};
 };
-void capture_native_frames(std::array<native_frame_address, MAX_NATIVE_FRAMES>&, uint32_t&, bool&, uint32_t) {}
+struct resume_point {};
+void resolve_resume_point(const resume_point&, std::array<native_frame_address, MAX_NATIVE_FRAMES>&, uint32_t& count, bool&) noexcept { count = 0; }
 }
 std::map<uint32_t, MonoObject*> Roots;
 uint32_t NextRoot = 0;
 uint32_t mono_gchandle_new(MonoObject* object, int) { Roots[++NextRoot] = object; return NextRoot; }
+uint32_t NewManagedGcHandle(MonoObject* object, int pinned) { return mono_gchandle_new(object, pinned); }
 MonoObject* mono_gchandle_get_target(uint32_t handle) { return Roots.at(handle); }
 void mono_gchandle_free(uint32_t handle) { assert(Roots.erase(handle) == 1); }
 void AppendRuntimeNativeFrames(MonoDomain*, std::span<const stack_trace::native_frame_address>, stack_trace::script_layer&) {}

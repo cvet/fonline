@@ -571,26 +571,49 @@ AddStaticThirdPartyLibrary(Catch2
     INCLUDE_DIRS "${FO_CATCH2_DIR}")
 TargetCompileDefinitions(Catch2 PRIVATE "CATCH_AMALGAMATED_CUSTOM_MAIN")
 
-# Backward-cpp
-if(FO_WINDOWS OR FO_LINUX OR FO_MAC)
-    SetValue(FO_BACKWARDCPP_DIR "${FO_ENGINE_ROOT}/ThirdParty/backward-cpp")
-    AddIncludeDirectories("${FO_BACKWARDCPP_DIR}")
+# Native stack traces on Linux: LLVM libunwind walks the stack, libbacktrace names the frames
+if(FO_LINUX)
+    enable_language(ASM)
+    SetValue(FO_LLVM_LIBUNWIND_DIR "${FO_ENGINE_ROOT}/ThirdParty/llvm-libunwind")
+    SetValue(FO_LLVM_LIBUNWIND_SOURCE
+        "${FO_LLVM_LIBUNWIND_DIR}/src/libunwind.cpp"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersRestore.S"
+        "${FO_LLVM_LIBUNWIND_DIR}/src/UnwindRegistersSave.S")
+    AddStaticThirdPartyLibrary(llvm-libunwind
+        SOURCE_LIST FO_LLVM_LIBUNWIND_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(llvm-libunwind PRIVATE "${FO_LLVM_LIBUNWIND_DIR}/include" "${FO_LLVM_LIBUNWIND_DIR}/src")
+    TargetCompileDefinitions(llvm-libunwind PRIVATE _LIBUNWIND_IS_NATIVE_ONLY _LIBUNWIND_HIDE_SYMBOLS)
+    # _LIBUNWIND_HIDE_SYMBOLS expects the library to be built with hidden visibility; without it -rdynamic exports its API
+    TargetCompileOptions(llvm-libunwind PRIVATE -funwind-tables -fvisibility=hidden "$<$<COMPILE_LANGUAGE:CXX>:-fno-exceptions;-fno-rtti>")
 
-    if(NOT FO_WINDOWS)
-        check_include_file("libunwind.h" haveLibUnwind)
-        check_include_file("bfd.h" haveBFD)
+    SetValue(FO_LIBBACKTRACE_DIR "${FO_ENGINE_ROOT}/ThirdParty/libbacktrace")
+    SetValue(FO_LIBBACKTRACE_SOURCE
+        "${FO_LIBBACKTRACE_DIR}/atomic.c"
+        "${FO_LIBBACKTRACE_DIR}/dwarf.c"
+        "${FO_LIBBACKTRACE_DIR}/elf.c"
+        "${FO_LIBBACKTRACE_DIR}/fileline.c"
+        "${FO_LIBBACKTRACE_DIR}/mmap.c"
+        "${FO_LIBBACKTRACE_DIR}/mmapio.c"
+        "${FO_LIBBACKTRACE_DIR}/posix.c"
+        "${FO_LIBBACKTRACE_DIR}/sort.c"
+        "${FO_LIBBACKTRACE_DIR}/state.c")
+    AddStaticThirdPartyLibrary(libbacktrace
+        SOURCE_LIST FO_LIBBACKTRACE_SOURCE
+        APPEND_TO FO_ESSENTIALS_LIBS)
+    TargetIncludeDirectories(libbacktrace PRIVATE "${FO_LIBBACKTRACE_DIR}")
+    TargetCompileOptions(libbacktrace PRIVATE -funwind-tables -fvisibility=hidden)
 
-        if(haveLibUnwind)
-            StatusMessage("+ Backward-cpp (with libunwind)")
-        elseif(haveBFD)
-            StatusMessage("+ Backward-cpp (with bfd)")
-            AppendList(FO_ESSENTIALS_SYSTEM_LIBS bfd)
-        else()
-            StatusMessage("+ Backward-cpp")
-        endif()
-    else()
-        StatusMessage("+ Backward-cpp")
-    endif()
+    # Both read other frames' stack and debug info from inside crash handlers, uninstrumented like the system code they replace
+    TargetCompileOptions(llvm-libunwind PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+    TargetCompileOptions(libbacktrace PRIVATE "$<$<COMPILE_LANGUAGE:C,CXX>:-fno-sanitize=all>")
+
+    # Only the stack trace module sees the headers: the libunwind directory also holds an unwind.h that would shadow the
+    # compiler's one for every other library
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" INCLUDE_DIRECTORIES
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LLVM_LIBUNWIND_DIR}/include"
+        "${CMAKE_CURRENT_SOURCE_DIR}/${FO_LIBBACKTRACE_DIR}")
+    AppendSourceProperty("${FO_ENGINE_ROOT}/Source/Essentials/StackTrace.cpp" COMPILE_DEFINITIONS _LIBUNWIND_IS_NATIVE_ONLY)
 endif()
 
 # SPARK particle simulation runtime and XML/binary serializer
@@ -758,13 +781,13 @@ if(FO_MANAGED_SCRIPTING)
     if(FO_WEB)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_wasmglue_asm_id)
     elseif(FO_ANDROID)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_android_sources)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_android_sources_isa_fallback)
     elseif(FO_MAC OR FO_IOS)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_apple_sources_v2)
     elseif(FO_LINUX)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_linux_signal_actions)
     elseif(FO_WINDOWS)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback_suspend_retry)
     else()
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators)
     endif()
@@ -825,6 +848,10 @@ if(FO_MANAGED_SCRIPTING)
         # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
         # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
         SetValue(FO_MANAGED_SHIM_LIBS "")
+    elseif(FO_LINUX)
+        # CoreLib hashes and Roslyn binds strong-named references through the OpenSSL shim; the shim opens the
+        # system libssl itself, so linking it needs only libc (Init.cmake keeps the static LibreSSL unexported)
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native System.Security.Cryptography.Native.OpenSsl)
     else()
         SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
     endif()
@@ -833,6 +860,7 @@ if(FO_MANAGED_SCRIPTING)
     # GlobalizationNative_*), so each shim states its own instead of deriving one
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Security.Cryptography.Native.OpenSsl CryptoNative_)
 
     # The archive name follows the target toolchain, not the host
     foreach(shimLib ${FO_MANAGED_SHIM_LIBS})

@@ -57,6 +57,9 @@ namespace winapi
     auto set_thread_description(const string& name) noexcept -> bool;
 
     auto get_current_process_id() noexcept -> uint32_t;
+    // The creation time of a process that is still running, in 100 ns ticks; none once it has exited or cannot be
+    // opened. With the id it names one process for good, since the id alone is handed on after the process ends
+    auto get_running_process_start_time(uint32_t pid) noexcept -> optional<uint64_t>;
     auto get_module_file_name() noexcept -> optional<string>;
     // Asked of the shell, not the environment: a service or a sandbox has no LOCALAPPDATA, and answering
     // "none" sends the caller back to a directory it may not be allowed to write
@@ -100,6 +103,18 @@ namespace winapi
     auto set_relative_timer(nptr<void> timer, int64_t delay_100ns) noexcept -> bool;
     void wait_for_object(nptr<void> handle) noexcept;
     void close_handle(nptr<void> handle) noexcept;
+
+    // The exception handler runs on the faulting thread, the report handler after it on a thread of its own with that
+    // thread's CONTEXT and handle, so a stack overflow is still reported
+    struct crash_handlers
+    {
+        void (*on_exception)(uint32_t code, uint32_t flags, nptr<const void> address, nptr<const void> context) noexcept {};
+        void (*on_report)(nptr<const void> context, nptr<void> thread) noexcept {};
+        void (*on_signal)(int32_t signum) noexcept {};
+        void (*on_runtime_error)(string_view reason) noexcept {};
+    };
+
+    void install_crash_handlers(const crash_handlers& handlers) noexcept;
 }
 
 FO_END_NAMESPACE

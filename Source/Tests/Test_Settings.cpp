@@ -376,8 +376,16 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("WindowedMouseScroll") == "False");
         CHECK(settings.GetRuntimeSetting("WindowedMouseScroll") == "False");
 
+        // A custom write moves the generation, a rejected engine write does not: the managed typed-setting cell
+        // re-parses a custom value only when this counter moved
+        uint64_t generation_before = settings.GetCustomSettingsGeneration();
         settings.SetRuntimeSetting("Project.RuntimeValue", "value");
         CHECK(settings.GetCustomSetting("Project.RuntimeValue") == "value");
+        CHECK(settings.GetCustomSettingsGeneration() == generation_before + 1);
+        CHECK_THROWS_AS(settings.SetRuntimeSetting("Hex.WindowedMouseScroll", "False"), SettingsException);
+        CHECK(settings.GetCustomSettingsGeneration() == generation_before + 1);
+        settings.SetCustomSetting("Project.RuntimeValue", any_t("other"));
+        CHECK(settings.GetCustomSettingsGeneration() == generation_before + 2);
 
         string original_game_name = settings.Common.GameName;
         CHECK_THROWS_AS(settings.SetRuntimeSetting("Common.GameName", "Changed"), SettingsException);

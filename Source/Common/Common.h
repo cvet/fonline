@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 58
+///@ MigrationRule Version 0 0 61
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -614,30 +614,14 @@ struct MethodDesc
     bool IsSingletonLock {};
 };
 
+// A value type (IsStruct) is plain data: packed fields, no tail padding, and a native twin of the same size that is
+// trivially copyable, so every consumer moves it with memcpy. Anything holding complex data is a ref type instead
 struct StructLayoutDesc
 {
-    using CreateNativeFunc = unique_del_ptr<void> (*)();
-    using CopyNativeFunc = void (*)(ptr<void>, ptr<const void>);
-
-    CreateNativeFunc CreateNative {};
-    CopyNativeFunc CopyNative {};
     size_t NativeSize {};
     vector<FieldDesc> Fields {};
     size_t Size {};
 };
-
-template<typename T>
-auto CreateNativeValue() -> unique_del_ptr<void>
-{
-    auto value = safe_alloc::make_unique<T>();
-    return make_unique_del_ptr(value.release().template reinterpret_as<void>(), [](nptr<void> data) noexcept { auto owner = adopt_unique_ptr(data.template reinterpret_as<T>()); });
-}
-
-template<typename T>
-void CopyNativeValue(ptr<void> dst, ptr<const void> src)
-{
-    *dst.template reinterpret_as<T>() = *src.template reinterpret_as<const T>();
-}
 
 struct RefTypeDesc
 {

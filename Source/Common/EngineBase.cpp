@@ -358,20 +358,16 @@ void EngineMetadata::RegisterValueType(string_view name)
     RegisterBaseType(name);
 }
 
-void EngineMetadata::RegisterValueType(string_view name, size_t native_size, StructLayoutDesc::CreateNativeFunc create_native, StructLayoutDesc::CopyNativeFunc copy_native)
+void EngineMetadata::RegisterValueType(string_view name, size_t native_size)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(native_size != 0, "Native value type has zero size", name);
-    FO_VERIFY_AND_THROW(create_native != nullptr, "Native value constructor is missing", name);
-    FO_VERIFY_AND_THROW(copy_native != nullptr, "Native value assignment is missing", name);
 
     RegisterValueType(name);
 
     StructLayoutDesc& layout_desc = _structLayouts.at(string(name));
     layout_desc.NativeSize = native_size;
-    layout_desc.CreateNative = create_native;
-    layout_desc.CopyNative = copy_native;
 }
 
 void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair<string_view, string_view>>& layout)
@@ -389,8 +385,11 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
     auto& layout_desc = _structLayouts.at(name_str);
     FO_VERIFY_AND_THROW(layout_desc.Size == 0, "Struct layout size must be zero before field registration");
 
+    // This is where IsStruct becomes an invariant: a value type is plain data, packed with no padding, equal in size
+    // to its native twin, so every consumer may memcpy it. Data that is not plain belongs in a ref type
     vector<FieldDesc> fields;
     size_t total_size = 0;
+    size_t max_field_size = 0;
 
     for (const auto& [field_name, field_type] : layout) {
         FO_VERIFY_AND_THROW(!field_name.empty(), "Value type layout contains a field with an empty name", name, field_type, layout.size());
@@ -403,9 +402,12 @@ void EngineMetadata::RegisterValueTypeLayout(string_view name, const vector<pair
         FO_VERIFY_AND_THROW(total_size % field.Type.Size == 0, "Value type layout data is not aligned", name, field.Name);
         field.Offset = total_size;
         total_size += field.Type.Size;
+        max_field_size = std::max(max_field_size, field.Type.Size);
     }
 
     FO_VERIFY_AND_THROW(total_size != 0, "Registered type has zero size");
+    // Without a tail check C++ and C# would both round the size up past what the layout records
+    FO_VERIFY_AND_THROW(total_size % max_field_size == 0, "Value type layout ends with padding", name, total_size, max_field_size);
     FO_VERIFY_AND_THROW(layout_desc.NativeSize == 0 || layout_desc.NativeSize == total_size, "Native value size does not match its registered layout", name, layout_desc.NativeSize, total_size);
 
     layout_desc.Fields = std::move(fields);
@@ -1265,6 +1267,15 @@ BaseEngine::BaseEngine(ptr<GlobalSettings> settings, FileSystem&& resources, con
     FinalizeRegistration();
 }
 
+void BaseEngine::FinishStartingUp()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(_startingUp, "Engine start-up is already finished");
+
+    _startingUp = false;
+}
+
 void BaseEngine::FrameAdvance()
 {
     FO_STACK_TRACE_ENTRY();
@@ -1285,6 +1296,39 @@ void BaseEngine::FrameAdvance()
     }
 
     ProcessBackends();
+}
+
+void BaseEngine::RegisterScriptOverrun(string_view entry, timespan execution, timespan lock_wait)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr size_t max_distinct_entries = 32;
+
+    scoped_lock locker {_scriptOverrunLocker};
+
+    for (ScriptOverrunRecord& record : _scriptOverruns) {
+        if (record.Entry == entry) {
+            record.MaxExecution = std::max(record.MaxExecution, execution);
+            record.MaxLockWait = std::max(record.MaxLockWait, lock_wait);
+            record.Count++;
+            return;
+        }
+    }
+
+    // An unknown entry beyond the cap is dropped rather than evicting a measured one: the consumer drains every
+    // frame, so reaching this at all means the reporter itself stopped running
+    if (_scriptOverruns.size() < max_distinct_entries) {
+        _scriptOverruns.push_back(ScriptOverrunRecord {string(entry), execution, lock_wait, 1});
+    }
+}
+
+auto BaseEngine::TakeScriptOverruns() -> vector<ScriptOverrunRecord>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    scoped_lock locker {_scriptOverrunLocker};
+
+    return std::exchange(_scriptOverruns, {});
 }
 
 auto BaseEngine::Random(int32_t min_value, int32_t max_value) const -> int32_t

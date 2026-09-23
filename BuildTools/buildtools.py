@@ -281,7 +281,6 @@ LINUX_PACKAGE_GROUPS = {
 			'php-cli',
 			'wget',
 			'unzip',
-			'binutils-dev',
 		],
 	),
 	'linux-packages': (
@@ -1013,7 +1012,9 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	property_prefix = '/p:' if os.name == 'nt' else '-p:'
 	# Analyzers and generator translations change nothing the runtime publishes, which builds byte-identical without
 	# them, and they are much of the library compile time; the runtime's own source build turns analyzers off the same way
-	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false']
+	# NuGet audit reads a live advisory feed, so an advisory published after a tag was cut fails the restore of that
+	# tag for ever; a pinned tag cannot change the package it names, and the published tree holds CLR assemblies only
+	build_args = [*build_args, f'{property_prefix}UseSharedCompilation=false', f'{property_prefix}RunAnalyzers=false', f'{property_prefix}EnableXlfLocalization=false', f'{property_prefix}NuGetAudit=false']
 	# Xcode exports TARGETNAME for SetupManagedRuntime; MSBuild reads it as TargetName and gives
 	# unrelated runtime projects the same output filename, breaking generators and task publishing
 	# The nested runtime selects its own host toolchain. Outer MSBuild search paths may name optional
@@ -2522,10 +2523,10 @@ MONO_RUNTIME_SUBSET = 'mono.runtime+mono.corelib+libs.native+libs.sfx'
 # subset, cmake args, or source patches change: an unchanged marker leaves a prepared host on the old runtime
 MONO_SUBSET_MARKER_SUFFIX = '_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators'
 MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_id'
-MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources'
+MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
-MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry'
 MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
@@ -2747,6 +2748,252 @@ def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
 	for path, text in patched_texts:
 		path.write_text(text, encoding='utf-8')
 		log('Patched', path, '- C and C++ objects embed their debug info')
+
+
+MONO_ISA_FALLBACK_PATCH_MARKER = '(FOnline Patch) An ISA class the JIT does not implement reports IsSupported as false'
+
+
+def patch_runtime_isa_is_supported_fallback(runtime_root: Path) -> None:
+	# The JIT emits ISA classes only on AMD64, ARM64 and WASM; elsewhere CoreLib's recursive `IsSupported => IsSupported`
+	# body runs and overflows the stack on the first vectorized call, which killed the Windows x86 client at startup
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'mini' / 'intrinsics.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_ISA_FALLBACK_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = '\t/* Fallback if SIMD is disabled */\n'
+	patch = (
+		f'\t/* {marker} */\n'
+		'\tif (in_corlib && !strcmp (cmethod->name, "get_IsSupported")) {\n'
+		'\t\tMonoClass *isa_klass = cmethod->klass;\n'
+		'\t\twhile (m_class_get_nested_in (isa_klass))\n'
+		'\t\t\tisa_klass = m_class_get_nested_in (isa_klass);\n'
+		'\t\tconst char *isa_ns = m_class_get_name_space (isa_klass);\n'
+		'\t\tif (!strcmp (isa_ns, "System.Runtime.Intrinsics.X86") || !strcmp (isa_ns, "System.Runtime.Intrinsics.Arm") || !strcmp (isa_ns, "System.Runtime.Intrinsics.Wasm")) {\n'
+		'\t\t\tEMIT_NEW_ICONST (cfg, ins, 0);\n'
+		'\t\t\tins->type = STACK_I4;\n'
+		'\t\t\treturn ins;\n'
+		'\t\t}\n'
+		'\t}\n'
+		'\n'
+	)
+
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the ISA IsSupported fallback, unique anchor not found in {path}: {anchor.strip()}')
+
+	path.write_text(text.replace(anchor, patch + anchor, 1), encoding='utf-8')
+	log('Patched', path, '- unimplemented ISA classes report IsSupported as false')
+
+
+MONO_WINDOWS_SUSPEND_RETRY_PATCH_MARKER = '(FOnline Patch) A thread the OS refuses to stop is retried while it lives'
+
+
+def patch_runtime_windows_suspend_retry(runtime_root: Path) -> None:
+	# The preemptive stop-the-world stops every thread with SuspendThread and GetThreadContext, and when either call fails
+	# it skips the thread: its stack and handles go unscanned. A skipped thread that keeps running then holds references
+	# the collection moved or freed, and the corruption surfaces anywhere later - in a card-table scan, in finalization,
+	# as a boxed value of the wrong type. A refusal is only safe to accept from a thread that has exited and never runs
+	# again, so a live thread is retried, and one that stays unstoppable ends the process naming the thread and the error.
+	# A live thread stopped only after refusals is reported as well, because that refusal would have been a skip before.
+	# A thread inside its kernel exit refuses too until it is scheduled to finish; a ready thread starves for at most
+	# about four seconds before the balance-set manager boosts it, so the budget is five
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'mono-threads-windows.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_WINDOWS_SUSPEND_RETRY_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	# The world is partly stopped while these run, and a thread already stopped may hold the heap, a stdio or the loader
+	# lock, so the report allocates nothing, formats by hand and writes straight to the handle, and the one export it
+	# needs is resolved at runtime initialization
+	init_anchor = 'void\nmono_threads_suspend_init (void)\n{\n}\n'
+	helpers = f'''/* {marker} */
+#define FO_SUSPEND_RETRY_MS 5000
+
+typedef LONG (WINAPI *fo_query_thread_fn) (HANDLE, ULONG, PVOID, ULONG, PULONG);
+static fo_query_thread_fn fo_query_thread;
+
+void
+mono_threads_suspend_init (void)
+{{
+	fo_query_thread = (fo_query_thread_fn) GetProcAddress (GetModuleHandleW (L"ntdll.dll"), "NtQueryInformationThread");
+}}
+
+static gboolean
+fo_thread_is_alive (HANDLE handle)
+{{
+	return WaitForSingleObject (handle, 0) == WAIT_TIMEOUT;
+}}
+
+static char *
+fo_append_text (char *out, char *end, const char *text)
+{{
+	while (*text && out < end)
+		*out++ = *text++;
+
+	return out;
+}}
+
+static char *
+fo_append_number (char *out, char *end, ULONGLONG value)
+{{
+	char digits [24];
+	int count = 0;
+
+	do {{
+		digits [count++] = (char) ('0' + value % 10);
+		value /= 10;
+	}} while (value);
+
+	while (count && out < end)
+		*out++ = digits [--count];
+
+	return out;
+}}
+
+static char *
+fo_append_thread_name (char *out, char *end, HANDLE handle)
+{{
+	/* THREAD_NAME_INFORMATION: a UNICODE_STRING whose buffer follows it */
+	typedef struct {{ USHORT length; USHORT maximum_length; PWSTR buffer; }} fo_thread_name;
+	ULONGLONG storage [72];
+	fo_thread_name *name = (fo_thread_name *) storage;
+	ULONG size = 0;
+	int count;
+
+	if (!fo_query_thread || fo_query_thread (handle, 38 /* ThreadNameInformation */, storage, (ULONG) sizeof (storage), &size) < 0)
+		return out;
+
+	count = name->length / 2;
+	for (int i = 0; i < count && out < end; i++)
+		*out++ = name->buffer [i] < 0x80 ? (char) name->buffer [i] : '?';
+
+	return out;
+}}
+
+static void
+fo_report_refusals (HANDLE handle, DWORD id, const char *what, DWORD error, ULONGLONG elapsed, gboolean fatal)
+{{
+	char message [512];
+	char *out = message;
+	char *end = message + sizeof (message) - 1;
+	DWORD written = 0;
+
+	if (fatal) {{
+		out = fo_append_text (out, end, "* Cannot ");
+		out = fo_append_text (out, end, what);
+		out = fo_append_text (out, end, " running thread ");
+	}} else {{
+		out = fo_append_text (out, end, "* Stopped running thread ");
+	}}
+
+	out = fo_append_number (out, end, id);
+	out = fo_append_text (out, end, " ('");
+	out = fo_append_thread_name (out, end, handle);
+	out = fo_append_text (out, end, fatal ? "') after " : "') only after ");
+	out = fo_append_number (out, end, elapsed);
+	out = fo_append_text (out, end, " ms of refusals");
+
+	if (!fatal) {{
+		out = fo_append_text (out, end, " to ");
+		out = fo_append_text (out, end, what);
+		out = fo_append_text (out, end, " it");
+	}}
+
+	out = fo_append_text (out, end, " (Windows error ");
+	out = fo_append_number (out, end, error);
+	out = fo_append_text (out, end, fatal ? "); skipping a running thread would corrupt the managed heap" : ")");
+	*out++ = '\\n';
+	WriteFile (GetStdHandle (STD_ERROR_HANDLE), message, (DWORD) (out - message), &written, NULL);
+
+	if (fatal)
+		abort ();
+}}
+
+static DWORD
+fo_suspend_thread_retrying (HANDLE handle, DWORD id)
+{{
+	DWORD result = SuspendThread (handle);
+	ULONGLONG started = 0;
+	DWORD error = 0;
+
+	while (result == (DWORD)-1) {{
+		error = GetLastError ();
+
+		if (!fo_thread_is_alive (handle))
+			return result;
+
+		if (!started)
+			started = GetTickCount64 ();
+		else if (GetTickCount64 () - started >= FO_SUSPEND_RETRY_MS)
+			fo_report_refusals (handle, id, "suspend", error, GetTickCount64 () - started, TRUE);
+
+		SwitchToThread ();
+		result = SuspendThread (handle);
+	}}
+
+	if (started)
+		fo_report_refusals (handle, id, "suspend", error, GetTickCount64 () - started, FALSE);
+
+	return result;
+}}
+
+static BOOL
+fo_get_thread_context_retrying (HANDLE handle, DWORD id, PCONTEXT context)
+{{
+	ULONGLONG started = 0;
+	DWORD error = 0;
+
+	while (!GetThreadContext (handle, context)) {{
+		error = GetLastError ();
+
+		if (!fo_thread_is_alive (handle))
+			return FALSE;
+
+		if (!started)
+			started = GetTickCount64 ();
+		else if (GetTickCount64 () - started >= FO_SUSPEND_RETRY_MS)
+			fo_report_refusals (handle, id, "read the context of", error, GetTickCount64 () - started, TRUE);
+
+		SwitchToThread ();
+	}}
+
+	if (started)
+		fo_report_refusals (handle, id, "read the context of", error, GetTickCount64 () - started, FALSE);
+
+	return TRUE;
+}}
+'''
+	patches = (
+		(init_anchor, helpers),
+		('\tresult = SuspendThread (handle);\n\tTHREADS_SUSPEND_DEBUG ("SUSPEND %p -> %u\\n", GUINT_TO_POINTER (id), result);\n',
+		 '\tresult = fo_suspend_thread_retrying (handle, id);\n\tTHREADS_SUSPEND_DEBUG ("SUSPEND %p -> %u\\n", GUINT_TO_POINTER (id), result);\n'),
+		('\tif (!GetThreadContext (handle, context)) {\n\t\tresult = ResumeThread (handle);\n',
+		 '\tif (!fo_get_thread_context_retrying (handle, id, context)) {\n\t\tresult = ResumeThread (handle);\n'),
+	)
+
+	for needle, replacement in patches:
+		if text.count(needle) != 1:
+			raise SystemExit(f'Cannot patch the Mono Windows thread suspension, unique anchor not found in {path}: {needle.splitlines()[0]}')
+
+		text = text.replace(needle, replacement, 1)
+
+	path.write_text(text, encoding='utf-8')
+	log('Patched', path, '- a live thread is never skipped by the stop-the-world')
+
+
+def discard_runtime_local_tasks_semaphore(runtime_root: Path) -> None:
+	# dotnet's Build.proj builds the repo-local MSBuild tasks once per tree and marks them done with this file, but
+	# which task projects the set holds depends on the target: one tree built for Linux first never got AndroidAppBuilder,
+	# and the Android native build then failed with MSB4062. Without the mark the tasks rebuild incrementally
+	for semaphore in (runtime_root / 'artifacts' / 'obj' / 'tasks').glob('*/build-semaphore.txt'):
+		semaphore.unlink()
+		log('Discarded local tasks mark', semaphore)
 
 
 def patch_runtime_browser_asm_compiler(runtime_root: Path) -> None:
@@ -3225,7 +3472,13 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
+			patch_runtime_windows_suspend_retry(runtime_root)
 
+		# The targets with a 32-bit architecture, where the JIT implements no hardware intrinsic class
+		if os_name in ('windows', 'android'):
+			patch_runtime_isa_is_supported_fallback(runtime_root)
+
+		discard_runtime_local_tasks_semaphore(runtime_root)
 		run_runtime_build(['-os', os_name, '-arch', layout.dotnet_runtime_arch, '-c', config, '-subset', resolve_mono_runtime_subset(os_name), *resolve_mono_cmake_args()], runtime_root, target_os=os_name)
 
 	run_marker_step(layout.built_marker, 'Build runtime', build_runtime)

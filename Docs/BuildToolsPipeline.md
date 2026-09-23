@@ -250,11 +250,53 @@ flag variables, because CMake's MSVC defaults put `/Zi` into Debug. Every anchor
 checked before either file is written. The regression configures both project shapes
 in Debug and Release and requires `/Z7` alone on every C command line.
 
+Windows and Android runtimes also answer `IsSupported` of every hardware intrinsic class the JIT does not
+implement with a constant `false`. Mono routes `System.Runtime.Intrinsics.X86`, `.Arm` and `.Wasm` classes to
+its SIMD emitter only on AMD64, ARM64 and WASM (the x86 branch is an upstream TODO). Elsewhere nothing replaces
+the property, so CoreLib's own body, `IsSupported => IsSupported`, runs and recurses until the stack overflows on
+the first vectorized call: the Windows x86 client died that way before its first frame, in the tree before the
+interop work too. The patch adds the answer to the fallback in `src/mono/mono/mini/intrinsics.c` beside the
+existing `IsHardwareAccelerated` one, looks through nested classes such as `Sse2.X64`, and rejects a moved
+anchor. On AMD64 and ARM64 the fallback is only reached with SIMD optimization disabled, where `false` is the
+right answer as well.
+
+Windows runtimes never let the stop-the-world skip a thread that is still running. The engine forces
+preemptive suspension (`MONO_THREADS_SUSPEND=preemptive`), and upstream
+`mono_threads_suspend_begin_async_suspend` answers a failed `SuspendThread` or `GetThreadContext` by
+skipping the thread: it is left out of the collection, its stack is not scanned, and the thread keeps running
+while the collector moves and frees objects it still holds. On one day a skipped running thread corrupted the
+managed heap of nearly every parallel gameplay run, surfacing later as unrelated asserts and access violations,
+and the refusal has not been observed since. The patch in `src/mono/mono/utils/mono-threads-windows.c` retries
+both calls while the thread's handle is unsignaled, skips a thread only once it has exited (an exiting thread
+runs no managed code), and aborts after five seconds of refusals from a live thread, so a refusal becomes a
+report instead of a corrupt heap. A live thread that is stopped only after some refusals is reported too,
+because upstream would have skipped it. Both reports are one stderr line starting with `*`, naming the thread
+id, its description and the Windows error:
+
+```text
+* Stopped running thread 16024 ('ServerPool-3') only after 37 ms of refusals to suspend it (Windows error 5)
+* Cannot suspend running thread 16024 ('ServerPool-3') after 5000 ms of refusals (Windows error 5); skipping a running thread would corrupt the managed heap
+```
+
+Threads already stopped may hold the heap, a stdio lock or the loader lock, so the report allocates nothing,
+formats by hand, writes with `WriteFile`, and reads the thread's name with `NtQueryInformationThread`, which is
+resolved in `mono_threads_suspend_init`. A thread inside its kernel exit refuses too until it is scheduled to
+finish, which took at most 81 ms across about a million such refusals provoked under load; five seconds covers
+the four after which Windows boosts a starved ready thread. Each anchor must appear exactly once.
+
+Before every runtime build the tree's repo-local tasks mark (`artifacts/obj/tasks/<Config>/build-semaphore.txt`)
+is discarded. dotnet builds those MSBuild tasks once per tree behind that mark, but which task projects the set holds
+depends on the target: the Android ones (`AndroidAppBuilder` and friends) join it only for mobile targets. A tree whose
+first build was for Linux therefore never built them, and the Android native build failed with `MSB4062`
+(`AndroidLibBuilderTask could not be loaded`). Without the mark the task projects rebuild, incrementally.
+
 Browser, Android, Apple, Linux, and Windows source-patch contracts have separate `BUILT` and
 `READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
 target. Existing browser caches ending in `_wasmglue` rebuild and republish once
 with the ASM identification patch; Windows caches without `_embedded_debug_info`
-rebuild and republish once with embedded debug information. Both keep the cloned source.
+rebuild and republish once with embedded debug information, Windows and Android caches
+without `_isa_fallback` once with the `IsSupported` fallback, and Windows caches without
+`_suspend_retry` once with the suspension retry. All keep the cloned source.
 A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
 on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.
@@ -278,6 +320,14 @@ on Windows x64 from a fresh `v10.0.11` clone: `libs.sfx` 25.6 min before and 17.
 CPU-minutes before, 36.6 after), then `ILLinkTrimAssembly` at about 5 CPU-minutes, which stays because
 it shapes the shipped libraries. All 171 class libraries of the runtime pack and
 `System.Private.CoreLib` build byte-identical with and without the properties (SHA-256 compared).
+
+Runtime source builds pass `NuGetAudit=false` as well. The audit reads a live advisory feed, and the
+runtime builds with warnings as errors, so an advisory published after a tag was cut fails the restore
+of that tag from then on: `v10.0.12` stopped restoring on `NU1904` for
+`Microsoft.Native.Quic.MsQuic.Schannel` 2.5.9 (GHSA-92f5-vc22-8j33), a package the tag names and a
+pinned checkout cannot change. The audit guards the runtime repository's own dependency hygiene, not
+what the engine ships: the published tree holds the managed `System.Net.Quic.dll` and never the native
+MsQuic library, and `managed_runtime_payload.py` copies CLR assemblies only.
 
 Before each runtime source build, `setup-mono` patches the runtime's zlib-ng
 target to remove Mono's inherited MSVC `/W4` option. Mono keeps `/W4`, while
@@ -410,7 +460,7 @@ See [Applications.md](Applications.md).
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and binary-output postfix.
 
-`package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `candle` and `light` promote warnings to errors. ICE91 alone is suppressed because every generated package has `InstallScope=perUser` and lives below `LocalAppDataFolder`, the package-only-per-user case for which ICE91 is inapplicable; the conditional ICE61 suppression remains limited to the declared same-version major-upgrade policy. Windows `light` normally runs the remaining ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
+`package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. The two linkers build that dialog's tab order by different rules, and `msiexec` rejects a dialog whose `Control_Next` loop misses `Control_First` with internal error 2834 before the first screen, so the generator lists each dialog's push buttons first (details in `msicreator/readme.md`). Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `candle` and `light` promote warnings to errors. ICE91 alone is suppressed because every generated package has `InstallScope=perUser` and lives below `LocalAppDataFolder`, the package-only-per-user case for which ICE91 is inapplicable; the conditional ICE61 suppression remains limited to the declared same-version major-upgrade policy. Windows `light` normally runs the remaining ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 - product/manufacturer/comments name ← `Common.GameName` (falls back to the package nice name)
 - `ProductVersion` ← `Common.GameVersion`, with `$FILE{...}` indirection resolved relative to the main config directory (so a `$FILE{VERSION}` setting yields the real numeric version, not a `0.0.0` fallback)

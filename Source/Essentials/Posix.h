@@ -52,6 +52,9 @@ namespace posix
     };
 
     auto get_current_process_id() noexcept -> int32_t;
+    // The start time of a process that is still running, in the kernel's own units; none once it has exited, is a
+    // zombie, or cannot be read. With the id it names one process for good, since ids are reused
+    auto get_running_process_start_time(int32_t pid) noexcept -> optional<uint64_t>;
     auto get_executable_path() noexcept -> optional<string>;
     // Read from the user database, not $HOME: a service or a web runtime has none, and answering "none"
     // sends the caller back to a directory it may not be allowed to write
@@ -88,6 +91,13 @@ namespace posix
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle searches the default scope, which is how the engine reaches its own exports
     auto get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>;
+
+    // The handler runs on the thread that raised the signal, on its crash stack, with the signal's ucontext_t as the
+    // context; once it returns the signal takes its default action. Installed for the life of the process
+    using crash_signal_handler = void (*)(int32_t signum, int32_t code, nptr<const void> address, nptr<const void> context) noexcept;
+    void install_crash_signal_handlers(crash_signal_handler handler) noexcept;
+    // Gives the calling thread a stack of its own for the crash handler, so a stack overflow can still be reported
+    void install_crash_signal_stack() noexcept;
 }
 
 FO_END_NAMESPACE

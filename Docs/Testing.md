@@ -54,6 +54,8 @@ of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
 
+`BuildTools/tests/test_process_identity.py` is a Windows process-lifecycle regression. With `clang++` available it compiles the canonical `WinApi.cpp` process query into a small probe and checks a live foreign process and terminated processes whose handles remain open, including exit code `259`. Run it with `python -m pytest BuildTools/tests/test_process_identity.py`; it complements the `Platform` and `ClientSessionMarker*` native cases without needing the full engine linkage.
+
 With Visual Studio/MSBuild generators, `RunUnitTests` writes the test process output to `<build-dir>/<ProjectDevName>_UnitTests.log` and uses the test process exit code as the pass/fail signal. This keeps expected negative-case diagnostics such as compiler `error` lines from being reclassified as MSBuild errors. When the run fails, the helper also echoes the captured output before failing, so a failure is diagnosable from the build output alone — on CI the log file never leaves the runner, and the exit code by itself does not say which test or assertion broke.
 The generated `RunUnitTests` target captures the complete test process output under the configured build tree's `Testing/` directory and prints the Catch2 success summary. On a real non-zero process exit it replays the captured output before failing. This keeps expected diagnostics from negative compiler/parser tests from being reclassified as build errors by native build frontends such as MSBuild.
 
@@ -143,12 +145,72 @@ cached dispatch allocation, native fallback, isolation from foreign enum assembl
 async completion, signed duration boundaries, direction normalization for both map geometries and narrow/full-width signed inputs, and isolated bootstrap runs with and without neighboring source files. The native baker suite verifies that generated direction structs cannot bypass CoreScript normalization, and geometry tests pin the matching native constructor boundaries. A failing static constructor must stop startup before module initialization. Native calls are fixture boundaries; embedding projects must
 also bake and run their managed gameplay tests against the actual Mono backend.
 
-`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive and enum accessors and component
-presence checks must use the indexed unboxed bridge, while complex properties retain conversion. For live
-Mono validation, exercise every primitive width, enum values, virtual getters, rewriting setters and caught
-native errors, and measure warmed generated property calls with `GC.GetAllocatedBytesForCurrentThread()`.
+The synchronization harness compiles the real `Sync` helpers with deterministic native-acquisition fixtures:
+
+```bash
+dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
+```
+
+It proves one report per externally returned false across every acquisition overload when subscribed,
+unchanged results without subscribers, multiple independent subscribers, unsubscription and callback-fault
+isolation with exception accounting. It also covers caller metadata forwarding, phase/entity information,
+successful retry and best-effort silence, partial restoration, native exception propagation, unchanged caller
+strings, typed IDs/prototypes and immutable snapshots across subscribers. Its fixture exposes neither a logging
+API nor a diagnostics setting to Sync. The data contract lives in
+[ServerRuntime.md](ServerRuntime.md#managed-synchronization-failure-diagnostics).
+
+`Test_ManagedScriptBaker` pins the generated scalar-property route: primitive, enum, and value-type accessors and component
+presence checks must use the indexed unboxed bridge, while complex properties retain conversion. It also pins
+dense ABI ids (no name-based `CallMethod`/`FireEvent`/`GetInnerEntityAt` on generated hot paths), `EnumToInt32`
+instead of `Convert.ToInt32`, typed numeric/bool settings, inner-entity `FillInnerEntities`, scalar event
+`AdaptInvoke`, value-type method frames (`GetHexInterval` through `CallMethodIndexed`), sequential struct
+layout attributes, indexed boxed property access (`Native.GetProperty(entityPtr, index)`, no names), raw-byte
+`GetPropertyList<T>` / `SetPropertyList<T>` for arrays of fixed values, one adapter per inbound remote-call
+signature, entity arguments as pointer slots in event frames, generated `CallbackAdapters.Adapt_<key>` methods for frame-capable callback signatures (typed,
+async, `Action`/`Func` and boxed-fallback branches) with no adapter for string/collection signatures, wrapper factory
+registrations in the ABI bind stub (none for the static `Game`), and bake identity: generated API files including `*Abi.gen.cs` participate in the stamp so a
+generator-only change cannot ship new C# with a skipped DLL. For live
+Mono validation, exercise every primitive width, enum values, value types (including ones holding `hstring`), virtual getters, rewriting setters and caught
+native errors, and measure warmed generated property, method, setting and GetAsInt calls with `GC.GetAllocatedBytesForCurrentThread()`.
 Callbacks and first writes to prototype-backed storage may have their own allocation costs, so warm storage
-before measuring and keep callback behavior checks separate from the allocation assertion.
+before measuring and keep callback behavior checks separate from the allocation assertion. Inner-entity tests
+assert visit counts linear in n rather than Count+n×At recrawls.
+
+`Managed ABI native frames align packed slots and copy back only outputs` passes a deliberately unaligned frame with mixed-width arguments through `ManagedAbiNativeFrame`. It checks native argument/result alignment, value preservation, selective mutable/result write-back, buffer boundaries, and rejection of invalid indices and truncated frames.
+
+`CoreScripts/InteropProbe.cs` is the reusable interop benchmark; it is engine-owned and measures whatever surface
+the embedding project feeds it. `InteropProbe.Recorder` times batches the caller writes inline (so the measured
+code keeps its own cover and call shape), drops three warm-up batches, subtracts a caller-measured empty-loop
+calibration and reports the spread of batch means - `min`, `p50`, `p95`, `max`, a noise figure and managed bytes
+per call. It never claims the latency of a single call. `InteropProbe.MeasureCallback` covers the other
+direction: the native side (`Native.ProbeCallbackTransport`) drives one fixed adapter from its own timed loop
+over `mono_runtime_invoke`, a classic unmanaged thunk and an `UnmanagedCallersOnly` entry, then over the
+script-entry bookkeeping and the production dispatcher, and finally over each piece of dispatch scaffolding
+alone (nested sync context, entry scope, thread attachment, overrun report). Every batch verifies that the
+handler ran exactly once per native call with intact arguments. The unmanaged entry is taken from
+`RuntimeMethodHandle.GetFunctionPointer`, which needs neither an unsafe context nor a private runtime export.
+Native probe modes use `ManagedProbeCallbackMode` in `ManagedScriptBackend.cpp`; its names and explicit numeric
+values match `InteropProbe.CallbackMode`, since the managed/native probe boundary passes the mode as `int32`.
+Each series also reports the bridge work per call: GC handles taken, classes and methods looked up by name,
+managed objects the native side created and wrappers constructed. They come from per-thread backend counters
+(`Native.ReadInteropCounters`) that are off outside a measured stretch, so production pays one thread-local flag
+test. Native heap allocations per call come from the same stretch in a Tracy build (`memory::get_thread_allocations`),
+the only build that counts them, and read `n/a` elsewhere. `InteropProbe.VerifyTransports` runs one adapter over
+each transport under the conditions a transport has to survive - an enum/bool/int64/struct/`hstring` frame, a
+throwing handler, a collection inside the handler, a nested entry, a native thread of its own, instance and
+virtual targets - and reports every check. A thunk and an `UnmanagedCallersOnly` entry are checked only where the
+runtime compiles code (`RuntimeFeature.IsDynamicCodeCompiled`): an interpreter-only runtime such as the browser has no
+native entry to hand out, and production calls in through `mono_runtime_invoke` there as everywhere. The native-thread
+condition is skipped in the single-threaded browser runtime. The native side calls a thunk and an
+`UnmanagedCallersOnly` entry with the platform default calling convention, as Mono documents for its thunks: that is
+`__stdcall` on Windows x86 and the C convention everywhere else, and a cdecl pointer there corrupts the stack on the
+first call. A client that runs no test suite - a browser or a
+device - is qualified by starting it with `ManagedScript.InteropProbeOnStart = True`: once scripts have started it
+logs one `INTEROP-TRANSPORT` line per check and a closing `INTEROP-TRANSPORT summary: <n> checks, <m> failed, pointer
+size <bytes>, compiled code <bool>` line.
+Latency is not a CI gate: a shared runner's noise exceeds what these series resolve, so the numbers are compared
+by hand on a quiet host, while allocations and delivery counts stay hard assertions. This probe is also the
+qualification run for a runtime upgrade: take the series on the old pin, switch the pin, take them again.
 
 `python -m pytest BuildTools/tests/test_managed_stack_traces.py BuildTools/tests/test_managed_async_callbacks.py`
 checks the canonical managed exception descriptions and callback failure accounting. The stack-trace probes
@@ -165,8 +227,9 @@ FO_MANAGED_CALLBACK_RUNTIME=/path/to/mono/linux.x64.Release \
   python3 -m pytest BuildTools/tests/test_managed_callback_gc_roots.py
 ```
 
-It compiles the canonical `DispatchManagedCallbackInContext` body and managed callback helpers against
-small argument-conversion fixtures. Real Mono collections cover eleven mixed scalar arguments,
+It compiles the canonical `DispatchManagedCallbackInContext` and `DispatchManagedCallbackBoxed` bodies and
+managed callback helpers against small argument-conversion fixtures; the plan carries no generated adapter, so
+every call takes the boxed path, the one whose roots this probe is about. Real Mono collections cover eleven mixed scalar arguments,
 a mutable string with a return value, and cleanup after a boxing exception. The Mono profiler
 checks strong-handle lifetime at the boxing and copy-back boundaries: native conservative stack
 scanning can otherwise keep an unrooted object alive. The same probe runs 10,000 frame-pump scopes
@@ -183,10 +246,11 @@ FO_MANAGED_CALLBACK_BUILD=/path/to/native/build \
   python3 -m pytest BuildTools/tests/test_managed_callback_context.py
 ```
 
-This probe compiles the canonical callback wrapper and `ServerEngine::RunScriptContext` method
-on a small fixture host. Releasing or replacing the callback's cover, including an exceptional
-return, must preserve the caller's context and physical lock while releasing the callback's own
-lock. It records the native link inputs and verifies that they remain unchanged during linking.
+This probe compiles the canonical callback wrapper, `RunManagedScriptEntry` and
+`ServerEngine::RunScriptContext` on a small fixture host. Releasing or replacing the callback's cover,
+including an exceptional return, must preserve the caller's context and physical lock while releasing the
+callback's own lock. A second build runs the callback in the caller's context instead of a script context of
+its own and must fail, so the probe is shown to catch the defect it guards against. It records the native link inputs and verifies that they remain unchanged during linking.
 A running server with real managed remote calls remains the end-to-end acceptance check.
 
 ### Unit tests under sanitizers
@@ -210,9 +274,10 @@ sanitizer-report unwinding do not self-report on ABI register snapshots. `San_Me
 also configures libbson without `strlcpy`: MSan does not intercept the glibc function, so
 every string libbson copies with it (MongoDB URI option keys among them) would read as
 uninitialized, while its `strncpy` fallback is intercepted. Engine
-native stack capture and the backward-cpp signal handler are disabled under MSan and
-TSan so the sanitizer runtimes own their reports; backward-cpp/libbfd symbolization
-under TSan also produces prohibitive shadow-memory growth. The embedded Mono archive and
+native stack capture and the crash handlers are disabled under MSan and
+TSan so the sanitizer runtimes own their reports. The bundled LLVM libunwind and libbacktrace that
+walk and name those stacks on Linux are compiled without instrumentation, as the system code they
+replaced was, because they read other frames' stack and debug info from inside crash handlers. The embedded Mono archive and
 its generated JIT code are not instrumented by the host sanitizer toolchain. Managed-script
 builds therefore reject `San_Memory*`: valid runtime writes otherwise retain poisoned shadow
 bytes and report as soon as Mono loads CoreLib. They also reject `San_Thread`: Mono suspends
@@ -276,12 +341,11 @@ LeakSanitizer runs as part of the address-sanitizer leg (CI sets `ASAN_OPTIONS=d
 It runs with **no suppression list** — every leak it can report is fixed at the source rather than
 masked. Notable cases:
 
-- backward-cpp's libbfd stack-trace resolver (`Source/Essentials/StackTrace.cpp`) caches each
-  binary's ELF symbol table and DWARF debug info inside libbfd, hung off the open `bfd` handle, and
-  never fully frees it on `bfd_close`. The resolver is therefore a single process-lifetime instance
-  (`get_native_trace_resolver`, serialized by `stack_trace_state::native_resolver_locker`): it is created
-  once, never destroyed, and stays reachable from a static root, so each binary is symbolized once
-  and those libbfd caches remain reachable — LSan does not report them.
+- The libbacktrace state that names native frames on Linux (`Source/Essentials/StackTrace.cpp`) keeps the
+  debug info it read for the life of the process, in memory it maps itself rather than through `malloc`,
+  and the state stays reachable from the process-lifetime `stack_trace_state`
+  (serialized by `stack_trace_state::native_resolver_locker`), so each binary is read once and LSan has
+  nothing to report.
 - The AngelScript backend deletes the preprocessor line-number translator during engine userdata
   cleanup, and each SPARK context frees its `IOManager` converters at context shutdown.
 - Owning containers free their contents transitively: e.g. `EntityTypeDesc::PropRegistrar` is a
@@ -460,18 +524,17 @@ failed - drive only what is reachable.
 
 ### Covering the crash reporter
 
-`ExceptionHandling.cpp` publishes `SetCrashStackTrace`, `SetCrashSignalInfo`,
-`SetCrashSehInfo`, `SetCrashTerminationInfo` and `GetCrashStream` to
-`backward.hpp` only — they carry no engine namespace and appear in no engine
-header, so a test declares them exactly as that header does. The report is
-emitted through the base log on the first write to the crash stream, so point
-`logging::to_file` at a private file, write one line into `GetCrashStream()` and read
-the report back instead of letting "FATAL ERROR!" leak into the test console.
+The crash handlers record their reason through `exceptions::set_crash_signal_reason`,
+`set_crash_exception_reason` and `set_crash_termination_reason` and write the report with
+`exceptions::write_crash_report(st)`, which a test calls directly. The report goes through the
+base log, so point `logging::to_file` at a private file and read the report back instead of
+letting "FATAL ERROR!" leak into the test console.
 Restore the log with `logging::to_file("/dev/null")` (`"NUL"` on Windows); there is no
 "stop logging to a file" call. Terminating reporters are covered out of process
 through `DiagnosticSelfTest`: `main_strong_assert` covers `exceptions::report_and_exit`,
 `main_basic_strong_assert` and `main_fatal_exit` cover the early `FatalError`
-layer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
+layer, `main_bad_call` covers the walk that recovers the callers of a call through a null function
+pointer, and `main_failure_exit` pins the raw status-only `exit_app(false)` contract.
 The embedding project's
 `Tools/PipelineTests/test_crash_diagnostics_linux.py` asserts their log and exit
 contracts without killing the unit-test process.

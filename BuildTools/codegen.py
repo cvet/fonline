@@ -2164,7 +2164,9 @@ def append_value_type_registration(helper_lines: list[str], register_lines: list
 
     for value_type_tag in codegen_tags['ExportValueType']:
         native_type = value_type_tag.native_type
-        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '", sizeof(' + native_type + '), &CreateNativeValue<' + native_type + '>, &CopyNativeValue<' + native_type + '>);')
+        # A value type is moved by memcpy everywhere, so its native twin has to be plain data
+        body_lines.append('static_assert(std::is_trivially_copyable_v<' + native_type + '>, "Value type ' + value_type_tag.name + ' must be trivially copyable");')
+        body_lines.append('meta->RegisterValueType("' + value_type_tag.name + '", sizeof(' + native_type + '));')
 
     body_lines.append('')
 

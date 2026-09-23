@@ -135,6 +135,18 @@ struct FuncCallData
     ptr<void> Accessor {nullptr};
     int32_t Result {};
 };
+// No generated adapter: the probe covers the boxed path, which every signature can fall back to
+struct ManagedCallbackPlan
+{
+    ComplexTypeDesc Ret;
+    vector<ComplexTypeDesc> Args;
+    nptr<MonoMethod> Adapter;
+};
+struct ManagedBackendCaches
+{
+    std::atomic<bool> CountDispatches {};
+    std::atomic<int64_t> BoxedCallbackDispatches {};
+};
 struct _MonoProfiler
 {
     std::mutex Lock;
@@ -159,7 +171,9 @@ struct ManagedScriptBackend
     int32_t Collections {};
     int32_t ThrowAt {-1};
     bool CheckRoots {true};
+    ManagedBackendCaches Caches {};
     MonoDomain* GetDomain() { return Domain; }
+    nptr<ManagedBackendCaches> GetCaches() { return &Caches; }
     auto SnapshotHandles()
     {
         std::lock_guard guard(Profiler->Lock);
@@ -175,7 +189,6 @@ struct ManagedScriptBackend
         return false;
     }
 };
-struct ActiveBackendScope { explicit ActiveBackendScope(ptr<ManagedScriptBackend>) { } };
 static MonoDomain* GetDomainOrThrow(MonoDomain* domain) { return domain; }
 static MonoClass* FindFOnlineClass(ptr<ManagedScriptBackend> backend, const char* name)
 {
@@ -185,9 +198,25 @@ static void ThrowIfManagedException(MonoObject* exception, const char* message)
 {
     if (exception != nullptr) throw ScriptSystemException(message);
 }
+static auto NewManagedGcHandle(MonoObject* obj, mono_bool pinned) -> uint32_t
+{
+    return mono_gchandle_new(obj, pinned);
+}
+static auto FindNativeMethod(ptr<ManagedScriptBackend> backend, const char* method_name, int32_t args_count) -> MonoMethod*
+{
+    MonoClass* native_class = FindFOnlineClass(backend, "Native");
+    MonoMethod* method = native_class != nullptr ? mono_class_get_method_from_name(native_class, method_name, args_count) : nullptr;
+    if (method == nullptr) throw ScriptSystemException("Managed Native method not found");
+    return method;
+}
+static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend>, uint32_t, const ManagedCallbackPlan&, FuncCallData&) -> bool
+{
+    return false;
+}
+static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 
 // Stack-trace bookkeeping is covered separately; this probe exercises callback argument and result roots
-static auto InvokeManagedScript(MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
+static auto InvokeManagedScript(ptr<ManagedScriptBackend>, MonoMethod* method, MonoObject* object, void** args, const char* message) -> MonoObject*
 {
     MonoObject* exception = nullptr;
     MonoObject* result = mono_runtime_invoke(method, object, args, &exception);
@@ -364,7 +393,7 @@ int main(int argc, char** argv)
     call.ArgsData = by_ref ? vector<void*>{&text} : vector<void*>{&a, &b, &text, &c, &d, &e, &f, &g, &h, &i, &j};
     int32_t status = 0;
     auto dispatch = [&] {
-        DispatchManagedCallbackInContext(&backend, handler_handle, int_type, args, call);
+        DispatchManagedCallbackInContext(&backend, handler_handle, ManagedCallbackPlan {int_type, args, nullptr}, call);
         if (backend.ThrowAt >= 0) status = 93;
         if (call.Result != (by_ref ? 73 : 39) || text != (by_ref ? "changed" : "scope")) status = 94;
     };
@@ -443,7 +472,8 @@ def extract_function(source: str, declaration: str) -> str:
 
 
 def build_native_probe(output: Path, runtime: Path, compiler: str, backend_source: str) -> Path:
-    declaration = "static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ComplexTypeDesc& ret, const vector<ComplexTypeDesc>& args, FuncCallData& call)"
+    declaration = "static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)"
+    boxed_declaration = "static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call)"
     attachment_start = backend_source.index("enum class ManagedThreadAttachmentMode\n{")
     attachment_class = backend_source.index("class ManagedThreadAttachment final\n{", attachment_start)
     attachment_end = backend_source.index("\n};", attachment_class) + len("\n};")
@@ -451,7 +481,8 @@ def build_native_probe(output: Path, runtime: Path, compiler: str, backend_sourc
     root_start = backend_source.index("struct ManagedObjectRoot\n{")
     root_end = backend_source.index("\n};", root_start) + len("\n};")
     source = (NATIVE_PREFIX + backend_source[attachment_start:attachment_end] + "\n" + release_handle +
-              backend_source[root_start:root_end] + "\n" + extract_function(backend_source, declaration) + NATIVE_MAIN)
+              backend_source[root_start:root_end] + "\n" + extract_function(backend_source, declaration) +
+              extract_function(backend_source, boxed_declaration) + NATIVE_MAIN)
     path = output / "callback.cpp"
     path.write_text(source, encoding="utf-8")
     executable = output / "callback"

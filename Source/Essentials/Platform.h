@@ -75,6 +75,20 @@ namespace platform
     // Windows: GetCurrentProcessId; Linux and macOS: getpid; other: "0"
     auto get_current_process_id_str() noexcept -> string;
 
+    // One process for good: the id alone is handed on to the next process once this one ends, the id with the
+    // start time is not. A zero start time means the platform could not tell
+    struct process_identity
+    {
+        int64_t pid {};
+        uint64_t start_time {};
+    };
+
+    // Windows: GetProcessTimes creation time; Linux: /proc stat start ticks; macOS: proc_pidinfo start; other: zero
+    auto get_current_process_identity() noexcept -> process_identity;
+    // Whether the process the identity names is still running. An identity the platform cannot tell is never
+    // running, so a caller acting on the answer cannot act on a stranger that reused the id
+    auto is_process_running(const process_identity& identity) noexcept -> bool;
+
     // Resident process bytes from WorkingSetSize, /proc/self/statm, or MACH_TASK_BASIC_INFO.
     // Return zero when unsupported
     auto get_process_memory_usage() noexcept -> size_t;

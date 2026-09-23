@@ -239,8 +239,14 @@ public static class ScriptFuncRegistration
             return "string";
         }
 
-        if (type == typeof(object)) {
+        if (type == typeof(any)) {
             return "any";
+        }
+
+        // Nothing in the engine is an untyped object; a script func that takes whatever the caller passes takes `any`
+        if (type == typeof(object)) {
+            throw new NotSupportedException("Managed script signature uses object, which no engine type maps to; " +
+                                            "declare metadata any as FOnline.any");
         }
 
         // Collections map to the engine array type name "element[]" so the registered signature matches the

@@ -57,6 +57,9 @@ deliberately tracked at a branch).
    dependency. For build-critical libraries (allocator, shader toolchain,
    serialization), prefer a functional pass over the real data path — e.g. a
    full resource bake or the engine unit-test suite — not just compile-and-link.
+   A dependency with a copy outside `ThirdParty/` updates that copy in the same commit: SDL's Android Java
+   glue lives in `BuildTools/android-project/.../org/libsdl/app/` and must match the linked SDL, or the app
+   aborts in `System.loadLibrary` (`BuildTools/tests/test_android_sdl_java_glue.py` holds the two equal).
 9. Commit each dependency or version pin separately. Use a direct message such
    as `Update SDL to 3.4.10`.
 

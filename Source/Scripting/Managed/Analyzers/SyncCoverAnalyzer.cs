@@ -20,80 +20,6 @@ using Microsoft.CodeAnalysis.Diagnostics;
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 {
-    public const string RequiresCoverAttributeFullName = "FOnline.RequiresCoverAttribute";
-    public const string ProvidesCoverAttributeFullName = "FOnline.ProvidesCoverAttribute";
-    public const string PreservesCoverAttributeFullName = "FOnline.PreservesCoverAttribute";
-    public const string ReturnsParentAttributeFullName = "FOnline.ReturnsParentAttribute";
-    public const string ReturnsAncestorAttributeFullName = "FOnline.ReturnsAncestorAttribute";
-    public const string AcquiresCoverAttributeFullName = "FOnline.AcquiresCoverAttribute";
-    public const string PassesCoverAttributeFullName = "FOnline.PassesCoverAttribute";
-    public const string CoverEffectAttributeFullName = "FOnline.CoverEffectAttribute";
-    public const string EntityTypeFullName = "FOnline.Entity";
-
-    // The cover primitives are engine-owned, so they are matched by their symbol's full metadata name.
-    // Matching a bare type name would let any project class called `Sync` silently discharge an
-    // obligation it knows nothing about.
-    public const string SyncTypeFullName = "FOnline.Sync";
-    public const string GameTypeFullName = "FOnline.Game";
-    public const string GameLockTypeFullName = "FOnline.GameLock";
-
-    // Entities that carry their cover with them: baked map data and prototypes. They are immutable and
-    // readable at any time, so an obligation for one is satisfied the moment it is stated, and acquiring
-    // one succeeds trivially (Sync answers success without reaching the native primitive).
-    //
-    // They are still ENTITIES, and annotations on them are still legal. Excluding them from the notion of
-    // "entity" instead would lose the contract on an upcast: ProtoCritter derives from Critter and
-    // StaticItem from the shared item base, so a value flowing through the base type would silently stop
-    // demanding cover for the mutable half. The exemption belongs to the value, not to the type system.
-    //
-    // Asked of the type rather than kept as a list of names: the baker overrides `IsAlwaysCovered` on
-    // exactly the generated prototype and static classes, so a project's own entities (its Proto<Faction>,
-    // its Proto<Modifier>) are covered without this engine-owned analyzer having to know their names.
-    private const string AlwaysCoveredMemberName = "IsAlwaysCovered";
-
-    // The raw synchronization surface is declared where it is exported, not listed here. A list of method
-    // names is a rule that a rename disarms with nothing to notice it -- and unlike the analyzer's own rules,
-    // nothing downstream would report the silence either. `Game.Sync` / `Game.SyncRelease` carry
-    // FO_COVER_PRIMITIVE, `Game.IsEntityLocked` carries FO_COVER_PROBE, `Game.Lock` / `Game.Unlock` carry
-    // FO_SINGLETON_LOCK, and `Sync.IsCovered` -- the model's own probe, written in C# -- declares
-    // [CoverProbe] directly
-    //
-    // `Game.TrySyncEntity` carries no marker, for a reason worth keeping: it resolves an *id* to a live
-    // entity and covers it, answering false when the entity is gone. Every Sync helper takes an entity, so
-    // none can stand in for it -- a handle retained across a yield may already be dead, which is exactly when
-    // this is the right call. Marking it would report code for using the only tool that fits
-    public const string CoverPrimitiveAttributeFullName = "FOnline.CoverPrimitiveAttribute";
-    public const string CoverProbeAttributeFullName = "FOnline.CoverProbeAttribute";
-    public const string SingletonLockAttributeFullName = "FOnline.SingletonLockAttribute";
-
-    // The Game methods whose subject is an entity to cover. Game also carries the whole rest of the
-    // script surface, so a rule about acquisitions must name these rather than take the type as a whole:
-    // a static item passed to Game.CallStaticItemFunction as its subject is an ordinary argument, not an
-    // acquisition.
-    private static readonly string[] GameCoverPrimitiveNames =
-        { "Sync", "SyncRelease", "Lock", "Unlock", "TrySyncEntity", "IsEntityLocked" };
-
-    // Methods that BEGIN an execution context: the engine dispatcher establishes cover for the arguments
-    // it hands them, so their entity parameters arrive already covered and need no annotation. This is
-    // sound only because such methods are called by their attribute rule and never directly from regular
-    // code -- the project convention that keeps an entry point's assumption from leaking into an ordinary
-    // call chain.
-    private static readonly string[] EntryPointAttributeFullNames = {
-        "FOnline.EventAttribute",
-        "FOnline.TimeEventAttribute",
-        "FOnline.ServerRemoteCallAttribute",
-        "FOnline.ClientRemoteCallAttribute",
-        "FOnline.AdminRemoteCallAttribute",
-        "FOnline.ItemTriggerAttribute",
-        "FOnline.ItemInitAttribute",
-        "FOnline.ItemStaticAttribute",
-        "FOnline.CritterInitAttribute",
-        "FOnline.MapInitAttribute",
-        "FOnline.LocationInitAttribute",
-        "LastFrontier.DialogDemandAttribute",
-        "LastFrontier.DialogResultAttribute",
-    };
-
     private const string Category = "Synchronization";
 
     internal static readonly DiagnosticDescriptor NonEntityTargetRule = new DiagnosticDescriptor(
@@ -192,56 +118,13 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         context.RegisterCompilationStartAction(
             compilationStart =>
             {
-                Compilation compilation = compilationStart.Compilation;
+                CoverVocabulary? vocabulary = CoverVocabulary.Resolve(compilationStart.Compilation);
 
-                INamedTypeSymbol? requiresCover = compilation.GetTypeByMetadataName(RequiresCoverAttributeFullName);
-                INamedTypeSymbol? providesCover = compilation.GetTypeByMetadataName(ProvidesCoverAttributeFullName);
-                INamedTypeSymbol? preservesCover = compilation.GetTypeByMetadataName(PreservesCoverAttributeFullName);
-                INamedTypeSymbol? returnsParent = compilation.GetTypeByMetadataName(ReturnsParentAttributeFullName);
-                INamedTypeSymbol? returnsAncestor = compilation.GetTypeByMetadataName(ReturnsAncestorAttributeFullName);
-                INamedTypeSymbol? acquiresCover = compilation.GetTypeByMetadataName(AcquiresCoverAttributeFullName);
-                INamedTypeSymbol? passesCover = compilation.GetTypeByMetadataName(PassesCoverAttributeFullName);
-                INamedTypeSymbol? coverEffect = compilation.GetTypeByMetadataName(CoverEffectAttributeFullName);
-                INamedTypeSymbol? coverPrimitive = compilation.GetTypeByMetadataName(CoverPrimitiveAttributeFullName);
-                INamedTypeSymbol? coverProbe = compilation.GetTypeByMetadataName(CoverProbeAttributeFullName);
-                INamedTypeSymbol? singletonLock = compilation.GetTypeByMetadataName(SingletonLockAttributeFullName);
-                INamedTypeSymbol? entityType = compilation.GetTypeByMetadataName(EntityTypeFullName);
-
-                if (requiresCover == null || entityType == null) {
+                if (vocabulary?.RequiresCoverAttribute == null) {
                     return;
                 }
 
-                INamedTypeSymbol? syncType = compilation.GetTypeByMetadataName(SyncTypeFullName);
-                INamedTypeSymbol? gameType = compilation.GetTypeByMetadataName(GameTypeFullName);
-                INamedTypeSymbol? gameLockType = compilation.GetTypeByMetadataName(GameLockTypeFullName);
-
-                var entryMarkers = new List<INamedTypeSymbol>();
-
-                foreach (string name in EntryPointAttributeFullNames) {
-                    INamedTypeSymbol? marker = compilation.GetTypeByMetadataName(name);
-
-                    if (marker != null) {
-                        entryMarkers.Add(marker);
-                    }
-                }
-
-                var model = new CoverModel(compilation,
-                                           requiresCover,
-                                           providesCover,
-                                           preservesCover,
-                                           returnsParent,
-                                           returnsAncestor,
-                                           acquiresCover,
-                                           passesCover,
-                                           coverEffect,
-                                           coverPrimitive,
-                                           coverProbe,
-                                           singletonLock,
-                                           entityType,
-                                           syncType,
-                                           gameType,
-                                           gameLockType,
-                                           entryMarkers);
+                var model = new CoverModel(vocabulary);
 
                 compilationStart.RegisterSymbolAction(symbolContext => AnalyzeDeclaration(symbolContext, model),
                                                       SymbolKind.Method);
@@ -826,8 +709,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                     }
                 }
 
-                // Names the value anywhere in the acquisition, including through a local list of roots the
-                // body fills before handing it over
                 if (model.NamesValue(argument.Expression, tracked, body, semantics)) {
                     return true;
                 }
@@ -846,8 +727,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                                                           SemanticModel semantics, CancellationToken cancellationToken)
     {
         foreach (InvocationExpressionSyntax candidate in body.DescendantNodes().OfType<InvocationExpressionSyntax>()) {
-            if (candidate.SpanStart < windowStart || candidate.SpanStart >= windowEnd ||
-                candidate.ArgumentList.Arguments.Count != 1) {
+            if (candidate.SpanStart < windowStart || candidate.SpanStart >= windowEnd) {
                 continue;
             }
 
@@ -856,22 +736,24 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            if (semantics.GetSymbolInfo(candidate.ArgumentList.Arguments[0].Expression, cancellationToken)
-                    .Symbol is not ILocalSymbol snapshot) {
-                continue;
-            }
-
-            foreach (SyntaxReference reference in snapshot.DeclaringSyntaxReferences) {
-                if (reference.GetSyntax(cancellationToken) is not
-                    VariableDeclaratorSyntax { Initializer.Value : {} initializer } declarator ||
-                    declarator.SpanStart >= coverHeldUntil) {
+            foreach (ArgumentSyntax argument in candidate.ArgumentList.Arguments) {
+                if (semantics.GetSymbolInfo(argument.Expression, cancellationToken)
+                        .Symbol is not ILocalSymbol snapshot) {
                     continue;
                 }
 
-                if (semantics.GetSymbolInfo(initializer, cancellationToken).Symbol is IMethodSymbol source &&
-                    model.EffectOf(source) == CoverEffect.Snapshot &&
-                    !DeclaredAtOrAfter(tracked, declarator.SpanStart, cancellationToken)) {
-                    return true;
+                foreach (SyntaxReference reference in snapshot.DeclaringSyntaxReferences) {
+                    if (reference.GetSyntax(cancellationToken) is not
+                        VariableDeclaratorSyntax { Initializer.Value : {} initializer } declarator ||
+                        declarator.SpanStart >= coverHeldUntil) {
+                        continue;
+                    }
+
+                    if (semantics.GetSymbolInfo(initializer, cancellationToken).Symbol is IMethodSymbol source &&
+                        model.EffectOf(source) == CoverEffect.Snapshot &&
+                        !DeclaredAtOrAfter(tracked, declarator.SpanStart, cancellationToken)) {
+                        return true;
+                    }
                 }
             }
         }
@@ -1048,109 +930,63 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         return null;
     }
 
-    // Resolved contract vocabulary for one compilation.
-    // Mirrors FOnline.CoverEffectKind: the analyzer reads the value the attribute carries, and the order is the
-    // contract between them
-    private enum CoverEffect
-    {
-        Replace,
-        Extend,
-        Restore,
-        Snapshot,
-        Release,
-    }
-
     private sealed class CoverModel
     {
-        private readonly Compilation CompilationContext;
+        // The contract vocabulary this model reads declarations through. Everything below it is the part
+        // that is NOT a declaration: approximations computed from a callee's body, which the redundancy rules
+        // deliberately do not consume as proof.
+        private readonly CoverVocabulary Vocabulary;
         private readonly ConcurrentDictionary<IMethodSymbol, bool> PreservingCache =
             new ConcurrentDictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
         private readonly ConcurrentDictionary<IParameterSymbol, bool> ProvidingCache =
             new ConcurrentDictionary<IParameterSymbol, bool>(SymbolEqualityComparer.Default);
-        private readonly INamedTypeSymbol RequiresCoverAttribute;
-        private readonly INamedTypeSymbol? ProvidesCoverAttribute;
-
-        private readonly INamedTypeSymbol? PreservesCoverAttribute;
-        private readonly INamedTypeSymbol? ReturnsParentAttribute;
-        private readonly INamedTypeSymbol? ReturnsAncestorAttribute;
-        private readonly INamedTypeSymbol? AcquiresCoverAttribute;
-        private readonly INamedTypeSymbol? PassesCoverAttribute;
-        private readonly INamedTypeSymbol? CoverEffectAttribute;
-        private readonly INamedTypeSymbol? CoverPrimitiveAttribute;
-        private readonly INamedTypeSymbol? CoverProbeAttribute;
-        private readonly INamedTypeSymbol? SingletonLockAttribute;
 
         // CoverReach.Parent and CoverReach.Ancestors, as the attribute's constructor argument carries them
         private const int ReachParent = 1 << 0;
         private const int ReachAncestors = 1 << 1;
-        private readonly INamedTypeSymbol EntityType;
 
-        private readonly List<INamedTypeSymbol> EntryMarkers;
+        // An alias of an element of a set built from another set is already three steps; past this the walk
+        // answers "not denoted" rather than following a shape nobody writes
+        private const int MaxDenotationDepth = 8;
 
-        public CoverModel(Compilation compilation, INamedTypeSymbol requiresCover, INamedTypeSymbol? providesCover,
-                          INamedTypeSymbol? preservesCover, INamedTypeSymbol? returnsParent,
-                          INamedTypeSymbol? returnsAncestor, INamedTypeSymbol? acquiresCover,
-                          INamedTypeSymbol? passesCover, INamedTypeSymbol? coverEffect,
-                          INamedTypeSymbol? coverPrimitive, INamedTypeSymbol? coverProbe,
-                          INamedTypeSymbol? singletonLock, INamedTypeSymbol entityType, INamedTypeSymbol? syncType,
-                          INamedTypeSymbol? gameType, INamedTypeSymbol? gameLockType,
-                          List<INamedTypeSymbol> entryMarkers)
+        public CoverModel(CoverVocabulary vocabulary)
         {
-            CompilationContext = compilation;
-            RequiresCoverAttribute = requiresCover;
-            ProvidesCoverAttribute = providesCover;
-            PreservesCoverAttribute = preservesCover;
-            ReturnsParentAttribute = returnsParent;
-            ReturnsAncestorAttribute = returnsAncestor;
-            AcquiresCoverAttribute = acquiresCover;
-            PassesCoverAttribute = passesCover;
-            CoverEffectAttribute = coverEffect;
-            CoverPrimitiveAttribute = coverPrimitive;
-            CoverProbeAttribute = coverProbe;
-            SingletonLockAttribute = singletonLock;
-            EntityType = entityType;
-            SyncType = syncType;
-            GameType = gameType;
-            GameLockType = gameLockType;
-            EntryMarkers = entryMarkers;
+            Vocabulary = vocabulary;
         }
 
-        public bool IsEntryPoint(IMethodSymbol method)
-        {
-            foreach (INamedTypeSymbol marker in EntryMarkers) {
-                if (HasAttribute(method.GetAttributes(), marker)) {
-                    return true;
-                }
-            }
+        public bool IsEntryPoint(IMethodSymbol method) => Vocabulary.IsEntryPoint(method);
 
-            return false;
-        }
+        public INamedTypeSymbol? SyncType => Vocabulary.SyncType;
 
-        public INamedTypeSymbol? SyncType { get; }
+        public bool CanAcquireCover => Vocabulary.CanAcquireCover;
 
-        // Whether this compilation has any acquisition at all. `Sync` is declared on every target, but its
-        // helpers exist only where entities are synchronized
-        public bool CanAcquireCover => SyncType != null && SyncType.GetMembers().OfType<IMethodSymbol>().Any(Acquires);
+        public INamedTypeSymbol? GameType => Vocabulary.GameType;
 
-        public INamedTypeSymbol? GameType { get; }
+        public INamedTypeSymbol? GameLockType => Vocabulary.GameLockType;
 
-        public INamedTypeSymbol? GameLockType { get; }
+        public bool HasRequiresCover(IParameterSymbol parameter) => Vocabulary.HasRequiresCover(parameter);
 
-        public bool HasRequiresCover(IParameterSymbol parameter)
-        {
-            return HasAttribute(parameter.GetAttributes(), RequiresCoverAttribute);
-        }
+        public bool HasRequiresCoverOnMethod(IMethodSymbol method) => Vocabulary.HasRequiresCoverOnMethod(method);
 
-        // On a method the attribute names the receiver, which no parameter can express.
-        public bool HasRequiresCoverOnMethod(IMethodSymbol method)
-        {
-            return HasAttribute(method.GetAttributes(), RequiresCoverAttribute);
-        }
+        public bool HasProvidesCover(IParameterSymbol parameter) => Vocabulary.HasProvidesCover(parameter);
 
-        public bool HasProvidesCover(IParameterSymbol parameter)
-        {
-            return ProvidesCoverAttribute != null && HasAttribute(parameter.GetAttributes(), ProvidesCoverAttribute);
-        }
+        public bool HasProvidesCoverOnReturn(IMethodSymbol method) => Vocabulary.HasProvidesCoverOnReturn(method);
+
+        public bool IsAlwaysCovered(ITypeSymbol? type) => Vocabulary.IsAlwaysCovered(type);
+
+        public bool IsEntityish(ITypeSymbol type) => Vocabulary.IsEntityish(type);
+
+        public bool AcquiresCover(IMethodSymbol method) => Vocabulary.AcquiresCover(method);
+
+        public CoverEffect? EffectOf(IMethodSymbol method) => Vocabulary.EffectOf(method);
+
+        public bool IsCoverPrimitive(IMethodSymbol method) => Vocabulary.IsCoverPrimitive(method);
+
+        public bool IsCoverProbe(IMethodSymbol method) => Vocabulary.IsCoverProbe(method);
+
+        public bool IsSingletonLock(IMethodSymbol method) => Vocabulary.IsSingletonLock(method);
+
+        public bool Acquires(IMethodSymbol method) => Vocabulary.Acquires(method);
 
         // Does handing the value to this parameter leave it covered when the call returns? Declared with
         // [ProvidesCover], or proved from the callee's own body: an acquisition naming that parameter, taken
@@ -1160,7 +996,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         // to a top-level acquisition and the guard form (`if (!await Sync...) { return; }`) that means the same.
         public bool ProvidesCover(IParameterSymbol parameter)
         {
-            return HasProvidesCover(parameter) || ProvidesCoverByBody(parameter, new Recursion());
+            return Vocabulary.HasProvidesCover(parameter) || ProvidesCoverByBody(parameter, new Recursion());
         }
 
         private bool ProvidesCoverByBody(IParameterSymbol parameter, Recursion recursion)
@@ -1205,16 +1041,16 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                     _ => null,
                 };
 
-                if (body == null || !CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
+                if (body == null || !Vocabulary.CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
                     continue;
                 }
 
-                SemanticModel semantics = CompilationContext.GetSemanticModel(declaration.SyntaxTree);
+                SemanticModel semantics = Vocabulary.CompilationContext.GetSemanticModel(declaration.SyntaxTree);
 
                 foreach (InvocationExpressionSyntax candidate in body.DescendantNodes()
                              .OfType<InvocationExpressionSyntax>()) {
-                    if (!AcquiresFor(candidate, parameter, body, semantics, recursion) ||
-                        !RunsOnEveryReturningPath(candidate, body, semantics)) {
+                    if (!RunsOnEveryReturningPath(candidate, body, semantics) ||
+                        !AcquiresFor(candidate, parameter, body, semantics, recursion)) {
                         continue;
                     }
 
@@ -1249,7 +1085,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
 
                 IParameterSymbol? bound = BoundParameter(call, callee, arguments[i]);
 
-                if (bound != null && (HasProvidesCover(bound) || ProvidesCoverByBody(bound, recursion))) {
+                if (bound != null && (Vocabulary.HasProvidesCover(bound) || ProvidesCoverByBody(bound, recursion))) {
                     return true;
                 }
             }
@@ -1257,35 +1093,183 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        // The value named directly, or through a local collection the acquisition takes as its roots --
-        // `List<Entity> roots = new List<Entity> { cr, map }; await Sync.Widen(roots);` names both
+        // Does this expression DENOTE the value, rather than merely MENTION it?
+        //
+        // That distinction is the whole of this method. `Sync.Lock(map)` where `map` came from `cr.GetMap()`
+        // mentions cr and denotes something else: the map as it was read BEFORE the acquisition, which the
+        // critter may have left while the caller waited. Counting it as a re-proof is what let a body lock a
+        // stale parent and then read the child with no diagnostic -- the exact race FOSYNC009 exists to name,
+        // and the reason `Sync.LockCritterWithMap` re-proves the critter-to-map link after every retry
+        // instead of resolving it once.
+        //
+        // Covering a parent does cover its children AT RUNTIME (`IsEntityAccessValid` walks up the chain),
+        // but nothing here can prove the child is still under that parent when the acquisition completes, so
+        // an acquisition of an ancestor never counts. Only the value itself does -- directly, through an
+        // alias, or as a member of a set handed over whole
         public bool NamesValue(ExpressionSyntax expression, ISymbol value, SyntaxNode body, SemanticModel semantics)
         {
-            foreach (IdentifierNameSyntax mention in expression.DescendantNodesAndSelf()
-                         .OfType<IdentifierNameSyntax>()) {
-                ISymbol? symbol = semantics.GetSymbolInfo(mention).Symbol;
+            return DenotesValue(expression, value, body, semantics, 0);
+        }
 
-                if (SymbolEqualityComparer.Default.Equals(symbol?.OriginalDefinition, value.OriginalDefinition)) {
+        private bool DenotesValue(ExpressionSyntax expression, ISymbol value, SyntaxNode body, SemanticModel semantics,
+                                  int depth)
+        {
+            if (depth > MaxDenotationDepth) {
+                return false;
+            }
+
+            ExpressionSyntax denoted = Unwrap(expression);
+
+            // A set handed over at once names every element of it
+            foreach (ExpressionSyntax element in Elements(denoted, semantics)) {
+                if (DenotesValue(element, value, body, semantics, depth + 1)) {
                     return true;
                 }
+            }
 
-                if (symbol is not ILocalSymbol local || !IsEntityish(local.Type)) {
-                    continue;
-                }
+            ISymbol? symbol = semantics.GetSymbolInfo(denoted).Symbol;
 
-                foreach (SyntaxNode contribution in CollectionContributions(local, body, semantics)) {
-                    foreach (IdentifierNameSyntax inner in contribution.DescendantNodesAndSelf()
-                                 .OfType<IdentifierNameSyntax>()) {
-                        if (SymbolEqualityComparer.Default.Equals(
-                                semantics.GetSymbolInfo(inner).Symbol?.OriginalDefinition,
-                                value.OriginalDefinition)) {
-                            return true;
-                        }
+            if (SymbolEqualityComparer.Default.Equals(symbol?.OriginalDefinition, value.OriginalDefinition)) {
+                return true;
+            }
+
+            // A pass-through hands its argument's value back -- either as the result itself, the way
+            // `VerifyNotNull` does, or inside the set it builds from its arguments. Either way the result
+            // names whatever that argument named, which is what makes it different from an accessor: nothing
+            // was resolved, so nothing can have moved in between
+            if (denoted is InvocationExpressionSyntax passThrough && symbol is IMethodSymbol forwarding) {
+                foreach (IParameterSymbol passed in forwarding.Parameters) {
+                    ExpressionSyntax? argument =
+                        Vocabulary.HasPassesCover(passed) ? ArgumentFor(passThrough, forwarding, passed) : null;
+
+                    if (argument != null && DenotesValue(argument, value, body, semantics, depth + 1)) {
+                        return true;
                     }
                 }
             }
 
+            if (symbol is not ILocalSymbol local) {
+                return false;
+            }
+
+            // A local holding ONE entity is an alias only when its own initializer denotes the value. A local
+            // COLLECTION is whatever was put into it -- its initializer plus every Add/AddRange in this body
+            if (Vocabulary.IsEntity(local.Type)) {
+                foreach (SyntaxReference reference in local.DeclaringSyntaxReferences) {
+                    if (reference.GetSyntax() is VariableDeclaratorSyntax { Initializer.Value : {} initializer } &&
+                        DenotesValue(initializer, value, body, semantics, depth + 1)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            }
+
+            if (!IsEntityish(local.Type)) {
+                return false;
+            }
+
+            foreach (SyntaxNode contribution in CollectionContributions(local, body, semantics)) {
+                if (contribution is ExpressionSyntax element &&
+                    DenotesValue(element, value, body, semantics, depth + 1)) {
+                    return true;
+                }
+            }
+
             return false;
+        }
+
+        // The spellings that leave what a value IS untouched
+        private static ExpressionSyntax Unwrap(ExpressionSyntax expression)
+        {
+            ExpressionSyntax current = expression;
+
+            while (true) {
+                switch (current) {
+                case ParenthesizedExpressionSyntax parenthesized:
+                    current = parenthesized.Expression;
+                    break;
+
+                case CastExpressionSyntax cast:
+                    current = cast.Expression;
+                    break;
+
+                case PostfixUnaryExpressionSyntax suppress when suppress.IsKind(
+                    SyntaxKind.SuppressNullableWarningExpression):
+                    current = suppress.Operand;
+                    break;
+
+                case BinaryExpressionSyntax conversion when conversion.IsKind(SyntaxKind.AsExpression):
+                    current = conversion.Left;
+                    break;
+
+                default:
+                    return current;
+                }
+            }
+        }
+
+        // The element expressions of a set written in place, and the arms of a choice between values. A choice
+        // counts when EITHER arm denotes the value: the rule reports a value left uncovered, so being
+        // permissive here loses a finding rather than inventing one
+        private static IEnumerable<ExpressionSyntax> Elements(ExpressionSyntax expression, SemanticModel semantics)
+        {
+            // Only the BCL copy constructor guarantees that its input elements appear in the result
+            if (expression is BaseObjectCreationExpressionSyntax { ArgumentList.Arguments.Count : 1 } creation &&
+                semantics.GetSymbolInfo(creation).Symbol is IMethodSymbol constructor &&
+                constructor.Parameters.Length == 1 &&
+                constructor.Parameters[0].Type.OriginalDefinition.SpecialType ==
+                    SpecialType.System_Collections_Generic_IEnumerable_T &&
+                SymbolEqualityComparer.Default.Equals(
+                    constructor.ContainingType.OriginalDefinition,
+                    semantics.Compilation.GetTypeByMetadataName("System.Collections.Generic.List`1"))) {
+                yield return creation.ArgumentList.Arguments[0].Expression;
+            }
+
+            InitializerExpressionSyntax? initializer = expression switch {
+                InitializerExpressionSyntax inline => inline,
+                ObjectCreationExpressionSyntax created => created.Initializer,
+                ImplicitObjectCreationExpressionSyntax created => created.Initializer,
+                ArrayCreationExpressionSyntax created => created.Initializer,
+                ImplicitArrayCreationExpressionSyntax created => created.Initializer,
+                _ => null,
+            };
+
+            if (initializer != null) {
+                foreach (ExpressionSyntax element in initializer.Expressions) {
+                    yield return element;
+                }
+
+                yield break;
+            }
+
+            if (expression is CollectionExpressionSyntax collection) {
+                foreach (CollectionElementSyntax element in collection.Elements) {
+                    switch (element) {
+                    case ExpressionElementSyntax single:
+                        yield return single.Expression;
+                        break;
+
+                    case SpreadElementSyntax spread:
+                        yield return spread.Expression;
+                        break;
+                    }
+                }
+
+                yield break;
+            }
+
+            if (expression is ConditionalExpressionSyntax choice) {
+                yield return choice.WhenTrue;
+                yield return choice.WhenFalse;
+
+                yield break;
+            }
+
+            if (expression is BinaryExpressionSyntax coalesce && coalesce.IsKind(SyntaxKind.CoalesceExpression)) {
+                yield return coalesce.Left;
+                yield return coalesce.Right;
+            }
         }
 
         // What a local collection was built from: its initializer plus every Add/AddRange on it in this body
@@ -1368,60 +1352,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return true;
         }
 
-        public bool HasProvidesCoverOnReturn(IMethodSymbol method)
-        {
-            return ProvidesCoverAttribute != null &&
-                   HasAttribute(method.GetReturnTypeAttributes(), ProvidesCoverAttribute);
-        }
-
-        // Baked map data and prototypes carry their own cover, so an obligation for one is already met.
-        // The generated class says so itself by overriding the base property.
-        public bool IsAlwaysCovered(ITypeSymbol? type)
-        {
-            for (ITypeSymbol? current = type; current != null; current = current.BaseType) {
-                foreach (ISymbol member in current.GetMembers(AlwaysCoveredMemberName)) {
-                    if (member is IPropertySymbol { IsOverride : true }) {
-                        return true;
-                    }
-                }
-            }
-
-            return false;
-        }
-
-        // An entity, or a collection of them: `List<Critter>` carries the contract element-wise, which is
-        // why the old string grammar needed a `[*]` marker and this one does not. The same holds through nesting,
-        // so a `Task<(Critter?, bool)>` names the critter it resolves
-        public bool IsEntityish(ITypeSymbol type)
-        {
-            if (IsEntity(type)) {
-                return true;
-            }
-
-            if (type is IArrayTypeSymbol array) {
-                return IsEntityish(array.ElementType);
-            }
-
-            if (type is INamedTypeSymbol named && named.IsGenericType) {
-                return named.TypeArguments.Any(IsEntityish);
-            }
-
-            return false;
-        }
-
-        // A script helper declared as an acquisition: it establishes cover through Sync for entities it names itself
-        public bool AcquiresCover(IMethodSymbol method)
-        {
-            return AcquiresCoverAttribute != null && HasAttribute(method.GetAttributes(), AcquiresCoverAttribute);
-        }
-
         // Does awaiting this call give the caller back the cover it had? Declared with [PreservesCover], or
         // proved here from the callee's own body.
         public bool PreservesCover(IMethodSymbol method)
         {
-            if (PreservesCoverAttribute != null &&
-                method.GetAttributes().Any(
-                    a => SymbolEqualityComparer.Default.Equals(a.AttributeClass, PreservesCoverAttribute))) {
+            if (Vocabulary.HasPreservesCover(method)) {
                 return true;
             }
 
@@ -1483,11 +1418,11 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                     _ => null,
                 };
 
-                if (body == null || !CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
+                if (body == null || !Vocabulary.CompilationContext.ContainsSyntaxTree(declaration.SyntaxTree)) {
                     return false;
                 }
 
-                SemanticModel semantics = CompilationContext.GetSemanticModel(declaration.SyntaxTree);
+                SemanticModel semantics = Vocabulary.CompilationContext.GetSemanticModel(declaration.SyntaxTree);
 
                 // Releasing the cover outright is the one way a body drops it without awaiting anything
                 foreach (InvocationExpressionSyntax call in body.DescendantNodes()
@@ -1528,12 +1463,27 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         {
             if (call is not InvocationExpressionSyntax invocation ||
                 semantics.GetSymbolInfo(invocation).Symbol is not IMethodSymbol restore ||
-                EffectOf(restore) != CoverEffect.Restore || invocation.ArgumentList.Arguments.Count != 1) {
+                EffectOf(restore) != CoverEffect.Restore) {
                 return false;
             }
 
-            if (semantics.GetSymbolInfo(invocation.ArgumentList.Arguments[0].Expression)
-                    .Symbol is not ILocalSymbol snapshot) {
+            // The snapshot is looked for in ANY argument, not only in a lone one: the exit-restore a
+            // cover-neutral helper ends on takes the caller's snapshot PLUS the entities the helper itself
+            // wants held, and demanding a single argument made every such helper read as losing the cover it
+            // in fact gives back
+            foreach (ArgumentSyntax argument in invocation.ArgumentList.Arguments) {
+                if (IsSnapshotOf(argument.Expression, semantics)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // A local that holds what a snapshot captured
+        private bool IsSnapshotOf(ExpressionSyntax expression, SemanticModel semantics)
+        {
+            if (semantics.GetSymbolInfo(expression).Symbol is not ILocalSymbol snapshot) {
                 return false;
             }
 
@@ -1583,60 +1533,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             return false;
         }
 
-        private bool IsSyncMethod(IMethodSymbol method)
-        {
-            return SyncType != null && SymbolEqualityComparer.Default.Equals(method.ContainingType, SyncType);
-        }
-
-        // What the call does to the held cover, as its own declaration states it. Reading the effect instead of
-        // the method's name is what keeps a rename a rename: nothing here recognises `Widen`, `Restore` or
-        // `Lock` as words
-        public CoverEffect? EffectOf(IMethodSymbol method)
-        {
-            if (CoverEffectAttribute == null) {
-                return null;
-            }
-
-            foreach (AttributeData attribute in method.OriginalDefinition.GetAttributes()) {
-                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, CoverEffectAttribute) ||
-                    attribute.ConstructorArguments.Length == 0 ||
-                    attribute.ConstructorArguments[0].Value is not int value) {
-                    continue;
-                }
-
-                return (CoverEffect)value;
-            }
-
-            return null;
-        }
-
-        // The raw surface, as the export declares itself
-        public bool IsCoverPrimitive(IMethodSymbol method)
-        {
-            return CoverPrimitiveAttribute != null &&
-                   HasAttribute(method.OriginalDefinition.GetAttributes(), CoverPrimitiveAttribute);
-        }
-
-        public bool IsCoverProbe(IMethodSymbol method)
-        {
-            return CoverProbeAttribute != null &&
-                   HasAttribute(method.OriginalDefinition.GetAttributes(), CoverProbeAttribute);
-        }
-
-        public bool IsSingletonLock(IMethodSymbol method)
-        {
-            return SingletonLockAttribute != null &&
-                   HasAttribute(method.OriginalDefinition.GetAttributes(), SingletonLockAttribute);
-        }
-
-        // An acquisition is any effect that leaves the job holding something it can name
-        public bool Acquires(IMethodSymbol method)
-        {
-            CoverEffect? effect = EffectOf(method);
-
-            return effect is CoverEffect.Replace or CoverEffect.Extend or CoverEffect.Restore;
-        }
-
         // One walk of the call graph: what it is standing in, and whether it had to cut a cycle to answer
         private sealed class Recursion
         {
@@ -1661,7 +1557,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? ProvidedReach(ExpressionSyntax expression, SemanticModel semantics,
                                    CancellationToken cancellationToken)
         {
-            if (ProvidesCoverAttribute == null) {
+            if (Vocabulary.ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1685,18 +1581,17 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             ISymbol? symbol = semantics.GetSymbolInfo(expression, cancellationToken).Symbol;
 
             if (symbol is IMethodSymbol direct) {
-                int? returned = DeclaredReach(direct.GetReturnTypeAttributes());
+                int? returned = Vocabulary.DeclaredReach(direct.GetReturnTypeAttributes());
 
                 if (returned != null) {
                     return returned;
                 }
 
                 // A pass-through hands back the very argument it was given, cover and reach included
-                if (expression is InvocationExpressionSyntax passThrough && PassesCoverAttribute != null) {
+                if (expression is InvocationExpressionSyntax passThrough) {
                     foreach (IParameterSymbol passed in direct.Parameters) {
-                        ExpressionSyntax? argument = HasAttribute(passed.GetAttributes(), PassesCoverAttribute)
-                                                       ? ArgumentFor(passThrough, direct, passed)
-                                                       : null;
+                        ExpressionSyntax? argument =
+                            Vocabulary.HasPassesCover(passed) ? ArgumentFor(passThrough, direct, passed) : null;
 
                         if (argument != null) {
                             return ProvidedReach(argument, semantics, cancellationToken);
@@ -1721,7 +1616,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             if (symbol is IParameterSymbol parameter) {
-                return DeclaredReach(parameter.GetAttributes()) ??
+                return Vocabulary.DeclaredReach(parameter.GetAttributes()) ??
                        HandedOverReach(expression, symbol, semantics, cancellationToken);
             }
 
@@ -1788,10 +1683,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? UpwardReach(IMethodSymbol accessor, ExpressionSyntax receiver, SemanticModel semantics,
                                  CancellationToken cancellationToken)
         {
-            bool returnsParent = ReturnsParentAttribute != null &&
-                                 HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsParentAttribute);
-            bool returnsAncestor = ReturnsAncestorAttribute != null &&
-                                   HasAttribute(accessor.GetReturnTypeAttributes(), ReturnsAncestorAttribute);
+            bool returnsParent = Vocabulary.ReturnsParent(accessor);
+            bool returnsAncestor = Vocabulary.ReturnsAncestor(accessor);
 
             if (!returnsParent && !returnsAncestor) {
                 return null;
@@ -1812,24 +1705,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             if (returnsParent && (receiverReach.Value & ReachParent) != 0) {
-                return 0;
-            }
-
-            return null;
-        }
-
-        private int? DeclaredReach(ImmutableArray<AttributeData> attributes)
-        {
-            foreach (AttributeData attribute in attributes) {
-                if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ProvidesCoverAttribute)) {
-                    continue;
-                }
-
-                if (attribute.ConstructorArguments.Length != 0 &&
-                    attribute.ConstructorArguments[0].Value is int reach) {
-                    return reach;
-                }
-
                 return 0;
             }
 
@@ -1862,7 +1737,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         private int? HandedOverReach(SyntaxNode body, ISymbol wanted, SemanticModel semantics,
                                      CancellationToken cancellationToken)
         {
-            if (ProvidesCoverAttribute == null) {
+            if (Vocabulary.ProvidesCoverAttribute == null) {
                 return null;
             }
 
@@ -1877,7 +1752,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 SeparatedSyntaxList<ArgumentSyntax> arguments = candidate.ArgumentList.Arguments;
 
                 for (int i = 0; i < arguments.Count && i < callee.Parameters.Length; i++) {
-                    int? reach = DeclaredReach(callee.Parameters[i].GetAttributes());
+                    int? reach = Vocabulary.DeclaredReach(callee.Parameters[i].GetAttributes());
 
                     if (reach == null) {
                         continue;
@@ -1892,28 +1767,6 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             return handedOver;
-        }
-
-        private bool IsEntity(ITypeSymbol type)
-        {
-            for (ITypeSymbol? current = type; current != null; current = current.BaseType) {
-                if (SymbolEqualityComparer.Default.Equals(current, EntityType)) {
-                    return true;
-                }
-            }
-
-            return false;
-        }
-
-        private static bool HasAttribute(ImmutableArray<AttributeData> attributes, INamedTypeSymbol wanted)
-        {
-            foreach (AttributeData attribute in attributes) {
-                if (SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, wanted)) {
-                    return true;
-                }
-            }
-
-            return false;
         }
     }
 }

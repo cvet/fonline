@@ -53,6 +53,13 @@ calls with that argument, so the entry point's guarantee flows onward by the ord
 is sound because an entry point is invoked by its attribute rule and **never called from ordinary code**, so
 its assumption cannot leak into a normal call chain.
 
+**Which methods are entry points is declared on the marker, not listed in the analyzer.** A marker attribute
+whose own class carries `[EntryPointMarker]` begins an execution context: the engine marks `[Event]`,
+`[TimeEvent]`, the remote calls and the init/trigger markers in `CoreScripts/Attributes.cs`, and an embedding
+project marks its own dispatcher markers the same way (Last Frontier's dialog `[DialogDemand]` /
+`[DialogResult]`). The analyzer once held these as a list of full names, the project's among them — a reusable
+analyzer that knew an embedder's namespace, and a rename that would have silently stopped FOSYNC003 from asking.
+
 ### Why the attributes do not synchronize
 
 Having the annotation establish cover automatically was built twice — once natively in the dispatcher, once
@@ -327,6 +334,70 @@ is what decides, not the designation's own position.
 What remains unmodelled is a loop whose re-proof sits at the top of the next iteration, and any path shape a
 source walk cannot see. The rule under-reports there rather than guessing.
 
+### What an acquisition must DENOTE to re-prove a value
+
+The discharge asks whether some acquisition in the window names the value. What "names" means is the whole
+rule, and it used to mean *mentions*: the walk scanned every identifier in the argument, and for a local of
+entity type it scanned that local's initializer too. So this passed unreported:
+
+```csharp
+Map? map = cr.GetMap();
+if (!await Sync.Lock(map)) { return; }
+cr.SetSomething(...);
+```
+
+The map was resolved BEFORE the acquisition; while the caller waited, the critter may have left it, and the
+lock then lands on a map the critter is no longer under. That is precisely the class FOSYNC009 exists to name
+— and the argument `map` merely mentioned `cr`, so the rule treated the acquisition as a re-proof of it. The
+same predicate backed `ProvidesCoverByBody`, so a helper whose body did `Sync.Lock(param.GetMap())` counted as
+providing cover for `param`.
+
+The question is now **denotation**: an identifier resolving to the value, an alias whose initializer denotes
+it, a member of a set handed over whole (`new List<Entity> { cr, map }`, a collection expression, a local
+collection's initializer plus its `Add`/`AddRange`, or the BCL `List<T>(IEnumerable<T>)` copy constructor),
+or an argument forwarded through a `[PassesCover]`
+parameter. An accessor result is *not* a denotation of its receiver: it resolved something, and what it
+resolved can move.
+
+**Covering a parent does cover its children at runtime** — `IsEntityAccessValid` walks up `GetParentRaw()` and
+accepts any held lock on the chain — but nothing here can prove the child is still under that parent once the
+acquisition completes. So an acquisition of an ancestor never counts as a re-proof of a descendant, and the same
+holds the other way round for a holder a helper resolves inside its own acquisition (`LockItemWithHolder`,
+`WidenCritterWithMap`): what the body goes on to read, it names. That is what `Sync.LockCritterWithMap` does for
+the critter, and why it re-proves the critter-to-map link after every retry rather than resolving it once.
+
+The alternative — declaring some parent links immutable while the child lives and counting a parent acquisition
+for those — was considered and rejected (owner decision): `map` → `location` is close to fixed, `critter` → `map`
+is not, and a rule that trusted one because it resembled the other would reopen the hole this closes. Naming the
+entity promises nothing about the engine and cannot turn false later.
+
+### Current and saved synchronization partners
+
+`EntitySync` widens every acquisition across the **current** `Critter` ↔ `Player` link symmetrically and to a
+fixed point. This does not prove cover for a partner saved before an await: `DetachPlayer` or a character
+switch can break that link while synchronization waits. Locking a saved critter then covers its current
+player, if any; locking the original player covers that player's current critter, which may be a different one.
+
+The same denotation rule therefore applies to partners and parents. Name both saved entities when both remain
+in use, then check that they are still linked if the operation requires that relationship:
+
+```csharp
+Critter? cr = player.GetControlledCritter();
+if (cr == null || !await Sync.Lock(player, cr)) { return; }
+if (player.GetControlledCritter() != cr) { return; }
+```
+
+This restriction also applies to provider inference: a helper that only locks a saved partner cannot promise
+cover for its receiver. Re-reading a partner after acquiring its owner yields the current relationship; merely
+following the saved local's initializer does not.
+
+### The exit-restore form
+
+A cover-neutral helper ends by putting the caller's snapshot back **beside** the entities it wants held of its
+own (`Sync.RestoreCallerCover(callerCover, follower, leader)`). The snapshot is therefore looked for in any
+argument of a `Restore`-effect call, not in a lone one or only the first local argument. Named arguments may
+put another local before the snapshot without changing the restoration contract.
+
 ### Closing the backlog
 
 The embedding project took it from 3 933 sites to zero and gates the rule as an error. The proofs above did
@@ -364,6 +435,11 @@ silence real reports. Only a **top-level** acquisition — one the method cannot
 either as the returned value or as an `if (!await …) return false;` at the top of the body — proves the
 contract. In the embedding project that separated 93 provable parameters from 38 conditional ones that need a
 human. It is the same distinction FOSYNC009 itself has to make: source position is not control flow.
+
+Provider inference checks that a candidate runs on every returning path before inspecting its callees.
+Calls in conditional branches cannot prove the contract, and traversing their cyclic dependencies first can
+repeat an exponential amount of work. The analyzer self-tests include a dense conditional call cycle with
+a time limit and still require FOSYNC009 for the uncovered use after an await.
 
 ### An element of a covered collection is covered
 
@@ -424,8 +500,13 @@ that released it (see [Closing the backlog](#closing-the-backlog)). Severities c
   analyzers). The `Microsoft.CodeAnalysis.CSharp` version must stay **below** the Roslyn in the SDK running
   the build: an analyzer may be older than its host compiler, never newer.
 - Rule changelog: `AnalyzerReleases.{Shipped,Unshipped}.md` — required by Roslyn's own RS2008.
+- Declarations: `CoverVocabulary.cs` resolves the contract for one compilation -- the attribute symbols, the
+  engine-owned types the rules are scoped by, and the predicates that read a declaration. `CoverModel` beside it
+  holds the part that is inference from a callee's body, so which answers are contract and which are
+  approximation stays visible.
 - Self-tests: `Source/Scripting/Managed/Analyzers/Tests/`, a plain console runner (compile a snippet, assert
-  the reported ids). `dotnet run` exits 0 when every case passes.
+  the reported ids). `dotnet run` exits 0 when every case passes. The denotation cases also pin the text the
+  diagnostic spans, because which value it names -- the child, not the stale parent -- is the contract.
 - Wiring: the embedding project points `ManagedScript.Analyzers` at the analyzer project;
   `ManagedScriptBaker` emits it as `<ProjectReference OutputItemType="Analyzer"
   ReferenceOutputAssembly="false" GlobalPropertiesToRemove="OutputPath;Configuration;Platform" />`. The
@@ -574,12 +655,16 @@ same silent under-cover that sank the auto-sync attempt.
 
 ## The one capability the rest of the roadmap waits on
 
-Almost everything still missing is the same thing: a discharge that knows **which value** is covered **at this
+Almost everything still missing is the same thing: an answer that knows **which value** is covered **at this
 point**, rather than "some acquisition happens somewhere in this body". That single capability is what
 FOSYNC002's limitation below describes, what would have caught the destroyed-entity race family, and what the
-seven still-unimplemented rules inherited from the retired external audit all need — the redundancy family
-(`redundant-cover-lock`, `redundant-widen`, `redundant-snapshot-restore`, `redundant-critter-player-lock`,
-`redundant-entry-lock`), `entry-cover-state-manipulation`, and `broad-world-lock`.
+rules inherited from the retired external audit all need.
+
+The redundancy family is deliberately **not** built. It was implemented once as `FOSYNC012`-`014` over a
+control-flow fixed point, measured (one finding on the whole server corpus, a defensive re-lock in a test) and
+withdrawn (owner decision 2026-09-21): a diagnostic here is a verdict — it fails the build or it is not
+reported — and "this acquisition provably does nothing" is not a defect. It could only ever be advice, which
+has no place in a gate. `entry-cover-state-manipulation` and `broad-world-lock` remain unimplemented.
 
 `redundant-entry-lock` shows the shape cheaply. An entry point re-locking a parameter its dispatcher already
 covered looks redundant by inspection, and in the embedding project 75 sites do exactly that — but the ones

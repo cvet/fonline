@@ -54,6 +54,8 @@ namespace memory
     void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
     [[noreturn]] void report_and_exit(string_view message) noexcept;
     auto get_in_use_bytes() noexcept -> size_t;
+    // Allocations made by the calling thread since it started; profiling builds only, false elsewhere
+    auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
 }
 
 template<typename T>

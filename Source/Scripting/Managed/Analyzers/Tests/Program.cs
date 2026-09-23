@@ -36,6 +36,11 @@ namespace FOnline
         public CoverReach Reach { get; private set; }
     }
 
+    // Whether a marker begins an execution context is declared on the marker's own class, by whoever owns it
+    [System.AttributeUsage(System.AttributeTargets.Class)]
+    public sealed class EntryPointMarkerAttribute : System.Attribute { }
+
+    [EntryPointMarker]
     [System.AttributeUsage(System.AttributeTargets.Method)]
     public sealed class EventAttribute : System.Attribute { }
 
@@ -83,6 +88,15 @@ namespace FOnline
     [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
     public sealed class ReturnsAncestorAttribute : System.Attribute { }
 
+    public class Player : Entity
+    {
+        [RequiresCover]
+        public void SendSession() { }
+
+        [return: ProvidesCover]
+        public Critter? GetControlledCritter() { return null; }
+    }
+
     public class Critter : Entity
     {
         [RequiresCover]
@@ -92,9 +106,15 @@ namespace FOnline
 
         [return: ReturnsParent]
         public Map? GetMap() { return null; }
+
+        [return: ProvidesCover]
+        public Player? GetPlayer() { return null; }
     }
     public class Map : Entity
     {
+        [RequiresCover]
+        public void Touch() { }
+
         [return: ReturnsParent]
         public Location GetLocation() { return null; }
     }
@@ -162,6 +182,10 @@ namespace FOnline
         public static System.Collections.Generic.List<Entity> Snapshot() { return new System.Collections.Generic.List<Entity>(); }
         [CoverEffect(CoverEffectKind.Restore)]
         public static System.Threading.Tasks.Task<bool> Restore(System.Collections.Generic.List<Entity> entities) { return System.Threading.Tasks.Task.FromResult(true); }
+        // The exit-restore a cover-neutral helper ends on: the caller's snapshot plus the entities the helper
+        // itself wants held
+        [CoverEffect(CoverEffectKind.Restore)]
+        public static System.Threading.Tasks.Task RestoreCallerCover(System.Collections.Generic.List<Entity> snapshot, Entity first, Entity second) { return System.Threading.Tasks.Task.CompletedTask; }
         [CoverEffect(CoverEffectKind.Release)]
         public static void Release() { }
         // An acquisition whose name says nothing, and a name that says everything with no declaration behind it
@@ -211,6 +235,8 @@ namespace LastFrontier
     private static int Main()
     {
         var failures = new List<string>();
+
+        CheckConditionalCycles(failures);
 
         Check(failures, "annotation on an entity parameter is silent", @"
 namespace LastFrontier
@@ -802,6 +828,43 @@ namespace LastFrontier
     }
 }",
               "FOSYNC003");
+
+        // An embedding project's own dispatcher markers are entry points because they SAY so, not because the
+        // engine analyzer knows the project's namespace -- and a marker that merely wears an entry-point name
+        // declares nothing
+        Check(failures,
+              "a project marker declared as an entry point is one",
+              @"
+namespace LastFrontier
+{
+    using FOnline;
+
+    [EntryPointMarker]
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class DialogDemandAttribute : System.Attribute { }
+
+    public static class Probe
+    {
+        [DialogDemand]
+        public static bool Demand(Critter cr) { return true; }
+    }
+}",
+              "FOSYNC003");
+
+        Check(failures, "a marker that only wears an entry-point name is not one", @"
+namespace LastFrontier
+{
+    using FOnline;
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class DialogResultAttribute : System.Attribute { }
+
+    public static class Probe
+    {
+        [DialogResult]
+        public static void Result(Critter cr) { }
+    }
+}");
 
         Check(failures,
               "probing whether cover is held is reported",
@@ -1724,6 +1787,8 @@ namespace LastFrontier
     }
 }");
 
+        CheckDenotation(failures);
+
         foreach (string failure in failures) {
             Console.Error.WriteLine("FAIL: " + failure);
         }
@@ -1732,6 +1797,325 @@ namespace LastFrontier
                                                   : $"FAILED: {failures.Count} analyzer self-test case(s)");
 
         return failures.Count == 0 ? 0 : 1;
+    }
+
+    // Which VALUE a diagnostic names is as much the contract as which rule fired: the stale-parent case must report
+    // the child, not the map. Pinning the spanned text rather than a line number keeps the expectation readable and
+    // survives edits above it
+    private sealed class Expected
+    {
+        public Expected(string id, string span)
+        {
+            Id = id;
+            Span = span;
+        }
+
+        public string Id { get; }
+
+        public string Span { get; }
+    }
+
+    private static void CheckDetailed(List<string> failures, string name, string snippet, params Expected[] expected)
+    {
+        CheckDetailedWithPreamble(failures, name, Preamble, snippet, expected);
+    }
+
+    private static void CheckDetailedWithPreamble(List<string> failures, string name, string preamble, string snippet,
+                                                  params Expected[] expected)
+    {
+        ImmutableArray<Diagnostic> reported = Run(preamble + snippet);
+        List<Diagnostic> actual = reported.OrderBy(d => d.Location.SourceSpan.Start).ToList();
+
+        if (actual.Count != expected.Length) {
+            failures.Add($"{name}: expected {expected.Length} diagnostic(s) but got " +
+                         $"[{string.Join(", ", actual.Select(Format))}]");
+
+            return;
+        }
+
+        for (int i = 0; i < expected.Length; i++) {
+            Diagnostic diagnostic = actual[i];
+
+            if (diagnostic.Id != expected[i].Id) {
+                failures.Add($"{name}: diagnostic {i} is {diagnostic.Id}, expected {expected[i].Id}");
+
+                continue;
+            }
+
+            string span = SpanText(diagnostic.Location);
+
+            if (span != expected[i].Span) {
+                failures.Add($"{name}: {diagnostic.Id} spans '{span}', expected '{expected[i].Span}'");
+            }
+        }
+    }
+
+    private static string Format(Diagnostic diagnostic)
+    {
+        return diagnostic.Id + "@" + SpanText(diagnostic.Location);
+    }
+
+    private static string SpanText(Location location)
+    {
+        return location.SourceTree == null ? string.Empty : location.SourceTree.GetText().ToString(location.SourceSpan);
+    }
+
+    // What an acquisition must DENOTE to re-prove a value, and the relations that widen that answer.
+    //
+    // The distinction these pin is the one the rule was silently getting wrong: an acquisition of a parent
+    // read BEFORE the await mentions the child and denotes something the child may have left.
+    private static void CheckDenotation(List<string> failures)
+    {
+        const string Head = @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static Task Pause() { return Task.CompletedTask; }
+
+        static List<Entity> Combine([PassesCover] List<Entity> parts) { return parts; }
+";
+        const string Tail = @"
+    }
+}";
+
+        // The shape the rule exists for: the map was resolved before the acquisition, so nothing proves the
+        // critter is still on it afterwards -- which is why LockCritterWithMap re-proves the link on retry
+        CheckDetailed(failures,
+                      "locking a parent resolved before the await does not re-prove the child",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            Map? map = cr.GetMap();
+            if (!await Sync.LockAsync(map)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+                      new Expected("FOSYNC009", "cr"));
+
+        // The same body with the critter itself acquired: that IS the re-proof
+        CheckDetailed(failures, "acquiring the value itself re-proves it", Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            await Pause();
+            if (!await Sync.LockAsync(cr)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail);
+
+        // A set handed over whole names every member of it
+        CheckDetailed(failures, "a set written in place names its members", Head + @"
+        public static async Task Caller([RequiresCover] Critter cr, Map map)
+        {
+            await Pause();
+            if (!await Sync.Widen(new List<Entity> { cr, map })) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail);
+
+        // A pass-through hands its argument's value on, so the acquisition still names what the caller named
+        CheckDetailed(failures, "a pass-through forwards what its argument named", Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            await Pause();
+            if (!await Sync.Widen(Combine(new List<Entity> { cr }))) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail);
+
+        // An accessor is not a pass-through: it RESOLVES something, and what it resolved may have moved
+        CheckDetailed(failures,
+                      "an accessor result does not stand in for its receiver",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            await Pause();
+            Map? map = cr.GetMap();
+            if (!await Sync.LockAsync(map)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+                      new Expected("FOSYNC009", "cr"));
+
+        // Acquisition widens onto the CURRENT partner; a saved partner may detach while the caller waits
+        CheckDetailed(failures,
+                      "acquiring a saved controlled critter does not re-prove its player",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Player player)
+        {
+            Critter? cr = player.GetControlledCritter();
+            if (!await Sync.LockAsync(cr)) {
+                return;
+            }
+            player.SendSession();
+        }" + Tail,
+                      new Expected("FOSYNC009", "player"));
+
+        CheckDetailed(failures,
+                      "acquiring the player does not re-prove its saved critter",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Player player)
+        {
+            Critter? cr = player.GetControlledCritter();
+            if (!await Sync.LockAsync(player)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+                      new Expected("FOSYNC009", "cr"));
+
+        // Acquiring an unrelated entity of the same type proves nothing about the tracked critter
+        CheckDetailed(failures,
+                      "an unrelated critter is not the player's partner",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Player player, Critter other)
+        {
+            if (!await Sync.LockAsync(other)) {
+                return;
+            }
+            player.SendSession();
+        }" + Tail,
+                      new Expected("FOSYNC009", "player"));
+
+        CheckDetailed(failures,
+                      "a helper acquiring a saved partner does not provide for the player",
+                      Head + @"
+        static async Task Checkout([RequiresCover] Player player)
+        {
+            Critter? cr = player.GetControlledCritter();
+            if (!await Sync.LockAsync(cr)) {
+                return;
+            }
+        }
+
+        public static async Task Caller([RequiresCover] Player player)
+        {
+            await Checkout(player);
+            await Checkout(player);
+        }" + Tail,
+                      new Expected("FOSYNC009", "player"));
+
+        CheckDetailed(failures,
+                      "a helper that acquires an unrelated critter provides nothing for the player",
+                      Head + @"
+        static async Task Checkout([RequiresCover] Player player, Critter other)
+        {
+            if (!await Sync.LockAsync(other)) {
+                return;
+            }
+        }
+
+        public static async Task Caller([RequiresCover] Player player, Critter other)
+        {
+            await Checkout(player, other);
+            await Checkout(player, other);
+        }" + Tail,
+                      new Expected("FOSYNC009", "player"));
+
+        // A cover-neutral helper ends on the exit-restore form, which carries the caller's snapshot BESIDE
+        // the entities the helper wants held -- so the snapshot is looked for in any argument, not a lone one
+        CheckDetailed(failures, "a helper that restores the caller's snapshot preserves the cover", Head + @"
+        static async Task Neutral(Critter cr)
+        {
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            await Sync.RestoreCallerCover(cover, cr, cr);
+        }
+
+        public static async Task Caller([RequiresCover] Map map, Critter cr)
+        {
+            await Neutral(cr);
+            map.Touch();
+        }" + Tail);
+
+        CheckDetailed(failures,
+                      "a helper that puts nothing back loses the caller's cover",
+                      Head + @"
+        static async Task Replacing(Critter cr)
+        {
+            if (!await Sync.LockAsync(cr)) {
+                return;
+            }
+        }
+
+        public static async Task Caller([RequiresCover] Map map, Critter cr)
+        {
+            await Replacing(cr);
+            map.Touch();
+        }" + Tail,
+                      new Expected("FOSYNC009", "map"));
+
+        CheckDetailed(failures, "restore finds a snapshot after a named local argument", Head + @"
+        public static async Task Caller([RequiresCover] Map map, Critter cr)
+        {
+            Critter extra = cr;
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            await Sync.RestoreCallerCover(first: extra, snapshot: cover, second: cr);
+            map.Touch();
+        }" + Tail);
+
+        CheckDetailed(failures, "a copied list still denotes its source members", Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            List<Entity> original = new List<Entity> { cr };
+            List<Entity> copy = new List<Entity>(original);
+            await Pause();
+            if (!await Sync.Widen(copy)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail);
+
+        CheckDetailed(failures, "both saved partners can be acquired explicitly", Head + @"
+        public static async Task Caller([RequiresCover] Player player)
+        {
+            Critter? cr = player.GetControlledCritter();
+            if (cr == null || !await Sync.Widen(new List<Entity> { player, cr })) {
+                return;
+            }
+            player.SendSession();
+            cr.SendGroupInfo();
+        }" + Tail);
+
+        CheckDetailed(failures,
+                      "copying a list of parents does not denote their children",
+                      Head + @"
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            Map? map = cr.GetMap();
+            List<Entity> parents = new List<Entity> { map };
+            if (!await Sync.Widen(new List<Entity>(parents))) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+                      new Expected("FOSYNC009", "cr"));
+
+        CheckDetailed(failures,
+                      "an unrelated constructor need not retain its argument",
+                      Head + @"
+        private sealed class DiscardingList : List<Entity>
+        {
+            public DiscardingList(IEnumerable<Entity> ignored) { }
+        }
+
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            if (!await Sync.Widen(new DiscardingList(new List<Entity> { cr }))) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+                      new Expected("FOSYNC009", "cr"));
     }
 
     private static void Check(List<string> failures, string name, string snippet, params string[] expected)
@@ -1751,7 +2135,46 @@ namespace LastFrontier
         }
     }
 
-    private static ImmutableArray<Diagnostic> Run(string source)
+    private static void CheckConditionalCycles(List<string> failures)
+    {
+        string calls = string.Join(" ", Enumerable.Range(0, 11).Select(i => $"_ = Candidate{i}(cr, flag);"));
+        string helpers = string.Join(
+            Environment.NewLine,
+            Enumerable.Range(0, 11).Select(
+                i =>
+                    $"static Task Candidate{i}(Critter cr, bool flag) {{ if (flag) {{ {calls} }} return Task.CompletedTask; }}"));
+        string source = Preamble + @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+" + helpers + @"
+        static Task Pause() { return Task.CompletedTask; }
+
+        public static async Task Caller([RequiresCover] Critter cr)
+        {
+            await Pause();
+            await Candidate0(cr, false);
+            cr.SendGroupInfo();
+        }
+    }
+}";
+
+        try {
+            ImmutableArray<Diagnostic> reported = Run(source, TimeSpan.FromSeconds(10));
+
+            if (reported.Length != 1 || reported[0].Id != "FOSYNC009") {
+                failures.Add("Conditional cyclic helpers must not re-prove cover after an await");
+            }
+        }
+        catch (TimeoutException) {
+            failures.Add("Conditional cyclic helpers exceeded the analysis time budget");
+        }
+    }
+
+    private static ImmutableArray<Diagnostic> Run(string source, TimeSpan? timeout = null)
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty)
             .Split(System.IO.Path.PathSeparator)
@@ -1776,6 +2199,8 @@ namespace LastFrontier
         CompilationWithAnalyzers withAnalyzers =
             compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new SyncCoverAnalyzer()));
 
-        return withAnalyzers.GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
+        var diagnostics = withAnalyzers.GetAnalyzerDiagnosticsAsync();
+
+        return (timeout.HasValue ? diagnostics.WaitAsync(timeout.Value) : diagnostics).GetAwaiter().GetResult();
     }
 }
