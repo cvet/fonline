@@ -129,7 +129,7 @@ public static class ManagedLoadContextHost
 
                 // An empty PDB is no PDB: a caller relaying one it was never given passes an empty array
                 using MemoryStream? symbolsStream =
-                    symbols is { Length: > 0 } ? new MemoryStream(symbols, false) : null;
+                    symbols is { Length : > 0 } ? new MemoryStream(symbols, false) : null;
                 Assembly assembly = LoadFromStream(imageStream, symbolsStream);
 
                 if (!string.Equals(assembly.GetName().Name, assemblyName, StringComparison.OrdinalIgnoreCase)) {

@@ -595,4 +595,3 @@ public enum Shared
     Value = 2
 }
 }
-
