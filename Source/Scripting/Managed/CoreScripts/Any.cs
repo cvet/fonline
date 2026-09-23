@@ -426,4 +426,3 @@ public readonly struct any : IEquatable<any>
                (trimmed[start + 1] == 'x' || trimmed[start + 1] == 'X');
     }
 }
-

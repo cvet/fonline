@@ -787,7 +787,7 @@ if(FO_MANAGED_SCRIPTING)
     elseif(FO_LINUX)
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_linux_signal_actions)
     elseif(FO_WINDOWS)
-        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback)
+        SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators_embedded_debug_info_isa_fallback_suspend_retry)
     else()
         SetValue(FO_MONO_READY_MARKER READY_${FO_MONO_RUNTIME_VERSION}_${FO_MONO_TRIPLET}_mono_runtime_corelib_libs_native_sfx_nogl_overridable_allocators)
     endif()
@@ -848,6 +848,10 @@ if(FO_MANAGED_SCRIPTING)
         # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
         # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
         SetValue(FO_MANAGED_SHIM_LIBS "")
+    elseif(FO_LINUX)
+        # CoreLib hashes and Roslyn binds strong-named references through the OpenSSL shim; the shim opens the
+        # system libssl itself, so linking it needs only libc (Init.cmake keeps the static LibreSSL unexported)
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native System.Security.Cryptography.Native.OpenSsl)
     else()
         SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
     endif()
@@ -856,6 +860,7 @@ if(FO_MANAGED_SCRIPTING)
     # GlobalizationNative_*), so each shim states its own instead of deriving one
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Security.Cryptography.Native.OpenSsl CryptoNative_)
 
     # The archive name follows the target toolchain, not the host
     foreach(shimLib ${FO_MANAGED_SHIM_LIBS})

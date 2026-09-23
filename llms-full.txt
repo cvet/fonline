@@ -1453,7 +1453,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 4f42e1747b0865a7aa2f1039c9a184091e00c8e5813474d83595cd4a2b52bc3b
+Content SHA-256: 82579274b8af1612c443ef0863e1a058f247819ca7421b5a1c2f15a6045175b2
 
 ---
 layout: default
@@ -1660,6 +1660,14 @@ green landed job and a reviewed external repository commit/tag.
 - `POSTFIX` keeps independently built variants, such as a depot-specific client, from colliding.
 
 The generated MSI uses `InstallScope="perUser"`. Its Start Menu and Desktop shortcut components use separate `HKCU` key paths, PATH registration is per-user (`System="no"`), and generated directory components carry uninstall cleanup. These choices make the same installer description buildable with pinned WiX on Windows or `wixl` on Linux without requiring machine-wide registration. An MSI is not proof that the client is signed, trusted by endpoint protection, upgrade-compatible, or accepted by a distribution channel. Verify those properties on the final emitted artifact.
+
+The installation-directory and folder-browser dialogs list a push button
+before text or path controls. WiX and `wixl` derive different tab loops from
+control order; a loop that omits `Control_First` makes `msiexec` abort before
+the first screen with internal error 2834. The generated XML is checked for a
+closed tab loop under both linker rules. On `wixl`, path controls remain
+editable with the mouse and through the folder browser even though they are
+outside its tab loop. Validate an actual installer on each supported host.
 
 ### Linux client or server
 
@@ -3551,7 +3559,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 4ef6564d92f2cb681fbf59ef0b3588f2feada3f12439b54f248bdcaaab1ec07c
+Content SHA-256: 0b46e6b1a9bf6140b1a33ac4cdc866231adb67610276412bb630d1c359e67c5a
 
 ---
 layout: default
@@ -3748,13 +3756,23 @@ Backend-owned caches are built before hot-path use: managed helper methods, meta
 
 Mono is initialized once for the process. The first managed entry on a native Engine worker attaches that thread to the root domain and caches the attachment for the thread's lifetime. Later entries only switch the attachment GC-unsafe around managed execution and park it GC-safe while native work or locks run; reentrant entries inherit the attachment. The thread that initializes Mono is the exception because `mono_jit_init_version` attaches it implicitly and the initialization scope releases that adopted attachment. A backend then creates its own non-collectible `AssemblyLoadContext`; this is the per-engine isolation boundary because the embedded runtime does not provide usable classic AppDomain unload.
 
+Attaching once avoids repeated managed `Thread` allocation, but detaching a worker
+would not remove its native registration from Mono's preemptive stop-the-world.
+On Windows, the prepared Mono source retries a refused `SuspendThread` or
+`GetThreadContext` while the worker is alive. It may skip a thread only after
+that thread exits; after five seconds of refusal from a live thread it reports
+the thread id/name and Windows error to stderr and aborts instead of continuing
+with an unscanned stack and corrupting the managed heap. A later successful
+retry is also reported. The source-patch marker invalidates older Windows
+runtime caches; a prebuilt runtime must already include the patch.
+
 Before any code or type initializer runs from an entry assembly, the backend calls `Native.BindBackend` with its own pointer. Every internal call that needs Engine state passes that bound pointer explicitly, so static constructors, marshalling constructors, callbacks, and continuations identify the correct Engine without thread-local caller state. Binding identifies ownership only; it does not create a script synchronization context or server entity cover.
 
 At startup, baked assemblies are restored into content-hashed subdirectories under the writable `Cache/ManagedAssemblies/` root. Existing byte-identical files are reused, so concurrent in-process engine instances do not rewrite an assembly Mono already loaded. Missing managed assemblies are a supported empty-backend state for tests/tools that do not bake scripts; a configured gameplay project should treat that as a packaging or resource-selection failure.
 
 `DynamicAssemblies.Load(image, symbols)` loads a post-bake PE image into this backend's non-collectible load context. Its assembly name must be a fresh `FOnline.Dynamic.*` name; loaded code shares the backend's script types and statics and remains loaded for the process lifetime. `RunEntryAsync(MethodInfo)` accepts a static parameterless method returning a value, `Task`, or `Task<T>` and runs it as its own script entry and server synchronization context; it rejects `async void` and unwraps invocation exceptions. `ScriptsVersionId` is the entry assembly MVID. On a server, `ReadClientScriptsImage()` returns the client entry image used by the updater (or local bake), allowing a fragment compiler to target the matching client version. Dynamic assemblies participate in script-static cleanup.
 
-The optional engine-owned `FOnline.ScriptCompiler` library compiles live fragments with Roslyn. Projects add its `.csproj` through `ManagedScript.ExtraReferences` only for targets that compile fragments; it and its dependencies are then packed alongside those entry assemblies. `DynamicScriptCompiler.CompileAsync` works off the Engine thread, uses a unique `FOnline.Dynamic.*` name, accepts a statement body or expression plus usings/symbols, and maps compile diagnostics to fragment line/column. It can compile against the running scripts or a supplied other-target image. Compilation has access to private/internal script members, so authorization to submit code is entirely an embedding-project responsibility. The emitted image has no PDB because the embedded Mono runtime may lack cryptography; compile diagnostics retain source lines, runtime frames do not. These assemblies are not hot-unloadable.
+The optional engine-owned `FOnline.ScriptCompiler` library compiles live fragments with Roslyn. Projects add its `.csproj` through `ManagedScript.ExtraReferences` only for targets that compile fragments; it and its dependencies are then packed alongside those entry assemblies. `DynamicScriptCompiler.CompileAsync` works off the Engine thread, uses a unique `FOnline.Dynamic.*` name, accepts a statement body or expression plus usings/symbols, and maps compile diagnostics to fragment line/column. It can compile against the running scripts or a supplied other-target image. Compilation has access to private/internal script members, so authorization to submit code is entirely an embedding-project responsibility. The compiler emits a portable PDB in `DynamicCompileResult.Symbols` alongside the image; load both streams to retain source locations in runtime frames. Roslyn requires cryptography even to bind strong-named references. On Linux the linked `System.Security.Cryptography.Native.OpenSsl` shim opens the system OpenSSL library at runtime, so fragment compilation requires that library on the host. The Engine excludes its static LibreSSL from the executable's dynamic symbol table to prevent the system library from binding to incompatible symbols. These assemblies are not hot-unloadable.
 
 Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
 
@@ -23333,7 +23351,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 3f39ebcac271eff354be4f726a475b5b9be21402040a0a299bfa4beeb09264fb
+Content SHA-256: 60ade1a45e8c340a86084e751762c9f2363bf9179afd49b031e2a72717b0a730
 
 ---
 layout: default
@@ -23420,6 +23438,11 @@ Establishes baseline configuration. It declares every public project option dire
 
 The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
+On Linux, the linker excludes the Engine's static LibreSSL archives from the
+executable's dynamic symbol table. The managed OpenSSL shim opens system
+`libssl` for Roslyn cryptography; without this boundary, that library could
+resolve its own internal calls against LibreSSL's unversioned symbols.
+
 ### `ProjectOptions.cmake`
 
 Normalizes and validates project-level option combinations. Examples from the current stage include checks around code coverage, build mode combinations, and scripting/tool compatibility such as `FO_BUILD_ASCOMPILER` requiring AngelScript support.
@@ -23443,6 +23466,15 @@ intrinsic `IsSupported` properties that their JIT cannot implement. Without the
 fallback, CoreLib's recursive property body can overflow the stack before the
 first frame. Managed-runtime cache markers include this source-patch contract;
 prebuilt runtimes must already contain it.
+
+Windows Mono also retries refused stop-the-world thread suspension/context
+reads while the thread remains alive, reporting any refusal and aborting after
+five seconds rather than skipping a running thread. Its `_suspend_retry` ready
+marker forces a rebuilt Windows runtime; prebuilt runtimes are adopted as given
+and must already include the patch. Linux managed builds link the OpenSSL
+cryptography shim in addition to the native and globalization shims. See
+[Managed C# scripting](../../how-to/scripting/managed-csharp.md#runtime-loading-isolation-and-shutdown)
+for the runtime safety and fragment-compilation contract.
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 

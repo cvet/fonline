@@ -83,6 +83,11 @@ Establishes baseline configuration. It declares every public project option dire
 
 The manifest includes the independent `FO_SPARK_PARTICLES` and `FO_EFFEKSEER_PARTICLES` backends. Both default to `OFF`; an embedding project can enable either or both during a migration. Backend source files remain in stable engine source lists and guard their implementations with the corresponding macro. A disabled backend contributes no third-party target, compiled runtime or Mapper implementation, runtime resource extensions, or baker implementation.
 
+On Linux, the linker excludes the Engine's static LibreSSL archives from the
+executable's dynamic symbol table. The managed OpenSSL shim opens system
+`libssl` for Roslyn cryptography; without this boundary, that library could
+resolve its own internal calls against LibreSSL's unversioned symbols.
+
 ### `ProjectOptions.cmake`
 
 Normalizes and validates project-level option combinations. Examples from the current stage include checks around code coverage, build mode combinations, and scripting/tool compatibility such as `FO_BUILD_ASCOMPILER` requiring AngelScript support.
@@ -106,6 +111,15 @@ intrinsic `IsSupported` properties that their JIT cannot implement. Without the
 fallback, CoreLib's recursive property body can overflow the stack before the
 first frame. Managed-runtime cache markers include this source-patch contract;
 prebuilt runtimes must already contain it.
+
+Windows Mono also retries refused stop-the-world thread suspension/context
+reads while the thread remains alive, reporting any refusal and aborting after
+five seconds rather than skipping a running thread. Its `_suspend_retry` ready
+marker forces a rebuilt Windows runtime; prebuilt runtimes are adopted as given
+and must already include the patch. Linux managed builds link the OpenSSL
+cryptography shim in addition to the native and globalization shims. See
+[Managed C# scripting](../../how-to/scripting/managed-csharp.md#runtime-loading-isolation-and-shutdown)
+for the runtime safety and fragment-compilation contract.
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 

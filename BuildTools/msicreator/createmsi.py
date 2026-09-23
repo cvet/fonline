@@ -329,32 +329,13 @@ class PackageGenerator:
         ET.SubElement(ui, 'Property', {'Id': 'DefaultUIFont', 'Value': 'WixUI_Font_Normal'})
         ET.SubElement(ui, 'Property', {'Id': 'ARPNOMODIFY', 'Value': '1'})
 
+        # Every dialog opens with a push button: wixl makes the first child Control_First but leaves Text and PathEdit
+        # out of the tab loop, and msiexec refuses a dialog whose loop misses Control_First (error 2834)
         install_dialog = ET.SubElement(ui, 'Dialog', {
             'Id': 'FOnlineInstallDirDlg',
             'Width': '370',
             'Height': '270',
             'Title': '[ProductName] Setup',
-        })
-        ET.SubElement(install_dialog, 'Control', {
-            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '18', 'Width': '330', 'Height': '20',
-            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose installation folder',
-        })
-        ET.SubElement(install_dialog, 'Control', {
-            'Id': 'Description', 'Type': 'Text', 'X': '20', 'Y': '50', 'Width': '330', 'Height': '30',
-            'NoPrefix': 'yes', 'Text': 'Install [ProductName] in this folder:',
-        })
-        ET.SubElement(install_dialog, 'Control', {
-            'Id': 'Folder', 'Type': 'PathEdit', 'X': '20', 'Y': '90', 'Width': '330', 'Height': '18',
-            'Property': 'INSTALLDIR',
-        })
-        browse = ET.SubElement(install_dialog, 'Control', {
-            'Id': 'ChangeFolder', 'Type': 'PushButton', 'X': '20', 'Y': '118', 'Width': '80', 'Height': '18',
-            'Text': 'Browse...',
-        })
-        publish = ET.SubElement(browse, 'Publish', {'Event': 'SpawnDialog', 'Value': 'FOnlineBrowseDlg'})
-        publish.text = '1'
-        ET.SubElement(install_dialog, 'Control', {
-            'Id': 'BottomLine', 'Type': 'Line', 'X': '0', 'Y': '234', 'Width': '370', 'Height': '0',
         })
         install = ET.SubElement(install_dialog, 'Control', {
             'Id': 'Install', 'Type': 'PushButton', 'X': '232', 'Y': '243', 'Width': '64', 'Height': '17',
@@ -370,6 +351,27 @@ class PackageGenerator:
         })
         publish = ET.SubElement(cancel, 'Publish', {'Event': 'SpawnDialog', 'Value': 'CancelDlg'})
         publish.text = '1'
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Folder', 'Type': 'PathEdit', 'X': '20', 'Y': '90', 'Width': '330', 'Height': '18',
+            'Property': 'INSTALLDIR',
+        })
+        browse = ET.SubElement(install_dialog, 'Control', {
+            'Id': 'ChangeFolder', 'Type': 'PushButton', 'X': '20', 'Y': '118', 'Width': '80', 'Height': '18',
+            'Text': 'Browse...',
+        })
+        publish = ET.SubElement(browse, 'Publish', {'Event': 'SpawnDialog', 'Value': 'FOnlineBrowseDlg'})
+        publish.text = '1'
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '18', 'Width': '330', 'Height': '20',
+            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose installation folder',
+        })
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'Description', 'Type': 'Text', 'X': '20', 'Y': '50', 'Width': '330', 'Height': '30',
+            'NoPrefix': 'yes', 'Text': 'Install [ProductName] in this folder:',
+        })
+        ET.SubElement(install_dialog, 'Control', {
+            'Id': 'BottomLine', 'Type': 'Line', 'X': '0', 'Y': '234', 'Width': '370', 'Height': '0',
+        })
 
         browse_dialog = ET.SubElement(ui, 'Dialog', {
             'Id': 'FOnlineBrowseDlg',
@@ -377,10 +379,22 @@ class PackageGenerator:
             'Height': '270',
             'Title': 'Browse for Folder',
         })
-        ET.SubElement(browse_dialog, 'Control', {
-            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '15', 'Width': '330', 'Height': '20',
-            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose a folder',
+        ok = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'OK', 'Type': 'PushButton', 'X': '240', 'Y': '243', 'Width': '56', 'Height': '17',
+            'Default': 'yes', 'Text': 'OK',
         })
+        publish = ET.SubElement(ok, 'Publish', {'Event': 'SetTargetPath', 'Value': 'INSTALLDIR', 'Order': '1'})
+        publish.text = '1'
+        publish = ET.SubElement(ok, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
+        publish.text = '1'
+        browse_cancel = ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'Cancel', 'Type': 'PushButton', 'X': '304', 'Y': '243', 'Width': '56', 'Height': '17',
+            'Cancel': 'yes', 'Text': 'Cancel',
+        })
+        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'Reset', 'Value': '0', 'Order': '1'})
+        publish.text = '1'
+        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
+        publish.text = '1'
         directory_combo = ET.SubElement(browse_dialog, 'Control', {
             'Id': 'DirectoryCombo', 'Type': 'DirectoryCombo', 'X': '20', 'Y': '48', 'Width': '240', 'Height': '80',
             'Property': 'INSTALLDIR', 'Fixed': 'yes',
@@ -409,24 +423,12 @@ class PackageGenerator:
             'Property': 'INSTALLDIR',
         })
         ET.SubElement(browse_dialog, 'Control', {
+            'Id': 'Title', 'Type': 'Text', 'X': '20', 'Y': '15', 'Width': '330', 'Height': '20',
+            'Transparent': 'yes', 'NoPrefix': 'yes', 'Text': '{\\WixUI_Font_Title}Choose a folder',
+        })
+        ET.SubElement(browse_dialog, 'Control', {
             'Id': 'BottomLine', 'Type': 'Line', 'X': '0', 'Y': '234', 'Width': '370', 'Height': '0',
         })
-        ok = ET.SubElement(browse_dialog, 'Control', {
-            'Id': 'OK', 'Type': 'PushButton', 'X': '240', 'Y': '243', 'Width': '56', 'Height': '17',
-            'Default': 'yes', 'Text': 'OK',
-        })
-        publish = ET.SubElement(ok, 'Publish', {'Event': 'SetTargetPath', 'Value': 'INSTALLDIR', 'Order': '1'})
-        publish.text = '1'
-        publish = ET.SubElement(ok, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
-        publish.text = '1'
-        browse_cancel = ET.SubElement(browse_dialog, 'Control', {
-            'Id': 'Cancel', 'Type': 'PushButton', 'X': '304', 'Y': '243', 'Width': '56', 'Height': '17',
-            'Cancel': 'yes', 'Text': 'Cancel',
-        })
-        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'Reset', 'Value': '0', 'Order': '1'})
-        publish.text = '1'
-        publish = ET.SubElement(browse_cancel, 'Publish', {'Event': 'EndDialog', 'Value': 'Return', 'Order': '2'})
-        publish.text = '1'
 
         for dialog_id in ('CancelDlg', 'ErrorDlg', 'ExitDialog', 'FatalError', 'FilesInUse', 'MsiRMFilesInUse', 'ProgressDlg', 'UserExit'):
             ET.SubElement(ui, 'DialogRef', {'Id': dialog_id})

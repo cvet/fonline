@@ -204,6 +204,14 @@ green landed job and a reviewed external repository commit/tag.
 
 The generated MSI uses `InstallScope="perUser"`. Its Start Menu and Desktop shortcut components use separate `HKCU` key paths, PATH registration is per-user (`System="no"`), and generated directory components carry uninstall cleanup. These choices make the same installer description buildable with pinned WiX on Windows or `wixl` on Linux without requiring machine-wide registration. An MSI is not proof that the client is signed, trusted by endpoint protection, upgrade-compatible, or accepted by a distribution channel. Verify those properties on the final emitted artifact.
 
+The installation-directory and folder-browser dialogs list a push button
+before text or path controls. WiX and `wixl` derive different tab loops from
+control order; a loop that omits `Control_First` makes `msiexec` abort before
+the first screen with internal error 2834. The generated XML is checked for a
+closed tab loop under both linker rules. On `wixl`, path controls remain
+editable with the mouse and through the folder browser even though they are
+outside its tab loop. Validate an actual installer on each supported host.
+
 ### Linux client or server
 
 - `Raw`, `Zip`, `Tar`, and `TarGz` are available output forms.

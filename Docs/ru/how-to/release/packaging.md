@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"4f42e1747b0865a7aa2f1039c9a184091e00c8e5813474d83595cd4a2b52bc3b"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"82579274b8af1612c443ef0863e1a058f247819ca7421b5a1c2f15a6045175b2"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -278,6 +278,14 @@ WiX на Windows или `wixl` на Linux без machine-wide registration. MSI 
 доказывает, что client подписан, доверен endpoint protection, совместим при
 upgrade или принят distribution channel. Проверяйте эти свойства на финальном
 emitted artifact.
+
+В диалогах выбора каталога установки и просмотра папок push button стоит
+перед text и path controls. WiX и `wixl` строят tab loop по порядку controls
+по-разному; если loop не включает `Control_First`, `msiexec` прекращает
+установку ещё до первого экрана с internal error 2834. Generated XML
+проверяется на замкнутый tab loop по правилам обоих linkers. При `wixl`
+path controls остаются доступны мышью и через просмотр папок, хотя не входят
+в его tab loop. Реальный installer проверяйте на каждом поддерживаемом host.
 
 ### Linux client или server
 

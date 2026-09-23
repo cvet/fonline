@@ -2120,11 +2120,7 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
         FO_VERIFY_AND_THROW(engine, "Managed continuation requires an engine context");
         FO_VERIFY_AND_THROW(continuation != nullptr, "Managed continuation is null");
 
-        RunManagedScriptEntry(
-            backend, engine, [continuation] { return continuation; },
-            [&] {
-                InvokeManagedScriptDelegate(backend, continuation, "Managed continuation failed");
-            });
+        RunManagedScriptEntry(backend, engine, [continuation] { return continuation; }, [&] { InvokeManagedScriptDelegate(backend, continuation, "Managed continuation failed"); });
         return nullptr;
     }
     catch (const std::exception& ex) {

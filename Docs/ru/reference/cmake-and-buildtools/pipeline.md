@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"3f39ebcac271eff354be4f726a475b5b9be21402040a0a299bfa4beeb09264fb"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"60ade1a45e8c340a86084e751762c9f2363bf9179afd49b031e2a72717b0a730"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -115,6 +115,11 @@ Manifest содержит независимые backends `FO_SPARK_PARTICLES` �
 backend не добавляет third-party target, скомпилированную runtime или Mapper
 implementation, runtime resource extensions и baker implementation.
 
+На Linux linker исключает статические архивы LibreSSL Engine из dynamic
+symbol table executable. Managed shim OpenSSL открывает системную `libssl`
+для cryptography Roslyn; без этой границы библиотека могла бы связать
+собственные внутренние вызовы с неверсионированными symbols LibreSSL.
+
 ### `ProjectOptions.cmake`
 
 Нормализует и проверяет комбинации project-level options. Текущие примеры:
@@ -144,6 +149,15 @@ hardware-intrinsic `IsSupported`, не реализованных их JIT. Бе
 property CoreLib рекурсивно вызывает себя и может переполнить stack до первого
 кадра. Marker cache Managed runtime включает этот source-patch contract;
 prebuilt runtime уже должен его содержать.
+
+Windows Mono также повторяет отказавшие suspension/context reads во время
+stop-the-world, пока thread жив, сообщает о каждом отказе и после пяти секунд
+завершает процесс вместо пропуска работающего thread. Ready marker
+`_suspend_retry` заставляет пересобрать Windows runtime; prebuilt runtime
+принимается как есть и уже должен содержать патч. Linux managed builds
+подключают OpenSSL cryptography shim вместе с native и globalization shims.
+Контракт runtime safety и компиляции fragments описан в
+[руководстве Managed C#](../../how-to/scripting/managed-csharp.md#runtime-loading-изоляция-и-shutdown).
 
 Начинайте здесь при добавлении или удалении bundled dependency либо изменении
 правил изоляции её сборки.

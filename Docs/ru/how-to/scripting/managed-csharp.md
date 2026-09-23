@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"4ef6564d92f2cb681fbf59ef0b3588f2feada3f12439b54f248bdcaaab1ec07c"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"0b46e6b1a9bf6140b1a33ac4cdc866231adb67610276412bb630d1c359e67c5a"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -193,13 +193,24 @@ Backend-owned caches строятся до hot-path use: managed helper methods,
 
 Mono инициализируется один раз на процесс. Первый managed entry на native worker Engine присоединяет thread к root domain и кэширует attachment на весь lifetime thread. Последующие entries только переводят attachment в GC-unsafe на время managed execution и снова паркуют его GC-safe во время native work или ожидания locks; reentrant entries наследуют attachment. Thread, инициализирующий Mono, является исключением: `mono_jit_init_version` присоединяет его неявно, а initialization scope освобождает принятый attachment. Затем backend создаёт собственный non-collectible `AssemblyLoadContext`; это граница per-engine isolation, потому что embedded runtime не предоставляет пригодный unload classic AppDomain.
 
+Однократное присоединение избавляет от повторного создания managed `Thread`,
+но отсоединение worker не удаляет его native registration из preemptive
+stop-the-world Mono. На Windows подготовленный исходник Mono повторяет
+отказавшие `SuspendThread` и `GetThreadContext`, пока worker жив. Пропустить
+thread можно только после его завершения; после пяти секунд отказов живого
+thread runtime сообщает в stderr его id/имя и Windows error и завершает
+процесс вместо продолжения с непросканированным stack и повреждённой managed
+heap. Последующий успешный retry тоже сообщается. Source-patch marker
+инвалидирует старые Windows runtime caches; prebuilt runtime уже должен
+содержать этот патч.
+
 До выполнения кода или type initializer из entry assembly backend вызывает `Native.BindBackend` со своим pointer. Каждый internal call, которому нужно состояние Engine, явно передаёт этот bound pointer, поэтому static constructors, marshalling constructors, callbacks и continuations определяют правильный Engine без thread-local caller state. Binding определяет только владельца; он не создаёт script synchronization context или server entity cover.
 
 При запуске baked assemblies восстанавливаются в content-hashed подкаталоги writable `Cache/ManagedAssemblies/`. Уже совпадающие по байтам файлы переиспользуются, поэтому параллельные in-process Engine instances не перезаписывают загруженную Mono assembly. Отсутствие managed assemblies допустимо для tests/tools без baked scripts; настроенный gameplay project должен считать его ошибкой package или resource selection.
 
 `DynamicAssemblies.Load(image, symbols)` загружает post-bake PE image в non-collectible load context данного backend. Имя assembly должно быть новым `FOnline.Dynamic.*`; код разделяет script types и statics backend и остаётся загруженным до конца процесса. `RunEntryAsync(MethodInfo)` принимает static метод без параметров, возвращающий значение, `Task` или `Task<T>`, и запускает его как отдельный script entry с собственным server synchronization context; `async void` запрещён, reflection wrapper исключения снимается. `ScriptsVersionId` — MVID entry assembly. На сервере `ReadClientScriptsImage()` возвращает клиентскую entry image из updater (либо локального bake), чтобы компилировать fragment против соответствующей версии клиента. Dynamic assemblies участвуют в очистке script statics.
 
-Опциональная engine library `FOnline.ScriptCompiler` компилирует live fragments через Roslyn. Проект добавляет её `.csproj` через `ManagedScript.ExtraReferences` только в компилирующие targets; она и dependencies упаковываются рядом с их entry assemblies. `DynamicScriptCompiler.CompileAsync` работает вне Engine thread, создаёт уникальное имя `FOnline.Dynamic.*`, принимает body statements или expression, usings и symbols и привязывает diagnostics к строке/колонке fragment. Можно компилировать против текущих scripts или переданной image другого target. Компиляция допускает private/internal члены scripts, поэтому авторизация отправителя кода полностью принадлежит подключающему проекту. PDB не генерируется: embedded Mono может не содержать cryptography; compile diagnostics сохраняют строки, runtime frames — нет. Горячей выгрузки этих assemblies нет.
+Опциональная engine library `FOnline.ScriptCompiler` компилирует live fragments через Roslyn. Проект добавляет её `.csproj` через `ManagedScript.ExtraReferences` только в компилирующие targets; она и dependencies упаковываются рядом с их entry assemblies. `DynamicScriptCompiler.CompileAsync` работает вне Engine thread, создаёт уникальное имя `FOnline.Dynamic.*`, принимает body statements или expression, usings и symbols и привязывает diagnostics к строке/колонке fragment. Можно компилировать против текущих scripts или переданной image другого target. Компиляция допускает private/internal члены scripts, поэтому авторизация отправителя кода полностью принадлежит подключающему проекту. Компилятор выдаёт portable PDB в `DynamicCompileResult.Symbols` вместе с image; загрузка обоих streams сохраняет source locations в runtime frames. Roslyn нужна cryptography уже при привязке strong-named references. На Linux linked shim `System.Security.Cryptography.Native.OpenSsl` открывает системную библиотеку OpenSSL во время работы, поэтому host, компилирующий fragments, должен её иметь. Engine исключает статическую LibreSSL из dynamic symbol table executable, чтобы системная библиотека не связалась с несовместимыми symbols. Горячей выгрузки этих assemblies нет.
 
 Shutdown сначала вызывает `BeginManagedTeardown`, который до любой другой очистки выполняет `Native.BeginBackendTeardown` и делает `Native.IsBackendTearingDown` истинным, пока backend ещё bound. Так wrapper, завершённый во время обычного runtime, отличается от wrapper, ставшего недостижимым из-за самого teardown. Wrapper с thread-affine native resource, который нельзя освободить из finalizer thread, в последнем случае может не сообщать о leak, потому что владеющая Engine subsystem уже уничтожается. `Native.IsBackendAlive` не позволяет провести это различие: unbind намеренно остаётся более поздним шагом, чтобы собранные во время shutdown entity wrappers ещё могли вернуть свои native references.
 
