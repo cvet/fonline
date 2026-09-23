@@ -84,6 +84,17 @@ auto platform::get_exe_path() noexcept -> optional<string>
 #endif
 }
 
+auto platform::get_command_line_args() -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return winapi::get_command_line_args();
+#else
+    return std::nullopt;
+#endif
+}
+
 auto platform::get_user_data_base() noexcept -> string
 {
     FO_STACK_TRACE_ENTRY();

@@ -3164,11 +3164,20 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 			f'Managed runtime for {layout.publish_triplet} cannot be built on this host: dotnet/runtime has no Windows cross-target. '
 			'Build it on Windows and point FO_MANAGED_RUNTIME_PREBUILT at the published output/mono/<triplet> tree')
 
+	# The published tree is the product; the clone and build markers only make an unfinished build resumable, so a tree
+	# restored from the cache has neither, and a second build directory sharing the workspace must not rebuild beneath it
+	if layout.ready_marker.exists():
+		if layout.output_dir.is_dir():
+			log(f'Runtime {layout.publish_triplet} is ready!')
+			return
+
+		reset_marker(layout.ready_marker)
+
 	# The runtime build takes most of a CI build job and nothing the cache name leaves out changes its output, so a job
 	# takes a tree another job published. A local FO_DOTNET_RUNTIME_ROOT is not the pinned source and is never shared
 	cache_name = ''
 
-	if not layout.ready_marker.exists() and os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
+	if os.environ.get(WORKSPACE_CACHE_VAR) and not env.get('FO_DOTNET_RUNTIME_ROOT'):
 		cache_name = build_mono_workspace_cache_name(os_name, arch, config, env)
 
 		if restore_mono_workspace_cache(cache_name, layout):

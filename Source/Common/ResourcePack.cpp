@@ -67,7 +67,9 @@ static constexpr uint32_t PATCH_FOOTER_MAGIC = 0x54524F46;
 
 static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>;
 static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool;
+static auto IsPatchHeaderBound(const_span<uint8_t> header, uint64_t base_pack_hash) noexcept -> bool;
 static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>;
+static auto IsEncodedResourceIntact(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> bool;
 static auto FindArchiveSeparator(string_view path) noexcept -> size_t;
 
 // The offsets above are the format. These pin the record sizes to them, so widening a field without widening
@@ -739,6 +741,28 @@ static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEnt
     return data;
 }
 
+static auto IsEncodedResourceIntact(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Decoding is the only check a payload has, and it answers with an exception; here the answer is the result
+    try {
+        (void)DecodeResourceData(stored, entry);
+        return true;
+    }
+    catch (const std::exception& ex) {
+        logging::write("Resource pack: stored payload of {} does not decode to its content, {}", entry.Path, ex.what());
+        return false;
+    }
+}
+
+static auto IsPatchHeaderBound(const_span<uint8_t> header, uint64_t base_pack_hash) noexcept -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    return header.size() == RESOURCE_PATCH_HEADER_SIZE && span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 8) == base_pack_hash && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, header.first(24));
+}
+
 static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool
 {
     FO_STACK_TRACE_ENTRY();
@@ -753,9 +777,7 @@ static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackH
 
     // A torn header commits nothing, like a patch without a footer: the base stays the view and the updater
     // recreates the file. Refusing it would keep the client from starting, and a reinstall does not reach it
-    bool header_valid = span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24});
-
-    if (!header_valid || span_read_uint64(header, 8) != base_header.PackHash) {
+    if (!IsPatchHeaderBound(header, base_header.PackHash)) {
         return false;
     }
 
@@ -865,10 +887,19 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
     FO_VERIFY_AND_THROW(ComputeResourcePackContentHash(target_entries) == content_hash, "Patch target content hash mismatch");
     _info.BasePackHash = base.GetPackHash();
     _info.ContentHash = content_hash;
-    _startOffset = current.GetPatchInfo() ? current.GetPatchInfo()->CommittedSize : RESOURCE_PATCH_HEADER_SIZE;
-    _startIndexHash = current.GetPatchInfo() ? current.GetPatchInfo()->IndexHash : 0;
+    _hasCommit = current.GetPatchInfo().has_value();
+    _startOffset = _hasCommit ? current.GetPatchInfo()->CommittedSize : RESOURCE_PATCH_HEADER_SIZE;
+    _startIndexHash = _hasCommit ? current.GetPatchInfo()->IndexHash : 0;
     _originalSize = fs::file_size(patch_path).value_or(0);
-    _reset = !current.GetPatchInfo().has_value();
+    fs::disk_read_file existing {patch_path};
+
+    // Without a commit the file is kept only when its own header binds it to this base: that is a first append cut
+    // short, whose payloads the resume below can still use. Anything else is rebuilt from an empty file
+    if (!_hasCommit) {
+        array<uint8_t, RESOURCE_PATCH_HEADER_SIZE> header {};
+        _recreate = !existing || existing.get_size() < header.size() || !existing.read_at(0, header) || !IsPatchHeaderBound(header, _info.BasePackHash);
+    }
+
     map<pair<uint64_t, uint64_t>, ResourcePackEntryRef> available;
 
     for (ResourcePackEntryRef& entry : base.GetEntryRefs()) {
@@ -926,28 +957,48 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
     _info.IndexHash = HashResourceBytes(RESOURCE_PACK_HASH_SEED, _index);
     FO_VERIFY_AND_THROW(offset <= std::numeric_limits<uint64_t>::max() - RESOURCE_PATCH_FOOTER_SIZE && _index.size() <= std::numeric_limits<uint64_t>::max() - RESOURCE_PATCH_FOOTER_SIZE - offset, "Resource patch final size overflow");
     _info.CommittedSize = offset + _index.size() + RESOURCE_PATCH_FOOTER_SIZE;
+
+    if (!_recreate) {
+        // An interrupted append left its payloads in exactly this plan's order, so each one that still decodes to its
+        // planned entry is kept; the first that does not ends the reusable run, and Begin cuts the tail there
+        _keptSize = _startOffset;
+
+        for (const ResourcePackEntryRef& download : _downloads) {
+            if (existing.get_size() < _keptSize || existing.get_size() - _keptSize < download.StoredSize) {
+                break;
+            }
+
+            vector<uint8_t> stored(numeric_cast<size_t>(download.StoredSize));
+
+            if (!existing.read_at(_keptSize, stored) || !IsEncodedResourceIntact(stored, download)) {
+                break;
+            }
+
+            _keptSize += download.StoredSize;
+            ++_resumedDownloads;
+        }
+    }
 }
 
-void ResourcePatchWriter::Begin()
+void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
 {
     FO_STACK_TRACE_ENTRY();
 
     FO_VERIFY_AND_THROW(!_file && !_finished && !_failed, "Resource patch writer already started");
-    _directoryLock = safe_alloc::make_unique<fs::disk_directory_lock>(strex(_patchPath).extract_dir().str());
-    FO_VERIFY_AND_THROW(*_directoryLock, "Resource directory is being updated", _patchPath);
+    FO_VERIFY_AND_THROW(directory_lock, "Resource patch is written without the resource directory lock", _patchPath);
     _failed = true;
     ResourcePackHeader base;
     FO_VERIFY_AND_THROW(ReadResourcePackHeader(_basePath, base) && base.PackHash == _info.BasePackHash, "Resource base changed during patch preparation", _basePath);
     FO_VERIFY_AND_THROW(fs::file_size(_patchPath).value_or(0) == _originalSize, "Resource patch changed during preparation", _patchPath);
 
-    if (_reset && fs::exists(_patchPath)) {
+    if (_recreate && fs::exists(_patchPath)) {
         FO_VERIFY_AND_THROW(fs::remove_file(_patchPath), "Can't remove an uncommitted or stale patch", _patchPath);
     }
 
     _file = fs::disk_write_file {_patchPath, fs::disk_write_mode::append};
     FO_VERIFY_AND_THROW(_file, "Can't open resource patch for appending", _patchPath);
 
-    if (_reset) {
+    if (_recreate) {
         array<uint8_t, RESOURCE_PATCH_HEADER_SIZE> header {};
         span_write_uint32(header, 0, PATCH_MAGIC);
         span_write_uint16(header, 4, RESOURCE_PACK_VERSION_MAJOR);
@@ -957,11 +1008,15 @@ void ResourcePatchWriter::Begin()
         FO_VERIFY_AND_THROW(_file.write(header) && _file.flush(), "Can't initialize resource patch", _patchPath);
     }
     else {
-        auto current = ReadResourcePatchInfo(_patchPath, base);
-        FO_VERIFY_AND_THROW(current && current->CommittedSize == _startOffset && current->IndexHash == _startIndexHash, "Resource patch commit changed during preparation", _patchPath);
-        FO_VERIFY_AND_THROW(_file.truncate_to(_startOffset), "Can't remove incomplete resource patch tail", _patchPath);
+        if (_hasCommit) {
+            auto current = ReadResourcePatchInfo(_patchPath, base);
+            FO_VERIFY_AND_THROW(current && current->CommittedSize == _startOffset && current->IndexHash == _startIndexHash, "Resource patch commit changed during preparation", _patchPath);
+        }
+
+        FO_VERIFY_AND_THROW(_file.truncate_to(_keptSize), "Can't remove incomplete resource patch tail", _patchPath);
     }
 
+    _nextDownload = _resumedDownloads;
     _failed = false;
 }
 
@@ -1003,7 +1058,138 @@ void ResourcePatchWriter::Finish()
     _file.close();
     _finished = true;
     _failed = false;
-    _directoryLock.reset();
+}
+
+ResourcePairVerifier::ResourcePairVerifier(string_view base_path, string_view patch_path, bool check_base, bool check_patch) :
+    _basePath {base_path},
+    _patchPath {patch_path},
+    _baseFile {OpenResourcePackFile(base_path)}
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A base whose header does not read is no pair at all, and the content check that follows already sends it to a download
+    if (!ReadResourcePackHeader(_baseFile, _baseHeader)) {
+        logging::write("Resource pack: base {} has no readable header", base_path);
+        _baseIntact = false;
+        _finished = true;
+        return;
+    }
+
+    if (check_base) {
+        _baseRemaining = true;
+        _baseOffset = RESOURCE_PACK_HEADER_SIZE;
+        _totalBytes += _baseFile.get_size() - RESOURCE_PACK_HEADER_SIZE;
+    }
+
+    if (check_patch) {
+        vector<ResourcePackEntryRef> entries;
+
+        try {
+            ResourcePackSource pair {base_path, patch_path};
+
+            if (pair.GetPatchInfo().has_value()) {
+                entries = pair.GetEntryRefs();
+                _patchFile = fs::disk_read_file {patch_path};
+            }
+        }
+        catch (const std::exception& ex) {
+            logging::write("Resource pack: base {} does not mount, {}", base_path, ex.what());
+            _baseIntact = false;
+            _finished = true;
+            return;
+        }
+
+        // Base bytes are the base check's to prove, and several paths may share one patch extent
+        set<pair<uint64_t, uint64_t>> extents;
+
+        for (ResourcePackEntryRef& entry : entries) {
+            if (entry.Source == 1 && extents.emplace(entry.DataOffset, entry.StoredSize).second) {
+                _totalBytes += entry.StoredSize;
+                _patchEntries.emplace_back(std::move(entry));
+            }
+        }
+    }
+
+    _finished = !_baseRemaining && _patchEntries.empty();
+}
+
+void ResourcePairVerifier::Step(uint64_t byte_budget)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    FO_VERIFY_AND_THROW(!_finished, "Resource pair verification has already finished", _basePath);
+
+    if (_baseRemaining) {
+        StepBase(byte_budget);
+    }
+
+    // A damaged base is replaced whole, and its patch goes with it, so the patch is not read behind it
+    if (!_baseRemaining && _baseIntact && byte_budget != 0) {
+        StepPatch(byte_budget);
+    }
+
+    _finished = !_baseIntact || !_patchIntact || (!_baseRemaining && _nextPatchEntry == _patchEntries.size());
+}
+
+void ResourcePairVerifier::StepBase(uint64_t& byte_budget)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    constexpr size_t SLICE_SIZE = 1024 * 1024;
+    uint64_t file_size = _baseFile.get_size();
+    _slice.resize(SLICE_SIZE);
+
+    while (_baseOffset < file_size) {
+        size_t chunk = numeric_cast<size_t>(std::min<uint64_t>(file_size - _baseOffset, SLICE_SIZE));
+
+        if (!_baseFile.read_at(_baseOffset, span<uint8_t> {_slice.data(), chunk})) {
+            logging::write("Resource pack: can't read base {} at {}", _basePath, _baseOffset);
+            _baseIntact = false;
+            _baseRemaining = false;
+            return;
+        }
+
+        _baseHash = HashResourceBytes(_baseHash, const_span<uint8_t> {_slice.data(), chunk});
+        _baseOffset += chunk;
+        _checkedBytes += chunk;
+        byte_budget -= std::min<uint64_t>(byte_budget, chunk);
+
+        if (byte_budget == 0) {
+            break;
+        }
+    }
+
+    if (_baseOffset == file_size) {
+        _baseRemaining = false;
+        _baseIntact = _baseHash == _baseHeader.PackHash;
+
+        if (!_baseIntact) {
+            logging::write("Resource pack: base {} no longer matches the hash its header carries", _basePath);
+        }
+    }
+}
+
+void ResourcePairVerifier::StepPatch(uint64_t& byte_budget)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    while (_nextPatchEntry < _patchEntries.size()) {
+        const ResourcePackEntryRef& entry = _patchEntries[_nextPatchEntry++];
+        vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
+        _checkedBytes += entry.StoredSize;
+
+        if (!_patchFile.read_at(entry.DataOffset, stored) || !IsEncodedResourceIntact(stored, entry)) {
+            logging::write("Resource pack: committed payload {} of {} is damaged", entry.Path, _patchPath);
+            _patchIntact = false;
+            return;
+        }
+
+        byte_budget -= std::min<uint64_t>(byte_budget, entry.StoredSize);
+
+        if (byte_budget == 0) {
+            break;
+        }
+    }
 }
 
 FO_END_NAMESPACE

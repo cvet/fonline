@@ -45,6 +45,7 @@
 #include <io.h>
 #include <psapi.h>
 #include <share.h>
+#include <shellapi.h>
 #include <shlobj.h>
 
 #include "WinApiUndef.inc"
@@ -197,6 +198,29 @@ auto winapi::get_environment_variable(const string& name) noexcept -> optional<s
 
     value.resize(size);
     return strex().parse_wide_char(make_ptr(value.c_str())).str();
+}
+
+auto winapi::get_command_line_args() -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t count = 0;
+    auto args = make_nptr(::CommandLineToArgvW(::GetCommandLineW(), &count));
+
+    if (!args) {
+        return std::nullopt;
+    }
+
+    auto free_args = scope_exit([&args]() noexcept { ::LocalFree(args.get()); });
+    span<wchar_t*> arg_list {args.get(), static_cast<size_t>(count)};
+    vector<string> result;
+    result.reserve(arg_list.size());
+
+    for (size_t i = 0; i < arg_list.size(); i++) {
+        result.emplace_back(strex().parse_wide_char(make_ptr(arg_list[i])).str());
+    }
+
+    return result;
 }
 
 auto winapi::get_local_app_data_path() noexcept -> optional<string>

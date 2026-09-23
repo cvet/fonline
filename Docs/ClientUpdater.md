@@ -411,16 +411,25 @@ writable resource directory when present, otherwise the installed directory or A
 it to the exact selected base hash. A patch is never an independent overriding source. See
 [ResourcePackFormat.md](ResourcePackFormat.md) for byte layouts, hash encodings and recovery validation.
 
-Patch growth has no configured size limit. Obsolete payloads and previous catalogs/footers remain in the
-file, and its size never triggers a full-base download. An already current patch is retained unchanged.
-Before appending, the updater checks available disk space for the new payloads, catalog and footer.
-Missing or unusable base/pair data can still require a complete-base download for repair.
+Obsolete payloads and previous catalogs/footers remain in the patch, so a client whose server keeps
+changing - or flips between two builds - grows its patch with every append. The growth is capped against the
+pack itself: when the planned commit would bring the patch to the size of the advertised full pack or beyond,
+the updater drops the plan and downloads the pack instead (`Client updater: patch ... would reach ... bytes
+over a ... byte pack, downloading the pack instead`). Past that point the patch is mostly superseded bytes, and
+the pack replaces the pair and leaves none of them behind; the cap therefore bounds a pair at about twice its
+pack on disk and costs one full download per cycle. An already current patch is retained unchanged. Before
+appending, the updater checks available disk space for the new payloads, catalog and footer. Missing or unusable
+base/pair data can still require a complete-base download for repair.
 
 Patch publication appends verified payloads and the complete catalog, flushes them, then appends and flushes
 the commit footer. New directory entries are persisted on POSIX. A failed update leaves the previous commit
-readable. Restart scans backward only when EOF lacks a valid footer, then truncates the uncommitted suffix
-before another append. It may redownload the interrupted addition; no persistent resource resume journal is
-stored. The writable directory is locked during mutations using platform locks, with no lock/selector file.
+readable. Restart scans backward only when EOF lacks a valid footer. An interrupted append is **resumed**: its
+payloads were written in exactly the order the plan downloads them, so the next plan keeps every payload of the
+uncommitted tail that still decodes to the entry planned at its offset, cuts the tail after the last one and
+fetches only the rest (`Client updater: resuming resource patch ..., N of M payloads were written by an
+interrupted run`). A tail from another server build, a torn last payload or garbage ends the kept run where it
+stops matching, so nothing unproven is ever committed; there is no separate resume journal. The same holds for a
+first append cut short: a patch whose own header binds it to the selected base is resumed rather than recreated.
 
 Complete bases download into `~<filename>` under the writable resource directory. Space admission counts all
 remaining bytes; the file is not preallocated because its actual length is the resume position. A completed
@@ -435,12 +444,37 @@ Complete native-file hash checks use `Updater::IsDiskFileHashMatch`, which cache
 the entry. Resource freshness uses the pair's catalog `ContentHash`; a fully downloaded replacement base is
 instead verified against its header `PackHash` before promotion.
 
-Interrupted replacement recovery scans both writable resource and binary trees recursively before updater
-reads, including names hidden by ordinary resource enumeration. The `.fobackup` suffix is one only the updater
-writes, because a portable client's binary tree is the folder the player unpacked it into and holds their own
-files too. It snapshots file names before renaming or
-removing backups and holds the writable-resource lock through both scans, since the binary root may contain
-the resource tree. Shared base resolution restores a missing writable base from its backup before bootstrap/Core
+A catalog that names the right content says nothing about the payload bytes behind it, and a pack whose data
+was damaged on disk - one flipped bit is enough - kept reporting itself current while every launch failed on
+the same resource, a crash loop only a reinstall ended. So before it connects, the updater proves each
+configured local pair it has not proved before (stage `VerifyingResources`, `Check local game files` on the
+screen): the base against its header `PackHash` over the whole file, the committed patch payloads (`Source = 1`)
+by decoding each against its `FileContentHash`. `ResourcePairVerifier` does the reading in bounded steps, so the
+screen keeps drawing and the progress shows. A proof is recorded in `CacheStorage` per path together with the
+file's size, modification time and identity (`PackHash` for a base, the commit's catalog hash for a patch), and
+a later run skips a pair whose record still matches; a verified full download and a committed patch record
+themselves, since both were checked while they were written. A first launch of a fresh install therefore reads
+every installed pack once, and every later launch reads none unless a file changed. A damaged base is replaced
+by the full pack; a damaged patch payload is fetched again by an ordinary append whose plan decodes every
+reused payload and so rejects the damaged one. A change that keeps both size and modification time evades the
+record until the file changes again, the same limit the native-file cache has. Web skips the stage: a browser
+session starts from packs it has just fetched and keeps nothing.
+
+The updater holds the writable resource directory lock (`fs::disk_directory_lock`: `flock` on POSIX, a named
+mutex on Windows, no lock file) for its whole run, from before it reads anything local until its result, and
+releases it as soon as the result is known even when a restart prompt keeps the updater on screen. A second
+client started on the same folder - a player double-clicking the shortcut - finds the directory held and
+**waits** instead of failing: stage `WaitingForDirectory`, `Waiting for another game window to finish its update`
+on the screen, a retry every 250 ms, then the ordinary run against files the first client has already brought up
+to date. Holding one lock for the run also means nothing inside it takes the lock again, which `flock` would
+refuse even within one process: `ResourcePatchWriter::Begin` takes the caller's lock as proof instead of
+acquiring its own.
+
+Interrupted replacement recovery runs first under that lock and scans both writable resource and binary trees
+recursively before updater reads, including names hidden by ordinary resource enumeration. The `.fobackup`
+suffix is one only the updater writes, because a portable client's binary tree is the folder the player
+unpacked it into and holds their own files too. It snapshots file names before renaming or removing backups;
+the run's lock covers both scans, since the binary root may contain the resource tree. Shared base resolution restores a missing writable base from its backup before bootstrap/Core
 or cache selection can fall back to the installed copy.
 A backup with a present live counterpart is obsolete. The updater releases its mounted sources before mutation;
 Windows file sharing can reject a reset while another reader still holds the old pair. POSIX readers retain
@@ -458,8 +492,8 @@ A failed cache build is logged and authoritative pairs remain usable. Web skips 
 filesystem does not survive a page reload.
 
 Native whole-file hashes use the existing `(size, mtime, hash)` cache in `CacheStorage`; full resource body
-hashing is reserved for verifying completed base downloads. Normal resource mounts validate catalogs and
-verify individual payload hashes when resources are read. All descriptor paths are checked before joining
+hashing happens only for completed base downloads and for the one-time pair verification above. Normal resource
+mounts validate catalogs and verify individual payload hashes when resources are read. All descriptor paths are checked before joining
 writable paths. The updater also consumes connection-stage `HashList` messages normally.
 
 Obsolete temporary full downloads are swept after the desired file list arrives. Format and protocol readers
@@ -652,8 +686,7 @@ reporting, `MetadataMismatch` included: its player-facing advice is also "try ag
 a server distributing resources it does not run on, which is a deployment defect worth a report.
 
 A failure raised while the updater processes a message - the patch file cannot be created, the volume has
-no room for the planned append, a received blob fails its hash, another process holds the resource
-directory lock - is `Failed`, not `ConnectionFailed`. `ClientConnection` disconnects before it rethrows a
+no room for the planned append, a received blob fails its hash - is `Failed`, not `ConnectionFailed`. `ClientConnection` disconnects before it rethrows a
 handler's exception, and that disconnect reaches `Net_OnDisconnect` while files are still pending, so
 `Updater::Process` sets the result from the exception itself rather than keeping the drop it caused:
 blaming the server would tell the player it is offline and keep a client-side defect out of the crash
@@ -673,6 +706,9 @@ instead of looping back to the game which would only reject the connection again
 |---------|--------------|
 | Host can't find runtime, no fallback possible, or resource repair cannot complete | client message box `Client update failed. Please install the latest full client package.` |
 | Client started while the server is down, restarting, or unreachable | client message box `Can't connect to the server. It may be offline or restarting, please try again later.`, client log `Client updater: connection failed` then `Client updater: terminal result ConnectionFailed`. Deliberately files **no** crash report - an offline server is not a client defect, and reporting it would flood the crash reporter on every restart |
+| Server went away mid-update without closing the connection (stopped or hung process, dropped network, UDP) | client log `Connection lost: the server has sent nothing for N ms`, `ClientNetwork.PingTimeout` after the last byte received, then `terminal result ConnectionFailed`; no crash report (see [Networking.md](Networking.md)) |
+| A second client on the same folder | client log `Client updater: resource directory ... is being updated by another client, waiting for it`, later `... is free again`; the screen reads `Waiting for another game window to finish its update`. Not a failure and not reported |
+| First launch of a fresh install, or after files changed outside the updater, spends seconds on `Check local game files` | the one-time pair verification: client log `Client updater: checking N local packs no earlier run has proved intact, bytes B`, then `local packs checked, damaged D`. A damaged pack logs `local pack X is damaged, the whole pack will be downloaded again` or `... has a damaged patch payload, it will be fetched again` and is repaired by the same run |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
@@ -689,7 +725,7 @@ instead of looping back to the game which would only reject the connection again
 
 Local validation steps:
 
-1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs::hash_file` parity with `fs::hash_data` and `fs::make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `platform::get_user_data_base`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and writable-root fail-safe/creation behavior.
+1. Build `LF_UnitTests` and run it. [../Source/Tests/Test_ClientRuntimeApi.cpp](../Source/Tests/Test_ClientRuntimeApi.cpp) exercises the ABI surface plus installed-runtime selector round-trip, validation, live selection, staged recovery, and fallback; [../Source/Tests/Test_DiskFileSystem.cpp](../Source/Tests/Test_DiskFileSystem.cpp) covers `fs::hash_file` parity with `fs::hash_data` and `fs::make_writable_path`; [../Source/Tests/Test_Platform.cpp](../Source/Tests/Test_Platform.cpp) covers `platform::get_user_data_base`; [../Source/Tests/Test_Settings.cpp](../Source/Tests/Test_Settings.cpp) covers `UpdateFilesInMemory` sub-config inheritance and writable-root fail-safe/creation behavior; [../Source/Tests/Test_ClientUpdater.cpp](../Source/Tests/Test_ClientUpdater.cpp) covers a silent server, a second client waiting for the directory, and recovery before connecting; [../Source/Tests/Test_ResourcePack.cpp](../Source/Tests/Test_ResourcePack.cpp) covers resumed appends and `ResourcePairVerifier`; `ClientUpdaterResourcePatchLifecycle` in [../Source/Tests/Test_ClientServerIntegration.cpp](../Source/Tests/Test_ClientServerIntegration.cpp) repairs a damaged base and a damaged patch payload and replaces a patch that would outgrow its pack.
 2. Build `LF_Client`; its native target dependency also builds `LF_ClientLib`. Confirm the client output directory contains the host plus the host-derived runtime alias (`LF_Client.exe` + `LF_Client.dll` on Windows, `LF_Client` + `LF_Client.so` on Linux). Build `LF_ClientLib` explicitly when validating the runtime target in isolation.
 3. Launch `LF_Client.exe` with the bundled runtime present â†’ normal startup (Case 2 happy path: load DLL, resource updater finishes, game starts).
 4. Launch `LF_Client.exe --ClientLibPath <path>` with a valid alternate runtime â†’ host routes through the loaded library.

@@ -187,7 +187,8 @@ TEST_CASE("ResourcePackInApkRegion")
     string patch_path = GetResourcePatchPath(base_path);
     ResourcePatchWriter writer {installed, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     REQUIRE(writer.GetDownloads().size() == 1);
-    writer.Begin();
+    fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
+    writer.Begin(patch_lock);
     fs::disk_read_file remote {strex(dir).combine_path("Target.fores").str()};
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
@@ -231,7 +232,8 @@ TEST_CASE("ResourcePackUnderDirectoryEndingInBang")
     ResourcePackSource target {strex(root).combine_path("Target.fores").str()};
     ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     fs::disk_read_file remote {strex(root).combine_path("Target.fores").str()};
-    writer.Begin();
+    fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
+    writer.Begin(patch_lock);
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
         vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
@@ -267,7 +269,8 @@ TEST_CASE("ResourceIndex")
             ResourcePackSource target {target_path};
             ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
             fs::disk_read_file remote {target_path};
-            writer.Begin();
+            fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
+            writer.Begin(patch_lock);
 
             for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
                 vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));

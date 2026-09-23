@@ -243,7 +243,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
                 if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
-                    config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
+                    config_to_apply_dir = fs::path_to_string(dir);
                     break;
                 }
                 else {

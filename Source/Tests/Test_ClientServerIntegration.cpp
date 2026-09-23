@@ -2262,7 +2262,39 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
         CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
     }
 
-    SECTION("LargePatchKeepsAppendingAndRemainsCurrentWithoutReplacingTheBase")
+    SECTION("DamagedBaseTheCatalogStillNamesIsDownloadedAgain")
+    {
+        // One flipped payload byte leaves the header and the catalog intact, so the pair still reports the advertised
+        // content; only reading its bytes back tells the damage apart, and the whole pack is the repair
+        string damaged = *original;
+        damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(installed_base, damaged));
+
+        synchronize(false);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
+        CHECK(fs::read_file(installed_base) == optional<string> {damaged});
+    }
+
+    SECTION("DamagedPatchPayloadIsFetchedAgain")
+    {
+        string damaged = *first;
+        damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(patch, damaged));
+
+        synchronize(false);
+        CHECK_FALSE(fs::exists(replacement));
+        auto repaired = fs::read_file(patch);
+        REQUIRE(repaired);
+        CHECK(repaired->starts_with(damaged));
+        ResourcePackSource pair {installed_base, patch};
+        size_t size = 0;
+        uint64_t write_time = 0;
+        CHECK(static_cast<bool>(pair.OpenFile("Change.txt", size, write_time)));
+        CHECK(size == string_view {"first update"}.size());
+    }
+
+    SECTION("PatchThatWouldOutgrowItsPackIsReplacedByThePack")
     {
         constexpr size_t large_size = 65 * 1024 * 1024;
 
@@ -2281,21 +2313,20 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
             ResourcePatchWriter writer {installed_base, patch, target.GetEntryRefs(), target.GetContentHash()};
             REQUIRE(writer.GetDownloads().size() == 1);
             REQUIRE(writer.GetDownloads().front().Path == "Change.txt");
-            writer.Begin();
+            fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
+            writer.Begin(patch_lock);
             writer.AddEncodedFile(content);
             writer.Finish();
         }
 
-        uint64_t size_before = fs::file_size(patch).value();
-        REQUIRE(size_before > large_size);
+        // The published pack dropped the large payload again, so another append would leave a patch far larger than
+        // the pack it patches: the pack replaces the pair instead
+        REQUIRE(fs::file_size(patch).value() > large_size);
         synchronize(false);
-        CHECK_FALSE(fs::exists(replacement));
-        uint64_t size_after = fs::file_size(patch).value();
-        CHECK(size_after > size_before);
-        CHECK(size_after - size_before < 1024);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
         synchronize(true);
-        CHECK(fs::file_size(patch).value() == size_after);
-        CHECK_FALSE(fs::exists(replacement));
+        CHECK_FALSE(fs::exists(patch));
         CHECK(fs::read_file(installed_base) == original);
     }
 

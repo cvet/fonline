@@ -63,6 +63,8 @@ namespace winapi
     auto get_module_file_name() noexcept -> optional<string>;
     // Read through the wide API: the narrow environment is in the ANSI code page, which cannot carry every profile path
     auto get_environment_variable(const string& name) noexcept -> optional<string>;
+    // The wide command line split the way the C runtime splits argv, but kept in UTF-8
+    auto get_command_line_args() -> optional<vector<string>>;
     // Asked of the shell, not the environment: a service or a sandbox has no LOCALAPPDATA, and answering
     // "none" sends the caller back to a directory it may not be allowed to write
     auto get_local_app_data_path() noexcept -> optional<string>;

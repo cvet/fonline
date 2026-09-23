@@ -230,26 +230,75 @@ public:
     ~ResourcePatchWriter() = default;
 
     [[nodiscard]] auto GetDownloads() const noexcept -> const vector<ResourcePackEntryRef>& { return _downloads; }
+    // Payloads an interrupted append already wrote in this plan's order: Begin keeps them and the next AddEncodedFile follows them
+    [[nodiscard]] auto GetResumedDownloads() const noexcept -> size_t { return _resumedDownloads; }
     [[nodiscard]] auto GetFinalSize() const noexcept -> uint64_t { return _info.CommittedSize; }
-    [[nodiscard]] auto GetAppendSize() const noexcept -> uint64_t { return _info.CommittedSize - (_reset ? 0 : _startOffset); }
-    void Begin();
+    [[nodiscard]] auto GetAppendSize() const noexcept -> uint64_t { return _info.CommittedSize - _keptSize; }
+
+    // The caller holds the directory lock across the whole append, so one lock can cover a longer update session
+    void Begin(const fs::disk_directory_lock& directory_lock);
     void AddEncodedFile(const_span<uint8_t> data);
     void Finish();
 
 private:
     string _basePath;
     string _patchPath;
-    unique_nptr<fs::disk_directory_lock> _directoryLock {};
     fs::disk_write_file _file;
     ResourcePatchInfo _info {};
     vector<ResourcePackEntryRef> _downloads {};
     vector<uint8_t> _index {};
     uint64_t _startOffset {};
     uint64_t _startIndexHash {};
+    uint64_t _keptSize {};
     uint64_t _originalSize {};
+    size_t _resumedDownloads {};
     size_t _nextDownload {};
-    bool _reset {};
+    bool _hasCommit {};
+    bool _recreate {};
     bool _failed {};
+    bool _finished {};
+};
+
+// Proves that a local pair reads back as what it claims, a bounded slice at a time, so a caller can keep a screen and a
+// connection alive over a large pack. See Docs/ResourcePackFormat.md
+class ResourcePairVerifier final
+{
+public:
+    ResourcePairVerifier(string_view base_path, string_view patch_path, bool check_base, bool check_patch);
+    ResourcePairVerifier(const ResourcePairVerifier&) = delete;
+    ResourcePairVerifier(ResourcePairVerifier&&) = delete;
+    auto operator=(const ResourcePairVerifier&) = delete;
+    auto operator=(ResourcePairVerifier&&) = delete;
+    ~ResourcePairVerifier() = default;
+
+    [[nodiscard]] auto IsFinished() const noexcept -> bool { return _finished; }
+    [[nodiscard]] auto IsBaseIntact() const noexcept -> bool { return _baseIntact; }
+    [[nodiscard]] auto IsPatchIntact() const noexcept -> bool { return _patchIntact; }
+    [[nodiscard]] auto GetCheckedBytes() const noexcept -> uint64_t { return _checkedBytes; }
+    [[nodiscard]] auto GetTotalBytes() const noexcept -> uint64_t { return _totalBytes; }
+
+    // Reads at least one slice or payload and stops once the budget is spent, so a large payload may overrun it
+    void Step(uint64_t byte_budget);
+
+private:
+    void StepBase(uint64_t& byte_budget);
+    void StepPatch(uint64_t& byte_budget);
+
+    string _basePath;
+    string _patchPath;
+    fs::disk_read_file _baseFile;
+    fs::disk_read_file _patchFile {};
+    ResourcePackHeader _baseHeader {};
+    uint64_t _baseOffset {};
+    uint64_t _baseHash {RESOURCE_PACK_HASH_SEED};
+    vector<ResourcePackEntryRef> _patchEntries {};
+    size_t _nextPatchEntry {};
+    vector<uint8_t> _slice {};
+    uint64_t _checkedBytes {};
+    uint64_t _totalBytes {};
+    bool _baseRemaining {};
+    bool _baseIntact {true};
+    bool _patchIntact {true};
     bool _finished {};
 };
 

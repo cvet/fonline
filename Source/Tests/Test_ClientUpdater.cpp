@@ -136,6 +136,87 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     CHECK_FALSE(IsUpdaterFailureReportable(updater.GetResult()));
 }
 
+TEST_CASE("ClientUpdaterGivesUpOnAServerThatStopsAnswering")
+{
+    using namespace TestClientUpdater;
+
+    REQUIRE(net_sockets::startup());
+    uint16_t port = OfflineServerPort.fetch_add(1);
+
+    // The system accepts the connection and nothing ever serves it, which is what a stopped or hung server, or a peer
+    // gone from the network, looks like from the client
+    tcp_server silent_server;
+    REQUIRE(silent_server.listen("127.0.0.1", port, 8));
+
+    GlobalSettings client_settings = MakeUpdaterClientSettings(port);
+    string bake_output = PrepareUpdaterBakeOutput();
+    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 300);
+
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+
+    CHECK(updater.IsAborted());
+    CHECK(updater.GetResult() == UpdaterResult::ConnectionFailed);
+}
+
+TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+    });
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
+    settings.ApplyWritableRoot(writable);
+    string resources = GetClientWritableResourceDir(settings);
+    string live = strex(resources).combine_path("Held.fores").str();
+    string backup = strex("{}{}", live, REPLACED_FILE_BACKUP_SUFFIX).str();
+    REQUIRE(fs::write_file(backup, "previous"));
+
+    // Held by a thread of its own, because on Windows the thread that owns the named mutex may take it again
+    std::promise<bool> held;
+    std::promise<void> release;
+    std::thread other_client([&] {
+        fs::disk_directory_lock lock {resources};
+        held.set_value(static_cast<bool>(lock));
+        release.get_future().wait();
+    });
+    auto join_other_client = scope_exit([&]() noexcept {
+        safe_call([&] {
+            release.set_value();
+            other_client.join();
+        });
+    });
+    REQUIRE(held.get_future().get());
+
+    Updater updater {&settings, &GetApp()->MainWindow};
+
+    for (int32_t i = 0; i < 20; i++) {
+        CHECK_FALSE(updater.Process());
+        coarse_sleep(std::chrono::milliseconds {5});
+    }
+
+    // Waiting is neither a failure nor a start: the interrupted replacement the other client may be finishing stays put
+    CHECK_FALSE(updater.IsAborted());
+    CHECK(fs::exists(backup));
+    CHECK_FALSE(fs::exists(live));
+
+    release.set_value();
+    other_client.join();
+    join_other_client.release();
+
+    REQUIRE(WaitForUpdaterResult(updater));
+    CHECK(updater.GetResult() == UpdaterResult::ConnectionFailed);
+    CHECK(fs::read_file(live) == optional<string> {"previous"});
+    CHECK_FALSE(fs::exists(backup));
+}
+
 TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
 {
     using namespace TestClientUpdater;
@@ -219,7 +300,8 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
     REQUIRE(fs::create_directories(strex(patch_path).extract_dir().str()));
     ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
     fs::disk_read_file remote_file {target_path};
-    writer.Begin();
+    fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
+    writer.Begin(patch_lock);
 
     for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
         vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));

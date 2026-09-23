@@ -441,9 +441,12 @@ static auto ApplyPatchTestUpdate(string_view base, string_view patch, string_vie
     ResourcePatchWriter writer {base, patch, target.GetEntryRefs(), target.GetContentHash(), {0, 100}};
     fs::disk_read_file target_file {target_path};
     uint64_t downloaded = 0;
-    writer.Begin();
+    fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
+    writer.Begin(patch_lock);
 
-    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+    // Payloads an interrupted append already wrote are not fetched again
+    for (size_t i = writer.GetResumedDownloads(); i < writer.GetDownloads().size(); ++i) {
+        const ResourcePackEntryRef& entry = writer.GetDownloads()[i];
         vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
         REQUIRE(target_file.read_at(entry.DataOffset, data));
         writer.AddEncodedFile(data);
@@ -593,7 +596,8 @@ TEST_CASE("ResourcePackPatch")
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "new"}});
         ResourcePackSource wanted {target};
         ResourcePatchWriter writer {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
-        writer.Begin();
+        fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
+        writer.Begin(patch_lock);
         REQUIRE_THROWS(writer.AddEncodedFile(MakeBytes("bad")));
         REQUIRE_THROWS(writer.Finish());
         ResourcePackSource view {base, patch};
@@ -605,9 +609,12 @@ TEST_CASE("ResourcePackPatch")
         ResourcePackSource wanted {target};
         ResourcePatchWriter first {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
         ResourcePatchWriter second {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
-        first.Begin();
+        fs::disk_directory_lock first_lock {strex(patch).extract_dir().str()};
+        first.Begin(first_lock);
 #if !FO_WEB
-        CHECK_THROWS(second.Begin());
+        // Another updater cannot take the directory, and one that proceeds anyway still finds the file held
+        fs::disk_directory_lock second_lock {strex(patch).extract_dir().str()};
+        CHECK_THROWS(second.Begin(second_lock));
 #endif
         CHECK(fs::read_file(patch) == first_patch);
     }
@@ -673,6 +680,167 @@ TEST_CASE("ResourcePackPatch")
         CHECK(new_view.IsFileExists("New.txt"));
     }
 #endif
+
+    SECTION("InterruptedAppendResumesFromThePayloadsItWrote")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "resumed"}, {"E.txt", "second payload"}, {"F.txt", "third payload"}});
+        ResourcePackSource wanted {target};
+        fs::disk_read_file target_file {target};
+        auto fetch = [&target_file](const ResourcePackEntryRef& entry) {
+            vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+            REQUIRE(target_file.read_at(entry.DataOffset, data));
+            return data;
+        };
+
+        {
+            ResourcePatchWriter interrupted {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+            REQUIRE(interrupted.GetDownloads().size() == 3);
+            CHECK(interrupted.GetResumedDownloads() == 0);
+            fs::disk_directory_lock lock {strex(patch).extract_dir().str()};
+            interrupted.Begin(lock);
+            interrupted.AddEncodedFile(fetch(interrupted.GetDownloads()[0]));
+            interrupted.AddEncodedFile(fetch(interrupted.GetDownloads()[1]));
+        }
+
+        // The unfinished append commits nothing, so the previous view stays in force meanwhile
+        {
+            ResourcePackSource view {base, patch};
+            CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'c', 'h', 'a', 'n', 'g', 'e', 'd'});
+        }
+
+        ResourcePatchWriter resumed {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        REQUIRE(resumed.GetResumedDownloads() == 2);
+        uint64_t written = resumed.GetDownloads()[0].StoredSize + resumed.GetDownloads()[1].StoredSize;
+        CHECK(resumed.GetAppendSize() == resumed.GetFinalSize() - first_patch->size() - written);
+        fs::disk_directory_lock lock {strex(patch).extract_dir().str()};
+        resumed.Begin(lock);
+        resumed.AddEncodedFile(fetch(resumed.GetDownloads()[2]));
+        resumed.Finish();
+
+        CHECK(fs::file_size(patch).value() == resumed.GetFinalSize());
+        ResourcePackSource view {base, patch};
+        CHECK(view.GetContentHash() == wanted.GetContentHash());
+        CHECK(ReadWholeFile(view, "E.txt").size() == string_view {"second payload"}.size());
+        CHECK(ReadWholeFile(view, "F.txt").size() == string_view {"third payload"}.size());
+    }
+
+    SECTION("TornPayloadEndsTheResumedRun")
+    {
+        WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "resumed"}, {"E.txt", "second payload"}});
+        ResourcePackSource wanted {target};
+        fs::disk_read_file target_file {target};
+
+        {
+            ResourcePatchWriter interrupted {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+            fs::disk_directory_lock lock {strex(patch).extract_dir().str()};
+            interrupted.Begin(lock);
+
+            for (const ResourcePackEntryRef& entry : interrupted.GetDownloads()) {
+                vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+                REQUIRE(target_file.read_at(entry.DataOffset, data));
+                interrupted.AddEncodedFile(data);
+            }
+        }
+
+        // A power loss mid-write leaves the last payload short
+        uint64_t tail_size = fs::file_size(patch).value();
+        {
+            fs::disk_write_file cut {patch, fs::disk_write_mode::append};
+            REQUIRE(cut.truncate_to(tail_size - 3));
+        }
+
+        ResourcePatchWriter resumed {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        CHECK(resumed.GetResumedDownloads() == 1);
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == string_view {"second payload"}.size());
+        CHECK(ResourcePackSource(base, patch).GetContentHash() == wanted.GetContentHash());
+    }
+
+    SECTION("InterruptedFirstAppendKeepsItsHeaderAndPayloads")
+    {
+        REQUIRE(fs::remove_file(patch));
+        ResourcePackSource wanted {target};
+        fs::disk_read_file target_file {target};
+
+        {
+            ResourcePatchWriter interrupted {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+            fs::disk_directory_lock lock {strex(patch).extract_dir().str()};
+            interrupted.Begin(lock);
+            const ResourcePackEntryRef& entry = interrupted.GetDownloads().front();
+            vector<uint8_t> data(numeric_cast<size_t>(entry.StoredSize));
+            REQUIRE(target_file.read_at(entry.DataOffset, data));
+            interrupted.AddEncodedFile(data);
+        }
+
+        CHECK_FALSE(ResourcePackSource(base, patch).GetPatchInfo().has_value());
+        ResourcePatchWriter resumed {base, patch, wanted.GetEntryRefs(), wanted.GetContentHash()};
+        CHECK(resumed.GetResumedDownloads() == 1);
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == string_view {"added"}.size());
+        CHECK(fs::read_file(patch) == first_patch);
+    }
+
+    SECTION("VerifierProvesAnIntactPairInBoundedSteps")
+    {
+        ResourcePairVerifier verifier {base, patch, true, true};
+        CHECK(verifier.GetTotalBytes() == original_base->size() - RESOURCE_PACK_HEADER_SIZE + 12);
+        size_t steps = 0;
+
+        // A slice of the base, then the payloads one by one: a step reads past its budget only to finish what it began
+        while (!verifier.IsFinished()) {
+            verifier.Step(1);
+            steps++;
+        }
+
+        CHECK(steps >= 3);
+        CHECK(verifier.IsBaseIntact());
+        CHECK(verifier.IsPatchIntact());
+        CHECK(verifier.GetCheckedBytes() == verifier.GetTotalBytes());
+    }
+
+    SECTION("VerifierFindsADamagedBasePayloadTheCatalogStillNames")
+    {
+        string damaged = *original_base;
+        damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(base, damaged));
+        original_base = damaged;
+        CHECK(ResourcePackSource(base, patch).GetContentHash() == ResourcePackSource(target).GetContentHash());
+
+        ResourcePairVerifier verifier {base, patch, true, true};
+
+        while (!verifier.IsFinished()) {
+            verifier.Step(1024);
+        }
+
+        CHECK_FALSE(verifier.IsBaseIntact());
+    }
+
+    SECTION("VerifierFindsADamagedPatchPayload")
+    {
+        string damaged = *first_patch;
+        damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(patch, damaged));
+
+        ResourcePairVerifier verifier {base, patch, false, true};
+        CHECK(verifier.GetTotalBytes() == 12);
+
+        while (!verifier.IsFinished()) {
+            verifier.Step(1024);
+        }
+
+        CHECK(verifier.IsBaseIntact());
+        CHECK_FALSE(verifier.IsPatchIntact());
+    }
+
+    SECTION("VerifierCallsAnUnreadableBaseDamaged")
+    {
+        string torn = *original_base;
+        std::fill_n(torn.begin(), RESOURCE_PACK_HEADER_SIZE, '\0');
+        REQUIRE(fs::write_file(base, torn));
+        original_base = torn;
+
+        ResourcePairVerifier verifier {base, patch, false, false};
+        CHECK(verifier.IsFinished());
+        CHECK_FALSE(verifier.IsBaseIntact());
+    }
 
     SECTION("ReplacementBaseExcludesLeftoverPatch")
     {

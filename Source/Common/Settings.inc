@@ -132,6 +132,7 @@ SETTING_GROUP(ClientNetwork, virtual NetworkSettings)
 SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
 SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
+SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address

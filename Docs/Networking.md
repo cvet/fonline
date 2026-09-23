@@ -141,6 +141,18 @@ Concrete files include:
 
 The client runtime should depend on the abstract connection interface where possible; transport-specific behavior belongs in the implementation files.
 
+`ClientConnection` watches the server from its side too. It pings every `ClientNetwork.PingPeriod` milliseconds,
+and a ping that stays unanswered while **nothing at all** arrives for `ClientNetwork.PingTimeout` milliseconds
+(default 30000, `0` waits for ever) ends the connection with `Connection lost: the server has sent nothing for
+... ms` - through the ordinary disconnect path, so the updater reports `ConnectionFailed` and the game client its
+usual connection loss. Without it a peer that vanished without closing the connection was waited on for ever:
+the ordered UDP channel resends to a silent address indefinitely, and a half-open TCP link or a stopped server
+process keeps its socket established while nothing is served. Any received byte counts as an answer, so a large
+update portion queued ahead of the ping reply on a slow link is not mistaken for silence; the check is skipped
+under a debugger, like the server's own ping watchdog. The pending ping is cleared on disconnect, so a reconnect
+starts pinging afresh. Pinned by `ClientUpdaterGivesUpOnAServerThatStopsAnswering`
+(`Source/Tests/Test_ClientUpdater.cpp`).
+
 ## Server connection abstraction
 
 `Source/Server/NetworkServer.h` defines two server-side abstractions:

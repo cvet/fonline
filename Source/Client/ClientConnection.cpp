@@ -203,7 +203,21 @@ void ClientConnection::ProcessConnection()
     _netConnection->CheckStatus(true);
 
     // Receive and send data
-    (void)ReceiveData();
+    if (ReceiveData()) {
+        _lastReceiveTime = nanotime::now();
+    }
+
+    // A server that vanished without closing the connection never answers again, and UDP or a half-open TCP link has
+    // no other way to tell. Any arriving data proves it alive, so a large portion ahead of the answer is no silence
+    if (_pingTime && _settings->ClientNetwork.PingTimeout != 0 && !is_run_in_debugger()) {
+        nanotime silent_since = std::max(_pingTime, _lastReceiveTime);
+
+        if (nanotime::now() - silent_since >= std::chrono::milliseconds {_settings->ClientNetwork.PingTimeout}) {
+            logging::write("Connection lost: the server has sent nothing for {} ms", (nanotime::now() - silent_since).to_ms<int32_t>());
+            Disconnect();
+            return;
+        }
+    }
 
     if (!IsInboundLagged()) {
         while (_netIn.NeedProcess()) {
@@ -271,6 +285,9 @@ void ClientConnection::Disconnect()
     _connectingOverUdp = false;
     _connectingHandled = false;
     _udpFallbackTried = false;
+    _pingTime = nanotime::zero;
+    _pingCallTime = nanotime::zero;
+    _lastReceiveTime = nanotime::zero;
     _artificalInboundLagTime.reset();
     _artificalOutboundLagTime.reset();
     _netIn.ResetBuf();

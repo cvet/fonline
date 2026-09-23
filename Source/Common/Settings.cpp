@@ -258,7 +258,9 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
             string key = arg_text.substr(arg_text.starts_with("--") ? 2 : 1);
             string value = has_next_arg && !CommandLineArgs::IsOption(next_arg) ? strex("{}", next_arg).trim().str() : "1";
 
-            if (key != "ApplyConfig" && key != "ApplySubConfig") {
+            // The writable root was taken from this argument verbatim and resolved before anything was read; parsed
+            // again as a setting value it would lose that resolution and read a backslash in a Windows path as an escape
+            if (key != "ApplyConfig" && key != "ApplySubConfig" && key != "Common.UserWritablePath") {
                 string shown = IsSecretSettingName(key) ? string("***") : value;
                 logging::write(logging::type::info, "Set {} to {}", key, shown);
                 SetValue(key, value);

@@ -55,13 +55,21 @@ static constexpr string_view StrUpdateFailed = "Client update failed. Please ins
 static constexpr string_view StrRestartRequired = "Update downloaded. Please restart the client to apply the update.";
 static constexpr string_view StrMetadataMismatch = "Game data on the server does not match the data it distributes. The server is probably mid-update, please try again later.";
 static constexpr string_view StrServerUnavailable = "Can't connect to the server. It may be offline or restarting, please try again later.";
+static constexpr string_view StrWaitingForAnotherClient = "Waiting for another game window to finish its update";
+static constexpr string_view StrCheckLocalFiles = "Check local game files";
 static constexpr string_view StrErrorMessageCaption = "";
 
 static constexpr string_view ClientBinaryStagingSuffix = "-staging";
 static constexpr string_view ClientRuntimeBootstrapExtension = ".path";
 static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
+// Retried rather than blocked on, so the screen keeps drawing while another client finishes its update
+static constexpr int32_t DirectoryRetryPeriodMs = 250;
+// A frame reads packs for at most this long, so a first check over gigabytes still draws its progress
+static constexpr int32_t VerificationFrameBudgetMs = 20;
+static constexpr uint64_t VerificationStepBytes = 4 * 1024 * 1024;
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
+static auto MakeVerifiedIdentityKey(string_view path) -> string;
 static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
 static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool;
@@ -80,7 +88,6 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
 
     logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Baking.ClientResources);
 
-    RecoverInterruptedReplacements();
     _startTime = nanotime::now();
 
     _resources.AddPackSource(settings->Common.Packaged ? settings->Baking.ClientResources : settings->Baking.BakeOutput, EMBEDDED_PACK_NAME);
@@ -130,14 +137,10 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _conn.AddMessageHandler(NetMessage::HashList, [this]() FO_DEFERRED { Net_OnHashList(); });
     _conn.AddMessageHandler(NetMessage::UpdateFileData, [this]() FO_DEFERRED { Net_OnUpdateFileData(); });
 
-    // Connect
-    AddText(StrConnectToServer);
-
-    _conn.SetMetadataVersion(ReadLocalMetadataVersion());
-    _conn.Connect();
-
     // Unlock all resources to prevent collision with new files
     _resources.CleanDataSources();
+
+    TryStart();
 }
 
 Updater::~Updater() = default;
@@ -204,6 +207,14 @@ auto Updater::Process() -> bool
         update_text += "\n";
     }
 
+    if (_stage == Stage::VerifyingResources && _verificationIndex < _verifications.size()) {
+        const PackVerification& verification = _verifications[_verificationIndex];
+        float32_t cur = numeric_cast<float32_t>(verification.Verifier->GetCheckedBytes()) / (1024.0f * 1024.0f);
+        float32_t max = std::max(numeric_cast<float32_t>(verification.Verifier->GetTotalBytes()) / (1024.0f * 1024.0f), 0.01f);
+
+        update_text += strex("\n{} {:.2f} / {:.2f} MB\n\n", verification.PackName, cur, max);
+    }
+
     int32_t elapsed_time = (nanotime::now() - _startTime).to_ms<int32_t>();
     int32_t dots = iround<int32_t>(std::fmod((nanotime::now() - _startTime).to_ms<float64_t>() / 100.0, 50.0)) + 1;
 
@@ -234,7 +245,15 @@ auto Updater::Process() -> bool
     }
 
     _sprMngr.EndScene();
+
     try {
+        if (_stage == Stage::WaitingForDirectory && nanotime::now() >= _nextDirectoryAttempt) {
+            TryStart();
+        }
+        else if (_stage == Stage::VerifyingResources) {
+            ProcessResourceVerification();
+        }
+
         _conn.Process();
     }
     catch (const std::exception& ex) {
@@ -243,6 +262,11 @@ auto Updater::Process() -> bool
         // a lost server: the throw is the cause, so a full disk or a broken pack is not blamed on the server
         _result = UpdaterResult::Failed;
         Abort(UpdaterResult::Failed, StrUpdateFailed);
+    }
+
+    // A restart prompt keeps this object alive after the outcome, and another client must not wait on it meanwhile
+    if (_result.has_value()) {
+        _directoryLock.reset();
     }
 
     if (_restartPrompt && !GetApp()->IsQuitRequested()) {
@@ -274,7 +298,165 @@ void Updater::Abort(UpdaterResult result, string_view text)
 
     _tempFile.close();
     _patchWriter.reset();
-    _resourceDirectoryLock.reset();
+    _verifications.clear();
+    _directoryLock.reset();
+}
+
+void Updater::TryStart()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string directory = GetClientWritableResourceDir(*_settings);
+    FO_VERIFY_AND_THROW(fs::create_directories(directory), "Can't create writable resource directory", directory);
+    unique_ptr<fs::disk_directory_lock> lock = safe_alloc::make_unique<fs::disk_directory_lock>(directory);
+
+    if (!*lock) {
+        if (!_waitingNoticeShown) {
+            _waitingNoticeShown = true;
+            logging::write("Client updater: resource directory {} is being updated by another client, waiting for it", directory);
+            AddText(StrWaitingForAnotherClient);
+        }
+
+        _nextDirectoryAttempt = nanotime::now() + std::chrono::milliseconds {DirectoryRetryPeriodMs};
+        return;
+    }
+
+    if (_waitingNoticeShown) {
+        logging::write("Client updater: resource directory {} is free again", directory);
+    }
+
+    _directoryLock = std::move(lock);
+    RecoverInterruptedReplacements();
+    PlanResourceVerification();
+
+    if (_verifications.empty()) {
+        StartSynchronization();
+        return;
+    }
+
+    _stage = Stage::VerifyingResources;
+    AddText(StrCheckLocalFiles);
+}
+
+void Updater::StartSynchronization()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    _stage = Stage::Synchronizing;
+    AddText(StrConnectToServer);
+
+    _conn.SetMetadataVersion(ReadLocalMetadataVersion());
+    _conn.Connect();
+}
+
+void Updater::PlanResourceVerification()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A browser session starts from the packs it has just fetched and keeps nothing, and an unpackaged client reads a
+    // bake output rather than packs: neither holds anything older to distrust
+    if (build_condition<FO_WEB>() || !_settings->Common.Packaged) {
+        return;
+    }
+
+    uint64_t total_bytes = 0;
+
+    for (const string& pack_name : _settings->GetClientResourcePacks()) {
+        if (pack_name == EMBEDDED_PACK_NAME) {
+            continue;
+        }
+
+        PackVerification verification;
+        verification.PackName = pack_name;
+        verification.BasePath = GetClientResourcePackPath(*_settings, pack_name);
+        verification.PatchPath = GetClientResourcePatchPath(*_settings, pack_name);
+        verification.BaseIdentity = ReadBaseIdentity(verification.BasePath);
+
+        // A pack that is missing or has no readable header is not current either, and the sync replaces it unread
+        if (!verification.BaseIdentity.has_value()) {
+            continue;
+        }
+
+        verification.PatchIdentity = ReadPatchIdentity(verification.PatchPath, verification.BasePath);
+
+        if (IsIdentityVerified(verification.BasePath, verification.BaseIdentity.value())) {
+            verification.BaseIdentity.reset();
+        }
+        if (verification.PatchIdentity.has_value() && IsIdentityVerified(verification.PatchPath, verification.PatchIdentity.value())) {
+            verification.PatchIdentity.reset();
+        }
+
+        if (!verification.BaseIdentity.has_value() && !verification.PatchIdentity.has_value()) {
+            continue;
+        }
+
+        verification.Verifier = safe_alloc::make_unique<ResourcePairVerifier>(verification.BasePath, verification.PatchPath, verification.BaseIdentity.has_value(), verification.PatchIdentity.has_value());
+        total_bytes += verification.Verifier->GetTotalBytes();
+        _verifications.emplace_back(std::move(verification));
+    }
+
+    if (!_verifications.empty()) {
+        logging::write("Client updater: checking {} local packs no earlier run has proved intact, bytes {}", _verifications.size(), total_bytes);
+    }
+}
+
+void Updater::ProcessResourceVerification()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    nanotime deadline = nanotime::now() + std::chrono::milliseconds {VerificationFrameBudgetMs};
+
+    while (_verificationIndex < _verifications.size()) {
+        PackVerification& verification = _verifications[_verificationIndex];
+
+        if (!verification.Verifier->IsFinished()) {
+            verification.Verifier->Step(VerificationStepBytes);
+        }
+
+        if (verification.Verifier->IsFinished()) {
+            FinishPackVerification(verification);
+            ++_verificationIndex;
+        }
+
+        if (nanotime::now() >= deadline) {
+            break;
+        }
+    }
+
+    if (_verificationIndex == _verifications.size()) {
+        logging::write("Client updater: local packs checked, damaged {}", _damagedPacks.size());
+        _verifications.clear();
+        StartSynchronization();
+    }
+}
+
+void Updater::FinishPackVerification(const PackVerification& verification)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    const ResourcePairVerifier& verifier = *verification.Verifier;
+
+    // The pair's catalog still names the right content, so without this check the sync would call it current and
+    // every launch would read the same damaged bytes again
+    if (!verifier.IsBaseIntact()) {
+        logging::write("Client updater: local pack {} is damaged, the whole pack will be downloaded again", verification.PackName);
+        _damagedPacks[verification.PackName] = LocalDamage::Base;
+        return;
+    }
+
+    if (verification.BaseIdentity.has_value()) {
+        RecordVerifiedIdentity(verification.BasePath, verification.BaseIdentity.value());
+    }
+
+    if (!verifier.IsPatchIntact()) {
+        logging::write("Client updater: local pack {} has a damaged patch payload, it will be fetched again", verification.PackName);
+        _damagedPacks[verification.PackName] = LocalDamage::Patch;
+        return;
+    }
+
+    if (verification.PatchIdentity.has_value()) {
+        RecordVerifiedIdentity(verification.PatchPath, verification.PatchIdentity.value());
+    }
 }
 
 void Updater::FinishResourcesUpdate()
@@ -292,8 +474,7 @@ void Updater::FinishResourcesUpdate()
     string directory = GetClientWritableResourceDir(*_settings);
 
     if (!_resourceTargets.empty() && fs::is_dir(directory)) {
-        fs::disk_directory_lock lock {directory};
-        FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", directory);
+        FO_VERIFY_AND_THROW(_directoryLock, "Stale patches are removed without the resource directory lock", directory);
 
         for (const UpdateFile& file : _resourceTargets) {
             string patch = strex(directory).combine_path(GetResourcePatchPath(file.Name)).str();
@@ -441,8 +622,9 @@ void Updater::GetNextFile()
         if (!prev_update_file.IsClientBinary) {
             FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
             FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
-            _resourceDirectoryLock.reset();
+            RecordVerifiedBase(prev_path_str);
         }
+
         _filesToUpdate.erase(_filesToUpdate.begin());
     }
 
@@ -466,8 +648,6 @@ void Updater::GetNextFile()
         if (!next_update_file.IsClientBinary) {
             string directory = GetClientWritableResourceDir(*_settings);
             FO_VERIFY_AND_THROW(fs::create_directories(directory), "Can't create writable resource directory", directory);
-            _resourceDirectoryLock = safe_alloc::make_unique<fs::disk_directory_lock>(directory);
-            FO_VERIFY_AND_THROW(*_resourceDirectoryLock, "Resource directory is being updated", directory);
         }
 
         string prev_path_str = make_final_path(next_update_file);
@@ -499,8 +679,9 @@ void Updater::GetNextFile()
                     if (!next_update_file.IsClientBinary) {
                         FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
                         FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
-                        _resourceDirectoryLock.reset();
+                        RecordVerifiedBase(prev_path_str);
                     }
+
                     _filesToUpdate.erase(_filesToUpdate.begin());
                     GetNextFile();
                     return;
@@ -627,11 +808,28 @@ void Updater::FinishResourceRange()
             return;
         }
 
+        // Every append keeps what it supersedes, so a patch that would outgrow its pack is mostly dead payloads: the
+        // pack itself replaces the pair and leaves nothing superseded behind
+        if (_patchWriter->GetFinalSize() >= file.Size) {
+            logging::write("Client updater: patch {} would reach {} bytes over a {} byte pack, downloading the pack instead", patch, _patchWriter->GetFinalSize(), file.Size);
+            _patchWriter.reset();
+            _resourceRange = ResourceRange::None;
+            _rangeData.clear();
+            GetNextFile();
+            return;
+        }
+
         auto available = fs::available_space(strex(patch).extract_dir().str());
         FO_VERIFY_AND_THROW(!available || *available >= _patchWriter->GetAppendSize(), "Not enough space for resource patch", patch, _patchWriter->GetAppendSize());
-        logging::write("Client updater: appending {} missing resources to {}, bytes {}", _patchWriter->GetDownloads().size(), patch, _patchWriter->GetAppendSize());
-        _patchWriter->Begin();
-        _patchDownloadIndex = 0;
+        size_t resumed = _patchWriter->GetResumedDownloads();
+        logging::write("Client updater: appending {} missing resources to {}, bytes {}", _patchWriter->GetDownloads().size() - resumed, patch, _patchWriter->GetAppendSize());
+
+        if (resumed != 0) {
+            logging::write("Client updater: resuming resource patch {}, {} of {} payloads were written by an interrupted run", patch, resumed, _patchWriter->GetDownloads().size());
+        }
+
+        _patchWriter->Begin(*_directoryLock);
+        _patchDownloadIndex = resumed;
     }
     else {
         FO_VERIFY_AND_THROW(_patchWriter, "No active resource patch writer");
@@ -662,6 +860,10 @@ void Updater::AdvanceResourcePatch()
     _patchWriter->Finish();
     logging::write("Client updater: committed resource patch {}", _filesToUpdate.front().Name);
     _patchWriter.reset();
+
+    // Planning decoded every payload the new catalog reuses and each download was decoded before it was written
+    RecordVerifiedPatch(strex(_filesToUpdate.front().Name).erase_file_extension().str());
+
     _resourceRange = ResourceRange::None;
     _filesToUpdate.erase(_filesToUpdate.begin());
     GetNextFile();
@@ -778,10 +980,6 @@ void Updater::Net_OnInitData()
         return;
     }
 
-    // Before anything reads the installed files, so a pack that exists only as the backup of an interrupted
-    // replacement is put back rather than counted as missing and downloaded again
-    RecoverInterruptedReplacements();
-
     // Parsed and validated whole before anything acts on it, so a malformed list changes nothing on disk
     vector<UpdateDescriptorEntry> entries = ReadUpdateDescriptor(data);
     bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
@@ -823,6 +1021,7 @@ void Updater::Net_OnInitData()
 
         string local_name = fname;
         bool is_client_binary = false;
+        bool try_patch = true;
 
         if (target == UpdateFileTarget::ClientBinaries) {
             if (!accept_binaries) {
@@ -873,8 +1072,14 @@ void Updater::Net_OnInitData()
             resource.Hash = hash;
             resource.PackHeader = pack_header;
             _resourceTargets.push_back(resource);
+            auto damage = _damagedPacks.find(strex(fname).erase_file_extension().str());
 
-            if (IsLocalResourceCurrent(resource)) {
+            if (damage != _damagedPacks.end()) {
+                // A damaged base is replaced whole; a damaged patch payload is fetched again by the next append
+                logging::write("Client updater: repairing damaged local pack {}", fname);
+                try_patch = damage->second == LocalDamage::Patch;
+            }
+            else if (IsLocalResourceCurrent(resource)) {
                 continue;
             }
         }
@@ -897,6 +1102,7 @@ void Updater::Net_OnInitData()
         update_file.RemaningSize = size;
         update_file.Hash = hash;
         update_file.IsClientBinary = is_client_binary;
+        update_file.TryPatch = try_patch;
         update_file.PackHeader = pack_header;
         _filesToUpdate.emplace_back(std::move(update_file));
     }
@@ -1074,6 +1280,99 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
     return *local_hash == expected_hash;
 }
 
+auto Updater::IsIdentityVerified(string_view path, const VerifiedFileIdentity& identity) const -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    static_assert(std::is_trivially_copyable_v<VerifiedFileIdentity>);
+    string cache_key = MakeVerifiedIdentityKey(path);
+
+    if (!_cache.HasEntry(cache_key)) {
+        return false;
+    }
+
+    vector<uint8_t> data = _cache.GetData(cache_key);
+
+    if (data.size() != sizeof(VerifiedFileIdentity)) {
+        return false;
+    }
+
+    VerifiedFileIdentity cached {};
+    memory::copy(make_ptr(&cached).reinterpret_as<uint8_t>(), data.data(), sizeof(cached));
+    return cached.Size == identity.Size && cached.WriteTime == identity.WriteTime && cached.Content == identity.Content;
+}
+
+void Updater::RecordVerifiedIdentity(string_view path, const VerifiedFileIdentity& identity)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Only saves the next run a read, so a record that cannot be written costs that read and nothing else
+    (void)_cache.SetDataChecked(MakeVerifiedIdentityKey(path), const_span<uint8_t> {make_ptr(&identity).reinterpret_as<const uint8_t>().get(), sizeof(identity)});
+}
+
+void Updater::RecordVerifiedBase(string_view base_path)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (optional<VerifiedFileIdentity> identity = ReadBaseIdentity(base_path); identity.has_value()) {
+        RecordVerifiedIdentity(base_path, identity.value());
+    }
+}
+
+void Updater::RecordVerifiedPatch(string_view pack_name)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string base_path = GetClientResourcePackPath(*_settings, pack_name);
+    string patch_path = GetClientResourcePatchPath(*_settings, pack_name);
+
+    if (optional<VerifiedFileIdentity> identity = ReadPatchIdentity(patch_path, base_path); identity.has_value()) {
+        RecordVerifiedIdentity(patch_path, identity.value());
+    }
+}
+
+auto Updater::ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileIdentity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    fs::disk_read_file file = OpenResourcePackFile(base_path);
+    ResourcePackHeader header;
+
+    if (!ReadResourcePackHeader(file, header)) {
+        return std::nullopt;
+    }
+
+    return VerifiedFileIdentity {.Size = file.get_size(), .WriteTime = GetResourcePackWriteTime(base_path), .Content = header.PackHash};
+}
+
+auto Updater::ReadPatchIdentity(string_view patch_path, string_view base_path) -> optional<VerifiedFileIdentity>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    ResourcePackHeader header;
+    fs::disk_read_file file {patch_path};
+
+    if (!file || !ReadResourcePackHeader(base_path, header)) {
+        return std::nullopt;
+    }
+
+    // The commit's catalog hash names the commit; a patch the reader cannot parse has no commit to prove, and mounting
+    // the pair reports it as not current instead
+    try {
+        optional<ResourcePatchInfo> info = ReadResourcePatchInfo(file, header);
+
+        if (!info.has_value()) {
+            return std::nullopt;
+        }
+
+        return VerifiedFileIdentity {.Size = file.get_size(), .WriteTime = fs::last_write_time(patch_path), .Content = info->IndexHash};
+    }
+    catch (const std::exception& ex) {
+        logging::write("Client updater: can't read resource patch {}, {}", patch_path, ex.what());
+        return std::nullopt;
+    }
+}
+
 void Updater::RecoverInterruptedReplacements() const
 {
     FO_STACK_TRACE_ENTRY();
@@ -1108,16 +1407,11 @@ void Updater::RecoverInterruptedReplacements() const
         }
     };
 
+    // An installed binary root also contains Resources, so the run's lock covers both recursive scans
+    FO_VERIFY_AND_THROW(_directoryLock, "Interrupted replacements are recovered without the resource directory lock");
     string resources_dir = GetClientWritableResourceDir(*_settings);
-    unique_nptr<fs::disk_directory_lock> resource_lock;
+    recover_in_dir(resources_dir);
 
-    if (fs::is_dir(resources_dir)) {
-        resource_lock = safe_alloc::make_unique<fs::disk_directory_lock>(resources_dir);
-        FO_VERIFY_AND_THROW(*resource_lock, "Resource directory is being updated", resources_dir);
-        recover_in_dir(resources_dir);
-    }
-
-    // An installed binary root also contains Resources, so keep its lock through both recursive scans
     if (_binaryDir != resources_dir) {
         recover_in_dir(_binaryDir);
     }
@@ -1133,9 +1427,7 @@ void Updater::RemoveStaleTempPacks() const
         return;
     }
 
-    fs::disk_directory_lock lock {resources_dir};
-    FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", resources_dir);
-
+    FO_VERIFY_AND_THROW(_directoryLock, "Stale temp packs are swept without the resource directory lock", resources_dir);
     unordered_set<string> wanted;
 
     for (const auto& update_file : _filesToUpdate) {
@@ -1668,6 +1960,14 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
     }
 
     return fs::resolve_path(trimmed_path);
+}
+
+static auto MakeVerifiedIdentityKey(string_view path) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // Keyed by the whole path, since an installed and a downloaded base share a file name
+    return strex("{}-{:016x}.verified", strex(path).extract_file_name(), hashing::hash<string_view> {}(path)).str();
 }
 
 static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool

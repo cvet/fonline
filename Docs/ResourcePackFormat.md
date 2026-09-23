@@ -130,11 +130,16 @@ catalogs are never layered beneath it.
 patch, and encodes the next full catalog before writing. It validates each received resource, appends the
 catalog, flushes, appends the footer, and flushes again. It persists the directory entry on POSIX platforms.
 The writable directory is locked during mutation, through an OS lock rather than a stored selector or
-journal. File writers also exclude other writers before truncation or append.
+journal: `Begin` takes the lock its caller holds, so one lock can cover a longer session around the append.
+File writers also exclude other writers before truncation or append.
 
-Readers retain their catalog and captured file bounds while a writer appends. With a valid previous commit,
-`ResourcePatchWriter::Begin` truncates only the unfinished suffix after that committed end before appending.
-A patch with no valid commit is removed and recreated under the directory lock. The updater removes a stale
+Readers retain their catalog and captured file bounds while a writer appends. An uncommitted suffix is not
+thrown away blindly: a plan lays its downloads out in a fixed order from the committed end, so the planner reads
+the suffix payload by payload and keeps each one that decodes to the entry planned at that offset
+(`GetResumedDownloads`); `Begin` truncates after the last kept payload and `AddEncodedFile` continues with the
+next download. The first payload that does not match - another plan's, torn, garbage - ends the kept run. A
+patch with no valid commit is resumed the same way when its own header binds it to the selected base (a first
+append cut short); anything else is removed and recreated under the directory lock. The updater removes a stale
 patch whose base binding differs; the writer also recreates such a patch if a new append is needed.
 A patch is never truncated underneath readers of a different base generation. On POSIX, readers can retain
 an unlinked inode; Windows rejects deletion/replacement while incompatible readers still hold the file.
@@ -155,14 +160,19 @@ All extent checks subtract only after checking the minuend and widen table multi
 Unknown codecs/sources, noncanonical or duplicate paths and invalid pool references are rejected. Mounting
 does not hash all payloads. Payload corruption is reported when read; received patch blobs are verified
 before publication. Full downloads also verify the physical body hash and complete catalog before promotion.
+`ResourcePairVerifier` proves a whole local pair on request, in bounded `Step`s: the base against its header
+`PackHash` over `[80, EOF)`, then every committed patch extent (`Source = 1`, each extent once) by decoding it
+against its `FileContentHash`. A base with no readable header, or one that no longer mounts, counts as damaged;
+a damaged base is not followed into its patch, since replacing the base drops the patch with it. The updater
+runs it once per file identity, see [ClientUpdater.md](ClientUpdater.md).
 The Python packager validates every decoded payload before accepting an archive, including exact stored/
 decoded lengths, complete Deflate streams without trailing bytes, and each `FileContentHash`. It hashes
 and decodes payloads in bounded chunks rather than allocating their declared decoded sizes.
 
-An interrupted append may retransmit its uncommitted addition. Previously committed bytes remain reusable.
-There is no persistent per-resource resume journal or configured patch-size limit. Dead blobs and old
-catalogs can accumulate without triggering a full-base download. See the updater doc for full-base
-installation/repair ordering when local data is missing or unusable.
+An interrupted append resumes from the payloads it already wrote, as above, and previously committed bytes remain
+reusable; there is no separate resume journal. The format has no patch-size limit of its own: dead blobs and
+old catalogs accumulate until the updater's cap replaces the pair with the full pack. See the updater doc for
+that cap and for full-base installation/repair ordering when local data is missing or unusable.
 
 ## Codecs
 
@@ -215,10 +225,10 @@ Web retains the preloaded in-memory filesystem and can update pairs within that 
 updates across page reloads and does not build a merged cache.
 
 The main API is in `Source/Common/ResourcePack.h`: `ResourcePackWriter`, `ResourcePatchWriter`,
-`ResourcePackSource`, `ReadResourcePackHeader`, `DecodeResourcePackIndex`, `ReadResourcePatchInfo`, and
-`VerifyResourcePackFile`. `GetClientPackDirs`, `GetClientResourcePackPath` and `AddClientPackSource` in
+`ResourcePackSource`, `ResourcePairVerifier`, `ReadResourcePackHeader`, `DecodeResourcePackIndex`,
+`ReadResourcePatchInfo`, and `VerifyResourcePackFile`. `GetClientPackDirs`, `GetClientResourcePackPath` and `AddClientPackSource` in
 `FileSystem.h` give bootstrap, updater and runtime the same base/patch selection.
 
-`Test_ResourcePack.cpp` pins the shared Python/C++ golden bytes, payload validation, repeated append and
-interrupted-footer recovery. `Test_ResourceIndex.cpp` covers pair-backed cached reads and APK region bounds;
+`Test_ResourcePack.cpp` pins the shared Python/C++ golden bytes, payload validation, repeated append,
+interrupted-footer recovery, resumed appends and pair verification. `Test_ResourceIndex.cpp` covers pair-backed cached reads and APK region bounds;
 `Test_ClientServerIntegration.cpp` exercises the real updater/backend lifecycle.

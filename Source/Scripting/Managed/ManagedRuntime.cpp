@@ -47,6 +47,8 @@ struct ManagedRuntimeResource
 };
 
 static mutex ManagedRuntimeRestoreLocker;
+static constexpr int32_t MANAGED_RUNTIME_PUBLISH_ATTEMPTS = 10;
+static constexpr int32_t MANAGED_RUNTIME_PUBLISH_RETRY_MS = 200;
 
 static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool;
 static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vector<ManagedRuntimeResource>;
@@ -151,12 +153,19 @@ auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cac
     if (fs::exists(cache_root_str) && !fs::remove_dir_tree(cache_root_str)) {
         throw ScriptSystemException("Can't replace invalid Managed runtime cache", cache_root_str);
     }
-    if (!fs::rename(staged_root_str, cache_root_str)) {
+
+    // Windows refuses to move a directory while another process still holds a file in it, and a virus scanner opens
+    // every freshly written library, so a refusal is waited out before it counts as a failure
+    for (int32_t attempt = 1; !fs::rename(staged_root_str, cache_root_str); attempt++) {
         if (IsSameManagedRuntimeCache(cache_root, runtime_resources)) {
             return cache_root;
         }
+        if (attempt == MANAGED_RUNTIME_PUBLISH_ATTEMPTS) {
+            throw ScriptSystemException("Can't publish Managed runtime cache", staged_root_str, cache_root_str, attempt);
+        }
 
-        throw ScriptSystemException("Can't publish Managed runtime cache", staged_root_str, cache_root_str);
+        logging::write("Managed runtime cache: can't publish {} yet, attempt {}", cache_root_str, attempt);
+        coarse_sleep(std::chrono::milliseconds {MANAGED_RUNTIME_PUBLISH_RETRY_MS * attempt});
     }
 
     return cache_root;

@@ -102,8 +102,9 @@ void logging::to_file(string_view path, bool append)
             base_logging->log_file_handle.close();
         }
 
+        // Through a path built from UTF-8: a narrow name is read in the ANSI code page on Windows, which cannot carry every profile path
         std::ios_base::openmode open_mode = std::ios::out | std::ios::binary | (append ? std::ios::app : std::ios::trunc);
-        base_logging->log_file_handle.open(std::string(path), open_mode);
+        base_logging->log_file_handle.open(std::filesystem::path {std::u8string(path.begin(), path.end())}, open_mode);
 
         if (base_logging->log_file_handle) {
             base_logging->log_file_path.assign(path);

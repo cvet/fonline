@@ -97,7 +97,8 @@ int main(int argc, char** argv) // Handled by SDL
     global_data::create();
 
 #if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args = program_args.GetArgs();
 #endif
     bool run_result = RunEmbeddedOrLoadedClient(args);
 
