@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import xml.etree.ElementTree as ET
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -304,6 +305,47 @@ def _make_createmsi_generator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
     generator = createmsi.PackageGenerator(config_path.name)
     generator.generate_files()
     return generator
+
+
+WIX_NAMESPACE = "{http://schemas.microsoft.com/wix/2006/wi}"
+# WiX v3 Compiler.ParseControlElement: types outside the tab loop unless TabSkip="no"
+WIX_UNTABBABLE_TYPES = {"Billboard", "Bitmap", "GroupBox", "Icon", "Line", "ProgressBar", "Text", "VolumeCostList"}
+# wixl builder.vala visit_dialog: the only types it chains, and Control_First is the first child whatever its type
+WIXL_TABBABLE_TYPES = {"Bitmap", "CheckBox", "Edit", "PushButton", "RadioButtonGroup"}
+
+
+def _tab_order(dialog: ET.Element, toolchain: str) -> tuple[str, dict[str, str | None]]:
+    controls = dialog.findall(WIX_NAMESPACE + "Control")
+    if toolchain == "wix":
+        tab = [c.get("Id") for c in controls if c.get("TabSkip") == "no"
+               or (c.get("TabSkip") != "yes" and c.get("Type") not in WIX_UNTABBABLE_TYPES)]
+        first = tab[0]
+    else:
+        tab = [c.get("Id") for c in controls if c.get("TabSkip") != "yes" and c.get("Type") in WIXL_TABBABLE_TYPES]
+        first = controls[0].get("Id")
+    nexts: dict[str, str | None] = {c.get("Id"): None for c in controls}
+    for current, following in zip(tab, tab[1:] + tab[:1]):
+        if current != following:
+            nexts[current] = following
+    return first, nexts
+
+
+@pytest.mark.parametrize("toolchain", ["wix", "wixl"])
+def test_createmsi_dialog_tab_order_forms_one_loop_through_first_control(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, toolchain: str,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch)
+    dialogs = list(ET.parse(generator.main_xml).getroot().iter(WIX_NAMESPACE + "Dialog"))
+    assert {d.get("Id") for d in dialogs} == {"FOnlineInstallDirDlg", "FOnlineBrowseDlg"}
+
+    # msiexec walks Control_Next from Control_First and fails the dialog with error 2834 unless it returns there
+    for dialog in dialogs:
+        first, nexts = _tab_order(dialog, toolchain)
+        walk = [first]
+        while nexts[walk[-1]] is not None and nexts[walk[-1]] not in walk:
+            walk.append(nexts[walk[-1]])
+        assert nexts[walk[-1]] == first, (dialog.get("Id"), walk)
+        assert set(walk) == {c for c, n in nexts.items() if n is not None}, (dialog.get("Id"), walk)
 
 
 def test_createmsi_streaming_capture_tees_merged_output(capsys: pytest.CaptureFixture[str]) -> None:

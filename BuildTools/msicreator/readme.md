@@ -78,6 +78,8 @@ Once the script finishes the installer will be written into
 
 Generated installers always show an editable installation-directory field and a folder browser. The UI is authored by this generator and is therefore present both when the package is linked with WiX `candle`/`light` on Windows and with `wixl --ext ui` on another host. The latter requires `wixl` 0.102 or newer.
 
+Both linkers derive a dialog's tab order from the order of its controls, but by different rules. WiX starts the `Control_Next` loop at the first tabbable control and makes that control `Control_First`. `wixl` makes the first child `Control_First` whatever its type, and chains only `Bitmap`, `CheckBox`, `Edit`, `PushButton` and `RadioButtonGroup` controls. `msiexec` refuses to create a dialog whose loop does not pass through `Control_First` — internal error 2834, "The next pointers on the dialog ... do not form a single loop" — and aborts the installation before the first screen. Every generated dialog therefore lists its push buttons first, and `test_createmsi_dialog_tab_order_forms_one_loop_through_first_control` checks the generated XML under both rules. Under `wixl` the path fields stay outside the Tab loop; they remain editable with the mouse and through the folder browser.
+
 The optional `install_location_registry` object remembers and rediscovers the full selected path. An explicit public `INSTALLDIR` property always wins. For example:
 
 ```json
