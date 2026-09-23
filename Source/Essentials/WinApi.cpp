@@ -439,8 +439,9 @@ auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
     FO_STACK_TRACE_ENTRY();
 
     int32_t fd = -1;
+    wstring path_wide = strex(path).to_wide_char();
 
-    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_RDONLY, _SH_DENYNO, 0) != 0) {
+    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_RDONLY | _O_NOINHERIT, _SH_DENYNO, 0) != 0) {
         return -1;
     }
 
@@ -452,8 +453,9 @@ auto winapi::open_new_write_file(const string& path, bool append) noexcept -> in
     FO_STACK_TRACE_ENTRY();
 
     int32_t fd = -1;
+    wstring path_wide = strex(path).to_wide_char();
 
-    if (::_sopen_s(&fd, path.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT | _O_NOINHERIT, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
         return -1;
     }
 

@@ -288,10 +288,13 @@ mutation, and supports truncating an uncommitted tail. Writes own one cursor; `f
 `fs::disk_directory_lock` serializes resource mutations without a stored lock file (POSIX directory flock,
 Windows named mutex). POSIX readers can retain old inodes across replacement; Windows sharing can reject
 replacement/deletion while readers are open. `fs::sync_parent` persists POSIX directory entries;
-`fs::rename_durable` uses that ordering on POSIX and write-through MoveFileEx on Windows.
+`fs::rename_durable` uses that ordering on POSIX and write-through MoveFileEx on Windows. On Windows the
+handles and the durable rename open the `fs::make_io_path` form as UTF-16, like every other disk call, so a
+non-ASCII or long writable root works; handles are not inherited by child processes on either platform.
 
 `fs::available_space` supports admission without preallocating a resumable download. `fs::is_contained_relative_path`
-rejects empty/rooted paths or `..`; `fs::list_dir_file_names` includes names hidden by the ordinary iteration
+rejects empty/rooted paths, `..`, NUL, `:` and malformed UTF-8, since the name is about to become a native
+path; `fs::list_dir_file_names` includes names hidden by the ordinary iteration
 filter, including updater temporaries. Its optional `recursive` flag returns paths relative to the requested
 root through nested directories, including hidden names, without following directory symlinks.
 `fs::make_writable_path` layers relative paths under a user root while

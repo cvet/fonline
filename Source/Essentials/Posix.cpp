@@ -604,7 +604,7 @@ auto posix::lock_directory(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY);
+    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 
 #if !FO_WEB
     if (fd >= 0 && ::flock(fd, LOCK_EX | LOCK_NB) != 0) {
@@ -624,7 +624,7 @@ auto posix::sync_directory(const string& path) noexcept -> bool
     ignore_unused(path);
     return true;
 #else
-    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY);
+    int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 
     if (fd < 0) {
         return false;
@@ -640,14 +640,14 @@ auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return ::open(path.c_str(), O_RDONLY | LARGE_FILE_OPEN_FLAG);
+    return ::open(path.c_str(), O_RDONLY | O_CLOEXEC | LARGE_FILE_OPEN_FLAG);
 }
 
 auto posix::open_new_write_file(const string& path, bool append) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    int32_t fd = ::open(path.c_str(), O_WRONLY | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
+    int32_t fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666);
 
     if (fd < 0) {
         return -1;

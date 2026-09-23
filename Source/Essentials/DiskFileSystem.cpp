@@ -127,6 +127,12 @@ auto fs::is_contained_relative_path(string_view path) noexcept -> bool
         return false;
     }
 
+    // Checked before the name becomes a native path: NUL would cut it short, ':' reaches a drive-relative path or
+    // an alternate data stream on Windows, and malformed UTF-8 cannot be converted at all
+    if (path.find('\0') != string_view::npos || path.find(':') != string_view::npos || !strvex(path).is_valid_utf8()) {
+        return false;
+    }
+
     // Refusing every '..' rather than resolving the path is deliberate: resolution depends on what exists on
     // disk, and a caller checking a name before creating it needs the answer to hold either way
     return fs::is_relative_path(path) && path.find("..") == string_view::npos;
@@ -199,7 +205,7 @@ auto fs::available_space(string_view path) noexcept -> optional<uint64_t>
     FO_STACK_TRACE_ENTRY();
 
     std::error_code ec;
-    auto info = std::filesystem::space(std::filesystem::path {fs::make_path(path)}, ec);
+    auto info = std::filesystem::space(fs_make_io_path(path, ec), ec);
 
     // The path itself need not exist yet, but its directory must, or the volume cannot be identified
     return !ec ? optional<uint64_t> {numeric_cast<uint64_t>(info.available)} : std::nullopt;
@@ -439,7 +445,7 @@ auto fs::rename_durable(string_view from_path, string_view to_path) noexcept -> 
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    return winapi::rename_file_durable(string(from_path), string(to_path));
+    return winapi::rename_file_durable(fs::make_io_path(from_path), fs::make_io_path(to_path));
 #else
     return fs::rename(from_path, to_path) && fs::sync_parent(to_path) && fs::sync_parent(from_path);
 #endif
@@ -669,7 +675,7 @@ fs::disk_read_file::disk_read_file(string_view path) noexcept
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    _descriptor = winapi::open_shared_read_file(string(path));
+    _descriptor = winapi::open_shared_read_file(fs::make_io_path(path));
 #else
     _descriptor = posix::open_shared_read_file(string(path));
 #endif
@@ -828,7 +834,7 @@ fs::disk_write_file::disk_write_file(string_view path, fs::disk_write_mode mode)
     FO_STACK_TRACE_ENTRY();
 
 #if FO_WINDOWS
-    _descriptor = winapi::open_new_write_file(string(path), mode == fs::disk_write_mode::append);
+    _descriptor = winapi::open_new_write_file(fs::make_io_path(path), mode == fs::disk_write_mode::append);
 #else
     _descriptor = posix::open_new_write_file(string(path), mode == fs::disk_write_mode::append);
 #endif

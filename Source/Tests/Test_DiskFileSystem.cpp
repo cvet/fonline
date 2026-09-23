@@ -452,6 +452,43 @@ TEST_CASE("DiskFilePrimitives")
         CHECK(fs::remove_dir_tree(temp_dir));
     }
 
+    SECTION("HandlesAndDurableRenameTakeUnicodeAndLongPaths")
+    {
+        // A writable root under a profile such as C:/Users/Иван is the common case for a Russian player, and the
+        // engine's own long paths pass through these handles as they do through every other fs call
+        string temp_dir = MakeTempTestDir("diskfs_handles_unicode");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string dir = strex(temp_dir).combine_path("Игрок").str();
+
+        // Bytes, not characters: 600 of mostly two-byte letters still passes MAX_PATH as UTF-16
+        while (dir.size() < 600) {
+            dir = strex(dir).combine_path("вложенный-каталог").str();
+        }
+
+        REQUIRE(fs::create_directories(dir));
+        string file_path = strex(dir).combine_path("Ресурсы.fores").str();
+        string moved_path = strex(dir).combine_path("Перемещён.fores").str();
+        array<uint8_t, 3> bytes = {'a', 'b', 'c'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.write(const_span<uint8_t> {bytes.data(), bytes.size()}));
+            REQUIRE(writer.flush());
+        }
+
+        REQUIRE(fs::rename_durable(file_path, moved_path));
+        CHECK_FALSE(fs::exists(file_path));
+
+        fs::disk_read_file reader {moved_path};
+        REQUIRE(static_cast<bool>(reader));
+        array<uint8_t, 3> read_back = {};
+        REQUIRE(reader.read_at(0, span<uint8_t> {read_back.data(), read_back.size()}));
+        CHECK(read_back == bytes);
+        CHECK(fs::available_space(dir).has_value());
+        reader.close();
+    }
+
     SECTION("OpeningAMissingFileLeavesTheHandleClosed")
     {
         string temp_dir = MakeTempTestDir("diskfs_missing");
@@ -499,6 +536,13 @@ TEST_CASE("DiskFilePrimitives")
         CHECK_FALSE(fs::is_contained_relative_path("Packs/../../Core.fores"));
         CHECK_FALSE(fs::is_contained_relative_path("Packs\\..\\Core.fores"));
         CHECK_FALSE(fs::is_contained_relative_path("/etc/passwd"));
+        CHECK(fs::is_contained_relative_path("Ресурсы/Core.fores"));
+
+        // A server-sent name is placed on disk, so what a native path would read differently is refused everywhere
+        CHECK_FALSE(fs::is_contained_relative_path(string_view {"x.dll\0.fores", 12}));
+        CHECK_FALSE(fs::is_contained_relative_path("C:Core.fores"));
+        CHECK_FALSE(fs::is_contained_relative_path("Core.fores:stream"));
+        CHECK_FALSE(fs::is_contained_relative_path("Core\xFF.fores"));
 
 #if FO_WINDOWS
         // A drive-qualified path is absolute here and an ordinary file name on POSIX, so it is asserted
