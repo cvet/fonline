@@ -261,6 +261,35 @@ def test_embedded_pack_is_validated_before_it_is_embedded(tmp_path: Path, monkey
         assert [info.filename for info in archive.infolist()] == ["nested/b.txt", "z.txt"]
 
 
+def test_embedded_pack_ignores_input_mtime(tmp_path: Path) -> None:
+    # The bundled runtime must stay byte-identical to the PlatformBinaries payload, or the updater sees a change
+    # that is not there, so file times and attributes never reach the archive
+    base_path = tmp_path / "Pack"
+    nested_path = base_path / "nested"
+    nested_path.mkdir(parents=True)
+    first_file = base_path / "z.txt"
+    second_file = nested_path / "b.txt"
+    first_file.write_text("same content\n", encoding="utf-8")
+    second_file.write_text("more content\n", encoding="utf-8")
+
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.zip_compress_level = 6
+    files = [str(second_file), str(first_file)]
+
+    first_bytes = packager.make_embedded_pack(files, str(base_path))
+    os.utime(first_file, (1_800_000_000, 1_800_000_000))
+    os.utime(second_file, (1_900_000_000, 1_900_000_000))
+    second_bytes = packager.make_embedded_pack(files, str(base_path))
+
+    assert second_bytes == first_bytes
+
+    with zipfile.ZipFile(io.BytesIO(second_bytes[4:])) as archive:
+        infos = archive.infolist()
+        assert {info.date_time for info in infos} == {(1980, 1, 1, 0, 0, 0)}
+        assert {info.create_system for info in infos} == {3}
+        assert {info.external_attr for info in infos} == {0o644 << 16}
+
+
 def test_single_zip_merge_coalesces_identical_package_entries(tmp_path: Path) -> None:
     first_part = tmp_path / "first"
     second_part = tmp_path / "second"
