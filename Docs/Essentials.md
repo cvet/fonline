@@ -66,6 +66,8 @@ The essentials layer should stay dependency-light. It is included by most of the
 - `Source/Essentials/ExtendedTypes.cpp`
 - `Source/Essentials/Compressor.h`
 - `Source/Essentials/Compressor.cpp`
+- `Source/Essentials/Cryptography.h`
+- `Source/Essentials/Cryptography.cpp`
 - `Source/Essentials/WorkThread.h`
 - `Source/Essentials/WorkThread.cpp`
 - `Source/Essentials/Logging.h`
@@ -84,7 +86,7 @@ The essentials layer should stay dependency-light. It is included by most of the
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `Cryptography` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 The order is both a compile-time and link-time rule. A module may include and call only modules to its left; declaring an API in an early header and defining it in a later `.cpp` is still a reverse dependency. Direct includes and namespace-level definition ownership are checked by `BuildTools/tests/test_essentials_layering.py`. Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Client/`, `Source/Server/`, `Source/Tools/`, or embedding-project headers.
 
@@ -121,6 +123,7 @@ scope, which is where it belongs. The layer already read this way at its edges �
 | `global_data::` | `GlobalData.*` | `global_data::create()`, `global_data::destroy()` |
 | `memory::` | `MemorySystem.*` | `memory::copy(...)`, `memory::report_bad_alloc(...)` |
 | `fs::` | `DiskFileSystem.*` | `fs::exists(path)`, `fs::read_file(path)`, `fs::iterate_dir(...)` |
+| `crypto::` | `Cryptography.*` | `crypto::x25519(secret, peer)`, `crypto::fill_random(buf)`, `crypto::key_bytes` |
 
 Once a module takes a namespace its whole free surface moves in, types included, so it is never split across two
 scopes — `stack_trace::data` sits beside `stack_trace::get()`, and `memory::bad_alloc_callback` beside
@@ -265,7 +268,7 @@ SQLite's hook needs an `xSize` callback and hands the free/realloc/size function
 
 Mono's public hook is `mono_set_allocator_vtable`. It redirects eglib (`g_malloc` / `g_realloc` / `g_calloc` / `g_free`: metadata, hashtables, runtime strings) onto `safe_alloc`'s raw tier. The runtime is configured with `ENABLE_OVERRIDABLE_ALLOCATORS`; without that flag the setter is an empty function that still returns TRUE, so the host reads eglib's `g_mem_get_vtable` after install and rejects a no-op. The GC heap (SGen nursery, major, LOS) and executable code pages are mapped with `mono_valloc` and stay there: they need protection changes, decommit, and executable pages, which a general-purpose heap cannot provide.
 
-Not hooked, with reasons: **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
+Not hooked, with reasons: **Monocypher** never allocates — every buffer is the caller's — so it has nothing to route. **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
 
 When vendoring or updating a library, check whether it has an allocator hook and either wire it or record why not — and read the hook's *implementation*, not just its declaration. Two of the entries above were initially misjudged from the call site or the symbol name alone.
 
@@ -278,6 +281,8 @@ Duration formatting retains 64-bit hour and day counts and keeps the existing mi
 ### Filesystem, compression, sockets, and work threads
 
 `DiskFileSystem.*` is the low-level disk abstraction. `fs::make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking.md](Networking.md), and `WorkThread.*` owns simple background-worker infrastructure.
+
+`Cryptography.*` is the `crypto::` module: the primitives of the secure network channel ([Networking.md](Networking.md#secure-channel)) — X25519, BLAKE2b-512 and HMAC over it, ChaCha20-Poly1305 of RFC 8439 — behind engine types, with one vendored implementation (Monocypher) on every target, Web and Android included. `crypto::fill_random` draws from the operating system through `platform::fill_system_random` (`BCryptGenRandom` on Windows, `getentropy` on Linux and the web, `arc4random_buf` on Apple platforms and Android, where `getentropy` is newer than the supported API level) and throws when the platform cannot answer; `random_generator` is never a source of key material. `crypto::aead_seal` / `aead_open` build a fresh cipher context per message, because the library's streaming context rekeys after its first message and would stop being RFC 8439. `crypto::is_equal` compares in constant time and `crypto::wipe` erases secrets in a way the compiler cannot drop; key types are plain `array`s, so an owner wipes its keys in its own destructor.
 
 TCP and UDP transfer calls retain signed 32-bit byte counts. The requested buffer size is checked before the OS call; a successful result cannot exceed that size. Checked return conversion preserves `-1` errors (including would-block), zero-length results and TCP end-of-stream. `Test_NetSockets` exercises these outcomes over real loopback sockets.
 
@@ -325,6 +330,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_ExceptionHandling.cpp`

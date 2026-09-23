@@ -422,6 +422,8 @@ private:
     optional<UpdaterBackend> _updaterBackend {};
     TextPack _defaultLang {make_ptr(&Hashes)};
     vector<unique_ptr<NetworkServer>> _connectionServers {};
+    // Loaded before any listener starts and unchanged after, which is what lets their threads read it unlocked
+    optional<SecureChannelIdentity> _channelIdentity {};
     mutable mutex _notLoggedInPlayersLocker {};
     vector<refcount_ptr<Player>> _notLoggedInPlayers FO_TSA_GUARDED_BY(_notLoggedInPlayersLocker) {};
     mutable mutex _connectionAdmissionLocker {};

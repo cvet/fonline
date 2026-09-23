@@ -527,7 +527,7 @@ namespace ServerEngineInitGateTest
     static auto CreateStandalonePlayer(ptr<ServerEngine> server, string_view name) -> refcount_ptr<Player>
     {
         shared_ptr<NetworkServerConnection> net_connection = NetworkServer::CreateDummyConnection(server->Settings);
-        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection));
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(net_connection), BakerTests::MakeTestChannelIdentity());
         auto player = safe_alloc::make_refcounted<Player>(server, ident_t {}, std::move(connection));
 
         SyncContext ctx;

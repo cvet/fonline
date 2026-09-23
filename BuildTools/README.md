@@ -407,6 +407,19 @@ cloud HSM (no plain on-disk `.pfx` for public trust). Cheapest practical options
 
 For Android, signing stays in Gradle (see the Android workflow above); this hook is Windows-only.
 
+## Secure channel keys
+
+The server's static key for the network channel ([../Docs/Networking.md](../Docs/Networking.md#keys)) is issued on the
+host that keeps it:
+
+```sh
+python3 Engine/BuildTools/secure_channel_key.py generate /path/to/channel.key
+python3 Engine/BuildTools/secure_channel_key.py public /path/to/channel.key
+```
+
+`generate` writes 64 hex digits readable by the owner only, refuses to overwrite an existing file, and prints the public
+key that clients pin; `public` prints it again later. The script needs nothing beyond the Python standard library.
+
 ## Source formatting
 
 `buildtools.py format-source` formats the engine `Source/` tree with `clang-format`. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. This keeps the command usable both from CI (clang-format-20 on `PATH`) and from an embedding project that supplies a bundled binary through `FO_CLANG_FORMAT`.

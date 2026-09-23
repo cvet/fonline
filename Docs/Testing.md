@@ -669,7 +669,7 @@ process is the working directory — it will write into the repository.
 
 ## Current test inventory
 
-Current count: **108** `Test_*.cpp` suites.
+Current count: **118** `Test_*.cpp` suites.
 
 ### Essentials and low-level utilities
 
@@ -678,6 +678,7 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -746,6 +747,8 @@ Current count: **108** `Test_*.cpp` suites.
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_ServerAdvancedOps.cpp`
 - `Source/Tests/Test_ServerEngine.cpp`
 - `Source/Tests/Test_ServerEntityLifetime.cpp`

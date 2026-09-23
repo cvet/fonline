@@ -144,6 +144,16 @@ macro(_FoEngineHandleZlibFindPackage _fo_zlib_pkg)
 endmacro()
 RegisterFindPackageHandler(ZLIB _FoEngineHandleZlibFindPackage)
 
+# Monocypher
+SetValue(FO_MONOCYPHER_DIR "${FO_ENGINE_ROOT}/ThirdParty/Monocypher")
+SetValue(FO_MONOCYPHER_SOURCE
+    "${FO_MONOCYPHER_DIR}/src/monocypher.h"
+    "${FO_MONOCYPHER_DIR}/src/monocypher.c")
+AddStaticThirdPartyLibrary(Monocypher
+    SOURCE_LIST FO_MONOCYPHER_SOURCE
+    APPEND_TO FO_ESSENTIALS_LIBS
+    INCLUDE_DIRS "${FO_MONOCYPHER_DIR}/src")
+
 # LibPNG
 if(FO_BUILD_BAKER_LIB)
     StatusMessage("+ LibPNG")
