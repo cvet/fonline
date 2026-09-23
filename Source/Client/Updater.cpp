@@ -64,6 +64,7 @@ static constexpr uint64_t ClientRuntimeBootstrapMaxSize = 4096;
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>;
 static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
 static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
+static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool;
 
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
@@ -496,6 +497,11 @@ void Updater::GetNextFile()
                     GetNextFile();
                     return;
                 }
+            }
+            else if (!next_update_file.IsClientBinary && !IsResumablePackPrefix(temp_path, next_update_file.PackHeader)) {
+                logging::write("Client updater: temp file {} was started from another server build, restarting download", temp_path);
+                fs::remove_file(temp_path);
+                next_update_file.RemaningSize = next_update_file.Size;
             }
             else {
                 next_update_file.RemaningSize = next_update_file.Size - *temp_file_size;
@@ -1130,8 +1136,8 @@ void Updater::RemoveStaleTempPacks() const
 
     // fs::iterate_dir hides names starting with '~', which is exactly the set this sweep is looking for
     for (const auto& name : fs::list_dir_file_names(resources_dir)) {
-        // Only a temp pack of a pack the server no longer lists is stale; one still in the list is the resume
-        // point this run is about to continue from
+        // A temp pack is kept only while its pack still has to be updated: that is the resume point this run is
+        // about to continue from, and nothing ever resumes any other
         if (!name.starts_with('~') || !IsResourcePackName(name) || wanted.count(name) != 0) {
             continue;
         }
@@ -1654,6 +1660,18 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
     }
 
     return fs::resolve_path(trimmed_path);
+}
+
+static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A download resumes by length alone, so a prefix another server build left behind would be completed into a
+    // pack that fails verification. Its first bytes are that build's header, which says whose prefix it is
+    vector<uint8_t> expected = SerializeResourcePackHeader(advertised);
+    fs::disk_read_file file {temp_path};
+    vector<uint8_t> prefix(numeric_cast<size_t>(std::min<uint64_t>(file.get_size(), expected.size())));
+    return file && file.read_at(0, prefix) && std::equal(prefix.begin(), prefix.end(), expected.begin());
 }
 
 FO_END_NAMESPACE

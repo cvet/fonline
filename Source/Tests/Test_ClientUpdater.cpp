@@ -152,21 +152,29 @@ TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
     string resources = GetClientWritableResourceDir(settings);
     string binaries = GetClientBinaryDir(settings.Common.UserWritablePath);
 
+    auto in_dir = [](string_view directory, string_view name) { return strex(directory).combine_path(name).str(); };
+    auto backup_of = [](string_view name) { return strex("{}{}", name, REPLACED_FILE_BACKUP_SUFFIX).str(); };
+
     for (const string& directory : {resources, binaries}) {
-        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Missing-backup").str(), "previous"));
-        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Current-backup").str(), "previous"));
-        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/Current").str(), "current"));
-        REQUIRE(fs::write_file(strex(directory).combine_path("Sub/-backup").str(), "unrelated"));
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/Missing")), "previous"));
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/Current")), "previous"));
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Current"), "current"));
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/")), "unrelated"));
+
+        // A portable client sweeps the folder the player unpacked it into, where their own copies live too
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Notes.txt"), "notes"));
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Notes.txt-backup"), "player copy"));
     }
 
     Updater updater {&settings, &GetApp()->MainWindow};
 
     for (const string& directory : {resources, binaries}) {
-        CHECK(fs::read_file(strex(directory).combine_path("Sub/Missing").str()) == optional<string> {"previous"});
-        CHECK(fs::read_file(strex(directory).combine_path("Sub/Current").str()) == optional<string> {"current"});
-        CHECK_FALSE(fs::exists(strex(directory).combine_path("Sub/Missing-backup").str()));
-        CHECK_FALSE(fs::exists(strex(directory).combine_path("Sub/Current-backup").str()));
-        CHECK(fs::read_file(strex(directory).combine_path("Sub/-backup").str()) == optional<string> {"unrelated"});
+        CHECK(fs::read_file(in_dir(directory, "Sub/Missing")) == optional<string> {"previous"});
+        CHECK(fs::read_file(in_dir(directory, "Sub/Current")) == optional<string> {"current"});
+        CHECK_FALSE(fs::exists(in_dir(directory, backup_of("Sub/Missing"))));
+        CHECK_FALSE(fs::exists(in_dir(directory, backup_of("Sub/Current"))));
+        CHECK(fs::read_file(in_dir(directory, backup_of("Sub/"))) == optional<string> {"unrelated"});
+        CHECK(fs::read_file(in_dir(directory, "Sub/Notes.txt-backup")) == optional<string> {"player copy"});
     }
 }
 

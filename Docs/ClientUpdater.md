@@ -421,7 +421,7 @@ stored. The writable directory is locked during mutations using platform locks, 
 Complete bases download into `~<filename>` under the writable resource directory. Space admission counts all
 remaining bytes; the file is not preallocated because its actual length is the resume position. A completed
 file must reproduce the advertised physical hash and have a valid catalog with the target logical hash.
-`ReplaceFileSafely` moves the prior writable base to `<name>-backup`, promotes the verified file with checked
+`ReplaceFileSafely` moves the prior writable base to `<name>.fobackup`, promotes the verified file with checked
 durability ordering, then discards the backup. Only after promotion succeeds is `Pack.patch.fores` removed.
 The read-only installation remains intact; subsequent reads select the writable base. A stale leftover patch
 cannot apply to its replacement because its base binding differs.
@@ -432,7 +432,9 @@ the entry. Resource freshness uses the pair's catalog `ContentHash`; a fully dow
 instead verified against its header `PackHash` before promotion.
 
 Interrupted replacement recovery scans both writable resource and binary trees recursively before updater
-reads, including names hidden by ordinary resource enumeration. It snapshots file names before renaming or
+reads, including names hidden by ordinary resource enumeration. The `.fobackup` suffix is one only the updater
+writes, because a portable client's binary tree is the folder the player unpacked it into and holds their own
+files too. It snapshots file names before renaming or
 removing backups and holds the writable-resource lock through both scans, since the binary root may contain
 the resource tree. Shared base resolution restores a missing writable base from its backup before bootstrap/Core
 or cache selection can fall back to the installed copy.

@@ -41,7 +41,8 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(ResourcePackException);
 
-constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = "-backup";
+// Startup recovery sweeps the whole binary directory for it, so it must never be a name a player would pick
+constexpr string_view REPLACED_FILE_BACKUP_SUFFIX = ".fobackup";
 
 // The engine resource pack format: a header, the payload blobs and the index over them in one file, carried
 // by a `.fores` file. Full contract: Docs/ResourcePackFormat.md
