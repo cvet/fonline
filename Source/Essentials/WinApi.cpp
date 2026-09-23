@@ -176,6 +176,29 @@ auto winapi::get_module_file_name() noexcept -> optional<string>
     return strex().parse_wide_char(path_data.as_ptr()).str();
 }
 
+auto winapi::get_environment_variable(const string& name) noexcept -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring name_wide = strex(name).to_wide_char();
+    wstring value;
+    value.resize(MAX_PATH);
+    DWORD size = ::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()));
+
+    // A value longer than the buffer reports the size it needs, terminator included
+    if (size > value.size()) {
+        value.resize(size);
+        size = ::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()));
+    }
+
+    if (size == 0 || size >= value.size()) {
+        return std::nullopt;
+    }
+
+    value.resize(size);
+    return strex().parse_wide_char(make_ptr(value.c_str())).str();
+}
+
 auto winapi::get_local_app_data_path() noexcept -> optional<string>
 {
     FO_STACK_TRACE_ENTRY();

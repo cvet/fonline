@@ -91,11 +91,11 @@ auto platform::get_user_data_base() noexcept -> string
     // The environment answers first, because a user who redirected it meant to. Only when it is silent
     // is the OS asked: nothing here drops the caller back to the install directory it cannot write
 #if FO_WINDOWS
-    if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != 0) {
-        return local;
+    if (auto local = winapi::get_environment_variable("LOCALAPPDATA"); local.has_value() && !local->empty()) {
+        return local.value();
     }
-    if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != 0) {
-        return roaming;
+    if (auto roaming = winapi::get_environment_variable("APPDATA"); roaming.has_value() && !roaming->empty()) {
+        return roaming.value();
     }
     if (auto shell_path = winapi::get_local_app_data_path(); shell_path.has_value()) {
         return shell_path.value();

@@ -239,10 +239,10 @@ and enters the game without staging another update.
 > **Installed (writable-root) clients.** After promotion, the host records the writable live DLL in a
 > small selector in the writable root itself, next to the log and the session marker
 > (`MakeClientRuntimeBootstrapPath(<root>)` → `<root>/<runtime><ext>.path`). On the next launch a host
-> with a writable root reads and validates that selector before `InitApp`, then loads the writable
-> DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
-> names a different runtime, or points to neither a live nor staged file. Portable clients never consult
-> this selector. Gameplay resources follow the same writable-first rule per logical pack:
+> with a writable root reads and validates that selector before `InitApp`, then loads the writable DLL
+> directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed, names
+> a different runtime, or points to neither a live nor staged file. Portable clients never consult this
+> selector. Gameplay resources follow the same writable-first rule per logical pack:
 > `GetClientResources()` mounts one effective pair for each configured pack - the writable base when one
 > exists, otherwise the installed one, plus the writable `Pack.patch.fores` bound to it (see
 > [ResourcePackFormat.md](ResourcePackFormat.md)). The updater reads its local metadata version through
@@ -250,13 +250,17 @@ and enters the game without staging another update.
 > gameplay will read, and a repaired writable base cannot pass updater validation and then be bypassed in
 > favour of a damaged install-dir copy. `Updater` selects its splash pack the same way — the splash is
 > drawn before this run downloads anything, so it would otherwise keep rendering an install-dir copy an
-> earlier run already replaced. This precedence is also
-> the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an unreadable old install
-> pack as having no local metadata version, downloads the current pack into the writable overlay, re-reads
-> that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout rejection is
-> not relaxed. If the updater cannot complete that repair, the client exits with `Client update failed.
-> Please install the latest full client package.` instead of surfacing `MetadataOutdatedException` from
-> gameplay startup or misidentifying a resource failure as a native-module failure.
+> earlier run already replaced. Mounting that pack and loading the splash picture are best-effort: the
+> splash pack is one of the packs the run is about to repair, so a truncated, overwritten or otherwise
+> unusable copy is logged (`splash is unusable until the resources are synced`) and costs the picture,
+> never the run - otherwise the one pack needed before the sync would keep the sync from ever starting.
+> This precedence is also the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an
+> unreadable old install pack as having no local metadata version, downloads the current pack into the
+> writable overlay, re-reads that overlay successfully, and only then constructs `ClientEngine`. The
+> strict old-layout rejection is not relaxed. If the updater cannot complete that repair, the client exits
+> with `Client update failed. Please install the latest full client package.` instead of surfacing
+> `MetadataOutdatedException` from gameplay startup or misidentifying a resource failure as a
+> native-module failure.
 
 > **Deployed hosts are frozen.** The host `.exe` is never delivered by the updater (only the runtime
 > DLL is). A client built before this fix (one that attempted an in-process same-path reload) cannot be
@@ -646,6 +650,14 @@ log unconditionally, before deciding whether to report it - and the player is to
 offline instead of being advised to reinstall a client that is not at fault. Every other result keeps
 reporting, `MetadataMismatch` included: its player-facing advice is also "try again later", but it names
 a server distributing resources it does not run on, which is a deployment defect worth a report.
+
+A failure raised while the updater processes a message - the patch file cannot be created, the volume has
+no room for the planned append, a received blob fails its hash, another process holds the resource
+directory lock - is `Failed`, not `ConnectionFailed`. `ClientConnection` disconnects before it rethrows a
+handler's exception, and that disconnect reaches `Net_OnDisconnect` while files are still pending, so
+`Updater::Process` sets the result from the exception itself rather than keeping the drop it caused:
+blaming the server would tell the player it is offline and keep a client-side defect out of the crash
+reporter.
 
 `CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())` decides whether the binary
 self-update step is even attempted: Windows / Linux / macOS are eligible; Web / iOS / Android

@@ -89,21 +89,26 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     if (!settings->Common.UserWritablePath.empty()) {
         _resources.AddDirSource(GetClientWritableResourceDir(*settings), false, true, true);
     }
-    if (!_settings->Client.DefaultSplashPack.empty()) {
-        AddClientPackSource(_resources, *_settings, _settings->Client.DefaultSplashPack, true);
-    }
-
     _effectMngr.LoadMinimalEffects();
 
     _sprMngr.RegisterSpriteFactory(safe_alloc::make_unique<DefaultSpriteFactory>(&_sprMngr));
 
-    // Wait screen
-    if (!_settings->Client.DefaultSplash.empty()) {
-        _splashPic = _sprMngr.LoadSprite(_settings->Client.DefaultSplash, AtlasType::OneImage);
-
-        if (_splashPic) {
-            _splashPic->PlayDefault();
+    // Wait screen. The splash pack is one of the packs this run repairs, so a damaged copy costs the picture, never the run
+    try {
+        if (!_settings->Client.DefaultSplashPack.empty()) {
+            AddClientPackSource(_resources, *_settings, _settings->Client.DefaultSplashPack, true);
         }
+        if (!_settings->Client.DefaultSplash.empty()) {
+            _splashPic = _sprMngr.LoadSprite(_settings->Client.DefaultSplash, AtlasType::OneImage);
+        }
+    }
+    catch (const std::exception& ex) {
+        logging::write("Client updater: splash is unusable until the resources are synced, {}", ex.what());
+        _splashPic.reset();
+    }
+
+    if (_splashPic) {
+        _splashPic->PlayDefault();
     }
 
     _sprMngr.BeginScene();
@@ -234,6 +239,9 @@ auto Updater::Process() -> bool
     }
     catch (const std::exception& ex) {
         logging::write("Client updater: update failed, {}", ex.what());
+        // The connection disconnects before it rethrows a handler's failure, and that disconnect already recorded
+        // a lost server: the throw is the cause, so a full disk or a broken pack is not blamed on the server
+        _result = UpdaterResult::Failed;
         Abort(UpdaterResult::Failed, StrUpdateFailed);
     }
 

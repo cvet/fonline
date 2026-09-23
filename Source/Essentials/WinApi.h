@@ -61,6 +61,8 @@ namespace winapi
     // opened. With the id it names one process for good, since the id alone is handed on after the process ends
     auto get_running_process_start_time(uint32_t pid) noexcept -> optional<uint64_t>;
     auto get_module_file_name() noexcept -> optional<string>;
+    // Read through the wide API: the narrow environment is in the ANSI code page, which cannot carry every profile path
+    auto get_environment_variable(const string& name) noexcept -> optional<string>;
     // Asked of the shell, not the environment: a service or a sandbox has no LOCALAPPDATA, and answering
     // "none" sends the caller back to a directory it may not be allowed to write
     auto get_local_app_data_path() noexcept -> optional<string>;
