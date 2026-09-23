@@ -178,10 +178,9 @@ so a source that says nothing keeps being probed - a missed override costs a loo
 has since moved.
 
 Every pack-backed source offers a snapshot - `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, `FalloutDat` - and so does the
-empty stand-in a `maybe_not_available` mount produces when its pack is absent. That last one is not a detail:
-`GetClientResources()` mounts every pack name a second time against the writable overlay so a downloaded pack wins
-over the installed copy, and on a client that has downloaded nothing yet every one of those is absent. If an absent
-pack withheld a snapshot, the file system the game actually plays on would be off the index by default.
+empty stand-in a `maybe_not_available` mount produces when its pack is absent, so an optional pack that is not
+there does not take the rest of an all-pack file system off the index. A packaged client mounts one effective
+base/patch pair per logical pack (`AddClientPackSource`), and the pair source offers its snapshot like any pack.
 
 Directory sources offer none, cached or otherwise. `CachedDir` could - its file tree is already a snapshot refreshed
 only by `Reindex`, so indexing it would add no staleness of its own - and it is withheld by decision rather than by
@@ -190,9 +189,8 @@ system mounted entirely from packs - what a packaged client, server, mapper and 
 path with a single hash lookup, while a development run over directories, the baker's live input dirs and the
 on-demand baker data source keep probing. Mixing needs no configuration: one source without a snapshot
 disables the index for that file system. The decision is per instance rather than per build, because a packaged
-client also builds mixed file systems: the updater's own resources, and the file system that checks a pushed file
-list, both mount the resource directory as a non-cached dir to size the pack files while the updater is rewriting
-them, and that directory must not be answered from a snapshot.
+client also builds mixed file systems: the updater's own resources mount the resource directories as non-cached
+dirs while the updater is rewriting them, and those directories must not be answered from a snapshot.
 
 The index is filled as sources are mounted. A new source goes in front of the others and claims every path it holds
 away from them, which is the shadowing the probe loop already produced; `ReindexDataSources()` rebuilds it. It is

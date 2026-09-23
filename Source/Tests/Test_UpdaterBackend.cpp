@@ -39,6 +39,7 @@
 #include "DiskFileSystem.h"
 #include "ResourcePack.h"
 #include "Test_BakerHelpers.h"
+#include "UpdateDescriptor.h"
 #include "UpdaterBackend.h"
 
 FO_BEGIN_NAMESPACE
@@ -49,43 +50,6 @@ namespace UpdaterBackendTests
     {
         auto base = std::filesystem::temp_directory_path() / std::format("lf_updater_backend_{}_{}", name, std::chrono::steady_clock::now().time_since_epoch().count());
         return fs::path_to_string(base);
-    }
-
-    struct DescriptorEntry
-    {
-        string Name;
-        uint64_t Size {};
-        uint64_t Hash {};
-        UpdateFileTarget Target {};
-        uint32_t PackHeaderSize {};
-    };
-
-    static auto ReadDescriptor(const_span<uint8_t> data) -> vector<DescriptorEntry>
-    {
-        vector<DescriptorEntry> entries;
-        data_reader reader {data};
-
-        while (true) {
-            int16_t name_size = reader.read<int16_t>();
-            if (name_size == -1) {
-                break;
-            }
-
-            REQUIRE(name_size > 0);
-            DescriptorEntry entry;
-            entry.Name.resize(numeric_cast<size_t>(name_size));
-            reader.read_string_bytes(entry.Name);
-            entry.Size = reader.read<uint64_t>();
-            entry.Hash = reader.read<uint64_t>();
-            entry.Target = reader.read<UpdateFileTarget>();
-            ignore_unused(reader.read<uint32_t>());
-            entry.PackHeaderSize = reader.read<uint32_t>();
-            ignore_unused(reader.read_bytes(entry.PackHeaderSize));
-            entries.emplace_back(std::move(entry));
-        }
-
-        reader.verify_end();
-        return entries;
     }
 
     static auto HashString(string_view value) noexcept -> uint64_t
@@ -143,27 +107,100 @@ TEST_CASE("UpdaterBackendUsesPlatformSpecificResourcePackInsteadOfCommonPack")
     UpdaterBackend updater_backend;
     updater_backend.LoadFromClientResources(settings, BakerTests::TEST_METADATA_VERSION);
 
-    auto common_entries = ReadDescriptor(updater_backend.GetUpdateDescriptor("Unknown-target"));
+    auto common_entries = ReadUpdateDescriptor(updater_backend.GetUpdateDescriptor("Unknown-target"));
     REQUIRE(common_entries.size() == 1);
     CHECK(common_entries.front().Name == "Scripts.fores");
     CHECK(common_entries.front().Hash == common_header.PackHash);
     CHECK(common_entries.front().Target == UpdateFileTarget::ClientResources);
-    CHECK(common_entries.front().PackHeaderSize == RESOURCE_PACK_HEADER_SIZE);
+    REQUIRE(common_entries.front().PackHeader.has_value());
+    CHECK(common_entries.front().PackHeader->ContentHash == common_header.ContentHash);
 
-    auto windows_entries = ReadDescriptor(updater_backend.GetUpdateDescriptor("Windows-win64"));
-    auto scripts_entries = windows_entries | std::views::filter([](const DescriptorEntry& entry) { return entry.Name == "Scripts.fores"; });
+    auto windows_entries = ReadUpdateDescriptor(updater_backend.GetUpdateDescriptor("Windows-win64"));
+    auto scripts_entries = windows_entries | std::views::filter([](const UpdateDescriptorEntry& entry) { return entry.Name == "Scripts.fores"; });
     REQUIRE(std::ranges::distance(scripts_entries) == 1);
-    const DescriptorEntry& scripts_entry = *scripts_entries.begin();
+    const UpdateDescriptorEntry& scripts_entry = *scripts_entries.begin();
     CHECK(scripts_entry.Size == *fs::file_size(windows_pack_path));
     CHECK(scripts_entry.Hash == windows_header.PackHash);
     CHECK(scripts_entry.Target == UpdateFileTarget::ClientResources);
-    CHECK(scripts_entry.PackHeaderSize == RESOURCE_PACK_HEADER_SIZE);
+    REQUIRE(scripts_entry.PackHeader.has_value());
+    CHECK(scripts_entry.PackHeader->ContentHash == windows_header.ContentHash);
 
-    auto runtime_entry = std::ranges::find(windows_entries, "Game.dll", &DescriptorEntry::Name);
+    auto runtime_entry = std::ranges::find(windows_entries, "Game.dll", &UpdateDescriptorEntry::Name);
     REQUIRE(runtime_entry != windows_entries.end());
     CHECK(runtime_entry->Hash == HashString(windows_runtime));
     CHECK(runtime_entry->Target == UpdateFileTarget::ClientBinaries);
-    CHECK(runtime_entry->PackHeaderSize == 0);
+    CHECK_FALSE(runtime_entry->PackHeader.has_value());
+}
+
+TEST_CASE("UpdateDescriptorIsOneFormatForTheServerAndBothClientReaders")
+{
+    ResourcePackHeader header;
+    header.PackHash = 0x1234;
+    header.ContentHash = 0x5678;
+    header.DataOffset = RESOURCE_PACK_HEADER_SIZE;
+    header.VersionMajor = RESOURCE_PACK_VERSION_MAJOR;
+    header.VersionMinor = RESOURCE_PACK_VERSION_MINOR;
+
+    auto make_entry = [&header](string_view name, UpdateFileTarget target, bool with_header) {
+        UpdateDescriptorEntry entry;
+        entry.Name = string(name);
+        entry.Size = 100;
+        entry.Hash = header.PackHash;
+        entry.Target = target;
+        entry.FileIndex = 7;
+
+        if (with_header) {
+            entry.PackHeader = header;
+        }
+
+        return entry;
+    };
+    auto write_one = [](const UpdateDescriptorEntry& entry) {
+        vector<uint8_t> desc;
+        WriteUpdateDescriptor(desc, vector<UpdateDescriptorEntry> {entry});
+        return desc;
+    };
+
+    SECTION("RoundTripsEveryField")
+    {
+        vector<uint8_t> desc;
+        WriteUpdateDescriptor(desc, vector<UpdateDescriptorEntry> {make_entry("Sub/Art.fores", UpdateFileTarget::ClientResources, true), make_entry("Game.dll", UpdateFileTarget::ClientBinaries, false)});
+
+        auto entries = ReadUpdateDescriptor(desc);
+        REQUIRE(entries.size() == 2);
+        CHECK(entries[0].Name == "Sub/Art.fores");
+        CHECK(entries[0].Size == 100);
+        CHECK(entries[0].Hash == 0x1234);
+        CHECK(entries[0].FileIndex == 7);
+        REQUIRE(entries[0].PackHeader.has_value());
+        CHECK(entries[0].PackHeader->ContentHash == 0x5678);
+        CHECK(entries[1].Name == "Game.dll");
+        CHECK(entries[1].Target == UpdateFileTarget::ClientBinaries);
+        CHECK_FALSE(entries[1].PackHeader.has_value());
+    }
+
+    SECTION("RefusesMismatchedHeaderAndTarget")
+    {
+        CHECK_THROWS(write_one(make_entry("Art.fores", UpdateFileTarget::ClientResources, false)));
+        CHECK_THROWS(write_one(make_entry("Game.dll", UpdateFileTarget::ClientBinaries, true)));
+    }
+
+    SECTION("RefusesNamesAClientCannotPlaceOrMount")
+    {
+        CHECK_THROWS(ReadUpdateDescriptor(write_one(make_entry("../Art.fores", UpdateFileTarget::ClientResources, true))));
+        CHECK_THROWS(ReadUpdateDescriptor(write_one(make_entry("Art.patch.fores", UpdateFileTarget::ClientResources, true))));
+        CHECK_THROWS(ReadUpdateDescriptor(write_one(make_entry("Art.zip", UpdateFileTarget::ClientResources, true))));
+    }
+
+    SECTION("RefusesATruncatedOrTrailingDescriptor")
+    {
+        vector<uint8_t> desc = write_one(make_entry("Art.fores", UpdateFileTarget::ClientResources, true));
+        vector<uint8_t> truncated {desc.begin(), desc.end() - 3};
+        vector<uint8_t> trailing = desc;
+        trailing.emplace_back(0);
+        CHECK_THROWS(ReadUpdateDescriptor(truncated));
+        CHECK_THROWS(ReadUpdateDescriptor(trailing));
+    }
 }
 
 FO_END_NAMESPACE

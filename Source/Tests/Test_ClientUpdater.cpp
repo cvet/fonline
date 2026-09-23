@@ -34,6 +34,8 @@
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
+#include "FileSystem.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -166,6 +168,61 @@ TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
         CHECK_FALSE(fs::exists(strex(directory).combine_path("Sub/Current-backup").str()));
         CHECK(fs::read_file(strex(directory).combine_path("Sub/-backup").str()) == optional<string> {"unrelated"});
     }
+}
+
+TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    string remote = strex("{}_remote", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+        (void)fs::remove_dir_tree(remote);
+    });
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    settings.ApplyWritableRoot(writable);
+    REQUIRE(fs::create_directories(remote));
+
+    string base_path = strex(install).combine_path("Art.fores").str();
+    string target_path = strex(remote).combine_path("Art.fores").str();
+    auto write_pack = [](string_view path, string_view content) {
+        ResourcePackWriter writer {path};
+        writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>("shared"), 6});
+        writer.AddFile("Changed.txt", {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        writer.Finish();
+    };
+    write_pack(base_path, "installed");
+    write_pack(target_path, "server");
+
+    ResourcePackHeader base_header;
+    REQUIRE(ReadResourcePackHeader(base_path, base_header));
+    ResourcePackSource target {target_path};
+    CHECK(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Art", target.GetContentHash()));
+
+    // An installed base plus a committed patch never has the server base's size, so only the content identity
+    // of the pair can tell the game client what the updater already knows
+    string patch_path = GetClientResourcePatchPath(settings, "Art");
+    REQUIRE(fs::create_directories(strex(patch_path).extract_dir().str()));
+    ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
+    fs::disk_read_file remote_file {target_path};
+    writer.Begin();
+
+    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        REQUIRE(remote_file.read_at(entry.DataOffset, payload));
+        writer.AddEncodedFile(payload);
+    }
+
+    writer.Finish();
+    CHECK(IsClientResourcePackCurrent(settings, "Art", target.GetContentHash()));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Missing", target.GetContentHash()));
 }
 
 FO_END_NAMESPACE

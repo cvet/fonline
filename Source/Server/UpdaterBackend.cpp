@@ -42,6 +42,7 @@
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
+#include "UpdateDescriptor.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -68,14 +69,13 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         data.DiskPath = string(disk_path);
         data.Size = data.File.get_size();
 
-        ResourcePackHeader pack_header;
         bool is_resource_pack = target == UpdateFileTarget::ClientResources;
 
         if (is_resource_pack) {
-            data.PackHeader.resize(RESOURCE_PACK_HEADER_SIZE);
-            FO_VERIFY_AND_THROW(data.File.read_at(0, data.PackHeader) && ParseResourcePackHeader(data.PackHeader, pack_header), "Client update resource header is invalid", disk_path);
-            FO_VERIFY_AND_THROW(pack_header.DataOffset == RESOURCE_PACK_HEADER_SIZE && pack_header.DataSize <= data.Size - RESOURCE_PACK_HEADER_SIZE && pack_header.IndexOffset == pack_header.DataOffset + pack_header.DataSize && pack_header.IndexOffset <= data.Size && pack_header.IndexStoredSize == data.Size - pack_header.IndexOffset, "Client update resource extent is invalid", disk_path);
+            ResourcePackHeader pack_header;
+            FO_VERIFY_AND_THROW(ReadResourcePackHeader(data.File, pack_header), "Client update resource header is invalid", disk_path);
             data.Hash = pack_header.PackHash;
+            data.PackHeader = pack_header;
         }
 
         if (settings.ServerNetwork.UpdateFilesInMemory) {
@@ -144,35 +144,35 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     }
 
     auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
-        auto writer = data_writer(desc);
+        vector<UpdateDescriptorEntry> entries;
 
-        auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
+        auto add_entry = [&update_files, &entries](const UpdateFileInfo& info) {
             const auto& data = update_files[info.FileIndex];
-            writer.write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
-            writer.write_string_bytes(info.ClientPath);
-            writer.write<uint64_t>(data.Size);
-            writer.write<uint64_t>(data.Hash);
-            writer.write<UpdateFileTarget>(info.Target);
-            writer.write<uint32_t>(info.FileIndex);
-            writer.write<uint32_t>(numeric_cast<uint32_t>(data.PackHeader.size()));
-            writer.write_bytes(data.PackHeader);
+            UpdateDescriptorEntry entry;
+            entry.Name = info.ClientPath;
+            entry.Size = data.Size;
+            entry.Hash = data.Hash;
+            entry.Target = info.Target;
+            entry.FileIndex = info.FileIndex;
+            entry.PackHeader = data.PackHeader;
+            entries.emplace_back(std::move(entry));
         };
 
         for (const auto& info : common_update_files) {
             bool overridden = platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
 
             if (!overridden) {
-                write_file_info(info);
+                add_entry(info);
             }
         }
 
         if (platform_files) {
             for (const auto& info : *platform_files) {
-                write_file_info(info);
+                add_entry(info);
             }
         }
 
-        writer.write<int16_t>(const_numeric_cast<int16_t>(-1));
+        WriteUpdateDescriptor(desc, entries);
     };
 
     build_update_desc(common_update_files_desc, nullptr);

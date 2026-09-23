@@ -75,6 +75,29 @@ auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_
     return ResolveResourcePackPath(GetClientPackDirs(settings), pack_name);
 }
 
+auto GetClientResourcePatchPath(const ClientSettings& settings, string_view pack_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(GetClientWritableResourceDir(settings)).combine_path(strex("{}.patch.fores", pack_name)).str();
+}
+
+auto IsClientResourcePackCurrent(const ClientSettings& settings, string_view pack_name, uint64_t content_hash) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The updater and the game client both ask this, so neither can call a pair current that the other rejects.
+    // A pair that does not mount is not current either: the updater repairs it
+    try {
+        ResourcePackSource resource {GetClientResourcePackPath(settings, pack_name), GetClientResourcePatchPath(settings, pack_name)};
+        return resource.GetContentHash() == content_hash;
+    }
+    catch (const std::exception& ex) {
+        logging::write("Client resources: pack pair {} needs repair, {}", pack_name, ex.what());
+        return false;
+    }
+}
+
 void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, string_view pack_name, bool optional)
 {
     FO_STACK_TRACE_ENTRY();
@@ -88,8 +111,7 @@ void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, 
             return;
         }
 
-        string patch_path = strex(GetClientWritableResourceDir(settings)).combine_path(strex("{}.patch.fores", pack_name)).str();
-        resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, patch_path));
+        resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, GetClientResourcePatchPath(settings, pack_name)));
         return;
     }
 

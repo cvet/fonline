@@ -38,6 +38,7 @@
 #include "MetadataRegistration.h"
 #include "ResourceIndex.h"
 #include "ResourcePack.h"
+#include "UpdateDescriptor.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -571,17 +572,7 @@ auto Updater::IsLocalResourceCurrent(const UpdateFile& file) const -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    try {
-        string base = GetClientResourcePackPath(*_settings, string_view(file.Name).substr(0, file.Name.size() - 6));
-        string patch = strex(GetClientWritableResourceDir(*_settings)).combine_path(GetResourcePatchPath(file.Name)).str();
-        ResourcePackSource resource {base, patch};
-
-        return resource.GetContentHash() == file.PackHeader.ContentHash;
-    }
-    catch (const std::exception& ex) {
-        logging::write("Client updater: resource pair needs repair {}, {}", file.Name, ex.what());
-        return false;
-    }
+    return IsClientResourcePackCurrent(*_settings, strex(file.Name).erase_file_extension().str(), file.PackHeader.ContentHash);
 }
 
 void Updater::RequestResourceRange()
@@ -606,8 +597,9 @@ void Updater::FinishResourceRange()
 
     if (_resourceRange == ResourceRange::Catalog) {
         vector<ResourcePackEntryRef> entries = DecodeResourcePackIndex(_rangeData, file.PackHeader);
-        string base = GetClientResourcePackPath(*_settings, string_view(file.Name).substr(0, file.Name.size() - 6));
-        string patch = strex(GetClientWritableResourceDir(*_settings)).combine_path(GetResourcePatchPath(file.Name)).str();
+        string pack_name = strex(file.Name).erase_file_extension().str();
+        string base = GetClientResourcePackPath(*_settings, pack_name);
+        string patch = GetClientResourcePatchPath(*_settings, pack_name);
         FO_VERIFY_AND_THROW(fs::create_directories(strex(patch).extract_dir().str()), "Can't create patch directory", patch);
 
         try {
@@ -776,7 +768,8 @@ void Updater::Net_OnInitData()
     // replacement is put back rather than counted as missing and downloaded again
     RecoverInterruptedReplacements();
 
-    auto reader = data_reader(data);
+    // Parsed and validated whole before anything acts on it, so a malformed list changes nothing on disk
+    vector<UpdateDescriptorEntry> entries = ReadUpdateDescriptor(data);
     bool accept_binaries = _binariesMode || CanSelfUpdateNativeModules(GetCurrentUpdatePlatform());
     string runtime_local_prefix = accept_binaries ? GetCurrentClientRuntimeLibraryName() : string {};
 
@@ -806,33 +799,13 @@ void Updater::Net_OnInitData()
         return strex("{}{}", runtime_local_prefix, rest).str();
     };
 
-    while (true) {
-        int16_t name_len = reader.read<int16_t>();
-
-        if (name_len == -1) {
-            break;
-        }
-
-        FO_VERIFY_AND_THROW(name_len > 0, "Update file name length must be positive", name_len);
-        size_t fname_size = numeric_cast<size_t>(name_len);
-        string fname;
-        fname.resize(fname_size);
-        reader.read_string_bytes(fname);
-        FO_VERIFY_AND_THROW(fs::is_contained_relative_path(fname), "Invalid update file path", fname);
-        auto size = reader.read<uint64_t>();
-        auto hash = reader.read<uint64_t>();
-        auto target = reader.read<UpdateFileTarget>();
-        FO_VERIFY_AND_THROW(target == UpdateFileTarget::ClientResources || target == UpdateFileTarget::ClientBinaries, "Invalid update target", target);
-        auto data_index = reader.read<uint32_t>();
-        uint32_t header_size = reader.read<uint32_t>();
-        FO_VERIFY_AND_THROW(header_size == 0 || header_size == RESOURCE_PACK_HEADER_SIZE, "Invalid update resource header size", header_size);
-        ResourcePackHeader pack_header;
-
-        if (header_size != 0) {
-            FO_VERIFY_AND_THROW(ParseResourcePackHeader(reader.read_bytes(header_size), pack_header), "Invalid advertised resource header", fname);
-        }
-
-        FO_VERIFY_AND_THROW((target == UpdateFileTarget::ClientResources) == (header_size != 0), "Update target/header mismatch", fname);
+    for (const UpdateDescriptorEntry& entry : entries) {
+        const string& fname = entry.Name;
+        uint64_t size = entry.Size;
+        uint64_t hash = entry.Hash;
+        UpdateFileTarget target = entry.Target;
+        uint32_t data_index = entry.FileIndex;
+        ResourcePackHeader pack_header = entry.PackHeader.value_or(ResourcePackHeader {});
 
         string local_name = fname;
         bool is_client_binary = false;
@@ -877,7 +850,7 @@ void Updater::Net_OnInitData()
             }
         }
         else if (target == our_target) {
-            FO_VERIFY_AND_THROW(IsResourcePackName(fname) && !fname.ends_with(".patch.fores") && size >= RESOURCE_PACK_HEADER_SIZE && pack_header.PackHash == hash && pack_header.DataOffset == RESOURCE_PACK_HEADER_SIZE && pack_header.DataSize <= size - RESOURCE_PACK_HEADER_SIZE && pack_header.IndexOffset == pack_header.DataOffset + pack_header.DataSize && pack_header.IndexOffset <= size && pack_header.IndexStoredSize == size - pack_header.IndexOffset && pack_header.IndexStoredSize <= std::numeric_limits<uint32_t>::max() && pack_header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Invalid advertised resource pack", fname);
+            FO_VERIFY_AND_THROW(size >= RESOURCE_PACK_HEADER_SIZE && pack_header.PackHash == hash && pack_header.DataOffset == RESOURCE_PACK_HEADER_SIZE && pack_header.DataSize <= size - RESOURCE_PACK_HEADER_SIZE && pack_header.IndexOffset == pack_header.DataOffset + pack_header.DataSize && pack_header.IndexOffset <= size && pack_header.IndexStoredSize == size - pack_header.IndexOffset && pack_header.IndexStoredSize <= std::numeric_limits<uint32_t>::max() && pack_header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Invalid advertised resource pack", fname);
             UpdateFile resource;
             resource.Index = numeric_cast<int32_t>(data_index);
             resource.Name = fname;
@@ -913,8 +886,6 @@ void Updater::Net_OnInitData()
         update_file.PackHeader = pack_header;
         _filesToUpdate.emplace_back(std::move(update_file));
     }
-
-    reader.verify_end();
 
     RemoveStaleTempPacks();
 

@@ -159,6 +159,8 @@ AppendList(FO_COMMON_SOURCE
     "${FO_ENGINE_ROOT}/Source/Common/Timer.h"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/TwoDimensionalGrid.h"
+    "${FO_ENGINE_ROOT}/Source/Common/UpdateDescriptor.cpp"
+    "${FO_ENGINE_ROOT}/Source/Common/UpdateDescriptor.h"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.cpp"
     "${FO_ENGINE_ROOT}/Source/Common/ImGuiExt/ImGuiStuff.h"
     "${FO_ENGINE_ROOT}/Source/Scripting/CommonImGuiScriptMethods.cpp"

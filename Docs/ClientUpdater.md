@@ -242,13 +242,15 @@ and enters the game without staging another update.
 > with a writable root reads and validates that selector before `InitApp`, then loads the writable
 > DLL directly. The frozen install-dir DLL remains the fallback when the selector is absent, malformed,
 > names a different runtime, or points to neither a live nor staged file. Portable clients never consult
-> this selector. Gameplay resources use the same overlay precedence: `GetClientResources()` mounts the
-> read-only install packs first and then mounts any per-user resource packs on top. The updater reads its
-> local metadata version through that same function rather than assembling a second pack set, so the
-> version it validates is the one gameplay will read, and a repaired overlay pack cannot pass updater
-> validation and then be bypassed in favour of a damaged install-dir copy. `Updater` layers the overlay
-> over its splash pack too — the splash is drawn before this run downloads anything, so it would
-> otherwise keep rendering an install-dir copy an earlier run already replaced. This precedence is also
+> this selector. Gameplay resources follow the same writable-first rule per logical pack:
+> `GetClientResources()` mounts one effective pair for each configured pack - the writable base when one
+> exists, otherwise the installed one, plus the writable `Pack.patch.fores` bound to it (see
+> [ResourcePackFormat.md](ResourcePackFormat.md)). The updater reads its local metadata version through
+> that same function rather than assembling a second pack set, so the version it validates is the one
+> gameplay will read, and a repaired writable base cannot pass updater validation and then be bypassed in
+> favour of a damaged install-dir copy. `Updater` selects its splash pack the same way — the splash is
+> drawn before this run downloads anything, so it would otherwise keep rendering an install-dir copy an
+> earlier run already replaced. This precedence is also
 > the recovery path after `METADATA_FILE_VERSION` changes: a new runtime treats an unreadable old install
 > pack as having no local metadata version, downloads the current pack into the writable overlay, re-reads
 > that overlay successfully, and only then constructs `ClientEngine`. The strict old-layout rejection is
@@ -304,8 +306,10 @@ the wire format changes or an older updater/host lifecycle is unsafe to continue
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
 in-process runtime reload. Generation 3 changes what `hash` means for a resource pack entry - the header
 `PackHash` rather than the whole-file digest - which a generation-2 client would compare against a digest it
-computes itself and re-download for ever, so it is refused the same way. Gameplay compatibility (`Settings.Network.CompatibilityVersion`) is separate and
-changes with every build.
+computes itself and re-download for ever, so it is refused the same way. Generation 4 adds each resource
+base's header to the descriptor and turns `GetUpdateFile` into a bounded range request (`requested_size`,
+`expected_hash`), which the per-resource patch sync below needs. Gameplay compatibility
+(`Settings.Network.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake
 
@@ -362,6 +366,14 @@ Each descriptor entry is:
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
 | `pack_header_size` | `uint32` | 80 for a resource base, 0 for native files |
 | `pack_header` | bytes | Full version 2.0 base header, including physical and logical identity |
+
+The server writes the list and both client readers parse it through one module,
+[../Source/Common/UpdateDescriptor.h](../Source/Common/UpdateDescriptor.h), which also refuses a name the
+client cannot place, a target/header mismatch and a resource entry that is not a `.fores` base. The updater
+syncs from it; the game client's own handshake receives the same list and, when packaged, throws
+`ResourcesOutdatedException` for a resource entry whose effective local pair does not carry the advertised
+`ContentHash` - the comparison the updater declares resources ready on (`IsClientResourcePackCurrent`), so
+the two cannot disagree into a reconnect loop.
 
 Common (gameplay-resource) entries are emitted for every binary target. Per-target binary entries (`UpdateFileTarget::ClientBinaries`) are emitted only for the matching `binary_target` from the handshake. The client then filters binary entries by the current host-derived runtime basename, so `LF_Client.exe` downloads `LF_Client.dll` while `LF_Client_OpenGL.exe` downloads `LF_Client_OpenGL.dll` even though both report the same CPU/OS target.
 
