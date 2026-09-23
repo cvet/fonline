@@ -80,8 +80,10 @@ public:
     void SetMultihexEntries(vector<mpos> entries);
     void ClearAllAssociations() noexcept;
 
+    // Runs while this item is being finished
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnFinish);
+    // Runs when a critter crosses this static item's trigger footprint; `isIn` distinguishes entry from exit
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnCritterWalk, ptr<Critter> /*critter*/, bool /*isIn*/, mdir /*dir*/);
 

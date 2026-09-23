@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "name": "minimal-multiplayer-tutorial",
+  "default_timeout_seconds": 60,
+  "forbidden_markers": [
+    "ScriptException",
+    "FATAL ERROR!",
+    "Module initialization failed"
+  ],
+  "scenarios": [
+    {
+      "id": "content-test",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "TutorialContentTest"
+          ],
+          "required_markers": [
+            "tutorial_server_started",
+            "tutorial_content_test_passed"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "server-client-interaction",
+      "processes": [
+        {
+          "id": "server",
+          "command": [
+            "{server}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "TutorialSmoke"
+          ],
+          "ready_marker": "tutorial_server_started",
+          "ready_timeout_seconds": 20,
+          "required_markers": [
+            "tutorial_server_started",
+            "tutorial_server_world_ready",
+            "tutorial_server_supply_collected=1",
+            "tutorial_server_smoke_passed"
+          ]
+        },
+        {
+          "id": "client",
+          "command": [
+            "{client}",
+            "-ApplyConfig",
+            "{config}",
+            "-ApplySubConfig",
+            "TutorialSmoke"
+          ],
+          "required_markers": [
+            "tutorial_client_connected",
+            "tutorial_client_map_loaded",
+            "tutorial_client_content=Signal cache",
+            "tutorial_client_supply_collected=1",
+            "tutorial_client_smoke_passed"
+          ]
+        }
+      ]
+    }
+  ]
+}

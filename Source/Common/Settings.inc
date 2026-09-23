@@ -55,7 +55,7 @@ SETTING(bool, AngelScript, DebuggerEnabled, false); // If true, AngelScript debu
 SETTING(string, AngelScript, DebuggerBindHost, "127.0.0.1"); // AngelScript debugger TCP bind host
 SETTING(vector<string>, AngelScript, MutableGlobalsAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose module-level globals may be mutable (everywhere else const-only)
 SETTING(vector<string>, AngelScript, AttributedFunctionDirectCallAllowedNamespaces); // AngelScript namespaces (matched as prefixes) whose functions may call attributed functions ([[Event]], [[TimeEvent]], etc.) directly instead of going through the runtime dispatcher
-SETTING(vector<string>, AngelScript, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls (in addition to the engine's built-in list — [[Event]], [[TimeEvent]], etc.). Used for project-specific dispatcher-bound attributes like Last Frontier's [[DialogResult]] / [[DialogDemand]].
+SETTING(vector<string>, AngelScript, ExtraDirectCallBlockingAttributes); // Project-defined attribute names that should also block direct AngelScript-to-AngelScript calls in addition to the engine's built-in dispatcher-bound list
 SETTING_GROUP_END(AngelScript);
 
 ///@ ExportSettings Common

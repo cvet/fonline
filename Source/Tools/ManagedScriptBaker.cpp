@@ -5060,7 +5060,7 @@ static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>
 }
 
 // The pack ships CoreLib plus the class libraries its assemblies reach by reference: Mono opens a class library
-// only when a reference names it, so the rest of the published runtime is dead weight (Docs/BakingPipeline.md)
+// only when a reference names it, so the rest of the published runtime is dead weight in the baked payload
 static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies)
 {
     FO_STACK_TRACE_ENTRY();

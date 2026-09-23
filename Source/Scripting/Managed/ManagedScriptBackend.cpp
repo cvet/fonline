@@ -73,7 +73,7 @@ FO_DISABLE_WARNINGS_PUSH()
 FO_DISABLE_WARNINGS_POP()
 
 // The published embedding headers omit this exported API. The unbalanced pair permits a worker to stay
-// registered with Mono while it is parked outside managed code; see Docs/Scripting.md
+// registered with Mono while it is parked outside managed code; this is the recurring-worker attachment contract
 extern "C" void* mono_threads_enter_gc_safe_region_unbalanced(void** stack_data);
 extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void** stack_data);
 
@@ -156,7 +156,7 @@ struct ManagedInteropThreadCounters
 static thread_local ManagedInteropThreadCounters InteropThreadCounters {};
 
 // Native workers normally detach after each managed entry. Recurring frame workers instead retain one attachment
-// and park it GC-safe between pumps; see Docs/Scripting.md
+// and park it GC-safe between pumps; ordinary native workers keep the detach-after-entry path
 enum class ManagedThreadAttachmentMode
 {
     PreserveExisting,
@@ -316,7 +316,7 @@ private:
 };
 
 // A native call into managed script code. Entries chain per thread, innermost first, so the stack-trace provider can
-// give every run of managed frames the native stack it was entered from; see Docs/Debugging.md
+// give every run of managed frames the native stack it was entered from for mixed-stack diagnostics
 class ManagedScriptEntryScope final
 {
 public:
@@ -6397,7 +6397,7 @@ static auto InvokeNativeBoolHelper(ptr<const ManagedScriptBackend> backend, cons
 }
 
 // The managed entity hierarchy is not the native one: managed ProtoCritter derives from Critter, while
-// natively it derives from ProtoEntity and shares no base with it - see Docs/Scripts.md
+// natively it derives from ProtoEntity and shares no base with it, so validation must use metadata kinds
 static void ValidateManagedEntityKind(const BaseTypeDesc& base_type, nptr<Entity> entity)
 {
     FO_STACK_TRACE_ENTRY();
@@ -7885,7 +7885,7 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
 
 #if FO_WEB
     // WebAssembly has no JIT, so IL runs through the interpreter, and both halves are needed before the
-    // domain exists - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    // domain exists; both interpreter initialization halves must precede domain creation on WebAssembly
     mono_jit_set_aot_mode(MONO_AOT_MODE_INTERP_ONLY);
 
     // The runtime is built with DISABLE_ICALL_TABLES, so mono_icall_init skips the table and every icall

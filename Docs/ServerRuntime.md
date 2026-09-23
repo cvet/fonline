@@ -1,640 +1,66 @@
+> Legacy route.
+
 # Server Runtime
 
-> Engine-owned documentation. This page describes reusable server runtime behavior in `Source/Server/`; game rules, world content, concrete balance, quests, and project-specific deployment policy remain in the embedding project.
+This guide moved to its locale-aware canonical path:
+
+- [English](en/explanation/runtime/server.md)
+- [Русский](ru/explanation/runtime/server.md)
+
+The headings below preserve existing fragment links while the old route remains a durable Markdown pointer.
 
 ## Purpose
 
-The server runtime owns authoritative game state. It loads resources, initializes scripts and metadata, accepts network connections, creates and persists entities, validates client input, processes player/critter/map/item state, broadcasts visible changes, and runs the game loop jobs that make the world advance.
-
-For how this state stays internally consistent when an exception is thrown mid-operation — the WorkerPool catch-and-continue model, the entity-lifecycle throw-as-signal contract, and the `throw` / `FO_VERIFY_*` / `FO_STRONG_ASSERT` error tiers — see [ExceptionSafety.md](ExceptionSafety.md).
-
-Read this page together with:
-
-- [EntityModel.md](EntityModel.md) for entity/property/prototype ownership.
-- [MapsMovementGeometry.md](MapsMovementGeometry.md) for map positions, blockers, path finding, and movement contexts.
-- [Networking.md](Networking.md) for command buffers, transports, and client/server message boundaries.
-- [Persistence.md](Persistence.md) for database backends and entity serialization.
-- [ClientRuntime.md](ClientRuntime.md) for the client-side view of server messages.
-- [ClientUpdater.md](ClientUpdater.md) for the updater backend that is hosted by `ServerEngine`.
+Continue with [Purpose](en/explanation/runtime/server.md#purpose).
 
 ## Source paths inspected
 
-- `Source/Server/Server.h`
-- `Source/Server/Server.cpp`
-- `Source/Server/EntityManager.h`
-- `Source/Server/EntityManager.cpp`
-- `Source/Server/MapManager.h`
-- `Source/Server/MapManager.cpp`
-- `Source/Server/CritterManager.h`
-- `Source/Server/CritterManager.cpp`
-- `Source/Server/ItemManager.h`
-- `Source/Server/ItemManager.cpp`
-- `Source/Server/Player.h`
-- `Source/Server/Player.cpp`
-- `Source/Server/Critter.h`
-- `Source/Server/Critter.cpp`
-- `Source/Server/Map.h`
-- `Source/Server/Map.cpp`
-- `Source/Server/StaticMap.h`
-- `Source/Server/StaticMap.cpp`
-- `Source/Server/Location.h`
-- `Source/Server/Location.cpp`
-- `Source/Server/Item.h`
-- `Source/Server/Item.cpp`
-- `Source/Server/ClientDataValidation.h`
-- `Source/Server/ClientDataValidation.cpp`
-- `Source/Server/UpdaterBackend.h`
-- `Source/Server/UpdaterBackend.cpp`
-- `Source/Server/WorkerPool.h`
-- `Source/Server/WorkerPool.cpp`
-- `Source/Essentials/WorkThread.h`
-- `Source/Essentials/WorkThread.cpp`
-- `Source/Scripting/ServerCritterScriptMethods.cpp`
-- `Source/Scripting/ServerMapScriptMethods.cpp`
-- `Source/Scripting/ServerPlayerScriptMethods.cpp`
-- `Source/Tests/Test_ServerEngine.cpp`
-- `Source/Tests/Test_Timer.cpp`
-- `Source/Tests/Test_WorkerPool.cpp`
-- `Source/Tests/Test_EntityLifecycle.cpp`
-- `Source/Tests/Test_ServerItems.cpp`
-- `Source/Tests/Test_ServerMapOperations.cpp`
-- `Source/Tests/Test_ServerAdvancedOps.cpp`
-- `Source/Tests/Test_ServerScriptMethods.cpp`
-- `Source/Tests/Test_ClientServerIntegration.cpp`
-- `Source/Tests/Test_DataBase.cpp`
+Continue with [Source paths inspected](en/explanation/runtime/server.md#source-paths-inspected).
 
 ## Runtime owner: `ServerEngine`
 
-`ServerEngine` in `Source/Server/Server.h` is the server-side composition root. It derives from `BaseEngine` and implements `EntityManagerApi`, so scripts and runtime systems can create, load, destroy, and query entities through one authoritative owner.
-
-Major responsibilities:
-
-- load server resources through `GetServerResources(GlobalSettings&)`;
-- initialize storage, metadata, language packs, maps, client packs, scripts, networking, and game logic;
-- run the server job loop and frame-time synchronization;
-- accept network connections and create unlogged players;
-- process handshake, ping, command, movement, direction, property, and remote-call messages;
-- create, load, unload, destroy, and switch critters;
-- move critters by paths and movement contexts;
-- dispatch entity lifecycle and gameplay events to scripts;
-- persist entity/property changes through `DataBase` and `PropertiesSerializer`;
-- host `UpdaterBackend` for client resource/runtime updates;
-- publish health information and optional health-file output.
-
-`ServerEngine` is intentionally authoritative: client views can request movement, commands, property changes, and remote calls, but the server validates and applies the state that matters.
+Continue with [Runtime owner](en/explanation/runtime/server.md#runtime-owner-serverengine).
 
 ## Initialization and server jobs
 
-`ServerEngine` startup is organized as scheduled jobs rather than one monolithic constructor. The private job list in `Source/Server/Server.h` shows the runtime phases:
-
-- `InitHealthFileJob()`
-- `InitScriptSystemJob()`
-- `InitNetworkingJob()`
-- `InitStorageJob()`
-- `InitMetadataJob()`
-- `InitLanguageJob()`
-- `InitMapsJob()`
-- `InitClientPacksJob()`
-- `InitGameLogicJob()`
-- `InitDoneJob()`
-- `SyncPointJob()`
-- `FrameTimeJob()`
-- `ScriptSystemJob()`
-- `NotLoggedInPlayersJob()`
-- `PlayersJob()`
-- `CrittersJob()`
-- `TimeEventsJob()`
-
-Startup runs on the `_starter` worker thread, so a failure surfaces asynchronously. If any mandatory init job throws — for example `InitStorageJob()` when the database is unreachable — the starter's exception handler sets `IsStartingError()` and clears the remaining jobs before global exception reporting runs: `IsStarted()` never becomes true, and the worker pool, database connection, and time synchronization are never established. This ordering keeps the host-visible startup-failure flag prompt even when stack-trace collection is slow. Host apps must observe this rather than block forever: `ServerHeadlessApp`, `ServerDaemonApp`, and `ServerServiceApp` wait on `IsQuitRequested() || IsStartingError()` and turn a start error into a non-success quit, instead of leaving the process listening but non-functional (the failure mode behind a Staging incident where a down MongoDB left the headless server half-initialized for hours). `Shutdown()` is correspondingly safe to call on a partially-initialized engine: the worker-pool drain and the database / sync-time flushes are gated on `reached_running_state` (the presence of `_workerPool`, which is created last in `InitMetadataJob` after the DB connect and time-sync), so an aborted startup tears down cleanly instead of dereferencing the null pool (`WorkerPool::Clear` locking a null pool's mutex) or tripping the connected/synchronized invariants. `Source/Tests/Test_ServerEngine.cpp` (`ServerEngineShutdownIsSafeAfterStartupFailure`) pins this by forcing an unrecognized `DbStorage`, asserting the start error, and requiring `Shutdown()` to complete without crashing.
-
-`InitGameLogicJob()` fixes the generated-entity id boundary (`EntityManager::InitEntityIdBoundary()`) as soon as the globals document is loaded, before `OnInit` and before either `OnGenerateWorld` or the "Restore world" load: the next id is drawn above `max(stored LastEntityId, Server.EntityStartId)`, except that a snapshot restore keeps its exact stored boundary. The floor matters for a freshly generated world as much as for a restored one, because static items keep the ids their map file authored and the client indexes them in the same item map as runtime items — `MapView::AddItemInternal()` replaces whatever item already holds an incoming id, so a runtime item that reuses an authored id erases that piece of scenery on the client. `Server.EntityStartId` must therefore stay above every id a map file authors; `Source/Tests/Test_ServerEntityLifetime.cpp` (`ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart`) pins the generated-world half.
-
-The public `Lock()` / `Unlock()` pair is used by tests, tooling, and controlled operations that need a consistent view of server state. `Source/Tests/Test_ServerEngine.cpp` repeatedly waits for server startup, locks the server, performs entity/script checks, and unlocks on scope exit.
-
-The frame path stays lock-free: `GameTimer` publishes its pause flag and accumulated offset as atomics, and the mutex only keeps `Pause()` and `Resume()` exclusive with each other. `WorkerPool` counts anonymous scheduled jobs incrementally rather than scanning its queue, because diagnostics run periodically while the health file is enabled.
-
-`RunInQuiescence()` is the stronger reusable boundary for an authoritative capture operation. It must be called from outside a server execution/synchronization context. The Engine serializes the operation, closes new connection admission, reaches the existing `SyncPoint()` and drained `WorkerPool` pause, freezes `GameTimer` frame/synchronized time and the worker scheduling clock, covers every registered server entity plus current not-logged-in players, and invokes the caller callback with the captured synchronized time and the four-word `random_generator` state. Existing connection buffers remain transport state, but their player jobs cannot apply gameplay input while the pool is paused. New accepted transport connections are disconnected until admission reopens.
-
-The callback boundary is exception-safe: scheduling time, game time, the whole-world synchronization context, the worker/main sync point, and admission are unwound in order when the callback returns or throws. Server shutdown is serialized with quiescence and waits for an active callback; shutdown from inside the callback is rejected before lock acquisition to avoid self-deadlock. Delayed jobs retain their remaining scheduling delay across the pause, including jobs submitted while scheduling time is frozen; an explicit `Wake()` during the pause makes its keyed job due when execution resumes. `GameTimer::FrameAdvance()` is inert while paused and removes the paused wall-clock interval from later frame/synchronized-time projection.
-
-`ServerEngine::CreateSnapshot()` is the first storage composition built on that boundary. Inside quiescence it inspects AngelScript context diagnostics, anonymous delayed worker callbacks, runtime time events, and active critter movements. Any retained state produces counted `ServerSnapshotBlockerKind` entries and no payload. A ready world flushes the exact generated-entity id and synchronized time, invokes `DataBase::CreateSnapshot()`, and returns the payload bytes together with a `ServerSnapshotState` carrying compatibility and metadata versions, exact synchronized time, id boundary, and the four generator words. The Engine writes no file and defines no container format: naming, versioning, packaging and atomic publication belong to the embedder. Restoring is the mirror image — `ServerEngine` is constructed with a `ServerSnapshotRestore` pair, loads the payload into storage before anything reads the world, and rejects a state that disagrees with its payload before gameplay hooks run.
-
-`ReadServerSnapshotState()` parses that manifest strictly and requires the SQLite payload. The embedding controller must copy the immutable payload into a separate writable live-session directory before construction. Passing the parsed state to `ServerEngine` validates format/compatibility/metadata synchronously and restores RNG before startup jobs; after the copied database globals load, exact time and id are cross-checked before script module/init hooks run. A corrupt or mismatched pair fails startup rather than combining manifest state with a different database.
-
-This is still a staging primitive rather than a player-facing slot/checkpoint system. Version 1 blocks every runtime time event and movement instead of serializing them, cannot classify project-owned state, and does not choose slot names, calculate package integrity, atomically publish/rotate saves, own pause/UI authority, or coordinate network reload and identity. `Lock()` / `Unlock()` retain their existing diagnostic semantics and do not freeze clocks; callers needing only a custom frozen operation use `RunInQuiescence()`, while stable Engine/database capture uses `CreateSnapshot()`. `ServerEngineQuiescenceFreezesAndCleansUp`, `ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState`, `ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession`, `PauseFreezesFrameAndSynchronizedTime`, and `WorkerPoolSchedulingTimeFreezePreservesDelays` pin the source contract.
-
-Script-exported map critter queries (`Map.GetCritters(...)`, "who sees" variants, and property-filtered lookups) rely on the map access validation performed by the script dispatch layer: callers must already hold map coverage, and concurrent map membership mutation under that cover is a bug to surface rather than mask by taking extra critter refs.
-
-**Enumerating independent roots so the caller can cover them.** Three things a native call graph touches are *not* reachable through the map/location ancestry the caller already holds, so the script cannot derive them from the entities it covers — the engine has to let it read them first:
-
-- **Map spectators.** `MapManager::DestroyMapInternal()` ejects each spectator with `ValidateEntityAccess(player)` + `Player::ResetViewMap()`, and a spectator `Player` is a separate root, not a map descendant. `Map.GetSpectatorPlayers()` returns the map's current spectators (the `_spectatorLock`-guarded owning snapshot also used by the broadcast fan-out) so a caller preparing a map/location destroy can cover them and re-read the list to prove the membership did not change while it was acquiring that cover.
-- **Global-map group members.** A travelling critter's group members are independent `Critter` roots that its own cover does not include, and each `Send_AddCritter(member)` validates the **member**. `ServerEngine::SendCritterInitialInfo()` therefore does **not** fan the group out: it sends only the critter itself, and the group fan-out is the separate script-driven `Critter.SendGlobalMapGroupInfo()` export, which validates every member of `Critter::GetGlobalMapGroup()` before its first send (so an incomplete cover throws instead of half-delivering the group) and throws for a mapped critter. This split exists because the critter to attach is commonly chosen *inside* the login/attach callback, after the caller's cover was prepared — the caller could not have covered a group it did not yet know about. `Critter.GetGlobalMapCritterIds(uint64& revision)` returns the member ids plus the group's membership revision (empty with revision `0` for a mapped critter). Membership lives in a shared `GlobalMapGroup` object — one instance per group, held by every member — whose `shared_mutex` makes a read taken under one member's cover safe against a join/leave performed under another member's cover, and whose revision advances on every membership change. A caller resolves the reported ids, covers them, then re-reads ids and revision; an unchanged pair proves the cover it acquired is the current membership. `Critter::GetGlobalMapGroup()` correspondingly returns an owning copy taken under that lock rather than a live span.
-- **Spectated map.** A spectating `Player` holds no parent link to the map it views, so `Player.GetControlledCritter()` does not reach it and the player's own cover does not include it. `Player.GetViewMapTarget()` returns the map the player currently spectates (null when it spectates none), so a caller rebuilding a player's dependency graph — reconnect above all — covers that map and re-reads the handle to prove the view did not change while it was acquiring that cover.
-
-None of these exports changes cover on the script's behalf: all three are ordinary reads under the receiver's cover, which the script dispatch layer validates before the export body runs.
-
-Property serialization through `Properties::StoreData()` returns pointer/size lists backed by the entity's live property storage plus the per-call send cache. Callers copy those chunks immediately into network or persistence buffers and must already hold the entity cover that protects property reads. ThreadSanitizer builds annotate the engine's custom `EntityLock` so this external cover is visible to the sanitizer without adding per-property snapshot copies.
-
-**Sync-free server→client broadcasts (the "rassylka").** A broadcast to observers/spectators is the one place where a sender legitimately cannot hold the recipient's cover — the fan-out runs under the **subject** critter's (or map's) cover only, then must reach every recipient's player. The whole broadcast surface is sync-free: property, movement (`Send_Moving`/`Send_MovingSpeed`), facing (`Send_Dir`), action (`Send_Action`), inventory move (`Send_MoveItem`), teleport (`Send_Teleport`), and attachments (`Send_Attachments`), plus their serialization helpers `SendItem`/`SendInnerEntities`/`SendCritterMoving`. The pattern:
-
-- **Recipient sends validate the SUBJECT, not the recipient — and `this` always carries its own explicit marker.** Two independent decisions, both stated at the top of every send: (1) the **`this`-marker** declares how the method treats its own entity — a recipient send writes only the recipient's connection and never reads recipient state, so its `this`-marker is `FO_NO_VALIDATE_ENTITY_ACCESS()`. This marker is **mandatory and is not implied by the value check** — `FO_VALIDATE_ENTITY_ACCESS_VALUE(x)` validates `x`, it is *not* a `this`-decision, so every send pairs the two: `FO_NO_VALIDATE_ENTITY_ACCESS();` then `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject);`. (2) The **subject validation**: every send is handed an entity it serializes or reads — even just its id — and validates it via `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` (= the null-tolerant throwing `ValidateEntityAccess(subject)`). The subject *must* be in sync, and the broadcaster holds its cover for the whole fan-out so the check passes — an uncovered subject is caught (a `ScriptException` reported at the job/script frontier, which continues; escaping a `noexcept` send still terminates the process). This is **intentionally aggressive diagnostic validation**: validate every sent entity to surface every desync immediately (this validation layer is temporary and will be removed after the multithreaded logic system stabilizes; see the TODO below). The recipient connection is guarded by a per-player `_connectionLock` so a concurrent reconnect `SwapConnection` cannot swap `_connection` mid-write. It is a **plain `mutex`, not a `shared_mutex`**: same-player sends already serialize on the connection's own single output-buffer lock (`ServerConnection::_outBufLocker`, held by the `OutBufAccessor` for the whole `WriteMsg`), so a shared "many concurrent send readers" lock would buy nothing — and `mutex::lock()` is cheaper on the hot path than `shared_mutex::lock_shared()`. Cross-player concurrency (the actual win) comes from each player owning its own lock; sends and `SwapConnection` both take it exclusively, and no send re-enters it (the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers take the already-opened buffer as a parameter, so a non-recursive mutex cannot self-deadlock). `is_chosen` is a lock-free atomic identity compare against `Player::_controlledCr` (no deref). Only sends that are handed **no entity at all** — `Send_TimeSync`/`Send_InfoMessage`/`Send_PlaceToGameComplete` (no entity), `Send_HashList` (bare strings; used by the reported-hash broadcast fan-out and the handshake-time full-list push), `Send_RemoteCall` (a name + opaque payload; the outbound remote-call channel — the recipient may be uncovered and mid-reconnect, so the send pins the live connection under `_connectionLock`), `Send_Ping`/`Send_HandshakeAnswer`/`Send_InitData`/`Send_UpdateFileData` (connection-stage protocol replies, isolated in `Player` so no code outside `Player` writes a player-directed `NetMessage`), `Send_RemoveCustomEntity` (a bare `ident_t`), and `Send_SomeItems` (a span — each item is validated downstream in `SendItem`) — are pure `FO_NO_VALIDATE` with no value check. (The validation gap the subject check closes: `StoreData`/`GetRawData` do **not** validate entity access, so a send serializing a subject through them must validate the subject explicitly.) The `Critter::Send_*` forwarders (per-critter "send to my own player") follow the same two-marker shape: `FO_NO_VALIDATE_ENTITY_ACCESS()` for the *recipient* critter (`this`) plus `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` for the forwarded subject. They must **not** validate the recipient critter (the old `this`-check fired spuriously on an uncovered NPC group member with no player during `DestroyCritter` cleanup — the subject being removed is covered, only the recipient was not), and they read `_player` atomically before forwarding.
-- **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate, link-lock-protected `TryAddRef` accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
-- **Property broadcasts read the subject live.** Every property broadcast trigger fans out the ordinary `Player::Send_Property(type, prop, subject)` to each pinned recipient: it validates the **subject** (`FO_VALIDATE_ENTITY_ACCESS_VALUE`), reads the subject's serialized bytes live via `Properties::GetRawData` (safe because the broadcaster holds the subject's cover for the whole fan-out), and writes only the recipient's connection under `_connectionLock`. The triggers: critter/critter-item (`Critter::Broadcast_Property`), global (`OnSendGlobalValue` → all players), map (`Map::SendProperty` Map case → map critters + spectators), location (`OnSendLocationValue` → `Map::SendProperty` Location case for each map in the location → map critters + spectators), and custom entity (`OnSendCustomEntityValue` → viewers resolved by the covered `ForEachCustomEntityView`, then dispatched lock-free). (A byte-snapshot optimization — capturing the payload once under the subject's cover and blitting it lock-free — was prototyped and reverted; the live-read fan-out is the current shape.)
-- **TSA-guarded.** Both fine-grained locks are Clang [Thread Safety Analysis](ThreadSafetyAnalysis.md) capabilities (`fo::mutex` / `fo::shared_mutex`), and the state they guard carries `FO_TSA_GUARDED_BY`: `Player::_connection FO_TSA_GUARDED_BY(_connectionLock)` and `Map::_spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock)` (each lock declared before the field it guards). Every lock-free path holds the lock via `scoped_lock`/`shared_lock`, so TSA statically enforces the guard on exactly the threads that lack the entity cover. The accessors that legitimately reach the guarded state under the **entity cover** instead — the cooperative scheme TSA cannot model, and which also excludes the swap/mutation — are `FO_TSA_NO_ANALYSIS` with a comment: `Player::GetConnection` (hands the pointer to entity-cover callers), `Player::SwapConnection` (cross-object `other->_connection` swap), `Map::HasSpectatorPlayers` / `Map::GetSpectatorPlayers` (leak a span), and the single-threaded `~Map` teardown invariant. The `Map::AddItem` / `RemoveItem` / `SendProperty` (MapItem) spectator legs route through `GetSpectatorPlayersForSend()` (which takes the shared lock) rather than touching `_spectatorPlayers` directly, so they stay TSA-clean without an escape hatch.
-
-This is why `Critter::_player`, `Player::_controlledCr`, and `Player::_sendIgnoreEntity/_sendIgnoreProperty` are atomics published under their owner's cover — the broadcaster reads them without the recipient's cover. Message ordering survives because recipient resolution stays under the subject cover (the visibility grant `MapManager::ProcessVisibleCritters` inserts an observer into the reverse-visible set and the broadcast reads that set both under the subject cover, so a delta can never be enqueued ahead of its AddCritter; AddCritter ships a full snapshot, so even a reordered client message self-heals — the client decoder drops an unknown-entity message rather than faulting).
-
-**Covered-by-design exceptions (intentionally NOT sync-free).** Sends that read the **recipient's own** state stay validated, because that state needs the recipient's cover by construction — they are single-recipient sends issued under that cover, not broadcast distribution: `Send_LoginSuccess` (serializes the recipient itself), `Send_ViewMap` (reads the recipient's own `_viewMap`), `Send_AddCritter` (reads the recipient's controlled-critter visibility mode; sent from the visibility grant / map-load / transfer, which hold the recipient's cover — convertible only by threading the grant-computed vis-mode through its call sites). Every other `Player::Send_*` is **recipient-lock-free** (`this`-marker `FO_NO_VALIDATE_ENTITY_ACCESS()` — the recipient is never validated): every one that is handed an entity validates that **subject** via `FO_VALIDATE_ENTITY_ACCESS_VALUE`, including the ones that read only the subject's id (`Send_RemoveCritter`/`Send_CritterVisibilityMode`/`Send_RemoveItemFromMap`/`Send_ChosenRemoveItem`/`Send_Teleport`) alongside the ones that serialize it (`Send_Property`/`Send_Moving`/`Send_MovingSpeed`/`Send_Dir`/`Send_Action`/`Send_MoveItem`/`Send_Attachments`/`Send_LoadMap`/`Send_AddItemOnMap`/`Send_ChosenAddItem`/`Send_AddCustomEntity` and the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers). Only the sends handed **no entity** are pure `FO_NO_VALIDATE` with no value check: `Send_RemoveCustomEntity` (a bare `ident_t`), `Send_InfoMessage`, `Send_PlaceToGameComplete`, `Send_TimeSync`, and `Send_SomeItems` (a span — each item is validated in `SendItem`). `Map::SendProperty`'s **MapItem** case and the `Map::AddItem`/`RemoveItem` item-appearance loops are also covered-by-design: not pure fan-outs but per-critter notify-and-react loops (`AddVisibleItem`/`RemoveVisibleItem` + a re-entrant `OnItemOnMap*` event with an early-return on item-context change), which require each critter covered; their spectator legs are lock-free. The critter destructor's teardown-invariant diagnostics likewise read only raw members (no validating accessor) so a refcount-driven `~Critter` on a worker thread outside the critter's cover cannot fault.
-
-`FO_VALIDATE_ENTITY(<flags>)` at method entry declares which preconditions the method requires, so calling
-it at the wrong time (outside the sync scope, or during/after destruction) is caught rather than silently
-tolerated. The flags combine in any order and expand to the matching check on `this`:
-
-| Flag | Precondition | Disposition on violation |
-|------|--------------|--------------------------|
-| `LOCKED` | the calling thread's sync context covers this entity | recoverable `ScriptException`, so the script/job frontier reports it and the job continues; escaping a `noexcept` method still terminates |
-| `NOT_DESTROYED` | the entity is not already destroyed | `FO_STRONG_ASSERT` (deterministic exit): the script boundary already rejects a destroyed receiver, so reaching here means a stale pointer was dereferenced. noexcept-safe |
-| `NOT_DESTROYING` | the entity is not mid-destruction | `FO_VERIFY_AND_THROW` as the internal backstop behind the `FO_SCRIPT_API` frontier. It throws, so a `noexcept` method that must survive on a destroying entity uses `FO_VERIFY_AND_RETURN*` instead |
-| `NONE` | no precondition — explicitly callable at any time | — |
-
-Example: `FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYING, NOT_DESTROYED);`
-
-Manual server-side entity methods that read or mutate their own entity state declare the LOCKED precondition with `FO_VALIDATE_ENTITY(LOCKED, ...)` at method entry. It expands to the regular throwing validator (`ValidateEntityAccess(this)`), which **throws a recoverable `ScriptException`** on an uncovered access — at the job/script frontier the violation is reported and the job continues, so a sync-scope bug no longer takes the whole server down. An exception escaping a `noexcept`-declared method still terminates the process, so violations inside noexcept accessors remain fatal; the frontier-reachable throwing surface recovers. Generated C++ property accessors (`GetX()`, `SetX()`, `IsNonEmptyX()`) validate the owning entity through `FO_VALIDATE_ENTITY_ACCESS_VALUE(entity)` (the same throwing form), which currently resolves the entity from `Properties::GetEntity()` before touching property storage; low-level raw `Properties` access remains reserved for serialization, loading, tooling, and other paths that already establish their own storage-access contract. These validation macros live in `Common.h` so the temporary stabilization checks can be removed or compiled out from one location later. The check is intentionally always-on while the multithreaded logic system is being stabilized. Methods used by the validator, persistence callbacks, and lock machinery itself are marked with `FO_NO_VALIDATE_ENTITY_ACCESS()` as explicit unchecked escape hatches: constructors/destructors, `GetId()`, `GetName()`, `IsPersistent()`, `GetEntityLock()`, raw parent access, `GetSyncWidenEntity()`, and low-level parent/lock lifecycle setters must not recursively validate while the access checker is trying to produce diagnostics, handle persistence hooks, or prove the current lock cover.
-
-Two ordering contracts follow from this model. **(1) Script-export functions validate an entity argument before its first property read.** Property accessors are `noexcept`, so the throwing validator inside one cannot be recovered — an uncovered read there terminates the process. Every `FO_SCRIPT_API` function that reads a property of an entity argument therefore calls `ValidateEntityAccess(arg)` first, converting a caller's sync-scope violation into the recoverable frontier `ScriptException`; the `Server_Game_DestroyCritter(s)` family is the reference pattern. **(2) Ordinary manager entry points consume caller-owned cover; they do not acquire a missing container/holder.** The script caller covers every existing destination, source holder, map/location, or destroy dependency before crossing the native boundary. Manager code may use `EnsureEntitySynced()` only to retain the own lock of an entity already in that package across a detach or reparent. A genuinely fresh unpublished entity is different: `EntityManager::CaptureFreshEntity()` uses the private `EnsureFreshEntitySynced()` boundary before publication, without granting access to any pre-existing dependency. An omitted existing container or holder is therefore a caller error that fails validation; native create/destroy code must not repair it by replacing or widening the cover.
-
-TODO: remove the entire entity-access validation system after multithreaded logic stabilization; it is a high-overhead diagnostic layer, not a permanent runtime safety mechanism. If any `FO_VALIDATE_ENTITY_ACCESS*` check fires, fix the owning top-level path (job dispatch, script entry, sync widening, entity creation/registration, or holder transfer) so the entity cover is acquired before the code can reach the checked access at all. Do not treat the checked method or property accessor as the synchronization boundary unless that method is itself the top-level entry point.
-
-Connected players are processed by keyed `WorkerPool` jobs. `OnPlayerConnected()` submits an `NotLoggedInPlayerJob()` for the temporary player object, and `OnPlayerLoggedIn()` cancels the unlogged job key and submits the logged-in `PlayerJob()`. `Player.HardDisconnect()` and other hard-disconnect paths only mark the underlying connection as disconnected; logged-in player teardown (`OnPlayerLogout`, critter detach, view reset, destroyed mark, and unregister) belongs to the next `PlayerJob()` pass through `ProcessPlayer()`. Code that continues after a script-visible player event should validate possible connection/control changes, but it should not treat hard disconnect as an inline player-destruction path.
-
-`SwitchPlayerCritter()` sends the new critter's initial info before `OnPlayerCritterSwitched`. `OnCritterSendInitialInfo` can re-enter scripts and detach or switch the player again, so the switch notification is emitted only if the player still controls the same critter after initial-info scripts return. Switching to no critter sends `RemoveCritter`, detaches the previous chosen server-side, and sends `AddCritter` for the same entity as an ordinary non-chosen view. An active client therefore clears `HasChosen` immediately without making the still-loaded critter disappear. Initial info for a critter on the global map covers only that critter — the script attaching it delivers the rest of its travelling group with `Critter.SendGlobalMapGroupInfo()` (see the independent-roots section above).
-
-Typed entity destruction has a single active owner once the target is marked `Destroying`. `OnItemFinish`, `OnCritterFinish`, and `OnLocationFinish` handlers may observe the entity and may issue redundant destroy calls, but they must not complete the same teardown inline; the native owner asserts that the entity still exists after the finish event. Map and location destruction apply the same rule across the owning pair. Once `DestroyMap()` marks a map as destroying, scripted events in that flow may not destroy the owning location to take over the same map; `DestroyLocation()` asserts that none of its maps is already in another destroy-flow before it marks them. `OnMapFinish` and `OnMapRemoved` handlers therefore run while the map still exists, but native continuation asserts that the same map and location were not destroyed behind the current owner. Map content destruction may still detach an already-`Destroying` non-player critter from the map without issuing another finish event; this only completes the map containment edge when the critter's own destroy owner is still active. For the same reason, removing an item from a critter that is already `Destroying` (inventory teardown inside `DestroyCritter`) does not fire `OnCritterItemMoved`: the item is being destroyed with its owner rather than relocated, and re-entering scripts there would let an item-movement handler attach a new inner entity (for example a modifier `StartEvent`) to the already-destroying critter, which the entity layer rejects. Normal item moves on a live critter still fire the event.
-
-**No entity outlives its engine.** A `ServerEntity` borrows the engine that owns its property registrar, its
-prototype, the interned hashes its properties carry and every manager it reaches, so an entity that survives
-`~ServerEngine` holds nothing but dangling pointers. The rule is measured rather than assumed: the
-`ServerEntity` constructor raises a live-entity count on its engine and the destructor drops it, and
-`~ServerEngine` reports any remainder with `FO_VERIFY_AND_CONTINUE` (`Server entities outlived the server
-engine`, the count travelling as a context value) — the spelling the empty-link checks in the entity
-destructors use, which reports through the installed exception callback with a stack trace and continues,
-since a destructor may not throw. `~ClientEngine` reports the same for `ClientEntity`. Before taking the count the server destructor releases
-`MapManager`'s static-map cache, whose billets — the static items and authored critters a map spawns from — are
-entities owned by the engine itself; leaving them to member-destruction order counted engine-owned data as an
-escaped reference (1.3 million of them).
-
-**Historical residual (2026-09-15):** a gameplay-test worker session ended with a few dozen
-destroyed-but-alive entities (≈44 critters, 2 maps, a location, a player, an item; on the client side ≈64 views
-after a long suite). They are unregistered and unlinked, so what keeps them alive is a native reference nothing
-gives back. A reference-count trace could not name the holder unambiguously (its AddRef/Release pairing is by
-count, not by holder identity). These historical counts are not evidence about a current build; the
-engine-wide check remains a reported measurement, not a gate.
-
-Each script backend gives its entity references back during `Shutdown()`, before the engine can be destroyed.
-The AngelScript backend does it by releasing its script engine (`ShutDownAndRelease()`, asserted to reach zero).
-The managed backend has one path and one only: the wrapper's finalizer. A wrapper rooted by a script static is
-never collected, because the script assembly load context is not collectible, so `~ManagedScriptBackend` first
-asks the core scripts to null every static reference field of the project's script types — the root, not the graph,
-by reflection rather than through the embedding API, which corrupts the static area — and then collects
-releases persistent callback roots and waits for the finalizer queue from managed code (`GC.Collect` plus
-`GC.WaitForPendingFinalizers`, with both a pass limit and a separate finalizer-wait deadline), while the engine those references
-point into is still alive. Nothing takes a reference away behind a wrapper's back. The sweep leaves the engine's
-own managed namespace alone, which the engine shuts down through its own steps, and three shapes stay out of its
-reach — statics of generic types, thread statics, and statics of value types with a reference inside — which
-embedding projects must forbid in their script analysis. Deep tracking names surviving wrappers; the live
-count is always available. See [Scripting.md](Scripting.md).
-
-Client entity registration is a borrowed index guarded by a mutex: managed finalizers can unregister a
-detached view on another thread. `ClientEngine::GetEntity` promotes the borrow with `TryAddRef` while
-holding that mutex and returns an owning `refcount_nptr`, so the result remains alive after the lock is
-released. A view whose final release has begun cannot be resurrected. Unregistering an older view with
-the same id preserves its successor's entry.
-
-`Shutdown()` drops the world in bulk rather than running the ordinary destroy flows, which would also delete each
-entity from the database and fire events that no longer have scripts to answer them. What those flows do and a
-bare registry drop skips is unlinking, so `EntityManager::DestroyAllEntities()` first calls
-`ClearAllAssociations()` on every player, location, map, critter and item: each type drops exactly the runtime
-links its destructor requires to be empty, while every entity is still held by its registry, and no property is
-written, so nothing a persisted entity carries into the database changes. The Critter, Item, Map, Location and
-Player destructors therefore verify their empty-association invariants unconditionally, at shutdown as in
-ordinary destruction.
-
-`work_thread` and `WorkerPool` each expose a raw completed-job counter through a diagnostics snapshot (`get_diagnostics()` and `GetDiagnostics()`). `ServerEngine` keeps a separate throughput counter for jobs that should be visible in server stats: the `_starter` initialization sequence is excluded, and recurring service jobs that mostly reflect scheduler cadence (`SyncPointJob`, `TimeEventJob`, `FrameTimeJob`, `HealthFileJob`, and `HealthFileWriteJob`) are excluded too. The always-open Info summary reports jobs per second, jobs per minute, total completed visible jobs, and CPU load for the machine and current process. The separate `Performance details` panel is closed by default and expands raw per-executor job counts, worker-pool internals, and per-core system CPU load. Job throughput is the live server cadence metric. The former loop-based metrics — per-loop time statistics (average/min/max/last loop time), the loops-per-second counter (and its Tracy plot), and the `Server.LoopAverageTimeInterval` setting — were all removed as the server moves from loop-based to event-based execution; only the `Tracy` "Server jobs per second" plot remains.
-
-`FrameTimeJob` updates the engine `FrameTime` cache on a dedicated high-frequency `Server.FrameTimePeriodNs` cadence. Server movement uses this cached frame time for `MovingContext` start times, speed changes, step advancement, and outgoing movement snapshots instead of calling `nanotime::now()` in those hot paths. Every frame writes the frame-time properties under the `Game` entity lock taken exclusively and then pumps script continuations, so the period also sets how often each reader of a `Game` property queues behind that lock: a period of microseconds gains movement nothing and keeps the main worker busy on the lock.
-
-CPU percentages come from `platform::get_cpu_usage_snapshot()`: `ServerEngine` samples it about once per second and diffs consecutive snapshots. System load is the busy fraction of the whole machine (and per core); process load is this process's share normalized to one machine's worth of capacity, while `Performance details` also shows the un-normalized "process core load" (which can exceed 100% on multiple cores, like `top`).
-
-The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read only on `_mainWorker` itself (`GetHealthInfo()`) and by the visible server app's `DrawGui`, which reads them behind `Lock()` (serialized against the main worker by the sync point). Because nothing reads them from another thread, the fields are plain (no atomics needed).
+Continue with [Initialization and server jobs](en/explanation/runtime/server.md#initialization-and-server-jobs).
 
 ## Server events
 
-`ServerEngine` declares script-facing events for lifecycle, players, critters, maps, locations, items, movement, and static-item triggers. Important event groups include:
-
-- lifecycle: `OnInit`, `OnGenerateWorld`, `OnStart`, `OnFinish`;
-- player flow: `OnPlayerLogin`, `OnPlayerLogout`, `OnPlayerCritterSwitched`;
-- player-controlled motion: `OnPlayerMoveCritter`, `OnPlayerDirCritter`;
-- critter motion/lifecycle: `OnCritterMoved`, `OnCritterStartMoving`, `OnCritterStopMoving`, `OnCritterTransfer`, `OnCritterPreLoad`, `OnCritterInit`, `OnCritterFinish`, `OnCritterLoad`, `OnCritterUnload`;
-- map/location lifecycle: `OnLocationInit`, `OnLocationFinish`, `OnMapInit`, `OnMapFinish`;
-- map presence: `OnMapCritterIn`, `OnMapCritterOut`, `OnGlobalMapCritterIn`, `OnGlobalMapCritterOut`;
-- item lifecycle: `OnItemInit`, `OnItemFinish`, `OnCritterItemMoved`;
-- static item trigger: `OnStaticItemWalk`.
-
-These are engine extension points. The scripts that implement actual game rules belong to the embedding project.
-
-All three login entrypoints (`LoginPlayerToNewRecord`, `LoginPlayerToExistentRecord`, and `LoginPlayerToTempSession`) preserve a client-visible failure boundary specifically for `OnPlayerLogin`: if the event chain stops (including because a subscriber throws), the server queues `EngineInfoMessage::NetLoginScriptFail` on the connection that owns the active attempt before requesting its graceful disconnect. Other exceptions still unwind through the entrypoint's rollback guard and retain the existing hard `DisconnectReason::LoginFailed` path. The embedding client is responsible for turning an unexpected connection failure during an unfinished login attempt into a general localized error; exception text and stack details are never sent to the client.
-
-`OnCritterPreLoad` is the persistence-migration boundary. `EntityManager::LoadCritter()` fires it once after the critter properties, inventory, and inner entities have been restored, while the critter is registered but still detached from any map. The event precedes map/global-map entry, `OnCritterInit(cr, false)`, visibility processing, and `OnCritterLoad`. New critters do not receive it. Player-bound loads mark the critter `ControlledByPlayer` before the event, so handlers observe the real controllable state. Map transfers are locked for the callback, so handlers can normalize persisted state and inventory without relocating the critter. The critter has no global-map group yet, and during world startup the rest of the world may be only partially restored, so handlers must confine themselves to the critter's own persisted state and inventory — resolving, loading, or relocating other persisted entities is not supported at this boundary. A handler may explicitly destroy the restored critter as a clean migration drop: successful destruction returns null without setting the load-error flag, allowing an owning map to remove the stale id and continue startup; dropping a player-bound critter makes the direct-load wrapper throw, and pruning outside references to the dropped id (rosters, follower links) stays with the embedding project. An exception thrown by a handler stops the event chain, and `EntityManager::LoadCritter()` converts that stopped chain into a load error, so the database load fails instead of exposing partly migrated state; the persisted record itself is kept.
-
-`MapManager::Transfer()` emits `OnCritterTransfer` only after the critter transfer, attached-critter transfers, and final visibility refresh finish. Nested event paths may destroy the transferred critter or previous-map argument before that final notification attempt; `ValidateEntityAccess()` accepts that state and event dispatch suppresses script callbacks whose entity arguments are already destroyed. While the transfer lock is held, the critter's target map/global ownership remains an asserted invariant rather than a recoverable branch.
-
-The engine knows item **instances** only: it never merges two items into one, never splits one, and gives no meaning to a unit count. An item's count and stackability are properties an embedding game declares, and stacking — finding a merge target, splitting part of a stack into a copy, folding per-unit data — is game logic built on the instance primitives below. Script event handlers may re-enter item movement while an item is already in its committed add state. Native helpers that report a completed move therefore validate the final ownership after firing the event: `AddItemToCritter()` throws if the committed item no longer belongs to the target critter, `CreateItemOnHex()` / script `Map.AddItem()` throw if the created item no longer belongs to the target map hex, and `MoveItem(..., Map*)` returns it only if it still belongs to the target map.
-
-`ChangeItemSlot()` swap notification still attempts the second `OnCritterItemMoved` after the displaced-item event, even if that handler moves or destroys the original moving item; redundant or stale notifications are handled by the event path and final item ownership. Map-item add, visibility, and property broadcasts snapshot the item's map/hex context; if `OnItemOnMapAppeared`, `OnItemOnMapDisappeared`, or `OnItemOnMapChanged` moves, destroys, or otherwise detaches the item from that context, the outer broadcast stops before notifying more observers or spectators. Removing an item from a holder fires events after the item has already been detached, and those handlers re-enter scripts: they may destroy the detached item, or move it, which for an item with no holder only places it. Each holder-specific removal (`RemoveItemFromCritter()`, `Map::RemoveItem()`, `Item::RemoveItemFromContainer()`) clears the ownership before its events, and `RemoveItemHolder()` does not reset it afterwards, so a placement made by a handler survives. The whole-item `MoveItem()` path therefore re-checks after `RemoveItemHolder()` that the item is still alive and still `Nowhere`, and answers `nullptr` when a handler has already placed it elsewhere, so the item is never attached twice. Moving an item that is being destroyed throws: `DestroyItem()` detaches it through the same removal events, and a handler must not re-home it mid-teardown. `Game.CloneItem(item)` (`ItemManager::CloneItem()`) creates a detached copy of the item's whole property bag with ownership reset, firing `OnItemInit(item, true)` as any new item does, so a script can adjust the copy before any holder observes it and then place it with `MoveItem()`; `Game.CreateItem(pid)` does the same for a fresh item of a prototype, and `Game.CreateItem(pid, props)` applies the given integer properties before `OnItemInit`, so init handlers see them. `Critter.AddItem(pid)`, `Item.AddItem(pid, stackId)` and `Map.AddItem(hex, pid[, props])` create one instance and attach it. An item created or copied this way that is never placed, or whose destination is gone, stays detached and is destroyed by the script that created it. A container with contents is not cloned, because its contents are not copied.
-
-Walk trigger processing is scoped to the critter's current trigger context. If `OnStaticItemWalk` or an item's `OnCritterWalk` moves, transfers, destroys, or otherwise detaches the critter from that context, `VerifyTrigger()` stops processing the remaining triggers from the old map/hex. A static item the map instance has removed contributes no trigger at all, because `VerifyTrigger()` reads the same per-instance static overlay as the rest of the static queries.
-
-## Entity synchronization and locking
-
-`Source/Server/EntitySync.{h,cpp}` implements the cover model the script contract in
-[../AGENTS.md](../AGENTS.md) describes. Every `ServerEntity` owns an `EntityLock`, and a thread proves access
-to an entity by holding that lock or a lock-free ancestor on its parent / widen chain. `IsEntityAccessValid()`
-is that read-path check; mutating an entity's parentage is stricter and requires its own lock directly.
-
-**Link lifetime: the pin and the replacement share one lock.** `ServerEntity::_parent` and the Critter/Player
-widen pair publish raw atomic pointers, because the covered identity checks that read them must stay lock-free.
-The cover cannot protect the readers that legitimately run *without* it — `GetParentRaw()`, `GetPlayerForSend()`
-and `GetSyncWidenEntity()` are all `FO_VALIDATE_ENTITY(NONE)` — and for those a bare `load()` followed by
-`TryAddRef()` races the link's own release: the target's last reference can be dropped in between, so the
-`TryAddRef` reads a freed object. Each link therefore carries an `atomic_mutex` (`_parentLinkLocker`,
-`_playerLinkLocker`, `_controlledCrLinkLocker`) that covers *load-plus-pin* on the reading side and *replace*
-on the writing side, with the old owner released only after the replacement is published. Mutual exclusion then
-leaves a reader with exactly two outcomes: it pins while the link still holds its ref, or it observes the new
-value. The lock is an `atomic_mutex` rather than a `mutex` because these accessors are `noexcept` and an OS
-mutex has an acquisition failure they could not report. The fields are deliberately **not**
-`FO_TSA_GUARDED_BY(...)`: most readers (the `Send_*` forwarders, `DetachCritter`, the `SetParent` precondition)
-are serialized by the entity cover instead, the cooperative scheme TSA cannot model.
-
-`Player::_controlledCr` is the one non-owning link, so its pin depends on the critter clearing the link before
-it can be destroyed: `Critter::DetachPlayer()` calls `SetControlledCritter(nullptr)` under that same lock, and
-`~Critter` verifies the attachment is already gone.
-
-`SyncContext::SyncEntities()` widens in one pass, from the owning handles `GetSyncWidenEntity()` returns, and
-then re-reads each link **under the acquired cover** to verify the current partner is held — a relink that
-raced acquisition fails that verify and recomputes the cover within the bounded retry budget, exactly as a
-reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/Critter widening
-(`ServerEngineSyncContextWidenAndAncestorCover`), concurrent parent churn
-(`ServerEngineSyncContextReparentStress`) and the link pin itself
-(`ServerEngineEntityLinkPinSurvivesConcurrentDetach`).
-
-### Managed synchronization failure diagnostics
-
-Every public `Task<bool>` acquisition/restoration helper in managed `CoreScripts/Sync.cs` publishes an
-externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`). Each
-subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
-and owns no enable/disable setting; the embedding project chooses its subscribers and reactions with
-`Sync.OnFailure += HandleFailure` and can unsubscribe with `-=`. The handler receives data directly and
-chooses its own text, JSON, metrics or other representation.
-
-With no subscribers, the reporter returns before allocating the snapshot, reading entity context or
-capturing the stack. Subscriptions are snapshotted once per failure; reports are synchronous and unsampled.
-Callbacks are observers: they should not acquire cover, mutate gameplay state or use `async void`.
-A callback exception is reported through `ScriptExceptions.Report` and counted normally, without stopping
-the other subscribers or replacing the helper's `false` result. Successful acquisitions, recovered internal
-retries, boolean coverage/membership probes and deliberately best-effort cleanup stay silent. Native
-acquisition exceptions continue through their existing exception-reporting path; they are not converted to `false`.
-
-`Sync.FailureInfo` exposes get-only properties:
-
-- `Operation`: the helper that ultimately reports the refusal. Delegating overloads forward caller metadata,
-  so this can be the implementation helper rather than the facade's name.
-- `CallerFile`, `CallerMember`, `CallerLine`: compiler-supplied location of the external call, retained across
-  awaits and overload forwarding. Paths and names are passed unchanged; no PDB is required.
-- `Reason`: `entity_unavailable_before_acquire`, `entity_unavailable_after_acquire`, `entity_unavailable`,
-  `dependency_unavailable`, `snapshot_incomplete`, `holder_missing`, `mapped_critter`, `group_member_missing`,
-  `attachment_master_missing`, `graph_changed`, `group_not_covered`, or `retry_exhausted`.
-- `HelperFile`, `HelperLine`: the precise terminal branch in the compiled Sync source.
-- `Entities`: a read-only collection of `Sync.FailureEntity` snapshots with `TypeName`, `Id` (`ident`),
-  `IsDestroyed` and `IsDestroying`. Only cover-free identity/lifecycle accessors are read; diagnostics neither
-  acquire cover nor inspect mutable gameplay properties. Entries may repeat; no live entity references are retained.
-- `EntityIds`, `ProtoIds`: read-only snapshots of relevant `ident` and `hstring` values from that branch.
-  These are typed values, not rendered strings or references to the helper's mutable collections.
-- `StackTrace`: the managed stack at the failure. After a deferred await it describes the current continuation,
-  not a reconstructed history of previous asynchronous callers.
-
-All context is captured before dispatch, so later subscribers observe the same data even if source entities
-or collections have changed. Presentation choices, including path shortening and escaping, belong to subscribers.
-
-The caller attributes are optional parameters; existing ordinary call syntax is unchanged. Inside Sync,
-terminal delegation forwards them, while speculative acquisitions and best-effort cleanup use their own
-compiler-supplied `Sync.cs` location. The reporter compares that internal source location to its helper
-location and suppresses the speculative result. Keep this distinction when adding helpers: a recovered
-inner refusal must never be counted as an external failure. The per-call diagnostic helper is a stack/value object;
-success constructs no report objects, stack traces, shared counters or ambient asynchronous state.
-
-A diagnostic proves that this Sync call returned `false`. Its caller may return, retry or recover. It does not
-prove rollback, lost rewards, or the eventual outcome of a quest. Investigate the exact deployed source
-revision, the caller's preceding mutations and the code after the failed guard, then correlate entity IDs
-and the log timestamp with domain logs. Counts describe the captured failures; without a success counter
-they cannot provide a percentage of all acquisition attempts.
-
-Offline regression coverage compiles the actual helpers against an acquisition fixture:
-
-```bash
-dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
-```
-
-It checks all boolean acquisition overloads, caller forwarding, destruction during acquisition, recovered
-map migration, best-effort silence, partial restoration, reason distinctions, JSON escaping and exception
-propagation. Embedding projects also validate their baked scripts on the native backend.
-
-### Single-threaded logic
-
-`Server.SingleThreadedLogic` is a fixed setting that trades the concurrency for the contract. When it is on,
-`ServerEngine` pins the worker pool to exactly one thread, so every keyed job — player, not-logged-in player,
-critter movement, time event — runs to completion before the next one starts, and startup on `_starter`
-finishes before the pool is resumed. No cover can then be contended by construction, and the whole
-acquire/validate layer is bypassed: `IsEntityAccessValid()` and `SyncContext::ValidateAccess()` answer true for
-every entity, and `SyncEntities()` / `EnsureEntitySynced()` / `EnsureFreshEntitySynced()` acquire nothing. The
-mode is an engine setting rather than process state, so the sync layer reads it through the entity each
-operation is handed (`IsSingleThreadedLogic()` in `Source/Server/EntitySync.cpp`) and two engines with
-different settings can coexist in one process.
-
-The point of the mode is the script contract: with it on, a script may read and mutate any entity it can reach
-without covering it first. `Game.Sync` and `Game.SyncRelease` become inert, `[[Async]]` markers carry no
-synchronization requirement, and scripts written for the multithreaded mode keep working unchanged because
-their acquisition calls simply do nothing. A `GameLock` scope still takes the engine singleton bucket,
-which is uncontended and therefore always immediate.
-
-What the mode removes is the **cover** requirement, not entity liveness. Jobs still run one after another, so
-an entity a callback captured earlier can be destroyed before that callback runs, and a handle still has to be
-checked before use. An embedding project whose script wrapper around `Game.Sync` also carries a destroyed-entity
-policy — the `if (!Lock(...)) return;` shape — therefore keeps that wrapper for its liveness half even though its
-acquisition half is now a no-op. Deleting such guards as "dead synchronization" is a correctness regression.
-
-Nothing else changes: entities still own their `EntityLock`, the sync contexts are still created per job and
-per script execution, and turning the setting off restores the full cover requirement. The mode is pinned by
-`ServerEngineSingleThreadedLogicRunsWithoutEntityCover` in `Source/Tests/Test_ServerEngine.cpp`, which drives
-the `ServerEngineStartsAndCreatesCritter` flow with every synchronization call removed.
-
-### Acquisition modes
-
-| Mode | Meaning | Compatibility |
-|------|---------|---------------|
-| `Exclusive` (`Acquire`) | the classic writer | excludes every other mode, re-entrant per thread |
-| `Shared` (`AcquireShared`) | reader, used only for Game-singleton property reads so concurrent readers do not serialize on the engine-global lock | many readers together, excluded by `Exclusive`; subsumed into the exclusive recursion if the same thread already writes |
-| `DescendantHold` (`RegisterDescendantHold`) | intention mark recording "this thread holds a descendant of you", placed on every separate-lock ancestor | compatible among threads (siblings run in parallel), conflicts with a foreign `Exclusive` **both ways**, re-entrant per thread |
-
-`DescendantHold` is bookkeeping, not access: nobody reads an entity through it. It exists so an ancestor's
-exclusive `Acquire` knows a descendant is busy and queues instead of cutting underneath it, and so a descendant
-cannot be taken under a foreign-held ancestor. A registration yields to an already-waiting exclusive writer, so
-a stream of sibling locks cannot starve a map- or location-exclusive operation. `Shared` and `DescendantHold`
-never coexist on one lock, because a Game singleton is in no entity's parent chain.
-
-### Waiting and ordering
-
-Waiters queue FIFO. Each `WaitEntry` carries an atomic state — waiting, granted, or aborted — and the hand-off
-CAS in `Release` / `AbortPendingWaiters` disambiguates the abort-races-grant window; `notify_one` then wakes
-exactly that waiter rather than the whole queue. `GrantWaiters()` grants a run of consecutive shared waiters
-together but stops at the first exclusive one, so readers batch without starving writers. Shutdown marks every
-lock and force-aborts its parked waiters, and rejects later acquisitions so a tick firing after shutdown cannot
-deadlock on an empty owner field.
-
-Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside
-`EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer
-context in the synchronous call chain, because an outer script's wall time includes a nested script callback's
-wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not
-counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting
-backend so diagnostics can separate contention from execution cost.
-
-A multi-lock `Ensure` is all-or-nothing: it validates compatibility for the whole batch under the state mutexes
-and only then commits ownership, and it escalates in a global order, releasing an already-held ancestor down to
-zero and re-taking it the same number of times so the parent context's recursion and intention counters are
-restored exactly. `GetExclusiveRecursionForCurrentThread()` and `GetDescendantHoldCountForCurrentThread()`
-exist for that restoration.
-
-### Widening an already covered entity
-
-`SyncEntities()` releases the context's whole held set before it acquires a new one, and `Release` hands a lock
-with a queued waiter straight to that waiter. A job that re-syncs in the middle of its work would therefore give
-a contended map away to the next job in its queue and park until that job had finished its whole body — a cost
-that grows with every job on the map and is reported as lock wait, not as execution. So a request that keeps
-every held lock and adds only entities this thread already covers through their own parent chain (a critter on a
-held map, an item of a held critter) is taken in place instead: `TryRetainCoveredRequest()` retains each missing
-own lock the way `EnsureEntitySynced()` does, and nothing is released. Each entity still becomes its own explicit
-entry, which is the contract script widening relies on. A request that drops a held lock, or adds an entity
-covered only through the Critter-Player widen link or not covered at all, takes the full release-and-reacquire
-path, which re-proves the link under the acquired cover. `Game.SyncWiden` (`SyncContext::WidenEntities()`) is the
-primitive behind the managed `Sync.Widen` family: it requests the live held set plus the extras natively, so
-widening materializes no snapshot of the held set on the script side and prunes held entries that were destroyed.
-Pinned by `Source/Tests/Test_ServerEntityLifetime.cpp` → `ServerSyncWidenOfCoveredEntityKeepsHeldLocks`, where a
-job queued for the map must not get it while the widening context keeps working.
-
-Retention must also re-prove the ancestor marks of every held owner. A nested transfer can reparent a held
-critter while the outer context still records its old map's descendant hold. If a current ancestor is neither
-held exclusively nor marked by this context, the request takes the full path to rebuild the cover; keeping
-only the critter's own lock would let a foreign job acquire its new map concurrently. This applies even to a
-request identical to the held set, including an empty native widen. Pinned by
-`ServerSyncRetainedCoverRefreshesReparentedAncestors` for both replacement and widening.
-
-### Storage shape
-
-Per-lock holder counts are a linear inline vector rather than a hash map: entities number in the millions while
-concurrent holders per lock stay in the low single digits, so an idle lock must allocate nothing — a per-entity
-hash map would eagerly reserve bucket storage across a loaded world. The per-`Sync` cover and held-lock lists
-are `small_vector` for the same reason (a full gameplay-test run performs tens of millions of `Sync` ops), with
-capacity sized to the measured cover; the parallel owner lists stay `vector` because their `refcount_ptr`
-element needs a complete `ServerEntity`, which this header deliberately does not include.
+Continue with [Server events](en/explanation/runtime/server.md#server-events).
 
 ## Entity ownership and persistence
 
-`EntityManager` (`Source/Server/EntityManager.h`) is the central registry and persistence boundary for server entities.
-
-It owns:
-
-- loading persisted locations, maps, critters, items, custom entities, and inner entities;
-- registering/unregistering players, locations, maps, critters, items, and custom entities;
-- persistent/non-persistent state through `MakePersistent()` and recursive persistence helpers;
-- entity destruction and inner-entity destruction;
-- custom entity creation/loading/view enumeration;
-- entity document storage through `StoreEntityDoc()` and `LoadEntityDoc()` / `LoadEntityDocs()`.
-
-Item trees are restored level by level: `LoadItems()` reads every document of one nesting level with a single `DataBase::GetMany()`, restores and registers those items, then reads all their inner items as the next level and attaches them to their containers in the stored order. Loading a critter's inventory, or a map's items, therefore costs one database request per container nesting level instead of one per item (on Mongo, one query per 1000 items of a level), which is what a player login waits on. A missing inner item is logged, marks the load as failed and is pruned from its container's id list, while its siblings from the same batch are restored.
-
-Custom inner entities follow the same rule per holder entry: `LoadInnerEntitiesEntry()` hands the whole id list of the entry to `LoadCustomEntities()`, which reads it with one `DataBase::GetMany()` and restores each entity through `RestoreCustomEntity()`; `LoadCustomEntity()` is the same path for one id. A missing record is pruned from the holder's id list while the rest of the entry is restored.
-
-Custom entities held directly by the global game object share its singleton `EntityLock`. When an engine operation calls `EnsureEntitySynced()` for one of those entities inside a `GameLock` scope, the current synchronization context reuses the singleton acquisition instead of tracking the same physical lock in both its ordinary and singleton buckets. Leaving the scope therefore releases the lock completely after the operation.
-
-Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializer`. The database facade and backends are documented in [Persistence.md](Persistence.md).
-Creating a custom inner entity is a holder mutation, so `EntityManager::CreateCustomInnerEntity()` retains the own lock of an already-covered `ServerEntity` holder with `EnsureEntitySynced()` before constructing or publishing the child. This matters when the script scope covers a critter through an exclusively held map: ordinary reads are valid through the ancestor cover, but publication needs the critter's own lock so the parent edge and holder collection remain stable. The promotion does not discover missing cover; an uncovered holder still throws before the first mutation. Global-game holders keep using the singleton-lock path above.
-
-Entity changes are persisted when relevant properties are saved by `ServerEngine::OnSaveEntityValue()` through `PropertiesSerializator`. The database facade and backends are documented in [Persistence.md](Persistence.md).
-
-A persisted entity whose proto resolves through a `Proto <Type> <Name> __remove__` migration rule is **dropped** on load: `CheckMigrationRule()` represents the `__remove__` deletion token as an engaged `optional` containing an empty hash, while `nullopt` continues to mean that no rule exists. `LoadEntityDoc()` detects that empty replacement and returns an empty document **without** flagging a load error, so each loader (`LoadCritter` / `LoadItem` / `LoadLocation` / `LoadMap`) returns null and its owner removes the id from its child list while the rest of the load continues. `OnCritterPreLoad` destruction is the script-controlled equivalent for a fully restored critter and also returns null without a load error after `DestroyCritter()` removes its persistent graph. A proto that is simply absent (covered by no migration rule) still surfaces as a fatal `proto not found` load error, so deliberate deletion and accidental content gaps stay distinct. A dropped critter requested directly through `ServerEngine::LoadCritter()` is not silently returned — the wrapper raises so a player login cannot continue without its character.
-
-Persisted properties whose base type is a proto reference use the same distinction while their owning entity is restored. A rename stores the replacement proto id in memory. An empty replacement produced by the `__remove__` deletion token clears the value only when the property is `Nullable`; a non-nullable property still rejects it because the embedding project must provide a valid replacement. An unknown proto with no migration rule remains an error. This conversion happens before script load events, so a script migration can repair related nullable fields after the entity is structurally loadable.
+Continue with [Entity ownership and persistence](en/explanation/runtime/server.md#entity-ownership-and-persistence).
 
 ## Player and connection flow
 
-A newly accepted `NetworkServerConnection` enters the runtime through `ServerEngine::OnNewConnection()` and becomes an unlogged `Player` through `CreateNotLoggedInPlayer()`.
-
-The server then processes the player in two broad states:
-
-1. **Unlogged player** — `ProcessNotLoggedInPlayer()` reads initial protocol messages and runs handshake/login logic.
-2. **Logged player** — `ProcessPlayer()` handles normal game messages for an attached player/critter session.
-
-`Player` in `Source/Server/Player.h` owns the server-side per-client send surface:
-
-- login success;
-- movement/direction/speed;
-- map load and view-map messages;
-- property updates;
-- add/remove critters and items;
-- chosen inventory updates;
-- teleport, time sync, info messages;
-- critter actions and item moves;
-- place-to-game-complete;
-- custom entity add/remove;
-- selected item batches through `Send_SomeItems()`.
-
-`Player` also tracks its controlled critter, connection, ignored property-send pair, and optional view-map context.
+Continue with [Player and connection flow](en/explanation/runtime/server.md#player-and-connection-flow).
 
 ## Network validation and inbound messages
 
-The server receives client messages through `ServerConnection` and dispatches them from `ServerEngine` methods such as:
-
-- `Process_Handshake()`
-- `Process_Ping()`
-- `Process_Move()`
-- `Process_StopMove()`
-- `Process_Dir()`
-- `Process_Property()`
-- `Process_RemoteCall()`
-
-Inbound remote-call and property payload validation is centralized in `Source/Server/ClientDataValidation.h`:
-
-- `ValidateInboundRemoteCallData()`
-- `ValidateInboundPropertyData()`
-
-`Source/Tests/Test_ClientDataValidation.cpp` exercises invalid UTF-8, invalid enum values, non-finite floats, unknown hashed strings, invalid bools, truncated payloads, and ref-type payload validation.
-
-`ProcessPlayer()` drains up to `MaxMessagesPerProcessPass` buffered messages per job pass in a loop, with the player synced once by `PlayerJob()` before the loop. Script reached from a message handler never runs in the job's **primary** SyncContext: every AngelScript execution goes through the engine's virtual `RunScriptContext()` hook, and `ServerEngine::RunScriptContext()` creates the nested `ScopedSyncContext` used by that script context. Event, setter, and remote-call dispatchers do not create additional synchronization scopes. When `SwitchPlayerCritter()` creates a new `Player`/`Critter` sync-widen pair, it recursively retains both locks in every active context that already owns either half before publishing the link. An ancestor that entered with only the player therefore keeps continuous physical cover of the newly attached critter and its subtree after the temporary script context releases. A script `Sync::Lock(...)` replaces the held lock set of the *current* context with exactly the requested entities, so under the universal script layer it cannot drop the primary's player cover — the player stays locked across every buffered message. Non-server engine implementations run the callback without synchronization. The engine-side handlers that re-sync the primary themselves (`Process_Move()` / `Process_StopMove()` / `Process_Dir()`) always include the player in the requested set, and `Process_Property()` does not touch the held set at all. The drain loop still re-checks `player->IsDestroyed()` each iteration because handler script may legitimately destroy the player. The invariant matters because a later message's first player access goes through a `noexcept` accessor (e.g. `Player::GetConnection()` in `Process_RemoteCall()`): an uncovered access there would trip the access-without-sync invariant and terminate the process, since a throw cannot escape the `noexcept` frontier to be recovered at the job boundary.
-
-Immediately before invoking an inbound server remote call, `Process_RemoteCall()` syncs its `Player` argument in the job's **primary** SyncContext: the remote-call dispatcher creates no scope of its own, and `RunScriptContext()`'s nested context only opens once the script itself executes. Because `SyncContext::SyncEntities()` replaces the current context's held lock set, this re-establishes the primary's cover as exactly {player + widened critter} for the remainder of the drain loop. That sync follows `Player::GetSyncWidenEntity()`, so the cover includes the player's current controlled `Critter`; the reverse `Critter` → `Player` link is symmetric. A server RPC may therefore read `player.GetControlledCritter()` and use that critter without another script-side lock or widen operation. Only independently resolved entities outside the linked pair need an explicit wider set. Repeating `Sync::Lock(cr)` or `Sync::Widen(cr)` for the same controlled critter is redundant and obscures the boundary contract.
-
-Lifecycle callbacks that retain only an entity id across a yield use `Game.TrySyncEntity(id)`. The engine resolves and pins the registry entry before replacing the current cover, then rechecks `IsDestroying` / `IsDestroyed` after acquisition. It returns `false` without changing the existing cover when the id is already absent or teardown has already started, and also returns `false` when teardown wins the lock race. This avoids passing a stale destroyed handle through the native script ABI merely to attempt synchronization.
-
-For the wire-level model, see [Networking.md](Networking.md). For client behavior, see [ClientRuntime.md](ClientRuntime.md).
+Continue with [Network validation and inbound messages](en/explanation/runtime/server.md#network-validation-and-inbound-messages).
 
 ## Managers
 
-### `MapManager`
-
-`MapManager` owns map/location creation, destruction, transfer, visibility, and map content generation:
-
-- load map data from resources;
-- create/destroy locations and maps;
-- regenerate maps;
-- add/remove critters to/from maps;
-- transfer critters between maps or to global state;
-- process visible critters and items;
-- create temporary map views for players;
-- calculate critter visibility modes;
-- generate and destroy map content.
-
-The reusable geometry, path finding, blockers, line tracing, and map-loading concepts are documented in [MapsMovementGeometry.md](MapsMovementGeometry.md). `MapManager` applies those concepts to authoritative server state.
-
-### `CritterManager`
-
-`CritterManager` owns critter creation/destruction and inventory-holder operations:
-
-- create a critter on a map;
-- destroy a critter;
-- destroy a critter inventory;
-- add and remove items from a critter.
-
-`Critter` itself owns visibility sets, attached player/critter relationships, moving state, map-transfer locking, visible item checks, broadcasting helpers, and critter-specific script events.
-
-### `ItemManager`
-
-`ItemManager` owns item instance creation, copying, destruction, and movement between holders:
-
-- create detached items and map items;
-- copy an item into a detached instance;
-- move whole items between critters, maps, and containers, placing a detached item;
-- remove item-holder relationships.
-
-`Item` owns container membership and multihex entries. `StaticItem` is the static-map specialization used by map content. Static items are built once per `ProtoMap` into the shared `StaticMap` (`Source/Server/StaticMap.h`), carry the `ident_t` their map file authored, and are never registered, persisted, or destroyed as runtime entities. A map instance drops individual static items through its own `RemovedStaticItemIds` list rather than by mutating that shared data; the model, the accessors it filters, and the client half are described in [MapsMovementGeometry.md](MapsMovementGeometry.md#static-item-removal).
+Continue with [Managers](en/explanation/runtime/server.md#managers).
 
 ## Map, location, item, and critter entities
 
-Server entity classes combine Common-layer property/prototype behavior with server-only ownership rules:
-
-- `Location` groups maps and raises `OnMapAdded` / `OnMapRemoved`.
-- `Map` owns map fields, critter/item presence, spectators, item visibility, manual blocks, trigger verification, and `OnCheckLook` / `OnCheckTrapLook`.
-- `Critter` owns visibility, current map/location/global state, inventory, moving state, player attachment, and broadcast helpers.
-- `Item` owns holder/container relationships, multihex behavior, and `OnCritterWalk`.
-- `Player` owns connection/session state and the send surface to one client.
-
-Do not duplicate the Common entity taxonomy here; [EntityModel.md](EntityModel.md) owns the base entity/property/prototype explanation.
+Continue with [Map, location, item, and critter entities](en/explanation/runtime/server.md#map-location-item-and-critter-entities).
 
 ## Movement and authoritative state
 
-Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization runs through the same passability guard the client applies (`GeometryHelper::NormalizeHexOffset` with an `is_movable` predicate): when rounding a sub-hex offset would cross into a blocked neighboring hex, the reported logical hex is retained and the offset is clamped instead of starting a full-cell correction toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
-
-`Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
-
-Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
-
-Runtime movement is independent of `CritterCondition`: alive, knockout, dead, and any future condition use the same `MovingContext` processing. Game scripts own gameplay-level movement permissions and must stop or reject movement when a creature state should forbid it. Attached critters still stop their active `MovingContext` because attachment is a transport/ownership relationship rather than a condition.
-
-Server-side movement helpers include:
-
-- `StartCritterMoving()` overloads for an existing `MovingContext` or raw path data;
-- `StopCritterMoving()`;
-- `ChangeCritterMovingSpeed()`;
-- `CritterMovingJob()` as the self-rescheduling worker-pool body for active movement;
-- `ProcessCritterMovingBySteps()`.
-
-`Source/Tests/Test_ServerEngine.cpp` includes overdue movement tests that verify route completion, condition-independent movement processing, and blocked-hex stopping behavior. Coordinate/pathfinding mechanics remain documented in [MapsMovementGeometry.md](MapsMovementGeometry.md).
+Continue with [Movement and authoritative state](en/explanation/runtime/server.md#movement-and-authoritative-state).
 
 ## Client update backend
 
-During server construction, `ServerEngine` can create and load `UpdaterBackend` from client resources (`Source/Server/Server.cpp`, `Source/Server/UpdaterBackend.*`). This backend is responsible for describing and serving client resource/runtime update files to connecting clients.
-
-`UpdaterBackend` responsibilities:
-
-- scan client resources and binaries through `LoadFromClientResources(const GlobalSettings&)`;
-- build an update descriptor grouped by update targets;
-- serve requested file portions through `ProcessUpdateFile(ServerConnection*, int32_t)`;
-- respond with `NetMessage::UpdateFileData` chunks;
-- expose target-specific descriptors selected by binary target name.
-
-The client host/runtime updater flow is documented in [ClientUpdater.md](ClientUpdater.md). Keep protocol-level details there and runtime hosting/ownership details here.
+Continue with [Client update backend](en/explanation/runtime/server.md#client-update-backend).
 
 ## Tests and validation map
 
-Use the smallest relevant test scope when changing server behavior:
-
-- `Source/Tests/Test_ServerEngine.cpp` — server startup, critter creation, player-controlled critter unload, script module init/events, admin remote-call allowlist, script marshalling, overdue movement.
-- `Source/Tests/Test_EntityLifecycle.cpp` — entity init events, C++ entity/manager APIs, player registration and reconnect cover, and (`IndependentRootCoverEnumeration`) global-map group / map spectator enumeration plus the cover it lets a caller acquire, including that initial info leaves the group fan-out to `Critter.SendGlobalMapGroupInfo()` and that the export refuses to send without the members covered.
-- `Source/Tests/Test_ServerItems.cpp` — item creation/destruction, critter inventory, critter lifecycle, entity-manager queries.
-- `Source/Tests/Test_ServerMapOperations.cpp` — map item/critter/hex/path/static-item/location/proto/property-filter operations.
-- `Source/Tests/Test_ServerAdvancedOps.cpp` — location creation, entity-manager bulk operations, advanced critter/item operations, utility/database/string/array/dict/math/time/proto script operations.
-- `Source/Tests/Test_ServerScriptMethods.cpp` — server script method surface for critter inventory/state, game queries, item operations, entity lifecycle, database/text/player ids.
-- `Source/Tests/Test_ClientServerIntegration.cpp` — client/server handshake and connection event behavior.
-- `Source/Tests/Test_DataBase.cpp` — persistence backend behavior used by server entity storage.
-
-Exact test target names are generated by the embedding project's CMake/BuildTools configuration; do not hard-code one project's target names in engine docs.
+Continue with [Tests and validation map](en/explanation/runtime/server.md#tests-and-validation-map).
 
 ## Change checklist
 
-When changing server runtime behavior, verify:
-
-- The changed entity type has a clear owner: `EntityManager`, `MapManager`, `CritterManager`, `ItemManager`, `Player`, or `ServerEngine`.
-- Persistent state changes go through documented property/entity serialization boundaries from [Persistence.md](Persistence.md).
-- Client-originated data is validated before mutating authoritative state.
-- New or changed network messages are cross-linked in [Networking.md](Networking.md) and [ClientRuntime.md](ClientRuntime.md).
-- Movement changes preserve [MapsMovementGeometry.md](MapsMovementGeometry.md) invariants and server blocked-hex behavior.
-- Script-facing events and methods are covered by server tests or by the future scripting docs.
-- Updater changes preserve the boundary between `UpdaterBackend` hosting here and client host/runtime behavior in [ClientUpdater.md](ClientUpdater.md).
+Continue with [Change checklist](en/explanation/runtime/server.md#change-checklist).

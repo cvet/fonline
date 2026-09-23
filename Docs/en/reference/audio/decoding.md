@@ -1,0 +1,22 @@
+---
+title: Audio Decoding Contract
+document_id: generated-audio-decoding
+locale: en
+generated: true
+---
+
+# Audio Decoding Contract
+
+> Generated reference. Do not edit directly. Update `BuildTools/AudioInterface.json`, then run `python BuildTools/docs_audio.py --write`.
+
+[Index](index.md) | [Formats](formats.md) | [Delivery](delivery.md) | [Decoding](decoding.md) | [Playback](playback.md) | [Validation](validation.md) | [Canonical JSON](../../../generated/audio.json) | [Guide](../../how-to/content/audio.md)
+
+| Stable ID | Rule | Requirement | Why | Source |
+| --- | --- | --- | --- | --- |
+| <a id="entry-audio-decoding-wav-chunk-order-ac41e721f1"></a><code>audio.decoding.wav-chunk-order</code> | WAV chunk order | Provide RIFF/WAVE with one usable fmt chunk and a non-empty data chunk; AudioBaker walks chunks in any order, skips unknown chunks, and respects odd-byte padding. | Real exports commonly insert metadata chunks or reorder fmt and data, so the baker validates chunk bounds instead of prescribing a narrow sequence. | [Source/Tools/AudioBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/AudioBaker.cpp) |
+| <a id="entry-audio-decoding-wav-pcm-width-2099ecdd6f"></a><code>audio.decoding.wav-pcm-width</code> | WAV PCM widths | Author WAV as PCM at 8, 16, 24, or 32 bits or IEEE float at 32 bits; channel count and sample rate must be positive and block alignment must match the declared frame shape. | AudioBaker converts each supported sample to signed 16-bit before Vorbis encoding and rejects truncated frames or inconsistent format metadata. | [Source/Tools/AudioBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/AudioBaker.cpp) |
+| <a id="entry-audio-decoding-acm-shape-b7a4574d99"></a><code>audio.decoding.acm-shape</code> | Baked payload verification | Reject a generated or passthrough payload unless libvorbisfile opens it as a valid Vorbis stream. | The bake boundary catches malformed native input and encoder output before the client attempts playback; runtime then reads channel and sample-rate metadata from the verified stream. | [Source/Tools/AudioBaker.cpp](https://github.com/cvet/fonline/blob/master/Source/Tools/AudioBaker.cpp) |
+| <a id="entry-audio-decoding-ogg-streaming-6ff234d02d"></a><code>audio.decoding.ogg-streaming</code> | Ogg streaming | Expect Ogg Vorbis to decode in 64 KiB native chunks and 128 KiB Web chunks; short files are retained fully and release the stream after the initial decode. | AudioManager uses a platform-sized streaming portion and clears OggStream when the first read reaches EOF. | [Source/Client/AudioManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/AudioManager.cpp) |
+| <a id="entry-audio-decoding-device-conversion-c6306e36cc"></a><code>audio.decoding.device-conversion</code> | Device conversion | Let AppAudio convert decoded sample format, channel count, and rate to the active SDL output-device format before playback. | AudioManager does not require authored assets to match one fixed hardware format. | [Source/Client/AudioManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/AudioManager.cpp), [Source/Frontend/Application.cpp](https://github.com/cvet/fonline/blob/master/Source/Frontend/Application.cpp) |
+| <a id="entry-audio-decoding-callback-mixing-f9db5306d1"></a><code>audio.decoding.callback-mixing</code> | Audio callback mixing | Treat playback as client audio-callback work; mutations of the active sound list must hold the audio-device lock. | The SDL stream callback asks AudioManager to fill output while game-thread play/stop/update operations can add, mutate, or erase sounds. | [Source/Client/AudioManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/AudioManager.cpp), [Source/Frontend/Application.cpp](https://github.com/cvet/fonline/blob/master/Source/Frontend/Application.cpp) |
+| <a id="entry-audio-decoding-unsupported-extension-a56ebf6594"></a><code>audio.decoding.unsupported-extension</code> | Single runtime decoder | Route authored audio through AudioBaker and let AudioManager decode every resulting resource as Ogg Vorbis regardless of its preserved source suffix. | Unsupported source extensions never enter the Audio baker, and runtime has no suffix dispatch that could silently accept an empty or differently encoded payload. | [Source/Client/AudioManager.cpp](https://github.com/cvet/fonline/blob/master/Source/Client/AudioManager.cpp) |

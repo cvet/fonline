@@ -1,0 +1,45 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": {"major": 3, "minor": 22, "patch": 0},
+  "configurePresets": [
+    {
+      "name": "native-extension-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {"FO_BUILD_SERVER": "ON", "FO_BUILD_BAKER": "ON"}
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows x64 (installed Visual Studio)",
+      "description": "Configure the native extension sample and its focused checks with the newest installed Visual Studio generator.",
+      "inherits": "native-extension-base",
+      "architecture": {"value": "x64", "strategy": "set"},
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows"}
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux GCC",
+      "description": "Configure the native extension sample and its focused checks with GCC and Ninja Multi-Config.",
+      "inherits": "native-extension-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {"CMAKE_C_COMPILER": "gcc", "CMAKE_CXX_COMPILER": "g++"},
+      "condition": {"type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux"}
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-check",
+      "displayName": "Windows native extension checks",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": ["RunNativeExtensionChecks"]
+    },
+    {
+      "name": "linux-check",
+      "displayName": "Linux native extension checks",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": ["RunNativeExtensionChecks"]
+    }
+  ]
+}

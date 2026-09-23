@@ -44,7 +44,7 @@
 FO_BEGIN_NAMESPACE
 
 // SDL_GPU records explicit passes while the engine renderer contract is immediate-mode, so this backend
-// adds a lazy pass state machine and a backbuffer proxy (Docs/FrontendAndRendering.md, "SDL_GPU renderer")
+// adds a lazy pass state machine and a backbuffer proxy
 
 class SDLGpu_Texture final : public RenderTexture
 {

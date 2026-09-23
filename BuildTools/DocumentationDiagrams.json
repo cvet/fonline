@@ -1,0 +1,573 @@
+{
+  "schema_version": 1,
+  "title": "FOnline documentation diagrams",
+  "diagrams": [
+    {
+      "id": "engine-game-boundary",
+      "title": "Reusable engine and embedding game boundary",
+      "description": "Ownership and dependency flow between the reusable FOnline engine and an embedding game project.",
+      "owning_document": "Docs/en/explanation/architecture/index.md",
+      "alt": "Diagram showing the reusable FOnline engine on the left and an embedding game project on the right. The engine provides runtime systems, tools, code generation, and platform applications. The game provides project configuration, scripts, content, tests, and release policy. Generated contracts and extension hooks connect the two sides.",
+      "caption": "Engine owns reusable runtime and tooling; the embedding project owns game rules, content, product configuration, validation, and release policy. Dependencies cross only through declared configuration, generated contracts, and extension hooks.",
+      "width": 1120,
+      "height": 650,
+      "source_paths": [
+        "Source/Common/EngineBase.h",
+        "Source/Client/Client.h",
+        "Source/Server/Server.h",
+        "BuildTools/cmake/stages/Applications.cmake",
+        "Examples/MinimalProject/CMakeLists.txt",
+        "Examples/MinimalProject/FOnlineStarter.fomain"
+      ],
+      "bands": [
+        {
+          "x": 32,
+          "y": 112,
+          "width": 504,
+          "height": 462,
+          "title": "Reusable FOnline engine",
+          "role": "engine"
+        },
+        {
+          "x": 584,
+          "y": 112,
+          "width": 504,
+          "height": 462,
+          "title": "Embedding game project",
+          "role": "project"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "runtime",
+          "x": 64,
+          "y": 178,
+          "width": 210,
+          "height": 104,
+          "role": "engine",
+          "title": "Runtime systems",
+          "lines": [
+            "client, server, entities",
+            "networking, persistence"
+          ]
+        },
+        {
+          "id": "applications",
+          "x": 294,
+          "y": 178,
+          "width": 210,
+          "height": 104,
+          "role": "process",
+          "title": "Applications",
+          "lines": [
+            "client, server, mapper",
+            "baker, tests, platforms"
+          ]
+        },
+        {
+          "id": "tooling",
+          "x": 64,
+          "y": 318,
+          "width": 210,
+          "height": 104,
+          "role": "process",
+          "title": "Build and tools",
+          "lines": [
+            "CMake stages, codegen",
+            "bakers and validators"
+          ]
+        },
+        {
+          "id": "hooks",
+          "x": 294,
+          "y": 318,
+          "width": 210,
+          "height": 104,
+          "role": "artifact",
+          "title": "Stable boundaries",
+          "lines": [
+            "settings, script API",
+            "native extension hooks"
+          ]
+        },
+        {
+          "id": "config",
+          "x": 616,
+          "y": 178,
+          "width": 210,
+          "height": 104,
+          "role": "project",
+          "title": "Project contract",
+          "lines": [
+            ".fomain, CMake options",
+            "resource pack topology"
+          ]
+        },
+        {
+          "id": "gameplay",
+          "x": 846,
+          "y": 318,
+          "width": 210,
+          "height": 104,
+          "role": "project",
+          "title": "Game implementation",
+          "lines": [
+            "scripts and content",
+            "project-native bridges"
+          ]
+        },
+        {
+          "id": "quality",
+          "x": 616,
+          "y": 318,
+          "width": 210,
+          "height": 104,
+          "role": "validation",
+          "title": "Product evidence",
+          "lines": [
+            "gameplay tests, scenes",
+            "platform acceptance"
+          ]
+        },
+        {
+          "id": "release",
+          "x": 846,
+          "y": 178,
+          "width": 210,
+          "height": 104,
+          "role": "delivery",
+          "title": "Product delivery",
+          "lines": [
+            "assets, packaging",
+            "support and releases"
+          ]
+        },
+        {
+          "id": "contract",
+          "x": 382,
+          "y": 470,
+          "width": 356,
+          "height": 72,
+          "role": "neutral",
+          "title": "Configured and generated integration contract",
+          "lines": [
+            "exact Engine revision + reviewed project inputs"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "from": "runtime",
+          "to": "config"
+        },
+        {
+          "from": "applications",
+          "to": "release"
+        },
+        {
+          "from": "tooling",
+          "to": "quality"
+        },
+        {
+          "from": "hooks",
+          "to": "gameplay"
+        }
+      ]
+    },
+    {
+      "id": "generated-content-pipeline",
+      "title": "Generated content dependency order",
+      "description": "Authoritative inputs flow through configure, code generation, compilation, baking, validation, and documentation delivery.",
+      "owning_document": "Docs/en/how-to/build/generated-content.md",
+      "alt": "Pipeline diagram with four columns. Authoritative engine and game inputs feed CMake configuration and code generation, then native and script compilation plus resource baking, then runtime and contract validation, and finally generated documentation, search, AI delivery, and the reviewed release diff.",
+      "caption": "Regenerate from left to right. Delivery artifacts consume earlier generated models and hashes, so a green final gate is meaningful only when configure, compile, bake, and focused validation have already succeeded.",
+      "width": 1120,
+      "height": 650,
+      "source_paths": [
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
+        "BuildTools/docs_reference.py",
+        "BuildTools/docs_site.py",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_validate.py"
+      ],
+      "bands": [
+        {
+          "x": 24,
+          "y": 112,
+          "width": 250,
+          "height": 464,
+          "title": "1. Authoritative inputs",
+          "role": "project"
+        },
+        {
+          "x": 298,
+          "y": 112,
+          "width": 250,
+          "height": 464,
+          "title": "2. Generate and build",
+          "role": "process"
+        },
+        {
+          "x": 572,
+          "y": 112,
+          "width": 250,
+          "height": 464,
+          "title": "3. Prove behavior",
+          "role": "validation"
+        },
+        {
+          "x": 846,
+          "y": 112,
+          "width": 250,
+          "height": 464,
+          "title": "4. Deliver contracts",
+          "role": "delivery"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "engine-input",
+          "x": 48,
+          "y": 180,
+          "width": 202,
+          "height": 100,
+          "role": "engine",
+          "title": "Engine inputs",
+          "lines": [
+            "source, interface models",
+            "generators and tests"
+          ]
+        },
+        {
+          "id": "game-input",
+          "x": 48,
+          "y": 326,
+          "width": 202,
+          "height": 100,
+          "role": "project",
+          "title": "Game inputs",
+          "lines": [
+            ".fomain, scripts, content",
+            "assets and extensions"
+          ]
+        },
+        {
+          "id": "configure",
+          "x": 322,
+          "y": 180,
+          "width": 202,
+          "height": 100,
+          "role": "process",
+          "title": "Configure and codegen",
+          "lines": [
+            "CMake project graph",
+            "generated native API"
+          ]
+        },
+        {
+          "id": "compile-bake",
+          "x": 322,
+          "y": 326,
+          "width": 202,
+          "height": 100,
+          "role": "artifact",
+          "title": "Compile and bake",
+          "lines": [
+            "native + AngelScript",
+            "resources + metadata"
+          ]
+        },
+        {
+          "id": "focused",
+          "x": 596,
+          "y": 180,
+          "width": 202,
+          "height": 100,
+          "role": "validation",
+          "title": "Focused validation",
+          "lines": [
+            "unit, parser, gameplay",
+            "platform smoke routes"
+          ]
+        },
+        {
+          "id": "contracts",
+          "x": 596,
+          "y": 326,
+          "width": 202,
+          "height": 100,
+          "role": "validation",
+          "title": "Contract review",
+          "lines": [
+            "generated model diff",
+            "migration dispositions"
+          ]
+        },
+        {
+          "id": "docs",
+          "x": 870,
+          "y": 180,
+          "width": 202,
+          "height": 100,
+          "role": "delivery",
+          "title": "Documentation",
+          "lines": [
+            "reference, diagrams",
+            "routes and search"
+          ]
+        },
+        {
+          "id": "release-artifact",
+          "x": 870,
+          "y": 326,
+          "width": 202,
+          "height": 100,
+          "role": "artifact",
+          "title": "Reviewed delivery",
+          "lines": [
+            "site + AI artifacts",
+            "clean reproducible diff"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "from": "engine-input",
+          "to": "configure"
+        },
+        {
+          "from": "game-input",
+          "to": "configure"
+        },
+        {
+          "from": "configure",
+          "to": "compile-bake"
+        },
+        {
+          "from": "compile-bake",
+          "to": "focused"
+        },
+        {
+          "from": "focused",
+          "to": "contracts"
+        },
+        {
+          "from": "contracts",
+          "to": "docs"
+        },
+        {
+          "from": "docs",
+          "to": "release-artifact"
+        }
+      ]
+    },
+    {
+      "id": "documentation-delivery",
+      "title": "Documentation delivery for people and AI",
+      "description": "One canonical Markdown corpus is projected into GitHub Pages, machine-readable AI routes, and review evidence.",
+      "owning_document": "Docs/en/contributing/documentation/site-publication.md",
+      "alt": "Documentation delivery diagram. Canonical Markdown and the documentation manifest feed deterministic generators. Generated navigation, search, diagrams, route catalogs, AI bundles, and evaluation reports are checked in. Jekyll builds the human site while AI clients consume llms.txt, llms-full.txt, docs-manifest.json, and generated JSON. Static, browser, accessibility, hash, and freshness gates validate the same revision.",
+      "caption": "Human and AI routes are projections of one versioned Markdown corpus. GitHub Pages, machine-readable endpoints, and CI evidence all use the same manifest, generated artifacts, source revision, and content hashes.",
+      "width": 1120,
+      "height": 650,
+      "source_paths": [
+        "Docs/documentation-manifest.json",
+        "BuildTools/docs_site.py",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site_artifact.py",
+        "BuildTools/docs-browser/audit.mjs",
+        "_layouts/default.html",
+        ".github/workflows/validate.yml"
+      ],
+      "bands": [
+        {
+          "x": 28,
+          "y": 112,
+          "width": 244,
+          "height": 464,
+          "title": "Canonical sources",
+          "role": "project"
+        },
+        {
+          "x": 294,
+          "y": 112,
+          "width": 244,
+          "height": 464,
+          "title": "Deterministic projection",
+          "role": "process"
+        },
+        {
+          "x": 560,
+          "y": 112,
+          "width": 244,
+          "height": 464,
+          "title": "Published consumers",
+          "role": "delivery"
+        },
+        {
+          "x": 826,
+          "y": 112,
+          "width": 266,
+          "height": 464,
+          "title": "One revision, proved",
+          "role": "validation"
+        }
+      ],
+      "nodes": [
+        {
+          "id": "markdown",
+          "x": 50,
+          "y": 180,
+          "width": 200,
+          "height": 100,
+          "role": "project",
+          "title": "Versioned Markdown",
+          "lines": [
+            "owning technical docs",
+            "links and examples"
+          ]
+        },
+        {
+          "id": "manifest",
+          "x": 50,
+          "y": 326,
+          "width": 200,
+          "height": 100,
+          "role": "neutral",
+          "title": "Source manifest",
+          "lines": [
+            "IDs, owners, routes",
+            "locale and policy"
+          ]
+        },
+        {
+          "id": "generators",
+          "x": 316,
+          "y": 180,
+          "width": 200,
+          "height": 100,
+          "role": "process",
+          "title": "Site generators",
+          "lines": [
+            "navigation, search",
+            "routes and diagrams"
+          ]
+        },
+        {
+          "id": "ai-generator",
+          "x": 316,
+          "y": 326,
+          "width": 200,
+          "height": 100,
+          "role": "artifact",
+          "title": "AI generators",
+          "lines": [
+            "bundles, public index",
+            "evaluation evidence"
+          ]
+        },
+        {
+          "id": "human",
+          "x": 582,
+          "y": 180,
+          "width": 200,
+          "height": 100,
+          "role": "delivery",
+          "title": "Human site",
+          "lines": [
+            "GitHub Pages + Jekyll",
+            "fonline.ru"
+          ]
+        },
+        {
+          "id": "ai",
+          "x": 582,
+          "y": 326,
+          "width": 200,
+          "height": 100,
+          "role": "engine",
+          "title": "AI routes",
+          "lines": [
+            "llms + manifest",
+            "generated JSON models"
+          ]
+        },
+        {
+          "id": "static-gate",
+          "x": 850,
+          "y": 166,
+          "width": 218,
+          "height": 92,
+          "role": "validation",
+          "title": "Source and artifact",
+          "lines": [
+            "freshness, hashes, links"
+          ]
+        },
+        {
+          "id": "browser-gate",
+          "x": 850,
+          "y": 286,
+          "width": 218,
+          "height": 92,
+          "role": "validation",
+          "title": "Rendered browser",
+          "lines": [
+            "desktop, mobile, WCAG"
+          ]
+        },
+        {
+          "id": "review",
+          "x": 850,
+          "y": 406,
+          "width": 218,
+          "height": 92,
+          "role": "artifact",
+          "title": "Review evidence",
+          "lines": [
+            "_site, reports, screenshots"
+          ]
+        }
+      ],
+      "edges": [
+        {
+          "from": "markdown",
+          "to": "generators"
+        },
+        {
+          "from": "manifest",
+          "to": "generators"
+        },
+        {
+          "from": "manifest",
+          "to": "ai-generator"
+        },
+        {
+          "from": "generators",
+          "to": "human"
+        },
+        {
+          "from": "ai-generator",
+          "to": "ai"
+        },
+        {
+          "from": "human",
+          "to": "static-gate"
+        },
+        {
+          "from": "ai",
+          "to": "static-gate"
+        },
+        {
+          "from": "static-gate",
+          "to": "browser-gate"
+        },
+        {
+          "from": "browser-gate",
+          "to": "review"
+        }
+      ]
+    }
+  ]
+}

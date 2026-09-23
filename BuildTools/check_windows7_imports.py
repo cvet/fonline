@@ -178,10 +178,14 @@ def check_binary(binary: Path) -> list[ImportedSymbol]:
     return sorted((item for item in read_imports(binary) if is_unavailable_on_windows7(item)), key=lambda item: (item.library, item.name))
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
-    parser.add_argument("binaries", nargs="+", type=Path)
-    args = parser.parse_args()
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
+    parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = create_parser().parse_args(argv)
 
     failed = False
     for binary in args.binaries:

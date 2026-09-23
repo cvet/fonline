@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "timeout_seconds": 120,
+  "http_port": 7000,
+  "websocket_port": 4021,
+  "browser_viewport": {
+    "width": 1280,
+    "height": 1067
+  },
+  "capture": {
+    "width": 1280,
+    "height": 800
+  },
+  "required_client_markers": [
+    "showcase_client_connected",
+    "showcase_client_world_ready",
+    "showcase_client_resources_loaded"
+  ],
+  "required_server_markers": [
+    "showcase_server_started",
+    "showcase_server_world_ready"
+  ],
+  "required_responses": [
+    "index.html",
+    "Resources.js",
+    "Resources.data",
+    "FOCS_Client.js",
+    "FOCS_Client.wasm"
+  ],
+  "forbidden_markers": [
+    "ScriptException",
+    "FATAL ERROR!",
+    "Module initialization failed",
+    "WebGL context lost"
+  ]
+}

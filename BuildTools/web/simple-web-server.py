@@ -26,7 +26,7 @@ class NoCacheHttpRequestHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def create_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description='Simple HTTP server')
+    parser = argparse.ArgumentParser(prog='simple-web-server.py', description='Simple HTTP server')
     parser.add_argument('--port', dest='port', type=int, default=7000, help='web server port')
     parser.add_argument('--fork', dest='fork', action='store_true', help='fork process')
     return parser
