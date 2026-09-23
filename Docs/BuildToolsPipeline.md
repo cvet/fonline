@@ -260,6 +260,30 @@ existing `IsHardwareAccelerated` one, looks through nested classes such as `Sse2
 anchor. On AMD64 and ARM64 the fallback is only reached with SIMD optimization disabled, where `false` is the
 right answer as well.
 
+Windows runtimes never let the stop-the-world skip a thread that is still running. The engine forces
+preemptive suspension (`MONO_THREADS_SUSPEND=preemptive`), and upstream
+`mono_threads_suspend_begin_async_suspend` answers a failed `SuspendThread` or `GetThreadContext` by
+skipping the thread: it is left out of the collection, its stack is not scanned, and the thread keeps running
+while the collector moves and frees objects it still holds. On one day a skipped running thread corrupted the
+managed heap of nearly every parallel gameplay run, surfacing later as unrelated asserts and access violations,
+and the refusal has not been observed since. The patch in `src/mono/mono/utils/mono-threads-windows.c` retries
+both calls while the thread's handle is unsignaled, skips a thread only once it has exited (an exiting thread
+runs no managed code), and aborts after five seconds of refusals from a live thread, so a refusal becomes a
+report instead of a corrupt heap. A live thread that is stopped only after some refusals is reported too,
+because upstream would have skipped it. Both reports are one stderr line starting with `*`, naming the thread
+id, its description and the Windows error:
+
+```text
+* Stopped running thread 16024 ('ServerPool-3') only after 37 ms of refusals to suspend it (Windows error 5)
+* Cannot suspend running thread 16024 ('ServerPool-3') after 5000 ms of refusals (Windows error 5); skipping a running thread would corrupt the managed heap
+```
+
+Threads already stopped may hold the heap, a stdio lock or the loader lock, so the report allocates nothing,
+formats by hand, writes with `WriteFile`, and reads the thread's name with `NtQueryInformationThread`, which is
+resolved in `mono_threads_suspend_init`. A thread inside its kernel exit refuses too until it is scheduled to
+finish, which took at most 81 ms across about a million such refusals provoked under load; five seconds covers
+the four after which Windows boosts a starved ready thread. Each anchor must appear exactly once.
+
 Before every runtime build the tree's repo-local tasks mark (`artifacts/obj/tasks/<Config>/build-semaphore.txt`)
 is discarded. dotnet builds those MSBuild tasks once per tree behind that mark, but which task projects the set holds
 depends on the target: the Android ones (`AndroidAppBuilder` and friends) join it only for mobile targets. A tree whose
@@ -270,8 +294,9 @@ Browser, Android, Apple, Linux, and Windows source-patch contracts have separate
 `READY` marker suffixes, synchronized between `buildtools.py` and the CMake runtime
 target. Existing browser caches ending in `_wasmglue` rebuild and republish once
 with the ASM identification patch; Windows caches without `_embedded_debug_info`
-rebuild and republish once with embedded debug information, and Windows and Android caches
-without `_isa_fallback` once with the `IsSupported` fallback. All keep the cloned source.
+rebuild and republish once with embedded debug information, Windows and Android caches
+without `_isa_fallback` once with the `IsSupported` fallback, and Windows caches without
+`_suspend_retry` once with the suspension retry. All keep the cloned source.
 A `FO_MANAGED_RUNTIME_PREBUILT` tree is adopted as given, so it has to be rebuilt
 on Windows to benefit. Change the affected platform's suffix when its patch contract changes,
 so a ready cache cannot bypass new source edits.

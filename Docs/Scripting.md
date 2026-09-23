@@ -362,12 +362,15 @@ lifetime of the thread; every later entry only enters GC-unsafe mode around the 
 and parks GC-safe again on the way out, so a worker parked on an engine lock cannot block a
 later stop-the-world collection. Reentrant calls use the cached or inherited attachment and
 leave its ownership unchanged. Attaching per entry instead is what this did until a parallel
-gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread:
-each pair creates a finalizable managed `Thread` object and allocates a handle stack, and it
-returns the thread to the registration window where a stop-the-world may fail to suspend it.
-SGen marks such a thread skipped, and its assertion in `sgen_client_scan_thread_data` rejects
-a skipped thread that still owns a non-empty handle stack, because the collector may then move
-an object and leave that handle stale — which surfaced as heap corruption elsewhere entirely.
+gameplay run measured 717771 attach/detach pairs, 127697 of them on one server pool thread,
+each creating a finalizable managed `Thread` object. Detaching never took a thread out of the
+collector's reach, though: under the preemptive suspension the engine forces,
+`mono_thread_detach` drops only the managed `Thread`, and the native registration stays until
+the OS thread exits, so every stop-the-world suspends an attached-once worker exactly as it did
+a per-entry one. A stop-the-world that cannot suspend a live thread is a runtime concern: the
+Windows runtime is patched to retry and then abort rather than skip it (see
+[BuildToolsPipeline.md](BuildToolsPipeline.md)), because a skipped thread's handles go stale
+when the collector moves what they point at.
 The worker that first initializes the Mono VM is the one exception: `mono_jit_init_version`
 implicitly attaches its native caller, so the initialization scope explicitly adopts and
 releases that attachment after loading the first backend.
