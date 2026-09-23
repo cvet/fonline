@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"d6f76b33100f588167e37f19aebf9fb14d973a9b6589aa139ef4d9512b3e70fe"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"964f0a49364c9c03483994b4e2fe584853fed9ffc0f39f43f60a6cd9474e5111"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -212,7 +212,7 @@ movement/pathfinding, text packs, timers и two-dimensional grids. Основн�
 
 ### Networking и server/client integration
 
-Начните с `Test_ClientDataValidation`, `Test_NetBuffer`, `Test_NetworkClient`,
+Начните с `Test_ClientDataValidation`, `Test_NetBuffer`, `Test_NoiseProtocol`, `Test_SecureChannel`, `Test_NetworkClient`,
 `Test_NetworkServer`, `Test_NetworkUdp`, `Test_ClientServerIntegration`,
 `Test_EntitySync`, server engine/map/item suites, database, fog of war и
 location/entity management.

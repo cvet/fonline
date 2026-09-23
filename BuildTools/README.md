@@ -563,6 +563,19 @@ plain on-disk `.pfx` is acceptable. The hook remains provider-neutral. Represent
 
 For Android, signing stays in Gradle (see the Android workflow above); this hook is Windows-only.
 
+## Secure channel keys
+
+The server's static key for the [network channel](../Docs/en/explanation/authority-and-networking/#secure-channel) is issued on the
+host that keeps it:
+
+```bash
+python3 BuildTools/secure_channel_key.py generate /path/to/channel.key
+python3 BuildTools/secure_channel_key.py public /path/to/channel.key
+```
+
+`generate` writes 64 hex digits readable by the owner only, refuses to overwrite an existing file, and prints the public
+key that clients pin; `public` prints it again later. The script needs nothing beyond the Python standard library.
+
 ## Source formatting
 
 `buildtools.py format-source` formats the Engine `Source/` tree, including `.fos`, with clang-format. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. BuildTools then repairs AngelScript nullable and named-argument forms that clang-format parses as C++. The complete contract and embedding-project boundary are in [AngelScript Style and Refactoring](../Docs/en/how-to/scripting/style-and-refactoring.md).

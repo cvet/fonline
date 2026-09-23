@@ -48,7 +48,7 @@
         "The minimal example map, particle fixture, startup profile, renderer, or viewport changes."
       ],
       "source_sha256": {
-        "Source/Common/Settings.inc": "c736383c2451eb862bfad95df89d8e0ae8eceaf1ebebf90b5bc592c24517ca15",
+        "Source/Common/Settings.inc": "da570aaecf1f931b14de17003787a8af5d8e6443e5795deea6aa38cc6ea585f9",
         "Source/Scripting/MapperGlobalScriptMethods.cpp": "cf9ff9916b1bbfc75191ead0319b8bfbaa08b40598d70e2133840416e66745cf",
         "Source/Tools/Mapper.cpp": "209d72883a423356ab80462139fd99d0f95e0749c5c2110b79f00d45d09df41f",
         "Source/Tools/Mapper.h": "21ab332b7e4599da6609876236d845524ad76221db5d26fd3e9d5a39e6e495ca",
@@ -105,7 +105,7 @@
       "source_sha256": {
         "Source/Common/SpriteResource.cpp": "808ffb535a5c32d87018db147ef1f3edef21e873f85fa7d57aaa29300488e2f1",
         "Source/Common/SpriteResource.h": "1bc6aac200eb6ce7917e7603a0f10fce85f11d9cb1173dc93ee190a8ffadb745",
-        "Source/Common/Settings.inc": "c736383c2451eb862bfad95df89d8e0ae8eceaf1ebebf90b5bc592c24517ca15",
+        "Source/Common/Settings.inc": "da570aaecf1f931b14de17003787a8af5d8e6443e5795deea6aa38cc6ea585f9",
         "Source/Scripting/MapperGlobalScriptMethods.cpp": "cf9ff9916b1bbfc75191ead0319b8bfbaa08b40598d70e2133840416e66745cf",
         "Source/Tools/Mapper.cpp": "209d72883a423356ab80462139fd99d0f95e0749c5c2110b79f00d45d09df41f",
         "Source/Tools/ParticleEditor.cpp": "ff4ae06e56cfd1eb0a1a394758387781cef662488361aacdeb4e7e4b98fa389f",

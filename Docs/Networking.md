@@ -17,6 +17,10 @@ Continue with [Ownership model](en/explanation/authority-and-networking/index.md
 
 Continue with [Source paths inspected](en/explanation/authority-and-networking/index.md#source-paths-inspected).
 
+## Secure channel
+
+Continue with [Secure channel](en/explanation/authority-and-networking/index.md#secure-channel).
+
 ## Message buffers
 
 Continue with [Message buffers](en/explanation/authority-and-networking/index.md#message-buffers).

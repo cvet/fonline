@@ -149,11 +149,12 @@ void ServerConnection::InBufAccessor::Unlock() noexcept
     }
 }
 
-ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection) :
+ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection, const SecureChannelIdentity& channel_identity) :
     _settings {settings},
     _netConnection {std::move(net_connection)},
     _inBuf(_settings->Network.NetBufferSize),
-    _outBuf(_settings->Network.NetBufferSize)
+    _outBuf(_settings->Network.NetBufferSize),
+    _channel {channel_identity}
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -218,11 +219,11 @@ auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
     return _gracefulDisconnected;
 }
 
-auto ServerConnection::IsInputOverflowed() const noexcept -> bool
+auto ServerConnection::IsInputRejected() const noexcept -> bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    return _inputOverflowed.load(std::memory_order_relaxed);
+    return _inputRejected.load(std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
@@ -393,24 +394,26 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     FO_STACK_TRACE_ENTRY();
 
     scoped_lock locker {_outBufLocker};
+    scoped_lock channel_locker {_channelLocker};
 
-    if (_outBuf.IsEmpty()) {
-        return {};
-    }
-
-    auto raw_buf = _outBuf.GetData();
     vector<uint8_t> send_buf;
+    _channel.TakeHandshakeOutput(send_buf);
 
-    if (!_settings->Network.DisableZlibCompression) {
-        _compressor.compress(raw_buf, send_buf);
+    // Messages written before the client's channel stands wait in the buffer rather than leave in the clear
+    if (_channel.IsEstablished() && !_outBuf.IsEmpty()) {
+        auto raw_buf = _outBuf.GetData();
+
+        if (!_settings->Network.DisableZlibCompression) {
+            _compressor.compress(raw_buf, _compressedBuf);
+            _channel.Seal(_compressedBuf, send_buf);
+        }
+        else {
+            _channel.Seal(raw_buf, send_buf);
+        }
+
+        _outBuf.DiscardWriteBuf(raw_buf.size());
     }
-    else {
-        send_buf.assign(raw_buf.begin(), raw_buf.end());
-    }
 
-    _outBuf.DiscardWriteBuf(raw_buf.size());
-
-    FO_VERIFY_AND_THROW(!send_buf.empty(), "Server connection encoded an empty outgoing packet from a non-empty output buffer", raw_buf.size(), _settings->Network.DisableZlibCompression);
     return send_buf;
 }
 
@@ -419,28 +422,60 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
     FO_STACK_TRACE_ENTRY();
 
     DataArrivedCallback callback;
+    bool has_handshake_output = false;
 
     {
         scoped_lock locker {_inBufLocker};
 
-        if (!buf.empty()) {
-            // Runs on the network thread, inside the same transport receive lock that Disconnect() takes,
-            // so the overflow is only latched here and the owning worker job performs the disconnect
+        // Runs on the network thread, inside the same transport receive lock that Disconnect() takes,
+        // so a rejection is only latched here and the owning worker job performs the disconnect
+        if (!buf.empty() && !IsInputRejected()) {
             try {
-                _inBuf.AddData(buf);
+                {
+                    scoped_lock channel_locker {_channelLocker};
+
+                    _channelPlaintext.clear();
+                    _channel.Receive(buf, _channelPlaintext);
+                    has_handshake_output = _channel.HasHandshakeOutput();
+                }
+
+                _inBuf.AddData(_channelPlaintext);
             }
             catch (const NetBufferException& ex) {
-                if (!_inputOverflowed.exchange(true, std::memory_order_relaxed)) {
-                    exceptions::report_and_continue(ex);
-                }
+                RejectInput(ex, true);
+            }
+            catch (const NoiseException& ex) {
+                RejectInput(ex, false);
             }
         }
 
         callback = _dataArrivedCallback;
     }
 
+    // The answer to the client's offer leaves at once instead of waiting for the next outgoing message
+    if (has_handshake_output) {
+        StartAsyncSend();
+    }
+
     if (callback) {
         callback();
+    }
+}
+
+void ServerConnection::RejectInput(const std::exception& ex, bool report) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (_inputRejected.exchange(true, std::memory_order_relaxed)) {
+        return;
+    }
+
+    // A failed channel is what a stranger or a stale client produces, so it is logged rather than reported
+    if (report) {
+        exceptions::report_and_continue(ex);
+    }
+    else {
+        safe_call([&] { logging::write(logging::type::warning, "Secure channel rejected input from {}:{}: {}", _netConnection->GetHost(), _netConnection->GetPort(), ex.what()); });
     }
 }
 

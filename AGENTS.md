@@ -26,6 +26,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [Source Tree Guide](Docs/en/contributing/source-tree/) - source-tree navigation.
 - [Essentials](Docs/en/reference/native/essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, utilities, and `vector` / `small_vector` selection rules.
 - [Configuration and Data Sources](Docs/en/reference/settings/configuration-and-data-sources.md) - config parsing, settings, data sources, file lookup, and caches.
+- [Networking and authority](Docs/en/explanation/authority-and-networking/) - transports, Noise NK secure channel, key pins and rotation, remote calls, and server-authoritative boundaries.
 - [Docs/en/how-to/build/project-configuration.md](Docs/en/how-to/build/project-configuration.md) - project `.fomain`, resource packs, sub-configs, precedence, and validation.
 - [Docs/en/explanation/content-pipeline/baking.md](Docs/en/explanation/content-pipeline/baking.md) - resource-pack execution, built-in baker ordering, incremental/full rebuilds, reports, payload ownership, and project composition practices.
 - [Docs/en/how-to/release/security-and-secrets.md](Docs/en/how-to/release/security-and-secrets.md) - config substitution timing, command-line masking limits, package signing handoff, CI trust boundaries, rotation, revocation, and incident routing.

@@ -91,6 +91,10 @@ not bypass the contract-change gate.
 - `Source/Essentials/ExceptionHandling.cpp`
 - `Source/Essentials/RandomGenerator.h`
 - `Source/Essentials/RandomGenerator.cpp`
+- `Source/Essentials/Cryptography.h`
+- `Source/Essentials/Cryptography.cpp`
+- `ThirdParty/Monocypher/src/monocypher.h`
+- `ThirdParty/Monocypher/src/monocypher.c`
 - `Source/Essentials/Threading.h`
 - `Source/Essentials/Threading.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -128,7 +132,7 @@ not bypass the contract-change gate.
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `Cryptography` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
@@ -232,7 +236,7 @@ The bson vtable is worth reading before copying its shape elsewhere: it supplies
 
 SQLite's hook needs an `xSize` callback and hands the free/realloc/size functions only a pointer, so each block carries an 8-byte size header. Its configuration must also be installed *before* `sqlite3_initialize`, which is why the library is built with `SQLITE_OMIT_AUTOINIT` and every caller goes through one exported initializer.
 
-Not hooked, with reasons: **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
+Not hooked, with reasons: **Monocypher** allocates nothing; its callers own every buffer. **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
 
 When vendoring or updating a library, check whether it has an allocator hook and either wire it or record why not — and read the hook's *implementation*, not just its declaration. Two of the entries above were initially misjudged from the call site or the symbol name alone.
 
@@ -285,6 +289,10 @@ through SplitMix64. Use `next()` for raw bits, `next_below(bound)` for
 therefore deterministic across supported standard libraries. Do not use
 `std::mt19937` or `std::uniform_int_distribution` for engine behavior.
 
+#### Cryptography
+
+`Cryptography.*` owns the `crypto::` primitives used by the [secure network channel](../../explanation/authority-and-networking/#secure-channel): X25519, BLAKE2b-512 and HMAC-BLAKE2b, and RFC 8439 ChaCha20-Poly1305. The implementation uses the same vendored Monocypher on native, Web and Android targets. `crypto::fill_random` obtains key material from the operating system through `platform::fill_system_random` (`BCryptGenRandom` on Windows, `getentropy` on Linux/Web, `arc4random_buf` on Apple and Android); it throws if the platform cannot provide it. Never use `random_generator` to create a channel key. AEAD sealing/opening creates a fresh Monocypher context per message; the library's streaming context rekeys after its first message. `crypto::is_equal` compares in constant time and `crypto::wipe` clears secret buffers; owners of plain key arrays wipe them during teardown.
+
 ### Serialization, values, strings, and hashes
 
 `StringObject.*` owns the engine `basic_string` implementation. Its API follows
@@ -328,6 +336,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`

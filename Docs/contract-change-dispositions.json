@@ -7164,6 +7164,30 @@
       "release_note": "Document client gag-aware path search in the maps-and-movement guide and generated script API reference for this Engine revision.",
       "compatibility": "The script surface change is additive and does not change save or network schemas, but generated bindings, assemblies, baked metadata, and Engine binaries must come from one coordinated revision.",
       "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.d0b5bd460620474e",
+      "baseline_contract_sha256": "71584498d8c8a2db12e727c054b1edc1bb684f2124146698181e43a702259ab7",
+      "current_contract_sha256": "5ca3094f55ae18031b6d448f9d77bc437437815f27568d9616d216768b6a3fd2",
+      "classification": "breaking",
+      "rationale": "The native-codegen inventory adds the server secret and client public-pin settings for the mandatory Noise NK channel. Existing symbol IDs remain unchanged; the scope pin now covers 2534 symbols.",
+      "migration": "Provision a server static key outside the repository, ship its public pin to each client profile, regenerate Engine bindings and fully rebake project metadata and resources before deployment. A pre-channel client requires a full replacement package because it cannot reach the updater.",
+      "release_note": "Document mandatory Noise NK transport, key provisioning and rotation, removed XOR fields, updater generation 3, and the full-client migration in the networking, security, updater and release notes.",
+      "compatibility": "Engine binaries, generated API, baked resources and client/server configuration must move together. There is no plaintext fallback; a missing or mismatched pin prevents connection. This channel does not replace package signing.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.c6102908bbccca48",
+      "baseline_contract_sha256": "71584498d8c8a2db12e727c054b1edc1bb684f2124146698181e43a702259ab7",
+      "current_contract_sha256": "5ca3094f55ae18031b6d448f9d77bc437437815f27568d9616d216768b6a3fd2",
+      "classification": "breaking",
+      "rationale": "The central compatibility marker moves from 61 to 62 for the mandatory secure channel and removal of the XOR handshake fields; updater generation moves independently from 2 to 3.",
+      "migration": "Rebuild and rebake client/server from one revision, provision matching secure-channel keys and pins, and distribute a current full client package to clients that predate the channel.",
+      "release_note": "Record compatibility marker 62 and updater generation 3 with the no-self-update boundary for older clients.",
+      "compatibility": "Older clients cannot authenticate a channel or interpret the new handshake and cannot mix with current servers. Baked metadata and server/client binaries must be deployed atomically.",
+      "owner": "networking"
     }
   ]
 }

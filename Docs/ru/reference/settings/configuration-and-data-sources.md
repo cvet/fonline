@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"af04a0f0a2e6f46a2274223642c39a72dbd2ccb4a120ff070ca6628106e86ee7"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"e46e0b1bdfab79034c2a3cbc245d814e36ff116964036e92ee4ec1c67d1277d1"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -80,6 +80,8 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 Парсер хранит собственные строки и возвращает `string_view` из разобранных sections. Потребитель не должен считать, что эти views живут дольше экземпляра `ConfigFile`.
 
 ## Runtime settings
+
+Защищённый сетевой канал добавляет `ServerNetwork.ChannelSecretKey` (обязательный статический секрет сервера) и `ClientNetwork.ChannelServerKeys` (публичные ключи, закреплённые клиентом). Это настройки запуска, а не изменяемое состояние скриптов. Серверная настройка содержит сам ключ из 64 шестнадцатеричных знаков, не путь: `$TARGET_FILE{...}` читает защищённый файл на целевом хосте без встраивания его содержимого при bake. Пустой или неверный серверный ключ блокирует запуск даже interthread-only сервера; отсутствие допустимого pin блокирует подключение клиента. См. [Сеть](../../explanation/authority-and-networking/#защищённый-канал) и [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 
 `Source/Common/Settings.inc` является центральным декларативным файлом для групп и отдельных settings. Каждый built-in setting адресуется полным именем `Group.Name`, меняется только при построении startup snapshot в `GlobalSettings` и затем доступен как `const`. Live state принадлежит своему runtime owner, а не записывается обратно в settings. `Settings.h` предоставляет:
 

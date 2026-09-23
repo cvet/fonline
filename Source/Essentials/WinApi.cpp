@@ -41,6 +41,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 
+#include <bcrypt.h>
 #include <fcntl.h>
 #include <io.h>
 #include <psapi.h>
@@ -282,6 +283,25 @@ auto winapi::get_system_cpu_times() noexcept -> optional<winapi::cpu_core_times>
         .idle_time = file_time_to_ticks(idle_time),
         .total_time = file_time_to_ticks(kernel_time) + file_time_to_ticks(user_time),
     };
+}
+
+auto winapi::fill_system_random(span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    size_t offset = 0;
+
+    while (offset < buf.size()) {
+        auto request_size = static_cast<ULONG>(std::min<size_t>(buf.size() - offset, std::numeric_limits<ULONG>::max()));
+
+        if (!BCRYPT_SUCCESS(::BCryptGenRandom(nullptr, buf.data() + offset, request_size, BCRYPT_USE_SYSTEM_PREFERRED_RNG))) {
+            return false;
+        }
+
+        offset += request_size;
+    }
+
+    return true;
 }
 
 auto winapi::load_library(const string& path) noexcept -> nptr<void>

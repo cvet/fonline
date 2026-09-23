@@ -290,11 +290,10 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 ## Updater protocol
 
-Versioned by `FO_UPDATER_VERSION = 2` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
-the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
-generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
-changes with every build.
+Versioned by `FO_UPDATER_VERSION = 3` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
+the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
+requires the secure channel before any updater message; a pre-channel client cannot self-update.
+Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake
 
@@ -304,14 +303,12 @@ changes with every build.
 | client → server | `MetadataVersion` | `string` | baked metadata version; empty while the updater has no resources of its own |
 | client → server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client → server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
-| client → server | `in_encrypt_key` | `uint32` | session keys |
 | server → client | `compatibility_outdated` | `bool` | gameplay version mismatch |
 | server → client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch — protocol is unusable |
 | server → client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server → client | `MetadataVersion` | `string` | metadata version currently used by the server |
-| server → client | `out_encrypt_key` | `uint32` | session keys |
 
-`updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
+The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). The old XOR session-key fields are absent. `FO_UPDATER_VERSION = 3` marks that wire break: a pre-channel client cannot reach the updater at all and needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 
 `metadata_outdated == true` means the binaries match but the baked data does not. The server and client must run metadata from one bake because entity payloads address properties by that metadata's registration order. A mismatch is a build or deployment defect, not a supported compatibility mode; see [Metadata version](../../reference/metadata/#metadata-version).
 

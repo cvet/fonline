@@ -244,6 +244,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
@@ -252,6 +253,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 
 ### Scripting and script-visible APIs
 

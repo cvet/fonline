@@ -125,6 +125,7 @@ SETTING(int32_t, ServerNetwork, ListenRetryTime, 30000); // Time in milliseconds
 SETTING(int32_t, ServerNetwork, ListenRetryDelay, 500); // Delay in milliseconds between listener bind attempts
 SETTING(string, ServerNetwork, WssPrivateKey, ""); // WebSocket Secure private key
 SETTING(string, ServerNetwork, WssCertificate, ""); // WebSocket Secure certificate
+SETTING(string, ServerNetwork, ChannelSecretKey, ""); // Secure channel static X25519 secret key, 64 hex digits; every server needs it, in-process connections included
 SETTING_GROUP_END(ServerNetwork);
 
 ///@ ExportSettings Client
@@ -139,6 +140,7 @@ SETTING(int32_t, ClientNetwork, ProxyPort, 8080); // Proxy port number
 SETTING(string, ClientNetwork, ProxyUser, ""); // Proxy username
 SETTING(string, ClientNetwork, ProxyPass, ""); // Proxy password
 SETTING(bool, ClientNetwork, DebugNet, false); // If true, network debugging is enabled
+SETTING(vector<string>, ClientNetwork, ChannelServerKeys); // Pinned secure channel server public keys, 64 hex digits each; all are offered at once, so the next key can be pinned ahead of a rotation
 SETTING_GROUP_END(ClientNetwork);
 
 ///@ ExportSettings Client

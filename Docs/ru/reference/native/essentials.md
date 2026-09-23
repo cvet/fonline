@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"cc9de3520878f0f3695ae1890558f5e44094190e6b49e87d7be2e78dee8d1643"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"fd2ddae3725ca4f50c9c0a15a3592b725aaebef2a9fa9eb7d5eb927765cfe261"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -91,6 +91,10 @@ test Essentials не обходит contract-change gate.
 - `Source/Essentials/ExceptionHandling.cpp`
 - `Source/Essentials/RandomGenerator.h`
 - `Source/Essentials/RandomGenerator.cpp`
+- `Source/Essentials/Cryptography.h`
+- `Source/Essentials/Cryptography.cpp`
+- `ThirdParty/Monocypher/src/monocypher.h`
+- `ThirdParty/Monocypher/src/monocypher.c`
 - `Source/Essentials/Threading.h`
 - `Source/Essentials/Threading.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -128,7 +132,7 @@ test Essentials не обходит contract-change gate.
 
 `Source/Essentials/Essentials.h` является общим umbrella-заголовком. Его точный include order одновременно задаёт dependency order фундаментального слоя:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `Cryptography` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 Этот список намеренно точный, а не тематический. `Essentials.h` задаёт строгий DAG зависимостей: каждый заголовок Essentials и соответствующий `.cpp` может подключать и вызывать только modules, расположенные в umbrella-блоке выше него. Объявление API в раннем header с определением в более позднем `.cpp` всё равно создаёт обратную link dependency. `BuildTools/tests/test_essentials_layering.py` проверяет прямые includes и ownership внешних namespace-level definitions. Не меняйте порядок ради сокрытия цикла; передайте данные параметром или разделите ответственность на правильной границе слоёв.
 
@@ -239,7 +243,7 @@ space и сорвать уже первое небольшое allocation. Span 
 
 Hook SQLite требует callback `xSize` и передаёт функциям free/realloc/size только указатель, поэтому каждый блок несёт 8-байтовый заголовок размера. Конфигурация должна быть установлена до `sqlite3_initialize`, из-за чего библиотека собирается с `SQLITE_OMIT_AUTOINIT`, а каждый вызывающий код проходит через один экспортированный initializer.
 
-Не подключены по документированным причинам: **LibreSSL** экспортирует `CRYPTO_set_mem_functions`, но его реализация представляет собой неработающий `return 0;`, поскольку custom allocators были удалены upstream. Вызов создавал бы ложное впечатление покрытия. **ogg / vorbis / theora** не предоставляют allocator hook.
+Не подключены по документированным причинам: **Monocypher** вообще не выделяет память — каждым буфером владеет вызывающий код. **LibreSSL** экспортирует `CRYPTO_set_mem_functions`, но его реализация представляет собой неработающий `return 0;`, поскольку custom allocators были удалены upstream. Вызов создавал бы ложное впечатление покрытия. **ogg / vorbis / theora** не предоставляют allocator hook.
 
 При добавлении или обновлении vendored-библиотеки проверьте наличие allocator hook, подключите его либо запишите причину отказа. Читайте реализацию hook, а не только declaration: несколько интеграций в этой таблице первоначально были неверно поняты по call site или имени symbol.
 
@@ -294,6 +298,10 @@ SplitMix64. Используйте `next()` для сырых битов, `next_
 поведения движка не используйте `std::mt19937` и
 `std::uniform_int_distribution`.
 
+#### Криптография
+
+`Cryptography.*` владеет примитивами `crypto::` для [защищённого сетевого канала](../../explanation/authority-and-networking/#защищённый-канал): X25519, BLAKE2b-512 и HMAC-BLAKE2b, ChaCha20-Poly1305 по RFC 8439. Одна и та же vendored Monocypher используется на native, Web и Android. `crypto::fill_random` получает ключевой материал от ОС через `platform::fill_system_random`: `BCryptGenRandom` на Windows, `getentropy` на Linux/Web, `arc4random_buf` на Apple и Android; при отказе ОС выбрасывается исключение. `random_generator` не подходит для создания ключа канала. Для каждого AEAD-сообщения создаётся новый контекст Monocypher: его потоковый контекст меняет ключ после первого сообщения. `crypto::is_equal` сравнивает за постоянное время, `crypto::wipe` стирает секретные буферы; владельцы обычных массивов ключей стирают их при завершении жизни.
+
 ### Сериализация, значения, строки и хеши
 
 `StringObject.*` владеет реализацией engine `basic_string`. API следует
@@ -338,6 +346,7 @@ standard stream копируется через `make_stream_string`,
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`

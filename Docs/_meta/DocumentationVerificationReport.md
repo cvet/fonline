@@ -2,6 +2,25 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-23 - Noise NK secure-channel reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation branch head `7e25452a712d97b67259a3804334bf477a2256dc` with Engine `origin/master` through `6cc051acca2f05177515aa44ee6dcccddfe4fbe3`.
+- Audited the one-commit incoming range from common ancestor `9b47073474d7cb48c5d60a50ac5168fd33200b50`: Noise NK handshake, Monocypher primitives, sealed frames on every transport including interthread, key validation and generation, updater generation 3, network tests, and compatibility migration `0.0.62`.
+- Preserved the six incoming legacy documentation routes as redirects; their new technical content was reconciled into the canonical English and Russian pages. The tests README keeps its canonical index link and lists the new focused cases.
+
+Documentation and contract reconciliation:
+
+- Updated networking, client updater, server runtime, configuration, secrets, native essentials, testing, and BuildTools guides in both locales. The project owns production key issuance and public pin deployment; no production key was generated or embedded here.
+- Regenerated API and human references, source inventory, snippets, translation metadata, site/search/routes, AI evaluation, and AI delivery. The API scope pin now covers 2,534 classified symbols, including both new channel settings. The enforced aggregate contract diff records four changes across 17 domains with both required dispositions supplied.
+- The screenshot manifest's two `Settings.inc` provenance hashes were refreshed because the new server/client settings changed that source file. They do not alter the recorded Mapper or SPARK capture inputs or UI; no PNG was changed or visually re-accepted in this pass.
+
+Validation and limits:
+
+- Documentation validation passed for 406 Markdown entries; snippets passed 306 normative, 156 evidence, and 180 external-parser checks. All 191 translation pairs and 4,794 description translations are current; 394 routes and AI delivery are current. The AI retrieval evaluation passed 28 tasks and 67 checks at 100 percent success, 0.918 MRR.
+- Local native build and secure-channel test results are recorded in the embedding-project sync plan after completion. These checks do not prove Web/Android runtime interoperability or provision the project's production key.
+
 ## 2026-09-20 - managed backend binding and Mono worker attachment reconciliation
 
 Scope and source revisions:

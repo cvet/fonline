@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"7c7fb24100fea8bdb7d3aac4651ab9ea33c5b2fbe2a39a216ad0757ad3bc8373"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"72d98f095f0e34a26c9582beac06cdf29e98cc47ac582ecb106e6adacd37b81e"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -707,6 +707,17 @@ provider к хранению ключей; не предполагайте, чт
 
 Для Android signing остаётся в Gradle, как описано в Android workflow выше;
 этот hook предназначен только для Windows.
+
+## Ключи защищённого канала
+
+Статический ключ сервера для [сетевого канала](../Docs/ru/explanation/authority-and-networking/#защищённый-канал) создаётся на том хосте, который хранит секрет:
+
+```bash
+python3 BuildTools/secure_channel_key.py generate /path/to/channel.key
+python3 BuildTools/secure_channel_key.py public /path/to/channel.key
+```
+
+`generate` записывает 64 шестнадцатеричных знака в новый файл, доступный только владельцу, не перезаписывает существующий файл и выводит публичный ключ для закрепления в клиентах. `public` повторно выводит публичную половину имеющегося секрета. Для работы нужен только стандартный Python.
 
 ## Форматирование исходного кода
 

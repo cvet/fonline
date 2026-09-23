@@ -31,6 +31,8 @@ protected signing stage until a dedicated handoff exists. After exposure, contai
 rotate replacements, rebuild or redeploy affected artifacts, and audit use.
 Rewriting git history is cleanup, not revocation.
 
+The network channel has a separate credential from package-signing and account-authentication keys. `ServerNetwork.ChannelSecretKey` is the server's static X25519 secret (64 hex digits); `ClientNetwork.ChannelServerKeys` is the public-key pin list shipped to clients. Generate a new secret on the destination host with `python BuildTools/secure_channel_key.py generate <protected-file>` and record only the printed public key in client configuration. The command does not overwrite an existing file. Use `$TARGET_FILE{...}` or another target-time secret provision for the server setting; `$FILE{...}` or `$ENV{...}` at bake time may embed the secret. A missing secret or missing client pin fails closed, including for interthread clients. Rotate by shipping the new public pin alongside the old one, switching the host secret, then retiring the old pin. A channel protects traffic and pins the server, but does not sign downloaded binaries or defend against a compromised client or host; signing and updater artifact integrity remain independent gates. See [Networking](../../explanation/authority-and-networking/#secure-channel).
+
 ## Threat model and ownership
 
 Protect at least these asset classes:

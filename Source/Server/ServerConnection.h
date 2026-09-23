@@ -37,6 +37,7 @@
 
 #include "NetBuffer.h"
 #include "NetworkServer.h"
+#include "SecureChannel.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -133,7 +134,7 @@ public:
     };
 
     ServerConnection() = delete;
-    explicit ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection);
+    explicit ServerConnection(ptr<ServerNetworkSettings> settings, shared_ptr<NetworkServerConnection> net_connection, const SecureChannelIdentity& channel_identity);
     ServerConnection(const ServerConnection&) = delete;
     ServerConnection(ServerConnection&&) noexcept = delete;
     auto operator=(const ServerConnection&) = delete;
@@ -144,7 +145,7 @@ public:
     [[nodiscard]] auto GetPort() const noexcept -> uint16_t;
     [[nodiscard]] auto IsHardDisconnected() const noexcept -> bool;
     [[nodiscard]] auto IsGracefulDisconnected() const noexcept -> bool;
-    [[nodiscard]] auto IsInputOverflowed() const noexcept -> bool;
+    [[nodiscard]] auto IsInputRejected() const noexcept -> bool;
     [[nodiscard]] auto GetDisconnectReason() const noexcept -> DisconnectReason;
     [[nodiscard]] auto GetDiagnostics() const -> Diagnostics;
     [[nodiscard]] auto IsHandshakeComplete() const noexcept -> bool;
@@ -192,6 +193,7 @@ private:
     void StartAsyncSend();
     auto AsyncSendData() -> vector<uint8_t>;
     void AsyncReceiveData(const_span<uint8_t> buf);
+    void RejectInput(const std::exception& ex, bool report) noexcept;
     void RecordDisconnectReason(DisconnectReason reason) noexcept;
 
     ptr<ServerNetworkSettings> _settings;
@@ -201,11 +203,17 @@ private:
     mutex _outBufLocker {};
     NetOutBuffer _outBuf;
     stream_compressor _compressor {};
+    vector<uint8_t> _compressedBuf {};
+    // Taken inside either buffer lock and never around another, since the receive side decrypts under the input
+    // lock while the send side seals under the output lock
+    mutex _channelLocker {};
+    SecureChannel _channel FO_TSA_GUARDED_BY(_channelLocker);
+    vector<uint8_t> _channelPlaintext {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};
-    std::atomic<bool> _inputOverflowed {};
+    std::atomic<bool> _inputRejected {};
     std::atomic<DisconnectReason> _disconnectReason {};
 };
 

@@ -246,6 +246,17 @@ auto platform::get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot
     return result;
 }
 
+auto platform::fill_system_random(span<uint8_t> buf) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+#if FO_WINDOWS
+    return winapi::fill_system_random(buf);
+#else
+    return posix::fill_system_random(buf);
+#endif
+}
+
 auto platform::load_module(const string& module_name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();

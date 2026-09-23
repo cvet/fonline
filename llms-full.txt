@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: ed1da5a029ccd2bca99442de83cb236130487586ae6b951f73b456f0a9b85031
+Content SHA-256: 7aebc00f9b06ad57ca6270028236e02c167d450ff031ea44e06f222a306d10cb
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2532**
-- Symbols with source-backed descriptions: **2532**
+- Discovered symbols: **2534**
+- Symbols with source-backed descriptions: **2534**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2532**
+- Explicitly classified symbols: **2534**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -2198,7 +2198,7 @@ When persistence or recovery source changes, run `Source/Tests/Test_DataBase.cpp
 ===== BEGIN DOCUMENT security-and-secrets =====
 Source: Docs/en/how-to/release/security-and-secrets.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/security-and-secrets.html
-Content SHA-256: e9706130a7c402ab7411b86a4852630d69a1cc997659106c45c58fc9cd20e7e4
+Content SHA-256: e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5
 
 ---
 layout: default
@@ -2232,6 +2232,8 @@ Gradle. Do not put production passwords into that config; use a project-owned
 protected signing stage until a dedicated handoff exists. After exposure, contain access, revoke the affected credential,
 rotate replacements, rebuild or redeploy affected artifacts, and audit use.
 Rewriting git history is cleanup, not revocation.
+
+The network channel has a separate credential from package-signing and account-authentication keys. `ServerNetwork.ChannelSecretKey` is the server's static X25519 secret (64 hex digits); `ClientNetwork.ChannelServerKeys` is the public-key pin list shipped to clients. Generate a new secret on the destination host with `python BuildTools/secure_channel_key.py generate <protected-file>` and record only the printed public key in client configuration. The command does not overwrite an existing file. Use `$TARGET_FILE{...}` or another target-time secret provision for the server setting; `$FILE{...}` or `$ENV{...}` at bake time may embed the secret. A missing secret or missing client pin fails closed, including for interthread clients. Rotate by shipping the new public pin alongside the old one, switching the host secret, then retiring the old pin. A channel protects traffic and pins the server, but does not sign downloaded binaries or defend against a compromised client or host; signing and updater artifact integrity remain independent gates. See [Networking](../../explanation/authority-and-networking/#secure-channel).
 
 ## Threat model and ownership
 
@@ -4670,7 +4672,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: d6f76b33100f588167e37f19aebf9fb14d973a9b6589aa139ef4d9512b3e70fe
+Content SHA-256: 964f0a49364c9c03483994b4e2fe584853fed9ffc0f39f43f60a6cd9474e5111
 
 ---
 layout: default
@@ -4918,6 +4920,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_LocationAndEntityMgmt.cpp`
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
@@ -4926,6 +4929,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 
 ### Scripting and script-visible APIs
 
@@ -10937,7 +10941,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 91c27e1439f911c1c9e4e4e4568b9f7d0f7b5018bee22f46f4e84316e2744ee8
+Content SHA-256: a4ab0ac25a9b243267f39f7ed6e2f9b42ebb91c3da4d925584667efcdc07997f
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -10967,6 +10971,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [Source Tree Guide](Docs/en/contributing/source-tree/) - source-tree navigation.
 - [Essentials](Docs/en/reference/native/essentials.md) - low-level platform, logging, memory, filesystem, serialization, sockets, utilities, and `vector` / `small_vector` selection rules.
 - [Configuration and Data Sources](Docs/en/reference/settings/configuration-and-data-sources.md) - config parsing, settings, data sources, file lookup, and caches.
+- [Networking and authority](Docs/en/explanation/authority-and-networking/) - transports, Noise NK secure channel, key pins and rotation, remote calls, and server-authoritative boundaries.
 - [Docs/en/how-to/build/project-configuration.md](Docs/en/how-to/build/project-configuration.md) - project `.fomain`, resource packs, sub-configs, precedence, and validation.
 - [Docs/en/explanation/content-pipeline/baking.md](Docs/en/explanation/content-pipeline/baking.md) - resource-pack execution, built-in baker ordering, incremental/full rebuilds, reports, payload ownership, and project composition practices.
 - [Docs/en/how-to/release/security-and-secrets.md](Docs/en/how-to/release/security-and-secrets.md) - config substitution timing, command-line masking limits, package signing handoff, CI trust boundaries, rotation, revocation, and incident routing.
@@ -15191,7 +15196,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 81143cb1f0473e81708756171a139fc03c40a9ab19fd802a186e1fb2113f7bb5
+Content SHA-256: f480ca504b9ab23e4608273406e18eabef6472a6040e62a77920a8c69083dbbc
 
 ---
 layout: default
@@ -15203,13 +15208,13 @@ permalink: /Docs/en/explanation/authority-and-networking/
 
 # Networking
 
-This document explains the reusable engine networking layers: message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
+This document explains the reusable engine networking layers: the secure channel, message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
 
-Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
+Use it when changing `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, client/server connections, or network tests.
 
 ## Ownership model
 
-The engine owns transport abstractions, message framing, ordered UDP behavior, and client/server connection interfaces. An embedding project owns deployment topology, public server addresses, operational policy, and game-specific command usage.
+The engine owns the secure channel, transport abstractions, message framing, ordered UDP behavior, and client/server connection interfaces. An embedding project owns deployment topology, pinned production keys, rotation and operational policy, and game-specific command usage.
 
 Do not document project-specific hosts, ports, or release infrastructure here.
 
@@ -15217,6 +15222,10 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 
 - `Source/Common/NetBuffer.h`
 - `Source/Common/NetBuffer.cpp`
+- `Source/Common/NoiseProtocol.h`
+- `Source/Common/NoiseProtocol.cpp`
+- `Source/Common/SecureChannel.h`
+- `Source/Common/SecureChannel.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
@@ -15236,19 +15245,40 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
+
+## Secure channel
+
+Every connection, including an in-process interthread connection, carries an ordered stream of sealed frames before any `NetMessage::Handshake` or updater data. The engine implements `Noise_NK_25519_ChaChaPoly_BLAKE2b` (Noise revision 34): the client has no pre-login identity, while the server proves possession of a static X25519 secret whose public half the client pins. The one-round-trip handshake derives fresh per-direction session keys. Network observers and forged servers cannot read or inject gameplay or updater messages; a party controlling the client process can still extract its session keys and send through a genuine session, so server-side authority and inbound validation remain necessary.
+
+The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
+
+| Frame | Sender | Body |
+|---|---|---|
+| Offer | Client | Count from 1 to `SecureChannel::MAX_OFFERED_KEYS` (4), then a first NK message for each pinned server key |
+| Answer | Server | Selected offer index and the second NK message; a server that opens none disconnects |
+| Transport | Either side | One authenticated Noise transport message |
+
+Both handshake messages have empty payloads and use the fixed `SecureChannel::PROLOGUE`. Each offered pin has its own ephemeral key. Offering the old and next pins together permits a staged key rotation without a second handshake. Nonces advance per direction; replayed, reordered, dropped and reflected frames fail authentication. A channel error is a `NoiseException` (or derived `SecureChannelException`) and closes the connection. The server latches receive-path rejection for its owning worker to disconnect with `ProtocolError`, logging a warning rather than treating an unauthenticated stranger as an engine exception.
+
+| Setting | Owner | Contract |
+|---|---|---|
+| `ServerNetwork.ChannelSecretKey` | Server | Required static X25519 secret, exactly 64 hex digits, even if external networking is disabled; a missing or malformed value prevents startup |
+| `ClientNetwork.ChannelServerKeys` | Client | One to four pinned public keys, each exactly 64 hex digits; an empty or invalid list prevents connection |
+
+`BuildTools/secure_channel_key.py generate <secret-file>` creates a new owner-readable secret file without overwriting one and prints its public key; `public <secret-file>` derives the public half of an existing key. Never bake a production secret into a client or repository config. Use target-host provisioning such as `$TARGET_FILE{...}` for the server value, publish only the public pin to clients, and follow [Security and Secrets](../../how-to/release/security-and-secrets.md). For rotation, ship both pins first, switch the server's secret, then remove the old pin after old clients are retired. The engine test fixture has its own deterministic key pair; that fixture is not a production identity.
 
 ## Message buffers
 
 `Source/Common/NetBuffer.h` defines the shared binary message layer:
 
-- `NetBuffer` — common storage, growth, encryption-key state, and raw copy support.
+- `NetBuffer` — common storage, growth, and raw copy support; confidentiality and integrity belong to `SecureChannel` outside the message buffer.
 - `NetOutBuffer` — write/framing helper for outgoing messages.
 - `NetInBuffer` — read/framing helper for incoming messages.
 
-Important constants:
-
-- `CRYPT_KEYS_COUNT = 50`
-- `NETMSG_SIGNATURE = 0x011E9422`
+Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of each framed message inside the channel.
 
 `NetOutBuffer` responsibilities:
 
@@ -18520,7 +18550,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 40488cb0c7caca773d34e5e3e19aa2e23d57b06cb254ff2eafccc451ead98c8e
+Content SHA-256: 06c323b6113ad46d7dff93e81c72e0cefa1847e86ea68ff18aafacac1212ae21
 
 ---
 layout: default
@@ -18814,11 +18844,10 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 ## Updater protocol
 
-Versioned by `FO_UPDATER_VERSION = 2` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
-the wire format changes or an older updater/host lifecycle is unsafe to continue. Generation 2 rejects
-generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
-in-process runtime reload. Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and
-changes with every build.
+Versioned by `FO_UPDATER_VERSION = 3` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
+the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
+requires the secure channel before any updater message; a pre-channel client cannot self-update.
+Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake
 
@@ -18828,14 +18857,12 @@ changes with every build.
 | client → server | `MetadataVersion` | `string` | baked metadata version; empty while the updater has no resources of its own |
 | client → server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client → server | `binary_target` | `string` | e.g. `Windows-win64`, `Android-arm64` (from `GetCurrentBinaryUpdateTargetName()`) |
-| client → server | `in_encrypt_key` | `uint32` | session keys |
 | server → client | `compatibility_outdated` | `bool` | gameplay version mismatch |
 | server → client | `updater_outdated` | `bool` | `FO_UPDATER_VERSION` mismatch — protocol is unusable |
 | server → client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server → client | `MetadataVersion` | `string` | metadata version currently used by the server |
-| server → client | `out_encrypt_key` | `uint32` | session keys |
 
-`updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
+The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). The old XOR session-key fields are absent. `FO_UPDATER_VERSION = 3` marks that wire break: a pre-channel client cannot reach the updater at all and needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
 
 `metadata_outdated == true` means the binaries match but the baked data does not. The server and client must run metadata from one bake because entity payloads address properties by that metadata's registration order. A mismatch is a build or deployment defect, not a supported compatibility mode; see [Metadata version](../../reference/metadata/#metadata-version).
 
@@ -19737,7 +19764,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: dabc1f24be195a1a5553750ec71630c6a2c1a703509edc692eb4337956ac9f67
+Content SHA-256: 2f262d0de7f1ca85e7da0e74327fe5d3ecd7dd830b05d332df3100154e4e2c0c
 
 ---
 layout: default
@@ -19854,6 +19881,8 @@ Major responsibilities:
 - `PlayerJob()`
 - `CritterMovingJob()`
 
+`InitNetworkingJob()` validates `ServerNetwork.ChannelSecretKey` and constructs the server's static secure-channel identity before accepting any connection. This is required even when external listeners are disabled: interthread and test connections use the same channel. It logs only the public key. The receive path latches an invalid Noise frame under its buffer lock; the owning worker later closes that connection with `ProtocolError`. See [Networking](../authority-and-networking/#secure-channel).
+
 After startup, only `SyncPointJob()` and `FrameTimeJob()` recur on the main
 worker. Time events, connection processing, and critter movement use keyed,
 self-rescheduling `WorkerPool` jobs; data-arrival callbacks wake the associated
@@ -19893,7 +19922,7 @@ Property serialization through `Properties::StoreData()` returns pointer/size li
 
 **Sync-free server→client broadcasts (the "rassylka").** A broadcast to observers/spectators is the one place where a sender legitimately cannot hold the recipient's cover — the fan-out runs under the **subject** critter's (or map's) cover only, then must reach every recipient's player. The whole broadcast surface is sync-free: property, movement (`Send_Moving`/`Send_MovingSpeed`), facing (`Send_Dir`), action (`Send_Action`), inventory move (`Send_MoveItem`), teleport (`Send_Teleport`), and attachments (`Send_Attachments`), plus their serialization helpers `SendItem`/`SendInnerEntities`/`SendCritterMoving`. The pattern:
 
-- **Recipient sends validate the SUBJECT, not the recipient — and `this` always carries its own explicit marker.** Two independent decisions, both stated at the top of every send: (1) the **`this`-marker** declares how the method treats its own entity — a recipient send writes only the recipient's connection and never reads recipient state, so its `this`-marker is `FO_NO_VALIDATE_ENTITY_ACCESS()`. This marker is **mandatory and is not implied by the value check** — `FO_VALIDATE_ENTITY_ACCESS_VALUE(x)` validates `x`, it is *not* a `this`-decision, so every send pairs the two: `FO_NO_VALIDATE_ENTITY_ACCESS();` then `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject);`. (2) The **subject validation**: every send is handed an entity it serializes or reads — even just its id — and validates it via `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` (= the null-tolerant throwing `ValidateEntityAccess(subject)`). The subject *must* be in sync, and the broadcaster holds its cover for the whole fan-out so the check passes — an uncovered subject is caught (a `ScriptException` reported at the job/script frontier, which continues; escaping a `noexcept` send still terminates the process). This is **intentionally aggressive diagnostic validation**: validate every sent entity to surface every desync immediately (this validation layer is temporary and will be removed after the multithreaded logic system stabilizes; see the TODO below). The recipient connection is guarded by a per-player `_connectionLock` so a concurrent reconnect `SwapConnection` cannot swap `_connection` mid-write. It is a **plain `mutex`, not a `shared_mutex`**: same-player sends already serialize on the connection's own single output-buffer lock (`ServerConnection::_outBufLocker`, held by the `OutBufAccessor` for the whole `WriteMsg`), so a shared "many concurrent send readers" lock would buy nothing — and `mutex::lock()` is cheaper on the hot path than `shared_mutex::lock_shared()`. Cross-player concurrency (the actual win) comes from each player owning its own lock; sends and `SwapConnection` both take it exclusively, and no send re-enters it (the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers take the already-opened buffer as a parameter, so a non-recursive mutex cannot self-deadlock). `is_chosen` is a lock-free atomic identity compare against `Player::_controlledCr` (no deref). Only sends that are handed **no entity at all** — `Send_TimeSync`/`Send_InfoMessage`/`Send_PlaceToGameComplete` (no entity), `Send_HashList` (bare strings; used by the reported-hash broadcast fan-out and the handshake-time full-list push), `Send_RemoteCall` (a name + opaque payload; the outbound remote-call channel — the recipient may be uncovered and mid-reconnect, so the send pins the live connection under `_connectionLock`), `Send_Ping`/`Send_HandshakeAnswer`/`Send_InitData`/`Send_UpdateFileData` (connection-stage protocol replies, isolated in `Player` so no code outside `Player` writes a player-directed `NetMessage`; `Send_HandshakeAnswer` also installs the out-buffer encrypt key under the same lock hold), `Send_RemoveCustomEntity` (a bare `ident_t`), and `Send_SomeItems` (a span — each item is validated downstream in `SendItem`) — are pure `FO_NO_VALIDATE` with no value check. (The validation gap the subject check closes: `StoreData`/`GetRawData` do **not** validate entity access, so a send serializing a subject through them must validate the subject explicitly.) The `Critter::Send_*` forwarders (per-critter "send to my own player") follow the same two-marker shape: `FO_NO_VALIDATE_ENTITY_ACCESS()` for the *recipient* critter (`this`) plus `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` for the forwarded subject. They must **not** validate the recipient critter (the old `this`-check fired spuriously on an uncovered NPC group member with no player during `DestroyCritter` cleanup — the subject being removed is covered, only the recipient was not), and they read `_player` atomically before forwarding.
+- **Recipient sends validate the SUBJECT, not the recipient — and `this` always carries its own explicit marker.** Two independent decisions, both stated at the top of every send: (1) the **`this`-marker** declares how the method treats its own entity — a recipient send writes only the recipient's connection and never reads recipient state, so its `this`-marker is `FO_NO_VALIDATE_ENTITY_ACCESS()`. This marker is **mandatory and is not implied by the value check** — `FO_VALIDATE_ENTITY_ACCESS_VALUE(x)` validates `x`, it is *not* a `this`-decision, so every send pairs the two: `FO_NO_VALIDATE_ENTITY_ACCESS();` then `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject);`. (2) The **subject validation**: every send is handed an entity it serializes or reads — even just its id — and validates it via `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` (= the null-tolerant throwing `ValidateEntityAccess(subject)`). The subject *must* be in sync, and the broadcaster holds its cover for the whole fan-out so the check passes — an uncovered subject is caught (a `ScriptException` reported at the job/script frontier, which continues; escaping a `noexcept` send still terminates the process). This is **intentionally aggressive diagnostic validation**: validate every sent entity to surface every desync immediately (this validation layer is temporary and will be removed after the multithreaded logic system stabilizes; see the TODO below). The recipient connection is guarded by a per-player `_connectionLock` so a concurrent reconnect `SwapConnection` cannot swap `_connection` mid-write. It is a **plain `mutex`, not a `shared_mutex`**: same-player sends already serialize on the connection's own single output-buffer lock (`ServerConnection::_outBufLocker`, held by the `OutBufAccessor` for the whole `WriteMsg`), so a shared "many concurrent send readers" lock would buy nothing — and `mutex::lock()` is cheaper on the hot path than `shared_mutex::lock_shared()`. Cross-player concurrency (the actual win) comes from each player owning its own lock; sends and `SwapConnection` both take it exclusively, and no send re-enters it (the `SendItem`/`SendInnerEntities`/`SendCritterMoving` helpers take the already-opened buffer as a parameter, so a non-recursive mutex cannot self-deadlock). `is_chosen` is a lock-free atomic identity compare against `Player::_controlledCr` (no deref). Only sends that are handed **no entity at all** — `Send_TimeSync`/`Send_InfoMessage`/`Send_PlaceToGameComplete` (no entity), `Send_HashList` (bare strings; used by the reported-hash broadcast fan-out and the handshake-time full-list push), `Send_RemoteCall` (a name + opaque payload; the outbound remote-call channel — the recipient may be uncovered and mid-reconnect, so the send pins the live connection under `_connectionLock`), `Send_Ping`/`Send_HandshakeAnswer`/`Send_InitData`/`Send_UpdateFileData` (connection-stage protocol replies, isolated in `Player` so no code outside `Player` writes a player-directed `NetMessage`), `Send_RemoveCustomEntity` (a bare `ident_t`), and `Send_SomeItems` (a span — each item is validated downstream in `SendItem`) — are pure `FO_NO_VALIDATE` with no value check. (The validation gap the subject check closes: `StoreData`/`GetRawData` do **not** validate entity access, so a send serializing a subject through them must validate the subject explicitly.) The `Critter::Send_*` forwarders (per-critter "send to my own player") follow the same two-marker shape: `FO_NO_VALIDATE_ENTITY_ACCESS()` for the *recipient* critter (`this`) plus `FO_VALIDATE_ENTITY_ACCESS_VALUE(subject)` for the forwarded subject. They must **not** validate the recipient critter (the old `this`-check fired spuriously on an uncovered NPC group member with no player during `DestroyCritter` cleanup — the subject being removed is covered, only the recipient was not), and they read `_player` atomically before forwarding.
 - **Fan-outs resolve a refcount-pinned recipient set.** `Critter::Broadcast_*` / `SendAndBroadcast_*` and the generic `SendAndBroadcast(ignore_player, player_callback)` build `Critter::GetBroadcastRecipients(ignore_player)` under the subject cover: each observer's player via `Critter::GetPlayerForSend()` (the no-validate, link-lock-protected `TryAddRef` accessor mirroring `ServerEntity::GetParentRaw`) plus map spectators via `Map::GetSpectatorPlayersForSend()` (a `FO_NO_VALIDATE` snapshot guarded by the map's `_spectatorLock` `shared_mutex`, so the broadcaster needs neither the observer's nor the **map's** cover). The pinned `vector<refcount_ptr<Player>>` keeps every recipient alive through the lock-free dispatch (`GetBroadcastRecipients`/`GetMapSpectators`/`GetSpectatorPlayersForSend` return an owning `refcount_ptr` vector; `ref_hold_vector` is reserved for the transient `copy_hold_ref(...)` loop-helper use).
 - **Property broadcasts read the subject live.** Every property broadcast trigger fans out the ordinary `Player::Send_Property(type, prop, subject)` to each pinned recipient: it validates the **subject** (`FO_VALIDATE_ENTITY_ACCESS_VALUE`), reads the subject's serialized bytes live via `Properties::GetRawData` (safe because the broadcaster holds the subject's cover for the whole fan-out), and writes only the recipient's connection under `_connectionLock`. The triggers: critter/critter-item (`Critter::Broadcast_Property`), global (`OnSendGlobalValue` → all players), map (`Map::SendProperty` Map case → map critters + spectators), location (`OnSendLocationValue` → `Map::SendProperty` Location case for each map in the location → map critters + spectators), and custom entity (`OnSendCustomEntityValue` → viewers resolved by the covered `ForEachCustomEntityView`, then dispatched lock-free). (A byte-snapshot optimization — capturing the payload once under the subject's cover and blitting it lock-free — was prototyped and reverted; the live-read fan-out is the current shape.)
 - **TSA-guarded.** Both fine-grained locks are Clang [Thread Safety Analysis](../../../ThreadSafetyAnalysis.md) capabilities (`fo::mutex` / `fo::shared_mutex`), and the state they guard carries `FO_TSA_GUARDED_BY`: `Player::_connection FO_TSA_GUARDED_BY(_connectionLock)` and `Map::_spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock)` (each lock declared before the field it guards). Every lock-free path holds the lock via `scoped_lock`/`shared_lock`, so TSA statically enforces the guard on exactly the threads that lack the entity cover. The accessors that legitimately reach the guarded state under the **entity cover** instead — the cooperative scheme TSA cannot model, and which also excludes the swap/mutation — are `FO_TSA_NO_ANALYSIS` with a comment: `Player::GetConnection` (hands the pointer to entity-cover callers), `Player::SwapConnection` (cross-object `other->_connection` swap), `Map::HasSpectatorPlayers` / `Map::GetSpectatorPlayers` (leak a span), and the single-threaded `~Map` teardown invariant. The `Map::AddItem` / `RemoveItem` / `SendProperty` (MapItem) spectator legs route through `GetSpectatorPlayersForSend()` (which takes the shared lock) rather than touching `_spectatorPlayers` directly, so they stay TSA-clean without an escape hatch.
@@ -25245,7 +25274,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: cc9de3520878f0f3695ae1890558f5e44094190e6b49e87d7be2e78dee8d1643
+Content SHA-256: fd2ddae3725ca4f50c9c0a15a3592b725aaebef2a9fa9eb7d5eb927765cfe261
 
 ---
 layout: default
@@ -25340,6 +25369,10 @@ not bypass the contract-change gate.
 - `Source/Essentials/ExceptionHandling.cpp`
 - `Source/Essentials/RandomGenerator.h`
 - `Source/Essentials/RandomGenerator.cpp`
+- `Source/Essentials/Cryptography.h`
+- `Source/Essentials/Cryptography.cpp`
+- `ThirdParty/Monocypher/src/monocypher.h`
+- `ThirdParty/Monocypher/src/monocypher.c`
 - `Source/Essentials/Threading.h`
 - `Source/Essentials/Threading.cpp`
 - `Source/Essentials/SafeArithmetics.h`
@@ -25377,7 +25410,7 @@ not bypass the contract-change gate.
 
 `Source/Essentials/Essentials.h` is the umbrella include. Its exact include order is the dependency order for the foundation layer:
 
-`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
+`BasicCore` → `GlobalData` → `StackTrace` → `BaseLogging` → `FatalError` → `FunctionObjects` → `SmartPointers` → `MemorySystem` → `StringObject` → `DequeObject` → `Containers` → `StringUtils` → `WinApi` → `Posix` → `Platform` → `ExceptionHandling` → `RandomGenerator` → `Threading` → `SafeArithmetics` → `DataSerialization` → `HashedString` → `StrongType` → `TimeRelated` → `ExtendedTypes` → `Compressor` → `Cryptography` → `WorkThread` → `Logging` → `DiskFileSystem` → `CommonHelpers` → `NetSockets`.
 
 This list is intentionally exact rather than thematic. `Essentials.h` defines a strict dependency DAG: every Essentials header and its `.cpp` may include and call only modules that appear earlier in the umbrella block. Declaring an API early but defining it in a later `.cpp` is still a reverse link dependency. `BuildTools/tests/test_essentials_layering.py` checks direct includes and namespace-level external-definition ownership. Do not reorder the list to hide a cycle; move data through parameters or split the responsibility at the correct layer.
 
@@ -25481,7 +25514,7 @@ The bson vtable is worth reading before copying its shape elsewhere: it supplies
 
 SQLite's hook needs an `xSize` callback and hands the free/realloc/size functions only a pointer, so each block carries an 8-byte size header. Its configuration must also be installed *before* `sqlite3_initialize`, which is why the library is built with `SQLITE_OMIT_AUTOINIT` and every caller goes through one exported initializer.
 
-Not hooked, with reasons: **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
+Not hooked, with reasons: **Monocypher** allocates nothing; its callers own every buffer. **LibreSSL** exports `CRYPTO_set_mem_functions` but its body is an inert `return 0;` — custom allocators were removed upstream, so calling it would be dead code that reads like coverage. **ogg / vorbis / theora** expose no allocator hook.
 
 When vendoring or updating a library, check whether it has an allocator hook and either wire it or record why not — and read the hook's *implementation*, not just its declaration. Two of the entries above were initially misjudged from the call site or the symbol name alone.
 
@@ -25534,6 +25567,10 @@ through SplitMix64. Use `next()` for raw bits, `next_below(bound)` for
 therefore deterministic across supported standard libraries. Do not use
 `std::mt19937` or `std::uniform_int_distribution` for engine behavior.
 
+#### Cryptography
+
+`Cryptography.*` owns the `crypto::` primitives used by the [secure network channel](../../explanation/authority-and-networking/#secure-channel): X25519, BLAKE2b-512 and HMAC-BLAKE2b, and RFC 8439 ChaCha20-Poly1305. The implementation uses the same vendored Monocypher on native, Web and Android targets. `crypto::fill_random` obtains key material from the operating system through `platform::fill_system_random` (`BCryptGenRandom` on Windows, `getentropy` on Linux/Web, `arc4random_buf` on Apple and Android); it throws if the platform cannot provide it. Never use `random_generator` to create a channel key. AEAD sealing/opening creates a fresh Monocypher context per message; the library's streaming context rekeys after its first message. `crypto::is_equal` compares in constant time and `crypto::wipe` clears secret buffers; owners of plain key arrays wipe them during teardown.
+
 ### Serialization, values, strings, and hashes
 
 `StringObject.*` owns the engine `basic_string` implementation. Its API follows
@@ -25577,6 +25614,7 @@ The essentials layer has direct test coverage in:
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -25999,7 +26037,7 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 3c8f0390f41bb6065d025b58e28d7fd8b82623cf5b6adc643b1c3552ba855995
+Content SHA-256: 2ebfa1bbcc340e044162f2e2539b62a37a19b9011c41ec96071de9982fc03521
 
 ---
 title: Generated API Reference
@@ -26020,32 +26058,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 266 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 268 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2532 |
-| Symbols with descriptions | 2532 |
+| Addressable symbols | 2534 |
+| Symbols with descriptions | 2534 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2532 |
+| Explicitly classified symbols | 2534 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2531 |
+| <code>experimental</code> | 2533 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2532 stable IDs with SHA-256 <code>7c6b1ce985128b9da3be5ce578458d68584b9e95ec09f613b46431fa4a40d136</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2534 stable IDs with SHA-256 <code>2c8f3b855d6998553cb36e4b165ad22a9ee41984e0b3b465b996d1b80bf4861a</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -26384,7 +26422,7 @@ The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProje
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: af04a0f0a2e6f46a2274223642c39a72dbd2ccb4a120ff070ca6628106e86ee7
+Content SHA-256: e46e0b1bdfab79034c2a3cbc245d814e36ff116964036e92ee4ec1c67d1277d1
 
 ---
 layout: default
@@ -26476,6 +26514,8 @@ Read this together with:
 The parser stores owned strings internally and returns `string_view` values from parsed sections. Consumers must not assume those views outlive the `ConfigFile` instance.
 
 ## Runtime settings
+
+The secure network channel adds `ServerNetwork.ChannelSecretKey` (the required static server secret) and `ClientNetwork.ChannelServerKeys` (client public-key pins). Both are startup settings, not writable script state. The server setting contains the 64-hex-digit key value, not a file path: `$TARGET_FILE{...}` reads a protected file at target runtime without embedding its contents during baking. An unset or malformed server key blocks server startup, even in an interthread-only profile; an empty or invalid client pin list blocks connection. See [Networking](../../explanation/authority-and-networking/#secure-channel) and [Security and Secrets](../../how-to/release/security-and-secrets.md).
 
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. Every built-in setting is addressed by its full `Group.Name`, is mutable only while `GlobalSettings` constructs the startup snapshot, and is exposed as `const` afterwards. Live state belongs to its runtime owner rather than being written back into settings. `Settings.h` exposes:
 
@@ -28125,7 +28165,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 02fec7d1e91cb642270cc878717aa5995c9ded7632c053bf64194103c8c0a28e
+Content SHA-256: bacff87ef56afec4865257e3ee388f0263e52fa2dabfb4605dc2a42cab0d3bab
 
 ---
 layout: default
@@ -28185,6 +28225,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -28245,6 +28286,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
 - `Source/Tests/Test_NetSockets.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
@@ -28255,6 +28297,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_UpdaterBackend.cpp`
 
 ### Scripting and script-visible APIs

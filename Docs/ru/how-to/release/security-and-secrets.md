@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/security-and-secrets.html
 ---
 
 # Безопасность и секреты
-<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"e9706130a7c402ab7411b86a4852630d69a1cc997659106c45c58fc9cd20e7e4"} -->
+<!-- docs-translation: {"document_id":"security-and-secrets","locale":"ru","source_path":"Docs/en/how-to/release/security-and-secrets.md","source_sha256":"e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5"} -->
 Это руководство определяет переиспользуемые границы FOnline для credentials, подстановки конфигурации, подписи пакетов, CI, диагностики и incident response. Оно не выбирает secret manager, поставщика сертификатов, production account, срок хранения или incident policy для подключающей игры.
 
 Используйте [Project Configuration](../build/project-configuration.md) для общего precedence `.fomain`, [Packaging and Release](packaging.md) для производства артефактов и [Client Updater](../../explanation/runtime/client-updater.md) для границы загружаемого native runtime.
@@ -30,6 +30,8 @@ Gradle. Не помещайте production passwords в этот config; до п
 handoff используйте project-owned защищённую стадию signing. После утечки ограничьте доступ, отзовите затронутый credential,
 выполните rotate замен, пересоберите или разверните заново затронутые artifacts
 и проверьте использование. Rewriting git history является очисткой, а не revoke.
+
+У сетевого канала отдельный секрет, не совпадающий с ключами подписи пакетов и аутентификации аккаунтов. `ServerNetwork.ChannelSecretKey` — статический секрет сервера X25519 из 64 шестнадцатеричных знаков; `ClientNetwork.ChannelServerKeys` — список публичных ключей, закреплённых в клиентах. Создайте секрет на целевом хосте командой `python BuildTools/secure_channel_key.py generate <protected-file>` и поместите в конфигурацию клиента только напечатанный публичный ключ. Команда не перезаписывает существующий файл. Для серверной настройки используйте `$TARGET_FILE{...}` или другую подстановку на целевом хосте: `$FILE{...}` и `$ENV{...}` на стадии bake могут встроить секрет. Отсутствие секрета или клиентского pin блокирует соединение, включая interthread. Для ротации сначала выпустите клиент с новым и старым pin, затем смените секрет на хосте и уберите старый pin. Канал защищает транспорт и подтверждает сервер, но не подписывает скачиваемые бинарные файлы и не защищает скомпрометированный клиент или хост; подпись и целостность обновлений остаются отдельными проверками. См. [Сеть](../../explanation/authority-and-networking/#защищённый-канал).
 
 ## Модель угроз и владение
 

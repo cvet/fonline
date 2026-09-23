@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4792,
-    "current_count": 4792,
+    "entry_count": 4794,
+    "current_count": 4794,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2534,
-      "current_count": 2534,
+      "entry_count": 2536,
+      "current_count": 2536,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -14656,6 +14656,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.ClientNetwork.ChannelServerKeys/description",
+          "source": "Pinned secure channel server public keys, 64 hex digits each; all are offered at once, so the next key can be pinned ahead of a rotation",
+          "source_sha256": "c9ccb9ff8f98e133dd1c4f900beb35a62d126f2b2bc8788d156ce271ccc4a297",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.ClientNetwork.DebugNet/description",
           "source": "If true, network debugging is enabled",
           "source_sha256": "75aeb4feff001b54ae2388ec4f30783fe59ec762dec8fe15909babb1dd739d0d",
@@ -16063,6 +16069,12 @@
           "locator": "/symbols/@id=setting.server.Server.WriteHealthFile/description",
           "source": "If true, health file is written",
           "source_sha256": "740f5635ac98b8d97e7557efb966c0da71cac5e0624d1ec304eb758ef75271ee",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.ServerNetwork.ChannelSecretKey/description",
+          "source": "Secure channel static X25519 secret key, 64 hex digits; every server needs it, in-process connections included",
+          "source_sha256": "158252f60f63e426a0b508791371f5c5b44c0243e4a51540a4f702c4de20a019",
           "status": "current"
         },
         {

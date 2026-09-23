@@ -8,13 +8,13 @@ permalink: /Docs/en/explanation/authority-and-networking/
 
 # Networking
 
-This document explains the reusable engine networking layers: message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
+This document explains the reusable engine networking layers: the secure channel, message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
 
-Use it when changing `Source/Common/NetBuffer.*`, `NetworkUdp.*`, `Source/Client/NetworkClient*`, `Source/Server/NetworkServer*`, or network tests.
+Use it when changing `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, client/server connections, or network tests.
 
 ## Ownership model
 
-The engine owns transport abstractions, message framing, ordered UDP behavior, and client/server connection interfaces. An embedding project owns deployment topology, public server addresses, operational policy, and game-specific command usage.
+The engine owns the secure channel, transport abstractions, message framing, ordered UDP behavior, and client/server connection interfaces. An embedding project owns deployment topology, pinned production keys, rotation and operational policy, and game-specific command usage.
 
 Do not document project-specific hosts, ports, or release infrastructure here.
 
@@ -22,6 +22,10 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 
 - `Source/Common/NetBuffer.h`
 - `Source/Common/NetBuffer.cpp`
+- `Source/Common/NoiseProtocol.h`
+- `Source/Common/NoiseProtocol.cpp`
+- `Source/Common/SecureChannel.h`
+- `Source/Common/SecureChannel.cpp`
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
@@ -41,19 +45,40 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
+
+## Secure channel
+
+Every connection, including an in-process interthread connection, carries an ordered stream of sealed frames before any `NetMessage::Handshake` or updater data. The engine implements `Noise_NK_25519_ChaChaPoly_BLAKE2b` (Noise revision 34): the client has no pre-login identity, while the server proves possession of a static X25519 secret whose public half the client pins. The one-round-trip handshake derives fresh per-direction session keys. Network observers and forged servers cannot read or inject gameplay or updater messages; a party controlling the client process can still extract its session keys and send through a genuine session, so server-side authority and inbound validation remain necessary.
+
+The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
+
+| Frame | Sender | Body |
+|---|---|---|
+| Offer | Client | Count from 1 to `SecureChannel::MAX_OFFERED_KEYS` (4), then a first NK message for each pinned server key |
+| Answer | Server | Selected offer index and the second NK message; a server that opens none disconnects |
+| Transport | Either side | One authenticated Noise transport message |
+
+Both handshake messages have empty payloads and use the fixed `SecureChannel::PROLOGUE`. Each offered pin has its own ephemeral key. Offering the old and next pins together permits a staged key rotation without a second handshake. Nonces advance per direction; replayed, reordered, dropped and reflected frames fail authentication. A channel error is a `NoiseException` (or derived `SecureChannelException`) and closes the connection. The server latches receive-path rejection for its owning worker to disconnect with `ProtocolError`, logging a warning rather than treating an unauthenticated stranger as an engine exception.
+
+| Setting | Owner | Contract |
+|---|---|---|
+| `ServerNetwork.ChannelSecretKey` | Server | Required static X25519 secret, exactly 64 hex digits, even if external networking is disabled; a missing or malformed value prevents startup |
+| `ClientNetwork.ChannelServerKeys` | Client | One to four pinned public keys, each exactly 64 hex digits; an empty or invalid list prevents connection |
+
+`BuildTools/secure_channel_key.py generate <secret-file>` creates a new owner-readable secret file without overwriting one and prints its public key; `public <secret-file>` derives the public half of an existing key. Never bake a production secret into a client or repository config. Use target-host provisioning such as `$TARGET_FILE{...}` for the server value, publish only the public pin to clients, and follow [Security and Secrets](../../how-to/release/security-and-secrets.md). For rotation, ship both pins first, switch the server's secret, then remove the old pin after old clients are retired. The engine test fixture has its own deterministic key pair; that fixture is not a production identity.
 
 ## Message buffers
 
 `Source/Common/NetBuffer.h` defines the shared binary message layer:
 
-- `NetBuffer` — common storage, growth, encryption-key state, and raw copy support.
+- `NetBuffer` — common storage, growth, and raw copy support; confidentiality and integrity belong to `SecureChannel` outside the message buffer.
 - `NetOutBuffer` — write/framing helper for outgoing messages.
 - `NetInBuffer` — read/framing helper for incoming messages.
 
-Important constants:
-
-- `CRYPT_KEYS_COUNT = 50`
-- `NETMSG_SIGNATURE = 0x011E9422`
+Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of each framed message inside the channel.
 
 `NetOutBuffer` responsibilities:
 

@@ -101,6 +101,9 @@ namespace platform
     // logical_core_count is always populated for normalization
     auto get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot;
 
+    // Windows: BCryptGenRandom; Linux and web: getentropy; macOS, iOS and Android: arc4random_buf
+    auto fill_system_random(span<uint8_t> buf) noexcept -> bool;
+
     // Windows: LoadLibraryW family; Linux and macOS: dlopen family; other: nullptr
     auto load_module(const string& module_name) noexcept -> nptr<void>;
     // For a module that must never be unmapped, such as an engine library: statically linked runtimes install

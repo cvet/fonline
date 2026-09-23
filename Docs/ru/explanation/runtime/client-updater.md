@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"40488cb0c7caca773d34e5e3e19aa2e23d57b06cb254ff2eafccc451ead98c8e"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"06c323b6113ad46d7dff93e81c72e0cefa1847e86ea68ff18aafacac1212ae21"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -296,13 +296,12 @@ PDB другой сборки не должен уничтожить подхо�
 
 ## Протокол updater
 
-Протокол версионируется константой `FO_UPDATER_VERSION = 2` из
+Протокол версионируется константой `FO_UPDATER_VERSION = 3` из
 [Common.h](../../../../Source/Common/Common.h). Поколение меняется при изменении
 wire format или когда lifecycle старого updater/host больше нельзя безопасно
-продолжать. Generation 2 отклоняет generation 1 до передачи descriptor или
-binary payload, потому что замороженный старый host мог сделать опасный
-in-process reload. Игровая `Settings.CompatibilityVersion` независима и обычно
-изменяется с каждой сборкой.
+продолжать. Эта генерация требует защищённый канал до любого сообщения updater;
+клиент без канала не может обновить себя через него. Игровая
+`Settings.CompatibilityVersion` независима и обычно изменяется с каждой сборкой.
 
 ### Handshake
 
@@ -312,14 +311,12 @@ in-process reload. Игровая `Settings.CompatibilityVersion` независ
 | client → server | `MetadataVersion` | `string` | версия запечённых metadata; empty, пока у updater нет собственных ресурсов |
 | client → server | `updater_version` | `uint32` | `FO_UPDATER_VERSION` |
 | client → server | `binary_target` | `string` | например, `Windows-win64` или `Android-arm64` из `GetCurrentBinaryUpdateTargetName()` |
-| client → server | `in_encrypt_key` | `uint32` | ключи сессии |
 | server → client | `compatibility_outdated` | `bool` | несовпадение игровой версии |
 | server → client | `updater_outdated` | `bool` | несовпадение `FO_UPDATER_VERSION`, протокол непригоден |
 | server → client | `metadata_outdated` | `bool` | client resources запечены из другой ревизии |
 | server → client | `MetadataVersion` | `string` | версия metadata, которую сейчас использует server |
-| server → client | `out_encrypt_key` | `uint32` | ключи сессии |
 
-`updater_outdated == true` фатален для соединения: дальнейшие сообщения нельзя
+Всё рукопожатие и обновление проходят внутри аутентифицированного [защищённого канала](../authority-and-networking/#защищённый-канал). Старых полей ключей XOR больше нет. `FO_UPDATER_VERSION = 3` отмечает разрыв wire-контракта: клиент до защищённого канала вообще не достигнет updater и должен один раз установить полный новый пакет. После установления канала `updater_outdated == true` фатален для соединения: дальнейшие сообщения нельзя
 интерпретировать по известному контракту. `compatibility_outdated == true`
 блокирует игру, но updater всё ещё может доставить ресурсы и native module,
 возвращающие клиент к текущей совместимости.

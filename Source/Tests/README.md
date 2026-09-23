@@ -56,6 +56,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_CommonHelpers.cpp`
 - `Source/Tests/Test_Compressor.cpp`
 - `Source/Tests/Test_Containers.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
 - `Source/Tests/Test_DequeObject.cpp`
 - `Source/Tests/Test_DataSerialization.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
@@ -116,6 +117,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ModelAnimation.cpp`
 - `Source/Tests/Test_NetBuffer.cpp`
 - `Source/Tests/Test_NetSockets.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
 - `Source/Tests/Test_NetworkClient.cpp`
 - `Source/Tests/Test_NetworkServer.cpp`
 - `Source/Tests/Test_NetworkUdp.cpp`
@@ -126,6 +128,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_UpdaterBackend.cpp`
 
 ### Scripting and script-visible APIs

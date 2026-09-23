@@ -89,6 +89,8 @@ The parser stores owned strings internally and returns `string_view` values from
 
 ## Runtime settings
 
+The secure network channel adds `ServerNetwork.ChannelSecretKey` (the required static server secret) and `ClientNetwork.ChannelServerKeys` (client public-key pins). Both are startup settings, not writable script state. The server setting contains the 64-hex-digit key value, not a file path: `$TARGET_FILE{...}` reads a protected file at target runtime without embedding its contents during baking. An unset or malformed server key blocks server startup, even in an interthread-only profile; an empty or invalid client pin list blocks connection. See [Networking](../../explanation/authority-and-networking/#secure-channel) and [Security and Secrets](../../how-to/release/security-and-secrets.md).
+
 `Source/Common/Settings.inc` is the central generated-like declaration file for setting groups and individual settings. Every built-in setting is addressed by its full `Group.Name`, is mutable only while `GlobalSettings` constructs the startup snapshot, and is exposed as `const` afterwards. Live state belongs to its runtime owner rather than being written back into settings. `Settings.h` exposes:
 
 - `ResourcePackInfo` — name, input directories/files, include/exclude glob patterns, side flags, and baker list.

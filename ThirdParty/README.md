@@ -24,6 +24,7 @@ Maintenance workflow: [ThirdParty Maintenance](../Docs/en/contributing/third-par
 * libbacktrace - [master 0b9b49c](https://github.com/ianlancetaylor/libbacktrace/tree/0b9b49cf4a2c9229fc052d6716e1528b2f23e91a)
 * llvm-libunwind - [llvmorg-23.1.1](https://github.com/llvm/llvm-project/tree/llvmorg-23.1.1/libunwind)
 * meshoptimizer - [v1.2](https://github.com/zeux/meshoptimizer/releases/tag/v1.2)
+* Monocypher - [4.0.3](https://monocypher.org)
 * mongo-c-driver - [mongo-c-driver-2.4.0](https://github.com/mongodb/mongo-c-driver)
 * ogg - [libogg-1.3.6](https://xiph.org/ogg)
 * ozz-animation - [0.17.0](https://github.com/guillaumeblanc/ozz-animation/releases/tag/0.17.0)

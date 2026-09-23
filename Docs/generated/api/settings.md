@@ -63,6 +63,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 Continue with the [canonical reference](../../en/reference/script-api/settings.md).
 
+<a id="symbol-setting-client-clientnetwork-channelserverkeys-759507e221"></a>
+- [`symbol-setting-client-clientnetwork-channelserverkeys-759507e221`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-channelserverkeys-759507e221)
+
 <a id="symbol-setting-client-clientnetwork-debugnet-d974b7bb2e"></a>
 - [`symbol-setting-client-clientnetwork-debugnet-d974b7bb2e`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-debugnet-d974b7bb2e)
 
@@ -914,6 +917,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 ## <code>ServerNetwork</code> (server)
 
 Continue with the [canonical reference](../../en/reference/script-api/settings.md).
+
+<a id="symbol-setting-server-servernetwork-channelsecretkey-6e1d7ccafd"></a>
+- [`symbol-setting-server-servernetwork-channelsecretkey-6e1d7ccafd`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-channelsecretkey-6e1d7ccafd)
 
 <a id="symbol-setting-server-servernetwork-clientpingtime-5a2cdb8c35"></a>
 - [`symbol-setting-server-servernetwork-clientpingtime-5a2cdb8c35`](../../en/reference/script-api/settings.md#symbol-setting-server-servernetwork-clientpingtime-5a2cdb8c35)

@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2532 InventorySha256=7c6b1ce985128b9da3be5ce578458d68584b9e95ec09f613b46431fa4a40d136
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2534 InventorySha256=2c8f3b855d6998553cb36e4b165ad22a9ee41984e0b3b465b996d1b80bf4861a
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 61
+///@ MigrationRule Version 0 0 62
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -460,7 +460,7 @@ enum class EngineInfoMessage : uint16_t
 ///@ EnumValueDoc EngineInfoMessage KickedFromGame // Identifies forced removal of the player from the active game session.
 ///@ EnumValueDoc EngineInfoMessage ServerLog // Identifies a server-log message whose reader-facing payload is carried in extraText.
 
-static constexpr uint32_t FO_UPDATER_VERSION = 2;
+static constexpr uint32_t FO_UPDATER_VERSION = 3;
 
 enum class UpdatePlatform : uint8_t
 {
