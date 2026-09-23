@@ -501,6 +501,10 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
 	AddNativeOptimizationFlags()
 	AddLinkOptionsList(-rdynamic)
 
+	# -rdynamic would also export the static LibreSSL, and a system libcrypto loaded later (the managed crypto shim
+	# opens libssl itself) would bind its own internal calls to those unversioned definitions
+	AddLinkOptionsList(-Wl,--exclude-libs,libssl.a:libcrypto.a:libtls.a)
+
 	if(FO_BUILD_BAKER OR (FO_BUILD_CLIENT AND NOT FO_BUILD_LIBRARY) OR FO_MANAGED_SCRIPTING)
 		AddCompileOptionsList(-fPIC)
 	else()

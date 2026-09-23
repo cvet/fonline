@@ -9,7 +9,6 @@ using System.Reflection;
 using System.Reflection.Metadata;
 using System.Reflection.PortableExecutable;
 using System.Runtime.Loader;
-using System.Security.Cryptography;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -50,7 +49,6 @@ public sealed class DynamicCompileResult
 
     public byte[] Image { get; }
 
-    // Empty, since a fragment is emitted without a PDB
     public byte[] Symbols { get; }
 
     public IReadOnlyList<string> Errors { get; }
@@ -148,11 +146,12 @@ public static class DynamicScriptCompiler
         CSharpCompilation compilation =
             CSharpCompilation.Create(assemblyName, new[] { tree }, references, MakeCompilationOptions());
 
-        // Emit hashes nothing: the embedded runtime may lack cryptography (Linux links no crypto shim), and a PDB
-        // needs a document checksum, so a fragment ships without one and its frames carry no line numbers
         using MemoryStream image = new MemoryStream();
+        using MemoryStream symbols = new MemoryStream();
         EmitResult emitted =
-            compilation.Emit(image, options: new EmitOptions(pdbChecksumAlgorithm: default(HashAlgorithmName)));
+            compilation.Emit(image,
+                             symbols,
+                             options: new EmitOptions(debugInformationFormat: DebugInformationFormat.PortablePdb));
         List<string> errors = new List<string>();
 
         // In the invariant culture, so the answer reads the same whatever locale the server runs under
@@ -168,7 +167,7 @@ public static class DynamicScriptCompiler
 
         return new DynamicCompileResult(assemblyName,
                                         emitted.Success ? image.ToArray() : Array.Empty<byte>(),
-                                        Array.Empty<byte>(),
+                                        emitted.Success ? symbols.ToArray() : Array.Empty<byte>(),
                                         errors);
     }
 

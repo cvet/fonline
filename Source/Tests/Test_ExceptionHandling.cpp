@@ -349,7 +349,11 @@ TEST_CASE("CrashReporterHooks")
         CHECK(written->find("FATAL ERROR!") != string::npos);
         CHECK(written->find("Crash reason: Runtime termination: std::terminate") != string::npos);
         CHECK(written->find("Stack trace (most recent call first):") != string::npos);
+#if FO_MEMORY_SANITIZER || FO_THREAD_SANITIZER
+        CHECK(written->find("- [Native] ") == string::npos);
+#else
         CHECK(written->find("- [Native] ") != string::npos);
+#endif
     }
 
     SECTION("AnInFlightExceptionIsAppendedToTheTerminationReason")

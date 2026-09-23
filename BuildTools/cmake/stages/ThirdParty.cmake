@@ -848,6 +848,10 @@ if(FO_MANAGED_SCRIPTING)
         # where CoreLib reaches the OS through Win32 P/Invokes Mono resolves by itself, and the
         # globalization shim ships only as a DLL import library and an LTCG archive no nm can read
         SetValue(FO_MANAGED_SHIM_LIBS "")
+    elseif(FO_LINUX)
+        # CoreLib hashes and Roslyn binds strong-named references through the OpenSSL shim; the shim opens the
+        # system libssl itself, so linking it needs only libc (Init.cmake keeps the static LibreSSL unexported)
+        SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native System.Security.Cryptography.Native.OpenSsl)
     else()
         SetValue(FO_MANAGED_SHIM_LIBS System.Native System.Globalization.Native)
     endif()
@@ -856,6 +860,7 @@ if(FO_MANAGED_SCRIPTING)
     # GlobalizationNative_*), so each shim states its own instead of deriving one
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Native SystemNative_)
     SetValue(FO_MANAGED_SHIM_PREFIX_System.Globalization.Native GlobalizationNative_)
+    SetValue(FO_MANAGED_SHIM_PREFIX_System.Security.Cryptography.Native.OpenSsl CryptoNative_)
 
     # The archive name follows the target toolchain, not the host
     foreach(shimLib ${FO_MANAGED_SHIM_LIBS})

@@ -759,11 +759,12 @@ selected again per target, does not carry them.
   binder flag Roslyn keeps for its own scripting, and the fragment declares `IgnoresAccessChecksTo(<scripts>)`, which
   embedded Mono honours at run time for internal and private access alike.
 - Every fragment gets a new `FOnline.Dynamic.<guid>` name, so `DynamicAssemblies.Load` accepts it.
-- Emitting a fragment hashes nothing, because the embedded runtime may carry no cryptography: Linux links only the
-  `System.Native` and `System.Globalization.Native` interop shims, and Roslyn needs a hash for the PDB checksum
-  (`CS8113` otherwise) and for every document a PDB lists. A fragment is therefore emitted without a PDB, with a
-  time-based MVID (compilation is not deterministic), and `DynamicCompileResult.Symbols` is empty; its stack frames
-  carry no line numbers, while its compile diagnostics keep the author's lines.
+- Roslyn cannot compile without cryptography: it takes the SHA-1 of every strong-named reference's public key while
+  binding references, and the portable PDB needs a checksum. CoreLib reaches it through Win32 on Windows and, on Linux,
+  through the statically linked `System.Security.Cryptography.Native.OpenSsl` interop shim, which opens the system
+  `libssl` on first use, so a Linux host that compiles fragments needs OpenSSL installed. `Init.cmake` keeps the
+  static LibreSSL out of the executable's dynamic symbol table (`--exclude-libs`); otherwise that system libcrypto
+  would bind its own internal calls to LibreSSL's unversioned definitions. Other platforms link no crypto shim.
 
 `BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
 script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another
