@@ -2526,7 +2526,7 @@ MONO_BROWSER_SUBSET_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_wasmglue_asm_i
 MONO_ANDROID_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_android_sources_isa_fallback'
 MONO_APPLE_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_apple_sources_v2'
 MONO_LINUX_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_linux_signal_actions'
-MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry'
+MONO_WINDOWS_SOURCE_MARKER_SUFFIX = f'{MONO_SUBSET_MARKER_SUFFIX}_embedded_debug_info_isa_fallback_suspend_retry_win7_stack_bounds'
 MONO_OVERRIDABLE_ALLOCATORS_CMAKE = '-DENABLE_OVERRIDABLE_ALLOCATORS=1'
 
 # Bump when the layout of a cached runtime archive changes; what the tree is built from is in the cache key itself
@@ -2748,6 +2748,29 @@ def patch_runtime_windows_embedded_debug_info(runtime_root: Path) -> None:
 	for path, text in patched_texts:
 		path.write_text(text, encoding='utf-8')
 		log('Patched', path, '- C and C++ objects embed their debug info')
+
+
+MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER = '(FOnline Patch) Stack bounds come from VirtualQuery, which Windows 7 has'
+
+
+def patch_runtime_windows_7_stack_bounds(runtime_root: Path) -> None:
+	# Mono compiles for Windows 8, and this branch is its one GetCurrentThreadStackLimits import: linked statically, it lands
+	# in the executable, which Windows 7 then refuses to load. The VirtualQuery branch beside it works on every version
+	path = runtime_root / 'src' / 'mono' / 'mono' / 'utils' / 'mono-threads-windows.c'
+	text = path.read_text(encoding='utf-8')
+	marker = MONO_WINDOWS_7_STACK_BOUNDS_PATCH_MARKER
+
+	if marker in text:
+		log('Already patched', path)
+		return
+
+	anchor = '#if _WIN32_WINNT >= 0x0602 // Windows 8 or newer and very fast, just a few instructions, no syscall.\n'
+
+	if text.count(anchor) != 1:
+		raise SystemExit(f'Cannot patch the Mono Windows stack bounds, unique anchor not found in {path}: {anchor.strip()}')
+
+	path.write_text(text.replace(anchor, f'/* {marker} */\n#if 0 // Windows 8 or newer: GetCurrentThreadStackLimits\n', 1), encoding='utf-8')
+	log('Patched', path, '- thread stack bounds no longer import GetCurrentThreadStackLimits')
 
 
 MONO_ISA_FALLBACK_PATCH_MARKER = '(FOnline Patch) An ISA class the JIT does not implement reports IsSupported as false'
@@ -3472,6 +3495,7 @@ def build_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 		if os_name == 'windows':
 			patch_runtime_windows_embedded_debug_info(runtime_root)
+			patch_runtime_windows_7_stack_bounds(runtime_root)
 			patch_runtime_windows_suspend_retry(runtime_root)
 
 		# The targets with a 32-bit architecture, where the JIT implements no hardware intrinsic class
