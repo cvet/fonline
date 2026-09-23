@@ -639,8 +639,8 @@ TEST_CASE("DataSource")
         size_t size = 0;
         uint64_t write_time = 0;
 
-        // A client installed before the format switch still holds the zip, so a release that reads both must
-        // answer from the zip until the pack arrives and from the pack the moment it does
+        // A plain zip stays mountable for content the engine packager did not write, so a name that has both must
+        // answer from the zip until the engine pack appears and from the pack the moment it does
         {
             auto legacy_pack = DataSource::MountPack(temp_dir, "Bridge", false);
             auto legacy_buf = legacy_pack->OpenFile("entry.txt", size, write_time);

@@ -380,16 +380,19 @@ ResourceIndexSource::ResourceIndexSource(string_view path, const vector<string>&
     FO_VERIFY_AND_THROW(header_valid, "Resource index header is not valid", _fileName);
 
     ParseIndex(pack_dirs);
+
+    // Every read goes to the pack handles, and an open index would keep another instance from replacing it on Windows
+    _file.close();
 }
 
 void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 {
     FO_STACK_TRACE_ENTRY();
 
-    optional<uint64_t> file_size = fs::file_size(_fileName);
-    FO_VERIFY_AND_THROW(file_size.has_value(), "Can't size the resource index", _fileName);
-
-    auto fits_in_file = [&](uint64_t offset, uint64_t size) { return offset >= RESOURCE_INDEX_HEADER_SIZE && size <= *file_size && offset <= *file_size - size; };
+    // Sized through the handle the bytes are read from, so a replacement in between cannot pair one file's bounds
+    // with another's contents
+    uint64_t file_size = _file.get_size();
+    auto fits_in_file = [&](uint64_t offset, uint64_t size) { return offset >= RESOURCE_INDEX_HEADER_SIZE && size <= file_size && offset <= file_size - size; };
     FO_VERIFY_AND_THROW(fits_in_file(_header.IndexOffset, _header.IndexStoredSize), "Resource index extent is outside the file", _fileName);
 
     FO_VERIFY_AND_THROW(_header.IndexStoredSize <= std::numeric_limits<uint32_t>::max() && _header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Merged resource catalog exceeds its size limit", _fileName);

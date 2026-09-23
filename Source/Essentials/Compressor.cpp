@@ -67,8 +67,9 @@ auto compressor::compress(const_span<uint8_t> data, int32_t level) -> vector<uin
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto buf_len = numeric_cast<uLongf>(calculate_max_compressed_buf_size(data.size()));
-    auto buf = vector<uint8_t>(buf_len);
+    // zlib's own bound, since the size-based estimate above wraps a 32-bit size_t for inputs past a few dozen megabytes
+    uLongf buf_len = compressBound(numeric_cast<uLong>(data.size()));
+    auto buf = vector<uint8_t>(numeric_cast<size_t>(buf_len));
 
     int32_t result = compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), level);
 

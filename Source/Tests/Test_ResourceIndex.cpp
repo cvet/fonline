@@ -211,6 +211,42 @@ TEST_CASE("ResourcePackInApkRegion")
     CHECK(IsResourceIndexCurrent(index_path, {apk_dir, dir}, {"Art"}));
 }
 
+TEST_CASE("ResourcePackUnderDirectoryEndingInBang")
+{
+    // A writable root such as a profile named "Bob!" is a directory, not an archive, so "!/" must not split it
+    string root = MakeTempIndexDir("bang_dir");
+    auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(root); });
+    string dir = strex(root).combine_path("Bob!").combine_path("Resources").str();
+    REQUIRE(fs::create_directories(dir));
+    WritePack(dir, "Art", {{"Old.txt", "old"}});
+    WritePack(root, "Target", {{"Old.txt", "old"}, {"New.txt", "new"}});
+    string base_path = strex(dir).combine_path("Art.fores").str();
+    string patch_path = GetResourcePatchPath(base_path);
+
+    ResourcePackHeader header;
+    REQUIRE(ReadResourcePackHeader(base_path, header));
+    CHECK(GetResourcePackWriteTime(base_path) == fs::last_write_time(base_path));
+    CHECK(ResolveResourcePackPath({dir}, "Art") == base_path);
+
+    ResourcePackSource target {strex(root).combine_path("Target.fores").str()};
+    ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
+    fs::disk_read_file remote {strex(root).combine_path("Target.fores").str()};
+    writer.Begin();
+
+    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        REQUIRE(remote.read_at(entry.DataOffset, payload));
+        writer.AddEncodedFile(payload);
+    }
+
+    writer.Finish();
+
+    // The updater drops a patch this call cannot read as stale, which is how a committed update was lost
+    auto patch_info = ReadResourcePatchInfo(patch_path, header);
+    REQUIRE(patch_info.has_value());
+    CHECK(patch_info->ContentHash == target.GetContentHash());
+}
+
 TEST_CASE("ResourceIndex")
 {
     SECTION("PatchedPairsMatchDirectEnumerationAndInvalidateOnEveryCommit")
@@ -407,32 +443,35 @@ TEST_CASE("ResourceIndex")
         REQUIRE(ResolveResourceIndexPacks(dirs, vector<string> {"Base", "Over"}, packs, pack_paths));
         BuildResourceIndex(index_path, pack_paths, packs);
 
-        ResourceIndexSource index {index_path, dirs};
+        {
+            ResourceIndexSource index {index_path, dirs};
 
-        auto snapshot = index.GetIndexSnapshot();
-        REQUIRE(snapshot.has_value());
+            auto snapshot = index.GetIndexSnapshot();
+            REQUIRE(snapshot.has_value());
 
-        vector<string> from_snapshot;
+            vector<string> from_snapshot;
 
-        for (const IndexedFile& file : *snapshot) {
-            from_snapshot.emplace_back(file.Path);
+            for (const IndexedFile& file : *snapshot) {
+                from_snapshot.emplace_back(file.Path);
+            }
+
+            std::sort(from_snapshot.begin(), from_snapshot.end());
+
+            // The listing and the entry table must stay one source of truth: a second copy of the paths is what
+            // both drifts from the entries and pays for itself in resident memory for the life of the mount
+            auto listed = index.GetFileNames("", true, "");
+            std::sort(listed.begin(), listed.end());
+            CHECK(listed == from_snapshot);
+            CHECK(listed.size() == 4);
+
+            // Read through the source first: the listing borrows views into the mounted index, so a name that
+            // outlives what it points at shows up here rather than in a player's crash
+            CHECK(ReadThroughIndex(index, "Shared.txt") == BytesOf("over"));
+            CHECK(index.GetFileNames("Dir", false, "txt").size() == 2);
+            CHECK(index.GetFileNames("", false, "bin").size() == 1);
         }
 
-        std::sort(from_snapshot.begin(), from_snapshot.end());
-
-        // The listing and the entry table must stay one source of truth: a second copy of the paths is what
-        // both drifts from the entries and pays for itself in resident memory for the life of the mount
-        auto listed = index.GetFileNames("", true, "");
-        std::sort(listed.begin(), listed.end());
-        CHECK(listed == from_snapshot);
-        CHECK(listed.size() == 4);
-
-        // Read through the source first: the listing borrows views into the mounted index, so a name that
-        // outlives what it points at shows up here rather than in a player's crash
-        CHECK(ReadThroughIndex(index, "Shared.txt") == BytesOf("over"));
-        CHECK(index.GetFileNames("Dir", false, "txt").size() == 2);
-        CHECK(index.GetFileNames("", false, "bin").size() == 1);
-
+        // The mount holds the packs open, and Windows refuses to delete an open file
         CHECK(fs::remove_dir_tree(dir));
     }
 

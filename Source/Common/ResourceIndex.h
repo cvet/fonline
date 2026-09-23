@@ -142,8 +142,8 @@ private:
     unordered_map<string_view, size_t> _entryLookup {};
     vector<fs::disk_read_file> _packFiles {};
     vector<fs::disk_read_file> _patchFiles {};
-    // Per pack, so an entry reports the mtime of the `.fores` its bytes live in - the same answer a direct
-    // pack mount gives, which is what keeps the two views of one file indistinguishable
+    // Per pack pair: the committed patch's mtime when there is one, otherwise the base's - the same answer a
+    // direct pair mount gives, which is what keeps the two views of one file indistinguishable
     vector<uint64_t> _packWriteTimes {};
 };
 

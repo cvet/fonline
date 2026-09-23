@@ -145,7 +145,11 @@ Healthy reads inspect the header, footer at EOF, and that footer's catalog. An i
 backward scan in 64 KiB windows with footer-sized overlap. Candidate magic alone is insufficient: validate
 version, base binding, absolute committed length, footer checksum, catalog extent/checksum and computed
 logical hash. The latest valid candidate wins. No valid commit means the full base remains the local view.
-A malformed patch header is a corruption error. A valid header bound to a different base is stale and excluded.
+A patch header that fails its own checks commits nothing either: a power loss can leave a created patch with
+its length but not its header bytes, and refusing the file would keep the client from starting while a
+reinstall never reaches the writable root. The base stays the view and the next update recreates the patch;
+`Begin` flushes a new header before any payload so the window stays small. A valid header bound to a
+different base is stale and excluded.
 
 All extent checks subtract only after checking the minuend and widen table multiplication before use.
 Unknown codecs/sources, noncanonical or duplicate paths and invalid pool references are rejected. Mounting
@@ -162,10 +166,12 @@ installation/repair ordering when local data is missing or unusable.
 
 ## Codecs
 
-Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. `Baking.CompressLevel` selects level 0–9;
-`Baking.ResourcePackMinCompressGain` selects the minimum percentage saved (default 5). Blobs smaller than
-64 bytes remain stored. Catalogs use the same encoding rule. Matching decoded content can reuse an existing
-extent even when the server encoded it differently.
+Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. Packaging takes the level (0–9) from
+`Baking.CompressLevel` and the gain from `Baking.ResourcePackMinCompressGain` (default 5): a blob is deflated
+only when the bytes it saves exceed `size * gain / 100` in integer division. Blobs smaller than 64 bytes
+remain stored. Catalogs use the same encoding rule. Catalogs and caches the client writes itself (patch
+catalogs, `.foindex`) use the `ResourcePackWriteSettings` defaults, level 6 and gain 5. Matching decoded
+content can reuse an existing extent even when the server encoded it differently.
 
 ## Merged cache: `.foindex`
 
@@ -200,6 +206,8 @@ Android packages `.fores` without outer ZIP compression. The activity passes
 `<installed APK>!/assets/<configured client resource directory>` as `Baking.ClientResources`, and its private files directory as
 `Common.UserWritablePath`. `OpenResourcePackFile` locates the stored APK ZIP entry and returns a bounded,
 64-bit positional `fs::disk_read_file` region over the APK. Compressed or encrypted outer entries are rejected.
+`!/` separates an archive only where the text before it names an existing file, so an ordinary directory whose
+name ends in `!` (a profile named `Bob!`) is never mistaken for one.
 No complete pack or resource tree is copied into memory or staged into app storage for mounting.
 Writable replacement bases and patches live under the private `Resources` directory.
 

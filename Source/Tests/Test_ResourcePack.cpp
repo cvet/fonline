@@ -565,6 +565,29 @@ TEST_CASE("ResourcePackPatch")
         CHECK(updated->size() < first_patch->size() + 1024);
     }
 
+    SECTION("TornPatchHeaderLeavesTheBaseMountedAndIsRecreated")
+    {
+        // A power loss can leave the header's bytes unwritten while the file length survives, which reads back
+        // as zeros; the client must still start and the next update must rebuild the patch
+        string torn = *first_patch;
+        std::fill_n(torn.begin(), RESOURCE_PATCH_HEADER_SIZE, '\0');
+        REQUIRE(fs::write_file(patch, torn));
+
+        {
+            ResourcePackSource view {base, patch};
+            CHECK_FALSE(view.GetPatchInfo().has_value());
+            CHECK(ReadWholeFile(view, "B.txt") == vector<uint8_t> {'o', 'l', 'd'});
+            ResourcePackHeader header;
+            REQUIRE(ReadResourcePackHeader(base, header));
+            CHECK_FALSE(ReadResourcePatchInfo(patch, header).has_value());
+        }
+
+        CHECK(ApplyPatchTestUpdate(base, patch, target) == 12);
+        ResourcePackSource repaired {base, patch};
+        CHECK(repaired.GetContentHash() == ResourcePackSource(target).GetContentHash());
+        CHECK(fs::read_file(patch) == first_patch);
+    }
+
     SECTION("BadDownloadedContentCannotPublishOrDamagePreviousCommit")
     {
         WritePatchTestPack(target, {{"A.txt", "same"}, {"B.txt", "new"}});

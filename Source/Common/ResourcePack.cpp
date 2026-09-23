@@ -68,6 +68,7 @@ static constexpr uint32_t PATCH_FOOTER_MAGIC = 0x54524F46;
 static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>;
 static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool;
 static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>;
+static auto FindArchiveSeparator(string_view path) noexcept -> size_t;
 
 // The offsets above are the format. These pin the record sizes to them, so widening a field without widening
 // the record it sits in stops compiling instead of writing a file nothing can read
@@ -170,7 +171,7 @@ auto OpenResourcePackFile(string_view path) noexcept -> fs::disk_read_file
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t separator = path.find("!/");
+    size_t separator = FindArchiveSeparator(path);
 
     if (separator == string_view::npos) {
         return fs::disk_read_file {path};
@@ -199,8 +200,24 @@ auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    size_t separator = path.find("!/");
+    size_t separator = FindArchiveSeparator(path);
     return fs::last_write_time(path.substr(0, separator));
+}
+
+static auto FindArchiveSeparator(string_view path) noexcept -> size_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // A directory may itself end in '!', so "!/" separates an archive only where the prefix is a file
+    for (size_t separator = path.find("!/"); separator != string_view::npos; separator = path.find("!/", separator + 2)) {
+        string_view archive_path = path.substr(0, separator);
+
+        if (fs::exists(archive_path) && !fs::is_dir(archive_path)) {
+            return separator;
+        }
+    }
+
+    return string_view::npos;
 }
 
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool
@@ -524,7 +541,7 @@ auto ResourcePackSource::OpenFile(string_view path, size_t& size, uint64_t& writ
 
     vector<uint8_t> data = ReadEntryData(*entry);
     auto buf = safe_alloc::make_unique_arr<uint8_t>(data.size());
-    std::memcpy(buf.get(), data.data(), data.size());
+    memory::copy(buf.get(), data.data(), data.size());
 
     size = data.size();
     write_time = _writeTime;
@@ -649,7 +666,7 @@ static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<
         span_write_uint32(index, offset + ENTRY_OFFSET_CODEC, entry.Codec);
         span_write_uint32(index, offset + ENTRY_OFFSET_FLAGS, entry.Source);
         span_write_uint64(index, offset + ENTRY_OFFSET_CONTENT_HASH, entry.FileContentHash);
-        std::memcpy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
+        memory::copy(index.data() + pool_offset, entry.Path.data(), entry.Path.size());
         pool_offset += entry.Path.size();
     }
 
@@ -733,9 +750,12 @@ static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackH
     }
 
     FO_VERIFY_AND_THROW(file.read_at(0, header), "Can't read resource patch header");
-    FO_VERIFY_AND_THROW(span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24}), "Invalid resource patch header");
 
-    if (span_read_uint64(header, 8) != base_header.PackHash) {
+    // A torn header commits nothing, like a patch without a footer: the base stays the view and the updater
+    // recreates the file. Refusing it would keep the client from starting, and a reinstall does not reach it
+    bool header_valid = span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24});
+
+    if (!header_valid || span_read_uint64(header, 8) != base_header.PackHash) {
         return false;
     }
 
@@ -934,7 +954,7 @@ void ResourcePatchWriter::Begin()
         span_write_uint16(header, 6, RESOURCE_PACK_VERSION_MINOR);
         span_write_uint64(header, 8, _info.BasePackHash);
         span_write_uint64(header, 24, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24}));
-        FO_VERIFY_AND_THROW(_file.write(header), "Can't initialize resource patch", _patchPath);
+        FO_VERIFY_AND_THROW(_file.write(header) && _file.flush(), "Can't initialize resource patch", _patchPath);
     }
     else {
         auto current = ReadResourcePatchInfo(_patchPath, base);
