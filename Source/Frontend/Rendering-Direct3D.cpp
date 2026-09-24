@@ -39,7 +39,6 @@
 
 #include "SDL3/SDL_video.h"
 #include <d3d11_1.h>
-#include <d3dcompiler.h>
 
 #include "WinApiUndef.inc"
 
@@ -172,16 +171,6 @@ struct Direct3D_Renderer::Context
     isize32 BackBufSize {};
     isize32 TargetSize {};
 };
-
-static auto GetBlobString(ptr<ID3DBlob> blob) -> string
-{
-    FO_STACK_TRACE_ENTRY();
-
-    nptr<const void> buffer = blob->GetBufferPointer();
-    FO_VERIFY_AND_THROW(buffer, "Shader blob buffer pointer is null");
-    auto chars = buffer.reinterpret_as<char>();
-    return string {chars.get()};
-}
 
 template<typename T>
 static void ReleaseComObject(ptr<nptr<T>> object) noexcept
@@ -353,14 +342,14 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
     // Device
     {
+        // A baked effect runs on feature level 10.0; level 9.3 only when its container also carries the level 9 code,
+        // which model effects never do: level 9 does not support 3D, so a build with 3D models stays at 10.0
         constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
             D3D_FEATURE_LEVEL_10_0,
             D3D_FEATURE_LEVEL_9_3,
-            D3D_FEATURE_LEVEL_9_2,
-            D3D_FEATURE_LEVEL_9_1,
         };
         map<D3D_FEATURE_LEVEL, string> feature_levels_str = {
             {D3D_FEATURE_LEVEL_11_1, "11.1"},
@@ -368,10 +357,9 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             {D3D_FEATURE_LEVEL_10_1, "10.1"},
             {D3D_FEATURE_LEVEL_10_0, "10.0"},
             {D3D_FEATURE_LEVEL_9_3, "9.3"},
-            {D3D_FEATURE_LEVEL_9_2, "9.2"},
-            {D3D_FEATURE_LEVEL_9_1, "9.1"},
         };
-        constexpr auto feature_levels_count = numeric_cast<UINT>(std::size(feature_levels));
+        bool accept_level9 = settings.Baking.Direct3DLevel9Shaders && build_condition<!FO_ENABLE_3D>();
+        UINT feature_levels_count = numeric_cast<UINT>(std::size(feature_levels)) - (accept_level9 ? 0 : 1);
 
         UINT device_flags = D3D11_CREATE_DEVICE_SINGLETHREADED;
 
@@ -544,10 +532,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
     else if (_ctx->FeatureLevel >= D3D_FEATURE_LEVEL_9_3) {
         atlas_w = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
         atlas_h = D3D_FL9_3_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-    }
-    else if (_ctx->FeatureLevel >= D3D_FEATURE_LEVEL_9_1) {
-        atlas_w = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
-        atlas_h = D3D_FL9_1_REQ_TEXTURE2D_U_OR_V_DIMENSION;
     }
     else {
         FO_UNREACHABLE_PLACE();
@@ -741,34 +725,14 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
     for (size_t pass = 0; pass < d3d_effect->_passCount; pass++) {
         // Create the vertex shader
         {
-            string vertex_shader_fname = strex("{}.fofx-{}-vert-hlsl", strex(name).erase_file_extension(), pass + 1);
-            string vertex_shader_content = loader(vertex_shader_fname);
-            FO_VERIFY_AND_THROW(!vertex_shader_content.empty(), "Direct3D effect vertex shader content is empty after loading", name, pass + 1, vertex_shader_fname);
+            string vertex_shader_fname = strex("{}.fofx-{}-vert-dxbc", strex(name).erase_file_extension(), pass + 1);
+            string vertex_shader_bytecode = loader(vertex_shader_fname);
+            FO_VERIFY_AND_THROW(!vertex_shader_bytecode.empty(), "Direct3D effect vertex shader bytecode is empty after loading", name, pass + 1, vertex_shader_fname);
 
-            nptr<ID3DBlob> vertex_shader_blob {};
-            nptr<ID3DBlob> error_blob {};
-
-            auto vertex_shader_content_cstr = make_ptr(vertex_shader_content.c_str());
-            ptr<const char> vertex_shader_entry_point = "main";
-            auto vertex_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DVertexShaderProfile.c_str());
-            auto d3d_compile = ::D3DCompile(vertex_shader_content_cstr.get(), vertex_shader_content.length(), nullptr, nullptr, nullptr, vertex_shader_entry_point.get(), vertex_shader_profile.get(), 0, 0, vertex_shader_blob.get_pp(), error_blob.get_pp());
-
-            if (FAILED(d3d_compile)) {
-                FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-                string error = GetBlobString(error_blob);
-                throw EffectLoadException("Failed to compile Vertex Shader", vertex_shader_fname, vertex_shader_content, error);
-            }
-            if (error_blob) {
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-            }
-
-            FO_VERIFY_AND_THROW(vertex_shader_blob, "Vertex shader blob is null");
-            auto vertex_shader_blob_holder = MakeComObjectHolder(vertex_shader_blob);
-            auto d3d_create_vertex_shader = _ctx->D3DDevice->CreateVertexShader(vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), nullptr, d3d_effect->VertexShader[pass].get_pp());
+            auto d3d_create_vertex_shader = _ctx->D3DDevice->CreateVertexShader(vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), nullptr, d3d_effect->VertexShader[pass].get_pp());
 
             if (FAILED(d3d_create_vertex_shader)) {
-                throw EffectLoadException("Failed to create Vertex Shader from binary", d3d_create_vertex_shader, vertex_shader_fname, vertex_shader_content);
+                throw EffectLoadException("Failed to create Vertex Shader from binary", d3d_create_vertex_shader, vertex_shader_fname);
             }
 
             // Create the input layout
@@ -788,10 +752,10 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD", 8, DXGI_FORMAT_R8G8B8A8_UNORM, 0, numeric_cast<UINT>(offsetof(Vertex3D, Color)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
-                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), d3d_effect->InputLayout[pass].get_pp());
+                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 9, vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), d3d_effect->InputLayout[pass].get_pp());
 
                 if (FAILED(d3d_create_input_layout)) {
-                    throw EffectLoadException("Failed to create Vertex Shader 3D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
+                    throw EffectLoadException("Failed to create Vertex Shader 3D layout", d3d_create_input_layout, vertex_shader_fname);
                 }
             }
             else
@@ -804,44 +768,24 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
                     {"TEXCOORD", 3, DXGI_FORMAT_R32G32_FLOAT, 0, numeric_cast<UINT>(offsetof(Vertex2D, EggFlags)), D3D11_INPUT_PER_VERTEX_DATA, 0},
                 };
 
-                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_blob->GetBufferPointer(), vertex_shader_blob->GetBufferSize(), d3d_effect->InputLayout[pass].get_pp());
+                auto d3d_create_input_layout = _ctx->D3DDevice->CreateInputLayout(local_layout, 4, vertex_shader_bytecode.data(), vertex_shader_bytecode.size(), d3d_effect->InputLayout[pass].get_pp());
 
                 if (FAILED(d3d_create_input_layout)) {
-                    throw EffectLoadException("Failed to create Vertex Shader 2D layout", d3d_create_input_layout, vertex_shader_fname, vertex_shader_content);
+                    throw EffectLoadException("Failed to create Vertex Shader 2D layout", d3d_create_input_layout, vertex_shader_fname);
                 }
             }
         }
 
         // Create the pixel shader
         {
-            string pixel_shader_fname = strex("{}.fofx-{}-frag-hlsl", strex(name).erase_file_extension(), pass + 1);
-            string pixel_shader_content = loader(pixel_shader_fname);
-            FO_VERIFY_AND_THROW(!pixel_shader_content.empty(), "Direct3D effect pixel shader content is empty after loading", name, pass + 1, pixel_shader_fname);
+            string pixel_shader_fname = strex("{}.fofx-{}-frag-dxbc", strex(name).erase_file_extension(), pass + 1);
+            string pixel_shader_bytecode = loader(pixel_shader_fname);
+            FO_VERIFY_AND_THROW(!pixel_shader_bytecode.empty(), "Direct3D effect pixel shader bytecode is empty after loading", name, pass + 1, pixel_shader_fname);
 
-            nptr<ID3DBlob> pixel_shader_blob {};
-            nptr<ID3DBlob> error_blob {};
-
-            auto pixel_shader_content_cstr = make_ptr(pixel_shader_content.c_str());
-            ptr<const char> pixel_shader_entry_point = "main";
-            auto pixel_shader_profile = make_ptr(_ctx->Settings->Render.Direct3DPixelShaderProfile.c_str());
-            auto d3d_compile = ::D3DCompile(pixel_shader_content_cstr.get(), pixel_shader_content.length(), nullptr, nullptr, nullptr, pixel_shader_entry_point.get(), pixel_shader_profile.get(), 0, 0, pixel_shader_blob.get_pp(), error_blob.get_pp());
-
-            if (FAILED(d3d_compile)) {
-                FO_VERIFY_AND_THROW(error_blob, "Shader compilation failed without an error blob");
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-                string error = GetBlobString(error_blob);
-                throw EffectLoadException("Failed to compile Pixel Shader", pixel_shader_fname, pixel_shader_content, error);
-            }
-            if (error_blob) {
-                auto error_blob_holder = MakeComObjectHolder(error_blob);
-            }
-
-            FO_VERIFY_AND_THROW(pixel_shader_blob, "Pixel shader blob is null");
-            auto pixel_shader_blob_holder = MakeComObjectHolder(pixel_shader_blob);
-            auto d3d_create_pixel_shader = _ctx->D3DDevice->CreatePixelShader(pixel_shader_blob->GetBufferPointer(), pixel_shader_blob->GetBufferSize(), nullptr, d3d_effect->PixelShader[pass].get_pp());
+            auto d3d_create_pixel_shader = _ctx->D3DDevice->CreatePixelShader(pixel_shader_bytecode.data(), pixel_shader_bytecode.size(), nullptr, d3d_effect->PixelShader[pass].get_pp());
 
             if (FAILED(d3d_create_pixel_shader)) {
-                throw EffectLoadException("Failed to create Pixel Shader from binary", d3d_create_pixel_shader, pixel_shader_fname, pixel_shader_content);
+                throw EffectLoadException("Failed to create Pixel Shader from binary", d3d_create_pixel_shader, pixel_shader_fname);
             }
         }
 

@@ -101,6 +101,11 @@ project.
 For a new engine dependency:
 
 - add the vendored source under `ThirdParty/<Library>/`;
+- when the engine keeps build files of its own for the library (a CMake source list, a header that replaces
+  one the upstream build generates), make `ThirdParty/<Library>/` a project folder: those files and
+  `FONLINE_PRUNED_FILES.md` sit at its root, `<library>.cmake` among them, and the upstream tree goes into
+  `ThirdParty/<Library>/<library>/`, so an update replaces that one folder and leaves the engine's files
+  alone (`ThirdParty/vkd3d/` with `vkd3d.cmake` and `vkd3d/` is the example);
 - add `ThirdParty/<Library>/FONLINE_PRUNED_FILES.md`;
 - add a version entry to `ThirdParty/README.md`;
 - wire the dependency in `BuildTools/cmake/stages/ThirdParty.cmake` or a nearby

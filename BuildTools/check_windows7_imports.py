@@ -49,8 +49,9 @@ POST_WINDOWS7_IMPORTS: dict[str, frozenset[str]] = {
     "d3d11.dll": frozenset({"D3D11On12CreateDevice"}),
 }
 
-# Libraries Windows 7 SP1 does not have at all
-POST_WINDOWS7_LIBRARIES = frozenset({"combase.dll", "d3d12.dll", "dcomp.dll", "shcore.dll"})
+# Libraries Windows 7 SP1 does not have at all; d3dcompiler_47.dll comes only with KB4019990, and effects are
+# baked to bytecode, so nothing imports it
+POST_WINDOWS7_LIBRARIES = frozenset({"combase.dll", "d3d12.dll", "d3dcompiler_47.dll", "dcomp.dll", "shcore.dll"})
 
 # Umbrella libraries (onecore.lib, mincore.lib) bind API-set contracts at their newest versions; only the Universal CRT
 # forwarders are redistributed down to Windows 7

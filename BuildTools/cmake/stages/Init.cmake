@@ -484,7 +484,7 @@ if(WIN32)
 	AppendList(FO_ESSENTIALS_SYSTEM_LIBS "user32" "ws2_32" "version" "winmm" "imm32" "dbghelp" "psapi" "bcrypt")
 
 	if(NOT FO_HEADLESS_ONLY)
-		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "d3dcompiler" "opengl32")
+		AppendList(FO_RENDER_SYSTEM_LIBS "gdi32" "dxgi" "dxguid" "d3d11" "opengl32")
 	endif()
 
 elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")

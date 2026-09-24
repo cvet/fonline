@@ -378,6 +378,8 @@ AppendList(FO_BAKER_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tools/AudioBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/ConfigBaker.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tools/Direct3DLevel9.h"
+    "${FO_ENGINE_ROOT}/Source/Tools/Direct3DLevel9.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.h"
     "${FO_ENGINE_ROOT}/Source/Tools/EffectBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tools/EffekseerCompiler.h"

@@ -212,8 +212,6 @@ SETTING(bool, Render, ForceVulkan, false); // If true, Vulkan is forced
 SETTING(bool, Render, ForceSDLGpu, false); // If true, SDL_GPU backend is forced
 SETTING(bool, Render, ForceGlslEsProfile, false); // If true, GLSL ES profile is forced
 SETTING(bool, Render, AllowSoftwareRenderer, false); // If true, a software rasterizer may stand in when no hardware device is available
-SETTING(string, Render, Direct3DVertexShaderProfile, "vs_4_0_level_9_3"); // Direct3D vertex shader compile profile
-SETTING(string, Render, Direct3DPixelShaderProfile, "ps_4_0_level_9_3"); // Direct3D pixel shader compile profile
 SETTING(string, Render, SDLGpuDriver, ""); // Preferred SDL_GPU driver name (vulkan / metal / direct3d12), empty lets SDL pick
 SETTING(bool, Render, RenderDebug, false); // If true, render debugging is enabled
 SETTING(bool, Render, DrawWireframe, false); // If true, rendered sprite and particle triangle edges are overlaid for geometry debugging
@@ -302,6 +300,7 @@ SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world e
 SETTING(float32_t, Baking, ModelAttachmentMaxExtent, 50.0f); // Largest world extent a directly attached model may reach; above it the export sits in a larger unit space and the client cannot build its sprite frame
 SETTING(vector<string>, Baking, RawCopyFileExtensions, "fofnt", "bmfc", "fnt", "ogv", "json", "ini"); // Raw copy file extensions
 SETTING(float32_t, Baking, AudioVorbisQuality, 0.5f); // Vorbis VBR quality audio baking encodes with, from -0.1 (smallest) to 1.0 (largest)
+SETTING(bool, Baking, Direct3DLevel9Shaders, false); // If true, Direct3D effects other than model ones also carry level 9.3 code and a build without 3D accepts feature level 9.3 devices; an effect that does not fit level 9.3 fails the bake
 SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro"); // Authored proto container extensions
 SETTING(bool, Baking, AllowRepeatedProtoParents, true); // If false, a prototype reaching one ancestor through several $Parent entries fails baking; when allowed, a repeated ancestor contributes its fields only where it is first reached
 SETTING(vector<string>, Baking, BakeLanguages, "engl"); // Bake languages

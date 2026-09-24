@@ -34,6 +34,7 @@
 #include "EffectBaker.h"
 #include "Application.h"
 #include "ConfigFile.h"
+#include "Direct3DLevel9.h"
 
 FO_DISABLE_WARNINGS_PUSH()
 #include "../Include/Types.h"
@@ -43,6 +44,7 @@ FO_DISABLE_WARNINGS_PUSH()
 #include "spirv_glsl.hpp"
 #include "spirv_hlsl.hpp"
 #include "spirv_msl.hpp"
+#include "vkd3d_shader.h"
 FO_DISABLE_WARNINGS_POP()
 
 FO_BEGIN_NAMESPACE
@@ -60,6 +62,8 @@ struct EffectBaker::SdlStageSlots
 };
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots;
+static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>;
+static auto IsModelEffect(string_view path) -> bool;
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string;
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname);
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex);
@@ -102,8 +106,8 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl", pass)), write_time);
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-glsl_es", pass)), write_time);
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-glsl_es", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-hlsl", pass)), write_time);
-            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-hlsl", pass)), write_time);
+            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-dxbc", pass)), write_time);
+            (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-dxbc", pass)), write_time);
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_mac", pass)), write_time);
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-frag-msl_mac", pass)), write_time);
             (void)_context->BakeChecker(strex(path).change_file_extension(strex("fofx-{}-vert-msl_ios", pass)), write_time);
@@ -126,7 +130,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
             }
 
             if constexpr (!FO_ENABLE_3D) {
-                if (file_header.GetPath().find("3D") != string::npos) {
+                if (IsModelEffect(file_header.GetPath())) {
                     continue;
                 }
             }
@@ -383,7 +387,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     spv_options.validate = true;
 
     // Native Vulkan-1.0 SPIR-V (set 0 = uniform buffers, set 1 = samplers) consumed by Rendering-Vulkan and the
-    // GLSL / GLSL ES / HLSL cross-compilation. Left untouched
+    // GLSL / GLSL ES / DXBC cross-compilation. Left untouched
     std::vector<uint32_t> spirv;
     spv::SpvBuildLogger logger;
     GlslangToSpv(intermediate, spirv, &logger, &spv_options);
@@ -439,14 +443,22 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
         _context->WriteData(strex("{}-glsl_es", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
     };
 
-    // SPIR-V to HLSL
-    auto make_hlsl = [this, &fname_wo_ext, &spirv]() {
+    // SPIR-V to HLSL to DXBC (Direct3D renderer), compiled here so that no client depends on the shader compiler of its OS; level
+    // 9.3 code rides in the same container on request, except in model effects, since level 9 does not support 3D
+    auto make_dxbc = [this, &fname_wo_ext, &spirv, is_vertex]() {
         spirv_cross::CompilerHLSL compiler {spirv};
         auto options = compiler.get_hlsl_options();
         options.shader_model = 40;
         compiler.set_hlsl_options(options);
         auto source = compiler.compile();
-        _context->WriteData(strex("{}-hlsl", fname_wo_ext), vector<uint8_t>(source.begin(), source.end()));
+        vector<uint8_t> dxbc = CompileHlsl(source, is_vertex ? "vs_4_0" : "ps_4_0", VKD3D_SHADER_TARGET_DXBC_TPF, fname_wo_ext);
+
+        if (_context->Settings->Baking.Direct3DLevel9Shaders && !IsModelEffect(fname_wo_ext)) {
+            vector<uint8_t> level9 = CompileHlsl(source, is_vertex ? "vs_2_a" : "ps_2_0", VKD3D_SHADER_TARGET_D3D_BYTECODE, fname_wo_ext);
+            dxbc = AddDirect3DLevel9Code(dxbc, level9, is_vertex, fname_wo_ext);
+        }
+
+        _context->WriteData(strex("{}-dxbc", fname_wo_ext), dxbc);
     };
 
     // SPIR-V to Metal macOS (SDL_GPU Metal driver)
@@ -477,7 +489,7 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-spirv_sdl", make_spirv_sdl));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl", make_glsl));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-glsl_es", make_glsl_es));
-    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-hlsl", make_hlsl));
+    file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-dxbc", make_dxbc));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_mac", make_msl_mac));
     file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeShader-msl_ios", make_msl_ios));
 
@@ -663,6 +675,65 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
         binding.msl_buffer = numeric_cast<uint32_t>(i);
         compiler.add_msl_resource_binding(binding);
     }
+}
+
+static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    string source_name = string(fname);
+
+    vkd3d_shader_hlsl_source_info hlsl_info {};
+    hlsl_info.type = VKD3D_SHADER_STRUCTURE_TYPE_HLSL_SOURCE_INFO;
+    hlsl_info.entry_point = "main";
+    hlsl_info.profile = profile.c_str();
+
+    const vkd3d_shader_compile_option options[] = {
+        {VKD3D_SHADER_COMPILE_OPTION_API_VERSION, VKD3D_SHADER_API_VERSION_2_1},
+        {VKD3D_SHADER_COMPILE_OPTION_STRIP_DEBUG, 1},
+    };
+
+    vkd3d_shader_compile_info compile_info {};
+    compile_info.type = VKD3D_SHADER_STRUCTURE_TYPE_COMPILE_INFO;
+    compile_info.next = &hlsl_info;
+    compile_info.source.code = source.data();
+    compile_info.source.size = source.size();
+    compile_info.source_type = VKD3D_SHADER_SOURCE_HLSL;
+    compile_info.target_type = target;
+    compile_info.options = options;
+    compile_info.option_count = numeric_cast<uint32_t>(std::size(options));
+    compile_info.log_level = VKD3D_SHADER_LOG_WARNING;
+    compile_info.source_name = source_name.c_str();
+
+    vkd3d_shader_code compiled {};
+    nptr<char> messages {};
+    int32_t result = vkd3d_shader_compile(&compile_info, &compiled, messages.get_pp());
+    auto messages_holder = make_unique_del_ptr(messages, vkd3d_shader_free_messages);
+    auto compiled_holder = scope_exit([&compiled]() noexcept { vkd3d_shader_free_shader_code(&compiled); });
+    string diagnostics = messages ? string(messages.get()) : string();
+
+    if (result < 0) {
+        throw EffectBakerException("Failed to compile HLSL", fname, profile, result, MakeShaderCompilerInfoLogForMessage(diagnostics));
+    }
+
+    // A warning is not a reviewed state of an engine effect: the shader either compiles clean or fails the bake
+    if (!diagnostics.empty()) {
+        throw EffectBakerException("HLSL compilation produced diagnostics", fname, profile, MakeShaderCompilerInfoLogForMessage(diagnostics));
+    }
+
+    nptr<const void> code = compiled.code;
+    FO_VERIFY_AND_THROW(code && compiled.size != 0, "HLSL compilation succeeded without bytecode", fname, profile);
+    vector<uint8_t> bytecode(compiled.size);
+    memory::copy(bytecode.data(), code, compiled.size);
+    return bytecode;
+}
+
+static auto IsModelEffect(string_view path) -> bool
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    // Model effects are told by the "3D" in their name, as the engine's own 3D_* effects are
+    return path.find("3D") != string_view::npos;
 }
 
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string
