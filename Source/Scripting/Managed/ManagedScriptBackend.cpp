@@ -465,8 +465,12 @@ static void InvokeManagedScriptDelegate(ptr<const ManagedScriptBackend> backend,
 static void RunManagedScriptEntry(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, const function<MonoObject*()>& get_entry, const function<void()>& callback);
 static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend> backend, ptr<BaseEngine> engine, timespan total_duration, timespan lock_wait_duration, const function<MonoObject*()>& get_entry);
 static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const function<MonoObject*()>& get_entry) -> string;
-static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames);
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames) noexcept;
 static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*;
+template<typename Body>
+static auto CaptureNativeError(Body&& body) noexcept -> MonoString*;
+template<typename Body>
+static auto CaptureNativeError(MonoString** error, Body&& body) noexcept -> decltype(body());
 static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept;
 static auto CollectManagedStackFrame(MonoMethod* method, int32_t native_offset, int32_t il_offset, mono_bool managed, void* data) -> mono_bool;
 static auto DescribeManagedException(ptr<const ManagedScriptBackend> backend, MonoObject* exception, nptr<ManagedScriptEntryScope> entry) -> ManagedExceptionDescription;
@@ -495,95 +499,97 @@ static auto GetManagedTracyMethodEntry(ptr<MonoMethod> method) -> ptr<const Mana
 #endif
 
 // Native ABI: logging, hashing, backend and prototype queries
-static void NativeLog(MonoString* text);
-static auto NativeGetHash(void* backend_ptr, MonoString* text) -> void*;
-static auto NativeGetHashStr(void* value) -> MonoString*;
-static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*;
-static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*;
-static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*;
-static void NativeSignalContinuationsReady(void* backend_ptr);
-static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*;
-static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*;
-static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*;
-static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool;
-static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t;
-static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index) -> void*;
+static void NativeLog(MonoString* text) noexcept;
+static auto NativeGetHash(void* backend_ptr, MonoString* text, MonoString** error) noexcept -> void*;
+static auto NativeGetHashStr(void* value) noexcept -> MonoString*;
+static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value, MonoString** error) noexcept -> MonoString*;
+static auto NativeResolveHash(void* backend_ptr, uint64_t hash, MonoString** error) noexcept -> void*;
+static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) noexcept -> MonoString*;
+static void NativeSignalContinuationsReady(void* backend_ptr) noexcept;
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) noexcept -> MonoObject*;
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) noexcept -> MonoArray*;
+static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> void*;
+static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> mono_bool;
+static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name, MonoString** error) noexcept -> int32_t;
+static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index, MonoString** error) noexcept -> void*;
 
 // Native ABI: entity lifetime and property access
-static void NativeAddRefEntity(void* entity_ptr);
-static void NativeReleaseEntity(void* entity_ptr);
+static void NativeAddRefEntity(void* entity_ptr) noexcept;
+static void NativeReleaseEntity(void* entity_ptr) noexcept;
 static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const char* class_name, const char* method_name, int32_t param_count) -> MonoMethod*;
 static auto InvokeEntityWrapperTrackerCollect(ptr<const ManagedScriptBackend> backend, MonoMethod* method, int32_t pass_limit) -> int32_t;
 static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backend, MonoMethod* method) -> string;
-static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool;
-static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool;
-static auto NativeGetEntityName(void* entity_ptr) -> MonoString*;
-static auto NativeGetEntityId(void* entity_ptr) -> int64_t;
-static auto NativeGetEntityProtoId(void* entity_ptr) -> void*;
-static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t;
-static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*;
-static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*;
-static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*;
+static auto NativeIsEntityDestroyed(void* entity_ptr) noexcept -> mono_bool;
+static auto NativeIsEntityDestroying(void* entity_ptr) noexcept -> mono_bool;
+static auto NativeGetEntityName(void* entity_ptr) noexcept -> MonoString*;
+static auto NativeGetEntityId(void* entity_ptr) noexcept -> int64_t;
+static auto NativeGetEntityProtoId(void* entity_ptr) noexcept -> void*;
+static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> int32_t;
+static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) noexcept -> MonoString*;
+static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoString*;
+static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) noexcept -> MonoString*;
 
 // Native ABI: hex direction helpers
-static auto NativeHdirToMdir(int8_t dir) -> int16_t;
-static auto NativeMdirHex(int16_t angle) -> int8_t;
-static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t;
-static auto NativeMdirReverse(int16_t angle) -> int16_t;
+static auto NativeHdirToMdir(int8_t dir) noexcept -> int16_t;
+static auto NativeMdirHex(int16_t angle) noexcept -> int8_t;
+static auto NativeMdirRotateHex(int16_t angle, int32_t steps) noexcept -> int16_t;
+static auto NativeMdirReverse(int16_t angle) noexcept -> int16_t;
 
 // Native ABI: inner entities
-static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id) -> void*;
-static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id) -> mono_bool;
-static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id) -> void*;
-static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t;
-static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr) -> int64_t;
+static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id, MonoString** error) noexcept -> void*;
+static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, MonoString** error) noexcept -> mono_bool;
+static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id, MonoString** error) noexcept -> void*;
+static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) noexcept -> int32_t;
+static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr, MonoString** error) noexcept -> int64_t;
 
 // Native ABI: settings
-static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name) -> int32_t;
-static void NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value);
-static auto NativeGetSettingInt(void* backend_ptr, MonoString* name) -> int32_t;
-static void NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value);
-static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name) -> uint32_t;
-static void NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value);
-static auto NativeGetSettingLong(void* backend_ptr, MonoString* name) -> int64_t;
-static void NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value);
-static auto NativeGetSettingULong(void* backend_ptr, MonoString* name) -> uint64_t;
-static void NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value);
-static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name) -> float32_t;
-static void NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value);
-static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name) -> float64_t;
-static void NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value);
-static auto NativeGetSettingString(void* backend_ptr, MonoString* name) -> MonoString*;
-static void NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value);
-static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) -> MonoString*;
+static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t;
+static auto NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t;
+static auto NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint32_t;
+static auto NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingLong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int64_t;
+static auto NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingULong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint64_t;
+static auto NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float32_t;
+static auto NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value) noexcept -> MonoString*;
+static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float64_t;
+static auto NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value) noexcept -> MonoString*;
+static auto NativeGetSettingString(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> MonoString*;
+static auto NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value) noexcept -> MonoString*;
+static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) noexcept -> MonoString*;
 
 // Native ABI: events, properties, methods and remote calls
-static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority);
-static void NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler);
-static void NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr);
-static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t;
-static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t;
-static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoObject*;
-static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
-static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*;
-static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) -> MonoString*;
-static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) -> MonoString*;
-static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*;
-static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter);
-static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter);
-static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*;
-static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*;
-static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*;
-static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t;
-static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler);
-static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler);
-static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array);
-static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array);
+static auto NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) noexcept -> MonoString*;
+static auto NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr) noexcept -> MonoString*;
+static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> int32_t;
+static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) noexcept -> int32_t;
+static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoObject*;
+static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*;
+static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*;
+static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) noexcept -> MonoString*;
+static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) noexcept -> MonoString*;
+static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) noexcept -> MonoString*;
+static auto NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter) noexcept -> MonoString*;
+static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*;
+static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) noexcept -> MonoString*;
+static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) noexcept -> MonoString*;
+static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args, MonoString** error) noexcept -> int32_t;
+static auto NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler) noexcept -> MonoString*;
+static auto NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*;
+static auto NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*;
 
 // Internal-call registration
 static void RegisterInternalCalls();
+template<typename Ret, typename... Args>
+static void AddInternalCall(const char* name, Ret (*func)(Args...) noexcept);
 
 // Settings access helpers
 static auto GetSettingValueAsString(ptr<ManagedScriptBackend> backend, MonoString* name) -> string;
@@ -599,12 +605,12 @@ static void DispatchManagedCallback(ptr<ManagedScriptBackend> backend, uint32_t 
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
 static auto TryDispatchManagedCallbackTyped(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call) -> bool;
 static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint32_t handler_handle, const ManagedCallbackPlan& plan, FuncCallData& call);
-static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t;
-static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t;
-static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t;
-static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t;
-static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool;
-static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error);
+static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t;
+static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) noexcept -> mono_bool;
+static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error) noexcept;
 static void CopyManagedCallbackReturnValue(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, FuncCallData& call);
 static void CopyManagedCallbackByRefArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> arg_data);
 static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callback) -> unique_del_nptr<ScriptFuncDesc>;
@@ -1386,7 +1392,7 @@ static auto DescribeManagedScriptEntry(ptr<ManagedScriptBackend> backend, const 
 }
 
 // Script code reports an exception it caught itself; see ScriptExceptions.Record
-static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames)
+static void NativeReportException(MonoString* summary, MonoString* native_error, MonoArray* frames) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -1433,6 +1439,44 @@ static auto MakeManagedNativeError(const std::exception& ex) -> MonoString*
     }
 
     return message;
+}
+
+// The body of an internal call whose managed wrapper throws the returned error; see AddInternalCall
+template<typename Body>
+static auto CaptureNativeError(Body&& body) noexcept -> MonoString*
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    try {
+        body();
+        return nullptr;
+    }
+    catch (const std::exception& ex) {
+        return MakeManagedNativeError(ex);
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
+}
+
+template<typename Body>
+static auto CaptureNativeError(MonoString** error, Body&& body) noexcept -> decltype(body())
+{
+    FO_NO_STACK_TRACE_ENTRY();
+
+    FO_STRONG_ASSERT(error != nullptr, "Managed internal call error output is null");
+    *error = nullptr;
+
+    try {
+        return body();
+    }
+    catch (const std::exception& ex) {
+        *error = MakeManagedNativeError(ex);
+        return {};
+    }
+    catch (...) {
+        FO_UNKNOWN_EXCEPTION();
+    }
 }
 
 static void CollectManagedScriptStackLayers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept
@@ -2007,7 +2051,7 @@ auto ManagedScriptEntryScope::FindCrossedNativeException(MonoString* message) co
 
 // === Native ABI: logging, hashing, backend and prototype queries ===
 
-static void NativeLog(MonoString* text)
+static void NativeLog(MonoString* text) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2050,21 +2094,23 @@ static auto NativeHstringFromHandle(void* value) -> hstring
     return hstring(ptr<const hstring::entry>(static_cast<const hstring::entry*>(value)));
 }
 
-static auto NativeGetHash(void* backend_ptr, MonoString* text) -> void*
+static auto NativeGetHash(void* backend_ptr, MonoString* text, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    string value = ToStringAndFree(text);
+    return CaptureNativeError(error, [&]() -> void* {
+        string value = ToStringAndFree(text);
 
-    if (value.empty()) {
-        return nullptr;
-    }
+        if (value.empty()) {
+            return nullptr;
+        }
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    return NativeHstringHandle(backend->GetMetadata()->Hashes.to_hashed_string(value));
+        auto backend = ResolveBoundBackend(backend_ptr);
+        return NativeHstringHandle(backend->GetMetadata()->Hashes.to_hashed_string(value));
+    });
 }
 
-static auto NativeGetHashStr(void* value) -> MonoString*
+static auto NativeGetHashStr(void* value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2075,42 +2121,46 @@ static auto NativeGetHashStr(void* value) -> MonoString*
     return mono_string_new(GetDomainOrThrow(mono_domain_get()), NativeHstringFromHandle(value).c_str());
 }
 
-static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value) -> MonoString*
+static auto NativeGetHashStrFromHash(void* backend_ptr, uint64_t value, MonoString** error) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string text = strex("{}", value).str();
-    bool failed = false;
-    hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(value, &failed);
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string text = strex("{}", value).str();
+        bool failed = false;
+        hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(value, &failed);
 
-    if (!failed) {
-        text = resolved.as_str();
-    }
+        if (!failed) {
+            text = resolved.as_str();
+        }
 
-    return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
+        return mono_string_new(GetDomainOrThrow(mono_domain_get()), text.c_str());
+    });
 }
 
-static auto NativeResolveHash(void* backend_ptr, uint64_t hash) -> void*
+static auto NativeResolveHash(void* backend_ptr, uint64_t hash, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (hash == 0) {
-        return nullptr;
-    }
+    return CaptureNativeError(error, [&]() -> void* {
+        if (hash == 0) {
+            return nullptr;
+        }
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    bool failed = false;
-    hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(hash, &failed);
+        auto backend = ResolveBoundBackend(backend_ptr);
+        bool failed = false;
+        hstring resolved = backend->GetMetadata()->Hashes.resolve_hash(hash, &failed);
 
-    if (failed) {
-        throw ScriptSystemException("Managed hstring is not interned in the active backend", hash);
-    }
+        if (failed) {
+            throw ScriptSystemException("Managed hstring is not interned in the active backend", hash);
+        }
 
-    return NativeHstringHandle(resolved);
+        return NativeHstringHandle(resolved);
+    });
 }
 
-static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) -> MonoString*
+static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuation) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2131,7 +2181,7 @@ static auto NativeRunScriptContinuation(void* backend_ptr, MonoObject* continuat
     }
 }
 
-static void NativeSignalContinuationsReady(void* backend_ptr)
+static void NativeSignalContinuationsReady(void* backend_ptr) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2139,7 +2189,7 @@ static void NativeSignalContinuationsReady(void* backend_ptr)
     cast_from_void<ManagedScriptBackend*>(backend_ptr)->SignalContinuationsReady();
 }
 
-static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) -> MonoObject*
+static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoArray* symbols, MonoString** error) noexcept -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2160,7 +2210,7 @@ static auto NativeLoadDynamicAssembly(void* backend_ptr, MonoArray* image, MonoA
     }
 }
 
-static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) -> MonoArray*
+static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) noexcept -> MonoArray*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2186,61 +2236,69 @@ static auto NativeReadClientScriptsImage(void* backend_ptr, MonoString** error) 
 
 // Custom-entity proto getters: the built-in entities carry metadata-exported Game.GetProto*, custom ones
 // resolve through this path instead
-static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> void*
+static auto NativeGetProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    auto proto = meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id));
-    return proto.void_cast();
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
+        auto proto = meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id));
+        return proto.void_cast();
+    });
 }
 
-static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id) -> mono_bool
+static auto NativeCheckProtoEntity(void* backend_ptr, MonoString* type_name, void* proto_id, MonoString** error) noexcept -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
-    return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id)) ? 1 : 0);
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        hstring type_hname = meta->Hashes.to_hashed_string(type_name_str);
+        return static_cast<mono_bool>(meta->GetProtoEntity(type_hname, NativeHstringFromHandle(proto_id)) ? 1 : 0);
+    });
 }
 
 // Plural proto enumeration (managed equivalent of AngelScript Game_GetProtoCustomEntities): count + by-index, backing
 // the generated Game.GetProto<X>s()/Get<X>s() loops
-static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name) -> int32_t
+static auto NativeGetProtoEntityCount(void* backend_ptr, MonoString* type_name, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    return numeric_cast<int32_t>(meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str)).size());
+    return CaptureNativeError(error, [&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        return numeric_cast<int32_t>(meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str)).size());
+    });
 }
 
-static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index) -> void*
+static auto NativeGetProtoEntityAt(void* backend_ptr, MonoString* type_name, int32_t index, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    string type_name_str = ToStringAndFree(type_name);
-    ptr<const EngineMetadata> meta = backend->GetMetadata();
-    const auto& protos = meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str));
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        string type_name_str = ToStringAndFree(type_name);
+        ptr<const EngineMetadata> meta = backend->GetMetadata();
+        const auto& protos = meta->GetProtoEntities(meta->Hashes.to_hashed_string(type_name_str));
 
-    int32_t i = 0;
+        int32_t i = 0;
 
-    for (const auto& [proto_id, proto] : protos) {
-        if (i == index) {
-            return static_cast<Entity*>(proto.get_no_const());
+        for (const auto& [proto_id, proto] : protos) {
+            if (i == index) {
+                return static_cast<Entity*>(proto.get_no_const());
+            }
+
+            i++;
         }
 
-        i++;
-    }
-
-    return nullptr;
+        return nullptr;
+    });
 }
 
 // === Native ABI: entity lifetime and property access ===
@@ -2272,7 +2330,7 @@ static auto InvokeEntityWrapperTrackerDump(ptr<const ManagedScriptBackend> backe
 
 // A wrapper AddRefs the native entity and releases it only in its finalizer, so one retained past destroy keeps it alive-but-destroyed;
 // what teardown's collection cannot reach is reported by the live entity count rather than taken away behind the wrapper's back
-static void NativeAddRefEntity(void* entity_ptr)
+static void NativeAddRefEntity(void* entity_ptr) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2281,7 +2339,7 @@ static void NativeAddRefEntity(void* entity_ptr)
     }
 }
 
-static void NativeReleaseEntity(void* entity_ptr)
+static void NativeReleaseEntity(void* entity_ptr) noexcept
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2314,7 +2372,7 @@ static auto FindCoreScriptMethod(ptr<const ManagedScriptBackend> backend, const 
 
 // Backs the managed `Entity.IsDestroyed` property (parity with AngelScript). A null wrapper pointer counts as
 // destroyed. The wrapper holds a strong ref (AddRef/Release), so reading a destroyed-but-alive entity is safe
-static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
+static auto NativeIsEntityDestroyed(void* entity_ptr) noexcept -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2324,7 +2382,7 @@ static auto NativeIsEntityDestroyed(void* entity_ptr) -> mono_bool
 
 // Backs the managed `Entity.IsDestroying` property (parity with AngelScript get_IsDestroying). A null wrapper
 // pointer is already gone rather than mid-destruction, so it reports false
-static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
+static auto NativeIsEntityDestroying(void* entity_ptr) noexcept -> mono_bool
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2333,7 +2391,7 @@ static auto NativeIsEntityDestroying(void* entity_ptr) -> mono_bool
 }
 
 // Managed Entity.Name -> AngelScript base-entity `get_Name()` (Entity::GetName); a manual base binding
-static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
+static auto NativeGetEntityName(void* entity_ptr) noexcept -> MonoString*
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2347,7 +2405,7 @@ static auto NativeGetEntityName(void* entity_ptr) -> MonoString*
     return mono_string_new(domain, name.c_str());
 }
 
-static auto NativeGetEntityId(void* entity_ptr) -> int64_t
+static auto NativeGetEntityId(void* entity_ptr) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2360,7 +2418,7 @@ static auto NativeGetEntityId(void* entity_ptr) -> int64_t
     return entity->GetId().underlying_value();
 }
 
-static auto NativeGetEntityProtoId(void* entity_ptr) -> void*
+static auto NativeGetEntityProtoId(void* entity_ptr) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2420,7 +2478,7 @@ static auto ResolveManagedScalarProperty(void* backend_ptr, void* entity_ptr, in
     return {entity, prop};
 }
 
-static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2457,7 +2515,7 @@ static auto NativeGetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t 
     }
 }
 
-static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) -> MonoString*
+static auto NativeSetPropertyValue(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* value, int32_t size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2509,7 +2567,7 @@ static auto ResolveManagedArrayProperty(void* backend_ptr, void* entity_ptr, int
 
 // Reports the array size in bytes and copies the elements when the caller's buffer holds them all; a smaller buffer
 // is left untouched, so the caller sizes its list and asks again
-static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) -> MonoString*
+static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t capacity, int32_t element_size, int32_t* size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2553,7 +2611,7 @@ static auto NativeGetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
     }
 }
 
-static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) -> MonoString*
+static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t prop_index, void* buffer, int32_t size, int32_t element_size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2604,7 +2662,7 @@ static auto NativeGetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, i
     return entity->GetValueAsInt(prop);
 }
 
-static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> int32_t
+static auto NativeGetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2632,7 +2690,7 @@ static void NativeSetEntityValueAsIntImpl(void* backend_ptr, void* entity_ptr, i
     entity->SetValueAsInt(prop, value);
 }
 
-static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) -> MonoString*
+static auto NativeSetEntityValueAsInt(void* backend_ptr, void* entity_ptr, int32_t prop_index, int32_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2659,7 +2717,7 @@ static auto NativeGetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, i
     return mono_string_new_len(domain, value.data(), numeric_cast<uint32_t>(value.size()));
 }
 
-static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoString*
+static auto NativeGetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2687,7 +2745,7 @@ static void NativeSetEntityValueAsAnyImpl(void* backend_ptr, void* entity_ptr, i
     entity->SetValueAsAny(prop, any_t {ToStringAndFree(value)});
 }
 
-static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) -> MonoString*
+static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString* value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2704,28 +2762,28 @@ static auto NativeSetEntityValueAsAny(void* backend_ptr, void* entity_ptr, int32
 
 // Backs the managed `mdir.hex` property (parity with AngelScript mdir::get_hex). The conversion is
 // geometry-dependent (hex vs square map dirs), so it routes through the engine rather than a managed mirror
-static auto NativeHdirToMdir(int8_t dir) -> int16_t
+static auto NativeHdirToMdir(int8_t dir) noexcept -> int16_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return mdir(hdir(dir)).angle();
 }
 
-static auto NativeMdirHex(int16_t angle) -> int8_t
+static auto NativeMdirHex(int16_t angle) noexcept -> int8_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return mdir(static_cast<int32_t>(angle)).hex().value();
 }
 
-static auto NativeMdirRotateHex(int16_t angle, int32_t steps) -> int16_t
+static auto NativeMdirRotateHex(int16_t angle, int32_t steps) noexcept -> int16_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
     return mdir(static_cast<int32_t>(angle)).rotateHex(steps).angle();
 }
 
-static auto NativeMdirReverse(int16_t angle) -> int16_t
+static auto NativeMdirReverse(int16_t angle) noexcept -> int16_t
 {
     FO_NO_STACK_TRACE_ENTRY();
 
@@ -2745,60 +2803,66 @@ static auto ResolveAbiInner(ptr<ManagedScriptBackend> backend, int32_t entry_id)
     return abi->Inners[numeric_cast<size_t>(entry_id)];
 }
 
-static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id) -> void*
+static auto NativeCreateInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, void* proto_id, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    ptr<EntityManagerApi> entity_mngr = GetEntityManagerOrThrow(backend);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        ptr<EntityManagerApi> entity_mngr = GetEntityManagerOrThrow(backend);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        return entity_mngr->CreateCustomInnerEntity(holder, entry, NativeHstringFromHandle(proto_id)).get();
+    });
 }
 
-static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id) -> mono_bool
+static auto NativeHasInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, MonoString** error) noexcept -> mono_bool
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+    return CaptureNativeError(error, [&]() -> mono_bool {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    auto entities = holder->GetInnerEntities(entry);
-    return static_cast<mono_bool>(entities ? 1 : 0);
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        auto entities = holder->GetInnerEntities(entry);
+        return static_cast<mono_bool>(entities ? 1 : 0);
+    });
 }
 
-static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id) -> void*
+static auto NativeGetInnerEntity(void* backend_ptr, void* holder_ptr, int32_t entry_id, int64_t id, MonoString** error) noexcept -> void*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto holder = ResolveEntity(backend, holder_ptr);
-    ValidateEntityAccess(holder);
+    return CaptureNativeError(error, [&]() -> void* {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto holder = ResolveEntity(backend, holder_ptr);
+        ValidateEntityAccess(holder);
 
-    hstring entry = ResolveAbiInner(backend, entry_id).Entry;
-    ident_t entity_id {id};
-    auto entities = holder->GetInnerEntities(entry);
+        hstring entry = ResolveAbiInner(backend, entry_id).Entry;
+        ident_t entity_id {id};
+        auto entities = holder->GetInnerEntities(entry);
 
-    if (!entities || entities->empty()) {
-        return nullptr;
-    }
-
-    for (auto& entity : *entities) {
-        ValidateManagedInnerEntity(entity.get());
-
-        if (entity->GetId() == entity_id) {
-            return entity.get();
+        if (!entities || entities->empty()) {
+            return nullptr;
         }
-    }
 
-    return nullptr;
+        for (auto& entity : *entities) {
+            ValidateManagedInnerEntity(entity.get());
+
+            if (entity->GetId() == entity_id) {
+                return entity.get();
+            }
+        }
+
+        return nullptr;
+    });
 }
 
-static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) -> int32_t
+static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t entry_id, void** buffer, int32_t capacity, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -2832,45 +2896,51 @@ static auto NativeFillInnerEntities(void* backend_ptr, void* holder_ptr, int32_t
     }
 }
 
-static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->TypedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->TypedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+    });
 }
 
-static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->BoxedCallbackDispatches.exchange(0, std::memory_order_relaxed));
+    });
 }
 
-static auto NativeGetAndResetContinuationPumps(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto caches = backend->GetCaches();
-    FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
 
-    caches->CountDispatches.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->ContinuationPumps.exchange(0, std::memory_order_relaxed));
+    });
 }
 
 // Interop probe: drives InteropProbe.AdaptProbe from a native loop over one transport and returns the loop time in
 // nanoseconds. Modes mirror InteropProbe.CallbackMode; the probe never touches a production registration
-static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) -> int64_t
+static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3014,7 +3084,7 @@ static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler,
 
 // Interop probe: calls one probe adapter over one transport `iterations` times, optionally from a thread of its own,
 // and reports how many calls came back with a managed exception; the managed side checks what the handler received
-static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error)
+static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error) noexcept
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3126,7 +3196,7 @@ static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler,
 
 // Interop probe: switches the calling thread's counters on or off and reads them; native allocation counts exist
 // only in profiling builds, which the return value reports
-static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) -> mono_bool
+static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) noexcept -> mono_bool
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3145,135 +3215,141 @@ static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int
     return native_available ? 1 : 0;
 }
 
-static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr) -> int64_t
+static auto NativeGetAndResetInnerEntityVisits(void* backend_ptr, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    auto abi = backend->GetAbi();
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto abi = backend->GetAbi();
 
-    if (!abi) {
-        return 0;
-    }
+        if (!abi) {
+            return 0;
+        }
 
-    abi->CountInnerEntityVisits.store(true, std::memory_order_relaxed);
-    return numeric_cast<int64_t>(abi->InnerEntityVisits.exchange(0, std::memory_order_relaxed));
+        abi->CountInnerEntityVisits.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(abi->InnerEntityVisits.exchange(0, std::memory_order_relaxed));
+    });
 }
 
 // === Native ABI: settings ===
 
-static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name) -> int32_t
+static auto NativeGetSettingBoolRaw(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strvex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_bool() ? 1 : 0;
+    return CaptureNativeError(error, [&]() -> int32_t { return strvex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_bool() ? 1 : 0; });
 }
 
-static void NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value)
+static auto NativeSetSettingBoolRaw(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, value != 0 ? "True" : "False");
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, value != 0 ? "True" : "False"); });
 }
 
-static auto NativeGetSettingInt(void* backend_ptr, MonoString* name) -> int32_t
+static auto NativeGetSettingInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int32();
+    return CaptureNativeError(error, [&]() -> int32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int32(); });
 }
 
-static void NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value)
+static auto NativeSetSettingInt(void* backend_ptr, MonoString* name, int32_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name) -> uint32_t
+static auto NativeGetSettingUInt(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_uint32();
+    return CaptureNativeError(error, [&]() -> uint32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_uint32(); });
 }
 
-static void NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value)
+static auto NativeSetSettingUInt(void* backend_ptr, MonoString* name, uint32_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingLong(void* backend_ptr, MonoString* name) -> int64_t
+static auto NativeGetSettingLong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> int64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int64();
+    return CaptureNativeError(error, [&]() -> int64_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_int64(); });
 }
 
-static void NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value)
+static auto NativeSetSettingLong(void* backend_ptr, MonoString* name, int64_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingULong(void* backend_ptr, MonoString* name) -> uint64_t
+static auto NativeGetSettingULong(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> uint64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
-    return std::strtoull(value.c_str(), nullptr, 0);
+    return CaptureNativeError(error, [&]() -> uint64_t {
+        string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
+        return std::strtoull(value.c_str(), nullptr, 0);
+    });
 }
 
-static void NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value)
+static auto NativeSetSettingULong(void* backend_ptr, MonoString* name, uint64_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name) -> float32_t
+static auto NativeGetSettingFloat(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float32_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float32();
+    return CaptureNativeError(error, [&]() -> float32_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float32(); });
 }
 
-static void NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value)
+static auto NativeSetSettingFloat(void* backend_ptr, MonoString* name, float32_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name) -> float64_t
+static auto NativeGetSettingDouble(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> float64_t
 {
     FO_STACK_TRACE_ENTRY();
 
-    return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float64();
+    return CaptureNativeError(error, [&]() -> float64_t { return strex(GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name)).to_float64(); });
 }
 
-static void NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value)
+static auto NativeSetSettingDouble(void* backend_ptr, MonoString* name, float64_t value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str());
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, strex("{}", value).str()); });
 }
 
-static auto NativeGetSettingString(void* backend_ptr, MonoString* name) -> MonoString*
+static auto NativeGetSettingString(void* backend_ptr, MonoString* name, MonoString** error) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
-    return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
+    return CaptureNativeError(error, [&]() -> MonoString* {
+        string value = GetSettingValueAsString(ResolveBoundBackend(backend_ptr), name);
+        return mono_string_new(GetDomainOrThrow(mono_domain_get()), value.c_str());
+    });
 }
 
-static void NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value)
+static auto NativeSetSettingString(void* backend_ptr, MonoString* name, MonoString* value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, ToStringAndFree(value));
+    return CaptureNativeError([&] { SetSettingValueFromString(ResolveBoundBackend(backend_ptr), name, ToStringAndFree(value)); });
 }
 
 static auto SettingKindSize(ManagedAbiValueKind kind) -> int32_t
@@ -3322,7 +3398,7 @@ static void WriteSettingBytes(void* dst, int32_t size, const void* src, size_t s
     memory::copy(ptr<void> {dst}, src, src_size);
 }
 
-static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) -> MonoString*
+static auto NativeGetSettingValue(void* backend_ptr, int32_t setting_id, void* value, int32_t size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3498,7 +3574,7 @@ static auto ResolveAbiEvent(ptr<ManagedScriptBackend> backend, int32_t event_id)
     return abi->Events[numeric_cast<size_t>(event_id)];
 }
 
-static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority)
+static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3559,39 +3635,50 @@ static void NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* enti
     entity->SubscribeEvent(entry.Name, std::move(event_data));
 }
 
-static void NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler)
+static auto NativeSubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler, mono_bool has_explicit_result, int32_t priority) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
-    nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
-
-    if (!entity || handler == nullptr) {
-        return;
-    }
-
-    if (optional<uintptr_t> subscription = FindManagedEventSubscription(backend, entity, entry.Name, handler); subscription.has_value()) {
-        entity->UnsubscribeEvent(entry.Name, subscription.value());
-    }
+    return CaptureNativeError([&] { NativeSubscribeEventImpl(backend_ptr, event_id, entity_ptr, handler, has_explicit_result, priority); });
 }
 
-static void NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr)
+static auto NativeUnsubscribeEvent(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoObject* handler) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto backend = ResolveBoundBackend(backend_ptr);
-    const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
-    nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+        nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
 
-    if (!entity) {
-        return;
-    }
+        if (!entity || handler == nullptr) {
+            return;
+        }
 
-    // Only this backend's subscriptions: native observers of the same event are not script state
-    for (uintptr_t subscription : entity->GetEventSubscriptions(entry.Name, GetManagedEventSubscriptionOwner(backend))) {
-        entity->UnsubscribeEvent(entry.Name, subscription);
-    }
+        if (optional<uintptr_t> subscription = FindManagedEventSubscription(backend, entity, entry.Name, handler); subscription.has_value()) {
+            entity->UnsubscribeEvent(entry.Name, subscription.value());
+        }
+    });
+}
+
+static auto NativeUnsubscribeAllEvents(void* backend_ptr, int32_t event_id, void* entity_ptr) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        const ManagedAbiEventRuntime& entry = ResolveAbiEvent(backend, event_id);
+        nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
+
+        if (!entity) {
+            return;
+        }
+
+        // Only this backend's subscriptions: native observers of the same event are not script state
+        for (uintptr_t subscription : entity->GetEventSubscriptions(entry.Name, GetManagedEventSubscriptionOwner(backend))) {
+            entity->UnsubscribeEvent(entry.Name, subscription);
+        }
+    });
 }
 
 // Null for a destroyed entity, which has already dropped every subscription it held
@@ -3731,7 +3818,7 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
     return static_cast<int32_t>(result);
 }
 
-static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) -> int32_t
+static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3748,7 +3835,7 @@ static auto NativeFireEventBoxed(void* backend_ptr, int32_t event_id, void* enti
     }
 }
 
-static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) -> int32_t
+static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* entity_ptr, void* frame, int32_t frame_size, MonoString** error) noexcept -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3842,7 +3929,7 @@ static auto NativeGetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     return BoxPropertyValue(backend, prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 }
 
-static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) -> MonoObject*
+static auto NativeGetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoString** error) noexcept -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3894,7 +3981,7 @@ static void NativeSetPropertyImpl(void* backend_ptr, void* entity_ptr, int32_t p
     entity->GetPropertiesForEdit()->SetValue(prop, prop_data);
 }
 
-static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) -> MonoString*
+static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -3981,7 +4068,7 @@ static auto IsManagedScalarProperty(ptr<const Property> prop) -> bool
     return !prop->IsNullable() && !prop->IsArray() && !prop->IsDict() && IsManagedAbiFixedPropertyValue(base_type);
 }
 
-static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter)
+static void NativeSetPropertyGetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4048,7 +4135,14 @@ static void NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, M
     });
 }
 
-static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static auto NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeSetPropertyGetterImpl(backend_ptr, owner_type, property_name, getter); });
+}
+
+static void NativeAddPropertySetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4118,7 +4212,14 @@ static void NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, M
     });
 }
 
-static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeAddPropertySetterImpl(backend_ptr, owner_type, property_name, setter); });
+}
+
+static void NativeAddPropertySetterWithPropertyImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4171,7 +4272,14 @@ static void NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* o
     });
 }
 
-static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
+static auto NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeAddPropertySetterWithPropertyImpl(backend_ptr, owner_type, property_name, setter); });
+}
+
+static void NativeAddPropertyDeferredSetterImpl(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4217,6 +4325,13 @@ static void NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner
                 (void)InvokeManagedCallbackHandler(backend, mono_gchandle_get_target(setter_handle), get_args_array());
             });
     });
+}
+
+static auto NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeAddPropertyDeferredSetterImpl(backend_ptr, owner_type, property_name, setter); });
 }
 
 static auto ResolveAbiMethod(ptr<ManagedScriptBackend> backend, int32_t method_id, bool require_bound) -> const ManagedAbiMethodRuntime&
@@ -4408,7 +4523,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     return BoxNativeCallValue(backend, method->Ret, ret_data, call.Accessor.get());
 }
 
-static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) -> MonoObject*
+static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4425,7 +4540,7 @@ static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* en
     }
 }
 
-static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) -> MonoString*
+static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* entity_ptr, void* frame, int32_t frame_size) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4489,7 +4604,7 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
     }
 }
 
-static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) -> MonoString*
+static auto NativeBindAbi(void* backend_ptr, uint64_t hash, int32_t method_count, int32_t event_count, int32_t setting_count, int32_t inner_count) noexcept -> MonoString*
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4517,7 +4632,7 @@ static constexpr int32_t INVOKE_STATUS_FAILED = -1;
 static constexpr int32_t INVOKE_STATUS_NO_CANDIDATE = 0;
 static constexpr int32_t INVOKE_STATUS_COMPLETED = 1;
 
-static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t
+static auto NativeInvokeScriptFuncStatusImpl(void* backend_ptr, MonoString* func_name, MonoArray* args) -> int32_t
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4702,7 +4817,14 @@ static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_nam
     return INVOKE_STATUS_NO_CANDIDATE;
 }
 
-static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler)
+static auto NativeInvokeScriptFuncStatus(void* backend_ptr, MonoString* func_name, MonoArray* args, MonoString** error) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError(error, [&] { return NativeInvokeScriptFuncStatusImpl(backend_ptr, func_name, args); });
+}
+
+static void NativeRegisterGlobalScriptFuncImpl(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4799,7 +4921,14 @@ static void NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_n
     backend->AddManagedGlobalFunc(std::move(func_desc));
 }
 
-static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler)
+static auto NativeRegisterGlobalScriptFunc(void* backend_ptr, MonoString* full_name, MonoString* attr_name, MonoArray* param_type_names, MonoString* ret_type_name, MonoObject* handler) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeRegisterGlobalScriptFuncImpl(backend_ptr, full_name, attr_name, param_type_names, ret_type_name, handler); });
+}
+
+static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -4972,7 +5101,14 @@ static void NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_
         client_facade_call);
 }
 
-static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+static auto NativeRegisterRemoteCallHandler(void* backend_ptr, MonoString* name_str, int32_t param_count, MonoObject* handler) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeRegisterRemoteCallHandlerImpl(backend_ptr, name_str, param_count, handler); });
+}
+
+static void NativeSendRemoteCallImpl(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5012,7 +5148,14 @@ static void NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoStri
     engine->SendRemoteCall(name_hashed, caller_entity, data);
 }
 
-static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
+static auto NativeSendRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeSendRemoteCallImpl(backend_ptr, caller, name_str, args_array); });
+}
+
+static void NativeLoopbackRemoteCallImpl(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array)
 {
     FO_STACK_TRACE_ENTRY();
 
@@ -5053,92 +5196,109 @@ static void NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, Mono
     engine->HandleInboundRemoteCall(name_hashed, caller_entity, data);
 }
 
+static auto NativeLoopbackRemoteCall(void* backend_ptr, MonoObject* caller, MonoString* name_str, MonoArray* args_array) noexcept -> MonoString*
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return CaptureNativeError([&] { NativeLoopbackRemoteCallImpl(backend_ptr, caller, name_str, args_array); });
+}
+
 // === Internal-call registration ===
 
 static void RegisterInternalCalls()
 {
     FO_STACK_TRACE_ENTRY();
 
-    mono_add_internal_call("FOnline.Native::RunScriptContinuationInternal", reinterpret_cast<const void*>(NativeRunScriptContinuation));
-    mono_add_internal_call("FOnline.Native::SignalContinuationsReadyInternal", reinterpret_cast<const void*>(NativeSignalContinuationsReady));
-    mono_add_internal_call("FOnline.Native::LoadDynamicAssemblyInternal", reinterpret_cast<const void*>(NativeLoadDynamicAssembly));
-    mono_add_internal_call("FOnline.Native::ReadClientScriptsImageInternal", reinterpret_cast<const void*>(NativeReadClientScriptsImage));
-    mono_add_internal_call("FOnline.Native::Log", reinterpret_cast<const void*>(NativeLog));
-    mono_add_internal_call("FOnline.Native::ReportExceptionInternal", reinterpret_cast<const void*>(NativeReportException));
-    mono_add_internal_call("FOnline.Native::GetHashStr", reinterpret_cast<const void*>(NativeGetHashStr));
-    mono_add_internal_call("FOnline.Native::GetHashStrFromHashInternal", reinterpret_cast<const void*>(NativeGetHashStrFromHash));
-    mono_add_internal_call("FOnline.Native::GetHashInternal", reinterpret_cast<const void*>(NativeGetHash));
-    mono_add_internal_call("FOnline.Native::ResolveHashInternal", reinterpret_cast<const void*>(NativeResolveHash));
-    mono_add_internal_call("FOnline.Native::GetEntityId", reinterpret_cast<const void*>(NativeGetEntityId));
-    mono_add_internal_call("FOnline.Native::GetEntityProtoId", reinterpret_cast<const void*>(NativeGetEntityProtoId));
-    mono_add_internal_call("FOnline.Native::AddRefEntity", reinterpret_cast<const void*>(NativeAddRefEntity));
-    mono_add_internal_call("FOnline.Native::ReleaseEntity", reinterpret_cast<const void*>(NativeReleaseEntity));
-    mono_add_internal_call("FOnline.Native::IsEntityDestroyed", reinterpret_cast<const void*>(NativeIsEntityDestroyed));
-    mono_add_internal_call("FOnline.Native::IsEntityDestroying", reinterpret_cast<const void*>(NativeIsEntityDestroying));
-    mono_add_internal_call("FOnline.Native::HdirToMdir", reinterpret_cast<const void*>(NativeHdirToMdir));
-    mono_add_internal_call("FOnline.Native::MdirHex", reinterpret_cast<const void*>(NativeMdirHex));
-    mono_add_internal_call("FOnline.Native::MdirRotateHex", reinterpret_cast<const void*>(NativeMdirRotateHex));
-    mono_add_internal_call("FOnline.Native::MdirReverse", reinterpret_cast<const void*>(NativeMdirReverse));
-    mono_add_internal_call("FOnline.Native::GetEntityName", reinterpret_cast<const void*>(NativeGetEntityName));
-    mono_add_internal_call("FOnline.Native::SubscribeEventInternal", reinterpret_cast<const void*>(NativeSubscribeEvent));
-    mono_add_internal_call("FOnline.Native::UnsubscribeEventInternal", reinterpret_cast<const void*>(NativeUnsubscribeEvent));
-    mono_add_internal_call("FOnline.Native::UnsubscribeAllEventsInternal", reinterpret_cast<const void*>(NativeUnsubscribeAllEvents));
-    mono_add_internal_call("FOnline.Native::FireEventBoxedInternal", reinterpret_cast<const void*>(NativeFireEventBoxed));
-    mono_add_internal_call("FOnline.Native::FireEventIndexedInternal", reinterpret_cast<const void*>(NativeFireEventIndexed));
-    mono_add_internal_call("FOnline.Native::GetPropertyInternal", reinterpret_cast<const void*>(NativeGetProperty));
-    mono_add_internal_call("FOnline.Native::GetPropertyValueInternal", reinterpret_cast<const void*>(NativeGetPropertyValue));
-    mono_add_internal_call("FOnline.Native::SetPropertyValueInternal", reinterpret_cast<const void*>(NativeSetPropertyValue));
-    mono_add_internal_call("FOnline.Native::GetPropertyArrayInternal", reinterpret_cast<const void*>(NativeGetPropertyArray));
-    mono_add_internal_call("FOnline.Native::SetPropertyArrayInternal", reinterpret_cast<const void*>(NativeSetPropertyArray));
-    mono_add_internal_call("FOnline.Native::SetPropertyInternal", reinterpret_cast<const void*>(NativeSetProperty));
-    mono_add_internal_call("FOnline.Native::SetPropertyGetterInternal", reinterpret_cast<const void*>(NativeSetPropertyGetter));
-    mono_add_internal_call("FOnline.Native::AddPropertySetterInternal", reinterpret_cast<const void*>(NativeAddPropertySetter));
-    mono_add_internal_call("FOnline.Native::AddPropertySetterWithPropertyInternal", reinterpret_cast<const void*>(NativeAddPropertySetterWithProperty));
-    mono_add_internal_call("FOnline.Native::AddPropertyDeferredSetterInternal", reinterpret_cast<const void*>(NativeAddPropertyDeferredSetter));
-    mono_add_internal_call("FOnline.Native::BindAbiInternal", reinterpret_cast<const void*>(NativeBindAbi));
-    mono_add_internal_call("FOnline.Native::CallMethodBoxedInternal", reinterpret_cast<const void*>(NativeCallMethodBoxed));
-    mono_add_internal_call("FOnline.Native::CallMethodIndexedInternal", reinterpret_cast<const void*>(NativeCallMethodIndexed));
-    mono_add_internal_call("FOnline.Native::InvokeScriptFuncStatusInternal", reinterpret_cast<const void*>(NativeInvokeScriptFuncStatus));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityInternal", reinterpret_cast<const void*>(NativeGetProtoEntity));
-    mono_add_internal_call("FOnline.Native::CheckProtoEntityInternal", reinterpret_cast<const void*>(NativeCheckProtoEntity));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityCountInternal", reinterpret_cast<const void*>(NativeGetProtoEntityCount));
-    mono_add_internal_call("FOnline.Native::GetProtoEntityAtInternal", reinterpret_cast<const void*>(NativeGetProtoEntityAt));
-    mono_add_internal_call("FOnline.Native::CreateInnerEntityInternal", reinterpret_cast<const void*>(NativeCreateInnerEntity));
-    mono_add_internal_call("FOnline.Native::HasInnerEntitiesInternal", reinterpret_cast<const void*>(NativeHasInnerEntities));
-    mono_add_internal_call("FOnline.Native::GetInnerEntityInternal", reinterpret_cast<const void*>(NativeGetInnerEntity));
-    mono_add_internal_call("FOnline.Native::FillInnerEntitiesInternal", reinterpret_cast<const void*>(NativeFillInnerEntities));
-    mono_add_internal_call("FOnline.Native::GetAndResetInnerEntityVisitsInternal", reinterpret_cast<const void*>(NativeGetAndResetInnerEntityVisits));
-    mono_add_internal_call("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetTypedCallbackDispatches));
-    mono_add_internal_call("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", reinterpret_cast<const void*>(NativeGetAndResetBoxedCallbackDispatches));
-    mono_add_internal_call("FOnline.Native::GetAndResetContinuationPumpsInternal", reinterpret_cast<const void*>(NativeGetAndResetContinuationPumps));
-    mono_add_internal_call("FOnline.Native::ProbeCallbackTransportInternal", reinterpret_cast<const void*>(NativeProbeCallbackTransport));
-    mono_add_internal_call("FOnline.Native::ProbeTransportScenarioInternal", reinterpret_cast<const void*>(NativeProbeTransportScenario));
-    mono_add_internal_call("FOnline.Native::ReadInteropCountersInternal", reinterpret_cast<const void*>(NativeReadInteropCounters));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsIntInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsInt));
-    mono_add_internal_call("FOnline.Native::GetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeGetEntityValueAsAny));
-    mono_add_internal_call("FOnline.Native::SetEntityValueAsAnyInternal", reinterpret_cast<const void*>(NativeSetEntityValueAsAny));
-    mono_add_internal_call("FOnline.Native::RegisterGlobalScriptFuncInternal", reinterpret_cast<const void*>(NativeRegisterGlobalScriptFunc));
-    mono_add_internal_call("FOnline.Native::RegisterRemoteCallHandlerInternal", reinterpret_cast<const void*>(NativeRegisterRemoteCallHandler));
-    mono_add_internal_call("FOnline.Native::SendRemoteCallInternal", reinterpret_cast<const void*>(NativeSendRemoteCall));
-    mono_add_internal_call("FOnline.Native::LoopbackRemoteCallInternal", reinterpret_cast<const void*>(NativeLoopbackRemoteCall));
-    mono_add_internal_call("FOnline.Native::GetSettingBoolRaw", reinterpret_cast<const void*>(NativeGetSettingBoolRaw));
-    mono_add_internal_call("FOnline.Native::SetSettingBoolRaw", reinterpret_cast<const void*>(NativeSetSettingBoolRaw));
-    mono_add_internal_call("FOnline.Native::GetSettingIntInternal", reinterpret_cast<const void*>(NativeGetSettingInt));
-    mono_add_internal_call("FOnline.Native::SetSettingIntInternal", reinterpret_cast<const void*>(NativeSetSettingInt));
-    mono_add_internal_call("FOnline.Native::GetSettingUIntInternal", reinterpret_cast<const void*>(NativeGetSettingUInt));
-    mono_add_internal_call("FOnline.Native::SetSettingUIntInternal", reinterpret_cast<const void*>(NativeSetSettingUInt));
-    mono_add_internal_call("FOnline.Native::GetSettingLongInternal", reinterpret_cast<const void*>(NativeGetSettingLong));
-    mono_add_internal_call("FOnline.Native::SetSettingLongInternal", reinterpret_cast<const void*>(NativeSetSettingLong));
-    mono_add_internal_call("FOnline.Native::GetSettingULongInternal", reinterpret_cast<const void*>(NativeGetSettingULong));
-    mono_add_internal_call("FOnline.Native::SetSettingULongInternal", reinterpret_cast<const void*>(NativeSetSettingULong));
-    mono_add_internal_call("FOnline.Native::GetSettingFloatInternal", reinterpret_cast<const void*>(NativeGetSettingFloat));
-    mono_add_internal_call("FOnline.Native::SetSettingFloatInternal", reinterpret_cast<const void*>(NativeSetSettingFloat));
-    mono_add_internal_call("FOnline.Native::GetSettingDoubleInternal", reinterpret_cast<const void*>(NativeGetSettingDouble));
-    mono_add_internal_call("FOnline.Native::SetSettingDoubleInternal", reinterpret_cast<const void*>(NativeSetSettingDouble));
-    mono_add_internal_call("FOnline.Native::GetSettingStringInternal", reinterpret_cast<const void*>(NativeGetSettingString));
-    mono_add_internal_call("FOnline.Native::SetSettingStringInternal", reinterpret_cast<const void*>(NativeSetSettingString));
-    mono_add_internal_call("FOnline.Native::GetSettingValueInternal", reinterpret_cast<const void*>(NativeGetSettingValue));
+    AddInternalCall("FOnline.Native::RunScriptContinuationInternal", NativeRunScriptContinuation);
+    AddInternalCall("FOnline.Native::SignalContinuationsReadyInternal", NativeSignalContinuationsReady);
+    AddInternalCall("FOnline.Native::LoadDynamicAssemblyInternal", NativeLoadDynamicAssembly);
+    AddInternalCall("FOnline.Native::ReadClientScriptsImageInternal", NativeReadClientScriptsImage);
+    AddInternalCall("FOnline.Native::Log", NativeLog);
+    AddInternalCall("FOnline.Native::ReportExceptionInternal", NativeReportException);
+    AddInternalCall("FOnline.Native::GetHashStr", NativeGetHashStr);
+    AddInternalCall("FOnline.Native::GetHashStrFromHashInternal", NativeGetHashStrFromHash);
+    AddInternalCall("FOnline.Native::GetHashInternal", NativeGetHash);
+    AddInternalCall("FOnline.Native::ResolveHashInternal", NativeResolveHash);
+    AddInternalCall("FOnline.Native::GetEntityId", NativeGetEntityId);
+    AddInternalCall("FOnline.Native::GetEntityProtoId", NativeGetEntityProtoId);
+    AddInternalCall("FOnline.Native::AddRefEntity", NativeAddRefEntity);
+    AddInternalCall("FOnline.Native::ReleaseEntity", NativeReleaseEntity);
+    AddInternalCall("FOnline.Native::IsEntityDestroyed", NativeIsEntityDestroyed);
+    AddInternalCall("FOnline.Native::IsEntityDestroying", NativeIsEntityDestroying);
+    AddInternalCall("FOnline.Native::HdirToMdir", NativeHdirToMdir);
+    AddInternalCall("FOnline.Native::MdirHex", NativeMdirHex);
+    AddInternalCall("FOnline.Native::MdirRotateHex", NativeMdirRotateHex);
+    AddInternalCall("FOnline.Native::MdirReverse", NativeMdirReverse);
+    AddInternalCall("FOnline.Native::GetEntityName", NativeGetEntityName);
+    AddInternalCall("FOnline.Native::SubscribeEventInternal", NativeSubscribeEvent);
+    AddInternalCall("FOnline.Native::UnsubscribeEventInternal", NativeUnsubscribeEvent);
+    AddInternalCall("FOnline.Native::UnsubscribeAllEventsInternal", NativeUnsubscribeAllEvents);
+    AddInternalCall("FOnline.Native::FireEventBoxedInternal", NativeFireEventBoxed);
+    AddInternalCall("FOnline.Native::FireEventIndexedInternal", NativeFireEventIndexed);
+    AddInternalCall("FOnline.Native::GetPropertyInternal", NativeGetProperty);
+    AddInternalCall("FOnline.Native::GetPropertyValueInternal", NativeGetPropertyValue);
+    AddInternalCall("FOnline.Native::SetPropertyValueInternal", NativeSetPropertyValue);
+    AddInternalCall("FOnline.Native::GetPropertyArrayInternal", NativeGetPropertyArray);
+    AddInternalCall("FOnline.Native::SetPropertyArrayInternal", NativeSetPropertyArray);
+    AddInternalCall("FOnline.Native::SetPropertyInternal", NativeSetProperty);
+    AddInternalCall("FOnline.Native::SetPropertyGetterInternal", NativeSetPropertyGetter);
+    AddInternalCall("FOnline.Native::AddPropertySetterInternal", NativeAddPropertySetter);
+    AddInternalCall("FOnline.Native::AddPropertySetterWithPropertyInternal", NativeAddPropertySetterWithProperty);
+    AddInternalCall("FOnline.Native::AddPropertyDeferredSetterInternal", NativeAddPropertyDeferredSetter);
+    AddInternalCall("FOnline.Native::BindAbiInternal", NativeBindAbi);
+    AddInternalCall("FOnline.Native::CallMethodBoxedInternal", NativeCallMethodBoxed);
+    AddInternalCall("FOnline.Native::CallMethodIndexedInternal", NativeCallMethodIndexed);
+    AddInternalCall("FOnline.Native::InvokeScriptFuncStatusInternal", NativeInvokeScriptFuncStatus);
+    AddInternalCall("FOnline.Native::GetProtoEntityInternal", NativeGetProtoEntity);
+    AddInternalCall("FOnline.Native::CheckProtoEntityInternal", NativeCheckProtoEntity);
+    AddInternalCall("FOnline.Native::GetProtoEntityCountInternal", NativeGetProtoEntityCount);
+    AddInternalCall("FOnline.Native::GetProtoEntityAtInternal", NativeGetProtoEntityAt);
+    AddInternalCall("FOnline.Native::CreateInnerEntityInternal", NativeCreateInnerEntity);
+    AddInternalCall("FOnline.Native::HasInnerEntitiesInternal", NativeHasInnerEntities);
+    AddInternalCall("FOnline.Native::GetInnerEntityInternal", NativeGetInnerEntity);
+    AddInternalCall("FOnline.Native::FillInnerEntitiesInternal", NativeFillInnerEntities);
+    AddInternalCall("FOnline.Native::GetAndResetInnerEntityVisitsInternal", NativeGetAndResetInnerEntityVisits);
+    AddInternalCall("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", NativeGetAndResetTypedCallbackDispatches);
+    AddInternalCall("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", NativeGetAndResetBoxedCallbackDispatches);
+    AddInternalCall("FOnline.Native::GetAndResetContinuationPumpsInternal", NativeGetAndResetContinuationPumps);
+    AddInternalCall("FOnline.Native::ProbeCallbackTransportInternal", NativeProbeCallbackTransport);
+    AddInternalCall("FOnline.Native::ProbeTransportScenarioInternal", NativeProbeTransportScenario);
+    AddInternalCall("FOnline.Native::ReadInteropCountersInternal", NativeReadInteropCounters);
+    AddInternalCall("FOnline.Native::GetEntityValueAsIntInternal", NativeGetEntityValueAsInt);
+    AddInternalCall("FOnline.Native::SetEntityValueAsIntInternal", NativeSetEntityValueAsInt);
+    AddInternalCall("FOnline.Native::GetEntityValueAsAnyInternal", NativeGetEntityValueAsAny);
+    AddInternalCall("FOnline.Native::SetEntityValueAsAnyInternal", NativeSetEntityValueAsAny);
+    AddInternalCall("FOnline.Native::RegisterGlobalScriptFuncInternal", NativeRegisterGlobalScriptFunc);
+    AddInternalCall("FOnline.Native::RegisterRemoteCallHandlerInternal", NativeRegisterRemoteCallHandler);
+    AddInternalCall("FOnline.Native::SendRemoteCallInternal", NativeSendRemoteCall);
+    AddInternalCall("FOnline.Native::LoopbackRemoteCallInternal", NativeLoopbackRemoteCall);
+    AddInternalCall("FOnline.Native::GetSettingBoolRaw", NativeGetSettingBoolRaw);
+    AddInternalCall("FOnline.Native::SetSettingBoolRaw", NativeSetSettingBoolRaw);
+    AddInternalCall("FOnline.Native::GetSettingIntInternal", NativeGetSettingInt);
+    AddInternalCall("FOnline.Native::SetSettingIntInternal", NativeSetSettingInt);
+    AddInternalCall("FOnline.Native::GetSettingUIntInternal", NativeGetSettingUInt);
+    AddInternalCall("FOnline.Native::SetSettingUIntInternal", NativeSetSettingUInt);
+    AddInternalCall("FOnline.Native::GetSettingLongInternal", NativeGetSettingLong);
+    AddInternalCall("FOnline.Native::SetSettingLongInternal", NativeSetSettingLong);
+    AddInternalCall("FOnline.Native::GetSettingULongInternal", NativeGetSettingULong);
+    AddInternalCall("FOnline.Native::SetSettingULongInternal", NativeSetSettingULong);
+    AddInternalCall("FOnline.Native::GetSettingFloatInternal", NativeGetSettingFloat);
+    AddInternalCall("FOnline.Native::SetSettingFloatInternal", NativeSetSettingFloat);
+    AddInternalCall("FOnline.Native::GetSettingDoubleInternal", NativeGetSettingDouble);
+    AddInternalCall("FOnline.Native::SetSettingDoubleInternal", NativeSetSettingDouble);
+    AddInternalCall("FOnline.Native::GetSettingStringInternal", NativeGetSettingString);
+    AddInternalCall("FOnline.Native::SetSettingStringInternal", NativeSetSettingString);
+    AddInternalCall("FOnline.Native::GetSettingValueInternal", NativeGetSettingValue);
+}
+
+// Managed frames carry no C++ handler, so an exception leaving an internal call would skip every managed catch and
+// finally and leave the runtime's per-thread state half unwound; a failure is returned instead, see CaptureNativeError
+template<typename Ret, typename... Args>
+static void AddInternalCall(const char* name, Ret (*func)(Args...) noexcept)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    mono_add_internal_call(name, reinterpret_cast<const void*>(func));
 }
 
 // === Settings access helpers ===
