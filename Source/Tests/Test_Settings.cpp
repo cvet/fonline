@@ -259,6 +259,54 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
     }
 
+    SECTION("CommandLineOptionIsADashBeforeASettingName")
+    {
+        CHECK(CommandLineArgs::IsOption("--Render.Sleep"));
+        CHECK(CommandLineArgs::IsOption("-ApplySubConfig"));
+        CHECK(CommandLineArgs::IsOption("--custom"));
+
+        CHECK_FALSE(CommandLineArgs::IsOption("-1"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-0.5"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-.5"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-5 5 10 10"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-"));
+        CHECK_FALSE(CommandLineArgs::IsOption("--"));
+        CHECK_FALSE(CommandLineArgs::IsOption(""));
+        CHECK_FALSE(CommandLineArgs::IsOption("+Tag"));
+        CHECK_FALSE(CommandLineArgs::IsOption("Value"));
+    }
+
+    SECTION("ApplyCommandLineKeepsNegativeValues")
+    {
+        // Read as the next option, a negative value would leave its setting at the implicit flag value 1 and
+        // add a stray custom setting named after its digits
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Render.FixedFPS";
+        char arg2[] = "60";
+        char arg3[] = "--Render.Sleep";
+        char arg4[] = "-1";
+        char arg5[] = "--Probe.Offset";
+        char arg6[] = "-0.5";
+        char arg7[] = "--Probe.Area";
+        char arg8[] = "-5 5 10 10";
+        char arg9[] = "--Probe.Flag";
+        vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9};
+
+        settings.ApplyCommandLine(CommandLineArgs {argv});
+
+        CHECK(settings.Render.FixedFPS == 60);
+        CHECK(settings.Render.Sleep == -1);
+        CHECK(settings.GetCustomSetting("Probe.Offset") == "-0.5");
+        CHECK(settings.GetCustomSetting("Probe.Area") == "-5 5 10 10");
+        CHECK(settings.GetCustomSetting("Probe.Flag") == "1");
+        CHECK_FALSE(settings.FindCustomSetting("1"));
+        CHECK_FALSE(settings.FindCustomSetting("0.5"));
+        CHECK_FALSE(settings.FindCustomSetting("5 5 10 10"));
+    }
+
     SECTION("CommandLineArgsAcceptEmptyNativeArgv")
     {
         CommandLineArgs args {0, nullptr};

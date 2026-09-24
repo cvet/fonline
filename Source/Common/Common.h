@@ -107,7 +107,22 @@ public:
         }
     }
 
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
+    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool
+    {
+        if (!arg.starts_with('-')) {
+            return false;
+        }
+
+        string_view name = arg.substr(arg.starts_with("--") ? 2 : 1);
+
+        if (name.empty()) {
+            return false;
+        }
+
+        char first = name.front();
+        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+    }
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
