@@ -82,8 +82,6 @@ void SetupBakersHook(span<const string>, vector<unique_ptr<BaseBaker>>&, shared_
 
 BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ctx, "Missing required context");
     FO_VERIFY_AND_THROW(ctx->WriteData, "Baker context has no output writer");
     FO_VERIFY_AND_THROW(!baker_name.empty(), "Baker name is empty");
@@ -116,7 +114,7 @@ BaseBaker::BaseBaker(shared_ptr<BakingContext> ctx, string_view baker_name)
 
 auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pack_name, const BakingSettings& settings, const BakeCheckerCallback& bake_checker, const AsyncWriteDataCallback& write_data, ptr<const FileSystem> baked_files, shared_ptr<BakingReport> report, bool output_discovery, nptr<const FileSystem> pack_baked_files) -> vector<unique_ptr<BaseBaker>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<unique_ptr<BaseBaker>> bakers;
 
@@ -181,8 +179,6 @@ auto BaseBaker::SetupBakers(span<const string> request_bakers, const string& pac
 
 void BaseBaker::AddBakingReportCounter(string_view name, uint64_t value) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
         report->AddCounter(_context->PackName, _context->BakerName, name, value);
@@ -191,8 +187,6 @@ void BaseBaker::AddBakingReportCounter(string_view name, uint64_t value) const
 
 void BaseBaker::AddBakingReportHistogramValue(string_view name, string_view value, uint64_t count) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
         report->AddHistogramValue(_context->PackName, _context->BakerName, name, value, count);
@@ -201,8 +195,6 @@ void BaseBaker::AddBakingReportHistogramValue(string_view name, string_view valu
 
 void BaseBaker::RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportSettings& settings) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
         report->RecordSpriteMeshSettings(_context->PackName, _context->BakerName, settings);
@@ -211,8 +203,6 @@ void BaseBaker::RecordSpriteMeshBakingSettings(const SpriteMeshBakingReportSetti
 
 void BaseBaker::RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& frame) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
         report->RecordSpriteMeshFrame(_context->PackName, _context->BakerName, frame);
@@ -221,8 +211,6 @@ void BaseBaker::RecordSpriteMeshBakingFrame(const SpriteMeshBakingFrameReport& f
 
 void BaseBaker::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Report) {
         shared_ptr<BakingReport> report = _context->Report;
         report->RecordSharedSpriteMeshFrames(_context->PackName, _context->BakerName, count);
@@ -232,12 +220,11 @@ void BaseBaker::RecordSharedSpriteMeshBakingFrames(uint64_t count) const
 MasterBaker::MasterBaker(ptr<BakingSettings> settings) noexcept :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto MasterBaker::BakeAll() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     bool success = false;
     string failure_message;
@@ -327,8 +314,6 @@ struct MasterBaker::ExpectedOutputs
 // letter case, so a name folded this way answers "is this output still wanted", never "is it spelled right"
 static auto ExcludeAllExt(string_view path) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     size_t pos = path.rfind('/');
     pos = path.find('.', pos != string::npos ? pos : 0);
     return strex(pos != string::npos ? path.substr(0, pos) : path).lower();
@@ -336,7 +321,7 @@ static auto ExcludeAllExt(string_view path) -> string
 
 void MasterBaker::BakeAllInternal()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     time_meter backing_time;
 
@@ -370,8 +355,6 @@ void MasterBaker::BakeAllInternal()
 
 auto MasterBaker::MakeOutputPath(string_view path) const -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex(_settings->Baking.BakeOutput).combine_path(path);
 }
 
@@ -379,7 +362,7 @@ auto MasterBaker::MakeOutputPath(string_view path) const -> string
 // and rewritten only on success, so an aborted run cannot leave a half-written tree looking like a complete base
 auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto prev_build_hash = fs::read_file(build_hash_path);
     bool build_hash_deleted = fs::remove_file(build_hash_path);
@@ -426,7 +409,7 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
 // it a dozen times. Done here, not on demand, because mounting walks the tree while packs prepare concurrently
 auto MasterBaker::MountSharedInputDirs() const -> unordered_map<string, unique_ptr<DataSource>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     unordered_map<string, unique_ptr<DataSource>> input_dirs;
 
@@ -443,7 +426,7 @@ auto MasterBaker::MountSharedInputDirs() const -> unordered_map<string, unique_p
 
 auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSource>>& input_dirs, FileSystem& baking_output, std::atomic_bool& force_baking) -> vector<unique_ptr<PackBakeContext>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     const auto& res_packs = _settings->GetResourcePacks();
     async_launch_mode async_mode = _settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
@@ -488,7 +471,7 @@ auto MasterBaker::PreparePackContexts(unordered_map<string, unique_ptr<DataSourc
 
 auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered_map<string, unique_ptr<DataSource>>& input_dirs, const string& output_dir, FileSystem& baking_output, std::atomic_bool& force_baking) -> unique_ptr<PackBakeContext>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto pack_bake_context = safe_alloc::make_unique<PackBakeContext>();
     auto pack_bake_context_ptr = pack_bake_context.as_ptr();
@@ -567,7 +550,7 @@ auto MasterBaker::PreparePackContext(const ResourcePackInfo& res_pack, unordered
 // another pack's earlier-order output always finds it already written
 void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts, FileSystem& baking_output, std::atomic_bool& force_baking)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     async_launch_mode async_mode = _settings->Baking.SingleThreadBaking ? launch_deferred_only : launch_async_and_deferred;
     int32_t bake_order = -10;
@@ -629,7 +612,7 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
 
 void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_order)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     for (size_t i = 0; i != bake_context->Bakers.size(); ++i) {
         auto baker = bake_context->Bakers[i].as_ptr();
@@ -681,7 +664,7 @@ void MasterBaker::BakePackOrder(ptr<PackBakeContext> bake_context, int32_t bake_
 
 auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pack_bake_contexts) const -> ExpectedOutputs
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ExpectedOutputs expected;
 
@@ -702,7 +685,7 @@ auto MasterBaker::CollectExpectedOutputs(vector<unique_ptr<PackBakeContext>>& pa
 // and shallowest first, so every rename lands inside a parent already spelled right (Docs/BakingPipeline.md)
 void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     set<string> expected_dirs;
 
@@ -772,7 +755,7 @@ void MasterBaker::ReconcileStaleCasedOutputDirs(const ExpectedOutputs& expected)
 // pass because both decisions read the same directory (Docs/BakingPipeline.md)
 void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<pair<string, string>> stale_cased_paths;
 
@@ -830,7 +813,7 @@ void MasterBaker::SweepOutdatedOutputs(const ExpectedOutputs& expected)
 // Baker-private caches are keyed by the output they describe, so they go stale exactly when that output does
 void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string effekseer_cache_dir = MakeOutputPath(strex(BAKER_CACHE_DIR).combine_path("Effekseer").str());
 
@@ -856,8 +839,6 @@ void MasterBaker::SweepOutdatedBakerCache(const ExpectedOutputs& expected)
 
 auto BaseBaker::ValidateProperties(const Properties& props, string_view context_str, nptr<const ScriptSystem> script_sys) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     struct ScriptFuncValidationRule
     {
         // Plain function pointers: every rule is a captureless check, so the table needs no wrapper
@@ -967,8 +948,6 @@ auto BaseBaker::ValidateProperties(const Properties& props, string_view context_
 BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _outputResources.AddCustomSource(safe_alloc::make_unique<DataSourceRef>(this));
 
     ignore_unused(Reindex());
@@ -976,7 +955,7 @@ BakerDataSource::BakerDataSource(ptr<BakingSettings> settings) :
 
 auto BakerDataSource::Reindex() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Prepare input resources
     auto res_packs = _settings->GetResourcePacks();
@@ -1074,15 +1053,11 @@ auto BakerDataSource::Reindex() -> bool
 
 auto BakerDataSource::MakeOutputPath(string_view res_pack_name, string_view path) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(_settings->Baking.BakeOutput).combine_path(res_pack_name).combine_path(path);
 }
 
 auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uint64_t write_time) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string output_path = MakeOutputPath(res_pack_name, path);
 
     if (write_time > fs::last_write_time(output_path)) {
@@ -1097,8 +1072,6 @@ auto BakerDataSource::CheckData(string_view res_pack_name, string_view path, uin
 
 void BakerDataSource::WriteData(string_view res_pack_name, string_view path, span<const uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string output_path = MakeOutputPath(res_pack_name, path);
     bool write_file_ok = fs::write_file(output_path, data);
     FO_VERIFY_AND_THROW(write_file_ok, "Unable to write the baked output file", output_path);
@@ -1106,7 +1079,7 @@ void BakerDataSource::WriteData(string_view res_pack_name, string_view path, spa
 
 auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) const -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     uint64_t input_write_time = 0;
 
@@ -1172,8 +1145,6 @@ auto BakerDataSource::ResolveFilePath(string_view path, uint64_t& write_time) co
 
 auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto output_path = ResolveFilePath(path, write_time);
 
     if (!output_path) {
@@ -1189,8 +1160,6 @@ auto BakerDataSource::FindFile(string_view path, size_t& size, uint64_t& write_t
 
 auto BakerDataSource::IsFileExists(string_view path) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_outputFilesLocker};
 
     return _outputFiles.contains(path);
@@ -1198,14 +1167,12 @@ auto BakerDataSource::IsFileExists(string_view path) const -> bool
 
 auto BakerDataSource::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return FindFile(path, size, write_time);
 }
 
 auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     auto output_path = ResolveFilePath(path, write_time);
 
@@ -1232,7 +1199,7 @@ auto BakerDataSource::OpenFile(string_view path, size_t& size, uint64_t& write_t
 
 auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string fixed_dir = strex(dir).normalize_path_slashes();
 
@@ -1268,8 +1235,6 @@ auto BakerDataSource::GetFileNames(string_view dir, bool recursive, string_view 
 BakerServerEngine::BakerServerEngine(const FileSystem& resources) :
     EngineMetadata([&] { RegisterServerStubMetadata(this, &resources); })
 {
-    FO_STACK_TRACE_ENTRY();
-
     MapEngineType<BakerStub::Item>(EngineMetadata::GetBaseType("Item"));
     MapEngineType<BakerStub::StaticItem>(EngineMetadata::GetBaseType("StaticItem"));
     MapEngineType<BakerStub::Critter>(EngineMetadata::GetBaseType("Critter"));
@@ -1280,13 +1245,11 @@ BakerServerEngine::BakerServerEngine(const FileSystem& resources) :
 BakerClientEngine::BakerClientEngine(const FileSystem& resources) :
     EngineMetadata([&] { RegisterClientStubMetadata(this, &resources); })
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 BakerMapperEngine::BakerMapperEngine(const FileSystem& resources) :
     EngineMetadata([&] { RegisterMapperStubMetadata(this, &resources); })
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 FO_END_NAMESPACE

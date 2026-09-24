@@ -45,8 +45,6 @@ FO_BEGIN_NAMESPACE
 
 static void ConfigureTrack(ModelAnimationController& controller, int32_t track, int32_t animation, float32_t position, float32_t speed, float32_t weight, nptr<const unordered_set<hstring>> allowed_bones = nullptr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     controller.SetTrackAnimation(track, animation, allowed_bones);
     controller.SetTrackEnable(track, true);
     controller.SetTrackPosition(track, position);

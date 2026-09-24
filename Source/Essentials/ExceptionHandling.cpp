@@ -104,8 +104,6 @@ static optional<stack_trace::data> crash_stack_trace;
 
 void exceptions::report_and_exit(const std::exception& ex) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         auto st = make_error_stack_trace(ex);
 
@@ -126,8 +124,6 @@ void exceptions::report_and_exit(const std::exception& ex) noexcept
 
 void exceptions::report_and_continue(const std::exception& ex) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         auto st = make_error_stack_trace(ex);
 
@@ -147,8 +143,6 @@ void exceptions::report_and_continue(const std::exception& ex) noexcept
 
 void exceptions::set_callback(exceptions::callback callback) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::scoped_lock locker {exception_handling->callback_locker};
 
     exception_handling->callback = std::move(callback);
@@ -156,8 +150,6 @@ void exceptions::set_callback(exceptions::callback callback) noexcept
 
 auto exceptions::get_callback() noexcept -> exceptions::callback
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Exceptions are still reported after the global data is torn down, by a thread the set did not own or
     // by the host the runtime returned to. They go to the base log, which keeps working without the set
     if (!exception_handling.is_created()) {
@@ -171,8 +163,6 @@ auto exceptions::get_callback() noexcept -> exceptions::callback
 
 void exceptions::install_crash_handler_stack() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if HAS_CRASH_HANDLERS && !FO_WINDOWS
     if (is_run_in_debugger()) {
         return; // the crash handlers are not installed under a debugger
@@ -184,8 +174,6 @@ void exceptions::install_crash_handler_stack() noexcept
 
 void exceptions::set_crash_signal_reason(int32_t signum, int32_t code, nptr<const void> address) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         set_crash_info(format_signal_crash_info(signum, code, address));
     }
@@ -196,8 +184,6 @@ void exceptions::set_crash_signal_reason(int32_t signum, int32_t code, nptr<cons
 
 void exceptions::set_crash_exception_reason(uint32_t code, uint32_t flags, nptr<const void> address) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         set_crash_info(format_seh_crash_info(code, flags, address));
     }
@@ -208,8 +194,6 @@ void exceptions::set_crash_exception_reason(uint32_t code, uint32_t flags, nptr<
 
 void exceptions::set_crash_termination_reason(string_view reason) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         set_crash_info(format_runtime_crash_info(reason));
     }
@@ -220,8 +204,6 @@ void exceptions::set_crash_termination_reason(string_view reason) noexcept
 
 void exceptions::write_crash_report(const stack_trace::data& st) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     logging::suspend_async_writing();
 
     logging::write_base("\nFATAL ERROR!\n");
@@ -238,8 +220,6 @@ void exceptions::write_crash_report(const stack_trace::data& st) noexcept
 // handlers, and a script runtime relies on catching its own faults first
 static void install_crash_handlers() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if HAS_CRASH_HANDLERS
     if (crash_handlers_installed.exchange(true)) {
         return;
@@ -264,8 +244,6 @@ static void install_crash_handlers() noexcept
 #if HAS_CRASH_HANDLERS && FO_WINDOWS
 static void on_crash_exception(uint32_t code, uint32_t flags, nptr<const void> address, nptr<const void> context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!claim_crash_report()) {
         return;
     }
@@ -289,8 +267,6 @@ static void on_crash_exception(uint32_t code, uint32_t flags, nptr<const void> a
 
 static void on_crash_report(nptr<const void> context, nptr<void> thread) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!crash_exception.has_value()) {
         return;
     }
@@ -311,8 +287,6 @@ static void on_crash_report(nptr<const void> context, nptr<void> thread) noexcep
 
 static void on_crash_signal(int32_t signum) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!claim_crash_report()) {
         return;
     }
@@ -323,8 +297,6 @@ static void on_crash_signal(int32_t signum) noexcept
 
 static void on_crash_runtime_error(string_view reason) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!claim_crash_report()) {
         return;
     }
@@ -336,8 +308,6 @@ static void on_crash_runtime_error(string_view reason) noexcept
 #elif HAS_CRASH_HANDLERS
 static void on_crash_signal(int32_t signum, int32_t code, nptr<const void> address, nptr<const void> context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!claim_crash_report()) {
         return;
     }
@@ -353,8 +323,6 @@ static void on_crash_signal(int32_t signum, int32_t code, nptr<const void> addre
 // default handler only writes to stderr, which a headless server discards
 static void on_terminate()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (claim_crash_report()) {
         exceptions::set_crash_termination_reason("std::terminate");
         exceptions::write_crash_report(stack_trace::get());
@@ -367,16 +335,12 @@ static void on_terminate()
 // A crash inside the report, or on another thread while it is being written, ends the process without a second one
 static auto claim_crash_report() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !crash_report_claimed.exchange(true);
 }
 #endif
 
 static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_trace::catched_data
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto ex_ptr = make_nptr(&ex);
 
     if (auto base_engine_ex = ex_ptr.dyn_cast<const BaseEngineException>()) {
@@ -389,8 +353,6 @@ static auto make_error_stack_trace(const std::exception& ex) noexcept -> stack_t
 
 static void set_crash_info(string info) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         crash_info = std::move(info);
     }
@@ -401,8 +363,6 @@ static void set_crash_info(string info) noexcept
 
 static auto safe_write_crash_info() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         if (crash_info.has_value()) {
             logging::write_base(strex("Crash reason: {}\n", *crash_info));
@@ -417,22 +377,16 @@ static auto safe_write_crash_info() noexcept -> bool
 
 static auto format_seh_crash_info(uint32_t code, uint32_t flags, nptr<const void> address) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("SEH exception code: 0x{:08X} ({}) flags: 0x{:08X} address: {}", code, get_seh_exception_name(code), flags, address.get()).str();
 }
 
 static auto format_signal_crash_info(int32_t signum, int32_t code, nptr<const void> address) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("Signal {} ({}) code: {} address: {}", signum, get_signal_name(signum), code, address.get()).str();
 }
 
 static auto format_runtime_crash_info(string_view reason) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     string info = strex("Runtime termination: {}", !reason.empty() ? reason : string_view {"unknown"}).str();
     std::exception_ptr current_exception = std::current_exception();
 
@@ -453,8 +407,6 @@ static auto format_runtime_crash_info(string_view reason) -> string
 
 static auto get_seh_exception_name(uint32_t code) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (code) {
     case 0x40010005U:
         return "DBG_CONTROL_C";
@@ -507,8 +459,6 @@ static auto get_seh_exception_name(uint32_t code) noexcept -> string_view
 
 static auto get_signal_name(int32_t signum) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (signum) {
 #ifdef SIGABRT
     case SIGABRT:

@@ -295,8 +295,6 @@ TEST_CASE("DiskFileSystem")
 // filesystem kinds — the split callers addressing files by exact name depend on (Docs/ConfigurationAndDataSources.md)
 static auto IsCaseInsensitiveFs(string_view dir) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string upper_probe = strex(dir).combine_path("CaseProbe.tmp").str();
     string lower_probe = strex(dir).combine_path("caseprobe.tmp").str();
 
@@ -312,8 +310,6 @@ static auto IsCaseInsensitiveFs(string_view dir) -> bool
 
 static auto HasExactDirEntry(string_view dir, string_view name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
 
     for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(dir)}, ec}) {

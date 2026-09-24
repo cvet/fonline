@@ -737,8 +737,6 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(ptr<Critter> self)
 
 static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gag_callback_func) -> refcount_ptr<MovingContext>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto engine = self->GetEngine();
     auto map = self->GetParent<Map>();
     ValidateEntityAccess(map);

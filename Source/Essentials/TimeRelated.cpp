@@ -102,8 +102,6 @@ auto make_time_desc(timespan time_offset, bool local) -> time_desc_t
 
 auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t minute, int32_t second, int32_t millisecond, int32_t microsecond, int32_t nanosecond, bool local) -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ymd = std::chrono::year_month_day {std::chrono::year {year}, std::chrono::month {static_cast<uint32_t>(month)}, std::chrono::day {static_cast<uint32_t>(day)}};
 
     if (!ymd.ok()) {
@@ -122,13 +120,10 @@ auto make_time_offset(int32_t year, int32_t month, int32_t day, int32_t hour, in
 time_meter::time_meter() noexcept :
     _start_time {nanotime::now()}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void time_meter::pause() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_paused) {
         return;
     }
@@ -139,8 +134,6 @@ void time_meter::pause() noexcept
 
 void time_meter::resume() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_paused) {
         return;
     }

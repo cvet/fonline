@@ -39,8 +39,6 @@ FO_BEGIN_NAMESPACE
 
 static auto GetRequiredSpriteInfoValue(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = values.find(key);
     FO_VERIFY_AND_THROW(it != values.end(), "Sprite info section is missing a required key", file_name, section_name, key);
     return it->second;
@@ -48,8 +46,6 @@ static auto GetRequiredSpriteInfoValue(const map<string_view, string_view>& valu
 
 static auto ParseSpriteInfoIntValues(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> vector<int32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string_view> tokens = strvex(GetRequiredSpriteInfoValue(values, file_name, section_name, key)).split(' ');
     vector<int32_t> result;
     result.reserve(tokens.size());
@@ -68,8 +64,6 @@ static auto ParseSpriteInfoIntValues(const map<string_view, string_view>& values
 
 static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, string_view file_name, string_view section_name, string_view key) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<int32_t> parsed_values = ParseSpriteInfoIntValues(values, file_name, section_name, key);
     FO_VERIFY_AND_THROW(parsed_values.size() == 1, "Sprite info scalar must contain exactly one value", file_name, section_name, key, parsed_values.size());
     return parsed_values.front();
@@ -77,7 +71,7 @@ static auto ParseSpriteInfoScalar(const map<string_view, string_view>& values, s
 
 auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<SpriteInfoFileEntry>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto config = ConfigFile(string(content));
     vector<SpriteInfoFileEntry> result;
@@ -157,7 +151,7 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
 
 auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<size_t> entry_order(entries.size());
     std::iota(entry_order.begin(), entry_order.end(), size_t {});
@@ -232,7 +226,7 @@ constexpr string_view MODEL_ANIMATION_INFO_FILE_NAME = "ModelAnimationInfo.foinf
 
 auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, ModelAnimationInfo>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (!resources.IsFileExists(MODEL_ANIMATION_INFO_FILE_NAME)) {
         logging::write(logging::type::info, "Model animation info document '{}' is not present", MODEL_ANIMATION_INFO_FILE_NAME);
@@ -423,7 +417,7 @@ auto ReadModelAnimationInfo(const FileSystem& resources, hash_resolver& hashes) 
 
 auto ReadAnimationInfo(const FileSystem& resources, hash_resolver& hashes) -> unordered_map<hstring, AnimationInfo>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     unordered_map<hstring, AnimationInfo> anim_infos;
 

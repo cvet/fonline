@@ -51,8 +51,6 @@ bool IsTestingInProgress {};
 
 ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<vector<string>> platform_args = platform::get_command_line_args();
 
     if (platform_args.has_value()) {
@@ -75,22 +73,16 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 
 auto IsPackaged() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !PackagedBuildName.empty();
 }
 
 auto GetPackagedRuntimeName() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return PackagedBuildName;
 }
 
 auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.emplace(port, std::move(listener)).second;
@@ -98,8 +90,6 @@ auto AddInterthreadListener(uint16_t port, InterthreadListener listener) -> bool
 
 auto RemoveInterthreadListener(uint16_t port) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.erase(port) != 0;
@@ -107,8 +97,6 @@ auto RemoveInterthreadListener(uint16_t port) -> bool
 
 auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     auto it = Interthread->Listeners.find(port);
@@ -122,8 +110,6 @@ auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>
 
 auto HasInterthreadListener(uint16_t port) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {Interthread->ListenersLocker};
 
     return Interthread->Listeners.contains(port);
@@ -131,8 +117,6 @@ auto HasInterthreadListener(uint16_t port) -> bool
 
 auto GetRemoteCallSimpleValueMinWireSize(const BaseTypeDesc& type) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsPrimitive || type.IsEnum) {
         FO_VERIFY_AND_THROW(type.Size != 0, "Remote call plain argument type has zero size", type.Name);
         return type.Size;
@@ -180,13 +164,10 @@ FrameBalancer::FrameBalancer(bool enabled, int32_t sleep, int32_t fixed_fps) :
     _sleep {sleep},
     _fixedFps {fixed_fps}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void FrameBalancer::StartLoop()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_enabled) {
         return;
     }
@@ -196,7 +177,7 @@ void FrameBalancer::StartLoop()
 
 void FrameBalancer::EndLoop()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!_enabled) {
         return;

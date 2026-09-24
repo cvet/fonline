@@ -330,11 +330,11 @@ reported through the exception.
 The overrun line names the entry and nothing below it, which is the whole answer only when the script
 itself is the cost. Usually it is not: a client handler overruns because of the engine call it made — a
 shader installed, a font bound, a GUI screen built, a model preloaded, a sound file read and decoded — and
-the line cannot say which. A Tracy build answers that instead. In a build where `FO_TRACY` is on, the
-managed backend installs a Mono profiler at runtime initialization and turns every script method into a
-Tracy zone, the way `AngelScriptBeginCall` already does for AngelScript, so a managed handler and the
+the line cannot say which. A Tracy build answers that instead. In a Tracy build that compiles the `Script`
+zone category (see [Debugging.md](Debugging.md#profiling-zones)), the managed backend installs a Mono profiler
+at runtime initialization and turns every script method into a Tracy zone, the way `AngelScriptBeginCall` already does for AngelScript, so a managed handler and the
 native zones its calls open read as one tree: `SoundManager.OnLoop` → `SoundManager.TryPlayMusic` →
-`AudioManager::PlayMusic` → `AudioManager::Load` → `FileSystem::ReadFile`. Three properties of the hook
+`Client_Game_PlayMusic` (the generated binding's zone) → `AudioManager::Load` → `FileSystem::ReadFile`. Three properties of the hook
 are worth knowing before changing it:
 
 - **The filter runs once per compiled method and never again**, so the profiler is created directly after

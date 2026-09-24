@@ -41,8 +41,6 @@ constexpr size_t UDP_PACKET_HEADER_SIZE = sizeof(uint32_t) + sizeof(uint16_t) + 
 
 static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits, uint32_t value, const_span<uint8_t> payload) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     data.reserve(UDP_PACKET_HEADER_SIZE + payload.size());
 
@@ -73,13 +71,10 @@ static auto MakeRawPacket(UdpPacketType type, uint32_t session_id, uint32_t sequ
 UdpOrderedChannel::UdpOrderedChannel(UdpTransportOptions options) :
     _options {options}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void UdpOrderedChannel::Reset() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sessionId = 0;
     _nextOutgoingSequence = 1;
     _nextIncomingSequence = 1;
@@ -93,43 +88,31 @@ void UdpOrderedChannel::Reset() noexcept
 
 void UdpOrderedChannel::SetSessionId(uint32_t session_id) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sessionId = session_id;
 }
 
 auto UdpOrderedChannel::GetSessionId() const noexcept -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _sessionId;
 }
 
 auto UdpOrderedChannel::HasSession() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _sessionId != 0;
 }
 
 auto UdpOrderedChannel::HasReadyData() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !_readyData.empty();
 }
 
 auto UdpOrderedChannel::CanAcceptPayload() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _pendingBytes < _options.MaxPendingBytes;
 }
 
 auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_ackPending) {
         return true;
     }
@@ -145,7 +128,7 @@ auto UdpOrderedChannel::NeedSend(nanotime now) const noexcept -> bool
 
 auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vector<uint8_t>>& packets, nanotime now) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     size_t consumed = 0;
 
@@ -196,8 +179,6 @@ auto UdpOrderedChannel::PrepareOutput(const_span<uint8_t> new_data, vector<vecto
 
 void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ApplyAcknowledgements(packet.AckSequence, packet.AckBits);
 
     if (packet.Type != UdpPacketType::Payload || packet.Payload.empty()) {
@@ -246,8 +227,6 @@ void UdpOrderedChannel::HandleIncomingPayload(const UdpPacketInfo& packet)
 
 auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     data.swap(_readyData);
     _readyData.clear();
     return data.size();
@@ -255,15 +234,11 @@ auto UdpOrderedChannel::ExtractReadyData(vector<uint8_t>& data) -> size_t
 
 auto UdpOrderedChannel::MakeDisconnectPacket() const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakePacket(UdpPacketType::Disconnect, 0, {});
 }
 
 void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ack_bits)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto it = _pendingPackets.begin(); it != _pendingPackets.end();) {
         if (IsPacketAcknowledged(it->Sequence, ack_sequence, ack_bits)) {
             FO_VERIFY_AND_THROW(_pendingBytes >= it->Payload.size(), "UDP ordered channel pending byte counter is smaller than an acknowledged packet payload", _pendingBytes, it->Payload.size(), it->Sequence, ack_sequence, ack_bits);
@@ -278,22 +253,16 @@ void UdpOrderedChannel::ApplyAcknowledgements(uint32_t ack_sequence, uint32_t ac
 
 void UdpOrderedChannel::EmitPendingPacket(const PendingPacket& packet, vector<vector<uint8_t>>& packets) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     packets.emplace_back(MakePacket(UdpPacketType::Payload, packet.Sequence, packet.Payload));
 }
 
 void UdpOrderedChannel::EmitAckPacket(vector<vector<uint8_t>>& packets) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     packets.emplace_back(MakePacket(UdpPacketType::KeepAlive, 0, {}));
 }
 
 void UdpOrderedChannel::RebuildAckBits() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ackBits = 0;
 
     for (const auto& [sequence, _] : _receivedPackets) {
@@ -311,8 +280,6 @@ void UdpOrderedChannel::RebuildAckBits() noexcept
 
 void UdpOrderedChannel::QueueTailRedundancy(vector<vector<uint8_t>>& packets, uint32_t first_new_sequence) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t resent = 0;
 
     for (auto it = _pendingPackets.rbegin(); it != _pendingPackets.rend() && resent < _options.Redundancy; ++it) {
@@ -327,8 +294,6 @@ void UdpOrderedChannel::QueueTailRedundancy(vector<vector<uint8_t>>& packets, ui
 
 auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_sequence, uint32_t ack_bits) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (sequence == 0) {
         return true;
     }
@@ -343,29 +308,21 @@ auto UdpOrderedChannel::IsPacketAcknowledged(uint32_t sequence, uint32_t ack_seq
 
 auto UdpOrderedChannel::MakePacket(UdpPacketType type, uint32_t sequence, const_span<uint8_t> payload, uint32_t value) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeRawPacket(type, _sessionId, sequence, _nextIncomingSequence != 0 ? _nextIncomingSequence - 1 : 0U, _ackBits, value, payload);
 }
 
 auto MakeUdpConnectPacket(uint32_t client_salt) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeRawPacket(UdpPacketType::Connect, 0, 0, 0, 0, client_salt, {});
 }
 
 auto MakeUdpAcceptPacket(uint32_t session_id, uint32_t client_salt) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeRawPacket(UdpPacketType::Accept, session_id, 0, 0, 0, client_salt, {});
 }
 
 auto TryParseUdpPacket(const_span<uint8_t> data, UdpPacketInfo& packet) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t pos = 0;
     uint32_t magic = 0;
     uint16_t version = 0;

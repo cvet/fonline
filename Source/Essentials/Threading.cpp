@@ -113,8 +113,6 @@ static void ensure_initialized_locked(thread_pool& pool, size_t max_workers, str
 // is how `try_submit_async` learns to run the task inline instead
 static auto submit_impl(thread_pool& pool, string_view task_name, function<void()> task, bool can_queue) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!task) {
         return true;
     }
@@ -161,7 +159,7 @@ static auto submit_impl(thread_pool& pool, string_view task_name, function<void(
 // std::system_error, so `submit_impl` rolls back instead of terminating
 static void spawn_pool_worker(thread_pool& pool, const string& worker_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     pool.workers.emplace_back([worker_name, pool_ptr = &pool] {
         try {
@@ -177,8 +175,6 @@ static void spawn_pool_worker(thread_pool& pool, const string& worker_name)
 
 static void worker_loop(thread_pool* pool) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Tasks transiently rename the thread so Tracy and debugger lists stay informative, so keep an
     // owning copy of the spawn name to restore afterwards
     string_view base_name = get_this_thread_name();
@@ -228,8 +224,6 @@ static void worker_loop(thread_pool* pool) noexcept
 
 static void internal_shutdown(thread_pool& pool) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vector<std::thread> workers_to_join;
 
     {
@@ -269,8 +263,6 @@ static auto hardware_concurrency_or_one() noexcept -> size_t
 
 static void submit_run_thread(string_view task_name, function<void()> task)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto& pool = pools->run_pool;
 
     {
@@ -284,8 +276,6 @@ static void submit_run_thread(string_view task_name, function<void()> task)
 
 void set_this_thread_name(const string& name) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         thread_name = name;
     }
@@ -294,15 +284,13 @@ void set_this_thread_name(const string& name) noexcept
 
     platform::set_thread_name(name);
 
-#if FO_TRACY
+#if FO_TRACE_ENABLED
     tracy::SetThreadName(name.c_str());
 #endif
 }
 
 auto get_this_thread_name() noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (thread_name.empty()) {
         static std::atomic_int32_t thread_counter = 0;
 
@@ -318,7 +306,7 @@ auto get_this_thread_name() noexcept -> string_view
 
 void coarse_sleep(std::chrono::nanoseconds duration) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     if (duration > std::chrono::nanoseconds::zero()) {
         park_until(std::chrono::steady_clock::now() + duration);
@@ -327,7 +315,7 @@ void coarse_sleep(std::chrono::nanoseconds duration) noexcept
 
 void precise_sleep(std::chrono::nanoseconds duration) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     if (duration <= std::chrono::nanoseconds::zero()) {
         return;
@@ -346,7 +334,7 @@ void precise_sleep(std::chrono::nanoseconds duration) noexcept
 
 auto run_thread(string_view task_name, function<void()> task) -> thread
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     // A promise rather than `std::packaged_task`: the latter swallows the body's exception into the
     // future, where `worker_loop` can no longer report it and a caller that never joins loses it
@@ -398,7 +386,7 @@ auto run_thread(string_view task_name, function<void()> task) -> thread
 
 auto try_submit_async(string_view task_name, function<void()> task) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     auto& pool = pools->async_pool;
 
@@ -414,7 +402,7 @@ auto try_submit_async(string_view task_name, function<void()> task) -> bool
 
 void submit_async(string_view task_name, function<void()> task)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     auto& pool = pools->async_pool;
 
@@ -428,7 +416,7 @@ void submit_async(string_view task_name, function<void()> task)
 
 void thread::join()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     if (_future.valid()) {
         auto future = std::move(_future);
@@ -445,8 +433,6 @@ void thread::detach() noexcept
 
 static void park_until(std::chrono::steady_clock::time_point deadline) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto remaining = deadline - std::chrono::steady_clock::now();
 
     if (remaining <= std::chrono::steady_clock::duration::zero()) {

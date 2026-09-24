@@ -354,8 +354,6 @@ static void flush_log_at_exit()
 
 void logging::safe_write_stack_trace(const stack_trace::data& st) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     char itoa_buf[64] = {};
 
     if (st.native_truncated) {

@@ -49,15 +49,9 @@ public:
     explicit FramePumpTestBackend(function<void()> callback) :
         _callback {std::move(callback)}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    void Process() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _callback();
-    }
+    void Process() override { _callback(); }
 
 private:
     function<void()> _callback;
@@ -79,7 +73,6 @@ public:
             }
         })
     {
-        FO_STACK_TRACE_ENTRY();
     }
 };
 

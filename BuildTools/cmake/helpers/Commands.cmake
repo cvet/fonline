@@ -84,7 +84,7 @@ macro(FileGlob outputVar)
 endmacro()
 
 macro(FileReadStrings inputFile outputVar)
-	file(STRINGS "${inputFile}" ${outputVar})
+	file(STRINGS "${inputFile}" ${outputVar} ${ARGN})
 endmacro()
 
 macro(FileMakeDirectory)

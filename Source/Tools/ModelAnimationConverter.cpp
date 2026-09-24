@@ -71,7 +71,7 @@ static auto RestPoseDivergenceLess(const ModelSkeletonRestPoseDivergence& first,
 
 auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skeleton, const_span<ModelSkeletonClipSource> clips) -> ModelSkeletonCompatibilityReport
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     IndexedSkeletonSource base_index = IndexSkeletonJoints(base_skeleton.FileName, base_skeleton.Joints);
     FO_VERIFY_AND_THROW(!base_index.RootHierarchy.empty(), "Base model skeleton has no root joint", base_skeleton.FileName);
@@ -196,8 +196,6 @@ auto BuildModelSkeletonCompatibilityReport(const ModelSkeletonSource& base_skele
 
 auto FormatModelSkeletonCompatibilityReport(const ModelSkeletonCompatibilityReport& report) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = strex("base='{}' canonical_joints={} contributed_joints={} root_aliases={} rest_pose_divergences={} animation_data_issues={}", report.BaseFile, report.CanonicalJoints.size(), report.ContributedJoints.size(), report.RootAliases.size(), report.RestPoseDivergences.size(), report.AnimationDataIssues.size());
 
     if (!report.ContributedJoints.empty()) {
@@ -277,8 +275,6 @@ auto FormatModelSkeletonCompatibilityReport(const ModelSkeletonCompatibilityRepo
 
 static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkeletonJoint>& joints) -> IndexedSkeletonSource
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (joints.empty()) {
         throw ModelSkeletonCompatibilityException("Skeleton source has no joints", source_file);
     }
@@ -329,8 +325,6 @@ static auto IndexSkeletonJoints(string_view source_file, const vector<ModelSkele
 
 static void ValidateJoint(const ModelSkeletonJoint& joint, string_view source_file)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (joint.Hierarchy.empty()) {
         throw ModelSkeletonCompatibilityException("Skeleton source contains joint with an empty hierarchy", source_file, joint.Name);
     }
@@ -352,8 +346,6 @@ static void ValidateJoint(const ModelSkeletonJoint& joint, string_view source_fi
 
 static auto NormalizeJointHierarchy(const vector<string>& hierarchy, string_view canonical_root) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!hierarchy.empty(), "Can't normalize an empty joint hierarchy");
     vector<string> result = hierarchy;
     result.front() = canonical_root;
@@ -362,8 +354,6 @@ static auto NormalizeJointHierarchy(const vector<string>& hierarchy, string_view
 
 static auto FormatJointHierarchy(const vector<string>& hierarchy) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
 
     for (size_t i = 0; i < hierarchy.size(); i++) {
@@ -380,8 +370,6 @@ static auto FormatJointHierarchy(const vector<string>& hierarchy) -> string
 
 static auto RestTransformsEqual(const mat44& first, const mat44& second) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!is_float_equal(first[column][row], second[column][row], REST_TRANSFORM_TOLERANCE)) {
@@ -395,8 +383,6 @@ static auto RestTransformsEqual(const mat44& first, const mat44& second) noexcep
 
 static auto GetMaxRestTransformDifference(const mat44& first, const mat44& second) noexcept -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t max_difference = 0.0f;
 
     for (mat44::length_type column = 0; column < 4; column++) {
@@ -410,29 +396,21 @@ static auto GetMaxRestTransformDifference(const mat44& first, const mat44& secon
 
 static auto JointDfsOrderLess(const ModelSkeletonJoint& first, const ModelSkeletonJoint& second) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return first.Hierarchy < second.Hierarchy;
 }
 
 static auto ClipSourceIndexLess(const ModelSkeletonClipSource& first, const ModelSkeletonClipSource& second) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::tie(first.FileName, first.ClipName) < std::tie(second.FileName, second.ClipName);
 }
 
 static auto RootAliasLess(const ModelSkeletonRootAlias& first, const ModelSkeletonRootAlias& second) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::tie(first.FileName, first.ClipName, first.SourceRoot, first.CanonicalRoot) < std::tie(second.FileName, second.ClipName, second.SourceRoot, second.CanonicalRoot);
 }
 
 static auto RestPoseDivergenceLess(const ModelSkeletonRestPoseDivergence& first, const ModelSkeletonRestPoseDivergence& second) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::tie(first.Hierarchy, first.FileName, first.ClipName, first.CanonicalSource, first.MaxDifference) < std::tie(second.Hierarchy, second.FileName, second.ClipName, second.CanonicalSource, second.MaxDifference);
 }
 
@@ -495,7 +473,7 @@ static auto FinishModelAnimationHash(uint64_t hash) -> uint64_t;
 
 auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const_span<ModelAnimationSource> animations, bool nearest_sampling) -> ModelAnimationRigArtifacts
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     InitializeModelAnimationMemory();
 
@@ -584,7 +562,7 @@ auto BuildModelAnimationRigArtifacts(string_view model_description, const ModelS
 
 auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span<ModelAnimationRigBindingSource> bindings) -> ModelAnimationRigData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto take_archive_payload = [](ModelAnimationArchiveMetadata& metadata, vector<uint8_t>& archive_data) -> ModelAnimationRigArchiveData {
         ModelAnimationArchive archive = ReadModelAnimationArchive(archive_data, metadata);
@@ -641,7 +619,7 @@ auto BuildModelAnimationRigData(ModelAnimationRigArtifacts artifacts, const_span
 
 static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skeleton, const ModelSkeletonCompatibilityReport& compatibility_report) -> ModelAnimationCanonicalRig
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (compatibility_report.CanonicalJoints.empty()) {
         throw ModelAnimationConverterException("Canonical animation rig has no joints", base_skeleton.FileName);
@@ -718,7 +696,7 @@ static auto BuildModelAnimationCanonicalRig(const ModelSkeletonSource& base_skel
 
 static auto BuildModelAnimationRuntimeSkeleton(const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig) -> ozz::unique_ptr<ozz::animation::Skeleton>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<uint32_t>> children(compatibility_report.CanonicalJoints.size());
 
@@ -753,8 +731,6 @@ static auto BuildModelAnimationRuntimeSkeleton(const ModelSkeletonCompatibilityR
 
 static void FillModelAnimationRawSkeletonJoint(uint32_t joint_index, const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig, const vector<vector<uint32_t>>& children, ozz::animation::offline::RawSkeleton::Joint& raw_joint)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const ModelSkeletonJoint& joint = compatibility_report.CanonicalJoints[joint_index];
     raw_joint.name = joint.Name.c_str();
     raw_joint.transform = canonical_rig.RestTransforms[joint_index];
@@ -767,8 +743,6 @@ static void FillModelAnimationRawSkeletonJoint(uint32_t joint_index, const Model
 
 static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view context) -> ozz::math::Transform
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             if (!std::isfinite(matrix[column][row])) {
@@ -851,8 +825,6 @@ static auto DecomposeModelAnimationTransform(const mat44& matrix, string_view co
 
 static auto ComposeModelAnimationTransform(const ozz::math::Transform& transform) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vec3 translation {transform.translation.x, transform.translation.y, transform.translation.z};
     quaternion rotation {transform.rotation.w, transform.rotation.x, transform.rotation.y, transform.rotation.z};
     vec3 scale {transform.scale.x, transform.scale.y, transform.scale.z};
@@ -861,7 +833,7 @@ static auto ComposeModelAnimationTransform(const ozz::math::Transform& transform
 
 static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animation, const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig, uint64_t rig_signature, uint64_t cache_signature, bool nearest_sampling) -> ModelAnimationClipArtifact
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ModelAnimationClipArtifact result;
     result.SourceFile = animation.FileName;
@@ -917,7 +889,7 @@ static auto BuildModelAnimationClipArtifact(const ModelAnimationSource& animatio
 
 static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animation, const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig, ModelAnimationJointRemap& joint_remap, bool nearest_sampling) -> ozz::animation::offline::RawAnimation
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (animation.FileName.empty() || animation.Name.empty() || animation.FileName.find('\0') != string::npos || animation.Name.find('\0') != string::npos) {
         throw ModelAnimationConverterException("Animation identity is invalid for ozz conversion", animation.FileName, animation.Name);
@@ -1000,8 +972,6 @@ static auto BuildModelAnimationRawAnimation(const ModelAnimationSource& animatio
 
 static void FillModelAnimationFallbackTrack(const ozz::math::Transform& transform, float32_t duration, string_view context, ozz::animation::offline::RawAnimation::JointTrack& track)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (float_abs(transform.translation.x) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.translation.y) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.translation.z) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.x) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.y) > MODEL_ANIMATION_HALF_MAX || float_abs(transform.scale.z) > MODEL_ANIMATION_HALF_MAX) {
         throw ModelAnimationConverterException("Fallback transform exceeds ozz FP16 range", context, MODEL_ANIMATION_HALF_MAX);
     }
@@ -1022,8 +992,6 @@ static void FillModelAnimationFallbackTrack(const ozz::math::Transform& transfor
 
 static void FillModelAnimationAuthoredTrack(const ModelAnimationJointSource& source, float32_t duration, bool nearest_sampling, string_view animation_context, ozz::animation::offline::RawAnimation::JointTrack& track)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelAnimationVec3Track(source.Translation, strex("{} translation", animation_context), true);
     ValidateModelAnimationQuaternionTrack(source.Rotation, strex("{} rotation", animation_context));
     ValidateModelAnimationVec3Track(source.Scale, strex("{} scale", animation_context), true);
@@ -1095,8 +1063,6 @@ static void FillModelAnimationAuthoredTrack(const ModelAnimationJointSource& sou
 
 static void RefineModelAnimationRotationTrack(ozz::animation::offline::RawAnimation::JointTrack::Rotations& rotations, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (rotations.size() < 2) {
         throw ModelAnimationConverterException("Ozz rotation refinement requires at least two keys", context);
     }
@@ -1115,8 +1081,6 @@ static void RefineModelAnimationRotationTrack(ozz::animation::offline::RawAnimat
 
 static void AppendModelAnimationRefinedRotationSegment(const ozz::animation::offline::RawAnimation::RotationKey& first, const ozz::animation::offline::RawAnimation::RotationKey& second, size_t depth, string_view context, ozz::animation::offline::RawAnimation::JointTrack::Rotations& result)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t max_error = std::max({
         GetModelAnimationNlerpError(first.value, second.value, 0.211324865f),
         GetModelAnimationNlerpError(first.value, second.value, 0.25f),
@@ -1152,8 +1116,6 @@ static void AppendModelAnimationRefinedRotationSegment(const ozz::animation::off
 
 static auto GetModelAnimationNlerpError(const ozz::math::Quaternion& first, const ozz::math::Quaternion& second, float32_t factor) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     using DoubleQuaternion = glm::qua<float64_t, glm::defaultp>;
     DoubleQuaternion first_rotation = glm::normalize(DoubleQuaternion {numeric_cast<float64_t>(first.w), numeric_cast<float64_t>(first.x), numeric_cast<float64_t>(first.y), numeric_cast<float64_t>(first.z)});
     DoubleQuaternion second_rotation = glm::normalize(DoubleQuaternion {numeric_cast<float64_t>(second.w), numeric_cast<float64_t>(second.x), numeric_cast<float64_t>(second.y), numeric_cast<float64_t>(second.z)});
@@ -1171,8 +1133,6 @@ static auto GetModelAnimationNlerpError(const ozz::math::Quaternion& first, cons
 
 static auto BuildModelAnimationNearestTimeline(const ModelAnimationSource& animation) -> vector<float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<float32_t> result;
 
     for (const ModelAnimationJointSource& joint : animation.Joints) {
@@ -1214,8 +1174,6 @@ static auto BuildModelAnimationNearestTimeline(const ModelAnimationSource& anima
 
 static auto CropModelAnimationTimeline(const vector<float32_t>& times, float32_t duration) -> vector<float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<float32_t> result;
     result.reserve(times.size() + 2);
     result.emplace_back(0.0f);
@@ -1232,8 +1190,6 @@ static auto CropModelAnimationTimeline(const vector<float32_t>& times, float32_t
 
 static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationVec3Track& track, float32_t time, bool nearest_sampling, string_view context) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelAnimationVec3Track(track, context, true);
 
     for (size_t i = 0; i < track.Times.size(); i++) {
@@ -1256,8 +1212,6 @@ static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationVec3Track& tra
 
 static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationQuaternionTrack& track, float32_t time, bool nearest_sampling, string_view context) -> quaternion
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelAnimationQuaternionTrack(track, context);
 
     for (size_t i = 0; i < track.Times.size(); i++) {
@@ -1276,8 +1230,6 @@ static auto EvaluateModelAnimationLegacyTrack(const ModelAnimationQuaternionTrac
 
 static void ValidateModelAnimationVec3Track(const ModelAnimationVec3Track& track, string_view context, bool half_range)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
         throw ModelAnimationConverterException("Invalid vector track sizes", context, track.Times.size(), track.Values.size());
     }
@@ -1300,8 +1252,6 @@ static void ValidateModelAnimationVec3Track(const ModelAnimationVec3Track& track
 
 static void ValidateModelAnimationQuaternionTrack(const ModelAnimationQuaternionTrack& track, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
         throw ModelAnimationConverterException("Invalid rotation track sizes", context, track.Times.size(), track.Values.size());
     }
@@ -1330,8 +1280,6 @@ static void ValidateModelAnimationQuaternionTrack(const ModelAnimationQuaternion
 
 static auto NormalizeModelAnimationHierarchy(const vector<string>& hierarchy, string_view canonical_root) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (hierarchy.empty()) {
         throw ModelAnimationConverterException("Can't normalize an empty animation hierarchy for ozz conversion");
     }
@@ -1343,8 +1291,6 @@ static auto NormalizeModelAnimationHierarchy(const vector<string>& hierarchy, st
 
 static auto FormatModelAnimationHierarchy(const vector<string>& hierarchy) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
 
     for (size_t i = 0; i < hierarchy.size(); i++) {
@@ -1360,8 +1306,6 @@ static auto FormatModelAnimationHierarchy(const vector<string>& hierarchy) -> st
 
 static void ValidateModelAnimationJointName(string_view name, string_view context, bool root)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!root && name.empty()) {
         throw ModelAnimationConverterException("Empty non-root ozz joint name", context);
     }
@@ -1376,7 +1320,7 @@ static void ValidateModelAnimationJointName(string_view name, string_view contex
 template<typename T>
 static auto SerializeModelAnimationObject(const T& object, string_view context) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ozz::io::MemoryStream stream;
 
@@ -1404,7 +1348,7 @@ static auto SerializeModelAnimationObject(const T& object, string_view context) 
 template<typename T>
 static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_view context) -> T
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (payload.empty() || payload.size() > numeric_cast<size_t>(std::numeric_limits<int>::max())) {
         throw ModelAnimationConverterException("Invalid serialized ozz payload size", payload.size(), context);
@@ -1437,8 +1381,6 @@ static auto DeserializeModelAnimationObject(const_span<uint8_t> payload, string_
 
 static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMetadata& metadata, const_span<uint8_t> payload) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         vector<uint8_t> result = WriteModelAnimationArchive(metadata, payload);
         (void)ReadModelAnimationArchive(result, metadata);
@@ -1451,8 +1393,6 @@ static auto WrapAndValidateModelAnimationArchive(const ModelAnimationArchiveMeta
 
 static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skeleton& skeleton, const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (skeleton.num_joints() != numeric_cast<int>(compatibility_report.CanonicalJoints.size())) {
         throw ModelAnimationConverterException("Canonical ozz skeleton joint-count mismatch", context, compatibility_report.CanonicalJoints.size(), skeleton.num_joints());
     }
@@ -1480,8 +1420,6 @@ static void ValidateModelAnimationSkeletonRoundTrip(const ozz::animation::Skelet
 
 static void ValidateModelAnimationRoundTrip(const ozz::animation::Animation& animation, const ModelAnimationSource& source, size_t canonical_joint_count, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (animation.num_tracks() != numeric_cast<int>(canonical_joint_count)) {
         throw ModelAnimationConverterException("Ozz animation track-count mismatch", context, canonical_joint_count, animation.num_tracks());
     }
@@ -1509,8 +1447,6 @@ static void ValidateModelAnimationRoundTrip(const ozz::animation::Animation& ani
 
 static auto HashModelAnimationRig(const ModelSkeletonCompatibilityReport& compatibility_report, const ModelAnimationCanonicalRig& canonical_rig) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
     HashModelAnimationString(hash, "LF canonical ozz rig v1");
     HashModelAnimationUnsigned(hash, numeric_cast<uint64_t>(compatibility_report.CanonicalJoints.size()));
@@ -1543,8 +1479,6 @@ static auto HashModelAnimationRig(const ModelSkeletonCompatibilityReport& compat
 
 static auto HashModelAnimationBaseSource(const ModelSkeletonSource& base_skeleton, const ModelAnimationJointRemap& remap) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
     HashModelAnimationString(hash, "LF ozz base source v1");
     HashModelAnimationString(hash, base_skeleton.FileName);
@@ -1569,8 +1503,6 @@ static auto HashModelAnimationBaseSource(const ModelSkeletonSource& base_skeleto
 
 static auto HashModelAnimationSource(const ozz::animation::offline::RawAnimation& animation, const ModelAnimationJointRemap& remap) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
     HashModelAnimationString(hash, "LF cropped ozz animation source v1");
     HashModelAnimationString(hash, animation.name.c_str());
@@ -1608,8 +1540,6 @@ static auto HashModelAnimationSource(const ozz::animation::offline::RawAnimation
 
 static auto HashModelAnimationJointRemap(const ModelAnimationJointRemap& remap) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
     HashModelAnimationString(hash, "LF ozz joint remap v1");
     HashModelAnimationFloat(hash, remap.Duration);
@@ -1633,8 +1563,6 @@ static auto HashModelAnimationJointRemap(const ModelAnimationJointRemap& remap) 
 
 static auto HashModelAnimationConverterPolicy(bool nearest_sampling) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = MODEL_ANIMATION_HASH_OFFSET;
     // Stable schema-1 hash domain; its legacy spelling is part of baked cache identity
     HashModelAnimationString(hash, "LF ModelOzzConverter v1; retention=base-plus-selected-output-ancestors; contributed-rest=identity; crop=legacy-boundaries; rotation-refinement-error-radians=0.000872664626; runtime-rotation-budget-radians=0.001745329252; nearest=shared-timeline-with-boundary-keys; optimizer=off; endian=little");
@@ -1645,8 +1573,6 @@ static auto HashModelAnimationConverterPolicy(bool nearest_sampling) -> uint64_t
 
 static void HashModelAnimationByte(uint64_t& hash, uint8_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     hash ^= value;
     hash *= MODEL_ANIMATION_HASH_PRIME;
 }
@@ -1654,8 +1580,6 @@ static void HashModelAnimationByte(uint64_t& hash, uint8_t value)
 template<typename T>
 static void HashModelAnimationUnsigned(uint64_t& hash, T value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_unsigned_v<T>);
 
     for (size_t i = 0; i < sizeof(T); i++) {
@@ -1665,15 +1589,11 @@ static void HashModelAnimationUnsigned(uint64_t& hash, T value)
 
 static void HashModelAnimationFloat(uint64_t& hash, float32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     HashModelAnimationUnsigned(hash, std::bit_cast<uint32_t>(value));
 }
 
 static void HashModelAnimationString(uint64_t& hash, string_view value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     HashModelAnimationUnsigned(hash, numeric_cast<uint64_t>(value.size()));
 
     for (char value_char : value) {
@@ -1683,8 +1603,6 @@ static void HashModelAnimationString(uint64_t& hash, string_view value)
 
 static auto FinishModelAnimationHash(uint64_t hash) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return hash != 0 ? hash : uint64_t {1};
 }
 

@@ -120,7 +120,7 @@ private:
 
 auto NetworkServer::StartWebSocketsServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     uint16_t ws_port = numeric_cast<uint16_t>(settings->Network.WebSocketPort);
 
@@ -141,8 +141,6 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
     NetworkServerConnection(settings),
     _connection {connection}
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto& raw_socket = connection->get_raw_socket();
 
     std::error_code endpoint_error;
@@ -167,8 +165,6 @@ NetworkServerConnection_WebSockets<Secured>::NetworkServerConnection_WebSockets(
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::Start()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The connection outlives this wrapper, so each handler locks the weak ref to keep it alive; a failed lock
     // means the wrapper is gone and the callback is a no-op
     auto connection = _connection.lock();
@@ -227,8 +223,6 @@ void NetworkServerConnection_WebSockets<Secured>::LogSocketOperationError(string
 template<bool Secured>
 NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets()
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         // close() posts to the io service and is the only thread-safe teardown: terminate() is io-thread-only
         // and would race the run loop from here
@@ -246,7 +240,7 @@ NetworkServerConnection_WebSockets<Secured>::~NetworkServerConnection_WebSockets
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& msg)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     const auto& payload = msg->get_payload();
 
@@ -258,8 +252,6 @@ void NetworkServerConnection_WebSockets<Secured>::OnMessage(const message_ptr& m
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(hdl);
 
     Disconnect();
@@ -268,8 +260,6 @@ void NetworkServerConnection_WebSockets<Secured>::OnFail(const websocketpp::conn
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnClose(const websocketpp::connection_hdl& hdl)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(hdl);
 
     Disconnect();
@@ -278,8 +268,6 @@ void NetworkServerConnection_WebSockets<Secured>::OnClose(const websocketpp::con
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::connection_hdl& hdl)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(hdl);
 
     // Prevent use this feature
@@ -289,8 +277,6 @@ void NetworkServerConnection_WebSockets<Secured>::OnHttp(const websocketpp::conn
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = _connection.lock();
 
     if (!connection) {
@@ -315,8 +301,6 @@ void NetworkServerConnection_WebSockets<Secured>::DispatchImpl()
 template<bool Secured>
 void NetworkServerConnection_WebSockets<Secured>::DisconnectImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Runs on the engine thread, so teardown goes through the thread-safe close() rather than the io-thread-only
     // terminate(), which would race the run loop
     if (auto connection = _connection.lock()) {
@@ -330,8 +314,6 @@ template<bool Secured>
 NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if constexpr (Secured) {
         if (_settings->ServerNetwork.WssPrivateKey.empty()) {
             throw GenericException("'WssPrivateKey' not provided");
@@ -370,7 +352,7 @@ NetworkServer_WebSockets<Secured>::NetworkServer_WebSockets(ptr<ServerNetworkSet
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::ShutdownImpl()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _server.stop();
     _runThread.join();
@@ -379,8 +361,6 @@ void NetworkServer_WebSockets<Secured>::ShutdownImpl()
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::Run()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (true) {
         try {
             _server.run();
@@ -395,7 +375,7 @@ void NetworkServer_WebSockets<Secured>::Run()
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl& hdl)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     try {
         auto connection = _server.get_con_from_hdl(hdl);
@@ -423,8 +403,6 @@ void NetworkServer_WebSockets<Secured>::OnOpen(const websocketpp::connection_hdl
 template<bool Secured>
 void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl& hdl)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto&& connection = _server.get_con_from_hdl(hdl);
     const auto& ec = connection->get_ec();
     auto remote_endpoint = connection->get_remote_endpoint();
@@ -434,8 +412,6 @@ void NetworkServer_WebSockets<Secured>::OnFail(const websocketpp::connection_hdl
 template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection_hdl& hdl) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto&& connection = _server.get_con_from_hdl(hdl);
 
     if (_settings->ServerNetwork.MaxBufferedInputSize > 0) {
@@ -449,7 +425,7 @@ auto NetworkServer_WebSockets<Secured>::OnValidate(const websocketpp::connection
 template<bool Secured>
 auto NetworkServer_WebSockets<Secured>::OnTlsInit(const websocketpp::connection_hdl& hdl) const -> websocketpp::lib::shared_ptr<ssl_context>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     ignore_unused(hdl);
 

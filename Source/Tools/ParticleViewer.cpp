@@ -69,8 +69,6 @@ static constexpr float32_t SCENE_DEPTH_HALF = 64.0f;
 template<size_t Size>
 static auto InputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto end = std::find(buffer.begin(), buffer.end(), char {0});
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
@@ -79,8 +77,6 @@ ParticleViewer::ParticleViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_mn
     _engine {engine},
     _sprMngr {spr_mngr}
 {
-    FO_STACK_TRACE_ENTRY();
-
     LoadSettings();
 }
 
@@ -88,7 +84,7 @@ ParticleViewer::~ParticleViewer() = default;
 
 void ParticleViewer::LoadSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     // The ImGui context may not exist yet (a headless host constructs the viewer without UI), so the saved
     // layout is only remembered here and applied lazily on the first Draw, when a context is guaranteed
@@ -118,7 +114,7 @@ void ParticleViewer::LoadSettings()
 
 void ParticleViewer::SaveSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (auto ctx = make_nptr(ImGui::GetCurrentContext())) {
         size_t ini_size = 0;
@@ -141,7 +137,7 @@ void ParticleViewer::SaveSettings()
 
 void ParticleViewer::Draw()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_pendingImguiLayout.empty()) {
         ImGui::LoadIniSettingsFromMemory(_pendingImguiLayout.c_str(), _pendingImguiLayout.size());
@@ -194,7 +190,7 @@ void ParticleViewer::Draw()
 
 void ParticleViewer::RefreshResourceList()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (_resourcesIndexed) {
         return;
@@ -222,7 +218,7 @@ void ParticleViewer::RefreshResourceList()
 
 void ParticleViewer::DrawResourceList()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     RefreshResourceList();
 
@@ -248,7 +244,7 @@ void ParticleViewer::DrawResourceList()
 
 void ParticleViewer::DrawPreview()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (_selectedPath.empty()) {
         ImGui::TextUnformatted("Select a particle");
@@ -319,8 +315,6 @@ void ParticleViewer::DrawPreview()
 
 void ParticleViewer::DrawControls()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ImGui::SetNextItemWidth(120.0f);
     ImGui::InputInt("Seed", &_seed);
 
@@ -362,8 +356,6 @@ void ParticleViewer::DrawControls()
 
 void ParticleViewer::DrawDebugToggles()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ImGui::Checkbox("Root", &_drawRoot);
     ImGui::SameLine();
     ImGui::Checkbox("Draw rect", &_drawDrawRect);
@@ -373,7 +365,7 @@ void ParticleViewer::DrawDebugToggles()
 
 void ParticleViewer::SelectParticle(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     _selectedPath = path;
     _selectionError.clear();
@@ -412,8 +404,6 @@ void ParticleViewer::SelectParticle(string_view path)
 
 void ParticleViewer::PlayCurrent()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_previewSprite) {
         return;
     }
@@ -437,8 +427,6 @@ void ParticleViewer::PlayCurrent()
 
 void ParticleViewer::ApplyDirection()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_previewSprite) {
         _previewSprite->SetDir(mdir(iround<int32_t>(_dirAngle)));
     }
@@ -446,8 +434,6 @@ void ParticleViewer::ApplyDirection()
 
 void ParticleViewer::PanBy(fpos32 screen_delta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _pan.x += screen_delta.x;
     _pan.y += screen_delta.y;
 
@@ -465,7 +451,7 @@ void ParticleViewer::PanBy(fpos32 screen_delta)
 
 void ParticleViewer::RenderPreview()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_previewSprite) {
         return;
@@ -553,8 +539,6 @@ void ParticleViewer::RenderPreview()
 
 void ParticleViewer::DrawRootCrosshair(ipos32 anchor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Two full-span segments (LineList draws consecutive point pairs), crossing
     // at the anchor to mark the root
     array<PrimitivePoint, 4> lines = {
@@ -569,8 +553,6 @@ void ParticleViewer::DrawRootCrosshair(ipos32 anchor)
 
 void ParticleViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Map a sprite-local pixel to the preview render target (same transform the
     // effect draw uses: top-left at sprite_pos, scaled by the draw scale)
     auto to_screen = [&](ipos32 sl) -> ipos32 { return {sprite_pos.x + iround<int32_t>(numeric_cast<float32_t>(sl.x) * draw_scale), sprite_pos.y + iround<int32_t>(numeric_cast<float32_t>(sl.y) * draw_scale)}; };

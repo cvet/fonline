@@ -175,8 +175,6 @@ struct Direct3D_Renderer::Context
 template<typename T>
 static void ReleaseComObject(ptr<nptr<T>> object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (*object) {
         (*object)->Release();
         *object = nullptr;
@@ -186,8 +184,6 @@ static void ReleaseComObject(ptr<nptr<T>> object) noexcept
 template<typename T>
 static void ReleaseComObjectSlot(nptr<T>& object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<nptr<T>> object_ptr = &object;
     ReleaseComObject(object_ptr);
 }
@@ -195,8 +191,6 @@ static void ReleaseComObjectSlot(nptr<T>& object) noexcept
 template<typename T>
 static void ReleaseOwnedComObject(T* raw_object) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (raw_object != nullptr) {
         auto object = make_ptr(raw_object);
         object->Release();
@@ -206,16 +200,12 @@ static void ReleaseOwnedComObject(T* raw_object) noexcept
 template<typename T>
 static auto MakeComObjectHolder(ptr<T> object) noexcept -> unique_del_ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return make_unique_del_ptr(object, ReleaseOwnedComObject<T>);
 }
 
 template<typename T>
 static auto MakeComObjectHolder(nptr<T> object) noexcept -> unique_del_ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<T> checked_object = object;
     return MakeComObjectHolder(checked_object);
 }
@@ -224,8 +214,6 @@ Direct3D_Renderer::Direct3D_Renderer() = default;
 
 static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend) {
     case BlendFuncType::Zero:
         return D3D11_BLEND_ZERO;
@@ -260,8 +248,6 @@ static auto ConvertBlend(BlendFuncType blend, bool is_alpha) -> D3D11_BLEND
 
 static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (blend_op) {
     case BlendEquationType::FuncAdd:
         return D3D11_BLEND_OP_ADD;
@@ -280,8 +266,6 @@ static auto ConvertBlendOp(BlendEquationType blend_op) -> D3D11_BLEND_OP
 
 static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (depth_func) {
     case DepthFuncType::Always:
         return D3D11_COMPARISON_ALWAYS;
@@ -306,8 +290,6 @@ static auto ConvertDepthFunc(DepthFuncType depth_func) -> D3D11_COMPARISON_FUNC
 
 static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (cull_mode) {
     case CullModeType::None:
         return D3D11_CULL_NONE;
@@ -322,7 +304,7 @@ static auto ConvertCullMode(CullModeType cull_mode) -> D3D11_CULL_MODE
 
 void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(window, "Frontend window handle is null");
     FO_VERIFY_AND_THROW(!_ctx, "Frontend context is already initialized");
@@ -583,8 +565,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
 Direct3D_Renderer::~Direct3D_Renderer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_ctx) {
         return;
     }
@@ -629,7 +609,7 @@ Direct3D_Renderer::~Direct3D_Renderer()
 
 void Direct3D_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_swap_chain = _ctx->SwapChain->Present(_ctx->VSync ? 1 : 0, 0);
@@ -644,7 +624,7 @@ void Direct3D_Renderer::Present()
 
 auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_tex = safe_alloc::make_unique<Direct3D_Texture>(size, linear_filtered, with_depth, _ctx);
@@ -707,7 +687,7 @@ auto Direct3D_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool w
 
 auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_dbuf = safe_alloc::make_unique<Direct3D_DrawBuffer>(is_static, _ctx);
@@ -717,7 +697,7 @@ auto Direct3D_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDra
 
 auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     auto d3d_effect = safe_alloc::make_unique<Direct3D_Effect>(usage, name, loader, _ctx);
@@ -866,8 +846,6 @@ auto Direct3D_Renderer::CreateEffect(EffectUsage usage, string_view name, const 
 
 auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     const float32_t& l = left;
     const float32_t& t = top;
     const float32_t& r = right;
@@ -902,15 +880,13 @@ auto Direct3D_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float
 
 auto Direct3D_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ViewPortRect;
 }
 
 void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
@@ -976,8 +952,6 @@ void Direct3D_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ctx->OrthoNear = nearp;
     _ctx->OrthoFar = farp;
     _ctx->ProjMatrix = CreateOrthoMatrix(0.0f, numeric_cast<float32_t>(_ctx->TargetSize.width), numeric_cast<float32_t>(_ctx->TargetSize.height), 0.0f, nearp, farp);
@@ -985,16 +959,12 @@ void Direct3D_Renderer::SetOrthoDepthRange(float32_t nearp, float32_t farp) noex
 
 auto Direct3D_Renderer::GetProjMatrix() const -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     return _ctx->ProjMatrix;
 }
 
 void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     if (color.has_value()) {
@@ -1023,8 +993,6 @@ void Direct3D_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bo
 
 void Direct3D_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
 
     if (_ctx->ViewPortRect.width != _ctx->TargetSize.width || _ctx->ViewPortRect.height != _ctx->TargetSize.height) {
@@ -1048,15 +1016,13 @@ void Direct3D_Renderer::EnableScissor(irect32 rect)
 
 void Direct3D_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     _ctx->ScissorEnabled = false;
 }
 
 void Direct3D_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(_ctx, "Context is null");
     bool is_cur_rt = _ctx->CurRenderTarget == _ctx->MainRenderTarget;
@@ -1089,8 +1055,6 @@ void Direct3D_Renderer::OnResizeWindow(isize32 size)
 
 Direct3D_Texture::~Direct3D_Texture()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ReleaseComObjectSlot(TexHandle);
     ReleaseComObjectSlot(DepthStencil);
     ReleaseComObjectSlot(RenderTargetView);
@@ -1100,7 +1064,7 @@ Direct3D_Texture::~Direct3D_Texture()
 
 auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested Direct3D texture pixel is outside texture bounds", pos, Size);
 
@@ -1135,7 +1099,7 @@ auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
 
 auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
@@ -1200,7 +1164,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
 void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
@@ -1227,15 +1191,13 @@ void Direct3D_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<
 
 Direct3D_DrawBuffer::~Direct3D_DrawBuffer()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ReleaseComObjectSlot(VertexBuf);
     ReleaseComObjectSlot(IndexBuf);
 }
 
 void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (IsStatic && !StaticDataChanged) {
         return;
@@ -1343,8 +1305,6 @@ void Direct3D_DrawBuffer::Upload(EffectUsage usage, optional<size_t> custom_vert
 
 Direct3D_Effect::~Direct3D_Effect()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < EFFECT_MAX_PASSES; i++) {
         ReleaseComObjectSlot(VertexShader[i]);
         ReleaseComObjectSlot(InputLayout[i]);
@@ -1375,7 +1335,7 @@ Direct3D_Effect::~Direct3D_Effect()
 
 void Direct3D_Effect::DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto d3d_dbuf = dbuf.dyn_cast<Direct3D_DrawBuffer>();
     FO_VERIFY_AND_THROW(d3d_dbuf, "Direct3D draw buffer is not of the expected backend type");

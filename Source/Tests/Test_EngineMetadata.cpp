@@ -45,8 +45,6 @@ using MigrationRulesMap = unordered_map<hstring, unordered_map<hstring, unordere
 
 static auto MakeSpriteAnimationInfoResources() -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     SpriteInfoFileEntry entry {
         .SourcePath = "Art/Test.png",
         .ResourcePath = "Art/Test.png",
@@ -137,8 +135,6 @@ ViewBoundsMaxZ = 1.5
 
 static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("AnimationInfoTestPack");
     source->AddFile("ModelAnimationInfo.foinfo", content);
 
@@ -149,8 +145,6 @@ static auto MakeModelAnimationInfoResources(string_view content) -> FileSystem
 
 static auto MakeModelAnimationInfoDocument(string_view animation_fields, string_view bounds_version = "2", string_view model_bounds_max_x = "2") -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(R"([Critters/Test.fo3d]
 BoundsVersion = {}
 ModelBoundsMinX = -2
@@ -172,8 +166,6 @@ ViewBoundsMaxZ = 3
 
 static void CheckModelAnimationInfoRejected(string_view content)
 {
-    FO_STACK_TRACE_ENTRY();
-
     EngineMetadata meta {[] { }};
     FileSystem resources = MakeModelAnimationInfoResources(content);
     CHECK_THROWS_AS(meta.RegisterAnimationInfo(resources), VerificationException);

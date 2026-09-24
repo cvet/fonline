@@ -782,8 +782,6 @@ namespace ClientServerIntegrationClient
 
     static auto MakeTempClientUpdaterBakeDir(string_view name) -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
@@ -792,8 +790,6 @@ namespace ClientServerIntegrationClient
 
     static auto PrepareClientUpdaterBakeOutput() -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         string bake_dir = MakeTempClientUpdaterBakeDir("resources");
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 

@@ -39,8 +39,6 @@ FO_BEGIN_NAMESPACE
 
 static auto AddTestSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return list.AddSprite(draw_order, hex, ipos32 {}, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, sub_layer);
 }
 

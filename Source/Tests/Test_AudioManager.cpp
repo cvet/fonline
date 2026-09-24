@@ -236,8 +236,6 @@ namespace AudioManagerDynamicTests
 
         auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
         {
-            FO_STACK_TRACE_ENTRY();
-
             // The fixture is authored in the mixing layout already, so there is nothing to convert
             CHECK(channels == 2);
             CHECK(rate == SAMPLE_RATE);
@@ -246,17 +244,10 @@ namespace AudioManagerDynamicTests
             return true;
         }
 
-        void SetSource(AudioStreamCallback stream_callback) override
-        {
-            FO_STACK_TRACE_ENTRY();
-
-            _streamCallback = std::move(stream_callback);
-        }
+        void SetSource(AudioStreamCallback stream_callback) override { _streamCallback = std::move(stream_callback); }
 
         void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override
         {
-            FO_STACK_TRACE_ENTRY();
-
             ignore_unused(output);
             MixedVolume = volume;
             Mixed.assign(buf.begin(), buf.end());
@@ -268,8 +259,6 @@ namespace AudioManagerDynamicTests
         // Runs one device callback and hands back the buffer the mixer produced for the playing sound
         auto PullMixedBuffer() -> vector<uint8_t>
         {
-            FO_STACK_TRACE_ENTRY();
-
             FO_VERIFY_AND_THROW(_streamCallback, "Audio source is not set");
             Mixed.clear();
             MixedVolume = 0;

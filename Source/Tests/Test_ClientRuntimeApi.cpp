@@ -42,15 +42,11 @@ FO_BEGIN_NAMESPACE
 
 static auto PromoteExpectedRuntime(string_view runtime_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return runtime_path == "runtime";
 }
 
 static auto FailUnexpectedRuntimePromotion(string_view) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FAIL_CHECK("Runtime promotion must not be called");
     return false;
 }

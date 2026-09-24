@@ -94,8 +94,7 @@ ENGINE_HARNESS = r"""
 #include <string_view>
 #include <system_error>
 #define FO_WINDOWS 1
-#define FO_STACK_TRACE_ENTRY() ((void)0)
-#define FO_NO_STACK_TRACE_ENTRY() ((void)0)
+#define FO_TRACE_ZONE(category) ((void)0)
 #define ignore_unused(...) ((void)(__VA_ARGS__))
 using string_view = std::string_view;
 """

@@ -36,7 +36,7 @@
 #include "Baker.h"
 #include "Logging.h"
 
-#if FO_TRACY
+#if FO_TRACE_ENABLED
 #include <client/TracyProfiler.hpp>
 #include <tracy/Tracy.hpp>
 #endif
@@ -45,9 +45,7 @@ FO_USING_NAMESPACE();
 
 FO_EXPORT_FUNC auto FO_BakeResources(void* baking_settings) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
-#if FO_TRACY
+#if FO_TRACE_ENABLED
     tracy::GetProfiler().RequestShutdown();
 #endif
 

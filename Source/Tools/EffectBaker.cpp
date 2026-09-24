@@ -71,21 +71,17 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
 EffectBaker::EffectBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
-
     glslang::InitializeProcess();
 }
 
 EffectBaker::~EffectBaker()
 {
-    FO_STACK_TRACE_ENTRY();
-
     glslang::FinalizeProcess();
 }
 
 void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Collect files
     vector<File> filtered_files;
@@ -196,7 +192,7 @@ void EffectBaker::BakeFiles(const FileCollection& files, string_view target_path
 
 void EffectBaker::BakeShaderProgram(string_view fname, string_view content) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     auto fofx = ConfigFile(string(content), ConfigFileOption::CollectContent);
 
@@ -377,7 +373,7 @@ void EffectBaker::BakeShaderProgram(string_view fname, string_view content) cons
 
 void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TIntermediate& intermediate, const SdlStageSlots& sdl_slots, bool is_vertex) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     glslang::SpvOptions spv_options;
     spv_options.generateDebugInfo = FO_DEBUG;
@@ -421,6 +417,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // SPIR-V to GLSL
     auto make_glsl = [this, &fname_wo_ext, &spirv]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileGlsl");
+
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = false;
@@ -433,6 +431,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // SPIR-V to GLSL ES
     auto make_glsl_es = [this, &fname_wo_ext, &spirv]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileGlslEs");
+
         spirv_cross::CompilerGLSL compiler {spirv};
         auto options = compiler.get_common_options();
         options.es = true;
@@ -446,6 +446,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
     // SPIR-V to HLSL to DXBC (Direct3D renderer), compiled here so that no client depends on the shader compiler of its OS; level
     // 9.3 code rides in the same container on request, except in model effects, since level 9 does not support 3D
     auto make_dxbc = [this, &fname_wo_ext, &spirv, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileDxbc");
+
         spirv_cross::CompilerHLSL compiler {spirv};
         auto options = compiler.get_hlsl_options();
         options.shader_model = 40;
@@ -463,6 +465,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // SPIR-V to Metal macOS (SDL_GPU Metal driver)
     auto make_msl_mac = [this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileMslMac");
+
         spirv_cross::CompilerMSL compiler {sdl_spirv};
         auto options = compiler.get_msl_options();
         options.platform = spirv_cross::CompilerMSL::Options::macOS;
@@ -474,6 +478,8 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
     // SPIR-V to Metal iOS (SDL_GPU Metal driver)
     auto make_msl_ios = [this, &fname_wo_ext, &sdl_spirv, &sdl_slots, is_vertex]() {
+        FO_TRACE_ZONE_NAMED(Baking, "EffectBaker::CrossCompileMslIos");
+
         spirv_cross::CompilerMSL compiler {sdl_spirv};
         auto options = compiler.get_msl_options();
         options.platform = spirv_cross::CompilerMSL::Options::iOS;
@@ -500,8 +506,6 @@ void EffectBaker::BakeShaderStage(string_view fname_wo_ext, const glslang::TInte
 
 static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage stage, string_view fname) -> EffectBaker::SdlStageSlots
 {
-    FO_STACK_TRACE_ENTRY();
-
     EffectBaker::SdlStageSlots slots;
 
     for (int32_t i = 0; i < program.getNumUniformVariables(); i++) {
@@ -558,7 +562,7 @@ static auto AssignSdlStageSlots(const glslang::TProgram& program, EShLanguage st
 
 static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex, string_view fname)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // SPIR-V binary layout constants (SPIR-V specification)
     constexpr uint32_t spirv_magic = 0x07230203;
@@ -649,8 +653,6 @@ static void PatchSpirvForSdlGpu(std::vector<uint32_t>& spirv, const EffectBaker:
 
 static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, const EffectBaker::SdlStageSlots& sdl_slots, bool is_vertex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Match the SDL_GPU Metal convention: uniform buffers at [[buffer(slot)]], sampled textures at [[texture(slot)]] + [[sampler(slot)]]
     // (vertex buffers are bound by SDL starting at [[buffer(14)]] and flow through [[stage_in]], so they never collide with uniform slots)
     auto stage = is_vertex ? spv::ExecutionModelVertex : spv::ExecutionModelFragment;
@@ -679,7 +681,7 @@ static void ApplySdlMslResourceBindings(spirv_cross::CompilerMSL& compiler, cons
 
 static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader_target_type target, string_view fname) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string source_name = string(fname);
 
@@ -730,16 +732,12 @@ static auto CompileHlsl(string_view source, string_view_nt profile, vkd3d_shader
 
 static auto IsModelEffect(string_view path) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Model effects are told by the "3D" in their name, as the engine's own 3D_* effects are
     return path.find("3D") != string_view::npos;
 }
 
 static auto MakeShaderCompilerInfoLogForMessage(string_view info_log) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = strex(" | ").join(strex(info_log).normalize_line_endings().split('\n'));
     result = strex(result) //
                  .replace("ERROR :", "compiler diagnostic:") //

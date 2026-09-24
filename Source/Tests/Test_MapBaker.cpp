@@ -42,8 +42,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, string_view proto_name) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> props_data;
     set<hstring> str_hashes;
 
@@ -75,8 +73,6 @@ static auto MakeMapProtoBlob(EngineMetadata& proto_engine, hstring type_name, st
 
 static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view proto_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> metadata_blob = BakerTests::MakeEmptyMetadataBlob();
     rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
     rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
@@ -104,8 +100,6 @@ static void AddMapBakerMetadataAndProto(BakerTests::TestRig& rig, string_view pr
 
 static void AddMapBakerMetadataAndEntityProtos(BakerTests::TestRig& rig, string_view map_proto_name, string_view critter_proto_name, string_view visible_item_proto_name, string_view hidden_item_proto_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddMapBakerMetadataAndProto(rig, map_proto_name);
 
     BakerServerEngine server_proto_engine {rig.BakedFiles};
@@ -170,8 +164,6 @@ struct BakedMapClientSummary
 
 static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (uint32_t i = 0; i < count; i++) {
         uint32_t len = reader.read<uint32_t>();
         (void)reader.read_bytes(len);
@@ -180,8 +172,6 @@ static void SkipBakedMapStrings(data_reader& reader, uint32_t count)
 
 static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (uint32_t i = 0; i < count; i++) {
         (void)reader.read<ident_t::underlying_type>();
         (void)reader.read<hstring::hash_t>();
@@ -192,8 +182,6 @@ static void SkipBakedMapEntities(data_reader& reader, uint32_t count)
 
 static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapServerSummary
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader {data};
     auto summary = BakedMapServerSummary {};
 
@@ -211,8 +199,6 @@ static auto ReadBakedMapServerSummary(const vector<uint8_t>& data, string_view m
 
 static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view map_name) -> BakedMapClientSummary
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader {data};
     auto summary = BakedMapClientSummary {};
 
@@ -228,8 +214,6 @@ static auto ReadBakedMapClientSummary(const vector<uint8_t>& data, string_view m
 
 static void ConfigureMapSourceExtensions(BakerTests::TestRig& rig)
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakerTests::OverrideSetting(rig.Settings.Baking.ProtoFileExtensions, vector<string> {"fopro", "fomap"});
 }
 

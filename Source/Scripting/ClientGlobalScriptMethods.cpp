@@ -1479,8 +1479,6 @@ FO_SCRIPT_API void Client_Game_PopDrawScissor(ptr<ClientEngine> client)
 
 static auto TakeActiveOffscreenSurface(ptr<ClientEngine> client) -> ptr<RenderTarget>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!client->CanDrawInScripts) {
         throw ScriptException("You can use this function only in RenderIface event");
     }

@@ -41,14 +41,12 @@ FO_BEGIN_NAMESPACE
 
 auto compressor::calculate_max_compressed_buf_size(size_t initial_size) noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return initial_size * 110 / 100 + 12;
 }
 
 auto compressor::compress(const_span<uint8_t> data) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto buf_len = numeric_cast<uLongf>(calculate_max_compressed_buf_size(data.size()));
     auto buf = vector<uint8_t>(buf_len);
@@ -65,8 +63,6 @@ auto compressor::compress(const_span<uint8_t> data) -> vector<uint8_t>
 
 auto compressor::compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // zlib's own bound, since the size-based estimate above wraps a 32-bit size_t for inputs past a few dozen megabytes
     uLongf buf_len = compressBound(numeric_cast<uLong>(data.size()));
     auto buf = vector<uint8_t>(numeric_cast<size_t>(buf_len));
@@ -83,7 +79,7 @@ auto compressor::compress(const_span<uint8_t> data, int32_t level) -> vector<uin
 
 auto compressor::decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto buf_len = numeric_cast<uLongf>(data.size() * mul_approx);
     auto buf = vector<uint8_t>(buf_len);
@@ -109,7 +105,7 @@ auto compressor::decompress(const_span<uint8_t> data, size_t mul_approx) -> vect
 
 auto compressor::decompress_exact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto buf_len = numeric_cast<uLongf>(decoded_size);
     auto buf = vector<uint8_t>(decoded_size);
@@ -139,8 +135,6 @@ stream_compressor::stream_compressor(stream_compressor&&) noexcept = default;
 
 auto stream_compressor::operator=(stream_compressor&& other) noexcept -> stream_compressor&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         reset();
         _impl = std::move(other._impl);
@@ -151,14 +145,12 @@ auto stream_compressor::operator=(stream_compressor&& other) noexcept -> stream_
 
 stream_compressor::~stream_compressor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     reset();
 }
 
 void stream_compressor::compress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!_impl) {
         _impl = safe_alloc::make_unique<impl>();
@@ -197,8 +189,6 @@ void stream_compressor::compress(const_span<uint8_t> buf, vector<uint8_t>& resul
 
 void stream_compressor::reset() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_impl) {
         deflateEnd(&_impl->stream);
         _impl.reset();
@@ -216,8 +206,6 @@ stream_decompressor::stream_decompressor(stream_decompressor&&) noexcept = defau
 
 auto stream_decompressor::operator=(stream_decompressor&& other) noexcept -> stream_decompressor&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         reset();
         _impl = std::move(other._impl);
@@ -228,14 +216,12 @@ auto stream_decompressor::operator=(stream_decompressor&& other) noexcept -> str
 
 stream_decompressor::~stream_decompressor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     reset();
 }
 
 void stream_decompressor::decompress(const_span<uint8_t> buf, vector<uint8_t>& result)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (!_impl) {
         _impl = safe_alloc::make_unique<impl>();
@@ -295,8 +281,6 @@ void stream_decompressor::decompress(const_span<uint8_t> buf, vector<uint8_t>& r
 
 void stream_decompressor::reset() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_impl) {
         inflateEnd(&_impl->stream);
         _impl.reset();

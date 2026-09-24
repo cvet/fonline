@@ -73,8 +73,6 @@ FO_SCRIPT_API ptr<ItemView> Client_Item_Clone(ptr<ItemView> self)
 
 static void ItemGetMapPos(ptr<ItemView> item, mpos& hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = item->GetEngine()->GetCurMap();
 
     if (!map) {

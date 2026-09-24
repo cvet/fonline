@@ -18,6 +18,9 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../BuildTools/natvis/unordered_dense.natvis`
 - `../BuildTools/cmake/stages/Finalize.cmake`
 - `../BuildTools/cmake/helpers/Build.cmake`
+- `../BuildTools/cmake/stages/ThirdParty.cmake`
+- `../Source/Essentials/BasicCore.h`
+- `../Source/Essentials/MemorySystem.cpp`
 - `../Source/Essentials/StackTrace.h`
 - `../Source/Essentials/StackTrace.cpp`
 - `../Source/Essentials/BaseLogging.h`
@@ -40,9 +43,84 @@ For MSVC-generated solutions, natvis files from `../BuildTools/natvis` are inclu
 - `../../.vscode/launch.json`
 - `../../.vscode/tasks.json`
 
+## Profiling Zones
+
+A Tracy configuration (`Profiling_Total`, `Profiling_OnDemand` and their `Debug_` variants, where `FO_TRACE_ENABLED` is `1`) records a zone for every function body that opens with `FO_TRACE_ZONE(<Category>)`. The zone is named after its function, as Tracy's `ZoneScoped` names it, and carries the category's color. `FO_TRACE_ZONE_NAMED(<Category>, name)` names the zone explicitly: the generated script bindings use it so a script call reads as `Type::Method`, and an entity event that reaches subscribers (`EntityEventWrapper::FireSubscribed`) names its zone after the event. Zones are profiling only; stack traces never read them (see [Stack Trace Architecture](#stack-trace-architecture)).
+
+### Categories
+
+A zone category is declared by one `FO_TRACE_COLOR_<Category>` line in [../Source/Essentials/BasicCore.h](../Source/Essentials/BasicCore.h), and the build reads the category list from those lines, so adding a category is adding a line with its color. An opt-in category is declared by an `FO_TRACE_OPT_IN_<Category>` line instead: it gates instrumentation that is not a zone and costs far more than one, so it is compiled in only when a selection names it, and `FO_TRACE_ZONE` rejects it for having no color.
+
+A zone takes the category of the work its function does, which is not necessarily its file's: a network message handler is filed under what it changes (`Entity`, `Map`, `Script`), and only transport and wire-format work is `Network`.
+
+| Category | Work |
+|----------|------|
+| `App` | Process entry points and the application frontend: window, input, frame begin/end and pacing, the ImGui frame host, platform integrations |
+| `Engine` | Client and server engine orchestration: main loop and tick steps, subsystem init and shutdown sequencing, engine-level scheduling |
+| `Entity` | Entities and their lifecycle, whole property sets and entity (de)serialization, prototypes, entity managers, time events, entity state applied from the network |
+| `Map` | Map views and hex fields, geometry, path finding, tracing, movement, visibility, light and fog, server maps and locations, map loading and generation |
+| `Script` | Script backends (runtime, marshalling, invocation, compilation), the script system, generated bindings, entity events, remote calls into scripts, and the per-method script zones |
+| `Network` | Sockets, transports, connections, message send/receive and wire formats, the updater protocol |
+| `Database` | Persistence backends and database operations |
+| `Threading` | Thread pools and work threads, job dispatch, entity locking and synchronization, waits |
+| `Render` | Renderers and GPU resources, the sprite manager, atlases, render targets, effects, draw submission, video, image encoding |
+| `Model` | 3D model loading, instancing, animation and skinning |
+| `Particles` | Particle systems |
+| `Gui` | Fonts and text layout/rendering, ImGui widgets |
+| `Audio` | Audio |
+| `FileSystem` | Disk and virtual file systems, data sources and packs, caches, persistent local storage |
+| `Core` | The rest of the foundation: the memory system (never the allocation path itself), strings, settings and config, text packs, timers, platform services, diagnostics |
+| `Baking` | Bakers and converters of the offline pipeline |
+| `Editor` | The mapper and the asset viewers and editors |
+
+| Opt-in category | Instrumentation |
+|-----------------|-----------------|
+| `Memory` | Every allocation and free reported to Tracy (`TracyAlloc` / `TracyFree` in `MemorySystem.cpp`), for memory profiling; it slows every allocation and multiplies the capture |
+| `Log` | Every log line sent to Tracy as a timeline message (`TracyMessage` in `Logging.cpp`) |
+
+### Selecting categories
+
+The `FO_TRACE_CATEGORIES` build option picks the categories a build compiles in. It is empty by default, which selects every zone category and no opt-in one. Listing names (`Render;Gui` or `Render,Gui`) keeps only those, a name with a leading `+` adds it to the selection (`+Memory` is every zone category plus allocation tracking), and a name with a leading `-` drops it (`-Script` is every zone category except `Script`). An unknown name aborts configuration with the list of known categories.
+
+```bash
+cmake --preset <preset> -DFO_TRACE_CATEGORIES=Render,Map,App
+cmake --preset <preset> -DFO_TRACE_CATEGORIES=+Memory,+Log
+```
+
+The selection never reaches the compiler command line, which carries only `FO_TRACE_ENABLED`. Configuration writes it to `GeneratedSource/TraceCategories.gen.h` as one `FO_TRACE_CATEGORY_<Category>` `0` / `1` per category, rewriting the file only when the selection changes, and `BasicCore.h` includes that header next to the Tracy includes, inside `#if FO_TRACE_ENABLED`. So a zone of an unselected category compiles to nothing, a zone outside a Tracy configuration compiles to a `static_assert` that only checks the category name, and changing the selection rebuilds only what includes the header: the Tracy configurations. An undeclared category name fails to compile in every configuration. Code that must know whether a category is on tests `#if FO_TRACE_CATEGORY_ENABLED(<Category>)`, which is `0` outside Tracy builds, rather than the per-category macro, which exists only there.
+
+Instrumentation that is not a `FO_TRACE_ZONE` follows a category too: `Script` installs the per-method script zones (the Mono profiler hook in `ManagedScriptBackend.cpp` and AngelScript's `BeginScriptCall` / `EndScriptCall` hooks), and the opt-in `Memory` and `Log` categories carry allocation tracking and log messages. Frame marks, plots and thread names are recorded in every Tracy build: one each per frame or thread.
+
+### Placing zones
+
+A zone is the first statement of a `.cpp` function body, followed by one blank line when the body continues. Every zone costs tens of nanoseconds in a Tracy build and a line in the capture, so a function earns one by what it explains, never by default.
+
+A function takes a zone when:
+
+- it frames the capture: a per-frame or per-tick orchestration step (a main loop iteration, frame begin/end, input and network processing, world update, a draw pass, a server tick job), even when cheap;
+- it is a unit of work whose cost is non-trivial or varies: file or network I/O, parsing and loading, (de)serializing a whole entity or message, building or sorting a collection, a loop doing real work per element, path finding and tracing, a render pass or GPU upload, compiling and baking, a database operation, invoking a script, dispatching an event;
+- it can block: a lock, a condition variable, a socket, a file, a deliberate sleep or frame pacing;
+- it is rare but expensive and explains a stall: initialization, map load, resource reload.
+
+A function takes no zone when:
+
+- it is an accessor, a predicate, a trivial setter, or a forwarder whose callee already has a zone;
+- it is a small pure helper: math, conversions, comparisons, hashing, operators, formatting a few values;
+- it runs per element inside a hot loop (per hex, sprite, vertex, bone, particle, property, argument, character) and its own body is not heavy; the loop's owner carries the zone;
+- it is a constructor, destructor or move operation that only initializes or releases members;
+- it is on the profiler's own path: the allocator, logging internals, stack traces, exception reporting and crash handling, the profiler hooks, thread naming;
+- it does not return while a capture runs (a thread's main loop, an application run loop), in which case one iteration's work carries the zone; or it runs on process exit or in static destruction;
+- it is a `FO_SCRIPT_API` script export, or a file-local helper only exports call: the generated binding opens a `Script` zone named after the export around every call (property accessor bindings take none, being field reads and writes);
+- it is in a header, an inline header-defined body or a lambda (`EntityEventWrapper::FireSubscribed` in `Entity.h` is the one header exception; a job lambda that is itself the unit of work may take `FO_TRACE_ZONE_NAMED(<Category>, "Owner::Purpose")`, never a plain zone, whose name would be the lambda's);
+- it is test code: engine unit tests carry no zones.
+
+Hotness is read from the call sites, not the name: a function called per element, per property access or per script argument is hot. When a function neither frames the capture nor is hot and the choice is close, a body of a few simple statements with no loop, allocation, I/O or call into a zoned heavy function takes no zone.
+
+When the common call is cheap and only some calls do the work, the zone goes on the costly half, split into a helper, so a capture shows the work and not the calls that skipped it: an uncontended entity lock is granted without a zone while a real wait opens `EntityLock::WaitForGrant`, the first non-parking attempt of a sync is free while the contended spin opens `SpinForContendedOps`, a sprite flush that finds nothing queued returns before `SpriteManager::FlushBatch`, an already sorted sprite list skips `MapSpriteList::Sort`, and an entity event nobody subscribed to returns before `EntityEventWrapper::FireSubscribed`. Judge such splits from a capture's call counts, not from the code alone.
+
 ## Stack Trace Architecture
 
-The engine no longer maintains a thread-local manual call stack. The `FO_STACK_TRACE_ENTRY()` macro is now empty outside Tracy builds (under `FO_TRACY` it expands to `ZoneScoped` only), and stack traces are constructed on demand from two independent sources at the moment a `stack_trace::data` is captured:
+The engine maintains no manual call stack: stack traces are constructed on demand from two independent sources at the moment a `stack_trace::data` is captured:
 
 1. **Native frames.** [../Source/Essentials/StackTrace.cpp](../Source/Essentials/StackTrace.cpp) walks the stack itself: the libunwind local API on Linux (the bundled LLVM libunwind, [../ThirdParty/llvm-libunwind/](../ThirdParty/llvm-libunwind/)) and macOS (the system one), the function tables on 64-bit Windows (`RtlCaptureContext`, then `RtlVirtualUnwind` frame by frame), and the chain of saved frame pointers on 32-bit Windows, which is also all `RtlCaptureStackBackTrace` follows there. A crash walk on Windows starts from the exception `CONTEXT` with `StackWalk64`, which reads memory safely and can walk the stack of another thread. `stack_trace::capture_native_frames(..., skip)` starts at its caller and leaves out `skip` more frames. Every address is recorded at its call site (one byte before the return address), a frame a signal interrupted at its faulting instruction, and a step onto code without unwind info (script-runtime JIT output) ends the list on that frame. Symbol resolution is deferred: `stack_trace::resolve`, `stack_trace::format`, `logging::safe_write_stack_trace`, and `stack_trace::get_entry` resolve frames only when they are needed. On Linux libbacktrace ([../ThirdParty/libbacktrace/](../ThirdParty/libbacktrace/)) reads the DWARF debug info of every loaded module and turns one address into the function that owns the frame plus each call inlined into it, innermost first, leaving out inlined standard-library plumbing; `dladdr` covers a module loaded after that info was read, and a frame without any symbol is named `module+0xoffset` for an offline lookup. macOS names frames with `dladdr`, and Windows with DbgHelp, whose search path covers the directories of the executable and of the engine module before the working directory. Resolved native frames are cached globally by instruction pointer in a capped process-local cache (`stack_trace::RESOLVE_CACHE_MAX_ENTRIES`) so repeated exception formatting and script/native anchor matching reuse symbol data. The capture path is allocation-free aside from the storage on the `stack_trace::data` itself.
 

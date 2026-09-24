@@ -174,8 +174,6 @@ struct SparkParticleRuntimeSystem::Impl
 
 static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::System>& system, ptr<SparkParticleRuntimeBackend> runtime) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool render_dependencies_loaded = true;
 
     for (size_t i = 0; i < system->getNbGroups(); i++) {
@@ -192,27 +190,20 @@ static auto SetupSparkSystemRenderers(string_view path, const SPK::Ref<SPK::Syst
 SparkParticleRuntimeBackend::SparkParticleRuntimeBackend(const ParticleRuntimeServices& services) :
     _impl {safe_alloc::make_unique<Impl>(services)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     SPK::FO::EnsureSparkParticleObjectsRegistered(_impl->Context);
 }
 
 SparkParticleRuntimeBackend::~SparkParticleRuntimeBackend()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto SparkParticleRuntimeBackend::GetExtensions() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {"spk"};
 }
 
 void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (strex(path).get_file_extension() == "spk") {
         _impl->BaseSystems.erase(string {path});
     }
@@ -223,7 +214,7 @@ void SparkParticleRuntimeBackend::InvalidateResource(string_view path)
 
 auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (strex(path).get_file_extension() != "spk") {
         return nullptr;
@@ -260,27 +251,20 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
 SparkParticleRuntimeSystem::SparkParticleRuntimeSystem(ptr<SparkParticleRuntimeBackend> runtime, string_view path, SPK::Ref<SPK::System> base_system) :
     _impl {safe_alloc::make_unique<Impl>(Impl {.Runtime = runtime, .Path = string {path}, .BaseSystem = std::move(base_system)})}
 {
-    FO_STACK_TRACE_ENTRY();
-
     RecreateRuntimeSystem(static_cast<uint32_t>(_impl->RandomGenerator.next()));
 }
 
 SparkParticleRuntimeSystem::~SparkParticleRuntimeSystem()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto SparkParticleRuntimeSystem::IsActive() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->RuntimeSystem->isActive();
 }
 
 auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < _impl->RuntimeSystem->getNbGroups(); i++) {
         auto&& group = _impl->RuntimeSystem->getGroup(i);
         auto&& renderer = SPK::dynamicCast<SPK::FO::SparkQuadRenderer>(group->getRenderer());
@@ -295,8 +279,6 @@ auto SparkParticleRuntimeSystem::GetDrawInScene() const -> bool
 
 auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const SPK::Vector3D& position_min = _impl->RuntimeSystem->getBakedBoundsMin();
     const SPK::Vector3D& position_max = _impl->RuntimeSystem->getBakedBoundsMax();
 
@@ -305,8 +287,6 @@ auto SparkParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<Par
 
 auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Framed from the mandatory bake-time extent and only while particles live, so nothing is measured per frame
     // and a dormant system reserves nothing
     if (_impl->RuntimeSystem->getNbParticles() == 0) {
@@ -324,8 +304,6 @@ auto SparkParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<Part
 
 void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(std::isfinite(delta.x) && std::isfinite(delta.y) && std::isfinite(delta.z), "Particle world rebase delta must be finite", delta.x, delta.y, delta.z);
 
     if (delta == vec3 {}) {
@@ -346,8 +324,6 @@ void SparkParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 
 void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
-    FO_STACK_TRACE_ENTRY();
-
     mat44 position_offset_matrix = glm::translate(mat44 {1.0f}, setup.PositionOffset);
     mat44 view_offset_matrix = glm::translate(mat44 {1.0f}, setup.ViewOffset);
     mat44 result_position_matrix;
@@ -399,7 +375,7 @@ void SparkParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
 auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (!IsActive()) {
         return 0.0f;
@@ -423,14 +399,12 @@ auto SparkParticleRuntimeSystem::Prewarm() -> float32_t
 
 void SparkParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     RecreateRuntimeSystem(seed ? std::bit_cast<uint32_t>(*seed) : static_cast<uint32_t>(_impl->RandomGenerator.next()));
 }
 
 void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (!_impl->RuntimeSystem->isActive()) {
         return;
@@ -443,12 +417,11 @@ void SparkParticleRuntimeSystem::Update(float32_t delta_seconds)
 
 void SparkParticleRuntimeSystem::RefreshRenderTransform()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void SparkParticleRuntimeSystem::Draw()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (!_impl->RuntimeSystem->isActive()) {
         return;
@@ -461,8 +434,6 @@ void SparkParticleRuntimeSystem::Draw()
 
 auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_impl->BaseSystemDetached) {
         _impl->BaseSystem = SPK::SPKObject::copy(_impl->BaseSystem);
         _impl->BaseSystemDetached = true;
@@ -474,8 +445,6 @@ auto SparkParticleRuntimeSystem::GetEditableBaseSystem() -> SPK::Ref<SPK::System
 
 void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(system, "Cannot replace a SPARK base system with a null system", _impl->Path);
     _impl->BaseSystem = std::move(system);
     _impl->BaseSystemDetached = true;
@@ -484,7 +453,7 @@ void SparkParticleRuntimeSystem::ReplaceBaseSystem(SPK::Ref<SPK::System> system)
 
 void SparkParticleRuntimeSystem::RecreateRuntimeSystem(uint32_t random_seed)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     SetupSparkSystemRenderers(_impl->Path, _impl->BaseSystem, _impl->Runtime);
     _impl->RuntimeSystem = SPK::SPKObject::copy(_impl->BaseSystem);
@@ -498,37 +467,27 @@ namespace SPK::FO
 {
     void EnsureSparkParticleObjectsRegistered(SPKContext& context)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto& io_mngr = context.getIOManager();
         io_mngr.ensureObjectRegistered<SparkQuadRenderer>();
     }
 
     auto IsSparkParticleObjectRegistered(const SPKContext& context) -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         return context.getIOManager().isObjectRegistered<SparkQuadRenderer>();
     }
 
     auto IsSparkQuadRenderer(const Renderer& renderer) -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         return dynamic_cast<const SparkQuadRenderer*>(&renderer) != nullptr;
     }
 
     auto CreateSparkQuadRenderer() -> Ref<Renderer>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return SparkQuadRenderer::Create();
     }
 
     auto GetSparkQuadRendererData(const Renderer& renderer) -> SparkQuadRendererData
     {
-        FO_STACK_TRACE_ENTRY();
-
         nptr<const SparkQuadRenderer> spark_renderer {dynamic_cast<const SparkQuadRenderer*>(&renderer)};
         FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
 
@@ -554,8 +513,6 @@ namespace SPK::FO
 
     void SetSparkQuadRendererData(Renderer& renderer, const SparkQuadRendererData& data)
     {
-        FO_STACK_TRACE_ENTRY();
-
         nptr<SparkQuadRenderer> spark_renderer {dynamic_cast<SparkQuadRenderer*>(&renderer)};
         FO_VERIFY_AND_THROW(spark_renderer, "SPARK renderer has an unexpected type");
 
@@ -577,7 +534,7 @@ namespace SPK::FO
         _renderBuf {render->CreateDrawBuffer(false)},
         _render {render}
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Particles);
 
         FO_VERIFY_AND_THROW(vertices > 0, "Spark render buffer cannot be created without vertices");
         FO_VERIFY_AND_THROW(vertices % 4 == 0, "Spark render buffer vertex count must describe whole particle quads", vertices, 4);
@@ -609,16 +566,12 @@ namespace SPK::FO
 
     void SparkRenderBuffer::PositionAtStart()
     {
-        FO_STACK_TRACE_ENTRY();
-
         _curVertexIndex = 0;
         _curTexCoordIndex = 0;
     }
 
     void SparkRenderBuffer::SetNextVertex(const Vector3D& pos, const Color& color)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto& v = _renderBuf->Vertices[_curVertexIndex++];
 
         v.PosX = pos.x;
@@ -629,8 +582,6 @@ namespace SPK::FO
 
     void SparkRenderBuffer::SetNextTexCoord(float32_t tu, float32_t tv)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto& v = _renderBuf->Vertices[_curTexCoordIndex++];
 
         v.TexU = tu;
@@ -641,8 +592,6 @@ namespace SPK::FO
 
     void SparkRenderBuffer::Render(size_t vertices, ptr<RenderEffect> effect)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (vertices == 0) {
             return;
         }
@@ -654,20 +603,15 @@ namespace SPK::FO
     SparkQuadRenderer::SparkQuadRenderer(bool needs_dataset) :
         Renderer(needs_dataset)
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     auto SparkQuadRenderer::Create() -> Ref<SparkQuadRenderer>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return SPK_NEW(SparkQuadRenderer);
     }
 
     auto SparkQuadRenderer::Setup(string_view path, ptr<FO_NAMESPACE SparkParticleRuntimeBackend> runtime) -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_runtime) {
             FO_VERIFY_AND_THROW(_runtime == runtime && _path == path, "SPARK particle renderer is already bound to another runtime", _path, path);
             return _effect && _texture;
@@ -688,8 +632,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddPosAndColor(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         render_buffer->SetNextVertex(particle.position() + quadSide() + quadUp(), particle.getColor()); // top right vertex
         render_buffer->SetNextVertex(particle.position() - quadSide() + quadUp(), particle.getColor()); // top left vertex
         render_buffer->SetNextVertex(particle.position() - quadSide() - quadUp(), particle.getColor()); // bottom left vertex
@@ -698,8 +640,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddTexture2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(particle);
 
         render_buffer->SetNextTexCoord(_textureAtlasOffset.x + 1.0f * _textureAtlasOffset.width, _textureAtlasOffset.y + 0.0f * _textureAtlasOffset.height);
@@ -710,8 +650,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::AddTexture2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         computeAtlasCoordinates(particle);
 
         render_buffer->SetNextTexCoord(_textureAtlasOffset.x + textureAtlasU1() * _textureAtlasOffset.width, _textureAtlasOffset.y + textureAtlasV0() * _textureAtlasOffset.height);
@@ -722,14 +660,12 @@ namespace SPK::FO
 
     RenderBuffer* SparkQuadRenderer::attachRenderBuffer(const Group& group) const
     {
-        FO_STACK_TRACE_ENTRY();
-
         return SPK_NEW(SparkRenderBuffer, group.getCapacity() << 2, _runtime->_impl->Services.Render);
     }
 
     void SparkQuadRenderer::render(const Group& group, const DataSet* dataSet, RenderBuffer* renderBuffer)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         ignore_unused(dataSet);
 
@@ -806,8 +742,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::computeAABB(Vector3D& aabbMin, Vector3D& aabbMax, const Group& group, const DataSet* dataSet) const
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(dataSet);
 
         float32_t diagonal = group.getGraphicalRadius() * std::sqrt(scaleX * scaleX + scaleY * scaleY);
@@ -832,8 +766,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2D(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         scaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2D(particle, render_buffer);
@@ -841,8 +773,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2D(particle, render_buffer);
@@ -850,8 +780,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DAtlas(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         scaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2DAtlas(particle, render_buffer);
@@ -859,8 +787,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::Render2DAtlasRot(const Particle& particle, nptr<SparkRenderBuffer> render_buffer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         rotateAndScaleQuadVectors(particle, scaleX, scaleY);
         AddPosAndColor(particle, render_buffer);
         AddTexture2DAtlas(particle, render_buffer);
@@ -868,29 +794,21 @@ namespace SPK::FO
 
     auto SparkQuadRenderer::GetDrawInScene() const -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         return _drawInScene;
     }
 
     void SparkQuadRenderer::SetDrawInScene(bool draw_in_scene)
     {
-        FO_STACK_TRACE_ENTRY();
-
         _drawInScene = draw_in_scene;
     }
 
     auto SparkQuadRenderer::GetEffectName() const -> string_view
     {
-        FO_STACK_TRACE_ENTRY();
-
         return _effectName;
     }
 
     void SparkQuadRenderer::SetEffectName(string_view effect_name)
     {
-        FO_STACK_TRACE_ENTRY();
-
         _effectName = string(effect_name);
 
         if (!_effectName.empty() && _runtime) {
@@ -903,15 +821,11 @@ namespace SPK::FO
 
     auto SparkQuadRenderer::GetTextureName() const -> string_view
     {
-        FO_STACK_TRACE_ENTRY();
-
         return _textureName;
     }
 
     void SparkQuadRenderer::SetTextureName(string_view tex_name)
     {
-        FO_STACK_TRACE_ENTRY();
-
         _textureName = string(tex_name);
 
         if (!_textureName.empty() && _runtime) {
@@ -927,8 +841,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::innerImport(const IO::Descriptor& descriptor)
     {
-        FO_STACK_TRACE_ENTRY();
-
         Renderer::innerImport(descriptor);
 
         _drawInScene = false;
@@ -1047,8 +959,6 @@ namespace SPK::FO
 
     void SparkQuadRenderer::innerExport(IO::Descriptor& descriptor) const
     {
-        FO_STACK_TRACE_ENTRY();
-
         Renderer::innerExport(descriptor);
 
         if (_drawInScene) {

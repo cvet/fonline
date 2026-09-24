@@ -79,7 +79,7 @@ protected:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -130,7 +130,7 @@ protected:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -139,7 +139,7 @@ protected:
 
     [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -156,7 +156,7 @@ protected:
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database insert received an empty document", collection_name, id);
 
@@ -206,7 +206,7 @@ protected:
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "JSON database update received an empty document", collection_name, id);
 
@@ -263,7 +263,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -277,8 +277,6 @@ protected:
 private:
     AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
-        FO_STACK_TRACE_ENTRY();
-
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type));
         auto json = fs::read_file(path);
 

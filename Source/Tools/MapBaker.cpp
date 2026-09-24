@@ -44,17 +44,15 @@ FO_BEGIN_NAMESPACE
 MapBaker::MapBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 MapBaker::~MapBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     struct MapBakeEntry
     {
@@ -343,8 +341,6 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
 auto MapBaker::ResolveMapNames(const File& file) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MapLoader::EnumerateMaps(file.GetPath(), file.GetStr());
 }
 

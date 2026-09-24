@@ -151,8 +151,6 @@ static auto RequireParent(ptr<TEntity> entity, string_view error_message) -> ref
 
 static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
@@ -183,8 +181,6 @@ static auto ResolveItemMap(ptr<Item> item) -> refcount_nptr<Map>
 
 static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");
@@ -218,8 +214,6 @@ static auto ResolveItemMapPosition(ptr<Item> item, mpos& hex) -> refcount_nptr<M
 
 static auto ResolveItemCritter(ptr<Item> item) -> refcount_nptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (item->GetOwnership()) {
     case ItemOwnership::CritterInventory: {
         auto cr = RequireParent<Critter>(item, "Critter ownership, critter not found");

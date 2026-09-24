@@ -45,22 +45,16 @@ static auto IsFinite(const mat44& value) -> bool;
 
 auto IsValidModelBounds(const ModelBounds3D& bounds) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return IsFinite(bounds.Min) && IsFinite(bounds.Max) && bounds.Min.x <= bounds.Max.x && bounds.Min.y <= bounds.Max.y && bounds.Min.z <= bounds.Max.z;
 }
 
 auto HasModelBoundsExtent(const ModelBounds3D& bounds) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return IsValidModelBounds(bounds) && (bounds.Min.x < bounds.Max.x || bounds.Min.y < bounds.Max.y || bounds.Min.z < bounds.Max.z);
 }
 
 auto IncludeModelBoundsPoint(optional<ModelBounds3D>& target, const vec3& point) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IsFinite(point) || (target && !IsValidModelBounds(*target))) {
         return false;
     }
@@ -79,8 +73,6 @@ auto IncludeModelBoundsPoint(optional<ModelBounds3D>& target, const vec3& point)
 
 auto IncludeModelBounds(optional<ModelBounds3D>& target, const ModelBounds3D& bounds) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IsValidModelBounds(bounds) || (target && !IsValidModelBounds(*target))) {
         return false;
     }
@@ -99,8 +91,6 @@ auto IncludeModelBounds(optional<ModelBounds3D>& target, const ModelBounds3D& bo
 
 auto IncludeTransformedModelBounds(optional<ModelBounds3D>& target, const ModelBounds3D& bounds, const mat44& transform) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IsValidModelBounds(bounds) || !IsFinite(transform)) {
         return false;
     }
@@ -125,8 +115,6 @@ auto IncludeTransformedModelBounds(optional<ModelBounds3D>& target, const ModelB
 
 auto CalculateGuardedModelBounds(const ModelBounds3D& bounds) -> optional<ModelBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!IsValidModelBounds(bounds)) {
         return std::nullopt;
     }
@@ -153,15 +141,11 @@ auto CalculateGuardedModelBounds(const ModelBounds3D& bounds) -> optional<ModelB
 
 static auto IsFinite(const vec3& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
 static auto IsFinite(const mat44& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<const float32_t> values = glm::value_ptr(value);
 
     for (size_t i = 0; i < 16; i++) {

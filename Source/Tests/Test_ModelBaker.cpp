@@ -53,8 +53,6 @@ FO_BEGIN_NAMESPACE
 
 static void WriteTestModelBone(data_writer& writer, string_view name, bool attached_mesh, string_view diffuse_texture, initializer_list<string_view> skin_bone_names, float32_t vertex_scale = 1.0f)
 {
-    FO_STACK_TRACE_ENTRY();
-
     writer.write_string(name);
 
     mat44 matrix {1.0f};
@@ -100,8 +98,6 @@ static void WriteTestModelBone(data_writer& writer, string_view name, bool attac
 
 static void WriteTestModelSourceVec3Track(data_writer& writer, const ModelAnimationVec3Track& track)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track.Times.size() == track.Values.size(), "Test model source vec3 track sizes differ");
     writer.write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
     writer.write_object_array(const_span<float32_t> {track.Times});
@@ -110,8 +106,6 @@ static void WriteTestModelSourceVec3Track(data_writer& writer, const ModelAnimat
 
 static void WriteTestModelSourceQuaternionTrack(data_writer& writer, const ModelAnimationQuaternionTrack& track)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(track.Times.size() == track.Values.size(), "Test model source quaternion track sizes differ");
     writer.write<uint32_t>(numeric_cast<uint32_t>(track.Times.size()));
     writer.write_object_array(const_span<float32_t> {track.Times});
@@ -120,8 +114,6 @@ static void WriteTestModelSourceQuaternionTrack(data_writer& writer, const Model
 
 static auto ReadTestModelSourceVec3Track(data_reader& reader) -> ModelAnimationVec3Track
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationVec3Track track;
     uint32_t count = reader.read<uint32_t>();
     track.Times.resize(count);
@@ -133,8 +125,6 @@ static auto ReadTestModelSourceVec3Track(data_reader& reader) -> ModelAnimationV
 
 static auto ReadTestModelSourceQuaternionTrack(data_reader& reader) -> ModelAnimationQuaternionTrack
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationQuaternionTrack track;
     uint32_t count = reader.read<uint32_t>();
     track.Times.resize(count);
@@ -146,8 +136,6 @@ static auto ReadTestModelSourceQuaternionTrack(data_reader& reader) -> ModelAnim
 
 static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     data_writer writer {data};
     writer.write_string("LF_TEST_MODEL_SOURCE");
@@ -180,8 +168,6 @@ static auto WriteTestModelSourceFixture(const ModelSourceAsset& asset) -> vector
 
 static auto LoadTestModelSourceFixture(string_view path, const File& file) -> ModelSourceAsset
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader(file.GetDataSpan());
     string marker = reader.read_string();
     FO_VERIFY_AND_THROW(marker == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
@@ -221,8 +207,6 @@ static auto LoadTestModelSourceFixture(string_view path, const File& file) -> Mo
 
 static auto MakeTestModelAnimationJoint(string_view name, vector<string> hierarchy) -> ModelAnimationJointSource
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationJointSource joint;
     joint.OutputName = name;
     joint.Hierarchy = std::move(hierarchy);
@@ -234,8 +218,6 @@ static auto MakeTestModelAnimationJoint(string_view name, vector<string> hierarc
 
 static auto MakeTestModelSource(string_view file_name, string_view root_bone, initializer_list<string_view> animation_names) -> ModelSourceAsset
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSourceAsset asset;
     asset.FileName = file_name;
     asset.Skeleton.FileName = file_name;
@@ -254,8 +236,6 @@ static auto MakeTestModelSource(string_view file_name, string_view root_bone, in
 
 static auto MakeTestModelSourceWithChild(string_view file_name, string_view root_bone, string_view child_bone, float32_t child_translation_x, initializer_list<string_view> animation_names) -> ModelSourceAsset
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSourceAsset asset = MakeTestModelSource(file_name, root_bone, {});
     mat44 child_transform {1.0f};
     child_transform[3][0] = child_translation_x;
@@ -274,15 +254,11 @@ static auto MakeTestModelSourceWithChild(string_view file_name, string_view root
 
 static void AddTestModelSource(BakerTests::TestRig& rig, const ModelSourceAsset& asset, uint64_t write_time = 1)
 {
-    FO_STACK_TRACE_ENTRY();
-
     rig.AddSourceFile(asset.FileName, WriteTestModelSourceFixture(asset), write_time);
 }
 
 static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, float32_t vertex_scale = 1.0f) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     data_writer writer {data};
     WriteModelMeshHeader(writer);
@@ -292,16 +268,12 @@ static auto MakeTestBakedModel(string_view root_bone, bool attached_mesh, string
 
 static void AddTestModel(BakerTests::TestRig& rig, string_view file_name, string_view root_bone, bool attached_mesh, initializer_list<string_view> animation_names = {}, string_view diffuse_texture = {}, initializer_list<string_view> skin_bone_names = {}, uint64_t write_time = 1)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddTestModelSource(rig, MakeTestModelSource(file_name, root_bone, animation_names), write_time);
     rig.AddBakedFile(file_name, MakeTestBakedModel(root_bone, attached_mesh, diffuse_texture, skin_bone_names), write_time);
 }
 
 static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view child_bone) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     auto writer = data_writer(data);
 
@@ -341,8 +313,6 @@ static auto MakeTestBakedModelWithChildBone(string_view root_bone, string_view c
 
 static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(joint_count != 0, "Test baked model chain requires at least one joint");
     vector<uint8_t> data;
     data_writer writer {data};
@@ -361,8 +331,6 @@ static auto MakeTestBakedModelChain(size_t joint_count) -> vector<uint8_t>
 
 static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_view child_bone, float32_t child_translation_x) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     auto writer = data_writer(data);
 
@@ -386,24 +354,18 @@ static auto MakeTestBakedAnimationModelWithChild(string_view root_bone, string_v
 
 static void AddTestModelWithChildBone(BakerTests::TestRig& rig, string_view file_name, string_view root_bone, string_view child_bone, float32_t child_translation_x = 0.0f)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddTestModelSource(rig, MakeTestModelSourceWithChild(file_name, root_bone, child_bone, child_translation_x, {}));
     rig.AddBakedFile(file_name, MakeTestBakedModelWithChildBone(root_bone, child_bone));
 }
 
 static void AddTestAnimationModelWithChild(BakerTests::TestRig& rig, string_view file_name, string_view root_bone, string_view child_bone, float32_t child_translation_x)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddTestModelSource(rig, MakeTestModelSourceWithChild(file_name, root_bone, child_bone, child_translation_x, {"Idle"}));
     rig.AddBakedFile(file_name, MakeTestBakedAnimationModelWithChild(root_bone, child_bone, child_translation_x));
 }
 
 static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, string_view skin_bone) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data;
     auto writer = data_writer(data);
 
@@ -427,23 +389,17 @@ static auto MakeTestBakedModelWithMismatchedSkinOffsets(string_view root_bone, s
 
 static void AddModelInfoMetadata(BakerTests::TestRig& rig)
 {
-    FO_STACK_TRACE_ENTRY();
-
     rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
 }
 
 static void BakeModelInfoFiles(BakerTests::TestRig& rig, string_view target_path = {})
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelInfoBaker info_baker(rig.MakeContext(), LoadTestModelSourceFixture);
     info_baker.BakeFiles(rig.GetAllSourceFiles(), target_path);
 }
 
 static auto CaptureModelInfoBakingError(BakerTests::TestRig& rig, string_view target_path = {}) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> captured_messages;
     logging::set_callback("model-info-animation-geometry-test", [&](logging::type, string_view message, nptr<const stack_trace::catched_data>) { captured_messages.emplace_back(message); });
     auto remove_callback = scope_exit([]() noexcept { logging::set_callback("model-info-animation-geometry-test", {}); });
@@ -482,8 +438,6 @@ struct SavedModelInfoLink
 
 static auto ReadSavedModelInfoString(data_reader& reader) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t len = reader.read<uint32_t>();
     const_span<uint8_t> str_bytes = reader.read_bytes(len);
     return !str_bytes.empty() ? string(reinterpret_cast<const char*>(str_bytes.data()), len) : string {};
@@ -491,8 +445,6 @@ static auto ReadSavedModelInfoString(data_reader& reader) -> string
 
 static void ReadSavedModelInfoHeader(data_reader& reader)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const_span<uint8_t> magic = reader.read_bytes(MODEL_DESCRIPTION_MAGIC.size());
     REQUIRE(std::equal(magic.begin(), magic.end(), MODEL_DESCRIPTION_MAGIC.begin()));
     CHECK(reader.read<uint16_t>() == MODEL_DESCRIPTION_SCHEMA_VERSION);
@@ -501,8 +453,6 @@ static void ReadSavedModelInfoHeader(data_reader& reader)
 
 static void SkipSavedModelInfoCut(data_reader& reader)
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)ReadSavedModelInfoString(reader);
 
     uint32_t layer_count = reader.read<uint32_t>();
@@ -521,8 +471,6 @@ static void SkipSavedModelInfoCut(data_reader& reader)
 
 static auto ReadSavedModelInfoLink(data_reader& reader) -> SavedModelInfoLink
 {
-    FO_STACK_TRACE_ENTRY();
-
     SavedModelInfoLink link;
     link.Layer = reader.read<int32_t>();
     link.LayerValue = reader.read<int32_t>();
@@ -606,8 +554,6 @@ struct BakedModelMeshSummary
 
 static void SkipBakedModelMeshPayload(data_reader& reader, BakedModelMeshSummary& summary)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t vertex_count = reader.read<uint32_t>();
     summary.Vertices += vertex_count;
     size_t vertex_offset = summary.VertexData.size();
@@ -637,8 +583,6 @@ static void SkipBakedModelMeshPayload(data_reader& reader, BakedModelMeshSummary
 
 static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSummary& summary)
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)ReadSavedModelInfoString(reader);
     summary.Bones++;
 
@@ -658,8 +602,6 @@ static void ReadBakedModelMeshSummaryBone(data_reader& reader, BakedModelMeshSum
 
 static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModelMeshSummary
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto reader = data_reader({data.data(), data.size()});
     BakedModelMeshSummary summary;
 
@@ -672,8 +614,6 @@ static auto ReadBakedModelMeshSummary(const vector<uint8_t>& data) -> BakedModel
 
 static auto MakeMinimalObjMesh(string_view object_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(R"(o {}
 v 0 0 0 1 0 0 1
 v 1 0 0 0 1 0 1
@@ -691,8 +631,6 @@ f 1/1/1 2/2/1 3/3/1
 
 static auto MakeMinimalPositionOnlyObjMesh(string_view object_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(R"(o {}
 v 0 0 0
 v 1 0 0
@@ -705,8 +643,6 @@ f 1 2 3
 
 static auto MakeRepeatedTriangleObjMesh(string_view object_name, size_t triangle_count) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = strex(R"(o {}
 v 0 0 0
 v 1 0 0
@@ -724,8 +660,6 @@ v 0 1 0
 
 static auto MakeInterleavedStripObjMesh(string_view object_name, size_t strip_count, size_t triangles_per_strip) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(strip_count >= 2, "Interleaved strip fixture requires at least two strips");
     FO_VERIFY_AND_THROW(triangles_per_strip >= 2, "Interleaved strip fixture requires at least two triangles per strip");
 
@@ -756,8 +690,6 @@ static auto MakeInterleavedStripObjMesh(string_view object_name, size_t strip_co
 
 static auto MakeMinimalSkinnedAsciiFbx(string_view mesh_name, const vector<array<float64_t, 3>>& cluster_weights) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!cluster_weights.empty(), "Test skinned FBX fixture requires at least one cluster");
     int64_t geometry_id = 1000;
     int64_t mesh_model_id = 2000;
@@ -886,8 +818,6 @@ Objects:  {{
 
 static auto MakeWideHierarchyAsciiFbx(string_view node_prefix, size_t child_count) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = strex(R"(; FBX 7.4.0 project file
 FBXHeaderExtension:  {{
     FBXHeaderVersion: 1003
@@ -2418,8 +2348,6 @@ Layer 3 Value 4 Attach Hat.fbx Link Body Texture 0 Parent_Body Effect Parent_Bod
 // envelope plan measures each bone's box separately and must stay a superset of it
 static auto MakeBoundsPlanTestModel() -> ModelMeshData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelMeshData data;
     data.RootBone = safe_alloc::make_unique<ModelMeshBoneData>();
     data.RootBone->Name = "Root";
@@ -2456,8 +2384,6 @@ static auto MakeBoundsPlanTestModel() -> ModelMeshData
 // Quarter turn about Z across the clip, so the posed geometry sweeps an arc rather than sitting still
 static auto MakeBoundsPlanTestAnimation() -> ModelAnimationSource
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationSource animation;
     animation.FileName = "Critters/Body.fbx";
     animation.Name = "Turn";
@@ -2474,8 +2400,6 @@ static auto MakeBoundsPlanTestAnimation() -> ModelAnimationSource
 
 static auto ContainsModelBounds(const ModelBounds3D& outer, const ModelBounds3D& inner) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return outer.Min.x <= inner.Min.x && outer.Min.y <= inner.Min.y && outer.Min.z <= inner.Min.z && outer.Max.x >= inner.Max.x && outer.Max.y >= inner.Max.y && outer.Max.z >= inner.Max.z;
 }
 

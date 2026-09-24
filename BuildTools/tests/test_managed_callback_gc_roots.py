@@ -81,8 +81,7 @@ extern "C" void mono_threads_exit_gc_safe_region_unbalanced(void* cookie, void**
 extern "C" void mono_threads_assert_gc_safe_region();
 extern "C" void mono_threads_assert_gc_unsafe_region();
 
-#define FO_STACK_TRACE_ENTRY()
-#define FO_NO_STACK_TRACE_ENTRY()
+#define FO_TRACE_ZONE(category)
 #define FO_VERIFY_AND_THROW(condition, ...) do { if (!(condition)) throw ScriptSystemException("Managed thread attachment failed"); } while (false)
 #define FO_STRONG_ASSERT(condition, ...) do { if (!(condition)) std::abort(); } while (false)
 using ScriptSystemException = std::runtime_error;

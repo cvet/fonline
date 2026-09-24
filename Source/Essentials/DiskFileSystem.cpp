@@ -42,23 +42,17 @@ static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_ex
 
 auto fs::make_path(string_view path) -> std::u8string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return {path.begin(), path.end()};
 }
 
 auto fs::path_to_string(const std::filesystem::path& path) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto u8_str = path.u8string();
     return strex(string(u8_str.begin(), u8_str.end())).normalize_path_slashes();
 }
 
 auto fs::resolve_path(string_view path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto resolved = std::filesystem::absolute(std::filesystem::path {fs::make_path(path)}, ec);
     return !ec ? fs::path_to_string(resolved) : strex(path).normalize_path_slashes();
@@ -68,8 +62,6 @@ auto fs::resolve_path(string_view path) -> string
 // an extended-length Windows path is literal and does not accept forward slashes
 auto fs::make_io_path(string_view path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto u8_str = fs_make_io_path(path, ec).u8string();
     return string(u8_str.begin(), u8_str.end());
@@ -77,7 +69,7 @@ auto fs::make_io_path(string_view path) -> string
 
 auto fs::exists(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -91,7 +83,7 @@ auto fs::exists(string_view path) noexcept -> bool
 
 auto fs::is_dir(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -105,22 +97,16 @@ auto fs::is_dir(string_view path) noexcept -> bool
 
 auto fs::is_absolute_path(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !path.empty() && std::filesystem::path {fs::make_path(path)}.is_absolute();
 }
 
 auto fs::is_relative_path(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return path.empty() || std::filesystem::path {fs::make_path(path)}.is_relative();
 }
 
 auto fs::is_contained_relative_path(string_view path) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Windows calls a leading separator relative - relative to the current drive - yet it still resolves
     // from a root, so it leaves the directory behind exactly as an absolute path would
     if (path.empty() || path.front() == '/' || path.front() == '\\') {
@@ -140,8 +126,6 @@ auto fs::is_contained_relative_path(string_view path) noexcept -> bool
 
 auto fs::make_writable_path(string_view user_writable_path, string_view relative) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Portable layout, or an already-absolute path: leave it as-is (written next to the exe / as given)
     if (user_writable_path.empty() || fs::is_absolute_path(relative)) {
         return string(relative);
@@ -153,7 +137,7 @@ auto fs::make_writable_path(string_view user_writable_path, string_view relative
 
 auto fs::create_directories(string_view dir) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (dir.empty()) {
         return true;
@@ -172,7 +156,7 @@ auto fs::create_directories(string_view dir) noexcept -> bool
 
 auto fs::last_write_time(string_view path) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -187,7 +171,7 @@ auto fs::last_write_time(string_view path) noexcept -> uint64_t
 
 auto fs::file_size(string_view path) noexcept -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -202,8 +186,6 @@ auto fs::file_size(string_view path) noexcept -> optional<uint64_t>
 
 auto fs::available_space(string_view path) noexcept -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto info = std::filesystem::space(fs_make_io_path(path, ec), ec);
 
@@ -213,7 +195,7 @@ auto fs::available_space(string_view path) noexcept -> optional<uint64_t>
 
 static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -258,22 +240,16 @@ static auto fs_read_file_impl(string_view path, optional<size_t> max_size) -> op
 
 auto fs::read_file(string_view path) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return fs_read_file_impl(path, std::nullopt);
 }
 
 auto fs::read_file_bounded(string_view path, size_t max_size) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return fs_read_file_impl(path, max_size);
 }
 
 auto fs::compare_file_content(string_view path, const_span<uint8_t> content) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto existing_content = fs::read_file(path);
 
     if (!existing_content || existing_content->size() != content.size()) {
@@ -289,7 +265,7 @@ auto fs::compare_file_content(string_view path, const_span<uint8_t> content) -> 
 
 auto fs::write_file(string_view path, string_view content) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     size_t separator = path.find_last_of("/\\");
     string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
@@ -321,7 +297,7 @@ auto fs::write_file(string_view path, string_view content) -> bool
 
 auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     size_t separator = path.find_last_of("/\\");
     string_view dir = separator != string_view::npos ? path.substr(0, separator) : string_view {};
@@ -353,7 +329,7 @@ auto fs::write_file(string_view path, const_span<uint8_t> content) -> bool
 
 auto fs::remove_file(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -368,7 +344,7 @@ auto fs::remove_file(string_view path) noexcept -> bool
 
 auto fs::remove_dir_tree(string_view dir) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_dir = fs_make_io_path(dir, ec, true);
@@ -383,7 +359,7 @@ auto fs::remove_dir_tree(string_view dir) noexcept -> bool
 
 auto fs::touch_file(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -409,7 +385,7 @@ auto fs::touch_file(string_view path) noexcept -> bool
 
 auto fs::rename(string_view from_path, string_view to_path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto native_from_path = fs_make_io_path(from_path, ec);
@@ -430,7 +406,7 @@ auto fs::rename(string_view from_path, string_view to_path) noexcept -> bool
 
 auto fs::sync_parent(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string dir = strex(path).extract_dir().str();
 
@@ -443,7 +419,7 @@ auto fs::sync_parent(string_view path) noexcept -> bool
 
 auto fs::rename_durable(string_view from_path, string_view to_path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
 #if FO_WINDOWS
     return winapi::rename_file_durable(fs::make_io_path(from_path), fs::make_io_path(to_path));
@@ -454,7 +430,7 @@ auto fs::rename_durable(string_view from_path, string_view to_path) noexcept -> 
 
 auto fs::open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstream
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     std::error_code ec;
     auto fs_path = fs_make_io_path(path, ec);
@@ -468,7 +444,7 @@ auto fs::open_ifstream(string_view path, std::ios::openmode mode) -> std::ifstre
 
 auto fs::hash_file(string_view path) -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // FNV-1a 64
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
@@ -511,7 +487,7 @@ auto fs::hash_file(string_view path) -> optional<uint64_t>
 
 auto fs::hash_data(const_span<uint8_t> data) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     // FNV-1a 64
     constexpr uint64_t offset = UINT64_C(0xcbf29ce484222325);
@@ -533,8 +509,6 @@ auto fs::hash_data(const_span<uint8_t> data) noexcept -> uint64_t
 
 static void recursive_dir_look(string_view base_dir, string_view cur_dir, bool recursive, const fs::file_visitor& visitor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
     auto full_path = (std::filesystem::path {fs::make_path(base_dir)} / std::filesystem::path {fs::make_path(cur_dir)}).u8string();
     auto full_dir = fs_make_io_path(string {full_path.begin(), full_path.end()}, ec);
@@ -571,14 +545,14 @@ static void recursive_dir_look(string_view base_dir, string_view cur_dir, bool r
 
 void fs::iterate_dir(string_view dir, bool recursive, const fs::file_visitor& visitor)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     recursive_dir_look(dir, "", recursive, visitor);
 }
 
 auto fs::list_dir_file_names(string_view dir, bool recursive) noexcept -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     vector<string> names;
     std::error_code ec;
@@ -609,8 +583,6 @@ auto fs::list_dir_file_names(string_view dir, bool recursive) noexcept -> vector
 
 auto fs::stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (buf.empty()) {
         return true;
     }
@@ -623,8 +595,6 @@ auto fs::stream_read_exact(std::istream& stream, span<uint8_t> buf) -> bool
 
 auto fs::stream_get_size(std::istream& stream) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_pos = stream.tellg();
 
     if (cur_pos < 0) {
@@ -656,16 +626,12 @@ auto fs::stream_get_size(std::istream& stream) -> size_t
 
 auto fs::stream_get_read_pos(std::istream& stream) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto pos = stream.tellg();
     return pos >= 0 ? static_cast<size_t>(pos) : 0;
 }
 
 auto fs::stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base::seekdir origin) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     stream.clear();
     stream.seekg(offset, origin);
     return !!stream;
@@ -673,7 +639,7 @@ auto fs::stream_set_read_pos(std::istream& stream, int32_t offset, std::ios_base
 
 fs::disk_read_file::disk_read_file(string_view path) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
 #if FO_WINDOWS
     _descriptor = winapi::open_shared_read_file(fs::make_io_path(path));
@@ -703,8 +669,6 @@ fs::disk_read_file::disk_read_file(string_view path) noexcept
 fs::disk_read_file::disk_read_file(string_view path, uint64_t offset, uint64_t size) noexcept :
     fs::disk_read_file(path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_descriptor < 0 || offset > _size || size > _size - offset) {
         close();
         return;
@@ -719,8 +683,6 @@ fs::disk_read_file::disk_read_file(fs::disk_read_file&& other) noexcept :
     _size {other._size},
     _offset {other._offset}
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     other._descriptor = -1;
     other._size = 0;
     other._offset = 0;
@@ -728,8 +690,6 @@ fs::disk_read_file::disk_read_file(fs::disk_read_file&& other) noexcept :
 
 auto fs::disk_read_file::operator=(fs::disk_read_file&& other) noexcept -> fs::disk_read_file&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         close();
         _descriptor = other._descriptor;
@@ -745,14 +705,12 @@ auto fs::disk_read_file::operator=(fs::disk_read_file&& other) noexcept -> fs::d
 
 fs::disk_read_file::~disk_read_file()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     close();
 }
 
 auto fs::disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (_descriptor < 0 || offset > _size || buf.size() > _size - offset) {
         return false;
@@ -782,8 +740,6 @@ auto fs::disk_read_file::read_at(uint64_t offset, span<uint8_t> buf) const noexc
 
 void fs::disk_read_file::close() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_descriptor >= 0) {
 #if FO_WINDOWS
         winapi::close_file(_descriptor);
@@ -799,7 +755,7 @@ void fs::disk_read_file::close() noexcept
 
 fs::disk_directory_lock::disk_directory_lock(string_view path) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
 #if FO_WINDOWS
     std::error_code error;
@@ -819,8 +775,6 @@ fs::disk_directory_lock::disk_directory_lock(string_view path) noexcept
 
 fs::disk_directory_lock::~disk_directory_lock()
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     winapi::unlock_named_mutex(_handle);
 #else
@@ -832,7 +786,7 @@ fs::disk_directory_lock::~disk_directory_lock()
 
 fs::disk_write_file::disk_write_file(string_view path, fs::disk_write_mode mode) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
 #if FO_WINDOWS
     _descriptor = winapi::open_new_write_file(fs::make_io_path(path), mode == fs::disk_write_mode::append);
@@ -844,15 +798,11 @@ fs::disk_write_file::disk_write_file(string_view path, fs::disk_write_mode mode)
 fs::disk_write_file::disk_write_file(fs::disk_write_file&& other) noexcept :
     _descriptor {other._descriptor}
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     other._descriptor = -1;
 }
 
 auto fs::disk_write_file::operator=(fs::disk_write_file&& other) noexcept -> fs::disk_write_file&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         close();
         _descriptor = other._descriptor;
@@ -864,14 +814,12 @@ auto fs::disk_write_file::operator=(fs::disk_write_file&& other) noexcept -> fs:
 
 fs::disk_write_file::~disk_write_file()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     close();
 }
 
 auto fs::disk_write_file::write(const_span<uint8_t> buf) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (_descriptor < 0) {
         return false;
@@ -900,8 +848,6 @@ auto fs::disk_write_file::write(const_span<uint8_t> buf) noexcept -> bool
 
 auto fs::disk_write_file::seek_to_begin() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_descriptor < 0) {
         return false;
     }
@@ -915,8 +861,6 @@ auto fs::disk_write_file::seek_to_begin() noexcept -> bool
 
 auto fs::disk_write_file::truncate_to(uint64_t size) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_descriptor < 0 || size > numeric_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
         return false;
     }
@@ -930,7 +874,7 @@ auto fs::disk_write_file::truncate_to(uint64_t size) noexcept -> bool
 
 auto fs::disk_write_file::preallocate(uint64_t size) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (_descriptor < 0) {
         return false;
@@ -945,7 +889,7 @@ auto fs::disk_write_file::preallocate(uint64_t size) noexcept -> bool
 
 auto fs::disk_write_file::flush() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (_descriptor < 0) {
         return false;
@@ -960,8 +904,6 @@ auto fs::disk_write_file::flush() noexcept -> bool
 
 void fs::disk_write_file::close() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_descriptor >= 0) {
 #if FO_WINDOWS
         winapi::close_file(_descriptor);
@@ -974,8 +916,6 @@ void fs::disk_write_file::close() noexcept
 
 static auto fs_make_io_path(string_view path, std::error_code& ec, bool force_extended) -> std::filesystem::path
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto fs_path = std::filesystem::path {fs::make_path(path)};
     ignore_unused(ec);
     ignore_unused(force_extended);

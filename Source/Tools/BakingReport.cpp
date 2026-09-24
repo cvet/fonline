@@ -54,13 +54,10 @@ BakingReport::BakingReport(ptr<const BakingSettings> settings) :
     _forceRequested {settings->Baking.ForceBaking},
     _singleThread {settings->Baking.SingleThreadBaking}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void BakingReport::SetRebuildMode(bool effective, string_view reason)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     _fullRebuild = effective;
     _rebuildReason = reason;
@@ -68,16 +65,12 @@ void BakingReport::SetRebuildMode(bool effective, string_view reason)
 
 void BakingReport::RecordPackInput(string_view pack_name, string_view path, size_t size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     _packs[string(pack_name)].InputPathSizes[string(path)] = numeric_cast<uint64_t>(size);
 }
 
 void BakingReport::RecordBakerRegistration(string_view pack_name, string_view baker_name, int32_t order)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     GetPackBaker(pack_name, baker_name).Order = order;
     GetAggregateBaker(baker_name).Order = order;
@@ -85,8 +78,6 @@ void BakingReport::RecordBakerRegistration(string_view pack_name, string_view ba
 
 void BakingReport::RecordBakerInvocation(string_view pack_name, string_view baker_name, int32_t order, size_t input_files, uint64_t input_bytes, int64_t duration_ms, bool success, string_view failure_message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     auto update = [&](BakingReportBakerStats& stats, string_view stored_failure_message) {
         stats.Order = order;
@@ -106,8 +97,6 @@ void BakingReport::RecordBakerInvocation(string_view pack_name, string_view bake
 
 void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_name, string_view path, bool scheduled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     string aggregate_path = strex(pack_name).combine_path(path).str();
     auto update = [&](BakingReportBakerStats& stats, string_view stored_path) {
@@ -123,8 +112,6 @@ void BakingReport::RecordOutputCheck(string_view pack_name, string_view baker_na
 
 void BakingReport::RecordOutputSubmission(string_view pack_name, string_view baker_name, string_view path, size_t size, BakingWriteResult result)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     uint64_t output_size = numeric_cast<uint64_t>(size);
     string aggregate_path = strex(pack_name).combine_path(path).str();
@@ -155,16 +142,12 @@ void BakingReport::RecordOutputSubmission(string_view pack_name, string_view bak
 
 void BakingReport::RecordPackDuration(string_view pack_name, int64_t duration_ms)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     _packs[string(pack_name)].DurationMs = duration_ms;
 }
 
 void BakingReport::RecordOutdatedFile(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     _outdatedFilesDeleted++;
 
@@ -177,8 +160,6 @@ void BakingReport::RecordOutdatedFile(string_view path)
 
 void BakingReport::AddCounter(string_view pack_name, string_view baker_name, string_view name, uint64_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     GetPackBaker(pack_name, baker_name).Counters[string(name)] += value;
     GetAggregateBaker(baker_name).Counters[string(name)] += value;
@@ -186,8 +167,6 @@ void BakingReport::AddCounter(string_view pack_name, string_view baker_name, str
 
 void BakingReport::AddHistogramValue(string_view pack_name, string_view baker_name, string_view name, string_view value, uint64_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     GetPackBaker(pack_name, baker_name).Histograms[string(name)][string(value)] += count;
     GetAggregateBaker(baker_name).Histograms[string(name)][string(value)] += count;
@@ -195,8 +174,6 @@ void BakingReport::AddHistogramValue(string_view pack_name, string_view baker_na
 
 void BakingReport::RecordSpriteMeshSettings(string_view pack_name, string_view baker_name, const SpriteMeshBakingReportSettings& settings)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     GetPackBaker(pack_name, baker_name).SpriteMesh.Settings = settings;
     GetAggregateBaker(baker_name).SpriteMesh.Settings = settings;
@@ -204,8 +181,6 @@ void BakingReport::RecordSpriteMeshSettings(string_view pack_name, string_view b
 
 static void UpdateBakingReportScoreStats(BakingReportScoreStats& stats, float64_t score)
 {
-    FO_STACK_TRACE_ENTRY();
-
     stats.Count++;
     stats.Sum += score;
     stats.Minimum = !stats.Minimum.has_value() ? score : std::min(*stats.Minimum, score);
@@ -214,8 +189,6 @@ static void UpdateBakingReportScoreStats(BakingReportScoreStats& stats, float64_
 
 void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view baker_name, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
 
     auto update = [&](BakingReportSpriteMeshStats& stats, const SpriteMeshBakingFrameReport& stored_frame) {
@@ -289,8 +262,6 @@ void BakingReport::RecordSpriteMeshFrame(string_view pack_name, string_view bake
 
 void BakingReport::RecordSharedSpriteMeshFrames(string_view pack_name, string_view baker_name, uint64_t count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     GetPackBaker(pack_name, baker_name).SpriteMesh.SharedFrameReferences += count;
     GetAggregateBaker(baker_name).SpriteMesh.SharedFrameReferences += count;
@@ -298,8 +269,6 @@ void BakingReport::RecordSharedSpriteMeshFrames(string_view pack_name, string_vi
 
 void BakingReport::Complete(bool success, string_view failure_message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     _status = success ? "success" : "failed";
     _failureMessage = failure_message;
@@ -308,30 +277,22 @@ void BakingReport::Complete(bool success, string_view failure_message)
 
 auto BakingReport::IsFullRebuild() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_locker};
     return _fullRebuild;
 }
 
 auto BakingReport::GetPackBaker(string_view pack_name, string_view baker_name) -> BakingReportBakerStats&
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _packs[string(pack_name)].Bakers[string(baker_name)];
 }
 
 auto BakingReport::GetAggregateBaker(string_view baker_name) -> BakingReportBakerStats&
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _aggregateBakers[string(baker_name)];
 }
 
 auto GetBakingReportPath(string_view bake_output) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bake_output.empty()) {
         return {};
     }
@@ -342,8 +303,6 @@ auto GetBakingReportPath(string_view bake_output) -> string
 
 auto GetFullBakingReportPath(string_view bake_output) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bake_output.empty()) {
         return {};
     }
@@ -354,15 +313,11 @@ auto GetFullBakingReportPath(string_view bake_output) -> string
 
 static auto BakingReportPercent(uint64_t part, uint64_t total) noexcept -> float64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return total != 0 ? numeric_cast<float64_t>(part) * 100.0 / numeric_cast<float64_t>(total) : 0.0;
 }
 
 static auto IsBakingReportSpriteFrameIdentityLess(const SpriteMeshBakingFrameReport& left, const SpriteMeshBakingFrameReport& right) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (left.OutputPath != right.OutputPath) {
         return left.OutputPath < right.OutputPath;
     }
@@ -377,8 +332,6 @@ static auto IsBakingReportSpriteFrameIdentityLess(const SpriteMeshBakingFrameRep
 
 static void KeepLargestMissedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (frame.Form != "quad" || frame.SourceFramePixels <= frame.VisiblePixels) {
         return;
     }
@@ -396,8 +349,6 @@ static void KeepLargestMissedSpriteFrames(vector<SpriteMeshBakingFrameReport>& f
 
 static void KeepLargestRejectedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!frame.BestRejectedCandidate.has_value() || frame.SourceFramePixels * 2 <= frame.BestRejectedCandidate->SubmittedGeometryDoubleArea) {
         return;
     }
@@ -415,8 +366,6 @@ static void KeepLargestRejectedSpriteFrames(vector<SpriteMeshBakingFrameReport>&
 
 static void KeepMostComplexSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (frame.Form != "mesh") {
         return;
     }
@@ -438,8 +387,6 @@ static void KeepMostComplexSpriteFrames(vector<SpriteMeshBakingFrameReport>& fra
 
 static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (frame.BakedCanvasPixels <= frame.SourceFramePixels) {
         return;
     }
@@ -457,8 +404,6 @@ static void KeepLargestPaddingSpriteFrames(vector<SpriteMeshBakingFrameReport>& 
 
 static void KeepLargestCroppedSpriteFrames(vector<SpriteMeshBakingFrameReport>& frames, const SpriteMeshBakingFrameReport& frame)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (frame.BakedCanvasPixels >= frame.SourceFramePixels) {
         return;
     }
@@ -478,8 +423,6 @@ using BakingReportJson = nlohmann::ordered_json;
 
 static auto SumBakingReportPathSizes(const map<string, uint64_t>& path_sizes) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t total = 0;
     for (const auto& [path, size] : path_sizes) {
         ignore_unused(path);
@@ -490,8 +433,6 @@ static auto SumBakingReportPathSizes(const map<string, uint64_t>& path_sizes) no
 
 static auto MakeBakingReportPathCountJson(const set<string>& paths) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     map<string, uint64_t> extensions;
     for (const string& path : paths) {
         string extension = strex(path).get_file_extension();
@@ -509,8 +450,6 @@ static auto MakeBakingReportPathCountJson(const set<string>& paths) -> BakingRep
 
 static auto MakeBakingReportPathSizeJson(const map<string, uint64_t>& path_sizes) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     struct ExtensionStats
     {
         uint64_t Count {};
@@ -551,8 +490,6 @@ static auto MakeBakingReportPathSizeJson(const map<string, uint64_t>& path_sizes
 
 static auto MakeBakingReportStringDistribution(const map<string, uint64_t>& distribution, uint64_t denominator, string_view value_name) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakingReportJson result = BakingReportJson::array();
     for (const auto& [value, count] : distribution) {
         result.push_back({{string(value_name), value}, {"count", count}, {"percent", BakingReportPercent(count, denominator)}});
@@ -563,8 +500,6 @@ static auto MakeBakingReportStringDistribution(const map<string, uint64_t>& dist
 template<typename T>
 static auto MakeBakingReportNumericDistribution(const map<T, uint64_t>& distribution, uint64_t denominator, string_view value_name) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakingReportJson result = BakingReportJson::array();
     for (const auto& [value, count] : distribution) {
         result.push_back({{string(value_name), value}, {"count", count}, {"percent", BakingReportPercent(count, denominator)}});
@@ -574,8 +509,6 @@ static auto MakeBakingReportNumericDistribution(const map<T, uint64_t>& distribu
 
 static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& frame) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakingReportJson result {
         {"sourcePath", frame.SourcePath},
         {"outputPath", frame.OutputPath},
@@ -639,8 +572,6 @@ static auto MakeBakingReportSpriteFrameJson(const SpriteMeshBakingFrameReport& f
 
 static auto MakeBakingReportScoreJson(const BakingReportScoreStats& stats) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakingReportJson result {
         {"count", stats.Count},
         {"average", stats.Count != 0 ? stats.Sum / numeric_cast<float64_t>(stats.Count) : 0.0},
@@ -658,8 +589,6 @@ static auto MakeBakingReportScoreJson(const BakingReportScoreStats& stats) -> Ba
 
 static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& stats, bool complete_corpus) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t unique_frames = [&] {
         uint64_t total = 0;
         for (const auto& [form, count] : stats.Forms) {
@@ -847,8 +776,6 @@ static auto MakeBakingReportSpriteMeshJson(const BakingReportSpriteMeshStats& st
 
 static auto MakeBakingReportBakerJson(string_view name, const BakingReportBakerStats& stats, bool complete_corpus) -> BakingReportJson
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakingReportJson result {
         {"name", name},
         {"order", stats.Order},
@@ -907,7 +834,7 @@ static auto MakeBakingReportBakerJson(string_view name, const BakingReportBakerS
 
 auto BakingReport::Serialize() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     scoped_lock lock {_locker};
 

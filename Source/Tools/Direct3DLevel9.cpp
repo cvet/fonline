@@ -298,7 +298,7 @@ static auto ReadStringAt(const_span<uint8_t> data, size_t pos) -> string;
 
 auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t> sm2_bytecode, bool is_vertex, string_view name) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vkd3d_shader_code container_code {};
     container_code.code = sm4_container.data();
@@ -460,8 +460,6 @@ auto AddDirect3DLevel9Code(const_span<uint8_t> sm4_container, const_span<uint8_t
 
 static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> Sm2Program
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bytecode.size() % sizeof(uint32_t) != 0 || bytecode.size() < sizeof(uint32_t) * 2) {
         throw Direct3DLevel9Exception("Shader Model 2 bytecode is not a token stream", name, bytecode.size());
     }
@@ -519,8 +517,6 @@ static auto ParseSm2Program(const_span<uint8_t> bytecode, string_view name) -> S
 
 static auto ParseConstantTable(const_span<uint8_t> data) -> vector<ConstantTableEntry>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // D3DXSHADER_CONSTANTTABLE, offsets from its start: Size, Creator, Version, Constants, ConstantInfo, Flags, Target
     size_t pos = sizeof(uint32_t) * 3;
     uint32_t count = span_read_object<uint32_t>(data, pos);
@@ -546,8 +542,6 @@ static auto ParseConstantTable(const_span<uint8_t> data) -> vector<ConstantTable
 
 static auto ParseResourceDefinitions(const_span<uint8_t> data, string_view name) -> ResourceDefinitions
 {
-    FO_STACK_TRACE_ENTRY();
-
     // RDEF of Shader Model 4.0: constant buffer and binding tables, then the creator string
     size_t pos = 0;
     uint32_t buffer_count = span_read_object<uint32_t>(data, pos);
@@ -607,8 +601,6 @@ static auto ParseResourceDefinitions(const_span<uint8_t> data, string_view name)
 
 static auto ParseSignature(const_span<uint8_t> data, string_view name) -> vector<SignatureElement>
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t pos = 0;
     uint32_t count = span_read_object<uint32_t>(data, pos);
     uint32_t offset = span_read_object<uint32_t>(data, pos);
@@ -640,8 +632,6 @@ static auto ParseSignature(const_span<uint8_t> data, string_view name) -> vector
 
 static auto MapResources(const vector<ConstantTableEntry>& constant_table, const ResourceDefinitions& resources, string_view name) -> Level9Tables
 {
-    FO_STACK_TRACE_ENTRY();
-
     Level9Tables tables;
 
     for (const ConstantTableEntry& entry : constant_table) {
@@ -723,8 +713,6 @@ static auto MapResources(const vector<ConstantTableEntry>& constant_table, const
 
 static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_vertex, const vector<SignatureElement>& inputs, const vector<SignatureElement>& outputs, const ScratchRegisters& scratch, string_view name) -> vector<Sm2Instruction>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // vkd3d-shader numbers the Shader Model 2 registers after the semantic index, the level 9 runtime after the
     // Shader Model 4.0 signature register, which may pack two semantics into one register
     unordered_map<uint32_t, SignatureElement> texcoord_inputs;
@@ -857,8 +845,6 @@ static auto RemapSignatures(const vector<Sm2Instruction>& instructions, bool is_
 
 static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegisters& scratch, const unordered_map<uint32_t, uint32_t>& sampler_types, vector<Sm2Instruction>& output, string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // vkd3d-shader writes code the Direct3D 9 validator rejects, which a level 9 driver runs: each rule below is one
     // the validator states and the fix a compiler for Direct3D 9 applies
     uint32_t opcode = GetOpcode(instruction[0]);
@@ -1026,8 +1012,6 @@ static void LegalizeInstruction(Sm2Instruction instruction, const ScratchRegiste
 
 static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instructions, const Level9Tables& tables) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> bytecode;
 
     {
@@ -1097,8 +1081,6 @@ static auto BuildAon9Chunk(uint32_t version, const vector<Sm2Instruction>& instr
 
 static auto SerializeContainer(const vkd3d_shader_dxbc_desc& container, const_span<uint8_t> aon9, string_view name) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The runtime looks for the level 9 chunk first, as the Microsoft compiler writes it
     vector<vkd3d_shader_dxbc_section_desc> sections;
     sections.reserve(container.section_count + 1);
@@ -1131,8 +1113,6 @@ static auto SerializeContainer(const vkd3d_shader_dxbc_desc& container, const_sp
 
 static auto GetOperands(const Sm2Instruction& instruction) -> small_vector<Sm2Operand, 8>
 {
-    FO_STACK_TRACE_ENTRY();
-
     small_vector<Sm2Operand, 8> operands;
     uint32_t opcode = GetOpcode(instruction[0]);
 
@@ -1176,8 +1156,6 @@ static auto GetOperands(const Sm2Instruction& instruction) -> small_vector<Sm2Op
 
 static auto GetInstructionSlots(uint32_t opcode) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Instruction slot costs of vs_2_x and ps_2_x, as the Direct3D 9 validator counts them
     switch (opcode) {
     case SM2_OP_NOP:
@@ -1219,8 +1197,6 @@ static auto GetInstructionSlots(uint32_t opcode) -> int32_t
 
 static auto IsFlowControl(uint32_t opcode) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (opcode) {
     case SM2_OP_CALL:
     case SM2_OP_CALLNZ:
@@ -1243,8 +1219,6 @@ static auto IsFlowControl(uint32_t opcode) -> bool
 
 static auto FindSignatureElement(const vector<SignatureElement>& signature, string_view semantic, uint32_t index, string_view name) -> const SignatureElement&
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const SignatureElement& element : signature) {
         if (element.Name == semantic && element.SemanticIndex == index) {
             return element;
@@ -1256,51 +1230,37 @@ static auto FindSignatureElement(const vector<SignatureElement>& signature, stri
 
 static auto GetOpcode(uint32_t token) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return token & SM2_OPCODE_MASK;
 }
 
 static auto GetRegisterType(uint32_t token) -> Sm2Register
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return static_cast<Sm2Register>(((token >> 28) & 0x7) | ((token >> 8) & 0x18));
 }
 
 static auto GetRegisterNumber(uint32_t token) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return token & SM2_REGISTER_NUMBER_MASK;
 }
 
 static auto SetRegister(uint32_t token, Sm2Register type, uint32_t number) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t type_value = static_cast<uint32_t>(type);
     return (token & ~(SM2_REGISTER_NUMBER_MASK | SM2_REGISTER_TYPE_MASK)) | (number & SM2_REGISTER_NUMBER_MASK) | ((type_value & 0x7) << 28) | ((type_value & 0x18) << 8);
 }
 
 static auto SetSwizzle(uint32_t token, uint32_t swizzle) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (token & ~SM2_SWIZZLE_MASK) | (swizzle << SM2_SELECT_SHIFT);
 }
 
 static auto GetSwizzle(uint32_t token) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (token & SM2_SWIZZLE_MASK) >> SM2_SELECT_SHIFT;
 }
 
 static auto ShiftSwizzle(uint32_t swizzle, uint32_t first_component, uint32_t component_count) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // A component beyond the semantic reads its last one: its value was never meaningful
     uint32_t shifted = 0;
 
@@ -1314,22 +1274,16 @@ static auto ShiftSwizzle(uint32_t swizzle, uint32_t first_component, uint32_t co
 
 static auto MakeTempDestination(uint32_t number, uint32_t write_mask) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return SM2_PARAMETER_TOKEN | (write_mask << SM2_SELECT_SHIFT) | number;
 }
 
 static auto MakeTempSource(uint32_t number, uint32_t swizzle) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return SM2_PARAMETER_TOKEN | (swizzle << SM2_SELECT_SHIFT) | number;
 }
 
 static auto MakeMov(uint32_t destination, const_span<uint32_t> source) -> Sm2Instruction
 {
-    FO_STACK_TRACE_ENTRY();
-
     Sm2Instruction instruction;
     instruction.reserve(2 + source.size());
     instruction.emplace_back(SM2_OP_MOV | (numeric_cast<uint32_t>(1 + source.size()) << SM2_LENGTH_SHIFT));
@@ -1340,8 +1294,6 @@ static auto MakeMov(uint32_t destination, const_span<uint32_t> source) -> Sm2Ins
 
 static auto ReadStringAt(const_span<uint8_t> data, size_t pos) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (pos >= data.size()) {
         throw DataReadingException("String offset is past the data");
     }

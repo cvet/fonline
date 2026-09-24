@@ -138,13 +138,4 @@ namespace stack_trace
     auto format(const catched_data& st) -> std::string;
 }
 
-#if FO_TRACY
-#define FO_STACK_TRACE_ENTRY() ZoneScoped
-#define FO_STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)
-#else
-#define FO_STACK_TRACE_ENTRY()
-#define FO_STACK_TRACE_ENTRY_NAMED(name)
-#endif
-#define FO_NO_STACK_TRACE_ENTRY()
-
 FO_END_NAMESPACE

@@ -79,7 +79,6 @@ namespace
         explicit BytecodeStream(vector<asBYTE>& buf) :
             _buf {BufferPtr(buf)}
         {
-            FO_NO_STACK_TRACE_ENTRY();
         }
 
         auto Read(void* raw_data, asUINT size) -> int override
@@ -122,12 +121,7 @@ namespace
         }
 
     private:
-        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return &buf;
-        }
+        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>> { return &buf; }
 
         ptr<vector<asBYTE>> _buf;
         size_t _readPos {};
@@ -152,15 +146,11 @@ namespace
 
     static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         engine->ShutDownAndRelease();
     }
 
     static auto MakeScriptEngine() -> unique_del_ptr<asIScriptEngine>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto engine = make_nptr(asCreateScriptEngine());
         REQUIRE(engine);
         auto engine_owner = make_unique_del_ptr(engine, ReleaseScriptEngine);
@@ -275,8 +265,6 @@ namespace
 
     static void VariadicProbeConstructDefault(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         new (self.get()) VariadicProbeValue();
@@ -284,8 +272,6 @@ namespace
 
     static void VariadicProbeConstructCopy(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
@@ -294,8 +280,6 @@ namespace
 
     static void VariadicProbeConstructVariadic(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         new (self.get()) VariadicProbeValue {.Value = numeric_cast<int32_t>(generic->GetArgCount())};
@@ -303,8 +287,6 @@ namespace
 
     static void VariadicProbeDestruct(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         self->~VariadicProbeValue();
@@ -312,8 +294,6 @@ namespace
 
     static void VariadicProbeAssign(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
@@ -323,8 +303,6 @@ namespace
 
     static void VariadicProbeEquals(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         nptr<VariadicProbeValue> other = cast_from_void<VariadicProbeValue*>(generic->GetArgObject(0));
@@ -333,8 +311,6 @@ namespace
 
     static void VariadicProbeGetValue(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         nptr<VariadicProbeValue> self = cast_from_void<VariadicProbeValue*>(generic->GetObject());
         generic->SetReturnDWord(numeric_cast<asDWORD>(self->Value));
@@ -342,8 +318,6 @@ namespace
 
     static void ReturnVariadicProbe(asIScriptGeneric* gen)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         ptr<asIScriptGeneric> generic = gen;
         VariadicProbeValue value {.Value = 123};
         int32_t returned = generic->SetReturnObject(&value);
@@ -451,8 +425,6 @@ namespace
 
     static void RegisterVariadicProbeApi(ptr<asIScriptEngine> engine)
     {
-        FO_STACK_TRACE_ENTRY();
-
         REQUIRE(engine->RegisterObjectType("VariadicProbeValue", sizeof(VariadicProbeValue), asOBJ_VALUE | asOBJ_APP_CLASS_CDAK) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_CONSTRUCT, "void f()", asFUNCTION(VariadicProbeConstructDefault), asCALL_GENERIC) >= 0);
         REQUIRE(engine->RegisterObjectBehaviour("VariadicProbeValue", asBEHAVE_CONSTRUCT, "void f(const VariadicProbeValue &in)", asFUNCTION(VariadicProbeConstructCopy), asCALL_GENERIC) >= 0);

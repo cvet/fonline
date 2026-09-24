@@ -44,13 +44,10 @@ FO_BEGIN_NAMESPACE
 ItemManager::ItemManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ItemManager::GetItemHolder(ptr<Item> item) -> ptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(item);
 
     if (item->GetOwnership() == ItemOwnership::Nowhere) {
@@ -65,8 +62,6 @@ auto ItemManager::GetItemHolder(ptr<Item> item) -> ptr<Entity>
 
 void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(holder.dyn_cast<ServerEntity>());
     EnsureEntitySynced(item);
 
@@ -102,8 +97,6 @@ void ItemManager::RemoveItemHolder(ptr<Item> item, ptr<Entity> holder)
 
 auto ItemManager::GetMoveSourceHolder(ptr<Item> item) -> nptr<Entity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!item->IsDestroyed() && !item->IsDestroying(), "Cannot move an item that is being destroyed", item->GetId());
 
     // A detached item has no holder to leave, so moving it only places it
@@ -116,7 +109,7 @@ auto ItemManager::GetMoveSourceHolder(ptr<Item> item) -> nptr<Entity>
 
 auto ItemManager::CreateItem(hstring pid, nptr<const Properties> props) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto proto = _engine->GetProtoItem(pid);
 
@@ -154,7 +147,7 @@ auto ItemManager::CreateItem(hstring pid, nptr<const Properties> props) -> ptr<I
 
 auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, nptr<const Properties> props) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
@@ -178,7 +171,7 @@ auto ItemManager::CreateItemOnHex(ptr<Map> map, mpos hex, hstring pid, nptr<cons
 
 void ItemManager::DestroyItem(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto item_holder = item.hold_ref();
     ignore_unused(item_holder);
@@ -240,8 +233,6 @@ void ItemManager::DestroyItem(ptr<Item> item)
 
 auto ItemManager::CloneItem(ptr<Item> source) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     EnsureEntitySynced(source);
     auto source_holder = source.hold_ref();
     ignore_unused(source_holder);
@@ -254,7 +245,7 @@ auto ItemManager::CloneItem(ptr<Item> source) -> ptr<Item>
 
 auto ItemManager::MoveItem(ptr<Item> item, ptr<Critter> to_cr) -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_cr);
@@ -285,7 +276,7 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Critter> to_cr) -> nptr<Item>
 
 auto ItemManager::MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_map);
@@ -328,7 +319,7 @@ auto ItemManager::MoveItem(ptr<Item> item, ptr<Map> to_map, mpos to_hex) -> nptr
 
 auto ItemManager::MoveItem(ptr<Item> item, ptr<Item> to_cont, const any_t& stack_id) -> nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     EnsureEntitySynced(item);
     ValidateEntityAccess(to_cont);

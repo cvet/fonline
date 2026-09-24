@@ -207,6 +207,7 @@ public:
 
 private:
     void GrowPool() noexcept;
+    void Sort() noexcept;
     void Invalidate(ptr<MapSprite> mspr) noexcept;
 
     vector<unique_ptr<MapSprite>> _activeSprites {};

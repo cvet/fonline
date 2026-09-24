@@ -84,7 +84,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
     _fontMngr(make_ptr(&_sprMngr))
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     logging::write("Client updater: created for {}:{}, compatibility {}, binary dir {}, resources {}", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort, _settings->Network.CompatibilityVersion, _binaryDir, _settings->Baking.ClientResources);
 
@@ -147,7 +147,7 @@ Updater::~Updater() = default;
 
 auto Updater::Process() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Engine);
 
     _gameTime.FrameAdvance(is_run_in_debugger());
 
@@ -278,15 +278,11 @@ auto Updater::Process() -> bool
 
 void Updater::AddText(string_view text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _messages.emplace_back(text);
 }
 
 void Updater::Abort(UpdaterResult result, string_view text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _aborted = true;
 
     if (!_result.has_value()) {
@@ -304,7 +300,7 @@ void Updater::Abort(UpdaterResult result, string_view text)
 
 void Updater::TryStart()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     string directory = GetClientWritableResourceDir(*_settings);
     bool directory_created = fs::create_directories(directory);
@@ -341,7 +337,7 @@ void Updater::TryStart()
 
 void Updater::StartSynchronization()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _stage = Stage::Synchronizing;
     AddText(StrConnectToServer);
@@ -352,7 +348,7 @@ void Updater::StartSynchronization()
 
 void Updater::PlanResourceVerification()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // A browser session starts from the packs it has just fetched and keeps nothing, and an unpackaged client reads a
     // bake output rather than packs: neither holds anything older to distrust
@@ -403,7 +399,7 @@ void Updater::PlanResourceVerification()
 
 void Updater::ProcessResourceVerification()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     nanotime deadline = nanotime::now() + std::chrono::milliseconds {VerificationFrameBudgetMs};
 
@@ -433,7 +429,7 @@ void Updater::ProcessResourceVerification()
 
 void Updater::FinishPackVerification(const PackVerification& verification)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     const ResourcePairVerifier& verifier = *verification.Verifier;
 
@@ -462,7 +458,7 @@ void Updater::FinishPackVerification(const PackVerification& verification)
 
 void Updater::FinishResourcesUpdate()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     for (const UpdateFile& file : _resourceTargets) {
         if (!IsLocalResourceCurrent(file)) {
@@ -512,7 +508,7 @@ void Updater::FinishResourcesUpdate()
 
 void Updater::RebuildResourceIndex() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // The tree only pays by outliving the launch that built it, and the web filesystem starts empty every
     // load - so building it there costs the per-pack index parse it exists to save
@@ -557,7 +553,7 @@ void Updater::RebuildResourceIndex() const
 
 auto Updater::ReadLocalMetadataVersion() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // The override stands in for a client baked apart from the server, so it has to reach the updater too -
     // otherwise the updater would keep declaring resources ready while the client keeps being rejected
@@ -580,7 +576,7 @@ auto Updater::ReadLocalMetadataVersion() const -> string
 
 void Updater::GetNextFile()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto file_uses_binary_dir = [&](const UpdateFile& f) { return f.IsClientBinary; };
     auto file_output_dir = [&](const UpdateFile& f) -> string { return file_uses_binary_dir(f) ? _binaryDir : GetClientWritableResourceDir(*_settings); };
@@ -761,8 +757,6 @@ void Updater::GetNextFile()
 
 void Updater::RequestUpdateFile(const UpdateFile& update_file)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t start_offset = update_file.Size - update_file.RemaningSize;
 
     _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
@@ -775,15 +769,11 @@ void Updater::RequestUpdateFile(const UpdateFile& update_file)
 
 auto Updater::IsLocalResourceCurrent(const UpdateFile& file) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return IsClientResourcePackCurrent(*_settings, strex(file.Name).erase_file_extension().str(), file.PackHeader.ContentHash);
 }
 
 void Updater::RequestResourceRange()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_filesToUpdate.empty() && _rangeData.size() <= _rangeSize, "No pending resource range");
     const UpdateFile& file = _filesToUpdate.front();
     _conn.OutBuf->StartMsg(NetMessage::GetUpdateFile);
@@ -796,7 +786,7 @@ void Updater::RequestResourceRange()
 
 void Updater::FinishResourceRange()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     UpdateFile& file = _filesToUpdate.front();
 
@@ -853,7 +843,7 @@ void Updater::FinishResourceRange()
 
 void Updater::AdvanceResourcePatch()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     FO_VERIFY_AND_THROW(_patchWriter, "No resource patch to advance");
     const auto& downloads = _patchWriter->GetDownloads();
@@ -882,7 +872,7 @@ void Updater::AdvanceResourcePatch()
 
 void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     string_view result_str;
 
@@ -945,7 +935,7 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
 
 void Updater::Net_OnDisconnect()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!_aborted && (!_fileListReceived || !_filesToUpdate.empty())) {
         // A drop while the transfer was still in flight is the server going away, not this client failing
@@ -955,7 +945,7 @@ void Updater::Net_OnDisconnect()
 
 void Updater::Net_OnInitData()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto data_size = _conn.InBuf->Read<uint32_t>();
 
@@ -1142,7 +1132,7 @@ void Updater::Net_OnInitData()
 
 void Updater::Net_OnTimeSync()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto time = _conn.InBuf->Read<synctime>();
     _gameTime.SetSynchronizedTimeMonotonic(time);
@@ -1150,7 +1140,7 @@ void Updater::Net_OnTimeSync()
 
 void Updater::Net_OnHashList()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     uint32_t count = _conn.InBuf->Read<uint32_t>();
 
@@ -1167,7 +1157,7 @@ void Updater::Net_OnHashList()
 
 void Updater::Net_OnUpdateFileData()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     int32_t data_size_raw = _conn.InBuf->Read<int32_t>();
 
@@ -1243,7 +1233,7 @@ void Updater::Net_OnUpdateFileData()
 
 auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size, uint64_t expected_hash) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     auto local_size = fs::file_size(file_path);
 
@@ -1293,8 +1283,6 @@ auto Updater::IsDiskFileHashMatch(string_view file_path, uint64_t expected_size,
 
 auto Updater::IsIdentityVerified(string_view path, const VerifiedFileIdentity& identity) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_trivially_copyable_v<VerifiedFileIdentity>);
     string cache_key = MakeVerifiedIdentityKey(path);
 
@@ -1315,16 +1303,12 @@ auto Updater::IsIdentityVerified(string_view path, const VerifiedFileIdentity& i
 
 void Updater::RecordVerifiedIdentity(string_view path, const VerifiedFileIdentity& identity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Only saves the next run a read, so a record that cannot be written costs that read and nothing else
     (void)_cache.SetDataChecked(MakeVerifiedIdentityKey(path), const_span<uint8_t> {make_ptr(&identity).reinterpret_as<const uint8_t>().get(), sizeof(identity)});
 }
 
 void Updater::RecordVerifiedBase(string_view base_path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (optional<VerifiedFileIdentity> identity = ReadBaseIdentity(base_path); identity.has_value()) {
         RecordVerifiedIdentity(base_path, identity.value());
     }
@@ -1332,8 +1316,6 @@ void Updater::RecordVerifiedBase(string_view base_path)
 
 void Updater::RecordVerifiedPatch(string_view pack_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string base_path = GetClientResourcePackPath(*_settings, pack_name);
     string patch_path = GetClientResourcePatchPath(*_settings, pack_name);
 
@@ -1344,8 +1326,6 @@ void Updater::RecordVerifiedPatch(string_view pack_name)
 
 auto Updater::ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileIdentity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     fs::disk_read_file file = OpenResourcePackFile(base_path);
     ResourcePackHeader header;
 
@@ -1358,8 +1338,6 @@ auto Updater::ReadBaseIdentity(string_view base_path) -> optional<VerifiedFileId
 
 auto Updater::ReadPatchIdentity(string_view patch_path, string_view base_path) -> optional<VerifiedFileIdentity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResourcePackHeader header;
     fs::disk_read_file file {patch_path};
 
@@ -1386,7 +1364,7 @@ auto Updater::ReadPatchIdentity(string_view patch_path, string_view base_path) -
 
 void Updater::RecoverInterruptedReplacements() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     auto recover_in_dir = [](string_view dir) {
         if (!fs::is_dir(dir)) {
@@ -1430,7 +1408,7 @@ void Updater::RecoverInterruptedReplacements() const
 
 void Updater::RemoveStaleTempPacks() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string resources_dir = GetClientWritableResourceDir(*_settings);
 
@@ -1461,7 +1439,7 @@ void Updater::RemoveStaleTempPacks() const
 
 auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile& update_file) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (IsResourcePackName(update_file.Name)) {
         auto local_size = fs::file_size(file_path);
@@ -1485,35 +1463,27 @@ auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile&
 
 auto Updater::IsResourcePackName(string_view file_name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex(file_name).get_file_extension() == "fores";
 }
 
 auto Updater::IsDataHashMatch(const vector<uint8_t>& data, uint64_t expected_size, uint64_t expected_hash) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return numeric_cast<uint64_t>(data.size()) == expected_size && fs::hash_data(data) == expected_hash;
 }
 
 auto Updater::GetDiskFileSize(string_view file_path) -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return fs::file_size(file_path);
 }
 
 auto Updater::GetUpdateWriteSize(uint64_t remaining_size, size_t received_size) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return remaining_size < numeric_cast<uint64_t>(received_size) ? numeric_cast<size_t>(remaining_size) : received_size;
 }
 
 auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs::exists(final_path);
@@ -1541,15 +1511,11 @@ auto Updater::ReplaceFileSafely(string_view temp_path, string_view final_path) -
 
 auto Updater::GetRuntimeLivePath() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}{}", strex(_binaryDir).combine_path(GetCurrentClientRuntimeLibraryName()), GetClientRuntimeLibraryExtension()).str();
 }
 
 auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return UpdatePlatform::Windows;
 #elif FO_LINUX
@@ -1569,8 +1535,6 @@ auto GetCurrentUpdatePlatform() noexcept -> UpdatePlatform
 
 auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (platform) {
     case UpdatePlatform::Windows:
         return "Windows";
@@ -1592,8 +1556,6 @@ auto GetUpdatePlatformName(UpdatePlatform platform) noexcept -> string_view
 
 auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
 
 #if defined(_WIN64) || defined(_M_X64) || defined(__x86_64__)
@@ -1661,8 +1623,6 @@ auto GetCurrentBinaryUpdateTargetName() noexcept -> string_view
 
 auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (platform) {
     case UpdatePlatform::Windows:
     case UpdatePlatform::Linux:
@@ -1679,8 +1639,6 @@ auto CanSelfUpdateNativeModules(UpdatePlatform platform) noexcept -> bool
 
 auto GetClientBinaryDir(string_view user_writable_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A writable root holds everything this client writes, the modules it replaces included; without one
     // the client is portable and owns its own directory
     if (!user_writable_path.empty()) {
@@ -1700,8 +1658,6 @@ auto GetClientBinaryDir(string_view user_writable_path) -> string
 
 auto GetClientRuntimeLivePath() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Always the module shipped beside the executable: an update never replaces the host, so this stays
     // the base runtime a selector may point away from
     string binary_dir = GetClientBinaryDir("");
@@ -1710,8 +1666,6 @@ auto GetClientRuntimeLivePath() -> string
 
 auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Nothing to select without a writable root: the module then lives beside the exe and is replaced
     // in place, which the host finds on its own
     if (user_writable_path.empty()) {
@@ -1724,15 +1678,11 @@ auto MakeClientRuntimeBootstrapPath(string_view user_writable_path) -> optional<
 
 auto MakeClientRuntimeStagingPath(string_view runtime_live_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}{}", runtime_live_path, ClientBinaryStagingSuffix).str();
 }
 
 auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name, string_view fallback_runtime_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<string> target = ReadClientRuntimeBootstrapTarget(bootstrap_file_path, expected_runtime_file_name);
 
     if (!target.has_value()) {
@@ -1747,7 +1697,7 @@ auto ResolveClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string
 
 auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view expected_runtime_file_name) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!fs::is_absolute_path(bootstrap_file_path)) {
         return std::nullopt;
@@ -1770,7 +1720,7 @@ auto ReadClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_vi
 
 auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_view runtime_path, string_view expected_runtime_file_name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!fs::is_absolute_path(bootstrap_file_path)) {
         return false;
@@ -1799,7 +1749,7 @@ auto WriteClientRuntimeBootstrapTarget(string_view bootstrap_file_path, string_v
 
 void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     try {
         string runtime_name = GetCurrentClientRuntimeLibraryName();
@@ -1841,8 +1791,6 @@ void PromoteStagedRuntimeCompanions(string_view binary_dir) noexcept
 
 auto GetCurrentClientRuntimeLibraryName() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto exe_path = platform::get_exe_path(); exe_path.has_value()) {
         string name = strex(exe_path.value()).extract_file_name().erase_file_extension().str();
 
@@ -1856,8 +1804,6 @@ auto GetCurrentClientRuntimeLibraryName() -> string
 
 static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (result) {
     case UpdaterResult::ResourcesReady:
         return "ResourcesReady";
@@ -1882,8 +1828,6 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view
 
 auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Client-local updater failures are reportable; transient server downtime would otherwise emit one crash
     // per player for every restart
     return result != UpdaterResult::ConnectionFailed;
@@ -1893,8 +1837,6 @@ auto IsUpdaterFailureReportable(UpdaterResult result) noexcept -> bool
 // exception is what carries a fixed message, context values and a stack trace into the crash reporter
 static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     safe_call([&] {
         ClientUpdateException ex("Client update did not complete", UpdaterResultToString(result), target_name, GetUpdatePlatformName(GetCurrentUpdatePlatform()), FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
         exceptions::report_and_continue(ex);
@@ -1903,8 +1845,6 @@ static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) 
 
 void ShowUpdaterFailure(UpdaterResult result)
 {
-    FO_STACK_TRACE_ENTRY();
-
     string_view target_name = GetCurrentBinaryUpdateTargetName();
 
     logging::write("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
@@ -1943,8 +1883,6 @@ void ShowUpdaterFailure(UpdaterResult result)
 
 auto GetClientRuntimeLibraryExtension() noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return ".dll";
 #elif FO_LINUX
@@ -1958,8 +1896,6 @@ auto GetClientRuntimeLibraryExtension() noexcept -> string_view
 
 static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, string_view expected_runtime_file_name) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string trimmed_path = strex(runtime_path).trim().str();
 
     if (trimmed_path.empty() || expected_runtime_file_name.empty() || !fs::is_absolute_path(trimmed_path) || trimmed_path.find('\0') != string::npos || trimmed_path.find('\r') != string::npos || trimmed_path.find('\n') != string::npos) {
@@ -1975,16 +1911,12 @@ static auto NormalizeClientRuntimeBootstrapTarget(string_view runtime_path, stri
 
 static auto MakeVerifiedIdentityKey(string_view path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Keyed by the whole path, since an installed and a downloaded base share a file name
     return strex("{}-{:016x}.verified", strex(path).extract_file_name(), hashing::hash<string_view> {}(path)).str();
 }
 
 static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A download resumes by length alone, so a prefix another server build left behind would be completed into a
     // pack that fails verification. Its first bytes are that build's header, which says whose prefix it is
     vector<uint8_t> expected = SerializeResourcePackHeader(advertised);

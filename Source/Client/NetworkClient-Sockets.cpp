@@ -71,15 +71,13 @@ private:
 
 auto NetworkClientConnection::CreateSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<NetworkClientConnection_Sockets>(settings);
 }
 
 NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
 #if !FO_WEB
     string_view host = _settings->ClientNetwork.ServerHost;
@@ -294,7 +292,7 @@ NetworkClientConnection_Sockets::NetworkClientConnection_Sockets(ptr<ClientNetwo
 
 auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     bool ready = for_write ? _sock.can_write({}) : _sock.can_read({});
 
@@ -333,8 +331,6 @@ auto NetworkClientConnection_Sockets::CheckStatusImpl(bool for_write) -> bool
 
 void NetworkClientConnection_Sockets::ApplyTcpNoDelay()
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_WEB
     if (!_settings->Network.DisableTcpNagle) {
         return;
@@ -348,7 +344,7 @@ void NetworkClientConnection_Sockets::ApplyTcpNoDelay()
 
 auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     int32_t sent = _sock.send(buf);
 
@@ -361,7 +357,7 @@ auto NetworkClientConnection_Sockets::SendDataImpl(const_span<uint8_t> buf) -> s
 
 auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     FO_VERIFY_AND_THROW(_sock.is_valid(), "Socket is not valid");
 
@@ -404,7 +400,7 @@ auto NetworkClientConnection_Sockets::ReceiveDataImpl(vector<uint8_t>& buf) -> s
 
 void NetworkClientConnection_Sockets::DisconnectImpl() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _sock.close();
 }

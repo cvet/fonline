@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType value_type) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     string value_str = string(raw_value);
     strvex value = strvex(raw_value);
     value.trim();
@@ -87,8 +85,6 @@ static auto ParseValidatedScalarValue(string_view raw_value, AnyData::ValueType 
 
 auto AnyData::Value::operator==(const Value& other) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (Type() != other.Type()) {
         return false;
     }
@@ -113,8 +109,6 @@ auto AnyData::Value::operator==(const Value& other) const -> bool
 
 auto AnyData::Value::Copy() const -> Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (Type()) {
     case ValueType::Int64:
         return AsInt64();
@@ -135,8 +129,6 @@ auto AnyData::Value::Copy() const -> Value
 
 auto AnyData::Array::Copy() const -> Array
 {
-    FO_STACK_TRACE_ENTRY();
-
     Array arr;
 
     for (const auto& value : _value) {
@@ -148,8 +140,6 @@ auto AnyData::Array::Copy() const -> Array
 
 auto AnyData::Dict::Copy() const -> Dict
 {
-    FO_STACK_TRACE_ENTRY();
-
     Dict dict;
 
     for (const auto& [key, value] : *this) {
@@ -161,8 +151,6 @@ auto AnyData::Dict::Copy() const -> Dict
 
 auto AnyData::Document::Copy() const -> Document
 {
-    FO_STACK_TRACE_ENTRY();
-
     Document doc;
 
     for (const auto& [key, value] : *this) {
@@ -174,8 +162,6 @@ auto AnyData::Document::Copy() const -> Document
 
 auto AnyData::ValueToCodedString(const Value& value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr int32_t default_buf_size = 1024;
 
     switch (value.Type()) {
@@ -241,8 +227,6 @@ auto AnyData::ValueToCodedString(const Value& value) -> string
 
 auto AnyData::ValueToString(const Value& value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string str = ValueToCodedString(value);
 
     if (str.length() >= 2 && str.front() == '\"' && str.back() == '\"') {
@@ -256,8 +240,6 @@ auto AnyData::ValueToString(const Value& value) -> string
 
 auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueType value_type) -> Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(value_type == ValueType::Int64 || value_type == ValueType::Float64 || value_type == ValueType::Bool || value_type == ValueType::String, "AnyData value type cannot be converted to raw payload");
 
     if (as_dict) {
@@ -325,8 +307,6 @@ auto AnyData::ParseValue(const string& str, bool as_dict, bool as_array, ValueTy
 
 auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str[0] == 0) {
         return nullptr;
     }
@@ -421,8 +401,6 @@ auto AnyData::ReadToken(nptr<const char> str, string& result) -> nptr<const char
 
 void StringEscaping::AppendCodeString(string& result, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool protect = str.empty() || str.find_first_of(" \t\r\n\\\"") != string::npos;
 
     if (protect) {
@@ -466,8 +444,6 @@ void StringEscaping::AppendCodeString(string& result, string_view str)
 
 auto StringEscaping::CodeString(string_view str) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(str.length() * 2);
     AppendCodeString(result, str);
@@ -477,8 +453,6 @@ auto StringEscaping::CodeString(string_view str) -> string
 
 auto StringEscaping::DecodeString(string_view str) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str.empty()) {
         return {};
     }

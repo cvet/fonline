@@ -40,7 +40,7 @@ static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<Sp
 
 auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FileReader reader {data};
 
@@ -120,7 +120,7 @@ auto ReadSpriteResource(const_span<uint8_t> data) -> SpriteResourceData
 
 auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteResourceImageData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(!frame.SharedFrameIndex.has_value(), "Cannot extract image pixels from a shared sprite frame", frame.SharedFrameIndex.value_or(0));
 
@@ -153,8 +153,6 @@ auto ExtractSpriteResourceFrameImage(SpriteResourceFrameData frame) -> SpriteRes
 
 static auto ReadSpriteFrameMesh(FileReader& reader, isize32 size) -> optional<SpriteMeshData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint8_t raw_kind = reader.GetUInt8();
 
     if (raw_kind == static_cast<uint8_t>(SpriteMeshKind::Quad)) {

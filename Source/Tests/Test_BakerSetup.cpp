@@ -66,24 +66,18 @@ static auto MakeTempBakerSetupDir(string_view name) -> string
 
 static auto MakeBakerSetupReportPath(string_view output_dir) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string normalized_output = strex(output_dir).normalize_path_slashes().rtrim("/").str();
     return strex(normalized_output).combine_path("Baking.report.json").str();
 }
 
 static auto MakeBakerSetupFullReportPath(string_view output_dir) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string normalized_output = strex(output_dir).normalize_path_slashes().rtrim("/").str();
     return strex(normalized_output).combine_path("Baking.full.report.json").str();
 }
 
 static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto report_data = fs::read_file(MakeBakerSetupReportPath(output_dir));
     REQUIRE(report_data.has_value());
     return nlohmann::json::parse(*report_data);
@@ -91,8 +85,6 @@ static auto ReadBakerSetupReport(string_view output_dir) -> nlohmann::json
 
 static auto FindBakerSetupReportEntry(const nlohmann::json& entries, string_view name) -> const nlohmann::json&
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(entries.is_array());
     auto it = std::ranges::find_if(entries, [name](const nlohmann::json& entry) { return entry.at("name").get<std::string>() == name; });
     REQUIRE(it != entries.end());
@@ -101,8 +93,6 @@ static auto FindBakerSetupReportEntry(const nlohmann::json& entries, string_view
 
 static auto SumBakerSetupReportCounts(const nlohmann::json& entries) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     REQUIRE(entries.is_array());
     uint64_t total = 0;
     for (const nlohmann::json& entry : entries) {
@@ -113,8 +103,6 @@ static auto SumBakerSetupReportCounts(const nlohmann::json& entries) -> uint64_t
 
 static auto MakeBakerSetupSpriteMeshTga() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr uint16_t width = 16;
     constexpr uint16_t height = 16;
     constexpr size_t header_size = 18;

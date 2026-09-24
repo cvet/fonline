@@ -50,15 +50,12 @@ ModelHierarchy::ModelHierarchy(ptr<ModelManager> model_mngr, string file_name, p
     _fileName {std::move(file_name)},
     _rootBone {root_bone}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelHierarchy::~ModelHierarchy() = default;
 
 static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, vector<ModelAnimationRuntimeJoint>& source_joints, vector<ptr<ModelBone>>& source_bones, ptr<ModelBone> bone, int32_t parent_index, uint32_t depth)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t source_index = numeric_cast<int32_t>(source_joints.size());
     source_joints.emplace_back(ModelAnimationRuntimeJoint {string {bone->SourceName.as_str()}, parent_index, bone->RestLocalTransform});
     source_bones.emplace_back(bone);
@@ -71,7 +68,7 @@ static void SetupBonesExt(multimap<uint32_t, ptr<ModelBone>>& bones, vector<Mode
 
 void ModelHierarchy::SetupBones()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     multimap<uint32_t, ptr<ModelBone>> bones;
     vector<ModelAnimationRuntimeJoint> source_joints;
@@ -96,8 +93,6 @@ void ModelHierarchy::SetupBones()
 
 auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bone->Name == bone_name) {
         return bone;
     }
@@ -115,8 +110,6 @@ auto FindModelBone(ptr<ModelBone> bone, hstring bone_name) noexcept -> nptr<Mode
 
 auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> nptr<const ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bone->Name == bone_name) {
         return bone;
     }
@@ -134,8 +127,6 @@ auto FindModelBone(ptr<const ModelBone> bone, hstring bone_name) noexcept -> npt
 
 auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!tex_name.empty(), "Model texture request has an empty texture name", _fileName);
 
     string tex_path = strex(_fileName).extract_dir().combine_path(tex_name);
@@ -150,8 +141,6 @@ auto ModelHierarchy::GetTexture(string_view tex_name) -> ptr<MeshTexture>
 
 auto ModelHierarchy::GetEffect(string_view name) -> ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!name.empty(), "Model effect request has an empty effect name", _fileName);
     auto effect = _modelMngr->_effectMngr->LoadEffect(EffectUsage::Model, name);
     FO_VERIFY_AND_THROW(effect, "Model effect could not be loaded", name, _fileName);

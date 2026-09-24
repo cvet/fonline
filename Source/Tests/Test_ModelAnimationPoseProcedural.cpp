@@ -56,22 +56,16 @@ struct ModelAnimationRuntimeProceduralTestFixture
 
 static auto MakeModelAnimationRuntimeProceduralTestMatrix(const vec3& translation, const quaternion& rotation, const vec3& scale) noexcept -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return glm::translate(mat44 {1.0f}, translation) * glm::mat4_cast(rotation) * glm::scale(mat44 {1.0f}, scale);
 }
 
 static auto ComposeModelAnimationRuntimeProceduralTestTransform(const ModelAnimationRuntimeTransform& transform) noexcept -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return MakeModelAnimationRuntimeProceduralTestMatrix(transform.Translation, transform.Rotation, transform.Scale);
 }
 
 static auto MakeModelAnimationRuntimeProceduralTestJoint(string_view name, initializer_list<string_view> hierarchy, const mat44& rest_local) -> ModelSkeletonJoint
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSkeletonJoint result;
     result.Name = name;
     result.RestLocalTransform = rest_local;
@@ -85,8 +79,6 @@ static auto MakeModelAnimationRuntimeProceduralTestJoint(string_view name, initi
 
 static void CheckModelAnimationRuntimeProceduralTestMatrix(const mat44& actual, const mat44& expected, float32_t margin = 3.0e-4f)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             CAPTURE(column, row, actual[column][row], expected[column][row]);
@@ -97,8 +89,6 @@ static void CheckModelAnimationRuntimeProceduralTestMatrix(const mat44& actual, 
 
 static void CheckModelAnimationRuntimeProceduralTestMatrixExact(const mat44& actual, const mat44& expected)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (mat44::length_type column = 0; column < 4; column++) {
         for (mat44::length_type row = 0; row < 4; row++) {
             CAPTURE(column, row, actual[column][row], expected[column][row]);
@@ -109,8 +99,6 @@ static void CheckModelAnimationRuntimeProceduralTestMatrixExact(const mat44& act
 
 static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationRuntimeProceduralTestFixture
 {
-    FO_STACK_TRACE_ENTRY();
-
     array<vec3, 4> translations {
         vec3 {1.0f, 2.0f, -1.0f},
         vec3 {2.0f, -1.0f, 3.0f},

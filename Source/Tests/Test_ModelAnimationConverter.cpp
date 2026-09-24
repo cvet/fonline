@@ -46,8 +46,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeModelAnimationTestJoint(string_view name, initializer_list<string_view> hierarchy, const mat44& rest = mat44 {1.0f}) -> ModelSkeletonJoint
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSkeletonJoint result;
     result.Name = name;
     result.RestLocalTransform = rest;
@@ -61,8 +59,6 @@ static auto MakeModelAnimationTestJoint(string_view name, initializer_list<strin
 
 static auto MakeModelAnimationTestAnimationJoint(string_view output_name, initializer_list<string_view> hierarchy, const vector<float32_t>& times, const vector<vec3>& translations, const vector<quaternion>& rotations = {}, const vector<vec3>& scales = {}) -> ModelAnimationJointSource
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationJointSource result;
     result.OutputName = output_name;
 
@@ -81,8 +77,6 @@ static auto MakeModelAnimationTestAnimationJoint(string_view output_name, initia
 
 static auto LoadModelAnimationRuntimeTestRig(string_view model_description, string_view base_model, ModelAnimationRigArtifacts artifacts, bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ModelAnimationRigBindingSource> bindings;
     bindings.reserve(artifacts.Clips.size());
 
@@ -98,8 +92,6 @@ static auto LoadModelAnimationRuntimeTestRig(string_view model_description, stri
 
 static auto SampleModelAnimationRuntimeTestMatrices(const ModelAnimationRuntimeRig& rig, size_t clip_index, float32_t ratio) -> vector<mat44>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const ModelAnimationRuntimeClip& clip = rig.GetClip(clip_index);
     float32_t duration = clip.GetDuration();
     float32_t position = ratio < 1.0f ? ratio * duration : std::nextafter(duration, 0.0f);
@@ -114,8 +106,6 @@ static auto SampleModelAnimationRuntimeTestMatrices(const ModelAnimationRuntimeR
 
 static auto GetModelAnimationRuntimeTestRestMatrices(const ModelAnimationRuntimeRig& rig) -> vector<mat44>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelAnimationRuntimePose pose {&rig};
     pose.BuildModelMatrices(mat44 {1.0f});
     return {pose.GetWorldMatrices().begin(), pose.GetWorldMatrices().end()};
@@ -123,8 +113,6 @@ static auto GetModelAnimationRuntimeTestRestMatrices(const ModelAnimationRuntime
 
 static auto GetModelAnimationTestColumn(const mat44& matrix, size_t column) -> array<float32_t, 4>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(column < 4, "Matrix column {} is outside test matrix", column);
     mat44::length_type matrix_column = numeric_cast<mat44::length_type>(column);
     return {matrix[matrix_column][0], matrix[matrix_column][1], matrix[matrix_column][2], matrix[matrix_column][3]};
@@ -132,8 +120,6 @@ static auto GetModelAnimationTestColumn(const mat44& matrix, size_t column) -> a
 
 static auto BuildModelAnimationProductionTestRigData() -> ModelAnimationRigData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSkeletonSource base;
     base.FileName = "Models/ProductionBody.fbx";
     base.Joints = {MakeModelAnimationTestJoint("Root", {"Root"})};
@@ -162,8 +148,6 @@ static auto BuildModelAnimationProductionTestRigData() -> ModelAnimationRigData
 
 static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -> unique_ptr<ModelAnimationRuntimeRig>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSkeletonSource base;
     base.FileName = "Models/RuntimeEvaluation.fbx";
     base.Joints = {
@@ -263,8 +247,6 @@ static auto BuildModelAnimationRuntimeEvaluationTestRig(bool nearest_sampling) -
 
 static auto GetModelAnimationRuntimeEvaluationClip(const ModelAnimationRuntimeRig& rig, int32_t state_anim) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto binding = rig.FindBinding(state_anim, 0);
 
     if (!binding) {
@@ -276,8 +258,6 @@ static auto GetModelAnimationRuntimeEvaluationClip(const ModelAnimationRuntimeRi
 
 static auto GetModelAnimationRuntimeEvaluationJoint(const ModelAnimationRuntimeRig& rig, string_view name) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t joint = 0; joint < rig.GetJointCount(); joint++) {
         if (name == rig.GetJointName(joint)) {
             return joint;

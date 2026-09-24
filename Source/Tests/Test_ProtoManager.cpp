@@ -58,8 +58,6 @@ static auto GetTestRegistrar(EngineMetadata& meta, hstring type_name) -> ptr<con
 template<typename TActual, typename TExpected>
 static auto IsSameProtoPtr(const TActual& actual, const TExpected& expected) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return actual == expected;
 }
 

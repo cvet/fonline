@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Single hex: just check center
     auto worst = check_hex(hex);
 
@@ -141,7 +139,7 @@ auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msi
 
 auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     FindPathOutput output;
 
@@ -442,7 +440,7 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
 
 auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     TraceLineOutput output;
 
@@ -486,8 +484,6 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 
 auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Work in map pixel space with the final hex center as the origin.
     // C = final hex center -> target hex center; the real target adds the target's own sub-hex offset
     ipos32 center_to_hex = GeometryHelper::GetHexOffset(new_to_hex, to_hex);

@@ -41,12 +41,11 @@ EffectManager::EffectManager(ptr<RenderSettings> settings, ptr<FileSystem> resou
     _resources {resources},
     _render {render}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (auto it = _loadedEffects.find(path); it != _loadedEffects.end()) {
         return it->second;
@@ -74,8 +73,6 @@ auto EffectManager::LoadEffect(EffectUsage usage, string_view path) -> nptr<Rend
 
 auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view effectPath) -> ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!effectPath.empty()) {
         auto resolved_effect = LoadEffect(defaultEffect->GetUsage(), effectPath);
 
@@ -91,15 +88,11 @@ auto EffectManager::ResolveEffect(ptr<RenderEffect> defaultEffect, string_view e
 
 void EffectManager::SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetEffectScriptValues(effect, valueIndex, const_span<float32_t> {&value, 1});
 }
 
 void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (valueStartIndex < 0 || valueStartIndex > numeric_cast<int32_t>(EFFECT_SCRIPT_VALUES)) {
         throw EffectManagerException("Effect script value index is out of range", valueStartIndex);
     }
@@ -120,8 +113,6 @@ void EffectManager::SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valu
 
 void EffectManager::ClearEffectScriptValues(ptr<RenderEffect> effect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!effect->IsNeedScriptValueBuf()) {
         throw EffectManagerException("Effect does not declare ScriptValueBuf");
     }
@@ -133,8 +124,6 @@ void EffectManager::ClearEffectScriptValues(ptr<RenderEffect> effect)
 
 auto EffectManager::GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!effect->ScriptValueBuf.has_value()) {
         effect->ScriptValueBuf = RenderEffect::ScriptValueBuffer();
     }
@@ -144,7 +133,7 @@ auto EffectManager::GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<R
 
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     for (auto& effect : _loadedEffects | std::views::values) {
         PerFrameEffectUpdate(effect, game_time);
@@ -153,8 +142,6 @@ void EffectManager::UpdateEffects(const GameTimer& game_time)
 
 void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTimer& game_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (effect->IsNeedTimeBuf()) {
         auto& time_buf = effect->TimeBuf = RenderEffect::TimeBuffer();
 
@@ -186,7 +173,7 @@ void EffectManager::PerFrameEffectUpdate(ptr<RenderEffect> effect, const GameTim
 
 void EffectManager::LoadMinimalEffects()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     int32_t effect_errors = 0;
 
@@ -202,7 +189,7 @@ void EffectManager::LoadMinimalEffects()
 
 void EffectManager::LoadDefaultEffects()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     int32_t effect_errors = 0;
 

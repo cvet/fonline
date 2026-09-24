@@ -49,8 +49,6 @@ static void MixHash(uint64_t& hash, uint64_t value) noexcept;
 
 auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> args, ManagedAbiSlot ret) -> ManagedAbiNativeFrame
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(args.size() <= MAX_CALL_ARGS, "Managed frame argument count exceeds bridge limit", args.size());
     ManagedAbiNativeFrame native_frame {.PackedFrame = frame, .Args = args, .Ret = ret};
     size_t offset = 0;
@@ -77,23 +75,17 @@ auto BuildManagedAbiNativeFrame(span<uint8_t> frame, const_span<ManagedAbiSlot> 
 
 auto GetManagedAbiNativeFrameArg(ManagedAbiNativeFrame& frame, size_t index) -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(index < frame.Args.size(), "Managed frame argument index is out of range", index, frame.Args.size());
     return frame.Storage.data() + frame.ArgOffsets[index];
 }
 
 auto GetManagedAbiNativeFrameResult(ManagedAbiNativeFrame& frame) -> nptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return frame.Ret.Size != 0 ? frame.Storage.data() + frame.ResultOffset : nullptr;
 }
 
 void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < frame.Args.size(); i++) {
         const ManagedAbiSlot& slot = frame.Args[i];
 
@@ -108,16 +100,12 @@ void CopyBackManagedAbiNativeFrame(const ManagedAbiNativeFrame& frame)
 
 static void MixHash(uint64_t& hash, uint64_t value) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t part = hashing_ex::hash(&value, sizeof(value));
     hash ^= part + 0x9e3779b97f4a7c15ULL + (hash << 6) + (hash >> 2);
 }
 
 static void MixHash(uint64_t& hash, string_view text) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (text.empty()) {
         MixHash(hash, uint64_t {0});
         return;
@@ -129,8 +117,6 @@ static void MixHash(uint64_t& hash, string_view text) noexcept
 
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<pair<string, const EntityTypeDesc*>> result;
     result.reserve(types.size());
 
@@ -144,8 +130,6 @@ static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> 
 
 static auto MakeSortedRefTypes(const EngineMetadata& meta) -> vector<pair<string, const RefTypeDesc*>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<pair<string, const RefTypeDesc*>> result;
 
     for (const auto& type : meta.GetBaseTypes() | std::views::values) {
@@ -162,15 +146,11 @@ static auto MakeSortedRefTypes(const EngineMetadata& meta) -> vector<pair<string
 
 static auto CanUseManagedAbiBridge(const BaseTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.Name == "any" || type.IsPrimitive || type.IsString || type.IsHashedString || type.IsEnum || type.IsStruct || type.IsEntity || type.IsFixedType || type.IsRefType;
 }
 
 static auto CanUseManagedAbiBridge(const ComplexTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return true;
     }
@@ -189,8 +169,6 @@ static auto CanUseManagedAbiBridge(const ComplexTypeDesc& type) noexcept -> bool
 
 static auto IsManagedAbiBridgeMethod(const MethodDesc& method) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!CanUseManagedAbiBridge(method.Ret)) {
         return false;
     }
@@ -200,15 +178,11 @@ static auto IsManagedAbiBridgeMethod(const MethodDesc& method) noexcept -> bool
 
 auto IsManagedAbiScalarType(const ComplexTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.Kind == ComplexTypeKind::Simple && (type.BaseType.IsPrimitive || type.BaseType.IsEnum);
 }
 
 auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.Kind == ComplexTypeKind::Simple && IsManagedAbiFixedPropertyValue(type.BaseType);
 }
 
@@ -216,15 +190,11 @@ auto IsManagedAbiFixedValueType(const ComplexTypeDesc& type) noexcept -> bool
 // it needs no layout check of its own here; anything that holds complex data is a ref type instead
 auto IsManagedAbiFixedPropertyValue(const BaseTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.IsPrimitive || type.IsEnum || type.IsHashedString || type.IsStruct;
 }
 
 auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.IsBool || type.IsInt8 || type.IsUInt8) {
         return 1;
     }
@@ -247,8 +217,6 @@ auto ManagedAbiSlotSize(const BaseTypeDesc& type) noexcept -> uint16_t
 
 auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbiValueKind
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         return ManagedAbiValueKind::Bool;
     }
@@ -297,8 +265,6 @@ auto ManagedAbiKindFromBaseType(const BaseTypeDesc& type) noexcept -> ManagedAbi
 
 auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiValueKind
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type_name == "bool") {
         return ManagedAbiValueKind::Bool;
     }
@@ -338,8 +304,6 @@ auto ManagedAbiKindFromTypeName(string_view type_name) noexcept -> ManagedAbiVal
 
 static auto MakeAbiSlot(const ComplexTypeDesc& type, uint16_t offset) -> ManagedAbiSlot
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ManagedAbiSlot slot;
     slot.Kind = ManagedAbiKindFromBaseType(type.BaseType);
     slot.Mutable = type.IsMutable;
@@ -352,8 +316,6 @@ static auto MakeAbiSlot(const ComplexTypeDesc& type, uint16_t offset) -> Managed
 // result; a ref-type result stays boxed, because its ownership rules live in the boxing path
 static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const ComplexTypeDesc& ret, bool ret_nullable, vector<ManagedAbiSlot>& out_args, ManagedAbiSlot& out_ret, uint16_t& frame_size, uint16_t& result_offset) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint16_t offset = 0;
     out_args.clear();
     out_args.reserve(args.size());
@@ -418,7 +380,7 @@ static auto PackScalarSlots(const_span<ArgDesc> args, bool args_wrapped, const C
 
 static void AppendExportSettings(ManagedAbiManifest& abi, string_view target_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     vector<pair<string, string>> export_settings;
 
@@ -447,7 +409,7 @@ static void AppendExportSettings(ManagedAbiManifest& abi, string_view target_nam
 
 auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name) -> ManagedAbiManifest
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     ManagedAbiManifest abi;
     abi.GeneratorIdentity = MANAGED_ABI_GENERATOR_IDENTITY;
@@ -603,8 +565,6 @@ auto BuildManagedAbiManifest(const EngineMetadata& meta, string_view target_name
 
 auto FindManagedAbiMethod(const ManagedAbiManifest& abi, string_view owner, string_view name, size_t owner_index) -> nptr<const ManagedAbiMethodEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ManagedAbiMethodEntry& method : abi.Methods) {
         if (method.Owner == owner && method.Name == name && method.OwnerIndex == owner_index) {
             return &method;
@@ -616,8 +576,6 @@ auto FindManagedAbiMethod(const ManagedAbiManifest& abi, string_view owner, stri
 
 auto FindManagedAbiEvent(const ManagedAbiManifest& abi, string_view owner, string_view name) -> nptr<const ManagedAbiEventEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ManagedAbiEventEntry& event : abi.Events) {
         if (event.Owner == owner && event.Name == name) {
             return &event;
@@ -629,8 +587,6 @@ auto FindManagedAbiEvent(const ManagedAbiManifest& abi, string_view owner, strin
 
 auto FindManagedAbiSetting(const ManagedAbiManifest& abi, string_view name) -> nptr<const ManagedAbiSettingEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ManagedAbiSettingEntry& setting : abi.Settings) {
         if (setting.Name == name) {
             return &setting;
@@ -642,8 +598,6 @@ auto FindManagedAbiSetting(const ManagedAbiManifest& abi, string_view name) -> n
 
 auto FindManagedAbiInnerEntry(const ManagedAbiManifest& abi, string_view owner, string_view entry_name) -> nptr<const ManagedAbiInnerEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (const ManagedAbiInnerEntry& inner : abi.InnerEntries) {
         if (inner.Owner == owner && inner.EntryName == entry_name) {
             return &inner;
@@ -657,7 +611,7 @@ auto FindManagedAbiInnerEntry(const ManagedAbiManifest& abi, string_view owner, 
 // bind stub registers a managed factory for each, and the backend resolves their constructors once at bind time
 auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     vector<string> result;
 
@@ -696,15 +650,11 @@ auto CollectManagedAbiWrapperClasses(const EngineMetadata& meta) -> vector<strin
 
 auto IsManagedAbiDynamicRefType(const BaseTypeDesc& type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type.IsRefType && type.RefType && type.RefType->FieldsRegistrar;
 }
 
 auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.Kind != ComplexTypeKind::Simple) {
         return false;
     }
@@ -725,8 +675,6 @@ auto IsManagedAbiHandleType(const ComplexTypeDesc& type, bool wrapped) noexcept 
 
 auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Metadata type names, not C# spellings: every type a frame carries is a plain identifier on both sides
     string key = "Callback_";
 
@@ -747,8 +695,6 @@ auto MakeManagedAbiCallbackKey(const ComplexTypeDesc& ret, const_span<ComplexTyp
 
 auto BuildManagedAbiCallbackLayout(const ComplexTypeDesc& ret, const_span<ComplexTypeDesc> args) -> ManagedAbiCallbackLayout
 {
-    FO_STACK_TRACE_ENTRY();
-
     ManagedAbiCallbackLayout layout;
     uint16_t offset = 0;
     layout.Args.reserve(args.size());

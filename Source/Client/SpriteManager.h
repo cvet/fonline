@@ -259,6 +259,7 @@ private:
     [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
+    void FlushBatch();
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();

@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 void WriteUpdateDescriptor(vector<uint8_t>& desc, const_span<UpdateDescriptorEntry> entries)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Every entry is checked before the first byte lands in the caller's buffer, so a refusal leaves it as it was
     for (const UpdateDescriptorEntry& entry : entries) {
         FO_VERIFY_AND_THROW(!entry.Name.empty() && entry.Name.length() <= numeric_cast<size_t>(std::numeric_limits<int16_t>::max()), "Update file name length is out of range", entry.Name);
@@ -70,8 +68,6 @@ void WriteUpdateDescriptor(vector<uint8_t>& desc, const_span<UpdateDescriptorEnt
 
 auto ReadUpdateDescriptor(const_span<uint8_t> desc) -> vector<UpdateDescriptorEntry>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<UpdateDescriptorEntry> entries;
     auto reader = data_reader(desc);
 

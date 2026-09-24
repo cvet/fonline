@@ -307,11 +307,18 @@ public:
 
     auto Fire(Args... args) noexcept -> Entity::EventResult
     {
-        FO_STACK_TRACE_ENTRY_NAMED(Name.c_str());
-
+        // Many events fire every frame or tick with nobody subscribed, so only a fire that reaches callbacks opens the zone
         if (!CheckCallbacks()) {
             return Entity::EventResult::ContinueChain;
         }
+
+        return FireSubscribed(std::forward<Args>(args)...);
+    }
+
+private:
+    auto FireSubscribed(Args... args) noexcept -> Entity::EventResult
+    {
+        FO_TRACE_ZONE_NAMED(Script, Name.c_str());
 
         if (_entity->IsGlobal()) {
             array<NativeDataProvider::StorageEntryType, sizeof...(Args)> temp_storage {};

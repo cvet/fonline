@@ -80,8 +80,6 @@ static_assert(RESOURCE_PACK_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | uin
 
 static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     span_write_uint32(buf, HEADER_OFFSET_MAGIC, RESOURCE_PACK_MAGIC);
     span_write_uint16(buf, HEADER_OFFSET_VERSION_MAJOR, header.VersionMajor);
     span_write_uint16(buf, HEADER_OFFSET_VERSION_MINOR, header.VersionMinor);
@@ -99,8 +97,6 @@ static void BuildHeaderBytes(const ResourcePackHeader& header, span<uint8_t> buf
 
 static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourcePackHeader& header) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (span_read_uint32(buf, HEADER_OFFSET_MAGIC) != RESOURCE_PACK_MAGIC) {
         return false;
     }
@@ -127,8 +123,6 @@ static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourcePackHeader& header
 
 auto SerializeResourcePackHeader(const ResourcePackHeader& header) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> data(RESOURCE_PACK_HEADER_SIZE);
     BuildHeaderBytes(header, data);
     return data;
@@ -136,15 +130,11 @@ auto SerializeResourcePackHeader(const ResourcePackHeader& header) -> vector<uin
 
 auto ParseResourcePackHeader(const_span<uint8_t> data, ResourcePackHeader& header) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return data.size() == RESOURCE_PACK_HEADER_SIZE && ParseHeaderBytes(data, header);
 }
 
 auto ResolveResourcePackPath(const vector<string>& directories, string_view name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!directories.empty() && IsResourcePathCanonical(name), "Invalid resource pack search", name);
     string writable = strex(directories.back()).combine_path(strex("{}.fores", name)).str();
     string backup = strex("{}{}", writable, REPLACED_FILE_BACKUP_SUFFIX).str();
@@ -172,8 +162,6 @@ auto ResolveResourcePackPath(const vector<string>& directories, string_view name
 
 auto OpenResourcePackFile(string_view path) noexcept -> fs::disk_read_file
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t separator = FindArchiveSeparator(path);
 
     if (separator == string_view::npos) {
@@ -201,16 +189,12 @@ auto OpenResourcePackFile(string_view path) noexcept -> fs::disk_read_file
 
 auto GetResourcePackWriteTime(string_view path) noexcept -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t separator = FindArchiveSeparator(path);
     return fs::last_write_time(path.substr(0, separator));
 }
 
 static auto FindArchiveSeparator(string_view path) noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A directory may itself end in '!', so "!/" separates an archive only where the prefix is a file
     for (size_t separator = path.find("!/"); separator != string_view::npos; separator = path.find("!/", separator + 2)) {
         string_view archive_path = path.substr(0, separator);
@@ -225,16 +209,12 @@ static auto FindArchiveSeparator(string_view path) noexcept -> size_t
 
 auto ReadResourcePackHeader(string_view path, ResourcePackHeader& header) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     fs::disk_read_file file = OpenResourcePackFile(path);
     return ReadResourcePackHeader(file, header);
 }
 
 auto ReadResourcePackHeader(const fs::disk_read_file& file, ResourcePackHeader& header) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!file || file.get_size() < RESOURCE_PACK_HEADER_SIZE) {
         return false;
     }
@@ -251,7 +231,7 @@ auto ReadResourcePackHeader(const fs::disk_read_file& file, ResourcePackHeader& 
 
 auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     ResourcePackHeader header;
     fs::disk_read_file file = OpenResourcePackFile(path);
@@ -284,8 +264,6 @@ auto VerifyResourcePackFile(string_view path, uint64_t expected_pack_hash) noexc
 
 auto EncodeResourceBlob(const_span<uint8_t> data, const ResourcePackWriteSettings& settings, uint32_t& codec) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     codec = static_cast<uint32_t>(ResourcePackCodec::Stored);
 
     if (data.size() < RESOURCE_PACK_MIN_COMPRESSED_SIZE) {
@@ -307,8 +285,6 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
     _path {path},
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(settings.CompressLevel >= 0 && settings.CompressLevel <= 9, "Pack compression level is out of the zlib range", settings.CompressLevel);
     FO_VERIFY_AND_THROW(settings.MinCompressGainPercent >= 0 && settings.MinCompressGainPercent <= 100, "Pack minimum compression gain is not a percentage", settings.MinCompressGainPercent);
 
@@ -339,8 +315,6 @@ ResourcePackWriter::ResourcePackWriter(string_view path, ResourcePackWriteSettin
 
 ResourcePackWriter::~ResourcePackWriter()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // An abandoned writer leaves no half-written pack behind for a later mount to trip over
     if (!_finished && _file) {
         _file.close();
@@ -350,7 +324,7 @@ ResourcePackWriter::~ResourcePackWriter()
 
 void ResourcePackWriter::AddFile(string_view path, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(!_finished && !_failed, "Pack writer is not accepting entries", _path, path);
     FO_VERIFY_AND_THROW(!path.empty(), "Pack entry path is empty", _path);
@@ -373,7 +347,7 @@ void ResourcePackWriter::AddFile(string_view path, const_span<uint8_t> data)
 
 void ResourcePackWriter::WriteBody(const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(data.size() <= std::numeric_limits<uint64_t>::max() - _bodyOffset, "Resource base size overflow", _path);
     _failed = true;
@@ -389,7 +363,7 @@ void ResourcePackWriter::WriteBody(const_span<uint8_t> data)
 
 void ResourcePackWriter::Finish()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(!_finished && !_failed, "Pack writer is not accepting a commit", _path);
 
@@ -440,8 +414,6 @@ ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path)
     _fileName {path},
     _file {OpenResourcePackFile(path)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_file, "Can't open resource pack file", path);
     array<uint8_t, RESOURCE_PACK_HEADER_SIZE> bytes {};
     bool header_read = _file.get_size() >= bytes.size() && _file.read_at(0, bytes) && ParseResourcePackHeader(bytes, _header);
@@ -477,7 +449,7 @@ ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path)
 
 void ResourcePackSource::ParseIndex()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     uint64_t file_size = _file.get_size();
     FO_VERIFY_AND_THROW(_header.DataOffset == RESOURCE_PACK_HEADER_SIZE && _header.DataSize <= file_size - RESOURCE_PACK_HEADER_SIZE, "Invalid resource pack payload extent", _fileName);
@@ -491,8 +463,6 @@ void ResourcePackSource::ParseIndex()
 
 auto ResourcePackSource::FindEntry(string_view path) const -> nptr<const ResourcePackEntryRef>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _entryLookup.find(path);
 
     if (it == _entryLookup.end()) {
@@ -504,8 +474,6 @@ auto ResourcePackSource::FindEntry(string_view path) const -> nptr<const Resourc
 
 auto ResourcePackSource::ReadEntryData(const ResourcePackEntryRef& entry) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const fs::disk_read_file& file = entry.Source == 0 ? _file : _patchFile;
     vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
     bool payload_read = file.read_at(entry.DataOffset, stored);
@@ -515,15 +483,11 @@ auto ResourcePackSource::ReadEntryData(const ResourcePackEntryRef& entry) const 
 
 auto ResourcePackSource::IsFileExists(string_view path) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !!FindEntry(path);
 }
 
 auto ResourcePackSource::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = FindEntry(path);
 
     if (!entry) {
@@ -537,7 +501,7 @@ auto ResourcePackSource::GetFileInfo(string_view path, size_t& size, uint64_t& w
 
 auto ResourcePackSource::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     auto entry = FindEntry(path);
 
@@ -556,7 +520,7 @@ auto ResourcePackSource::OpenFile(string_view path, size_t& size, uint64_t& writ
 
 auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     vector<string_view> names;
     names.reserve(_entries.size());
@@ -570,15 +534,11 @@ auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_vi
 
 auto ResourcePackSource::GetEntryRefs() const -> vector<ResourcePackEntryRef>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _entries;
 }
 
 auto ResourcePackSource::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<IndexedFile> snapshot;
     snapshot.reserve(_entries.size());
 
@@ -591,8 +551,6 @@ auto ResourcePackSource::GetIndexSnapshot() const -> optional<vector<IndexedFile
 
 auto IsResourcePathCanonical(string_view path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (path.empty() || !strvex(path).is_valid_utf8() || path.find('\\') != string_view::npos || path.find(':') != string_view::npos || path.find('\0') != string_view::npos) {
         return false;
     }
@@ -618,15 +576,13 @@ auto IsResourcePathCanonical(string_view path) noexcept -> bool
 
 auto GetResourcePatchPath(string_view base_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_path.ends_with(".fores"), "Resource base path has no pack extension", base_path);
     return strex("{}.patch.fores", base_path.substr(0, base_path.size() - 6)).str();
 }
 
 auto ComputeResourcePackContentHash(const_span<ResourcePackEntryRef> entries) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     array<uint8_t, 20> fields {};
     span_write_uint32(fields, 0, numeric_cast<uint32_t>(entries.size()));
@@ -645,8 +601,6 @@ auto ComputeResourcePackContentHash(const_span<ResourcePackEntryRef> entries) ->
 
 static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t size = numeric_cast<uint64_t>(entries.size()) * RESOURCE_PACK_ENTRY_SIZE;
 
     string_view previous;
@@ -681,8 +635,6 @@ static auto BuildIndexBytes(const_span<ResourcePackEntryRef> entries) -> vector<
 
 auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeader& header, uint64_t patch_data_end) -> vector<ResourcePackEntryRef>
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint64_t pool_begin = numeric_cast<uint64_t>(header.EntryCount) * RESOURCE_PACK_ENTRY_SIZE;
     FO_VERIFY_AND_THROW(header.IndexStoredSize == stored.size() && pool_begin <= header.IndexDecodedSize && header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Invalid resource catalog size", header.IndexDecodedSize, header.EntryCount);
     vector<uint8_t> index;
@@ -728,8 +680,6 @@ auto DecodeResourcePackIndex(const_span<uint8_t> stored, const ResourcePackHeade
 
 static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(stored.size() == entry.StoredSize, "Resource payload length mismatch", entry.Path);
     vector<uint8_t> data;
 
@@ -747,8 +697,6 @@ static auto DecodeResourceData(const_span<uint8_t> stored, const ResourcePackEnt
 
 static auto IsEncodedResourceIntact(const_span<uint8_t> stored, const ResourcePackEntryRef& entry) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Decoding is the only check a payload has, and it answers with an exception; here the answer is the result
     try {
         (void)DecodeResourceData(stored, entry);
@@ -762,15 +710,11 @@ static auto IsEncodedResourceIntact(const_span<uint8_t> stored, const ResourcePa
 
 static auto IsPatchHeaderBound(const_span<uint8_t> header, uint64_t base_pack_hash) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return header.size() == RESOURCE_PATCH_HEADER_SIZE && span_read_uint32(header, 0) == PATCH_MAGIC && span_read_uint16(header, 4) == RESOURCE_PACK_VERSION_MAJOR && span_read_uint16(header, 6) == RESOURCE_PACK_VERSION_MINOR && span_read_uint64(header, 8) == base_pack_hash && span_read_uint64(header, 16) == 0 && span_read_uint64(header, 24) == HashResourceBytes(RESOURCE_PACK_HASH_SEED, header.first(24));
 }
 
 static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackHeader& base_header, ResourcePatchInfo& info, vector<ResourcePackEntryRef>& entries) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     array<uint8_t, RESOURCE_PATCH_HEADER_SIZE> header {};
 
     if (file.get_size() < header.size()) {
@@ -866,16 +810,12 @@ static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackH
 
 auto ReadResourcePatchInfo(string_view path, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
 {
-    FO_STACK_TRACE_ENTRY();
-
     fs::disk_read_file file = OpenResourcePackFile(path);
     return ReadResourcePatchInfo(file, base_header);
 }
 
 auto ReadResourcePatchInfo(const fs::disk_read_file& file, const ResourcePackHeader& base_header) -> optional<ResourcePatchInfo>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResourcePatchInfo info;
     vector<ResourcePackEntryRef> entries;
     return file && ReadPatchCatalog(file, base_header, info, entries) ? optional<ResourcePatchInfo> {info} : std::nullopt;
@@ -885,8 +825,6 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
     _basePath {base_path},
     _patchPath {patch_path}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(settings.CompressLevel >= 0 && settings.CompressLevel <= 9 && settings.MinCompressGainPercent >= 0 && settings.MinCompressGainPercent <= 100, "Invalid resource patch compression settings");
     ResourcePackSource base {base_path};
     ResourcePackSource current {base_path, patch_path};
@@ -988,8 +926,6 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
 
 void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_file && !_finished && !_failed, "Resource patch writer already started");
     FO_VERIFY_AND_THROW(directory_lock, "Resource patch is written without the resource directory lock", _patchPath);
     _failed = true;
@@ -1032,8 +968,6 @@ void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
 
 void ResourcePatchWriter::AddEncodedFile(const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_file && !_failed && !_finished && _nextDownload < _downloads.size(), "Resource patch is not accepting payloads");
     (void)DecodeResourceData(data, _downloads[_nextDownload]);
     _failed = true;
@@ -1045,7 +979,7 @@ void ResourcePatchWriter::AddEncodedFile(const_span<uint8_t> data)
 
 void ResourcePatchWriter::Finish()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     FO_VERIFY_AND_THROW(_file && !_failed && !_finished && _nextDownload == _downloads.size(), "Resource patch is incomplete");
     array<uint8_t, RESOURCE_PATCH_FOOTER_SIZE> footer {};
@@ -1079,8 +1013,6 @@ ResourcePairVerifier::ResourcePairVerifier(string_view base_path, string_view pa
     _patchPath {patch_path},
     _baseFile {OpenResourcePackFile(base_path)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A base whose header does not read is no pair at all, and the content check that follows already sends it to a download
     if (!ReadResourcePackHeader(_baseFile, _baseHeader)) {
         logging::write("Resource pack: base {} has no readable header", base_path);
@@ -1129,8 +1061,6 @@ ResourcePairVerifier::ResourcePairVerifier(string_view base_path, string_view pa
 
 void ResourcePairVerifier::Step(uint64_t byte_budget)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_finished, "Resource pair verification has already finished", _basePath);
 
     if (_baseRemaining) {
@@ -1147,8 +1077,6 @@ void ResourcePairVerifier::Step(uint64_t byte_budget)
 
 void ResourcePairVerifier::StepBase(uint64_t& byte_budget)
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr size_t SLICE_SIZE = 1024 * 1024;
     uint64_t file_size = _baseFile.get_size();
     _slice.resize(SLICE_SIZE);
@@ -1185,8 +1113,6 @@ void ResourcePairVerifier::StepBase(uint64_t& byte_budget)
 
 void ResourcePairVerifier::StepPatch(uint64_t& byte_budget)
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (_nextPatchEntry < _patchEntries.size()) {
         const ResourcePackEntryRef& entry = _patchEntries[_nextPatchEntry++];
         vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));

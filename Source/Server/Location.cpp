@@ -43,16 +43,12 @@ Location::Location(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoLocation
     EntityWithProto(proto),
     LocationProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     SetEntityLock(&_ownedLock);
 }
 
 Location::~Location()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     FO_VERIFY_AND_CONTINUE(_locMaps.empty(), "Server location has maps during destruction", GetId(), _locMaps.size());
@@ -60,8 +56,6 @@ Location::~Location()
 
 void Location::ClearAllAssociations() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
 
     _locMaps.clear();
@@ -69,32 +63,24 @@ void Location::ClearAllAssociations() noexcept
 
 auto Location::GetRawMaps() noexcept -> vector<refcount_ptr<Map>>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _locMaps;
 }
 
 auto Location::GetName() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _proto->GetName();
 }
 
 auto Location::GetProtoLoc() const noexcept -> ptr<const ProtoLocation>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(NONE);
     return _proto.dyn_cast<ProtoLocation>();
 }
 
 auto Location::GetMaps() const -> vector<ptr<const Map>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vector<ptr<const Map>> result;
     result.reserve(_locMaps.size());
@@ -108,8 +94,6 @@ auto Location::GetMaps() const -> vector<ptr<const Map>>
 
 auto Location::GetMaps() -> vector<ptr<Map>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vector<ptr<Map>> result;
     result.reserve(_locMaps.size());
@@ -123,24 +107,18 @@ auto Location::GetMaps() -> vector<ptr<Map>>
 
 auto Location::GetMapsCount() const -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return _locMaps.size();
 }
 
 auto Location::HasMaps() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     return !_locMaps.empty();
 }
 
 auto Location::GetMapByIndex(int32_t index) noexcept -> nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     if (index < 0 || index >= numeric_cast<int32_t>(_locMaps.size())) {
@@ -152,8 +130,6 @@ auto Location::GetMapByIndex(int32_t index) noexcept -> nptr<Map>
 
 auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     for (auto& map : _locMaps) {
@@ -167,8 +143,6 @@ auto Location::GetMapByPid(hstring map_pid) noexcept -> nptr<Map>
 
 auto Location::GetMapIndex(hstring map_pid) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     size_t index = 0;
 
@@ -185,8 +159,6 @@ auto Location::GetMapIndex(hstring map_pid) const -> size_t
 
 void Location::RestoreMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
     FO_VERIFY_AND_THROW(!IsDestroyed(), "Cannot add a map to an already destroyed location", GetId());
     FO_VERIFY_AND_THROW(!IsDestroying(), "Cannot add a map to a location that is being destroyed", GetId());
@@ -201,8 +173,6 @@ void Location::RestoreMap(ptr<Map> map)
 
 void Location::AddMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vec_add_unique_value(_locMaps, map.hold_ref());
 
     auto map_ids = GetMapIds();
@@ -220,8 +190,6 @@ void Location::AddMap(ptr<Map> map)
 
 void Location::RemoveMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
     vec_remove_unique_value(_locMaps, map.hold_ref());
 

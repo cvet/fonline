@@ -44,12 +44,11 @@ FO_BEGIN_NAMESPACE
 CritterManager::CritterManager(ptr<ServerEngine> engine) :
     _engine {engine}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send) -> ptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Cannot add an item to an already destroyed critter", cr->GetId());
     FO_VERIFY_AND_THROW(!cr->IsDestroying(), "Cannot add an item to a critter that is being destroyed", cr->GetId());
@@ -99,7 +98,7 @@ auto CritterManager::AddItemToCritter(ptr<Critter> cr, ptr<Item> item, bool send
 
 void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool send)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     ValidateEntityAccess(cr);
     EnsureEntitySynced(item);
@@ -135,7 +134,7 @@ void CritterManager::RemoveItemFromCritter(ptr<Critter> cr, ptr<Item> item, bool
 
 auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties> props, ptr<Map> map, mpos hex, mdir dir) -> ptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto map_holder = map.hold_ref();
     ignore_unused(map_holder);
@@ -220,7 +219,7 @@ auto CritterManager::CreateCritterOnMap(hstring proto_id, nptr<const Properties>
 
 void CritterManager::DestroyCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto cr_holder = cr.hold_ref();
     ignore_unused(cr_holder);
@@ -298,7 +297,7 @@ void CritterManager::DestroyCritter(ptr<Critter> cr)
 
 void CritterManager::DestroyInventory(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     ValidateEntityAccess(cr);
 
@@ -315,8 +314,6 @@ void CritterManager::DestroyInventory(ptr<Critter> cr)
 
 auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
     vector<refcount_ptr<Critter>> result;
     result.reserve(all_critters.size());
@@ -332,8 +329,6 @@ auto CritterManager::GetNonPlayerCritters() -> vector<refcount_ptr<Critter>>
 
 auto CritterManager::GetPlayerCritters() -> vector<refcount_ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<refcount_ptr<Critter>> all_critters = _engine->EntityMngr.GetCritters();
 
     vector<refcount_ptr<Critter>> result;

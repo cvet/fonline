@@ -46,8 +46,6 @@ FO_BEGIN_NAMESPACE
 
 static auto RequireHexCritter(ptr<CritterView> cr) -> ptr<CritterHexView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto hex_cr = cr.dyn_cast<CritterHexView>();
 
     if (!hex_cr) {
