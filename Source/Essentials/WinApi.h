@@ -93,6 +93,8 @@ namespace winapi
     auto write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t;
     auto truncate_file(int32_t fd) noexcept -> bool;
     auto sync_file(int32_t fd) noexcept -> bool;
+    // Windows flushes a directory only through a handle opened for writing, so a read-only directory answers false
+    auto sync_directory(const string& path) noexcept -> bool;
     auto lock_named_mutex(const string& name) noexcept -> nptr<void>;
     void unlock_named_mutex(nptr<void> lock) noexcept;
     auto rename_file_durable(const string& from, const string& to) noexcept -> bool;

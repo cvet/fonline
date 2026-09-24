@@ -432,11 +432,12 @@ auto fs::sync_parent(string_view path) noexcept -> bool
 {
     FO_STACK_TRACE_ENTRY();
 
+    string dir = strex(path).extract_dir().str();
+
 #if FO_WINDOWS
-    ignore_unused(path);
-    return true;
+    return winapi::sync_directory(fs::make_io_path(dir.empty() ? string_view {"."} : string_view {dir}));
 #else
-    return posix::sync_directory(strex(path).extract_dir().str());
+    return posix::sync_directory(dir);
 #endif
 }
 

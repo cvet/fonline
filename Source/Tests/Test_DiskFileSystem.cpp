@@ -489,6 +489,22 @@ TEST_CASE("DiskFilePrimitives")
         reader.close();
     }
 
+    SECTION("SyncParentPersistsEntriesOnEveryPlatform")
+    {
+        // An answer of true has to mean the directory was flushed, so a directory that is not there answers false
+        string temp_dir = MakeTempTestDir("diskfs_sync_parent");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string dir = strex(temp_dir).combine_path("Каталог").str();
+        REQUIRE(fs::create_directories(dir));
+        string file_path = strex(dir).combine_path("Файл.bin").str();
+
+        REQUIRE(fs::write_file(file_path, string_view {"x"}));
+        CHECK(fs::sync_parent(file_path));
+        REQUIRE(fs::remove_file(file_path));
+        CHECK(fs::sync_parent(file_path));
+        CHECK_FALSE(fs::sync_parent(strex(temp_dir).combine_path("Нет").combine_path("Файл.bin").str()));
+    }
+
     SECTION("OpeningAMissingFileLeavesTheHandleClosed")
     {
         string temp_dir = MakeTempTestDir("diskfs_missing");

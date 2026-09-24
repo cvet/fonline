@@ -480,6 +480,22 @@ auto winapi::sync_file(int32_t fd) noexcept -> bool
     return ::_commit(fd) == 0;
 }
 
+auto winapi::sync_directory(const string& path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring path_wide = strex(path).to_wide_char();
+    HANDLE dir_handle = ::CreateFileW(path_wide.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    bool flushed = ::FlushFileBuffers(dir_handle) != FALSE;
+    (void)::CloseHandle(dir_handle);
+    return flushed;
+}
+
 auto winapi::lock_named_mutex(const string& name) noexcept -> nptr<void>
 {
     FO_STACK_TRACE_ENTRY();

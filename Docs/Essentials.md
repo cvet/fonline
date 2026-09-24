@@ -293,8 +293,13 @@ Windows named mutex). The two do not nest alike: a flock belongs to one open fil
 on the same directory is refused even inside the process holding the first, while a named mutex lets its owning
 thread take it again - code that must hold the directory across nested steps takes the lock once and passes it
 down, as `ResourcePatchWriter::Begin` receives the updater's. POSIX readers can retain old inodes across replacement; Windows sharing can reject
-replacement/deletion while readers are open. `fs::sync_parent` persists POSIX directory entries;
-`fs::rename_durable` uses that ordering on POSIX and write-through MoveFileEx on Windows. On Windows the
+replacement/deletion while readers are open. `fs::sync_parent` persists the directory entry of a path - its
+creation, rename or removal - on every platform, and `true` always means the parent directory was flushed:
+`fsync` of the directory on POSIX, and on Windows `FlushFileBuffers` through a handle opened for reading and
+writing with `FILE_FLAG_BACKUP_SEMANTICS` (Windows refuses the flush through a read-only handle, so a directory
+the process cannot write answers `false`). The web build answers `true` without a call, its file system lives in
+memory and has no disk to reach. `fs::rename_durable` is a rename followed by a flush of both parents on POSIX,
+since a move between directories changes both, and a write-through `MoveFileEx` on Windows. On Windows the
 handles and the durable rename open the `fs::make_io_path` form as UTF-16, like every other disk call, so a
 non-ASCII or long writable root works; handles are not inherited by child processes on either platform.
 
