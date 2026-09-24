@@ -53,7 +53,9 @@ ProgramArgs::ProgramArgs(int32_t argc, nptr<char*> argv)
 {
     FO_STACK_TRACE_ENTRY();
 
-    if (optional<vector<string>> platform_args = platform::get_command_line_args(); platform_args.has_value()) {
+    optional<vector<string>> platform_args = platform::get_command_line_args();
+
+    if (platform_args.has_value()) {
         _values = std::move(platform_args.value());
     }
     else {

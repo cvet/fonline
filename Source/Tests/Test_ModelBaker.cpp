@@ -183,7 +183,8 @@ static auto LoadTestModelSourceFixture(string_view path, const File& file) -> Mo
     FO_STACK_TRACE_ENTRY();
 
     auto reader = data_reader(file.GetDataSpan());
-    FO_VERIFY_AND_THROW(reader.read_string() == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
+    string marker = reader.read_string();
+    FO_VERIFY_AND_THROW(marker == "LF_TEST_MODEL_SOURCE", "Unexpected test model source fixture", path);
 
     ModelSourceAsset asset;
     asset.FileName = path;

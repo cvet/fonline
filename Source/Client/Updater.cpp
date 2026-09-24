@@ -307,7 +307,8 @@ void Updater::TryStart()
     FO_STACK_TRACE_ENTRY();
 
     string directory = GetClientWritableResourceDir(*_settings);
-    FO_VERIFY_AND_THROW(fs::create_directories(directory), "Can't create writable resource directory", directory);
+    bool directory_created = fs::create_directories(directory);
+    FO_VERIFY_AND_THROW(directory_created, "Can't create writable resource directory", directory);
     unique_ptr<fs::disk_directory_lock> lock = safe_alloc::make_unique<fs::disk_directory_lock>(directory);
 
     if (!*lock) {
@@ -485,10 +486,12 @@ void Updater::FinishResourcesUpdate()
 
             string base = GetClientResourcePackPath(*_settings, string_view(file.Name).substr(0, file.Name.size() - 6));
             ResourcePackHeader header;
-            FO_VERIFY_AND_THROW(ReadResourcePackHeader(base, header), "Resource base disappeared before readiness", base);
+            bool header_read = ReadResourcePackHeader(base, header);
+            FO_VERIFY_AND_THROW(header_read, "Resource base disappeared before readiness", base);
 
             if (!ReadResourcePatchInfo(patch, header)) {
-                FO_VERIFY_AND_THROW(fs::remove_file(patch) && fs::sync_parent(patch), "Can't remove stale resource patch", patch);
+                bool patch_removed = fs::remove_file(patch) && fs::sync_parent(patch);
+                FO_VERIFY_AND_THROW(patch_removed, "Can't remove stale resource patch", patch);
             }
         }
     }
@@ -620,8 +623,11 @@ void Updater::GetNextFile()
         try_promote_staged_binary(prev_update_file, prev_path_str);
 
         if (!prev_update_file.IsClientBinary) {
-            FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
-            FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
+            string superseded_patch = GetResourcePatchPath(prev_path_str);
+            bool patch_removed = !fs::exists(superseded_patch) || fs::remove_file(superseded_patch);
+            FO_VERIFY_AND_THROW(patch_removed, "Can't remove superseded resource patch", prev_path_str);
+            bool removal_persisted = fs::sync_parent(prev_path_str);
+            FO_VERIFY_AND_THROW(removal_persisted, "Can't persist resource patch removal", prev_path_str);
             RecordVerifiedBase(prev_path_str);
         }
 
@@ -647,7 +653,8 @@ void Updater::GetNextFile()
 
         if (!next_update_file.IsClientBinary) {
             string directory = GetClientWritableResourceDir(*_settings);
-            FO_VERIFY_AND_THROW(fs::create_directories(directory), "Can't create writable resource directory", directory);
+            bool directory_created = fs::create_directories(directory);
+            FO_VERIFY_AND_THROW(directory_created, "Can't create writable resource directory", directory);
         }
 
         string prev_path_str = make_final_path(next_update_file);
@@ -677,8 +684,11 @@ void Updater::GetNextFile()
                     try_promote_staged_binary(next_update_file, prev_path_str);
 
                     if (!next_update_file.IsClientBinary) {
-                        FO_VERIFY_AND_THROW(!fs::exists(GetResourcePatchPath(prev_path_str)) || fs::remove_file(GetResourcePatchPath(prev_path_str)), "Can't remove superseded resource patch", prev_path_str);
-                        FO_VERIFY_AND_THROW(fs::sync_parent(prev_path_str), "Can't persist resource patch removal", prev_path_str);
+                        string superseded_patch = GetResourcePatchPath(prev_path_str);
+                        bool patch_removed = !fs::exists(superseded_patch) || fs::remove_file(superseded_patch);
+                        FO_VERIFY_AND_THROW(patch_removed, "Can't remove superseded resource patch", prev_path_str);
+                        bool removal_persisted = fs::sync_parent(prev_path_str);
+                        FO_VERIFY_AND_THROW(removal_persisted, "Can't persist resource patch removal", prev_path_str);
                         RecordVerifiedBase(prev_path_str);
                     }
 
@@ -795,7 +805,8 @@ void Updater::FinishResourceRange()
         string pack_name = strex(file.Name).erase_file_extension().str();
         string base = GetClientResourcePackPath(*_settings, pack_name);
         string patch = GetClientResourcePatchPath(*_settings, pack_name);
-        FO_VERIFY_AND_THROW(fs::create_directories(strex(patch).extract_dir().str()), "Can't create patch directory", patch);
+        bool patch_directory_created = fs::create_directories(strex(patch).extract_dir().str());
+        FO_VERIFY_AND_THROW(patch_directory_created, "Can't create patch directory", patch);
 
         try {
             _patchWriter = safe_alloc::make_unique<ResourcePatchWriter>(base, patch, std::move(entries), file.PackHeader.ContentHash);

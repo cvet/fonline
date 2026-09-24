@@ -440,10 +440,12 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
         uint64_t patch_end = span_read_uint64(_index, record_offset + PACK_OFFSET_PATCH_END);
         vector<ResourceIndexPack> resolved;
         vector<string> paths;
-        FO_VERIFY_AND_THROW(ResolveResourceIndexPacks(pack_dirs, {pack_name}, resolved, paths) && resolved.front().PackHash == pack_hash && resolved.front().PatchHash == patch_hash && resolved.front().PatchEnd == patch_end, "Resource index names a different resource pair", pack_name);
+        bool pair_resolved = ResolveResourceIndexPacks(pack_dirs, {pack_name}, resolved, paths);
+        FO_VERIFY_AND_THROW(pair_resolved && resolved.front().PackHash == pack_hash && resolved.front().PatchHash == patch_hash && resolved.front().PatchEnd == patch_end, "Resource index names a different resource pair", pack_name);
         ResourcePackHeader resolved_header;
         fs::disk_read_file pack_file = OpenResourcePackFile(paths.front());
-        FO_VERIFY_AND_THROW(ReadResourcePackHeader(pack_file, resolved_header) && resolved_header.PackHash == pack_hash, "Indexed base changed before opening", pack_name);
+        bool header_read = ReadResourcePackHeader(pack_file, resolved_header);
+        FO_VERIFY_AND_THROW(header_read && resolved_header.PackHash == pack_hash, "Indexed base changed before opening", pack_name);
         pack_headers.emplace_back(resolved_header);
         _packFiles.emplace_back(std::move(pack_file));
         fs::disk_read_file patch_file {resolved.front().PatchPath};

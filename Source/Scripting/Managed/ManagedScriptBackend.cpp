@@ -7830,7 +7830,8 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
     allocator_vtable.realloc = &ManagedMemRealloc;
     allocator_vtable.free = &ManagedMemFree;
     allocator_vtable.calloc = &ManagedMemCalloc;
-    FO_VERIFY_AND_THROW(mono_set_allocator_vtable(&allocator_vtable) != 0, "Failed to install Managed runtime allocator vtable");
+    int32_t installed = mono_set_allocator_vtable(&allocator_vtable);
+    FO_VERIFY_AND_THROW(installed != 0, "Failed to install Managed runtime allocator vtable");
 
     MonoEglibMemVTable installed_vtable {};
     monoeg_g_mem_get_vtable(&installed_vtable);

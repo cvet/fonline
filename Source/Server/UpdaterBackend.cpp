@@ -73,7 +73,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
         if (is_resource_pack) {
             ResourcePackHeader pack_header;
-            FO_VERIFY_AND_THROW(ReadResourcePackHeader(data.File, pack_header), "Client update resource header is invalid", disk_path);
+            bool header_read = ReadResourcePackHeader(data.File, pack_header);
+            FO_VERIFY_AND_THROW(header_read, "Client update resource header is invalid", disk_path);
             data.Hash = pack_header.PackHash;
             data.PackHeader = pack_header;
         }
@@ -81,7 +82,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
         if (settings.ServerNetwork.UpdateFilesInMemory) {
             data.InMemory = true;
             data.MemoryData.resize(numeric_cast<size_t>(data.Size));
-            FO_VERIFY_AND_THROW(data.File.read_at(0, data.MemoryData), "Can't read client update file", disk_path);
+            bool file_read = data.File.read_at(0, data.MemoryData);
+            FO_VERIFY_AND_THROW(file_read, "Can't read client update file", disk_path);
 
             if (!is_resource_pack) {
                 data.Hash = fs::hash_data(data.MemoryData);

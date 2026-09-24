@@ -154,7 +154,8 @@ auto ResolveResourcePackPath(const vector<string>& directories, string_view name
         FO_VERIFY_AND_THROW(lock, "Resource directory is being updated", writable);
 
         if (!fs::exists(writable) && fs::exists(backup)) {
-            FO_VERIFY_AND_THROW(fs::rename_durable(backup, writable), "Can't restore resource base backup", writable);
+            bool restored = fs::rename_durable(backup, writable);
+            FO_VERIFY_AND_THROW(restored, "Can't restore resource base backup", writable);
         }
     }
 
@@ -443,7 +444,8 @@ ResourcePackSource::ResourcePackSource(string_view path, string_view patch_path)
 
     FO_VERIFY_AND_THROW(_file, "Can't open resource pack file", path);
     array<uint8_t, RESOURCE_PACK_HEADER_SIZE> bytes {};
-    FO_VERIFY_AND_THROW(_file.get_size() >= bytes.size() && _file.read_at(0, bytes) && ParseResourcePackHeader(bytes, _header), "Invalid resource pack header", path);
+    bool header_read = _file.get_size() >= bytes.size() && _file.read_at(0, bytes) && ParseResourcePackHeader(bytes, _header);
+    FO_VERIFY_AND_THROW(header_read, "Invalid resource pack header", path);
     _writeTime = GetResourcePackWriteTime(path);
     ParseIndex();
 
@@ -482,7 +484,8 @@ void ResourcePackSource::ParseIndex()
     FO_VERIFY_AND_THROW(_header.IndexOffset == _header.DataOffset + _header.DataSize && _header.IndexOffset <= file_size && _header.IndexStoredSize == file_size - _header.IndexOffset, "Invalid resource pack catalog extent", _fileName);
     FO_VERIFY_AND_THROW(_header.IndexStoredSize <= std::numeric_limits<uint32_t>::max() && _header.IndexDecodedSize <= std::numeric_limits<uint32_t>::max(), "Resource catalog exceeds its size limit", _fileName);
     vector<uint8_t> stored(numeric_cast<size_t>(_header.IndexStoredSize));
-    FO_VERIFY_AND_THROW(_file.read_at(_header.IndexOffset, stored), "Can't read resource pack catalog", _fileName);
+    bool catalog_read = _file.read_at(_header.IndexOffset, stored);
+    FO_VERIFY_AND_THROW(catalog_read, "Can't read resource pack catalog", _fileName);
     _entries = DecodeResourcePackIndex(stored, _header);
 }
 
@@ -505,7 +508,8 @@ auto ResourcePackSource::ReadEntryData(const ResourcePackEntryRef& entry) const 
 
     const fs::disk_read_file& file = entry.Source == 0 ? _file : _patchFile;
     vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
-    FO_VERIFY_AND_THROW(file.read_at(entry.DataOffset, stored), "Can't read resource pack payload", _fileName, entry.Path);
+    bool payload_read = file.read_at(entry.DataOffset, stored);
+    FO_VERIFY_AND_THROW(payload_read, "Can't read resource pack payload", _fileName, entry.Path);
     return DecodeResourceData(stored, entry);
 }
 
@@ -773,7 +777,8 @@ static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackH
         return false;
     }
 
-    FO_VERIFY_AND_THROW(file.read_at(0, header), "Can't read resource patch header");
+    bool header_read = file.read_at(0, header);
+    FO_VERIFY_AND_THROW(header_read, "Can't read resource patch header");
 
     // A torn header commits nothing, like a patch without a footer: the base stays the view and the updater
     // recreates the file. Refusing it would keep the client from starting, and a reinstall does not reach it
@@ -838,7 +843,8 @@ static auto ReadPatchCatalog(const fs::disk_read_file& file, const ResourcePackH
     while (end >= RESOURCE_PATCH_HEADER_SIZE + RESOURCE_PATCH_FOOTER_SIZE) {
         uint64_t begin = end - std::min(end - RESOURCE_PATCH_HEADER_SIZE, SCAN_SIZE);
         size_t size = numeric_cast<size_t>(end - begin);
-        FO_VERIFY_AND_THROW(file.read_at(begin, span<uint8_t> {buffer.data(), size}), "Can't read resource patch recovery window", begin, size);
+        bool window_read = file.read_at(begin, span<uint8_t> {buffer.data(), size});
+        FO_VERIFY_AND_THROW(window_read, "Can't read resource patch recovery window", begin, size);
 
         for (size_t i = size - RESOURCE_PATCH_FOOTER_SIZE + 1; i != 0; --i) {
             const_span<uint8_t> candidate {buffer.data() + i - 1, RESOURCE_PATCH_FOOTER_SIZE};
@@ -988,11 +994,13 @@ void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
     FO_VERIFY_AND_THROW(directory_lock, "Resource patch is written without the resource directory lock", _patchPath);
     _failed = true;
     ResourcePackHeader base;
-    FO_VERIFY_AND_THROW(ReadResourcePackHeader(_basePath, base) && base.PackHash == _info.BasePackHash, "Resource base changed during patch preparation", _basePath);
+    bool base_read = ReadResourcePackHeader(_basePath, base);
+    FO_VERIFY_AND_THROW(base_read && base.PackHash == _info.BasePackHash, "Resource base changed during patch preparation", _basePath);
     FO_VERIFY_AND_THROW(fs::file_size(_patchPath).value_or(0) == _originalSize, "Resource patch changed during preparation", _patchPath);
 
     if (_recreate && fs::exists(_patchPath)) {
-        FO_VERIFY_AND_THROW(fs::remove_file(_patchPath), "Can't remove an uncommitted or stale patch", _patchPath);
+        bool stale_removed = fs::remove_file(_patchPath);
+        FO_VERIFY_AND_THROW(stale_removed, "Can't remove an uncommitted or stale patch", _patchPath);
     }
 
     _file = fs::disk_write_file {_patchPath, fs::disk_write_mode::append};
@@ -1005,7 +1013,8 @@ void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
         span_write_uint16(header, 6, RESOURCE_PACK_VERSION_MINOR);
         span_write_uint64(header, 8, _info.BasePackHash);
         span_write_uint64(header, 24, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {header.data(), 24}));
-        FO_VERIFY_AND_THROW(_file.write(header) && _file.flush(), "Can't initialize resource patch", _patchPath);
+        bool header_written = _file.write(header) && _file.flush();
+        FO_VERIFY_AND_THROW(header_written, "Can't initialize resource patch", _patchPath);
     }
     else {
         if (_hasCommit) {
@@ -1013,7 +1022,8 @@ void ResourcePatchWriter::Begin(const fs::disk_directory_lock& directory_lock)
             FO_VERIFY_AND_THROW(current && current->CommittedSize == _startOffset && current->IndexHash == _startIndexHash, "Resource patch commit changed during preparation", _patchPath);
         }
 
-        FO_VERIFY_AND_THROW(_file.truncate_to(_keptSize), "Can't remove incomplete resource patch tail", _patchPath);
+        bool tail_removed = _file.truncate_to(_keptSize);
+        FO_VERIFY_AND_THROW(tail_removed, "Can't remove incomplete resource patch tail", _patchPath);
     }
 
     _nextDownload = _resumedDownloads;
@@ -1027,7 +1037,8 @@ void ResourcePatchWriter::AddEncodedFile(const_span<uint8_t> data)
     FO_VERIFY_AND_THROW(_file && !_failed && !_finished && _nextDownload < _downloads.size(), "Resource patch is not accepting payloads");
     (void)DecodeResourceData(data, _downloads[_nextDownload]);
     _failed = true;
-    FO_VERIFY_AND_THROW(_file.write(data), "Can't append resource patch payload", _patchPath);
+    bool appended = _file.write(data);
+    FO_VERIFY_AND_THROW(appended, "Can't append resource patch payload", _patchPath);
     ++_nextDownload;
     _failed = false;
 }
@@ -1052,9 +1063,12 @@ void ResourcePatchWriter::Finish()
     span_write_uint64(footer, 64, _info.IndexHash);
     span_write_uint64(footer, 72, HashResourceBytes(RESOURCE_PACK_HASH_SEED, {footer.data(), 72}));
     _failed = true;
-    FO_VERIFY_AND_THROW(_file.write(_index) && _file.flush(), "Can't flush resource patch catalog", _patchPath);
-    FO_VERIFY_AND_THROW(_file.write(footer) && _file.flush(), "Can't commit resource patch footer", _patchPath);
-    FO_VERIFY_AND_THROW(fs::sync_parent(_patchPath), "Can't persist resource patch directory entry", _patchPath);
+    bool catalog_written = _file.write(_index) && _file.flush();
+    FO_VERIFY_AND_THROW(catalog_written, "Can't flush resource patch catalog", _patchPath);
+    bool footer_written = _file.write(footer) && _file.flush();
+    FO_VERIFY_AND_THROW(footer_written, "Can't commit resource patch footer", _patchPath);
+    bool entry_persisted = fs::sync_parent(_patchPath);
+    FO_VERIFY_AND_THROW(entry_persisted, "Can't persist resource patch directory entry", _patchPath);
     _file.close();
     _finished = true;
     _failed = false;

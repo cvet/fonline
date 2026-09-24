@@ -97,7 +97,9 @@ auto ReadUpdateDescriptor(const_span<uint8_t> desc) -> vector<UpdateDescriptorEn
 
         if (header_size != 0) {
             ResourcePackHeader pack_header;
-            FO_VERIFY_AND_THROW(ParseResourcePackHeader(reader.read_bytes(header_size), pack_header), "Invalid advertised resource header", entry.Name);
+            const_span<uint8_t> header_bytes = reader.read_bytes(header_size);
+            bool header_parsed = ParseResourcePackHeader(header_bytes, pack_header);
+            FO_VERIFY_AND_THROW(header_parsed, "Invalid advertised resource header", entry.Name);
             entry.PackHeader = pack_header;
         }
 

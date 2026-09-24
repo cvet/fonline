@@ -1457,7 +1457,8 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
         }
 
         try {
-            FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", key);
+            bool first_seen = seen_properties.emplace(prop.as_ptr()).second;
+            FO_VERIFY_AND_THROW(first_seen, "Duplicate persisted property", key);
             ApplyPropertyFromText(prop, value);
         }
         catch (const std::exception& ex) {

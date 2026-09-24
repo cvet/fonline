@@ -292,7 +292,8 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
                 attribute_position += numeric_cast<size_t>(transform_value_count) * sizeof(float32_t);
             }
 
-            FO_VERIFY_AND_THROW(read_bool(attribute_position, object_end), "Particle binary fixture has no System.groups value");
+            bool groups_defined = read_bool(attribute_position, object_end);
+            FO_VERIFY_AND_THROW(groups_defined, "Particle binary fixture has no System.groups value");
             uint32_t group_count = read_uint32(attribute_position, object_end);
             attribute_position += sizeof(uint32_t);
             FO_VERIFY_AND_THROW(group_count == 1 && numeric_cast<size_t>(group_count) <= (object_end - attribute_position) / sizeof(uint32_t), "Particle binary fixture has unexpected System.groups data");

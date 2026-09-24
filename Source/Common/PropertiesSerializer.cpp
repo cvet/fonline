@@ -115,7 +115,8 @@ auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData
                     continue;
                 }
 
-                FO_VERIFY_AND_THROW(seen_properties.emplace(prop.as_ptr()).second, "Duplicate persisted property", doc_key);
+                bool first_seen = seen_properties.emplace(prop.as_ptr()).second;
+                FO_VERIFY_AND_THROW(first_seen, "Duplicate persisted property", doc_key);
                 LoadPropertyFromValue(props, prop, doc_value, hashes, name_resolver);
             }
         }

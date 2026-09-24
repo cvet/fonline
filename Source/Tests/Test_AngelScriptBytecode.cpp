@@ -346,7 +346,8 @@ namespace
 
         ptr<asIScriptGeneric> generic = gen;
         VariadicProbeValue value {.Value = 123};
-        FO_VERIFY_AND_THROW(generic->SetReturnObject(&value) >= 0, "Failed to return variadic probe value");
+        int32_t returned = generic->SetReturnObject(&value);
+        FO_VERIFY_AND_THROW(returned >= 0, "Failed to return variadic probe value");
     }
 
     static int GlobalInt = 0;
