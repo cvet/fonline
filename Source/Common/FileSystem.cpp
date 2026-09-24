@@ -32,8 +32,97 @@
 //
 
 #include "FileSystem.h"
+#include "ResourcePack.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
+
+auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> pack_dirs {settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput};
+
+    // Downloaded packs land under the writable root, so for an installed client they are the current ones
+    // and must win over the install-dir copies
+    if (settings.Common.Packaged && !settings.Common.UserWritablePath.empty()) {
+        string writable_dir = GetClientWritableResourceDir(settings);
+
+        if (writable_dir != pack_dirs.front()) {
+            pack_dirs.emplace_back(std::move(writable_dir));
+        }
+    }
+
+    return pack_dirs;
+}
+
+auto GetClientWritableResourceDir(const ClientSettings& settings) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (settings.Common.UserWritablePath.empty()) {
+        return string(settings.Baking.ClientResources);
+    }
+
+    string relative = fs::is_absolute_path(settings.Baking.ClientResources) ? "Resources" : string(settings.Baking.ClientResources);
+    return fs::make_writable_path(settings.Common.UserWritablePath, relative);
+}
+
+auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ResolveResourcePackPath(GetClientPackDirs(settings), pack_name);
+}
+
+auto GetClientResourcePatchPath(const ClientSettings& settings, string_view pack_name) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return strex(GetClientWritableResourceDir(settings)).combine_path(strex("{}.patch.fores", pack_name)).str();
+}
+
+auto IsClientResourcePackCurrent(const ClientSettings& settings, string_view pack_name, uint64_t content_hash) -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // The updater and the game client both ask this, so neither can call a pair current that the other rejects.
+    // A pair that does not mount is not current either: the updater repairs it
+    try {
+        ResourcePackSource resource {GetClientResourcePackPath(settings, pack_name), GetClientResourcePatchPath(settings, pack_name)};
+        return resource.GetContentHash() == content_hash;
+    }
+    catch (const std::exception& ex) {
+        logging::write("Client resources: pack pair {} needs repair, {}", pack_name, ex.what());
+        return false;
+    }
+}
+
+void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, string_view pack_name, bool optional)
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> dirs = GetClientPackDirs(settings);
+
+    if (settings.Common.Packaged && pack_name != EMBEDDED_PACK_NAME) {
+        string base_path = GetClientResourcePackPath(settings, pack_name);
+
+        if (optional && !OpenResourcePackFile(base_path)) {
+            return;
+        }
+
+        resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(base_path, GetClientResourcePatchPath(settings, pack_name)));
+        return;
+    }
+
+    resources.AddPackSource(dirs.front(), pack_name, optional);
+
+    if (pack_name != EMBEDDED_PACK_NAME) {
+        for (size_t i = 1; i < dirs.size(); ++i) {
+            resources.AddPackSource(dirs[i], pack_name, true);
+        }
+    }
+}
 
 FileHeader::FileHeader(string_view path, size_t size, uint64_t write_time, ptr<const DataSource> ds) :
     _isLoaded {true},

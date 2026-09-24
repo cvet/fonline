@@ -296,7 +296,8 @@ protected:
         unordered_map<DataBaseKey, size_t> index_by_id;
 
         for (size_t i = 0; i < ids.size(); i++) {
-            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatSqliteDbKey(ids[i]));
+            bool first_request = index_by_id.emplace(ids[i], i).second;
+            FO_VERIFY_AND_THROW(first_request, "Batch read requested the same record twice", collection_name, FormatSqliteDbKey(ids[i]));
         }
 
         scoped_lock locker {_storageLocker};
@@ -421,7 +422,8 @@ protected:
         // source's own file, and a memory source has none, which SQLite answers with SQLITE_CANTOPEN
         string source_path = strex("{}/Storage.snapshot-restore", _storageDir);
 
-        FO_VERIFY_AND_THROW(fs::write_file(source_path, snapshot_data), "Cannot write the snapshot restore scratch database", source_path);
+        bool source_written = fs::write_file(source_path, snapshot_data);
+        FO_VERIFY_AND_THROW(source_written, "Cannot write the snapshot restore scratch database", source_path);
 
         auto remove_source_file = scope_exit([&source_path]() noexcept { (void)fs::remove_file(source_path); });
 

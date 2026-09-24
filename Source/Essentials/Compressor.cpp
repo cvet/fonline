@@ -63,6 +63,24 @@ auto compressor::compress(const_span<uint8_t> data) -> vector<uint8_t>
     return buf;
 }
 
+auto compressor::compress(const_span<uint8_t> data, int32_t level) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    // zlib's own bound, since the size-based estimate above wraps a 32-bit size_t for inputs past a few dozen megabytes
+    uLongf buf_len = compressBound(numeric_cast<uLong>(data.size()));
+    auto buf = vector<uint8_t>(numeric_cast<size_t>(buf_len));
+
+    int32_t result = compress2(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()), level);
+
+    if (result != Z_OK) {
+        throw CompressionException("Compression failed", result, level);
+    }
+
+    buf.resize(buf_len);
+    return buf;
+}
+
 auto compressor::decompress(const_span<uint8_t> data, size_t mul_approx) -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
@@ -86,6 +104,27 @@ auto compressor::decompress(const_span<uint8_t> data, size_t mul_approx) -> vect
     }
 
     buf.resize(buf_len);
+    return buf;
+}
+
+auto compressor::decompress_exact(const_span<uint8_t> data, size_t decoded_size) -> vector<uint8_t>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto buf_len = numeric_cast<uLongf>(decoded_size);
+    auto buf = vector<uint8_t>(decoded_size);
+
+    int32_t result = uncompress(buf.data(), &buf_len, data.data(), numeric_cast<uLong>(data.size()));
+
+    if (result != Z_OK) {
+        throw DecompressException("Decompression failed", result, data.size(), decoded_size);
+    }
+
+    // A payload that decodes to a different length than the index promised is corrupt, not merely unexpected
+    if (buf_len != decoded_size) {
+        throw DecompressException("Decompressed size does not match the declared one", numeric_cast<size_t>(buf_len), decoded_size);
+    }
+
     return buf;
 }
 

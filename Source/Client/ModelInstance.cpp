@@ -2812,7 +2812,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
             FO_STRONG_ASSERT(state.ClipIndex >= 0 && numeric_cast<size_t>(state.ClipIndex) < _modelInfo->_animationBounds.size() && _modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)], "Active animation has no baked bounds", _modelInfo->_fileName, state.ClipIndex);
 
             const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
-            FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
+            bool bounds_included = IncludeModelBounds(active_bounds, bounds);
+            FO_STRONG_ASSERT(bounds_included, "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
             active_clips.emplace_back(state.ClipIndex);
         }
     };
@@ -2821,7 +2822,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
     include_active_tracks(_moveAnimController);
 
     if (!active_bounds) {
-        FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, _modelInfo->_modelBounds), "Aggregate model bounds are invalid", _modelInfo->_fileName);
+        bool bounds_included = IncludeModelBounds(active_bounds, _modelInfo->_modelBounds);
+        FO_STRONG_ASSERT(bounds_included, "Aggregate model bounds are invalid", _modelInfo->_fileName);
     }
 
     optional<mat44> root_inverse;
@@ -2847,7 +2849,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
 
         for (int32_t clip_index : active_clips) {
             if (clip_index >= 0 && numeric_cast<size_t>(clip_index) < link.ClipBounds.size() && link.ClipBounds[numeric_cast<size_t>(clip_index)]) {
-                FO_STRONG_ASSERT(IncludeModelBounds(selected, *link.ClipBounds[numeric_cast<size_t>(clip_index)]), "Model link clip bounds are invalid", link.ChildName, clip_index);
+                bool bounds_included = IncludeModelBounds(selected, *link.ClipBounds[numeric_cast<size_t>(clip_index)]);
+                FO_STRONG_ASSERT(bounds_included, "Model link clip bounds are invalid", link.ChildName, clip_index);
             }
         }
 
@@ -2889,7 +2892,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
         return true;
     };
 
-    FO_STRONG_ASSERT(include_active_links(this, include_active_links), "Active model link bounds are invalid", _modelInfo->_fileName);
+    bool links_included = include_active_links(this, include_active_links);
+    FO_STRONG_ASSERT(links_included, "Active model link bounds are invalid", _modelInfo->_fileName);
 
     return *active_bounds;
 }

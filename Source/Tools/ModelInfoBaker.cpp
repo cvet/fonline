@@ -1811,7 +1811,8 @@ static auto CalculateFo3dAggregateModelBounds(const FileSystem& baked_files, con
             throw ModelInfoBakerException("Animation bounds could not be calculated", anim_entry.StateAnim, anim_entry.ActionAnim, fname);
         }
 
-        FO_VERIFY_AND_THROW(IncludeModelBounds(model_bounds, *calculated_bounds), "Calculated model animation bounds are invalid", fname, anim_entry.StateAnim, anim_entry.ActionAnim);
+        bool bounds_included = IncludeModelBounds(model_bounds, *calculated_bounds);
+        FO_VERIFY_AND_THROW(bounds_included, "Calculated model animation bounds are invalid", fname, anim_entry.StateAnim, anim_entry.ActionAnim);
     }
 
     if (!model_bounds) {
@@ -2314,7 +2315,8 @@ static auto BakeModelAnimationInfoSection(const BakingContext& ctx, const FileCo
             throw ModelInfoBakerException("Animation bounds could not be calculated", entry.StateAnim, entry.ActionAnim, file.GetPath());
         }
 
-        FO_VERIFY_AND_THROW(IncludeModelBounds(model_bounds, *bounds), "Calculated model animation bounds are invalid", file.GetPath(), entry.StateAnim, entry.ActionAnim);
+        bool bounds_included = IncludeModelBounds(model_bounds, *bounds);
+        FO_VERIFY_AND_THROW(bounds_included, "Calculated model animation bounds are invalid", file.GetPath(), entry.StateAnim, entry.ActionAnim);
 
         bool idle = entry.ActionAnim == static_cast<int32_t>(CritterActionAnim::Idle);
         bool unarmed_idle = idle && entry.StateAnim == static_cast<int32_t>(CritterStateAnim::Unarmed);

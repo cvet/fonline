@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 62
+///@ MigrationRule Version 0 0 63
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -117,6 +117,25 @@ public:
 
 private:
     vector<CommandLineArg> _args {};
+};
+
+// Owns a process's arguments in UTF-8 for an entry point SDL does not run: on Windows its argv arrives in the ANSI
+// code page, which cannot carry every path, so the arguments are read from the wide command line instead
+class ProgramArgs final
+{
+public:
+    ProgramArgs(int32_t argc, nptr<char*> argv);
+    ProgramArgs(const ProgramArgs&) = delete;
+    ProgramArgs(ProgramArgs&&) noexcept = delete;
+    auto operator=(const ProgramArgs&) = delete;
+    auto operator=(ProgramArgs&&) noexcept = delete;
+    ~ProgramArgs() = default;
+
+    [[nodiscard]] auto GetArgs() const -> CommandLineArgs { return CommandLineArgs {_pointers}; }
+
+private:
+    vector<string> _values {};
+    vector<CommandLineArg> _pointers {};
 };
 
 // Custom any as string
@@ -413,7 +432,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 3;
+static constexpr uint32_t FO_UPDATER_VERSION = 5;
 
 enum class UpdatePlatform : uint8_t
 {

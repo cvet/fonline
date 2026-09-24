@@ -269,6 +269,21 @@ TEST_CASE("Platform")
         CHECK(from_home == strex(home_dir).combine_path(".local/share").str());
 #endif
     }
+
+#if FO_WINDOWS
+    SECTION("GetUserDataBaseKeepsNonAsciiProfilePaths")
+    {
+        // A Cyrillic profile name: the narrow environment answers in the ANSI code page, which cannot carry it
+        const wchar_t* saved = _wgetenv(L"LOCALAPPDATA");
+        wstring saved_value = saved != nullptr ? wstring(saved) : wstring();
+
+        _wputenv_s(L"LOCALAPPDATA", L"C:\\\u0422\u0435\u0441\u0442\\AppData\\Local");
+        string resolved = platform::get_user_data_base();
+        _wputenv_s(L"LOCALAPPDATA", saved_value.c_str());
+
+        CHECK(resolved == "C:\\\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82\\AppData\\Local");
+    }
+#endif
 }
 
 FO_END_NAMESPACE

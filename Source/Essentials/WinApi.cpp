@@ -46,6 +46,7 @@
 #include <io.h>
 #include <psapi.h>
 #include <share.h>
+#include <shellapi.h>
 #include <shlobj.h>
 
 #include "WinApiUndef.inc"
@@ -193,6 +194,52 @@ auto winapi::get_module_file_name() noexcept -> optional<string>
     }
 
     return strex().parse_wide_char(path_data.as_ptr()).str();
+}
+
+auto winapi::get_environment_variable(const string& name) noexcept -> optional<string>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring name_wide = strex(name).to_wide_char();
+    wstring value;
+    value.resize(MAX_PATH);
+    DWORD size = ::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()));
+
+    // A value longer than the buffer reports the size it needs, terminator included
+    if (size > value.size()) {
+        value.resize(size);
+        size = ::GetEnvironmentVariableW(name_wide.c_str(), value.data(), static_cast<DWORD>(value.size()));
+    }
+
+    if (size == 0 || size >= value.size()) {
+        return std::nullopt;
+    }
+
+    value.resize(size);
+    return strex().parse_wide_char(make_ptr(value.c_str())).str();
+}
+
+auto winapi::get_command_line_args() -> optional<vector<string>>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t count = 0;
+    auto args = make_nptr(::CommandLineToArgvW(::GetCommandLineW(), &count));
+
+    if (!args) {
+        return std::nullopt;
+    }
+
+    auto free_args = scope_exit([&args]() noexcept { ::LocalFree(args.get()); });
+    span<wchar_t*> arg_list {args.get(), static_cast<size_t>(count)};
+    vector<string> result;
+    result.reserve(arg_list.size());
+
+    for (size_t i = 0; i < arg_list.size(); i++) {
+        result.emplace_back(strex().parse_wide_char(make_ptr(arg_list[i])).str());
+    }
+
+    return result;
 }
 
 auto winapi::get_local_app_data_path() noexcept -> optional<string>
@@ -431,6 +478,156 @@ auto winapi::sync_file(int32_t fd) noexcept -> bool
     FO_STACK_TRACE_ENTRY();
 
     return ::_commit(fd) == 0;
+}
+
+auto winapi::sync_directory(const string& path) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring path_wide = strex(path).to_wide_char();
+    HANDLE dir_handle = ::CreateFileW(path_wide.c_str(), GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr, OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS, nullptr);
+
+    if (dir_handle == INVALID_HANDLE_VALUE) {
+        return false;
+    }
+
+    bool flushed = ::FlushFileBuffers(dir_handle) != FALSE;
+    (void)::CloseHandle(dir_handle);
+    return flushed;
+}
+
+auto winapi::lock_named_mutex(const string& name) noexcept -> nptr<void>
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto handle = make_nptr(::CreateMutexA(nullptr, FALSE, name.c_str()));
+
+    if (!handle) {
+        return nullptr;
+    }
+
+    uint32_t result = ::WaitForSingleObject(handle.get(), 0);
+
+    if (result != WAIT_OBJECT_0 && result != WAIT_ABANDONED) {
+        ::CloseHandle(handle.get());
+        return nullptr;
+    }
+
+    return handle;
+}
+
+void winapi::unlock_named_mutex(nptr<void> lock) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (lock) {
+        ::ReleaseMutex(lock.get());
+        ::CloseHandle(lock.get());
+    }
+}
+
+auto winapi::rename_file_durable(const string& from, const string& to) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    wstring from_wide = strex(from).to_wide_char();
+    wstring to_wide = strex(to).to_wide_char();
+    return ::MoveFileExW(from_wide.c_str(), to_wide.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
+}
+
+auto winapi::open_shared_read_file(const string& path) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fd = -1;
+    wstring path_wide = strex(path).to_wide_char();
+
+    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_RDONLY | _O_NOINHERIT, _SH_DENYNO, 0) != 0) {
+        return -1;
+    }
+
+    return fd;
+}
+
+auto winapi::open_new_write_file(const string& path, bool append) noexcept -> int32_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    int32_t fd = -1;
+    wstring path_wide = strex(path).to_wide_char();
+
+    if (::_wsopen_s(&fd, path_wide.c_str(), _O_BINARY | _O_WRONLY | _O_CREAT | _O_NOINHERIT, _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) {
+        return -1;
+    }
+
+    if ((!append && ::_chsize_s(fd, 0) != 0) || ::_lseeki64(fd, 0, SEEK_END) < 0) {
+        ::_close(fd);
+        return -1;
+    }
+
+    return fd;
+}
+
+auto winapi::resize_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return size <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && ::_chsize_s(fd, size) == 0 && ::_lseeki64(fd, static_cast<int64_t>(size), SEEK_SET) >= 0;
+}
+
+void winapi::close_file(int32_t fd) noexcept
+{
+    FO_STACK_TRACE_ENTRY();
+
+    (void)::_close(fd);
+}
+
+auto winapi::get_file_size(int32_t fd) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    return ::_filelengthi64(fd);
+}
+
+auto winapi::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
+{
+    FO_STACK_TRACE_ENTRY();
+
+    auto file_handle = reinterpret_cast<HANDLE>(::_get_osfhandle(fd));
+
+    if (file_handle == INVALID_HANDLE_VALUE) {
+        return -1;
+    }
+
+    auto chunk = static_cast<DWORD>(std::min(size, static_cast<size_t>(std::numeric_limits<int32_t>::max())));
+
+    // The offset lives in the OVERLAPPED, not in the handle, so a concurrent reader never moves this one. The
+    // kernel still serializes these calls; FILE_FLAG_OVERLAPPED is the upgrade path if that ever measures
+    OVERLAPPED overlapped = {};
+    overlapped.Offset = static_cast<DWORD>(offset & 0xFFFFFFFFull);
+    overlapped.OffsetHigh = static_cast<DWORD>(offset >> 32);
+
+    DWORD read_bytes = 0;
+
+    if (::ReadFile(file_handle, buffer.get(), chunk, &read_bytes, &overlapped) == FALSE) {
+        // A read that starts exactly at the end of the file is an ordinary empty result, not a failure
+        return ::GetLastError() == ERROR_HANDLE_EOF ? 0 : -1;
+    }
+
+    return static_cast<int64_t>(read_bytes);
+}
+
+auto winapi::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
+{
+    FO_STACK_TRACE_ENTRY();
+
+    if (size > static_cast<uint64_t>(std::numeric_limits<int64_t>::max())) {
+        return false;
+    }
+
+    // Moves the end of file without writing zeroes. SetFileValidData would also skip the lazy zero fill, but
+    // it needs a volume privilege and would expose stale disk contents, so the cheap and safe form wins
+    return ::_chsize_s(fd, static_cast<int64_t>(size)) == 0;
 }
 
 auto winapi::run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t

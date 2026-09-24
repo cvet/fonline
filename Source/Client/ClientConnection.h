@@ -131,6 +131,7 @@ private:
     int32_t _ping {};
     nanotime _pingTime {};
     nanotime _pingCallTime {};
+    nanotime _lastReceiveTime {};
     size_t _msgCount {};
 #if FO_DEBUG
     static constexpr size_t NET_MESSAGE_HISTORY_LIMIT = 1024;

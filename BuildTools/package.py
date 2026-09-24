@@ -18,6 +18,7 @@ import sys
 import tarfile
 import tempfile
 import zipfile
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
@@ -73,7 +74,7 @@ WEB_ASSET_BUNDLE_LIMIT = 256 * 1024 * 1024
 PACKAGE_MODE_MANIFEST = '.lf-package-modes.json'
 PACKAGE_MODE_MANIFEST_VERSION = 1
 PACKAGE_FILE_MODES = frozenset({0o644, 0o755})
-RESOURCE_ARCHIVE_CACHE_FORMAT = 1
+RESOURCE_ARCHIVE_CACHE_FORMAT = 2
 RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
 RESOURCE_ARCHIVE_CACHE_MISS = 2
 RESOURCE_ARCHIVE_CACHE_UNAVAILABLE = 3
@@ -132,7 +133,8 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-input', dest='input', required=True, action='append', default=[], help='input dir (from FO_OUTPUT_PATH)')
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
-	parser.add_argument('-zip-compress-level', dest='zip_compress_level', type=int, choices=range(0, 10), help='override zip compression level')
+	parser.add_argument('-resource-pack-compress-level', dest='resource_pack_compress_level', type=int, choices=range(0, 10), help='override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)')
+	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
 	return parser.parse_args()
 
 
@@ -335,6 +337,197 @@ def normalize_android_arch(arch: str) -> str:
 
 def resolve_android_abi(arch: str) -> str:
 	return ANDROID_ABI_BY_ARCH[normalize_android_arch(arch)]
+
+
+# Compiled into the executable rather than shipped as a pack; DataSource.h owns the same name
+EMBEDDED_PACK_NAME = 'Embedded'
+
+RESOURCE_PACK_MAGIC = 0x53524F46
+RESOURCE_PACK_VERSION_MAJOR = 2
+RESOURCE_PACK_VERSION_MINOR = 0
+RESOURCE_PACK_HEADER_SIZE = 80
+RESOURCE_PACK_ENTRY_SIZE = 48
+RESOURCE_PACK_CODEC_STORED = 0
+RESOURCE_PACK_CODEC_DEFLATE = 1
+RESOURCE_PACK_MIN_COMPRESSED_SIZE = 64
+
+FNV_OFFSET = 0xCBF29CE484222325
+FNV_PRIME = 0x100000001B3
+
+
+def fnv1a_64(data: bytes, seed: int = FNV_OFFSET) -> int:
+	# The digest the pack header carries and the updater already computes over whole files
+	value = seed
+	for byte in data:
+		value = ((value ^ byte) * FNV_PRIME) & 0xFFFFFFFFFFFFFFFF
+	return value
+
+
+def encode_resource_pack_blob(data: bytes, compress_level: int, min_gain_percent: int) -> tuple[int, bytes]:
+	# Deflate is kept only when it gives back the configured minimum, so data that will not shrink is stored
+	# as it is and costs nothing to read back
+	if len(data) < RESOURCE_PACK_MIN_COMPRESSED_SIZE:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	compressed = zlib.compress(data, compress_level)
+	max_kept_size = len(data) - len(data) * min_gain_percent // 100
+
+	if len(compressed) >= max_kept_size:
+		return RESOURCE_PACK_CODEC_STORED, data
+
+	return RESOURCE_PACK_CODEC_DEFLATE, compressed
+
+
+def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int) -> None:
+	"""Write a full base pack with physical and decoded-content identities."""
+	assert 0 <= compress_level <= 9, 'Resource pack compression level is out of the zlib range'
+	assert 0 <= min_gain_percent <= 100, 'Resource pack minimum compression gain is not a percentage'
+	sorted_entries = sorted((name.replace('\\', '/'), path) for name, path in entries)
+	for ordinal, (name, _) in enumerate(sorted_entries):
+		assert name and all(part not in ('', '.', '..') for part in name.split('/')) and ':' not in name and '\0' not in name, 'Invalid resource path: ' + name
+		assert ordinal == 0 or sorted_entries[ordinal - 1][0] != name, 'Resource pack holds the same path twice: ' + name
+
+	index_records: list[tuple[str, int, int, int, int, int]] = []
+	body_hash = FNV_OFFSET
+	content_hash = fnv1a_64(struct.pack('<I', len(sorted_entries)))
+	with open(archive_path, 'wb') as dst:
+		dst.write(bytes(RESOURCE_PACK_HEADER_SIZE))
+		for arcname, file_path in sorted_entries:
+			raw = Path(file_path).read_bytes()
+			file_hash = fnv1a_64(raw)
+			codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
+			index_records.append((arcname, dst.tell(), len(blob), len(raw), codec, file_hash))
+			path_bytes = arcname.encode('utf-8')
+			content_hash = fnv1a_64(struct.pack('<IQQ', len(path_bytes), len(raw), file_hash), content_hash)
+			content_hash = fnv1a_64(path_bytes, content_hash)
+			body_hash = fnv1a_64(blob, body_hash)
+			dst.write(blob)
+
+		index_offset = dst.tell()
+		pool_offset = len(index_records) * RESOURCE_PACK_ENTRY_SIZE
+		index = bytearray()
+		pool = bytearray()
+		for arcname, data_offset, stored_size, decoded_size, codec, file_hash in index_records:
+			path_bytes = arcname.encode('utf-8')
+			index += struct.pack('<IIQQQIIQ', pool_offset + len(pool), len(path_bytes), data_offset, stored_size, decoded_size, codec, 0, file_hash)
+			pool += path_bytes
+		index += pool
+		index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
+		body_hash = fnv1a_64(stored_index, body_hash)
+		dst.write(stored_index)
+		header = bytearray(RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
+		struct.pack_into('<Q', header, 8, body_hash)
+		struct.pack_into('<QQQ', header, 16, index_offset, len(stored_index), len(index))
+		struct.pack_into('<II', header, 40, index_codec, len(index_records))
+		struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, index_offset - RESOURCE_PACK_HEADER_SIZE)
+		struct.pack_into('<Q', header, 64, content_hash)
+		struct.pack_into('<Q', header, 72, fnv1a_64(bytes(header[:72])))
+		dst.seek(0)
+		dst.write(header)
+
+
+def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[str]) -> None:
+	"""Validate a completed base pack before it is published or accepted from the archive cache."""
+	archive_name = str(archive_path)
+	try:
+		file_size = os.path.getsize(archive_path)
+		assert file_size >= RESOURCE_PACK_HEADER_SIZE, 'header is truncated'
+
+		with open(archive_path, 'rb') as archive:
+			header = archive.read(RESOURCE_PACK_HEADER_SIZE)
+			magic, version_major, version_minor = struct.unpack_from('<IHH', header, 0)
+			pack_hash = struct.unpack_from('<Q', header, 8)[0]
+			index_offset, index_stored_size, index_decoded_size = struct.unpack_from('<QQQ', header, 16)
+			index_codec, entry_count = struct.unpack_from('<II', header, 40)
+			data_offset, data_size = struct.unpack_from('<QQ', header, 48)
+			content_hash = struct.unpack_from('<Q', header, 64)[0]
+			header_hash = struct.unpack_from('<Q', header, 72)[0]
+
+			assert magic == RESOURCE_PACK_MAGIC, 'magic is invalid'
+			assert (version_major, version_minor) == (RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR), 'version is unsupported'
+			assert fnv1a_64(header[:72]) == header_hash, 'header checksum mismatch'
+			assert data_offset == RESOURCE_PACK_HEADER_SIZE, 'data offset is invalid'
+			assert index_offset == data_offset + data_size, 'data extent is invalid'
+			assert index_offset + index_stored_size == file_size, 'catalog extent is invalid'
+
+			archive.seek(RESOURCE_PACK_HEADER_SIZE)
+			actual_pack_hash = FNV_OFFSET
+			while True:
+				chunk = archive.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES)
+				if not chunk:
+					break
+				actual_pack_hash = fnv1a_64(chunk, actual_pack_hash)
+			assert actual_pack_hash == pack_hash, 'pack checksum mismatch'
+
+			archive.seek(index_offset)
+			stored_index = archive.read(index_stored_size)
+			if index_codec == RESOURCE_PACK_CODEC_STORED:
+				index = stored_index
+			elif index_codec == RESOURCE_PACK_CODEC_DEFLATE:
+				index = zlib.decompress(stored_index)
+			else:
+				raise AssertionError('catalog codec is invalid')
+
+			assert len(index) == index_decoded_size, 'decoded catalog size mismatch'
+			records_size = entry_count * RESOURCE_PACK_ENTRY_SIZE
+			assert records_size <= len(index), 'catalog records are truncated'
+			actual_entries: list[str] = []
+			actual_content_hash = fnv1a_64(struct.pack('<I', entry_count))
+
+			for ordinal in range(entry_count):
+				path_offset, path_length, blob_offset, stored_size, decoded_size, codec, source, file_hash = struct.unpack_from(
+					'<IIQQQIIQ', index, ordinal * RESOURCE_PACK_ENTRY_SIZE)
+				assert source == 0, 'base catalog entry has a non-base source'
+				assert codec in (RESOURCE_PACK_CODEC_STORED, RESOURCE_PACK_CODEC_DEFLATE), 'entry codec is invalid'
+				assert records_size <= path_offset <= len(index), 'entry path offset is invalid'
+				assert path_length <= len(index) - path_offset, 'entry path extent is invalid'
+				assert data_offset <= blob_offset <= index_offset, 'entry data offset is invalid'
+				assert stored_size <= index_offset - blob_offset, 'entry data extent is invalid'
+				path_bytes = index[path_offset:path_offset + path_length]
+				path = path_bytes.decode('utf-8')
+				assert path and all(part not in ('', '.', '..') for part in path.split('/')) and ':' not in path and '\\' not in path and '\0' not in path, 'entry path is invalid'
+				assert not actual_entries or actual_entries[-1] < path, 'entry paths are not strictly sorted'
+				actual_entries.append(path)
+				actual_content_hash = fnv1a_64(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
+				actual_content_hash = fnv1a_64(path_bytes, actual_content_hash)
+				assert codec != RESOURCE_PACK_CODEC_STORED or stored_size == decoded_size, 'stored entry size mismatch: ' + path
+				archive.seek(blob_offset)
+				validate_resource_pack_payload(archive, stored_size, decoded_size, codec, file_hash)
+
+			assert actual_entries == list(expected_entries), 'entry list mismatch'
+			assert actual_content_hash == content_hash, 'content checksum mismatch'
+	except (OSError, UnicodeError, struct.error, zlib.error, AssertionError) as ex:
+		raise AssertionError(f'Resource pack validation failed: {archive_name}: {ex}') from ex
+
+
+def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded_size: int, codec: int, file_hash: int) -> None:
+	decoder = zlib.decompressobj() if codec == RESOURCE_PACK_CODEC_DEFLATE else None
+	remaining = stored_size
+	decoded_total = 0
+	actual_hash = FNV_OFFSET
+	pending = b''
+
+	while remaining or pending:
+		if not pending:
+			pending = archive.read(min(remaining, RESOURCE_ARCHIVE_HASH_CHUNK_BYTES))
+			assert pending, 'entry payload is truncated'
+			remaining -= len(pending)
+
+		if decoder is not None:
+			decoded = decoder.decompress(pending, min(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES, decoded_size - decoded_total + 1))
+			pending = decoder.unconsumed_tail
+			assert not decoder.unused_data, 'entry deflate stream has trailing data'
+		else:
+			decoded, pending = pending, b''
+
+		decoded_total += len(decoded)
+		assert decoded_total <= decoded_size, 'decoded entry exceeds its declared size'
+		actual_hash = fnv1a_64(decoded, actual_hash)
+
+	assert decoder is None or decoder.eof, 'entry deflate stream is incomplete'
+	assert decoded_total == decoded_size, 'decoded entry size mismatch'
+	assert actual_hash == file_hash, 'entry content checksum mismatch'
 
 
 def zip_entry_matches_file(
@@ -702,7 +895,9 @@ class Packager:
 	server_res_dir: str = field(init=False)
 	client_res_dir: str = field(init=False)
 	platform_binaries_dir: str = field(init=False)
-	zip_compress_level: int = field(init=False)
+	resource_pack_compress_level: int = field(init=False)
+	resource_pack_min_compress_gain: int = field(init=False)
+	bundle_compress_level: int = field(init=False)
 	target_output_path: str = field(init=False)
 	baking_path: str | None = field(init=False, default=None)
 	embedded_data: bytes = field(init=False, default=b'')
@@ -718,7 +913,9 @@ class Packager:
 		self.server_res_dir = self.fomain.mainSection().getStr('Baking.ServerResources')
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
-		self.zip_compress_level = self.args.zip_compress_level if self.args.zip_compress_level is not None else self.fomain.mainSection().getInt('Baking.ZipCompressLevel')
+		self.resource_pack_compress_level = self.args.resource_pack_compress_level if getattr(self.args, 'resource_pack_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.ResourcePackCompressLevel')
+		self.resource_pack_min_compress_gain = self.fomain.mainSection().getInt('Baking.ResourcePackMinCompressGain')
+		self.bundle_compress_level = self.args.bundle_compress_level if getattr(self.args, 'bundle_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.BundleCompressLevel')
 		self.target_output_path = self.build_target_output_path()
 
 	def has_pack(self, name: str) -> bool:
@@ -1040,7 +1237,7 @@ class Packager:
 		for (request_target_name, pack_name), (_, runtime_dir) in sorted(resource_payload_sources.items()):
 			payload_dir = os.path.join(self.target_output_path, self.platform_binaries_dir, request_target_name)
 			os.makedirs(payload_dir, exist_ok=True)
-			output_path = os.path.join(payload_dir, pack_name + '.zip')
+			output_path = os.path.join(payload_dir, pack_name + '.fores')
 			log('Client managed resource payload', output_path)
 			self.write_resource_pack_with_runtime(output_path, pack_name, runtime_dir, 'Client')
 			copied_resource_payloads.add((request_target_name, pack_name))
@@ -1082,7 +1279,7 @@ class Packager:
 				reasons = self.describe_missing_client_payloads(copied_resource_payloads, skipped_entries)
 				raise AssertionError(
 					'Client managed resource payload missing from the server package: expected '
-					+ managed_runtime_pack + '.zip under PlatformBinaries/' + target_name
+					+ managed_runtime_pack + '.fores under PlatformBinaries/' + target_name
 					+ ' (from ' + binary_entry + '). This client would receive managed class libraries for another platform. Skipped entries: '
 					+ reasons)
 
@@ -1219,7 +1416,7 @@ class Packager:
 	def make_embedded_data_for_target(self, target: str) -> bytes:
 		assert self.baking_path, 'Baking path is not initialized'
 		for pack_name in self.get_target_resource_packs(target):
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				files = self.collect_resource_files(pack_name, target)
 				return self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 		raise AssertionError('Embedded resource pack not found for ' + target)
@@ -1233,15 +1430,16 @@ class Packager:
 		with open(config_path, 'r', encoding='utf-8-sig') as file:
 			return config_name, file.read().encode()
 
-	def write_files_zip(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
-		zip_entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
-		self.write_zip_entries(archive_path, zip_entries)
+	def write_resource_pack_files(self, archive_path: str, base_path: str, files: Sequence[str]) -> None:
+		entries = sorted((os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files)
+		self.write_resource_pack_entries(archive_path, entries)
 
-	def resource_archive_cache_key(self, zip_entries: Sequence[tuple[str, str]]) -> str:
+	def resource_archive_cache_key(self, entries: Sequence[tuple[str, str]]) -> str:
 		digest = hashlib.sha256()
-		digest.update(struct.pack('<II', RESOURCE_ARCHIVE_CACHE_FORMAT, self.zip_compress_level))
+		digest.update(struct.pack(
+			'<III', RESOURCE_ARCHIVE_CACHE_FORMAT, self.resource_pack_compress_level, self.resource_pack_min_compress_gain))
 
-		for arcname, file_path in zip_entries:
+		for arcname, file_path in entries:
 			name = arcname.encode('utf-8')
 			digest.update(struct.pack('<QQ', len(name), os.path.getsize(file_path)))
 			digest.update(name)
@@ -1278,7 +1476,7 @@ class Packager:
 			if os.path.realpath(local_path) != os.path.realpath(archive_path):
 				shutil.copy2(local_path, archive_path)
 
-			validate_resource_zip(archive_path, entry_names)
+			validate_resource_pack(archive_path, entry_names)
 			log('Resource archive local hit', key)
 			return True
 
@@ -1288,7 +1486,7 @@ class Packager:
 			return False
 
 		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)
-		validate_resource_zip(archive_path, entry_names)
+		validate_resource_pack(archive_path, entry_names)
 		log('Resource archive cache hit', key)
 		return True
 
@@ -1304,22 +1502,20 @@ class Packager:
 		}
 		self.resource_archive_paths[key] = archive_path
 
-	def write_zip_entries(self, archive_path: str, zip_entries: Sequence[tuple[str, str]]) -> None:
-		zip_entries = sorted(zip_entries)
-		entry_names = [arcname for arcname, _ in zip_entries]
-		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource zip entry in ' + archive_path
-		cache_key = self.resource_archive_cache_key(zip_entries)
+	def write_resource_pack_entries(self, archive_path: str, entries: Sequence[tuple[str, str]]) -> None:
+		entries = sorted(entries)
+		entry_names = [arcname for arcname, _ in entries]
+		assert len(entry_names) == len(set(entry_names)), 'Duplicate resource pack entry in ' + archive_path
+		cache_key = self.resource_archive_cache_key(entries)
 
 		if self.restore_resource_archive(archive_path, cache_key, entry_names):
 			self.remember_resource_archive(archive_path, cache_key)
 			return
 
 		try:
-			with zipfile.ZipFile(archive_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
-				for arcname, file_path in zip_entries:
-					self.write_stable_zip_entry(archive, file_path, arcname)
-
-			validate_resource_zip(archive_path, entry_names)
+			write_resource_pack(
+				archive_path, entries, self.resource_pack_compress_level, self.resource_pack_min_compress_gain)
+			validate_resource_pack(archive_path, entry_names)
 		except Exception:
 			self.run_resource_archive_cache_helper('release', cache_key, archive_path)
 			raise
@@ -1365,7 +1561,7 @@ class Packager:
 
 		pack_base = os.path.join(self.baking_path, pack_name)
 		baked_runtime_base = os.path.realpath(os.path.join(pack_base, MANAGED_RUNTIME_DIRECTORY))
-		zip_entries = [
+		entries = [
 			(os.path.relpath(file_path, pack_base).replace(os.sep, '/'), file_path)
 			for file_path in self.collect_resource_files(pack_name, target)
 			if os.path.commonpath((baked_runtime_base, os.path.realpath(file_path))) != baked_runtime_base
@@ -1374,11 +1570,11 @@ class Packager:
 		# The selection runs over this target's own class libraries, whose references may differ from the baker host's
 		pack_assemblies = [
 			managed_runtime_payload.read_assembly_identity_file(Path(file_path))
-			for arcname, file_path in zip_entries
+			for arcname, file_path in entries
 			if arcname.startswith(MANAGED_ASSEMBLIES_DIRECTORY + '/') and arcname.endswith('.dll')
 		]
 		runtime_files, runtime_manifest = managed_runtime_payload.select_payload(Path(runtime_dir), pack_assemblies)
-		zip_entries.extend(
+		entries.extend(
 			(MANAGED_RUNTIME_DIRECTORY + '/' + relative_path.as_posix(), os.path.join(runtime_dir, *relative_path.parts))
 			for relative_path in runtime_files
 		)
@@ -1387,8 +1583,8 @@ class Packager:
 			manifest_path = os.path.join(manifest_dir, MANAGED_RUNTIME_MANIFEST)
 			with open(manifest_path, 'w', encoding='utf-8', newline='\n') as manifest_file:
 				manifest_file.write(runtime_manifest)
-			zip_entries.append((MANAGED_RUNTIME_DIRECTORY + '/' + MANAGED_RUNTIME_MANIFEST, manifest_path))
-			self.write_zip_entries(archive_path, zip_entries)
+			entries.append((MANAGED_RUNTIME_DIRECTORY + '/' + MANAGED_RUNTIME_MANIFEST, manifest_path))
+			self.write_resource_pack_entries(archive_path, entries)
 
 	def package_target_managed_runtime_resources(self, target: Literal['Client', 'Server']) -> None:
 		managed_runtime_pack = self.find_managed_runtime_pack(target)
@@ -1409,7 +1605,7 @@ class Packager:
 
 		assert packaged_runtime_dir is not None, f'{target} package has no managed runtime source architecture'
 		resource_dir = self.client_res_dir if target == 'Client' else self.server_res_dir
-		archive_path = os.path.join(self.target_output_path, resource_dir, managed_runtime_pack + '.zip')
+		archive_path = os.path.join(self.target_output_path, resource_dir, managed_runtime_pack + '.fores')
 		log(f'Replace baked managed runtime with {target.lower()} platform payload', archive_path)
 		self.write_resource_pack_with_runtime(
 			archive_path,
@@ -1429,7 +1625,7 @@ class Packager:
 	def make_embedded_pack(self, files: Sequence[str], base_path: str) -> bytes:
 		embedded_buffer = io.BytesIO()
 		zip_entries = [os.path.relpath(file_path, base_path).replace(os.sep, '/') for file_path in files]
-		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.zip_compress_level) as archive:
+		with zipfile.ZipFile(embedded_buffer, 'w', compression=zipfile.ZIP_DEFLATED, compresslevel=self.bundle_compress_level) as archive:
 			for arcname, file_path in zip(zip_entries, files):
 				self.write_stable_zip_entry(archive, file_path, arcname)
 		data = embedded_buffer.getvalue()
@@ -1444,11 +1640,14 @@ class Packager:
 			os.makedirs(os.path.join(self.target_output_path, self.client_res_dir), exist_ok=True)
 
 	def package_resource_pack(self, pack_name: str, files: Sequence[str], base_res_name: str) -> None:
-		archive_path = os.path.join(self.target_output_path, base_res_name, pack_name + '.zip')
 		assert self.baking_path, 'Baking path is not initialized'
 		base_path = os.path.join(self.baking_path, pack_name)
-		log('Make pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-		self.write_files_zip(archive_path, base_path, files)
+		archive_name = pack_name + '.fores'
+		archive_path = os.path.join(self.target_output_path, base_res_name, archive_name)
+		log('Make pack', pack_name, '=>', archive_name, '(' + str(len(files)) + ')')
+
+		entries = [(os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files]
+		self.write_resource_pack_entries(archive_path, entries)
 
 	def load_config_data(self) -> None:
 		config_name, self.config_data = self.read_config_data(self.args.target)
@@ -1469,7 +1668,7 @@ class Packager:
 
 		for pack_name in self.get_target_resource_packs(self.args.target):
 			files = self.collect_resource_files(pack_name, self.args.target)
-			if pack_name == 'Embedded':
+			if pack_name == EMBEDDED_PACK_NAME:
 				log('Make pack', pack_name, '=>', 'embed to executable', '(' + str(len(files)) + ')')
 				self.embedded_data = self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 			else:
@@ -1478,15 +1677,10 @@ class Packager:
 
 		if self.args.target == 'Server':
 			for pack_name in self.get_target_resource_packs('Client'):
-				if pack_name == 'Embedded':
+				if pack_name == EMBEDDED_PACK_NAME:
 					continue
 				files = self.collect_resource_files(pack_name, 'Client')
-				log('Make client pack', pack_name, '=>', pack_name + '.zip', '(' + str(len(files)) + ')')
-				self.write_files_zip(
-					os.path.join(self.target_output_path, self.client_res_dir, pack_name + '.zip'),
-					os.path.join(self.baking_path, pack_name),
-					files,
-				)
+				self.package_resource_pack(pack_name, files, self.client_res_dir)
 
 		self.load_config_data()
 
@@ -1733,6 +1927,7 @@ class Packager:
 		shutil.copy(template_activity_path, activity_path)
 		patch_file(activity_path, '$PACKAGE$', package_name)
 		patch_file(activity_path, '$CONFIG$', self.args.config)
+		patch_file(activity_path, '$RESOURCE_DIRECTORY$', json.dumps(self.client_res_dir.replace('\\', '/')))
 
 		shutil.rmtree(os.path.join(self.target_output_path, 'app', 'src', 'main', 'java-template'), True)
 		log('Android activity', activity_path)
@@ -1980,12 +2175,12 @@ class Packager:
 
 		if self.has_pack('Zip'):
 			log('Create zipped archive')
-			make_zip(self.target_output_path + '.zip', self.target_output_path, self.zip_compress_level, mode_overrides=logical_file_modes)
+			make_zip(self.target_output_path + '.zip', self.target_output_path, self.bundle_compress_level, mode_overrides=logical_file_modes)
 
 		if self.has_pack('SingleZip'):
 			log('Add to single zip archive')
 			single_zip_path = os.path.join(self.output_path, os.path.basename(self.output_path) + '.zip')
-			make_zip(single_zip_path, self.target_output_path, self.zip_compress_level, 'a', logical_file_modes)
+			make_zip(single_zip_path, self.target_output_path, self.bundle_compress_level, 'a', logical_file_modes)
 
 		if self.has_pack('Tar'):
 			log('Create tar archive')
@@ -2187,8 +2382,8 @@ def main() -> None:
 		args = parse_include_args(sys.argv[2:])
 		fomain = foconfig.ConfigParser()
 		fomain.loadFromFile(args.maincfg)
-		compress_level = fomain.mainSection().getInt('Baking.ZipCompressLevel')
-		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, compress_level)
+		bundle_compress_level = fomain.mainSection().getInt('Baking.BundleCompressLevel')
+		include_package_files(args.input, args.source, args.output, args.target, args.singlezip, bundle_compress_level)
 		return
 
 	args = parse_args()

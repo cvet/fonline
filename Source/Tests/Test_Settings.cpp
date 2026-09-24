@@ -266,6 +266,29 @@ TEST_CASE("Settings")
         CHECK(args.empty());
     }
 
+    SECTION("ProgramArgsKeepTheArgumentsInUtf8")
+    {
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Common.UserWritablePath";
+        char arg2[] = "\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82";
+        char* argv[] = {arg0, arg1, arg2};
+
+        ProgramArgs program_args {3, argv};
+        CommandLineArgs args = program_args.GetArgs();
+
+#if FO_WINDOWS
+        // The console argv is not trusted there: the arguments come from the wide command line of this process
+        REQUIRE_FALSE(args.empty());
+        auto exe_path = platform::get_exe_path();
+        REQUIRE(exe_path.has_value());
+        CHECK(strex(args.Get(0)).extract_file_name().erase_file_extension().lower().str() == strex(exe_path.value()).extract_file_name().erase_file_extension().lower().str());
+#else
+        REQUIRE(args.size() == 3);
+        CHECK(args.Get(0) == "lf_tests");
+        CHECK(args.Get(2) == "\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82");
+#endif
+    }
+
     SECTION("ApplyCommandLineMasksSecretValuesInLog")
     {
         // Capture the "Set <name> to <value>" lines emitted by the logging pass
@@ -516,6 +539,22 @@ TEST_CASE("Settings")
         CHECK(fs::is_dir(resolved));
 
         ignore_unused(fs::remove_dir_tree(root));
+    }
+
+    SECTION("CommandLinePassKeepsTheResolvedWritableRoot")
+    {
+        // The startup resolves "*" to the per-user data directory, and read again as a setting value it became "*"
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyWritableRoot("/home/player/.local/share/Game");
+
+        char arg0[] = "app";
+        char arg1[] = "--Common.UserWritablePath";
+        char arg2[] = "*";
+        char* argv[] = {arg0, arg1, arg2};
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
+
+        CHECK(settings.Common.UserWritablePath == "/home/player/.local/share/Game");
     }
 
     SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")

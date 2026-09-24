@@ -133,6 +133,7 @@ SETTING_GROUP(ClientNetwork, virtual NetworkSettings)
 SETTING(string, ClientNetwork, ServerHost, "127.0.0.1"); // Server host address
 SETTING(string, ClientNetwork, WebSocketHost, "localhost"); // WebSockets server host for client connect
 SETTING(int32_t, ClientNetwork, PingPeriod, 2000); // Ping period in milliseconds
+SETTING(int32_t, ClientNetwork, PingTimeout, 30000); // Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)
 SETTING(bool, ClientNetwork, UseUdp, false); // If true, UDP native transport is used instead of TCP
 SETTING(int32_t, ClientNetwork, ProxyType, 0); // Proxy type
 SETTING(string, ClientNetwork, ProxyHost, ""); // Proxy host address
@@ -309,7 +310,9 @@ SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources
 SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
 SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
-SETTING(int32_t, Baking, ZipCompressLevel, 1); // Zip deflate level (0-9)
+SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
+SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
+SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);
 

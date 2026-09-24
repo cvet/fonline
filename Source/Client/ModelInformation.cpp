@@ -85,7 +85,8 @@ auto ModelInformation::Load(string_view name) -> bool
         auto reader = data_reader(fo3d.GetDataSpan());
 
         try {
-            FO_VERIFY_AND_THROW(LoadBaked(name, reader), "Failed to load baked 3D asset");
+            bool loaded = LoadBaked(name, reader);
+            FO_VERIFY_AND_THROW(loaded, "Failed to load baked 3D asset");
         }
         catch (const DataReadingException& ex) {
             throw DataReadingException("Invalid baked model description", name, ex.what());
@@ -321,7 +322,8 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
                 // exists to avoid, so a baker/rig divergence is reported like the model's own bounds report it
                 FO_VERIFY_AND_THROW(binding, "Model link animation bounds name an animation the runtime rig has no binding for", name, link.Data.ChildName, state_anim, action_anim);
                 FO_VERIFY_AND_THROW(binding->ClipIndex >= 0 && numeric_cast<size_t>(binding->ClipIndex) < link.Data.ClipBounds.size(), "Model link animation clip index is outside the bounds table", name, link.Data.ChildName, binding->ClipIndex, link.Data.ClipBounds.size());
-                FO_VERIFY_AND_THROW(IncludeModelBounds(link.Data.ClipBounds[numeric_cast<size_t>(binding->ClipIndex)], clip_bounds), "Model link animation bounds are invalid", name, link.Data.ChildName, state_anim, action_anim);
+                bool bounds_included = IncludeModelBounds(link.Data.ClipBounds[numeric_cast<size_t>(binding->ClipIndex)], clip_bounds);
+                FO_VERIFY_AND_THROW(bounds_included, "Model link animation bounds are invalid", name, link.Data.ChildName, state_anim, action_anim);
             }
         }
 
@@ -356,7 +358,8 @@ auto ModelInformation::LoadBaked(string_view name, data_reader& reader) -> bool
         auto bounds_it = anim_info->Model->AnimationBounds.find({static_cast<CritterStateAnim>(anim_entry.StateAnim), static_cast<CritterActionAnim>(anim_entry.ActionAnim)});
         FO_VERIFY_AND_THROW(bounds_it != anim_info->Model->AnimationBounds.end(), "Animation bounds are missing for a baked model binding", name, anim_entry.StateAnim, anim_entry.ActionAnim);
         FO_VERIFY_AND_THROW(binding->ClipIndex < _animationBounds.size(), "Animation runtime clip index is outside the bounds table", name, binding->ClipIndex, _animationBounds.size());
-        FO_VERIFY_AND_THROW(IncludeModelBounds(_animationBounds[binding->ClipIndex], bounds_it->second), "Animation bounds are invalid", name, anim_entry.StateAnim, anim_entry.ActionAnim);
+        bool bounds_included = IncludeModelBounds(_animationBounds[binding->ClipIndex], bounds_it->second);
+        FO_VERIFY_AND_THROW(bounds_included, "Animation bounds are invalid", name, anim_entry.StateAnim, anim_entry.ActionAnim);
     }
 
     FO_VERIFY_AND_THROW(expected_runtime_bindings.size() == animation_runtime_rig->GetBindings().size(), "Animation runtime rig binding count does not match the baked model description", name, expected_runtime_bindings.size(), animation_runtime_rig->GetBindings().size());

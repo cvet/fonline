@@ -670,10 +670,11 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     io.Fonts->TexMaxWidth = AppRender::MAX_ATLAS_WIDTH;
     io.Fonts->TexMaxHeight = AppRender::MAX_ATLAS_HEIGHT;
 
-    // Default effect
+    // Default effect. Core is mounted after Embedded so a project can override what the bootstrap pack ships,
+    // which is why the second mount is not redundant even while the two carry the same bytes
     FileSystem base_fs;
-    base_fs.AddPackSource(Settings.Common.Packaged ? Settings.Baking.ClientResources : Settings.Baking.BakeOutput, "Embedded", true);
-    base_fs.AddPackSource(Settings.Common.Packaged ? Settings.Baking.ClientResources : Settings.Baking.BakeOutput, "Core", true);
+    AddClientPackSource(base_fs, Settings, EMBEDDED_PACK_NAME, true);
+    AddClientPackSource(base_fs, Settings, CORE_PACK_NAME, true);
     LoadImGuiEffect(base_fs);
 
     _imguiDrawBuf = active_renderer->CreateDrawBuffer(false);

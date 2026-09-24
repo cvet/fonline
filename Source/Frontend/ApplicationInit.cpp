@@ -243,7 +243,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
 
                 if (fs::exists(config_path) && !fs::is_dir(config_path)) {
                     config_to_apply = FO_MAIN_CONFIG;
-                    config_to_apply_dir = strex("{}", dir.string()).normalize_path_slashes();
+                    config_to_apply_dir = fs::path_to_string(dir);
                     break;
                 }
                 else {
@@ -306,7 +306,7 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         // Pre-create the writable cache and resource-overlay subdirs so the cache and the self-update
         // resource writer never fail on a missing parent directory
         fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.CacheResources));
-        fs::create_directories(fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources));
+        fs::create_directories(GetClientWritableResourceDir(settings));
         logging::write("Writable data path: {}", settings.Common.UserWritablePath);
     }
 

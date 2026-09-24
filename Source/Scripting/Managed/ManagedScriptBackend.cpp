@@ -7750,7 +7750,7 @@ static void AppendExistingAssemblyPath(vector<string>& paths, const std::filesys
     std::error_code ec;
 
     if (std::filesystem::is_directory(dir, ec)) {
-        paths.emplace_back(dir.string());
+        paths.emplace_back(fs::path_to_string(dir));
     }
 }
 
@@ -7830,7 +7830,8 @@ static void ConfigureManagedRuntime(const std::filesystem::path& runtime_dir)
     allocator_vtable.realloc = &ManagedMemRealloc;
     allocator_vtable.free = &ManagedMemFree;
     allocator_vtable.calloc = &ManagedMemCalloc;
-    FO_VERIFY_AND_THROW(mono_set_allocator_vtable(&allocator_vtable) != 0, "Failed to install Managed runtime allocator vtable");
+    int32_t installed = mono_set_allocator_vtable(&allocator_vtable);
+    FO_VERIFY_AND_THROW(installed != 0, "Failed to install Managed runtime allocator vtable");
 
     MonoEglibMemVTable installed_vtable {};
     monoeg_g_mem_get_vtable(&installed_vtable);
@@ -7937,7 +7938,7 @@ static auto IsSameManagedAssemblyCacheFile(const std::filesystem::path& disk_pat
 {
     FO_STACK_TRACE_ENTRY();
 
-    auto existing_data = fs::read_file(disk_path.string());
+    auto existing_data = fs::read_file(fs::path_to_string(disk_path));
 
     if (!existing_data.has_value()) {
         return false;
@@ -7978,7 +7979,7 @@ static auto RestoreAssemblyResources(const vector<ManagedAssemblyResource>& asse
             throw ScriptSystemException("Can't create Managed assembly cache directory", disk_dir);
         }
         if (!IsSameManagedAssemblyCacheFile(disk_path, resource.Data)) {
-            if (!fs::write_file(disk_path.string(), resource.Data)) {
+            if (!fs::write_file(fs::path_to_string(disk_path), resource.Data)) {
                 throw ScriptSystemException("Can't restore Managed assembly from resources", resource.ResourcePath);
             }
         }
@@ -7994,7 +7995,7 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
 {
     FO_STACK_TRACE_ENTRY();
 
-    std::filesystem::path bake_root {bake_output_dir};
+    std::filesystem::path bake_root {fs::make_path(bake_output_dir)};
 
     if (!std::filesystem::exists(bake_root)) {
         return {};
@@ -8021,13 +8022,13 @@ static auto CollectBakeOutputAssemblyPaths(string_view bake_output_dir, string_v
                 continue;
             }
 
-            string file_name = strex("{}", it->path().filename().string()).str();
+            string file_name = fs::path_to_string(it->path().filename());
             result.emplace_back(it->path().lexically_normal());
             has_entry = has_entry || IsManagedEntryAssemblyFileName(file_name, target_name);
         }
 
         if (has_entry) {
-            std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.string(); });
+            std::ranges::sort(result, {}, [](const std::filesystem::path& path) { return path.u8string(); });
             return result;
         }
     }
@@ -8241,7 +8242,7 @@ auto ManagedScriptBackend::CreateLoadScope(const std::filesystem::path& host_ass
         MonoAssembly* assembly = reflection_assembly != nullptr ? mono_reflection_assembly_get_assembly(reflection_assembly) : nullptr;
 
         if (assembly == nullptr) {
-            throw ScriptSystemException("Managed load-context returned a null entry assembly", entry_assembly_paths[i].string());
+            throw ScriptSystemException("Managed load-context returned a null entry assembly", fs::path_to_string(entry_assembly_paths[i]));
         }
 
         entry_assemblies.emplace_back(assembly);
@@ -8598,7 +8599,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
 
                 // Fail before Mono turns missing CoreLib into an opaque `corlib' assertion; unpackaged
                 // applications retain the side-by-side fallback
-                FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", std::filesystem::current_path().string(), platform::get_exe_path().value_or(""));
+                FO_VERIFY_AND_THROW(runtime_dir.has_value(), "Managed runtime directory not found", fs::path_to_string(std::filesystem::current_path()), platform::get_exe_path().value_or(""));
 
                 ConfigureManagedRuntime(*runtime_dir);
 
@@ -8660,7 +8661,7 @@ void ManagedScriptBackend::LoadAssemblies(const FileSystem& resources, string_vi
     optional<std::filesystem::path> host_assembly_path;
 
     auto append_assembly_path = [&](const std::filesystem::path& assembly_path) {
-        string file_name = strex("{}", assembly_path.filename().string()).str();
+        string file_name = fs::path_to_string(assembly_path.filename());
 
         if (IsManagedHostAssemblyFileName(file_name)) {
             if (host_assembly_path.has_value() && *host_assembly_path != assembly_path) {

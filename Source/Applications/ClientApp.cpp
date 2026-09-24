@@ -97,7 +97,8 @@ int main(int argc, char** argv) // Handled by SDL
     global_data::create();
 
 #if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args = program_args.GetArgs();
 #endif
     bool run_result = RunEmbeddedOrLoadedClient(args);
 
@@ -533,7 +534,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     }
 
     string final_path = string(runtime_live_path);
-    string backup_path = strex("{}.bak", final_path).str();
+    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs::exists(final_path);
 
     logging::write("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");

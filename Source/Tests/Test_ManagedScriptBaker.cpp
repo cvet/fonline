@@ -527,6 +527,27 @@ TEST_CASE("Managed runtime resources are restored into a content-addressed cache
 #endif
 }
 
+TEST_CASE("Managed runtime resources are restored under a non-ASCII cache directory")
+{
+#if FO_MANAGED_SCRIPTING
+    // A writable root inside a Cyrillic profile or install folder: the cache path travels as UTF-8, which a narrow
+    // Windows path conversion cannot carry
+    ScopedTempDirectory temp_dir;
+    auto resource_root = temp_dir.Path() / "Resources";
+    auto cache_root = temp_dir.Path() / std::filesystem::path {std::u8string {u8"Кэш"}};
+    WriteTextFile(resource_root / "ManagedRuntime" / "lib" / "netcoreapp" / "System.Private.CoreLib.dll", "managed-corelib\n");
+    WriteTextFile(resource_root / "ManagedRuntime" / "runtime.manifest", "manifest\n");
+
+    FileSystem resources;
+    resources.AddDirSource(fs::path_to_string(resource_root), true);
+
+    auto restored = RestoreManagedRuntimeResources(resources, fs::path_to_string(cache_root));
+    REQUIRE(restored.has_value());
+    CHECK(ReadTextFile(*restored / "lib" / "netcoreapp" / "System.Private.CoreLib.dll") == "managed-corelib\n");
+    CHECK(RestoreManagedRuntimeResources(resources, fs::path_to_string(cache_root)) == restored);
+#endif
+}
+
 TEST_CASE("Managed assembly references are read from the metadata tables")
 {
 #if FO_MANAGED_SCRIPTING
