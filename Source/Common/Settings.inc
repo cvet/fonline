@@ -310,9 +310,9 @@ SETTING(string, Baking, ServerResources, "ServerResources"); // Server resources
 SETTING(string, Baking, ClientResources, "Resources"); // Client resources directory
 SETTING(string, Baking, PlatformBinaries, "PlatformBinaries"); // Per-platform client runtime binaries directory served by the updater
 SETTING(string, Baking, CacheResources, "Cache"); // Cache resources directory
-SETTING(int32_t, Baking, CompressLevel, 1); // Deflate level baking compresses with (0-9)
+SETTING(int32_t, Baking, ResourcePackCompressLevel, 1); // Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(int32_t, Baking, ResourcePackMinCompressGain, 5); // Percent a blob must give back before it is deflated rather than stored as it is
-SETTING(int32_t, Baking, ZipCompressLevel, 1); // Deflate level for distribution zip archives and the executable's Embedded resource pack (0-9)
+SETTING(int32_t, Baking, BundleCompressLevel, 1); // Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest
 SETTING(vector<string>, Baking, BootstrapGameSettings); // Game settings an embedding project consumes before metadata is available (ApplicationInitHook and earlier); written to the binary config in full instead of as a sub-config delta
 SETTING_GROUP_END(Baking);
 

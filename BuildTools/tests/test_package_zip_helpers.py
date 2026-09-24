@@ -25,7 +25,7 @@ def test_resource_pack_validation_rejects_corrupted_entry(tmp_path: Path) -> Non
     archive_path = tmp_path / "resources.zip"
 
     packager = _package.Packager.__new__(_package.Packager)
-    packager.compress_level = 6
+    packager.resource_pack_compress_level = 6
 
     with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
         packager.write_stable_zip_entry(archive, str(source_path), "payload.txt")
@@ -49,7 +49,7 @@ def test_resource_pack_validation_rejects_corrupted_entry(tmp_path: Path) -> Non
 
 def _make_resource_packager() -> _package.Packager:
     packager = _package.Packager.__new__(_package.Packager)
-    packager.compress_level = 6
+    packager.resource_pack_compress_level = 6
     packager.resource_pack_min_compress_gain = 5
     packager.resource_archive_paths = {}
     return packager
@@ -84,10 +84,10 @@ def test_resource_archive_cache_key_uses_names_content_and_compression(tmp_path:
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) == baseline
     assert packager.resource_archive_cache_key([("renamed.txt", str(source))]) != baseline
 
-    packager.compress_level = 7
+    packager.resource_pack_compress_level = 7
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
 
-    packager.compress_level = 6
+    packager.resource_pack_compress_level = 6
     packager.resource_pack_min_compress_gain = 6
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
 
@@ -243,7 +243,7 @@ def test_embedded_pack_is_validated_before_it_is_embedded(tmp_path: Path, monkey
     validated: list[list[str]] = []
 
     packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
+    packager.bundle_compress_level = 6
 
     real_validate = _package.validate_resource_zip
 
@@ -273,7 +273,7 @@ def test_embedded_pack_ignores_input_mtime(tmp_path: Path) -> None:
     second_file.write_text("more content\n", encoding="utf-8")
 
     packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
+    packager.bundle_compress_level = 6
     files = [str(second_file), str(first_file)]
 
     first_bytes = packager.make_embedded_pack(files, str(base_path))

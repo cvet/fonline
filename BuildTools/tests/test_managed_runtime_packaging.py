@@ -56,9 +56,9 @@ def make_packager(tmp_path: Path):
     packager.platform_binaries_dir = 'PlatformBinaries'
     packager.client_res_dir = 'Resources'
     packager.server_res_dir = 'ServerResources'
-    packager.compress_level = 6
+    packager.resource_pack_compress_level = 6
     packager.resource_pack_min_compress_gain = 5
-    packager.zip_compress_level = 6
+    packager.bundle_compress_level = 6
     packager.resource_archive_paths = {}
     packager.baking_path = str(tmp_path / 'Baking')
     packager.get_target_resource_packs = lambda target: []

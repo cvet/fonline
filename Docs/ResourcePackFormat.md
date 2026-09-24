@@ -176,8 +176,8 @@ that cap and for full-base installation/repair ordering when local data is missi
 
 ## Codecs
 
-Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. Packaging takes the level (0–9) from
-`Baking.CompressLevel` and the gain from `Baking.ResourcePackMinCompressGain` (default 5): a blob is deflated
+Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. Packaging takes the level from
+`Baking.ResourcePackCompressLevel` and the gain from `Baking.ResourcePackMinCompressGain` (default 5): a blob is deflated
 only when the bytes it saves exceed `size * gain / 100` in integer division. Blobs smaller than 64 bytes
 remain stored. Catalogs use the same encoding rule. Catalogs and caches the client writes itself (patch
 catalogs, `.foindex`) use the `ResourcePackWriteSettings` defaults, level 6 and gain 5. Matching decoded
