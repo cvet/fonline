@@ -307,8 +307,8 @@ auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t 
 {
     FO_NO_STACK_TRACE_ENTRY();
 
-    // Bit layout: [group 8][primary 24][secondary 16][layer 8][sub-layer 8]; the sub-layer only orders sprites of
-    // one layer on one hex, so an item's own DrawOrderSubLayer can put it over a wall run drawn on the same cell
+    // Bit layout: [group 8][primary 24][sub-layer 8][secondary 16][layer 8]; a standing row is one ground depth, so
+    // its walls (lowest sub-layer) go first and no slice of the row paints over an item that only overlaps it sideways
     uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
     bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
     uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
@@ -316,7 +316,7 @@ auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t 
     uint64_t layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
     uint64_t sub = numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min());
 
-    return (group << 56) | (primary << 32) | (secondary << 16) | (layer << 8) | sub;
+    return (group << 56) | (primary << 32) | (sub << 24) | (secondary << 8) | layer;
 }
 
 void MapSpriteList::GrowPool() noexcept
