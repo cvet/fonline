@@ -283,7 +283,7 @@ TEST_CASE("CommonFrameBalancer")
 
     SECTION("FixedFpsBalancesTheIdleTime")
     {
-        // A negative sleep hands control to the fixed-fps arm, which pads each loop up to the frame budget
+        // The fixed-fps arm pads each loop up to the frame budget
         FrameBalancer balancer {true, -1, 200};
 
         nanotime start = nanotime::now();
@@ -294,6 +294,32 @@ TEST_CASE("CommonFrameBalancer")
         }
 
         CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {5}});
+    }
+
+    SECTION("FixedFpsCapsTheLoopWhenSleepYields")
+    {
+        // Sleep 0 is a plain uncapped default, and FixedFPS set beside it must still hold the loop to its budget
+        FrameBalancer balancer {true, 0, 200};
+
+        nanotime start = nanotime::now();
+
+        for (int32_t i = 0; i < 3; i++) {
+            balancer.StartLoop();
+            balancer.EndLoop();
+        }
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {10}});
+    }
+
+    SECTION("FixedFpsTakesPrecedenceOverPositiveSleep")
+    {
+        FrameBalancer balancer {true, 200, 1000};
+
+        nanotime start = nanotime::now();
+        balancer.StartLoop();
+        balancer.EndLoop();
+
+        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {100}});
     }
 }
 

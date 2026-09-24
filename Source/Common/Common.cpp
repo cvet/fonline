@@ -204,15 +204,8 @@ void FrameBalancer::EndLoop()
 
     _loopDuration = nanotime::now() - _loopStart;
 
-    if (_sleep >= 0) {
-        if (_sleep == 0) {
-            std::this_thread::yield();
-        }
-        else {
-            coarse_sleep(std::chrono::milliseconds(_sleep));
-        }
-    }
-    else if (_fixedFps > 0) {
+    // A frame rate cap outranks the plain per-frame sleep, so a config that keeps Sleep 0 can still be capped
+    if (_fixedFps > 0) {
         timespan target_time = std::chrono::nanoseconds(iround<uint64_t>(1000.0 / numeric_cast<float64_t>(_fixedFps) * 1000000.0));
         timespan idle_time = target_time - _loopDuration + _idleTimeBalance;
 
@@ -232,6 +225,12 @@ void FrameBalancer::EndLoop()
                 _idleTimeBalance = timespan(-std::chrono::milliseconds {1000});
             }
         }
+    }
+    else if (_sleep == 0) {
+        std::this_thread::yield();
+    }
+    else if (_sleep > 0) {
+        coarse_sleep(std::chrono::milliseconds(_sleep));
     }
 }
 
