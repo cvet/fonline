@@ -70,6 +70,30 @@ TEST_CASE("BaseLogging")
         CHECK(removed > 0);
     }
 
+    SECTION("LogToFileAcceptsANonAsciiPath")
+    {
+        // A Cyrillic profile name: a narrow path is read in the ANSI code page on Windows, which cannot carry it
+        auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());
+        auto log_path = temp_root / std::filesystem::path {std::u8string {u8"Тест"}} / "base.log";
+
+        std::filesystem::create_directories(log_path.parent_path());
+
+        std::u8string utf8_log_path = log_path.u8string();
+        logging::to_file(string(utf8_log_path.begin(), utf8_log_path.end()));
+        logging::write_base("gamma");
+        logging::to_file(NullLogPath);
+
+        std::ifstream input(log_path, std::ios::binary);
+        REQUIRE(input);
+
+        std::string content((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+        CHECK(content == "gamma");
+
+        input.close();
+        uintmax_t removed = std::filesystem::remove_all(temp_root);
+        CHECK(removed > 0);
+    }
+
     SECTION("LogToFileTruncatesPreviousContent")
     {
         auto temp_root = std::filesystem::temp_directory_path() / "lf_base_logging_tests" / std::to_string(std::random_device {}());

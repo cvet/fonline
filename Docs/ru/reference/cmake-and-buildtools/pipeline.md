@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"ee5f3c5d4db3407226ebcb0a1b927a5e9e387fb460128e429deba0dd19fa5d8f"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"5568b1fee31b72962eef25bbacfeab223d261d6c5b93efd687d41047a92ef186"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -345,6 +345,8 @@ Portable Raw/Zip artifacts завершаются до MSI и не содерж�
 `INSTALLED`, поэтому остаются portable.
 
 Managed class libraries остаются resource payload, а не binary companions.
+
+`package.py` пишет каждый не-Embedded target pack как `.fores` из отфильтрованного loose bake output; Embedded остаётся ZIP внутри executable. `Baking.ResourcePackCompressLevel` и `Baking.ResourcePackMinCompressGain` управляют сжатием `.fores`, `Baking.BundleCompressLevel` — Embedded и внешними bundles. Для одного запуска служат `-resource-pack-compress-level` и `-bundle-compress-level`. Формат и правила выбора/восстановления updater описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md) и [разделении client runtime и updater](../../explanation/runtime/client-updater.md).
 Когда несколько binary variants разделяют один updater target, `package.py`
 проверяет каждое подготовленное дерево `ManagedRuntime` и выбирает наименее
 квалифицированную подходящую binary entry — обычно default Release build — для

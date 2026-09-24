@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"e46e0b1bdfab79034c2a3cbc245d814e36ff116964036e92ee4ec1c67d1277d1"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"45341c72a95e979bea4b5183713fec1714e05e5c524d362886b56fe09f1f8376"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -142,6 +142,8 @@ Managed getters numeric, boolean и enum settings используют typed ind
 
 Обычный command line по-прежнему применяется к live settings ровно **один раз**, после config, sub-config и local config, поэтому имеет окончательный приоритет, а `+`-append overrides (`-Setting +value`) не накапливаются дважды. Этот проход журналирует каждое переопределение как `Set <name> to <value>`. Settings, чьи имена содержат token из `Common.SecretSettingTokens` (регистронезависимые подстроки, default `secret token password apikey`), журналируются как `Set <name> to ***`. Это не общая защита credentials: raw process arguments и значения settings остаются доступными, а другие logs, settings UI, crash output, baked configs и project code имеют собственные пути утечки. Не передавайте credentials через command line; используйте provisioning для целевого окружения и следуйте разделу [Безопасность и секреты](../../how-to/release/security-and-secrets.md).
 
+`CommandLineArgs::IsOption()` считает аргумент опцией, только если после начального дефиса идёт буква. Поэтому `--Render.Sleep -1` и другие отрицательные значения не превращаются в новые опции. Строковая настройка сохраняет текст буквально, включая обратные косые черты Windows и кавычки; список строк делится только по пробелам и табуляции. Числовые, логические и enum-настройки по-прежнему разбирают текст. Грамматика экранированных строк `AnyData` применяется к свойствам, но не к настройкам (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
+
 ## Resource packs и источники данных
 
 `ResourcePackInfo` описывает входы resource pack, используемые bakers и runtimes. На стороне baking применяются `BakingContext` и `BakerDataSource` из `Source/Tools/Baker.*`; на стороне runtime применяются смонтированные абстракции `DataSource` и `FileSystem`.
@@ -159,6 +161,8 @@ Managed getters numeric, boolean и enum settings используют typed ind
 - `MountDir(dir, recursive, non_cached, maybe_not_available)` для ресурсов disk directory;
 - `MountPack(dir, name, maybe_not_available)` для упакованных resource data.
 
+`MountPack` ищет сначала `.fores`, затем ZIP-совместимые `.zip`/`.bos`, затем Fallout `.dat`. Packaging пишет по одному `<Name>.fores` на логический pack; ZIP сохраняется только для Embedded внутри executable. Полная база `.fores` может иметь один writable `.patch.fores` с полным актуальным каталогом — это не каталог переопределений и не цепочка патчей. Повреждённый `.fores` не подменяется старым одноимённым ZIP. Бинарный формат, хеши, восстановление и кэш `.foindex` описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md).
+
 Затем `FileSystem` объединяет источники и предоставляет:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()` и `AddCustomSource()`;
@@ -172,7 +176,7 @@ Cached directory mounts создают snapshot файлового индекс�
 
 ### Общий индекс смонтированных источников
 
-Точечные lookup-операции (`IsFileExists()`, `ReadFile()` и `ReadFileHeader()`) используют один общий индекс, когда каждый смонтированный источник предоставляет полный `DataSource::GetIndexSnapshot()`. Snapshot предоставляют `ZipFile`, `EmbeddedFile`, `FalloutDat` и `FilesList`; пустой `DummySpace` для отсутствующего необязательного pack возвращает пустой snapshot. Directory sources, включая `CachedDir`, сохраняют default `nullopt`, поэтому добавление любого directory или другого live source отключает индекс для этого `FileSystem` и сохраняет ordered probing. Файловые системы packaged runtime, состоящие только из packs, индексируют ресурсы, а unpacked development mounts, входные каталоги baker-а и смешанные файловые системы updater-а сохраняют live lookup behavior.
+Точечные lookup-операции (`IsFileExists()`, `ReadFile()` и `ReadFileHeader()`) используют один общий индекс, когда каждый смонтированный источник предоставляет полный `DataSource::GetIndexSnapshot()`. Snapshot предоставляют `ResourcePackSource`, `ZipFile`, `EmbeddedFile` и `FalloutDat`; пустой `DummySpace` для отсутствующего необязательного pack возвращает пустой snapshot. Directory sources, включая `CachedDir`, сохраняют default `nullopt`, поэтому добавление любого directory или другого live source отключает индекс для этого `FileSystem` и сохраняет ordered probing. Файловые системы packaged runtime, состоящие только из packs, индексируют ресурсы, а unpacked development mounts, входные каталоги baker-а и смешанные файловые системы updater-а сохраняют live lookup behavior.
 
 Snapshot нового источника снимается до его публикации. Более поздний mount имеет больший приоритет и заменяет каждый заявленный им indexed path, что совпадает с существующим reverse-mount probe order. `ReindexDataSources()` строит новый индекс отдельно и заменяет прежний только после успешного получения всех snapshots; `CleanDataSources()` очищает и источники, и индекс. После setup точечное чтение остаётся lock-free. Если indexed source владеет путём, но не может открыть его, `ReadFile()` возвращает отсутствие файла, не переходя к lower-priority duplicate.
 
@@ -180,7 +184,7 @@ Snapshot нового источника снимается до его публ
 
 `Common.Packaged` — fixed auto-setting, заполняемый из packaged marker исполняемого файла в `GlobalSettings::ApplyAutoSettings()`. После загрузки настроек runtime-политика обязана читать этот снимок (`settings.Packaged`), чтобы скопированные или подставленные настройки оставались внутренне согласованными и тестируемыми. Прямые проверки `IsPackaged()` зарезервированы за решениями bootstrap до настроек и за `FileSystem::AddPackSource()`, где физический marker исполняемого файла намеренно выбирает монтирование архива или каталога; тесты также могут смотреть на этот marker при выборе совместимых фикстур.
 
-Installed clients сохраняют read-only base resources, смонтированные из `ClientResources`, и поверх них добавляют writable resource overlay из `fs_make_writable_path(UserWritablePath, ClientResources)`. `GetClientResources()` является единственной точкой сборки, общей для gameplay и проверки локальной metadata version в updater, поэтому validation и runtime lookup не могут выбрать разные packs. Updater записывает resource patches в overlay, а для splash применяет тот же precedence до начала текущего скачивания. Ошибка чтения ZIP entry включает archive path и resource-relative entry в context `DataSourceException`; short read дополнительно сообщает expected bytes, фактический read result и close result, а CRC/close failure отдельно сохраняет close result. Пути обновления native runtime binaries принадлежат разделу [Разделение client runtime и updater](../../explanation/runtime/client-updater.md).
+Упакованный клиент выбирает один effective source на каждый логический pack: writable замену `Pack.fores`, если она есть, иначе установленную базу, плюс writable `Pack.patch.fores`, привязанный к физическому хешу этой базы. Полный каталог пары определяет как присутствующие, так и удалённые пути; порядок приоритета логических packs сохраняется. `GetClientResources()` собирает одинаковый вид для gameplay и проверки metadata в updater. Для суффикса после последнего Embedded может применяться удаляемый кэш `Resources.foindex`: устаревший или повреждённый кэш заменяется прямым mount авторитетных пар, а повреждение самих packs остаётся ошибкой. При абсолютном installed/APK root замены хранятся в `<UserWritablePath>/Resources`. См. [формат пакетов ресурсов](../../../ResourcePackFormat.md) и [разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 
 ## Низкоуровневый доступ к диску
 

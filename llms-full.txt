@@ -6,7 +6,7 @@ Documents omitted by the reviewed full-context policy remain discoverable throug
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
 Documents: 110
-Policy exclusions: buildtools-readme, script-methods-map, tools
+Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
 ===== BEGIN DOCUMENT repository-home =====
 Source: README.md
@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 7aebc00f9b06ad57ca6270028236e02c167d450ff031ea44e06f222a306d10cb
+Content SHA-256: 2734caf72d0d2fe274a53e9c9a565fc7f081b0149c01d3add4825f37647120f3
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2534**
-- Symbols with source-backed descriptions: **2534**
+- Discovered symbols: **2537**
+- Symbols with source-backed descriptions: **2537**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2534**
+- Explicitly classified symbols: **2537**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -1453,7 +1453,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 82579274b8af1612c443ef0863e1a058f247819ca7421b5a1c2f15a6045175b2
+Content SHA-256: c4ee3eadfb336729a3bd9266666e74ff3ff08a0ac6565d9b47f6984985eacdd6
 
 ---
 layout: default
@@ -1729,9 +1729,9 @@ Keep those product and infrastructure details in the embedding project. [Release
 
 ## Reproducibility and provenance
 
-FOnline makes resource-pack ZIP entries deterministic by sorting normalized paths and fixing ZIP timestamps and permissions. Embedded resource ZIP data uses the same rule. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. After producing a resource pack, `package.py` reopens it, compares the exact entry list with the planned inventory, and streams every entry through the CRC-checking ZIP reader; embedded packs are validated from the in-memory bytes before binary patching. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
+FOnline writes each non-Embedded resource pack as a deterministic `.fores` base from sorted normalized paths, without serialized timestamps. The [Resource Pack Format](../../../ResourcePackFormat.md) specifies the version-2 header, content and physical hashes, complete catalog, optional writable patch, and validation rules. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern per-blob deflate; `Baking.BundleCompressLevel` governs outer distribution bundles and the executable's Embedded ZIP. `package.py` accepts separate `-resource-pack-compress-level` and `-bundle-compress-level` overrides. It verifies every produced resource payload, including decoded length and content hash, before packaging succeeds. Embedded ZIP remains sorted with fixed timestamps and permissions and is CRC-checked from its in-memory bytes before binary patching. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
 
-`FO_RESOURCE_ARCHIVE_CACHE_HELPER` may name a project-owned Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers the deterministic entry names and contents plus compression level. A hit still passes the exact-entry and CRC gates above; a miss or explicitly unavailable optional cache falls back to local deflate, while malformed hits and unexpected helper failures stop packaging. The helper's storage, credentials, claims, retention, and service availability remain project-owned.
+`FO_RESOURCE_ARCHIVE_CACHE_HELPER` may name a project-owned Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers the deterministic entry names and contents plus resource compression level and minimum gain. A hit still passes full `.fores` payload validation; a miss or explicitly unavailable optional cache falls back to local construction, while malformed hits and unexpected helper failures stop packaging. The helper's storage, credentials, claims, retention, and service availability remain project-owned.
 
 That does not make every complete release bit-for-bit reproducible. Linked binaries, debug symbols, top-level archives, MSI/APK toolchains, signing timestamps, included files, and external SDKs may carry host- or time-dependent data. State the narrower guarantee you have actually tested.
 
@@ -1825,7 +1825,8 @@ Promote a package row to project-qualified only when the named lane is versioned
 - `BuildTools/tests/validate_package_interface.cmake`
 - `BuildTools/tests/test_package_include.py`
 - `BuildTools/tests/test_package_security.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_resource_pack.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `BuildTools/tests/test_packaging_matrix.py`
 - `BuildTools/tests/test_minimal_multiplayer_package.py`
 - `BuildTools/msicreator/createmsi.py`
@@ -3561,7 +3562,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 0b46e6b1a9bf6140b1a33ac4cdc866231adb67610276412bb630d1c359e67c5a
+Content SHA-256: a04517ffb25dcc1108d5b29893770087a4bfb9a281aae6a7d3a962e7384a0512
 
 ---
 layout: default
@@ -3811,6 +3812,8 @@ Web uses the Mono interpreter plus Engine JavaScript scheduling/entropy glue; ke
 MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED_SCRIPTING`: embedded Mono and generated/JIT code cannot satisfy those instruments and otherwise report false failures. AddressSanitizer and the supported undefined/data-flow combinations still require the project's actual managed build and runtime checks.
 
 ## Diagnostics and debugging
+
+No C++ exception may unwind through a Mono internal-call frame: doing so bypasses managed `catch`/`finally` and can leave a nested script entry active after an awaited continuation. `RegisterInternalCalls` therefore accepts only `noexcept` function pointers. Fallible calls capture the native failure in `CaptureNativeError`, return an error payload to `CoreScripts/Native.cs`, and throw `NativeCallException` only after control is back in managed code. The native error remains catchable at the C# call site, including after `await`; genuinely non-failing calls remain `noexcept` and terminate deterministically if that contract is broken.
 
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
 
@@ -10941,7 +10944,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: a4ab0ac25a9b243267f39f7ed6e2f9b42ebb91c3da4d925584667efcdc07997f
+Content SHA-256: 14dcf3c998c62f4eccac348cb14ffdfb1cefdf02d8c1feacd0f493f9d3c376e6
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11132,6 +11135,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - Treat preprocessor directives as transparent to the blank-line rule: do not add or remove blank lines merely because code is enclosed by `#if`/`#else`/`#endif`; apply spacing to the surrounding C++ blocks as if the directives were not there.
 - Keep a comment attached to the code block it describes below: put a blank line before the comment, but no blank line between the comment and that block. For control-flow spacing, the comment is part of the following block.
 - Prefer `FO_VERIFY_AND_THROW` over silently masking unexpected states.
+- **The condition of a verification macro is a predicate, not an operation.** Write the condition of `FO_VERIFY_AND_THROW`, `FO_VERIFY_AND_CONTINUE`, `FO_VERIFY_AND_RETURN`, `FO_VERIFY_AND_RETURN_VALUE`, `FO_STRONG_ASSERT` and `FO_BASIC_STRONG_ASSERT` as if the macro were stripped like an `assert`: any work the rest of the function depends on — a write, a flush, a read that fills a buffer or advances a reader, an insertion checked through its `.second`, a file-system change, a job `Run()`, a call that fills an out parameter — happens first into a named local, and the macro only reads the answer: `bool written = _file.write(data) && _file.flush(); FO_VERIFY_AND_THROW(written, "Can't write resource patch", path);`, never `FO_VERIFY_AND_THROW(_file.write(data) && _file.flush(), ...)`. The macros are never compiled out, so this is not about losing the call: an operation inside a check reads as a check and is skimmed past as one, and a check that acts cannot be moved, reworded or swapped for another variant without changing what the function does. See [Docs/ExceptionSafety.md](Docs/ExceptionSafety.md); embedding projects may gate the generic shapes with an audit tool (Last Frontier: `Tools/CiChecks/check_verify_conditions.py`).
 - **Throw engine exceptions with a fixed message plus context arguments, never a pre-formatted string.** `FO_DECLARE_EXCEPTION` exception types and `FO_VERIFY_AND_THROW` take a constant `string_view` message followed by variadic context values; the base exception preserves the bare message and appends each value as its own `- value` line. Write `throw SomeException("Fixed human-readable message", id, path, value);` and `FO_VERIFY_AND_THROW(cond, "Fixed message", ctx...);`, not `throw SomeException(strex("... {} ...", value));`. A constant message keeps every occurrence of the same failure identical, so failures group and sort by message uniqueness while the variable parts travel in the arguments — the same rule the script-side `verify` macro follows. Do not build the message with `strex` / `std::format` / `+` from runtime values.
 - **Never throw anything that is not derived from `std::exception`, and treat `catch (...)` as a defect handler, not an error handler.** Every exception the engine raises comes from the `FO_DECLARE_EXCEPTION` hierarchy or the standard library, so a non-`std::exception` type walks past every `catch (const std::exception&)` recovery path and arrives with nothing to report. Wherever a `catch (...)` sits beside a `catch (const std::exception& ex)`, its entire body is `FO_UNKNOWN_EXCEPTION();` — which raises `StrongAssertationException`, reports it, and terminates the process. Do not log it and continue, fabricate an `"Unknown exception"` message, count it as an ordinary failure, or rethrow it as a domain exception. The only places that may swallow instead are no-throw teardown/unwind paths (`noexcept` bodies, `scope_exit`/`scope_fail` bodies, `safe_call` targets, destructors, C-ABI callbacks) and the reporting/logging machinery itself, which must not re-enter while reporting. Full rule: [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md) §2.1.
 - **Write for exception safety.** A throw must never escape a function leaving a broken invariant. As you write or change engine code, derive the exception-safety level the body provides (`NoThrow` / `Strong` / `Basic` / `None`) per [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md) (§5 disposition ladder, §8 levels): do fallible/validating work (throwing `numeric_cast`, duplicate/collision guards) before the first observable mutation, insert into the authoritative store before any derived cache, and undo an early flag/counter/lock/handle mutation on unwind with `scope_fail` (noexcept body) or RAII on raw OS/third-party resources. Never aim for `None` — it is a defect tier to fix, not to record. Allocation *terminates* on OOM (§1) so do not write allocation-only rollbacks, and entity create/destroy is *throw-as-signal* (`Basic` by design). If an embedding project maintains a per-function audit baseline, update that project-owned baseline in the same integration change; it is not normative engine evidence.
@@ -11172,7 +11176,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 ===== BEGIN DOCUMENT exception-safety =====
 Source: Docs/en/contributing/coding-contracts/exception-safety.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/exception-safety.html
-Content SHA-256: 98d763e9284ebb8cbf35c33d24638cabfb7b4db6b7b3bc787364143bbaa8abf8
+Content SHA-256: afb4d473355a7b4ac5947d87c2acb2a745c098bded2b3cec918e219e44f8e258
 
 ---
 layout: default
@@ -11315,6 +11319,8 @@ Net guarantee: a destruction either completes, or the process terminates determi
 This is the **unexpected-and-unhandled** tier (§5). A verify placed **after** an irreversible mutation that checks an invariant which "can only be false if the world is already corrupt" is `FO_STRONG_ASSERT` (deterministic `ReportExceptionAndExit`), **not** a throwable verify: there is nothing left to handle, and a throwable verify would just be caught by the WorkerPool and keep running on corrupt state. (The same invariant may still be re-checked *earlier*, where it is recoverable, as a `throw` or `FO_VERIFY_AND_THROW` — that is the echeloned model in §5, not a contradiction.)
 
 Such invariants must abort in **every** build. `FO_STRONG_ASSERT` (`Source/Essentials/ExceptionHandling.h`) is **unconditional** — it always evaluates its condition and calls `ReportExceptionAndExit` on failure, regardless of build profile — so it is the correct tool for load-bearing post-mutation invariants.
+
+The condition of every `FO_VERIFY_*` and `FO_STRONG_ASSERT` variant is a predicate, never the operation being checked. Perform a write, flush, read, insertion, filesystem mutation, or out-parameter call first, bind its result to a named local, and check that local. For example, write `bool written = file.write(data) && file.flush(); FO_VERIFY_AND_THROW(written, "Resource footer was not committed");`, not the write and flush inside `FO_VERIFY_AND_THROW(...)`. The macros do evaluate their conditions in all builds; this rule keeps an action from being hidden inside what reads as an assertion.
 
 Examples converted to `FO_STRONG_ASSERT` (all post-mutation, can't-happen-with-correct-code):
 - `EntityManager` typed-registry duplicate checks and `Unregister*`/global lookup checks (forward registration implies the typed/global maps agree).
@@ -12030,7 +12036,7 @@ Project-side rewriters must not own contract inference: they should preserve aut
 ===== BEGIN DOCUMENT smart-pointers =====
 Source: Docs/en/contributing/coding-contracts/smart-pointers.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/smart-pointers.html
-Content SHA-256: 7a3112e49c059a2dcc8810339ed00d0b80f22bf043a9c33001ef6ebb3ee0c004
+Content SHA-256: 00127de2f7ad8dc83ae4397bee91938e88a859e61e5d4d9ce1f581f7dff69a4e
 
 ---
 layout: default
@@ -12173,7 +12179,7 @@ Do not wrap ordinary nullable intrusive ownership in `optional<refcount_ptr<T>>`
 
 Class and struct state must not store C++ reference members (`T& _member` or `const T& _member`). Constructor parameters and short local aliases may still use references when that is the clearest borrow, but stored required borrowed dependencies must be reviewed non-null `ptr<T>` members. Stored optional dependencies should use the matching nullable wrapper (`nptr<T>`, `unique_nptr<T>`, or `refcount_nptr<T>`). Use value members only for data the object actually owns by value, not as a workaround for a borrowed dependency.
 
-Process/runtime command-line arguments enter through platform or DLL ABI `argc` / `argv` signatures, then immediately move into the wrapper vocabulary. Use `CommandLineArg` / `CommandLineArgs` for internal argument views; build any temporary `char**` array only at a final ABI handoff such as the client-runtime export call.
+Process/runtime command-line arguments enter through platform or DLL ABI `argc` / `argv` signatures, then immediately move into the wrapper vocabulary. Use `CommandLineArg` / `CommandLineArgs` for internal argument views; build any temporary `char**` array only at a final ABI handoff such as the client-runtime export call. A non-SDL entry point owns them through `ProgramArgs` (`Source/Common/Common.h`), which obtains UTF-8 text from the wide Windows command line instead of ANSI-code-page `argv` and lends a view for its lifetime.
 
 When a reviewed raw cleanup boundary must adopt object storage, route it through a named helper instead of constructing owners directly from `.get()`. Use `adopt_unique_ptr(ptr<T>)` for scalar object cleanup and `make_unique_del_ptr(ptr<T>, deleter)` / `make_unique_del_ptr(nptr<T>, deleter)` for custom-deleter holders; the `ptr<T>` overload returns `unique_del_ptr<T>`, and the `nptr<T>` overload returns `unique_del_nptr<T>`. Domain-specific helpers may wrap these primitives, but call sites should not spell `unique_ptr<T> {value.get()}` or `unique_del_ptr<T> {value.get(), deleter}` directly.
 
@@ -14136,352 +14142,6 @@ If a future AI agent continues this roadmap, it should re-anchor from git status
 
 ===== END DOCUMENT documentation-maintenance =====
 
-===== BEGIN DOCUMENT documentation-site-publication =====
-Source: Docs/en/contributing/documentation/site-publication.md
-Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/site-publication.html
-Content SHA-256: efc77b437d589fd76b76011e6882ae6c6faeb56645cc59c598ee57ae0f4ec41e
-
----
-layout: default
-title: Documentation Site Publication
-locale: en
-document_id: documentation-site-publication
-permalink: /Docs/en/contributing/documentation/site-publication.html
----
-
-# Documentation Site Publication
-
-> Engine-owned documentation. This page defines how the FOnline Markdown corpus is previewed, validated, and published through the existing GitHub Pages route.
-
-## Purpose
-
-Use this page when changing `_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
-
-## Source paths inspected
-
-- `_config.yml`
-- `CNAME`
-- `.ruby-version`
-- `Gemfile`
-- `.gitignore`
-- `.github/workflows/validate.yml`
-- `Docs/documentation-manifest.json`
-- `BuildTools/docs_ai_delivery.py`
-- `BuildTools/tests/test_docs_ai_delivery.py`
-- `BuildTools/docs_ai_eval.py`
-- `BuildTools/tests/test_docs_ai_eval.py`
-- `BuildTools/SnippetPolicy.json`
-- `BuildTools/docs_snippets.py`
-- `BuildTools/tests/test_docs_snippets.py`
-- `BuildTools/DocumentationDiagrams.json`
-- `BuildTools/docs_diagrams.py`
-- `BuildTools/tests/test_docs_diagrams.py`
-- `BuildTools/DocumentationScreenshots.json`
-- `BuildTools/docs_screenshots.py`
-- `BuildTools/tests/test_docs_screenshots.py`
-- `BuildTools/docs_site.py`
-- `BuildTools/tests/test_docs_site.py`
-- `BuildTools/tests/test_docs_site_layout.py`
-- `BuildTools/docs_site_artifact.py`
-- `BuildTools/tests/test_docs_site_artifact.py`
-- `_layouts/default.html`
-- `assets/css/docs.css`
-- `assets/js/docs.js`
-- `assets/images/fonline-mark.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
-- `Docs/ai-evaluation.json`
-- `Docs/generated/ai-evaluation-report.json`
-- `Docs/generated/snippets.json`
-- `Docs/generated/diagrams.json`
-- `Docs/assets/diagrams/`
-- `Docs/generated/screenshots.json`
-- `Docs/assets/screenshots/`
-- `llms.txt`
-- `llms-full.txt`
-- `docs-manifest.json`
-- `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`
-- `Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md`
-- `Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md`
-- `Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md`
-
-## Production contract
-
-| Concern | Contract |
-|---|---|
-| Canonical content | Versioned Markdown in this repository |
-| Production provider | GitHub Pages |
-| Renderer | GitHub Pages-compatible Jekyll |
-| Production URL | `https://fonline.ru` |
-| Custom-domain source | Root `CNAME`, containing only `fonline.ru` |
-| Site configuration | Root `_config.yml` |
-| Rendering layer | GitHub Pages-supported themes, plugins, layouts, includes, data, and static assets only |
-| Reader navigation | Generated `_data/docs-site.json`, consumed by the repository-owned default layout |
-| Static search | Generated locale-scoped `assets/docs-search.json` and `assets/docs-search.ru.json`, queried entirely in the browser |
-| Teaching diagrams | Source-owned local SVG under `Docs/assets/diagrams/`, with exact provenance and hashes in `Docs/generated/diagrams.json` |
-| Tool screenshots | Source-owned local PNG under `Docs/assets/screenshots/`, with capture environment, interactions, source/image hashes, and recapture triggers in `Docs/generated/screenshots.json` |
-| Version, locale, and route map | Generated `Docs/generated/document-routes.json`, derived from stable document IDs and manifest targets |
-| Review output | Commit-addressable `_site` artifact plus rendered-site validation report from GitHub Actions |
-| AI delivery | Root `llms.txt`, bounded `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation, and complete snippet coverage reports |
-
-The publication route is intentionally independent from any embedding game project. Last Frontier, TLA, and public example games may link to this site, but they neither build nor define it.
-
-<figure class="docs-diagram">
-<picture>
-<source media="(max-width: 700px)" srcset="../../../assets/diagrams/documentation-delivery-mobile.svg">
-<img src="../../../assets/diagrams/documentation-delivery.svg" alt="Documentation delivery diagram. Canonical Markdown and the documentation manifest feed deterministic generators. Generated navigation, search, diagrams, route catalogs, AI bundles, and evaluation reports are checked in. Jekyll builds the human site while AI clients consume llms.txt, llms-full.txt, docs-manifest.json, and generated JSON. Static, browser, accessibility, hash, and freshness gates validate the same revision." loading="lazy">
-</picture>
-<figcaption>Human and AI routes are projections of one versioned Markdown corpus. GitHub Pages, machine-readable endpoints, and CI evidence all use the same manifest, generated artifacts, source revision, and content hashes.</figcaption>
-</figure>
-
-GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
-
-Ordinary `index.md` pages use Jekyll's canonical directory URL (`/path/`), while
-their artifact remains `/path/index.html`. `BuildTools/docs_site.py` records the
-directory form in navigation, search, locale reservations, and the route
-catalog so canonical tags and published links agree with GitHub Pages.
-
-Manifest document records with `visibility: internal` and generated artifacts
-with the same visibility are source-only maintainer evidence. `_config.yml`
-must exclude their canonical paths and any repository pointer paths from
-GitHub Pages, while `BuildTools/docs_ai_delivery.py` must omit internal models
-from the public AI bundle. `BuildTools/docs_site_artifact.py` fails the rendered
-artifact when any internal Markdown, JSON, index, or rendered HTML variant is
-present. Public documentation may point maintainers to these files through a
-GitHub source URL, but it must not promise a same-domain route for them.
-
-## Reader navigation and static search
-
-The public site wraps normal Jekyll-rendered Markdown in `_layouts/default.html`. The layout adds a persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, a visible rolling `master` indicator, and an EN/RU switch for current locale pairs. Markdown remains complete and readable when opened directly in GitHub; the layout owns no technical prose.
-
-`Docs/documentation-manifest.json` owns the navigation groups by stable document ID. `BuildTools/docs_site.py` resolves those IDs to current titles and paths and writes:
-
-| Artifact | Contents |
-|---|---|
-| `_data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes, and current stable-ID locale pairs |
-| `assets/docs-search.json` | Compact weighted English token postings and result metadata for every public current English human document |
-| `assets/docs-search.ru.json` | Compact weighted Russian token postings and result metadata for every current translated human document |
-| `Docs/generated/document-routes.json` | Current public URLs, canonical future owners, planned English/Russian paths, route availability, and every required legacy redirect |
-
-Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
-
-Search uses repository-owned JavaScript and browser APIs only. There is no hosted index, account, analytics dependency, remote script, or server endpoint. The rendered page loads only its active locale index, and result routes remain in that locale. Titles and headings receive more weight than body terms; complete technical identifiers and camel-case components remain searchable. Pure numeric components and terms present in more than 60% of a locale corpus are omitted because they cannot usefully distinguish results. Compact JSON is emitted as UTF-8 instead of expanding non-ASCII text into `\\uXXXX` escapes, so the Russian budget measures actual text bytes. The source manifest enforces the reviewed 1.75 MiB (1,835,008-byte) hard limit independently for each generated index. The limit is capacity for the complete bilingual corpus, not permission to omit documents; generation still fails closed when either locale exceeds it.
-
-Regenerate after changing public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups, or search policy:
-
-```bash
-python BuildTools/docs_site.py --write
-python BuildTools/docs_site.py --check
-```
-
-When visual, fenced, or delivery layers change, generate diagrams and the
-screenshot catalog first, the snippet report second, translation status third,
-site data fourth, the AI evaluation report fifth, and AI delivery last. The
-evaluation consumes the site search model, while public `docs-manifest.json`
-records diagram, screenshot, snippet, machine-model, evaluation, navigation,
-search, and route-catalog hashes. Never edit generated delivery data by hand.
-Presentation changes belong in the layout or local assets;
-navigation/search/routing ownership changes belong in the source manifest.
-The accepted boundaries are recorded in
-[Documentation Snippet Validation](snippets.md), [ADR-0004](../decisions/0004-manifest-backed-site-navigation-search.md),
-[ADR-0006](../decisions/0006-documentation-version-locale-routing.md),
-[AI Documentation Evaluation](ai-evaluation.md), and
-[Translation Workflow](translation.md).
-
-## Version, locale, and route migration
-
-The unversioned production site is the `current` channel. It follows rolling `master`, and the layout labels it `Current`; it does not claim that `master` is a stable release. Historical review uses repository revisions and commit-addressable `_site` artifacts.
-
-Tagged release snapshots are deliberately deferred. The manifest reserves `/versions/{version}/`, but no release page is generated until the engine has immutable supported tags, a support matrix, and an approved follow-up decision. `VERSION`, a branch, or a reachable tag must not silently create a supported documentation line.
-
-The localization policy is also source-owned:
-
-- `en` is canonical; manifest-owned human pages use their current paths below `Docs/en/` or an explicit repository/subsystem README entrypoint;
-- `ru` is a complete mirror; this revision has all 197 required counterparts under fail-closed parity enforcement;
-- paths below `Docs/en/` mirror directly below `Docs/ru/`;
-- root and subsystem README pages use explicit pairs such as `README.md` and `README.ru.md`;
-- `BuildTools/docs_localization.py` computes normalized SHA-256 for every canonical English source and rejects stale or mismatched existing Russian pages;
-- `Docs/generated/translation-status.json` currently reports exact required/current/missing coverage;
-- stable-ID language switching and locale-scoped search are active for every required pair; manifest enforcement is `complete`.
-
-`Docs/generated/document-routes.json` freezes the migration map before files move. Each public record carries its current route, planned canonical owner/path, locale paths, and redirect requirement. Multiple legacy pages may converge only when exactly one non-`replace` record owns the destination.
-
-Former flat Markdown files remain durable pointers to their canonical pages, including links for old heading anchors. This preserves routes in both the GitHub repository UI and Jekyll without generated HTML or an additional redirect plugin. The generated route inventory rejects missing owners, route collisions, and stale pointer records.
-
-## AI and machine-readable routes
-
-The static site publishes three generated root endpoints, the route catalog, and the current AI evaluation report alongside normal Jekyll-rendered Markdown:
-
-| Route | Purpose |
-|---|---|
-| `https://fonline.ru/llms.txt` | Concise map of every public current page, grouped by Diataxis kind, plus canonical generated JSON models |
-| `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes, capped at 2 MiB |
-| `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, source provenance, byte size, and SHA-256 content hashes |
-| `https://fonline.ru/Docs/generated/document-routes.json` | Current/planned paths, version and locale policy, canonical target ownership, and legacy redirect requirements |
-| `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, current evidence checks, success rate, MRR, and failures |
-| `https://fonline.ru/Docs/generated/snippets.json` | Every public/current/human fenced block, owning document/heading, parser harness, hash, template status, result, and normative coverage |
-| `https://fonline.ru/Docs/generated/diagrams.json` | Owned diagram IDs, documents, dimensions, alt/caption text, source provenance, published SVG paths, and exact hashes |
-| `https://fonline.ru/Docs/generated/screenshots.json` | Owned screenshot IDs, documents, dimensions, alt/caption text, capture environment/interactions, source provenance, recapture triggers, and exact hashes |
-
-`Docs/documentation-manifest.json` owns membership and policy. `BuildTools/docs_ai_delivery.py` owns deterministic projection only; never edit the three outputs by hand. Every public document record includes a canonical human HTML URL at `fonline.ru` and a `source_ref`-pinned clean Markdown URL at GitHub's raw-content endpoint; `llms.txt` uses the Markdown route and retains an HTML link. The current GitHub Pages/Jekyll 3.10 pipeline cannot publish same-domain raw aliases without duplicating content or adding a custom plugin, so same-domain Markdown aliases remain a publication-platform task rather than a false route claim. Generated reference detail pages remain available as normal Markdown and JSON, but the full-context bundle carries their index pages rather than duplicating large method/type/property inventories.
-
-Regenerate after any inventoried Markdown or manifest change:
-
-```bash
-python BuildTools/docs_ai_delivery.py --write
-python BuildTools/docs_ai_delivery.py --check
-```
-
-When the search model or AI task set changes, run the complete dependency chain:
-
-```bash
-python BuildTools/docs_diagrams.py --write
-python BuildTools/docs_screenshots.py --write
-python BuildTools/docs_snippets.py --write --external
-python BuildTools/docs_localization.py --write
-python BuildTools/docs_site.py --write
-python BuildTools/docs_ai_eval.py --write
-python BuildTools/docs_ai_eval.py --check
-python BuildTools/docs_ai_delivery.py --write
-python BuildTools/docs_ai_delivery.py --check
-```
-
-The generator fails instead of truncating when the context bundle exceeds its declared byte budget. Content hashes use normalized LF text, so the output is byte-identical on Windows and Linux. These routes aid discovery and transport; they do not override the source precedence in the source manifest or promote an internal engine symbol to a public API.
-
-### Verified public state
-
-The following was checked on 2026-07-10, rechecked on 2026-07-15 and 2026-08-01 from public state, and verified through the authenticated GitHub Pages API on 2026-08-02:
-
-- The Pages API reports status `built`, source mode `legacy`, branch `master`, and folder `/`. It reports `fonline.ru` as the custom domain and HTTPS enforcement as enabled.
-- `https://fonline.ru/` and the legacy `/Docs/` index return HTTP 200. Representative generated `/Docs/en/` and `/Docs/ru/` routes return 404 because the documentation branch has not reached `master`.
-- The repository `CNAME` contains `fonline.ru`. Public IPv4 DNS returns the four GitHub Pages addresses `185.199.108.153` through `185.199.111.153`, and `www.fonline.ru` is a CNAME for `fonline.ru`.
-- The latest Pages build for remote `master` commit `fee50fb636b5bd1e30509aded929df1fc0e95db5` completed successfully. The accompanying legacy `validate` workflow failed in non-documentation build lanes and does not contain the pending documentation artifact/browser jobs.
-- `_github-pages-challenge-cvet.fonline.ru` has no public TXT record. DNS routing is confirmed, but GitHub domain-ownership verification is recorded as `not-observed` rather than inferred from a working custom domain.
-
-`Docs/documentation-manifest.json` records the verified Pages source and the separately unresolved ownership-verification state. Update its audit date and values only from authenticated settings/API evidence plus public DNS, never from the rendered page alone. Do not replace the existing production route or weaken HTTPS while landing the documentation corpus.
-
-DNS account names, registrar credentials, recovery codes, and GitHub credentials do not belong in this public repository. Operational ownership is shared by the repository administrators and the private domain-administration owner. Record the named account owner in the private operations inventory; this repository owns only the public domain contract and its validation.
-
-## Compatible environment
-
-The local environment is pinned to the GitHub Pages dependency set declared in:
-
-- `.ruby-version` for the Ruby runtime;
-- `Gemfile` for the `github-pages` bundle;
-- `BuildTools/docs-browser/package.json` and `package-lock.json` for Node, Playwright, Chromium revision, and axe-core;
-- `Docs/documentation-manifest.json` for the machine-readable publication contract.
-
-The current render pin is Ruby `3.3.4` and `github-pages` `232`. Browser validation uses Node `24.16.0`, Playwright `1.62.0` with its Chromium `151.0.7922.34` revision, and axe-core `4.12.1`. Before changing a render value, compare it with the [published GitHub Pages dependency versions](https://pages.github.com/versions/) and update the manifest declarations together. Browser dependency updates require an exact lock-file change, both focused tests, and a complete route audit; never use `latest` in CI.
-
-`Gemfile.lock` is intentionally ignored, following GitHub's Pages guidance. The exact `github-pages` pin is the repository-level compatibility boundary; the official Pages build image is the CI authority.
-
-## Local build and preview
-
-Install the Ruby version from `.ruby-version` and Bundler, then run from the engine root:
-
-On Windows, use the RubyInstaller package with Devkit/MSYS2 support. The GitHub Pages bundle contains native gems; a bare Ruby archive can resolve the bundle but cannot compile those dependencies.
-
-```bash
-python BuildTools/docs_diagrams.py --check
-python BuildTools/docs_screenshots.py --check
-python BuildTools/docs_site.py --check
-bundle install
-bundle exec jekyll build --trace
-python BuildTools/docs_site_artifact.py --site-dir _site
-npm ci --prefix BuildTools/docs-browser
-npx --prefix BuildTools/docs-browser playwright install chromium
-npm --prefix BuildTools/docs-browser run audit
-```
-
-The rendered output is `_site/`. It is disposable and ignored by git. A successful build must finish without Jekyll or Liquid errors; `_config.yml` enables strict front-matter parsing. Browser validation serves `_site/` only on an ephemeral `127.0.0.1` port and writes `Workspace/docs-browser-audit-report.json` plus the retained screenshot set under `Workspace/docs-browser-screenshots/`. It never contacts production or executes documentation snippets.
-
-For an interactive preview:
-
-```bash
-bundle exec jekyll serve --livereload --host 127.0.0.1 --port 4000
-```
-
-Open `http://127.0.0.1:4000/`. Stop the server before switching branches or changing the Ruby/Jekyll dependency pin. GitHub's maintained procedure is [Testing your GitHub Pages site locally with Jekyll](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll).
-
-## Pull-request artifact
-
-The `Build documentation site` job in `.github/workflows/validate.yml` runs after the fast standalone documentation checks. It:
-
-1. checks out the exact pull-request or push revision;
-2. renders the repository root with `actions/jekyll-build-pages@v1` into `_site/`;
-3. runs `BuildTools/docs_site_artifact.py` against the completed tree;
-4. installs the manifest-pinned Node, npm lock, Chromium revision, and required Linux browser libraries;
-5. runs `BuildTools/docs-browser/audit.mjs` against the same completed tree;
-6. uploads separate static-validation and browser-validation artifacts, including the browser JSON and screenshots;
-7. uploads `documentation-site-<commit-sha>` with `actions/upload-artifact@v4` for 14 days.
-
-The static post-build gate requires every current route and every available locale route from `Docs/generated/document-routes.json`, verifies that static AI/search/generated-model endpoints are copied byte-for-byte, and checks canonical URLs, HTML language, one `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets, and links to publishable local resources.
-
-The browser gate visits every catalog route in three manifest-owned profiles: desktop at 1440 x 1000 CSS pixels, mobile at 390 x 844 CSS pixels, and `zoom-200` at 640 x 512 CSS pixels with device scale factor 2. The last profile models a 1280 x 1024 physical viewport at 200 percent browser zoom and requires the compact navigation/reflow contract without a mobile user agent. Each rendered page must have no selected WCAG 2.2 A/AA axe violation, page/console/request error, undecoded image, clipped reading column, fixed-header/sidebar overlap, or reachable page-level horizontal scroll. Interaction scenarios additionally prove keyboard skip navigation, English technical/prose search, native-dialog Escape, theme persistence, copy feedback, compact/mobile drawer semantics, focus containment and restoration, Russian search, `html lang`, active-locale state, all explicit README language pairs, exact paired-route switching, architecture/content-showcase rendering, and Russian 200-percent reflow. The retained screenshots include responsive document/navigation states, every Russian README entry point, translated documents, architecture and Content Showcase media for each profile, and `zoom-200-russian-documentation.png` at an exact 1280 x 1024 physical size without changing the Pages deployment path.
-
-Automated axe results cover only machine-detectable criteria. Raw incomplete nodes remain rule-level records with node/route counts and bounded example paths/targets instead of being mislabeled as passes. Axe can return `color-contrast` as incomplete when text is clipped inside a scroll container; for those exact nodes, the harness computes the effective foreground/background with alpha composition, applies the WCAG relative-luminance formula, and requires 4.5:1 or 3:1 for large text. Any failed or unresolvable fallback fails its route; both raw and resolved counts stay in the report. The `zoom-200` profile is deterministic reflow, accessibility, and screenshot evidence for one viewport; it is not proof for every browser, operating-system magnifier, font override, or production rendering difference. A green job still does not prove screen-reader behavior, cognitive accessibility, content clarity, or production equivalence. Release review needs keyboard-only and representative assistive-technology checks on the landed artifact and production domain.
-
-This job validates and previews the production-compatible render. It does not deploy, alter Pages settings, write a branch, or change DNS. The existing GitHub Pages source remains the only production publication route.
-
-Reviewers should inspect every retained screenshot, including the dedicated Russian 200-percent reflow image, then inspect at least the landing page and changed pages interactively. Check the rolling version indicator, locale switch, page table of contents, code blocks, tables, local assets, keyboard order, and one screen-reader landmark/headings pass. Repeat 200-percent zoom on the landed artifact or production domain before release; the local profile does not replace that environment check. A green source, artifact, or axe check does not by itself prove that the rendered page is readable by every user.
-
-## Production verification
-
-After a documentation change reaches the configured Pages source:
-
-1. Confirm `Validate documentation` and `Build documentation site`, including the browser audit, are green for the published commit.
-2. Inspect both validation reports, every browser screenshot, and the commit-addressable site artifact before attributing a production difference to Pages.
-3. Open `https://fonline.ru/` and the English, Russian, and legacy routes for at least one migrated document.
-4. Confirm sidebar navigation highlights the current page and remains usable at a mobile width.
-5. Search for `Game.Sync` and a prose topic such as `map baking` in English, then `игровой клиент` in Russian; confirm results stay on canonical routes in the active locale.
-6. Confirm HTTPS is valid and the browser remains on `fonline.ru`.
-7. Confirm `CNAME` still contains exactly `fonline.ru`.
-8. Resolve the domain and confirm it still targets GitHub Pages.
-
-PowerShell DNS check:
-
-```powershell
-Resolve-DnsName fonline.ru -Type A
-```
-
-POSIX DNS check:
-
-```bash
-dig +short fonline.ru A
-```
-
-Escalate a mismatch to both repository and domain administrators. Do not work around a Pages or DNS problem by committing generated HTML, changing the canonical domain, or adding an alternate deployment workflow.
-
-## Validation checklist
-
-1. Markdown remains the canonical authored content.
-2. `CNAME`, `_config.yml`, `Gemfile`, `.ruby-version`, the manifest, and CI agree on the publication contract.
-3. `python BuildTools/tests/test_docs_validate.py` passes.
-4. `python BuildTools/tests/test_docs_snippets.py` and `python BuildTools/docs_snippets.py --check --external` pass without executing commands.
-5. `python BuildTools/tests/test_docs_diagrams.py`,
-   `python BuildTools/docs_diagrams.py --check`,
-   `python BuildTools/tests/test_docs_screenshots.py`,
-   `python BuildTools/docs_screenshots.py --check`,
-   `python BuildTools/tests/test_docs_site.py`,
-   `python BuildTools/tests/test_docs_site_layout.py`, and
-   `python BuildTools/docs_site.py --check` pass, including visual
-   ownership/freshness and version/locale/route collision coverage.
-6. `python BuildTools/tests/test_docs_ai_eval.py` and `python BuildTools/docs_ai_eval.py --check` pass against that search model.
-7. `python BuildTools/tests/test_docs_ai_delivery.py` and `python BuildTools/docs_ai_delivery.py --check` pass.
-8. `python BuildTools/tests/test_docs_localization.py` and `python BuildTools/docs_localization.py --check` pass; production bilingual launch also uses `--enforce-complete`.
-9. `python BuildTools/docs_validate.py` passes.
-10. A local or CI Jekyll build produces `_site/` without errors and contains the AI routes, evaluation/snippet reports, generated navigation, both locale search indexes, route catalog, layout, and local assets.
-11. `python BuildTools/tests/test_docs_site_artifact.py` and `python BuildTools/docs_site_artifact.py --site-dir _site` pass against that rendered tree.
-12. `python BuildTools/tests/test_docs_browser.py` passes, the pinned npm dependencies are installed from the lock file, and `npm --prefix BuildTools/docs-browser run audit` passes every route in all three manifest profiles plus every interaction scenario.
-13. Desktop, mobile, and 200-percent reflow navigation, search, table of contents, source link, theme preference, page overflow, focus containment, and screenshots are exercised in the rendered artifact.
-14. The dedicated Russian 200-percent screenshot is reviewed; manual keyboard, production-domain 200-percent zoom, and representative screen-reader checks are recorded for a release candidate; axe incomplete nodes are reviewed rather than silently ignored.
-15. The site, static report, browser report, and screenshot artifacts are attached to the exact reviewed commit.
-16. Production source settings and DNS were not changed unless the change explicitly required administrator review.
-
-===== END DOCUMENT documentation-site-publication =====
-
 ===== BEGIN DOCUMENT documentation-snippet-validation =====
 Source: Docs/en/contributing/documentation/snippets.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/snippets.html
@@ -14875,7 +14535,7 @@ After launch, Engine and embedding-project updates must include translation impa
 ===== BEGIN DOCUMENT source-tree =====
 Source: Docs/en/contributing/source-tree/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/source-tree/
-Content SHA-256: 14373783b7a28e08b6a26435253637d76db0456286670159a416f25993f759f8
+Content SHA-256: 267b0234e2da43f27bde553d17e31764d39c6184d225bb0b74247b4011d81d92
 
 ---
 layout: default
@@ -14924,8 +14584,8 @@ Shared runtime code used by client/server/tools/scripts. Key areas include:
 - Engine base and shared setup: `EngineBase.*`, `Common.*`.
 - Entities/properties/prototypes: `Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `ProtoManager.*`.
 - Maps and movement: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
-- Networking primitives: `NetBuffer.*`, `NetworkUdp.*`.
-- Config/data access: `ConfigFile.*`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`.
+- Networking primitives: `NetBuffer.*`, `NetworkUdp.*`, and the shared updater file-list parser `UpdateDescriptor.*`.
+- Config/data access: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
 - Shared presentation metadata and resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 
@@ -15196,7 +14856,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: f480ca504b9ab23e4608273406e18eabef6472a6040e62a77920a8c69083dbbc
+Content SHA-256: 1564d454360361df2ff64097bc0b9776c76acd8608b8830beb46009a941d0089
 
 ---
 layout: default
@@ -15434,6 +15094,10 @@ The first recorded reason wins, preventing the transport's later generic `Client
 
 `NetworkServer` starts transport-specific servers through factories:
 
+On the client side, `ClientConnection` also bounds silence. During secure-channel handshaking, or while a ping is outstanding, receiving no bytes for `ClientNetwork.PingTimeout` milliseconds (default 30000; zero disables the timeout) takes the ordinary disconnect path. Any incoming bytes count as progress, avoiding a false timeout during a large update portion; debugger sessions suppress this watchdog. A reconnect clears the pending ping. `Source/Tests/Test_ClientUpdater.cpp` covers a silent updater server.
+
+Server-side connection owners must call `DropAsyncCallbacks()` before destruction. It clears send, receive, and disconnect callbacks under their locks and waits for a callback already in progress, including a disconnect notification racing transport teardown (`Source/Server/ServerConnection.cpp`).
+
 - `StartInterthreadServer()`;
 - `StartUdpSocketsServer()`;
 - `StartAsioServer()` when `FO_HAVE_ASIO` is enabled;
@@ -15608,7 +15272,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 9ced5c14108592427e932d34a5fc5b656574258fb00df60ed9f53ae63f07ac3a
+Content SHA-256: f9ed0ece27bc8ad5759fb91ae1ce5a3798c9d8664ef2f9ea857e928879ef7b99
 
 ---
 layout: default
@@ -15629,6 +15293,8 @@ Use this for reusable engine behavior. Game-specific content folder rules and pr
 The baking pipeline is a revision-pinned `experimental` contract. The Engine owns the resource-pack schema, built-in baker names and ordering, incremental/full-rebuild behavior, private runtime payloads, report schema, and the extension hook. An embedding project owns its pack names, input layout, custom bakers, side assignment, content policy, generated project sources, and release acceptance.
 
 Treat the current Engine source and generated contract models as authoritative. A project configuration demonstrates one composition of the pipeline; it does not redefine the reusable baker contract.
+
+Baking writes loose target-specific outputs. Packaging then filters each logical pack for its target and writes a deterministic `.fores` base; the executable's `Embedded` pack remains ZIP. A client update may pair a full `.fores` with one append-only writable `.patch.fores`, and a disposable `Resources.foindex` accelerates merged lookup. The byte-level format, hash identities, validation, and recovery rules belong to [Resource Pack Format](../../../ResourcePackFormat.md), while client synchronization belongs to [Client Runtime Split and Updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` compares real baked-tree formats with optional readback verification; `analyze_resource_corpus.py` estimates source distribution and index cost without writing packs.
 
 ## Source paths inspected
 
@@ -17588,7 +17254,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 07223083cdf25be178f30049b61df8d2ecbf32cded7261782a916a2d640c6917
+Content SHA-256: 13f59b82cfa1d15568db8e942122d48b0956cd0fec14cd6eea1d22db6c9fab51
 
 ---
 layout: default
@@ -17809,6 +17475,10 @@ Two non-normal modes are important for tools, tests, CI, and platform staging:
 - `Source/Frontend/ApplicationStub.cpp` provides stub implementations of render, input, audio, and window interfaces.
 
 The stub layer is not a full renderer. It exists so tests and non-graphical flows can exercise engine logic without assuming that a real GPU/window/audio device is available. When a test depends on visible rendering, it should say so explicitly instead of relying on stub behavior.
+
+### Frame pacing
+
+Desktop client, Mapper, and viewer loops use `FrameBalancer` (`Source/Common/Common.h`). `Render.VSync = true` disables its own pacing because presentation waits for the display. Otherwise a positive `Render.FixedFPS` caps the loop with `precise_sleep` regardless of `Render.Sleep`; an over-budget frame is paid back by shorter following waits, carrying at most one second of debt. `Render.Sleep` applies only when `FixedFPS = 0`: zero yields, a positive value uses `coarse_sleep`, and `-1` leaves the loop unpaced. `Source/Tests/Test_Common.cpp` exercises the branches.
 
 ## Rendering abstraction
 
@@ -18550,7 +18220,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: 06c323b6113ad46d7dff93e81c72e0cefa1847e86ea68ff18aafacac1212ae21
+Content SHA-256: edfe22e1a7abfcc6a3d7346e736f4e8d3c2ef3d24bc73ddc80210efd6edbcd8e
 
 ---
 layout: default
@@ -18630,7 +18300,8 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_resource_pack.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -18844,7 +18515,7 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 ## Updater protocol
 
-Versioned by `FO_UPDATER_VERSION = 3` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
+Versioned by `FO_UPDATER_VERSION = 5` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
 requires the secure channel before any updater message; a pre-channel client cannot self-update.
 Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
@@ -18862,7 +18533,7 @@ Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes
 | server → client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server → client | `MetadataVersion` | `string` | metadata version currently used by the server |
 
-The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). The old XOR session-key fields are absent. `FO_UPDATER_VERSION = 3` marks that wire break: a pre-channel client cannot reach the updater at all and needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
+The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). Generation 5 combines that channel with the `.fores` pack descriptor and bounded resource-range requests. Generations 3 and 4 cannot safely interpret both halves; an incompatible client needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources or native modules.
 
 `metadata_outdated == true` means the binaries match but the baked data does not. The server and client must run metadata from one bake because entity payloads address properties by that metadata's registration order. A mismatch is a build or deployment defect, not a supported compatibility mode; see [Metadata version](../../reference/metadata/#metadata-version).
 
@@ -18887,9 +18558,10 @@ Each descriptor entry is:
 | `name_len` | `int16` (`-1` terminates the list) | client-relative path length |
 | `name` | `char[name_len]` | client-relative path |
 | `size` | `uint64` | full file size |
-| `hash` | `uint64` | FNV-1a 64-bit hash of the file content |
+| `hash` | `uint64` | `.fores` base header `PackHash` for resource packs; whole-file FNV-1a for native files |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
+| `pack_header_size`, `pack_header` | `uint32`, bytes | 80-byte version-2 base header for a resource pack; zero bytes for native files |
 
 Common (gameplay-resource) entries are emitted for every binary target. Per-target binary entries (`UpdateFileTarget::ClientBinaries`) are emitted only for the matching `binary_target` from the handshake. The client then filters binary entries by the current host-derived runtime basename, so `<client-host>.exe` downloads `<client-host>.dll` while `<alternate-host>.exe` downloads `<alternate-host>.dll` even when both report the same CPU/OS target.
 
@@ -18898,11 +18570,11 @@ Common (gameplay-resource) entries are emitted for every binary target. Per-targ
 The client drives a single transfer at a time:
 
 ```text
-client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64 }
+client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64, requested_size: uint64, expected_hash: uint64 }
 server → client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion`, capped by `Network.UpdateFileMaxPortionSize`. The engine default is 1,000,000 bytes in [Settings.inc](../../../../Source/Common/Settings.inc); an embedding project may override it after measuring throughput and per-message memory pressure. The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
+The server caps each portion by `Network.UpdateFileMaxPortionSize` (default 1,000,000 bytes). It rejects invalid bounds, a mismatched advertised artifact hash, and failed reads. The client requests the remainder of a bounded range, so complete-file downloads resume from the temporary file on reconnect without server-side state. Resource ranges select catalogs or complete encoded resources rather than binary deltas within a resource.
 
 The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
 server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
@@ -18918,20 +18590,24 @@ Server-side validation (in [Server/UpdaterBackend.cpp](../../../../Source/Server
 - Disk-mode read failure → `LogType::Warning` + `HardDisconnect`.
 - Disk-mode size drift against the announced descriptor entry → `LogType::Warning` + `HardDisconnect`. With `ServerNetwork.UpdateFilesInMemory = False`, the descriptor is a start-time snapshot while bytes are read on demand; replacing a pack under a live server must not deliver new bytes under the old hash.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([Essentials/DiskFileSystem.cpp](../../../../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+For native files, the updater retains whole-file temporary downloads and verifies the streamed FNV-1a hash before promotion. For `.fores`, it compares the selected base/patch pair's logical `ContentHash` with the descriptor, fetches the current catalog, reuses local decoded content by hash and size, and requests only missing encoded resources. An append publishes a complete catalog and footer after verified payloads; interrupted tails can resume their already verified payloads. If the resulting patch would reach or exceed the advertised full pack's size, or if the base is missing or unusable, it downloads and verifies a full replacement base instead. See [Resource Pack Format](../../../ResourcePackFormat.md) for binding, byte layout, and crash recovery.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` under the configured `Baking.CacheResources` directory from [Settings.inc](../../../../Source/Common/Settings.inc). The key is `<basename>-<path-hash>.hash`, where `<path-hash>` is the 16-digit lowercase hexadecimal result of `hashing::hash<string_view>` over the full path string passed to the check. For example, an `Embedded.zip` entry becomes `Embedded.zip-0123456789abcdef.hash`; the exact suffix depends on its path. Including only the digest, rather than the absolute path text, keeps the filename valid on Windows while preventing same-basename resources in different directories from sharing a cache entry. The cached value stores `(size, mtime, hash)`; a size or mtime change invalidates it, and deleting the cache entry causes a transparent re-hash on the next updater pass.
+Before connecting, the updater verifies each local resource pair not already proved at its current file identity: the base's physical `PackHash` and committed patch payload hashes. The bounded `ResourcePairVerifier` keeps the screen responsive. Its cache records path, size, modification time, and base/patch identity; a changed file is checked again. Damaged bases are replaced by full downloads, while damaged patch payloads are fetched again. Native whole-file hash results retain their separate `(size, mtime, hash)` cache. A successful resource synchronization rebuilds the disposable `Resources.foindex`; a failed cache build does not invalidate authoritative pairs. Web skips this persistent cache and verification stage.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
+The updater holds the writable resource directory lock for its whole run. A second client sharing that directory waits and retries rather than racing its writes. Under the lock, interrupted `.fobackup` replacements are recovered before local selection; complete bases are promoted only after physical-hash and catalog verification, and a selected patch is removed only after promotion succeeds. A patch append flushes verified payloads and its complete catalog before publishing the footer, so a failed append leaves the prior commit readable. Every advertised resource is checked again before `ResourcesReady`, then metadata compatibility is checked. Packs commit independently; a partial set cannot enter gameplay, and there is no atomic global release switch or rollback of all packs. The updater rebuilds `Resources.foindex` after a successful sync, but a cache failure leaves authoritative pairs usable. See [Resource Pack Format](../../../ResourcePackFormat.md) and the client/server integration tests.
+
+A handler failure during update processing is `Failed`, not `ConnectionFailed`, even when that handler's exception causes the transport to disconnect. A genuinely silent server is bounded by `ClientNetwork.PingTimeout` through the ordinary disconnect route and reports `ConnectionFailed`.
+
 ## Server-side: `UpdaterBackend`
 
-[Server/UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as a `unique_ptr`. When `_updaterBackend` is null (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` — there is nothing to serve.
+[Server/UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as an `optional`. When `_updaterBackend` is empty (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` — there is nothing to serve.
 
 Current native interface (an internal engine surface, not a stable public API):
 
 ```cpp
-void LoadFromClientResources(const GlobalSettings& settings);
+void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
 void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 ```
@@ -18940,7 +18616,7 @@ The descriptor is exposed as a borrowed `const_span<uint8_t>` view over storage
 owned by the backend; callers must not retain it beyond that storage's lifetime.
 
 - `LoadFromClientResources` walks `Settings.ClientResources`, picks every pack listed in `Settings.ClientResourceEntries` (excluding `Embedded`), then enumerates `Settings.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
-- Entries are stored as `UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. Memory mode keeps the whole pack in RAM for the lifetime of the server. Disk mode keeps only `DiskPath`, `Size`, and the streamed `Hash`; portions are read on demand by `ReadUpdateFilePortion(...)`.
+- Entries retain size, hash, and the resource header. Memory mode retains bytes; disk mode retains an opened positional reader, so the served artifact remains the one advertised even when its path is later replaced.
 - Descriptors are cached per `binary_target_name`. Common-resource entries are merged into every per-target descriptor; targets without specific binaries fall back to the common-only descriptor.
 - `VerifyClientResourcesMetadata` mounts the client packs and compares their metadata version with the version loaded by the server. Because the server runs `Settings.ServerResources` but distributes `Settings.ClientResources`, deploying only one side now fails startup with `UpdaterException` that names both versions.
 
@@ -18971,14 +18647,11 @@ Resolution is idempotent and creates the selected root. Once settings names are 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
-patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source, so the base resources are read from the
-install dir and patches override from the user dir — and the **self-updated native runtime** (see below).
-`GetClientResources()` in `Client.cpp` is the single assembly point for that gameplay pack set, and the updater
-uses it for the local metadata-version check. The version accepted before connection is therefore the version
-gameplay will read rather than a separately assembled view with potentially different precedence. The updater
-also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
-an earlier updater run before the current run downloads anything. The updater's packaged-mode gates and
+patches** — the updater writes a `Pack.patch.fores` beside a writable full `Pack.fores`, or binds it to the
+read-only installed/APK base. `GetClientResources()` selects one effective base/patch pair per logical pack,
+preserving configured pack order, and is shared by gameplay and the updater's metadata check. The splash
+pack uses the same writable-first selection. An unusable splash is logged and omitted while the updater
+continues repairing resources; it must not prevent the repair itself. The updater's packaged-mode gates and
 resource-root choices read the already loaded `Common.Packaged` snapshot; direct executable-marker checks are
 limited to the pre-settings bootstrap and the filesystem's physical archive-versus-directory selection.
 
@@ -19026,9 +18699,9 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, requires the exact expected entry list, and streams every entry through Python's CRC-checking reader. The `Embedded` pack receives the same check through its in-memory buffer before it is patched into the executable. A truncated, CRC-invalid, or structurally mismatched resource archive therefore fails packaging before it becomes a downloadable client payload or the server's updater source. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers deterministic metadata, ordering, and the post-build validation boundary.
+Client `.fores` bases are written from sorted normalized paths with no serialized timestamps. The packager validates the catalog and streams every decoded payload through exact-length and content-hash checks before accepting a resource archive. `Embedded` remains an in-memory ZIP with deterministic metadata and a CRC/readback check before it is patched into the executable. A corrupt artifact therefore fails packaging before it becomes an updater source. [test_package_resource_pack.py](../../../../BuildTools/tests/test_package_resource_pack.py) and [test_package_zip_helpers.py](../../../../BuildTools/tests/test_package_zip_helpers.py) cover the two formats.
 
-Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored archive still passes the exact-entry and CRC checks above, so caching cannot weaken updater payload validation.
+Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored `.fores` still passes payload validation, so caching cannot weaken updater integrity checks.
 
 The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
@@ -19182,7 +18855,7 @@ Local validation steps:
 4. Launch `<client-host> --ClientLibPath <path>` with a valid alternate runtime → host routes through the loaded library.
 5. Launch `<client-host> --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime → host fails (no fallback).
 6. Point `--ClientLibPath` to an invalid path, no `--ClientLibCompatibilityVersion` → host falls back to embedded client (Case 1).
-7. Build one project-owned packaged-server profile and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that the `ClientResources` pack list contains the resource zips.
+7. Build one project-owned packaged-server profile and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that the `ClientResources` pack list contains `.fores` bases.
 8. Interrupt a client mid-download (kill the network) and reconnect — the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 → restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `<client-host>`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.
@@ -21043,7 +20716,7 @@ The current native suite does not expose a focused `CritterHexView` root-motion 
 ===== BEGIN DOCUMENT android-debugging =====
 Source: Docs/en/how-to/platforms/android-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/android-debugging.html
-Content SHA-256: 90887def74347620feaad9a26dfabebdc4f7d5fc21562cc1384177f55dd0c6a7
+Content SHA-256: ab2804a6ebebe324a9c21dd00b9ff52063f0d90269a3adf101210d900ebec66d
 
 ---
 layout: default
@@ -21188,7 +20861,7 @@ Inspect the generated artifact before installation:
 
 - application id, version code/name, min/target SDK, ABI, activity, permissions, and signature;
 - exactly one intended `libmain.so` per declared ABI;
-- `assets/Resources/Metadata.zip` and expected resource packs;
+- uncompressed `assets/Resources/*.fores` bases (or the configured resource directory) and the expected metadata inside them;
 - for Managed builds, the target assemblies plus `ManagedRuntime/runtime.manifest` and the target-specific class-library payload inside the expected resource pack;
 - absence of keystore passwords, private credentials, local paths, stale configs, and unlicensed SDK payloads.
 
@@ -21250,22 +20923,16 @@ Never put real signing values in authored or baked config, documentation, fixtur
 
 ## Runtime bootstrap and resource staging
 
-The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, prepares resources before SDL startup, and constructs the native argument vector itself. It always adds:
+The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, passes APK resources directly to the engine before SDL startup, and constructs the native argument vector itself. It always adds:
 
 - `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <files-dir>/Resources`;
+- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
+- `--Common.UserWritablePath <files-dir>`;
 - `--Baking.CacheResources <files-dir>/Cache`.
 
 If the launch Intent contains a non-empty string extra named `server_host`, the activity also adds `--ClientNetwork.ServerHost <value>`. It does not accept a generic command-line extra. Add a reviewed typed bridge before claiming other runtime overrides.
 
-Packaged assets are copied from `assets/Resources` into the app-private files directory when either condition is true:
-
-- `.asset_revision` differs from `PackageInfo.lastUpdateTime`;
-- `<files-dir>/Resources/Metadata.zip` is missing.
-
-The activity deletes the old resource directory, copies the asset tree recursively, and writes the new revision only after a successful copy. Enumeration, directory, copy, delete, or revision-write failures throw and stop startup. The cache directory is created separately and is not cleared by an APK update. If resource formats or cache keys change incompatibly, the project must own explicit invalidation and migration evidence.
-
-`adb install -r` preserves app data, including the runtime cache and copied resources. Clearing app storage or uninstalling removes that data. Distinguish a stale APK, retained cache, failed asset copy, updater state, and server incompatibility before changing gameplay code.
+Packaging stores `.fores` assets without outer ZIP compression. The engine opens their bounded regions inside the APK with 64-bit positional reads; compressed or encrypted entries cannot be mounted this way. No complete resource tree is copied on startup or package update. Full writable replacements and `Pack.patch.fores` live under the private `<files-dir>/Resources` directory and take precedence over the APK base. `adb install -r` preserves that writable state and the runtime cache; clearing app storage or uninstalling removes them. Distinguish a stale APK, retained writable replacement or patch, retained cache, and server incompatibility before changing gameplay code. See [Resource Pack Format](../../../ResourcePackFormat.md).
 
 Android may update writable resources through the normal client resource path, but `Updater::CanSelfUpdateNativeModules()` returns false for Android. A native compatibility mismatch cannot be repaired by downloading a new shared library in place; build, package, install, and restart a compatible APK.
 
@@ -21356,12 +21023,12 @@ Use [Packaging and Release](../release/packaging.md) for manifest, provenance, p
 | Route | Minimum project evidence | Failure signal |
 |---|---|---|
 | ABI and install | APK declares only intended ABI(s); clean install and `-r` update succeed on representative API levels | `INSTALL_FAILED_NO_MATCHING_ABIS`, downgrade, signature, or policy rejection |
-| Cold and warm startup | Resource copy, SDL/native load, config application, and first rendered frame | crash before `libmain`, missing `Metadata.zip`, black screen, or wrong config |
+| Cold and warm startup | APK resource mount, SDL/native load, config application, and first rendered frame | crash before `libmain`, missing `.fores` base, black screen, or wrong config |
 | Rendering | Representative map, GUI, fonts, images, sprites/models, effects, and orientation on GLES 3 devices | shader/driver failure, clipping, corruption, unsupported orientation |
 | Input | Touch, back/navigation, keyboard/IME where used, and each claimed controller class | trapped input, duplicate events, unusable focus, controller mapping drift |
 | Audio and lifecycle | audible sound/music, interruption, background/pause/resume, screen lock, and process recreation | stuck audio, lost device, duplicate runtime, crash or state loss |
 | Networking | device-to-server route, reconnect, incompatible-version response, latency/loss behavior, firewall policy | loopback/host mismatch, silent timeout, insecure exposure, update loop |
-| Resource/cache update | APK update, retained data, changed assets, missing metadata, and explicit cache invalidation | old assets after update, partial copy, incompatible retained cache |
+| Resource/cache update | APK update, retained writable base/patch, changed assets, missing metadata, and cache recovery | stale writable pair, invalid APK entry compression, incompatible retained cache |
 | Native compatibility | mismatched native generation reports unsupported self-update and recovers by APK replacement | downloaded native module assumed to hot-replace Android binary |
 | Permissions and privacy | manifest merge, exported components, runtime permissions, data backup, SDK collection, privacy disclosure | unexpected permission/component, rejected policy, undeclared data flow |
 | Release identity | release certificate digest, monotonic version code, signed final APK, install/update from previous supported release | debug key, unsigned artifact, wrong alias, non-upgradable package |
@@ -21376,7 +21043,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses. Truncated Google CDN archives (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry`; a persistent failure is a host/network problem, not a missing pin |
 | CMake cannot configure Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor, and clean build directory |
 | Native build succeeds but package input is missing | `FO_OUTPUT`, target/config/build hash, expected `lib<ProjectDevName>_Client.so`, and matching resource bake |
-| Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `Metadata.zip`, and no `NoRes` token |
+| Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `.fores` bases with metadata, and no `NoRes` token |
 | Packaging rejects icon or Java source | real PNG signature, project-relative path, `.java` suffix, unique basename, and no `FOnlineActivity.java` override |
 | Gradle cannot find SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version, and provisioned compile SDK |
 | Gradle dependency resolution fails | generated repositories/dependencies, credentials, dependency locks, proxy/TLS, and repository availability |
@@ -21390,7 +21057,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Startup says `Executable path could not be resolved` | the bundled-runtime path was resolved on a mobile target; it must remain behind `CanSelfUpdateNativeModules` |
 | Engine log is absent from logcat | read the app-private `files/<project>.log` from a debug APK with `adb shell run-as <package> cat ...` |
 | Emulator renderer dies before a non-visual probe | emulator Vulkan may lack BGRA8 and GLES may reject the updater path; use `Render.NullRenderer=True` for `ManagedScript.InteropProbeOnStart`, but keep real-device rendering qualification |
-| Content is missing or stale | installed APK hash/path, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
+| Content is missing or stale | installed APK hash/path and uncompressed `.fores` entries, chosen writable replacement/patch, retained `.foindex` cache, and server descriptor |
 | Client cannot reach host | typed `server_host` extra, selected LAN address, server bind address, firewall, ports, and compatibility version |
 | Client asks for native update | Android native self-update is unsupported; install a compatible APK instead of retrying the resource updater |
 | Resume/orientation fails | SDL lifecycle logs, manifest `configChanges`, orientation setting, renderer/device loss, and project state restoration |
@@ -23380,7 +23047,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: ee5f3c5d4db3407226ebcb0a1b927a5e9e387fb460128e429deba0dd19fa5d8f
+Content SHA-256: 5568b1fee31b72962eef25bbacfeab223d261d6c5b93efd687d41047a92ef186
 
 ---
 layout: default
@@ -23595,6 +23262,8 @@ An MSI upgrade deliberately keeps a remembered `Program Files` path instead of m
 The portable Raw/Zip artifacts are finalized before the MSI step and never carry the `INSTALLED` marker, so they stay portable.
 
 Managed class libraries remain resource payload rather than binary companions. When several binary variants share one updater target, `package.py` validates every prepared `ManagedRuntime` tree and selects the least-qualified matching binary entry, normally the default Release build, to produce the single target-wide resource pack. Independently built equivalent CoreLib payloads are not required to be byte-identical.
+
+`package.py` writes each non-Embedded target pack as `.fores` from the filtered loose bake output; `Embedded` remains ZIP inside the executable. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern `.fores` blobs, while `Baking.BundleCompressLevel` governs Embedded and outer bundles. One-run overrides are `-resource-pack-compress-level` and `-bundle-compress-level`. The format and updater selection/recovery contract are in [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers stable entry names and contents plus compression level. A restored or newly written archive always passes the same exact-entry and CRC validation; misses and an optional-cache-unavailable result fall back to local creation, while other helper failures remain packaging errors. Repeated identical archives in one packaging process reuse the first validated result.
 
@@ -23997,7 +23666,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 7a34074f562be653ee03d8b70f77610e2f122f4ef6a3917782a0b0d66150eb56
+Content SHA-256: 9bcf3e76cec108772603c32c9c915204eaba9fc8f1b0b93b8394e1aeef7384f2
 
 ---
 title: Generated Map Format Reference
@@ -24021,7 +23690,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>7ef999816d8f33c29926a18e931e77f3b65b413ea1d32d3a383565ba4d45f9b2</code> |
+| Contract digest | <code>d3ef986c77ea01146d499256d6035f2a7e1305dde20ac027c8330afadc749b46</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -25280,7 +24949,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: fd2ddae3725ca4f50c9c0a15a3592b725aaebef2a9fa9eb7d5eb927765cfe261
+Content SHA-256: 482f9d9e5d8d889046807ad96e38d65c09a63c8d95a75947c74c8d640bc1a268
 
 ---
 layout: default
@@ -25593,7 +25262,7 @@ storage.
 
 ### Filesystem, compression, sockets, and work threads
 
-`DiskFileSystem.*` is the low-level disk abstraction. `fs_make_writable_path(user_writable_path, relative)` is the small path-policy helper used by higher layers for installed-client writable overlays: empty root or absolute input returns the input unchanged, while a relative path is layered under the writable root. The higher-level mounted resource view is `Source/Common/FileSystem.*` and is documented in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression round-trips, `NetSockets.*` owns raw socket helpers below the higher-level network command/connection model in [Networking](../../explanation/authority-and-networking/), and `WorkThread.*` owns simple background-worker infrastructure.
+`DiskFileSystem.*` is the low-level disk abstraction. `fs::disk_read_file` captures a descriptor and length, and `read_at` performs bounded positional reads; a region constructor opens an uncompressed `.fores` inside an APK without copying it. `fs::disk_write_file` excludes competing writers, appends or truncates an uncommitted suffix, and flushes via `fsync`/`_commit`. `fs::disk_directory_lock` serializes resource mutations without a lock file (`flock` on POSIX, named mutex on Windows); unlike a named mutex, a second flock on the same directory is not reentrant even in one process. `fs::rename_durable` persists a rename, and `fs::sync_parent` persists the directory entry; `fs::available_space` permits admission without preallocating a resumable download. `fs::is_contained_relative_path` rejects rooted, traversal, colon, NUL, and malformed UTF-8 paths before joining a writable root. `fs::make_writable_path` layers a relative path under the user root. Use `fs::make_path` for UTF-8 to `std::filesystem::path` and `fs::path_to_string` on the way back: `path.string()` on Windows converts through the ANSI code page and can fail for a Cyrillic profile. The higher mounted view is `Source/Common/FileSystem.*`, described in [Configuration and Data Sources](../settings/configuration-and-data-sources.md). `Compressor.*` owns generic compression, `NetSockets.*` raw sockets, and `WorkThread.*` background workers.
 
 On Windows, `fs::make_io_path` presents a literal extended-length path to standard-library filesystem/file operations without changing the logical resource path. The disk tests exercise Unicode names past 320 native characters and Windows trailing-name behavior. Use this conversion at the native I/O boundary rather than truncating or shortening project paths.
 
@@ -25676,7 +25345,7 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 ===== BEGIN DOCUMENT generated-package-index =====
 Source: Docs/en/reference/packages/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/packages/
-Content SHA-256: 98d0df9937b8e85092267a52784477f03e4b72493bbaba3d6ffbac3b611d6078
+Content SHA-256: da8fea67954a88af1c995bcf0557759ad2666d2f14f08da5d128b0e4de5f8c83
 
 ---
 title: Generated Package Interface
@@ -25712,7 +25381,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>f90e1b530632280246337a3056819b0815d380346128d2c4174584b4eada31cb</code> |
+| Contract digest | <code>be83fb2d181b0a244ec30e08ddc5fe64ea10e717c3597e9df7c706e3f67aea98</code> |
 
 ## Coverage
 
@@ -25721,7 +25390,7 @@ Use this cross-contract sequence:
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
 | [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
-| [Packager CLI](cli.md) | 14 | Exact internal package.py invocation contract. |
+| [Packager CLI](cli.md) | 15 | Exact internal package.py invocation contract. |
 
 ## Boundary
 
@@ -26040,10 +25709,260 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 
 ===== END DOCUMENT generated-public-examples-index =====
 
+===== BEGIN DOCUMENT resource-pack-format =====
+Source: Docs/en/reference/resource-pack-format.md
+Canonical URL: https://fonline.ru/Docs/en/reference/resource-pack-format.html
+Content SHA-256: 44fcd41b22a878e0e53490d7085648317acf5c8791201c0f2e38487802543422
+
+---
+layout: default
+title: Resource Pack Format
+locale: en
+document_id: resource-pack-format
+permalink: /Docs/en/reference/resource-pack-format.html
+---
+
+# Resource Pack Format
+
+A logical resource pack selects one full `Pack.fores` and, optionally, one writable `Pack.patch.fores`.
+The patch carries new payloads and a complete current catalog. Each entry selects bytes from the base or
+patch; deleted paths disappear from that catalog. There are no patch chains, resource-set files or parts.
+`Resources.foindex` is a disposable merged lookup cache over the selected pairs.
+
+See [ClientUpdater.md](../explanation/runtime/client-updater.md) for synchronization,
+[ConfigurationAndDataSources.md](settings/configuration-and-data-sources.md) for mounting, and
+[Essentials.md](native/essentials.md) for filesystem primitives.
+
+## Encoding and identities
+
+All integer fields are explicitly sized little-endian values. Formats require exactly version **2.0**;
+there are no readers for previous versions. Offsets and lengths are 64-bit. Catalog string-pool offsets,
+path lengths and entry counts are 32-bit; decoded catalogs cannot exceed `UINT32_MAX` bytes.
+
+Paths are unique, sorted by UTF-8 bytes and relative. Components cannot be empty, `.` or `..`; backslashes,
+colons and NUL are rejected. Writers normalize input backslashes to `/` before validation. Payloads may
+share an extent, including when a rename reuses existing content.
+
+All hashes use FNV-1a 64, seed `0xcbf29ce484222325`, prime `0x100000001b3`:
+
+- `PackHash`: physical bytes after the full base's header, including its encoded catalog.
+- `FileContentHash`: decoded bytes of one resource.
+- `ContentHash`: `uint32 entry_count`, then, for each sorted entry,
+  `uint32 path_byte_length`, `uint64 decoded_size`, `uint64 FileContentHash`, and the UTF-8 path bytes.
+- Header, catalog and footer checksums cover the byte ranges described below.
+
+`ContentHash` excludes codec, source and offsets. Recompression changes physical identity without changing
+logical identity. A patch binds to **physical** `BasePackHash`, because its base offsets must match that
+exact artifact. These are integrity/change-detection hashes, not authentication.
+
+## Full base
+
+```text
+[80-byte header][payload blobs][complete encoded catalog]
+```
+
+The header is uncompressed:
+
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x53524F46` (`FORS`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `PackHash`, FNV over `[80, EOF)` |
+| 16 | 8 | `IndexOffset` |
+| 24 | 8 | `IndexStoredSize` |
+| 32 | 8 | `IndexDecodedSize` |
+| 40 | 4 | `IndexCodec` |
+| 44 | 4 | `EntryCount` |
+| 48 | 8 | `DataOffset` = 80 |
+| 56 | 8 | `DataSize` |
+| 64 | 8 | `ContentHash` |
+| 72 | 8 | Header checksum, FNV over `[0, 72)` |
+
+`IndexOffset = DataOffset + DataSize`, and the index ends exactly at EOF. There is no padding or reserved
+space. Packaging streams encoded blobs and the physical hash, appends the catalog, then writes the header.
+Canonical packaging also adds payloads in sorted path order. No timestamps are serialized.
+
+## Catalog entries
+
+A decoded catalog is `Entry[EntryCount]`, 48 bytes each, followed by its UTF-8 string pool without terminators.
+
+| Entry offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Path offset into the decoded catalog |
+| 4 | 4 | Path byte length |
+| 8 | 8 | Encoded payload offset in the selected file |
+| 16 | 8 | Stored size |
+| 24 | 8 | Decoded size |
+| 32 | 4 | Codec: 0 = Stored, 1 = Deflate |
+| 36 | 4 | Source: 0 = Base, 1 = Patch; other values rejected |
+| 40 | 8 | `FileContentHash` |
+
+Full-base entries require Source 0. A patch catalog can use either source. Base references fit the base
+payload region; patch references start after its 32-byte header and end before the selected catalog.
+References cannot reach the current catalog/footer or an uncommitted suffix. Stored resources must declare
+equal stored/decoded sizes. Reads verify the exact decoded size and `FileContentHash`.
+
+`ResourcePackSource` owns the current entry list and path strings and builds a lookup map whose keys reference
+those strings. Decoded catalog bytes are released after parsing. File enumeration follows sorted paths.
+All entries report the effective patch's modification time when a committed patch is selected, including
+entries backed by base bytes. Without a patch they report the base time.
+
+## Append-only patch
+
+```text
+[32-byte patch header]
+[payloads 1][complete catalog 1][80-byte footer 1]
+[payloads 2][complete catalog 2][80-byte footer 2]
+...
+```
+
+The fixed header is never rewritten to publish an update:
+
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x50524F46` (`FORP`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `BasePackHash` |
+| 16 | 8 | Reserved = 0 |
+| 24 | 8 | Header checksum, FNV over `[0, 24)` |
+
+Every commit ends with this uncompressed footer:
+
+| Offset | Bytes | Field |
+|---|---|---|
+| 0 | 4 | Magic `0x54524F46` (`FORT`) |
+| 4 | 2 | Major = 2 |
+| 6 | 2 | Minor = 0 |
+| 8 | 8 | `BasePackHash` |
+| 16 | 8 | Current `ContentHash` |
+| 24 | 8 | Catalog offset |
+| 32 | 8 | Catalog stored size |
+| 40 | 8 | Catalog decoded size |
+| 48 | 8 | Committed file size, including this footer |
+| 56 | 4 | Catalog codec |
+| 60 | 4 | Entry count |
+| 64 | 8 | FNV of the encoded catalog |
+| 72 | 8 | Footer checksum, FNV over `[0, 72)` |
+
+The catalog must immediately precede its footer. Old payloads, catalogs and footers remain unused bytes
+unless the current catalog references an old payload. Only the newest complete catalog is applied; earlier
+catalogs are never layered beneath it.
+
+`ResourcePatchWriter` plans offsets, reuses matching `(FileContentHash, DecodedSize)` from the base/current
+patch, and encodes the next full catalog before writing. It validates each received resource, appends the
+catalog, flushes, appends the footer, and flushes again. It persists the directory entry on POSIX platforms.
+The writable directory is locked during mutation, through an OS lock rather than a stored selector or
+journal: `Begin` takes the lock its caller holds, so one lock can cover a longer session around the append.
+File writers also exclude other writers before truncation or append.
+
+Readers retain their catalog and captured file bounds while a writer appends. An uncommitted suffix is not
+thrown away blindly: a plan lays its downloads out in a fixed order from the committed end, so the planner reads
+the suffix payload by payload and keeps each one that decodes to the entry planned at that offset
+(`GetResumedDownloads`); `Begin` truncates after the last kept payload and `AddEncodedFile` continues with the
+next download. The first payload that does not match - another plan's, torn, garbage - ends the kept run. A
+patch with no valid commit is resumed the same way when its own header binds it to the selected base (a first
+append cut short); anything else is removed and recreated under the directory lock. The updater removes a stale
+patch whose base binding differs; the writer also recreates such a patch if a new append is needed.
+A patch is never truncated underneath readers of a different base generation. On POSIX, readers can retain
+an unlinked inode; Windows rejects deletion/replacement while incompatible readers still hold the file.
+
+## Recovery and validation
+
+Healthy reads inspect the header, footer at EOF, and that footer's catalog. An invalid EOF triggers a
+backward scan in 64 KiB windows with footer-sized overlap. Candidate magic alone is insufficient: validate
+version, base binding, absolute committed length, footer checksum, catalog extent/checksum and computed
+logical hash. The latest valid candidate wins. No valid commit means the full base remains the local view.
+A patch header that fails its own checks commits nothing either: a power loss can leave a created patch with
+its length but not its header bytes, and refusing the file would keep the client from starting while a
+reinstall never reaches the writable root. The base stays the view and the next update recreates the patch;
+`Begin` flushes a new header before any payload so the window stays small. A valid header bound to a
+different base is stale and excluded.
+
+All extent checks subtract only after checking the minuend and widen table multiplication before use.
+Unknown codecs/sources, noncanonical or duplicate paths and invalid pool references are rejected. Mounting
+does not hash all payloads. Payload corruption is reported when read; received patch blobs are verified
+before publication. Full downloads also verify the physical body hash and complete catalog before promotion.
+`ResourcePairVerifier` proves a whole local pair on request, in bounded `Step`s: the base against its header
+`PackHash` over `[80, EOF)`, then every committed patch extent (`Source = 1`, each extent once) by decoding it
+against its `FileContentHash`. A base with no readable header, or one that no longer mounts, counts as damaged;
+a damaged base is not followed into its patch, since replacing the base drops the patch with it. The updater
+runs it once per file identity, see [ClientUpdater.md](../explanation/runtime/client-updater.md).
+The Python packager validates every decoded payload before accepting an archive, including exact stored/
+decoded lengths, complete Deflate streams without trailing bytes, and each `FileContentHash`. It hashes
+and decodes payloads in bounded chunks rather than allocating their declared decoded sizes.
+
+An interrupted append resumes from the payloads it already wrote, as above, and previously committed bytes remain
+reusable; there is no separate resume journal. The format has no patch-size limit of its own: dead blobs and
+old catalogs accumulate until the updater's cap replaces the pair with the full pack. See the updater doc for
+that cap and for full-base installation/repair ordering when local data is missing or unusable.
+
+## Codecs
+
+Codec 0 stores bytes unchanged. Codec 1 is a zlib Deflate stream. Packaging takes the level from
+`Baking.ResourcePackCompressLevel` and the gain from `Baking.ResourcePackMinCompressGain` (default 5): a blob is deflated
+only when the bytes it saves exceed `size * gain / 100` in integer division. Blobs smaller than 64 bytes
+remain stored. Catalogs use the same encoding rule. Catalogs and caches the client writes itself (patch
+catalogs, `.foindex`) use the `ResourcePackWriteSettings` defaults, level 6 and gain 5. Matching decoded
+content can reuse an existing extent even when the server encoded it differently.
+
+## Merged cache: `.foindex`
+
+The cache contains references only. It records effective pairs from the configured suffix after the last
+Embedded entry. Earlier packs and Embedded stay at their configured positions. It never mounts a patch as
+an independent overriding pack.
+
+Cache mounting verifies base headers and patch commit identities through the retained read handles. A
+replacement between path resolution and opening invalidates the cache rather than mixing old offsets with
+new backing bytes. Mounted readers retain their captured view across later appends and POSIX replacements.
+
+The 72-byte header contains magic `0x58494F46` (`FOIX`), version 2.0, `PackListHash` at 8, index offset/stored/
+decoded sizes at 16/24/32, codec at 40, entry count at 44, pack count at 48, and checksum over `[0,64)` at 64.
+Decoded contents are 32-byte pack records, 56-byte entry records, then the string pool.
+
+A pack record stores name offset/length (4 bytes each), base `PackHash` (8), committed patch catalog checksum
+(8), and patch committed size (8). The last two fields are zero without a committed patch. `PackListHash`
+folds each name's bytes followed by these three 64-bit values, in configured order.
+
+An entry stores path offset/length, pack index and codec (four 4-byte fields), data offset, stored size,
+decoded size and content hash (four 8-byte fields), source (4), and reserved zero (4).
+
+Later configured packs win duplicate paths. The disk table is path-sorted; runtime enumeration groups winners
+by descending pack precedence, then path, matching direct mounts. Entry times come from the effective pair.
+Freshness includes base identity and patch commit identity, so a full refresh cannot keep stale offsets merely
+because logical content is unchanged. Invalid cache data is discarded at the client boundary and authoritative
+pairs are mounted. Rebuild writes a temporary cache and replaces the old one.
+
+## Platforms and API
+
+Android packages `.fores` without outer ZIP compression. The activity passes
+`<installed APK>!/assets/<configured client resource directory>` as `Baking.ClientResources`, and its private files directory as
+`Common.UserWritablePath`. `OpenResourcePackFile` locates the stored APK ZIP entry and returns a bounded,
+64-bit positional `fs::disk_read_file` region over the APK. Compressed or encrypted outer entries are rejected.
+`!/` separates an archive only where the text before it names an existing file, so an ordinary directory whose
+name ends in `!` (a profile named `Bob!`) is never mistaken for one.
+No complete pack or resource tree is copied into memory or staged into app storage for mounting.
+Writable replacement bases and patches live under the private `Resources` directory.
+
+Web retains the preloaded in-memory filesystem and can update pairs within that session. It does not persist
+updates across page reloads and does not build a merged cache.
+
+The main API is in `Source/Common/ResourcePack.h`: `ResourcePackWriter`, `ResourcePatchWriter`,
+`ResourcePackSource`, `ResourcePairVerifier`, `ReadResourcePackHeader`, `DecodeResourcePackIndex`,
+`ReadResourcePatchInfo`, and `VerifyResourcePackFile`. `GetClientPackDirs`, `GetClientResourcePackPath` and `AddClientPackSource` in
+`FileSystem.h` give bootstrap, updater and runtime the same base/patch selection.
+
+`Test_ResourcePack.cpp` pins the shared Python/C++ golden bytes, payload validation, repeated append,
+interrupted-footer recovery, resumed appends and pair verification. `Test_ResourceIndex.cpp` covers pair-backed cached reads and APK region bounds;
+`Test_ClientServerIntegration.cpp` exercises the real updater/backend lifecycle.
+
+===== END DOCUMENT resource-pack-format =====
+
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 2ebfa1bbcc340e044162f2e2539b62a37a19b9011c41ec96071de9982fc03521
+Content SHA-256: cfd5f7fd692abdc9b42f3d6f1e5406a59dd2994b53d8b1222554a9a9aa3944a8
 
 ---
 title: Generated API Reference
@@ -26064,32 +25983,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 268 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 271 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2534 |
-| Symbols with descriptions | 2534 |
+| Addressable symbols | 2537 |
+| Symbols with descriptions | 2537 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2534 |
+| Explicitly classified symbols | 2537 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2533 |
+| <code>experimental</code> | 2536 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2534 stable IDs with SHA-256 <code>2c8f3b855d6998553cb36e4b165ad22a9ee41984e0b3b465b996d1b80bf4861a</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2537 stable IDs with SHA-256 <code>afe9defa6d71170590c2db98fbda2fb6b38d76d261ab06f976458253960b2ef7</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -26428,7 +26347,7 @@ The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProje
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: e46e0b1bdfab79034c2a3cbc245d814e36ff116964036e92ee4ec1c67d1277d1
+Content SHA-256: 45341c72a95e979bea4b5183713fec1714e05e5c524d362886b56fe09f1f8376
 
 ---
 layout: default
@@ -26592,6 +26511,8 @@ Startup has one extra resolution step before the log, config, or local-config ca
 
 The ordinary command line is still applied to live settings exactly **once**, after config, sub-config and local config, so it has final precedence and `+`-append overrides (`-Setting +value`) do not accumulate twice. That pass logs each `Set <name> to <value>` override. Settings whose names contain a token from `Common.SecretSettingTokens` (case-insensitive substrings, default `secret token password apikey`) are logged as `Set <name> to ***`. This is not general credential protection: raw process arguments and setting values remain available, and other logs, settings UI, crash output, baked configs, and project code have independent exposure paths. Never pass credentials on the command line; use target-time provisioning and follow [Security and Secrets](../../how-to/release/security-and-secrets.md).
 
+`CommandLineArgs::IsOption()` recognizes a leading dash as an option only when the next character is a letter. Thus `--Render.Sleep -1` and other negative values remain values, not new option names. String settings preserve text as written, including Windows backslashes and quote characters; string-list settings split only at spaces and tabs. Numeric, boolean, and enum settings still parse their text. The `AnyData` escaped-string grammar belongs to properties, not settings (`Source/Common/Settings.cpp`, `Source/Tests/Test_Settings.cpp`).
+
 ## Resource packs and data sources
 
 `ResourcePackInfo` describes resource-pack inputs that bakers and runtimes consume. The bake side uses `BakingContext` / `BakerDataSource` in `Source/Tools/Baker.*`; the runtime side uses mounted `DataSource` and `FileSystem` abstractions.
@@ -26609,6 +26530,8 @@ Both `/` and `\` are accepted as pattern separators and normalized to `/`. For e
 - `MountDir(dir, recursive, non_cached, maybe_not_available)` for disk directory resources;
 - `MountPack(dir, name, maybe_not_available)` for packed resource data.
 
+`MountPack` probes `.fores` first, then ZIP-compatible `.zip`/`.bos`, then Fallout `.dat`. Packaging now writes one `<Name>.fores` per logical resource pack; only executable-embedded resources remain ZIP. A `.fores` pack is one full base plus at most one writable `.patch.fores` with a complete current catalog, not an override directory or patch chain. A corrupt claimed `.fores` is an error, never a reason to fall back to an older sibling ZIP. The byte layout, integrity hashes, recovery rules, and `.foindex` cache are specified in [Resource Pack Format](../../../ResourcePackFormat.md).
+
 `FileSystem` then combines sources and offers:
 
 - `AddDirSource()`, `AddPackSource()`, `AddPacksSource()`, and `AddCustomSource()`;
@@ -26622,7 +26545,7 @@ Mount order matters for lookup behavior. When changing it, verify the runtime/to
 
 ### Shared index over mounted sources
 
-Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one shared index when every mounted source can provide a complete `DataSource::GetIndexSnapshot()`. `ZipFile`, `EmbeddedFile`, `FalloutDat`, and `FilesList` provide snapshots; the empty `DummySpace` used for an absent optional pack provides an empty snapshot. Directory sources, including `CachedDir`, keep the default `nullopt`, so adding any directory or other live source disables the index for that `FileSystem` and preserves ordered probing. Pure pack-backed filesystems used by packaged runtimes therefore index their resources, while unpacked development mounts, baker input directories, and mixed updater filesystems keep live lookup behavior.
+Point lookups (`IsFileExists()`, `ReadFile()`, and `ReadFileHeader()`) use one shared index when every mounted source can provide a complete `DataSource::GetIndexSnapshot()`. `ResourcePackSource`, `ZipFile`, `EmbeddedFile`, and `FalloutDat` provide snapshots; the empty `DummySpace` used for an absent optional pack provides an empty snapshot. Directory sources, including `CachedDir`, keep the default `nullopt`, so adding any directory or other live source disables the index for that `FileSystem` and preserves ordered probing. Pure pack-backed filesystems used by packaged runtimes therefore index their resources, while unpacked development mounts, baker input directories, and mixed updater filesystems keep live lookup behavior.
 
 The snapshot for a newly mounted source is taken before that source is published. A later mount has higher priority and replaces every indexed path it claims, matching the existing reverse-mount probe order. `ReindexDataSources()` rebuilds a replacement index separately and swaps it only after every snapshot succeeds; `CleanDataSources()` clears both sources and index. Point reads remain lock-free after setup. If an indexed source owns a path but cannot open it, `ReadFile()` returns no file instead of probing a lower-priority duplicate.
 
@@ -26630,7 +26553,7 @@ The snapshot for a newly mounted source is taken before that source is published
 
 `Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings stay internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
-Installed clients keep the read-only base resources mounted from `ClientResources` and layer the writable resource overlay from `fs_make_writable_path(UserWritablePath, ClientResources)` on top. `GetClientResources()` is the single assembly point used by gameplay and by the updater's local metadata-version check, so validation and runtime lookup cannot disagree about which pack wins. The updater writes resource patches into that overlay, so current or repaired files win without modifying the install directory; its splash pack applies the same precedence before the current update run starts downloading. A ZIP entry read failure includes the archive path and resource-relative entry in `DataSourceException` context. Short reads additionally report the expected byte count, the actual read result, and the close result, while a CRC/close failure records the close result separately. Native runtime binary update paths are owned by [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
+Packaged clients select one effective source per configured logical pack: a writable replacement `Pack.fores` when present, otherwise the installed base, paired with a writable `Pack.patch.fores` only when it binds to that exact physical base. Its complete catalog determines present and deleted paths; later configured packs retain precedence. `GetClientResources()` assembles that same view for gameplay and the updater's metadata check. The suffix after the last Embedded entry can use a disposable `Resources.foindex` cache; stale or damaged cache data falls back to authoritative pair mounts, while damaged authoritative pack data remains an error. An absolute installed or APK root puts writable replacements under `<UserWritablePath>/Resources`. See [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
 ## Low-level disk access
 
@@ -26818,7 +26741,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 3f4e8ad9e5c72cda5c132f7434b4d171cd122d6c4ae7b1f28a0a5a7f6a4fbb17
+Content SHA-256: 2351a3223bfd6d2d9ab3968124720f4e39fa9b94e7dac04facf13f56a8f62138
 
 ---
 layout: default
@@ -27215,6 +27138,8 @@ Treat Managed C# failures as four separate layers. Preserve the first failure fr
 2. **Compilation and analysis** — run `CompileManagedScripts` and read the first Roslyn/MSBuild diagnostic. Confirm `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, configured assemblies, and the selected .NET SDK. Synchronization diagnostics use the `FOSYNC` ids documented in [Managed C# Scripting](../how-to/scripting/managed-csharp.md).
 3. **Bake and delivery** — verify that each resource pack contains the expected target assembly and ManagedRuntime payload, and that packaging selected the target-specific runtime. Missing assemblies may be tolerated by deliberately minimal Engine fixtures; an embedding project's enabled backend must treat them as a packaging/configuration defect.
 4. **Runtime execution** — use the managed backend log to distinguish assembly/load-context failures, indexed-ABI bind/hash/count mismatches, P/Invoke registration, callback signature/invocation, scheduler-context violations, synchronization-cover failures, and GC-root/lifetime defects. Generated hot paths report whether the failure came through `CallMethodIndexed`; complex fallback calls retain `CallMethodBoxed`. Both preserve the originating native exception in the active managed entry instead of letting C++ unwind through Mono. Match the content hash and process role before attaching a debugger.
+
+Fallible internal calls return an error payload and `Native.cs` throws `NativeCallException` after Mono has left the native frame. Native throw-site information is retained in the active managed entry by the identity of its message object, not its text, so equal messages do not conflate failures and moving GC does not invalidate the association. Reporting searches current and enclosing entries; reflection and single-cause aggregate wrappers are transparent, but a semantic managed wrapper keeps its own frames. If the originating entry ended before a delayed report, only the managed exception description remains. Diagnose an `await` failure at that boundary before blaming the later entry-unwind assertion.
 
 For transport diagnosis without a managed debugger, enable
 `ManagedScript.InteropProbeOnStart` or call the engine-owned `InteropProbe` from a

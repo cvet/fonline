@@ -72,6 +72,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-clientnetwork-pingperiod-decb196246"></a>
 - [`symbol-setting-client-clientnetwork-pingperiod-decb196246`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-pingperiod-decb196246)
 
+<a id="symbol-setting-client-clientnetwork-pingtimeout-1810f1054f"></a>
+- [`symbol-setting-client-clientnetwork-pingtimeout-1810f1054f`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-pingtimeout-1810f1054f)
+
 <a id="symbol-setting-client-clientnetwork-proxyhost-3b9ca57725"></a>
 - [`symbol-setting-client-clientnetwork-proxyhost-3b9ca57725`](../../en/reference/script-api/settings.md#symbol-setting-client-clientnetwork-proxyhost-3b9ca57725)
 
@@ -308,6 +311,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-bootstrapgamesettings-7b6def613a"></a>
 - [`symbol-setting-common-baking-bootstrapgamesettings-7b6def613a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bootstrapgamesettings-7b6def613a)
 
+<a id="symbol-setting-common-baking-bundlecompresslevel-246df5b01a"></a>
+- [`symbol-setting-common-baking-bundlecompresslevel-246df5b01a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-bundlecompresslevel-246df5b01a)
+
 <a id="symbol-setting-common-baking-cacheresources-cd5fff4a62"></a>
 - [`symbol-setting-common-baking-cacheresources-cd5fff4a62`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-cacheresources-cd5fff4a62)
 
@@ -341,14 +347,17 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-rawcopyfileextensions-d940fab20a"></a>
 - [`symbol-setting-common-baking-rawcopyfileextensions-d940fab20a`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-rawcopyfileextensions-d940fab20a)
 
+<a id="symbol-setting-common-baking-resourcepackcompresslevel-77eefd9a55"></a>
+- [`symbol-setting-common-baking-resourcepackcompresslevel-77eefd9a55`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-resourcepackcompresslevel-77eefd9a55)
+
+<a id="symbol-setting-common-baking-resourcepackmincompressgain-7488f5f8f2"></a>
+- [`symbol-setting-common-baking-resourcepackmincompressgain-7488f5f8f2`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-resourcepackmincompressgain-7488f5f8f2)
+
 <a id="symbol-setting-common-baking-serverresources-a26d5fb8d9"></a>
 - [`symbol-setting-common-baking-serverresources-a26d5fb8d9`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-serverresources-a26d5fb8d9)
 
 <a id="symbol-setting-common-baking-singlethreadbaking-0fb1cfc498"></a>
 - [`symbol-setting-common-baking-singlethreadbaking-0fb1cfc498`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-singlethreadbaking-0fb1cfc498)
-
-<a id="symbol-setting-common-baking-zipcompresslevel-b425686d1e"></a>
-- [`symbol-setting-common-baking-zipcompresslevel-b425686d1e`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-zipcompresslevel-b425686d1e)
 
 <a id="group-setting-common-common-8624ac62c4"></a>
 - [`group-setting-common-common-8624ac62c4`](../../en/reference/script-api/settings.md#group-setting-common-common-8624ac62c4)

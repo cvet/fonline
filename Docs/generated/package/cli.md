@@ -45,5 +45,8 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-package-cli-argument-output-2ae5ff278c"></a>
 - [`entry-package-cli-argument-output-2ae5ff278c`](../../en/reference/packages/cli.md#entry-package-cli-argument-output-2ae5ff278c)
 
-<a id="entry-package-cli-argument-zip-compress-level-e963a53f02"></a>
-- [`entry-package-cli-argument-zip-compress-level-e963a53f02`](../../en/reference/packages/cli.md#entry-package-cli-argument-zip-compress-level-e963a53f02)
+<a id="entry-package-cli-argument-resource-pack-compress-level-1a964b7b3f"></a>
+- [`entry-package-cli-argument-resource-pack-compress-level-1a964b7b3f`](../../en/reference/packages/cli.md#entry-package-cli-argument-resource-pack-compress-level-1a964b7b3f)
+
+<a id="entry-package-cli-argument-bundle-compress-level-b8ad3a9fba"></a>
+- [`entry-package-cli-argument-bundle-compress-level-b8ad3a9fba`](../../en/reference/packages/cli.md#entry-package-cli-argument-bundle-compress-level-b8ad3a9fba)

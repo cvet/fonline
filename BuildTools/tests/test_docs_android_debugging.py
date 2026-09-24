@@ -118,12 +118,12 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
 
         self.assertIn("signingConfig = hasReleaseSigning ? signingConfigs.release : signingConfigs.debug", gradle)
         self.assertIn("abortOnError = false", gradle)
-        self.assertIn("noCompress += ['zip']", gradle)
+        self.assertIn("noCompress += ['fores']", gradle)
         self.assertIn('android:glEsVersion="0x00030000"', manifest)
         self.assertIn('android.permission.INTERNET', manifest)
         self.assertIn('android:name=".FOnlineActivity"', manifest)
 
-    def test_activity_claims_match_runtime_bootstrap_and_resource_copy(self) -> None:
+    def test_activity_claims_match_runtime_bootstrap_and_direct_pack_mount(self) -> None:
         activity = self._read(
             "BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java"
         )
@@ -133,16 +133,15 @@ class AndroidDebuggingDocumentationTests(unittest.TestCase):
             'args.add("--ApplySubConfig")',
             'args.add("--Baking.ClientResources")',
             'args.add("--Baking.CacheResources")',
+            'getApplicationInfo().sourceDir + "!/assets/" + $RESOURCE_DIRECTORY$',
+            'args.add(resourcesDir)',
             'getIntent().getStringExtra("server_host")',
             'args.add("--ClientNetwork.ServerHost")',
-            'final File revisionFile = new File(runtimeRoot, ".asset_revision")',
-            'return Long.toString(packageInfo.lastUpdateTime)',
-            '!new File(resourcesDir, "Metadata.zip").isFile()',
-            'deleteRecursively(resourcesDir)',
-            'copyAssetTree("Resources", resourcesDir)',
-            'writeSmallTextFile(revisionFile, assetRevision)',
         ):
             self.assertIn(contract, activity)
+
+        self.assertNotIn('copyAssetTree("Resources", resourcesDir)', activity)
+        self.assertNotIn('.asset_revision', activity)
 
         updater = self._read("Source/Client/Updater.cpp")
         self.assertIn("case UpdatePlatform::Android:", updater)

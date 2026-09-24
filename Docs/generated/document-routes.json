@@ -44,10 +44,10 @@
     "legacy_route_strategy": "durable-markdown-pointer",
     "migration_status": "planned"
   },
-  "route_count": 394,
-  "redirect_count": 202,
-  "translation_target_count": 191,
-  "translation_complete_count": 191,
+  "route_count": 396,
+  "redirect_count": 203,
+  "translation_target_count": 192,
+  "translation_complete_count": 192,
   "routes": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -8183,6 +8183,25 @@
       "redirect_to": "remote-calls"
     },
     {
+      "id": "legacy-resource-pack-format-route",
+      "canonical_document_id": "resource-pack-format",
+      "title": "Resource Pack Format",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ResourcePackFormat.md",
+      "current_path": "/Docs/ResourcePackFormat.html",
+      "current_url": "https://fonline.ru/Docs/ResourcePackFormat.html",
+      "planned_source_path": "Docs/en/reference/resource-pack-format.md",
+      "planned_path": "/Docs/en/reference/resource-pack-format.html",
+      "planned_url": "https://fonline.ru/Docs/en/reference/resource-pack-format.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "resource-pack-format"
+    },
+    {
       "id": "legacy-script-lifecycle-concurrency-route",
       "canonical_document_id": "script-lifecycle-concurrency",
       "title": "Legacy Script Lifecycle and Concurrency Route",
@@ -9444,6 +9463,39 @@
           "source_path": "README.ru.md",
           "path": "/README.ru.html",
           "url": "https://fonline.ru/README.ru.html",
+          "availability": "available"
+        }
+      ]
+    },
+    {
+      "id": "resource-pack-format",
+      "canonical_document_id": "resource-pack-format",
+      "title": "Resource Pack Format",
+      "state": "current",
+      "human": true,
+      "translation": "required",
+      "disposition": "retain",
+      "source_path": "Docs/en/reference/resource-pack-format.md",
+      "current_path": "/Docs/en/reference/resource-pack-format.html",
+      "current_url": "https://fonline.ru/Docs/en/reference/resource-pack-format.html",
+      "planned_source_path": "Docs/en/reference/resource-pack-format.md",
+      "planned_path": "/Docs/en/reference/resource-pack-format.html",
+      "planned_url": "https://fonline.ru/Docs/en/reference/resource-pack-format.html",
+      "migration_status": "current",
+      "redirect_required": false,
+      "locale_routes": [
+        {
+          "locale": "en",
+          "source_path": "Docs/en/reference/resource-pack-format.md",
+          "path": "/Docs/en/reference/resource-pack-format.html",
+          "url": "https://fonline.ru/Docs/en/reference/resource-pack-format.html",
+          "availability": "available"
+        },
+        {
+          "locale": "ru",
+          "source_path": "Docs/ru/reference/resource-pack-format.md",
+          "path": "/Docs/ru/reference/resource-pack-format.html",
+          "url": "https://fonline.ru/Docs/ru/reference/resource-pack-format.html",
           "availability": "available"
         }
       ]
@@ -11623,6 +11675,14 @@
       "canonical_document_id": "remote-calls",
       "from": "/Docs/RemoteCalls.html",
       "to": "/Docs/en/reference/scripting/remote-calls.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "legacy-resource-pack-format-route",
+      "canonical_document_id": "resource-pack-format",
+      "from": "/Docs/ResourcePackFormat.html",
+      "to": "/Docs/en/reference/resource-pack-format.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },

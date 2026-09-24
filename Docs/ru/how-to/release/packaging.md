@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"82579274b8af1612c443ef0863e1a058f247819ca7421b5a1c2f15a6045175b2"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"c4ee3eadfb336729a3bd9266666e74ff3ff08a0ac6565d9b47f6984985eacdd6"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -389,16 +389,11 @@ clients прочитайте [Client Runtime Split and Updater](../../explanatio
 
 ## Воспроизводимость и происхождение
 
-FOnline делает ZIP entries resource pack детерминированными: сортирует
-нормализованные paths и фиксирует timestamps и permissions ZIP. Embedded
-resource ZIP data использует то же правило. Внешние ZIP и TAR packages используют
+FOnline записывает каждый не-Embedded resource pack как детерминированную базу `.fores` из отсортированных нормализованных путей, не сохраняя timestamps. [Формат пакетов ресурсов](../../../ResourcePackFormat.md) определяет заголовок версии 2, физический и логический хеши, полный каталог, необязательный writable-патч и проверки целостности. `Baking.ResourcePackCompressLevel` и `Baking.ResourcePackMinCompressGain` управляют сжатием отдельных ресурсов; `Baking.BundleCompressLevel` — внешними пакетами и ZIP Embedded. Для одного запуска `package.py` принимает `-resource-pack-compress-level` и `-bundle-compress-level`. Он проверяет декодированную длину и хеш каждого payload до завершения упаковки. Embedded ZIP сохраняет фиксированные timestamps/permissions и проходит CRC-проверку до встраивания в бинарный файл. Внешние ZIP и TAR packages используют
 логические file modes target, а не modes filesystem host, поэтому Windows
 packaging host также создаёт исполняемые Linux targets. Raw package parts
 объединяют mode records в один package-root handoff `.lf-package-modes.json`, не
-теряя предыдущие parts. После создания resource pack `package.py` повторно
-открывает его, сравнивает точный entry list с planned inventory и полностью
-читает каждый entry через CRC-checking ZIP reader; embedded packs проверяются из
-in-memory bytes до patch binary. Это gates создания package, а не доказательство
+теряя предыдущие parts. Это gates создания package, а не доказательство
 того, что installer, delivery channel, publication step или installed filesystem
 сохранили результат. Parser package declarations и сгенерированный contract
 детерминированы и проверяются в CI.
@@ -406,9 +401,7 @@ in-memory bytes до patch binary. Это gates создания package, а н�
 `FO_RESOURCE_ARCHIVE_CACHE_HELPER` может указывать на принадлежащий проекту
 Python helper с интерфейсом `restore|store|release --key <sha256> --archive
 <path>`. Ключ охватывает детерминированные имена и содержимое entries вместе с
-compression level. Cache hit всё равно проходит проверки точного entry list и
-CRC выше; miss или явно недоступный optional cache переходят к локальному
-deflate, а malformed hit и неожиданный failure helper останавливают packaging.
+compression level и минимальный выигрыш от сжатия. Cache hit всё равно проходит полную проверку payload `.fores`; miss или явно недоступный optional cache переходят к локальной сборке, а malformed hit и неожиданный failure helper останавливают packaging.
 Storage, credentials, claims, retention и service availability helper остаются
 ответственностью проекта.
 
@@ -549,7 +542,8 @@ compatibility или безопасный rollback.
 - `BuildTools/tests/validate_package_interface.cmake`
 - `BuildTools/tests/test_package_include.py`
 - `BuildTools/tests/test_package_security.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_resource_pack.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `BuildTools/tests/test_packaging_matrix.py`
 - `BuildTools/tests/test_minimal_multiplayer_package.py`
 - `BuildTools/msicreator/createmsi.py`

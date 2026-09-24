@@ -22,9 +22,9 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         guide = self._read(GUIDE_PATH)
 
         self.assertIn("FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3", runtime_api)
-        self.assertIn("FO_UPDATER_VERSION = 2", common)
+        self.assertIn("FO_UPDATER_VERSION = 5", common)
         self.assertIn("`FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3`", guide)
-        self.assertIn("`FO_UPDATER_VERSION = 2`", guide)
+        self.assertIn("`FO_UPDATER_VERSION = 5`", guide)
         for result in ("Shutdown", "ReloadRequested", "FatalError"):
             self.assertIn(result, runtime_api)
             self.assertIn(f"`{result}`", guide)
@@ -69,7 +69,9 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
             self.assertIn(signature, guide)
 
         self.assertIn("auto start_offset = in_buf->Read<uint64_t>();", backend)
-        self.assertIn("file.seekg(numeric_cast<std::streamoff>(start_offset)", backend)
+        self.assertIn("update_file.File.read_at(start_offset, disk_update_data)", backend)
+        self.assertIn("uint64_t requested_size = in_buf->Read<uint64_t>();", backend)
+        self.assertIn("uint64_t expected_hash = in_buf->Read<uint64_t>();", backend)
         self.assertIn("start_offset: uint64", guide)
         self.assertIn("without server-side state", guide)
         self.assertIn("internal engine surface, not a stable public API", guide)
@@ -84,9 +86,8 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
             "hashing::hash<string_view> {}(file_path)).str()"
         )
         self.assertIn(cache_expression, updater)
-        self.assertIn("`<basename>-<path-hash>.hash`", guide)
-        self.assertIn("`hashing::hash<string_view>` over the full path string", guide)
-        self.assertNotIn("The key is `<basename>.hash`", guide)
+        self.assertIn("Native whole-file hash results retain their separate `(size, mtime, hash)` cache", guide)
+        self.assertIn("ResourcePairVerifier", guide)
 
         for marker in (
             "package_all_client_runtime_update_payloads",
@@ -138,9 +139,9 @@ class ClientUpdaterDocumentationTests(unittest.TestCase):
         )
         for contract in (
             "`FO_CLIENT_RUNTIME_HOST_ABI_VERSION = 3`",
-            "`FO_UPDATER_VERSION = 2`",
+            "`FO_UPDATER_VERSION = 5`",
             "`PromoteStagedReloadForRestart`",
-            "`<basename>-<path-hash>.hash`",
+            "`ResourcePairVerifier`",
             "`const_span<uint8_t>`",
             "`ServerNetwork.UpdateFilesInMemory`",
             "`PlatformBinaries/<target>/`",

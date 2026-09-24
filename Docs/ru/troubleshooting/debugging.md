@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"3f4e8ad9e5c72cda5c132f7434b4d171cd122d6c4ae7b1f28a0a5a7f6a4fbb17"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"2351a3223bfd6d2d9ab3968124720f4e39fa9b94e7dac04facf13f56a8f62138"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -393,6 +393,8 @@ Client, server и mapper используют общий UDP discovery port `430
 2. **Compilation и analysis** — запустите `CompileManagedScripts` и прочитайте первую diagnostic Roslyn/MSBuild. Проверьте `ManagedScriptTargetFramework`, `ManagedScriptSourceDirs`, extra sources/references, analyzers, настроенные assemblies и выбранный .NET SDK. Synchronization diagnostics используют IDs `FOSYNC`, описанные в [Скриптах Managed C#](../how-to/scripting/managed-csharp.md).
 3. **Bake и delivery** — проверьте ожидаемую target assembly и payload ManagedRuntime в каждом resource pack и выбор target-specific runtime упаковщиком. Отсутствующие assemblies допустимы в намеренно минимальных fixtures Engine; проект с включённым backend должен считать это дефектом packaging/configuration.
 4. **Runtime execution** — по логу managed backend различайте ошибки assembly/load-context, несовпадение bind/hash/count indexed ABI, регистрацию P/Invoke, signature/invocation callback, нарушение scheduler context, synchronization cover и дефекты GC-root/lifetime. Generated hot paths сообщают об ошибке через `CallMethodIndexed`, complex fallback calls сохраняют `CallMethodBoxed`. Оба пути сохраняют исходное native exception в активном managed entry и не позволяют C++ unwind пройти через Mono. До attach сверяйте content hash и роль процесса.
+
+Потенциально ошибочный internal call возвращает error payload, а `Native.cs` выбрасывает `NativeCallException` после выхода Mono из native frame. Место исходного native throw хранится в активной managed entry по идентичности объекта сообщения, не по тексту: одинаковые строки не смешивают ошибки, а moving GC не разрушает связь. При report просматриваются текущая и внешние entries; reflection и aggregate с одной причиной прозрачны, но смысловой managed wrapper сохраняет собственные frames. Если исходная entry завершилась до отложенного report, остаётся только managed-описание ошибки. Сбой после `await` сначала исследуйте на этой границе, а не по более позднему assertion при unwind entry.
 
 Для диагностики transport без managed debugger включите
 `ManagedScript.InteropProbeOnStart` или вызовите engine-owned `InteropProbe` из

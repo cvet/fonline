@@ -259,11 +259,82 @@ TEST_CASE("Settings")
         CHECK(settings.GetCustomSetting("FlagOnly") == "1");
     }
 
+    SECTION("CommandLineOptionIsADashBeforeASettingName")
+    {
+        CHECK(CommandLineArgs::IsOption("--Render.Sleep"));
+        CHECK(CommandLineArgs::IsOption("-ApplySubConfig"));
+        CHECK(CommandLineArgs::IsOption("--custom"));
+
+        CHECK_FALSE(CommandLineArgs::IsOption("-1"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-0.5"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-.5"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-5 5 10 10"));
+        CHECK_FALSE(CommandLineArgs::IsOption("-"));
+        CHECK_FALSE(CommandLineArgs::IsOption("--"));
+        CHECK_FALSE(CommandLineArgs::IsOption(""));
+        CHECK_FALSE(CommandLineArgs::IsOption("+Tag"));
+        CHECK_FALSE(CommandLineArgs::IsOption("Value"));
+    }
+
+    SECTION("ApplyCommandLineKeepsNegativeValues")
+    {
+        // Read as the next option, a negative value would leave its setting at the implicit flag value 1 and
+        // add a stray custom setting named after its digits
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Render.FixedFPS";
+        char arg2[] = "60";
+        char arg3[] = "--Render.Sleep";
+        char arg4[] = "-1";
+        char arg5[] = "--Probe.Offset";
+        char arg6[] = "-0.5";
+        char arg7[] = "--Probe.Area";
+        char arg8[] = "-5 5 10 10";
+        char arg9[] = "--Probe.Flag";
+        vector<CommandLineArg> argv = {arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9};
+
+        settings.ApplyCommandLine(CommandLineArgs {argv});
+
+        CHECK(settings.Render.FixedFPS == 60);
+        CHECK(settings.Render.Sleep == -1);
+        CHECK(settings.GetCustomSetting("Probe.Offset") == "-0.5");
+        CHECK(settings.GetCustomSetting("Probe.Area") == "-5 5 10 10");
+        CHECK(settings.GetCustomSetting("Probe.Flag") == "1");
+        CHECK_FALSE(settings.FindCustomSetting("1"));
+        CHECK_FALSE(settings.FindCustomSetting("0.5"));
+        CHECK_FALSE(settings.FindCustomSetting("5 5 10 10"));
+    }
+
     SECTION("CommandLineArgsAcceptEmptyNativeArgv")
     {
         CommandLineArgs args {0, nullptr};
 
         CHECK(args.empty());
+    }
+
+    SECTION("ProgramArgsKeepTheArgumentsInUtf8")
+    {
+        char arg0[] = "lf_tests";
+        char arg1[] = "--Common.UserWritablePath";
+        char arg2[] = "\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82";
+        char* argv[] = {arg0, arg1, arg2};
+
+        ProgramArgs program_args {3, argv};
+        CommandLineArgs args = program_args.GetArgs();
+
+#if FO_WINDOWS
+        // The console argv is not trusted there: the arguments come from the wide command line of this process
+        REQUIRE_FALSE(args.empty());
+        auto exe_path = platform::get_exe_path();
+        REQUIRE(exe_path.has_value());
+        CHECK(strex(args.Get(0)).extract_file_name().erase_file_extension().lower().str() == strex(exe_path.value()).extract_file_name().erase_file_extension().lower().str());
+#else
+        REQUIRE(args.size() == 3);
+        CHECK(args.Get(0) == "lf_tests");
+        CHECK(args.Get(2) == "\xD0\xA2\xD0\xB5\xD1\x81\xD1\x82");
+#endif
     }
 
     SECTION("ApplyCommandLineMasksSecretValuesInLog")
@@ -314,6 +385,50 @@ TEST_CASE("Settings")
         // A second pass over the same object appends again — what the two-pass flow used to do
         settings.ApplyCommandLine(CommandLineArgs {3, argv});
         CHECK(settings.Common.GameName == "Tag Tag");
+    }
+
+    SECTION("StringSettingsKeepBackslashesAsWritten")
+    {
+        // Each path holds a sequence the AnyData coded-string grammar rewrites: \n, \r and a doubled backslash
+        string unc_path = R"(\\server\share\none\runs\Baking)";
+        string drive_path = R"(C:\work\none\Baking)";
+
+        GlobalSettings from_command_line {false};
+        from_command_line.ApplyDefaultSettings();
+        string path_arg = unc_path;
+        std::array<char*, 3> argv = {const_cast<char*>("app"), const_cast<char*>("--Baking.BakeOutput"), path_arg.data()};
+        from_command_line.ApplyCommandLine(CommandLineArgs {numeric_cast<int32_t>(argv.size()), argv.data()});
+
+        CHECK(from_command_line.Baking.BakeOutput == unc_path);
+
+        GlobalSettings from_config {false};
+        from_config.ApplyDefaultSettings();
+        ConfigFile config {strex("Baking.BakeOutput = {}\nManagedScript.Dirs = {}\t{}\n", drive_path, drive_path, unc_path).str()};
+        from_config.ApplyConfigFile(config, "");
+
+        CHECK(from_config.Baking.BakeOutput == drive_path);
+        CHECK(from_config.ManagedScript.Dirs == vector<string> {drive_path, unc_path});
+    }
+
+    SECTION("StringSettingsSurviveTheBakedConfigRoundTrip")
+    {
+        // The config baker writes Save() as key=value lines that a packaged application parses back, so a value
+        // rewritten on read would drift further with every bake
+        string unc_path = R"(\\server\share\none\runs\Baking)";
+
+        GlobalSettings baking {true};
+        baking.ApplyDefaultSettings();
+        ConfigFile authored {strex("Baking.BakeOutput = {}\nManagedScript.Dirs = {} Scripts\n", unc_path, unc_path).str()};
+        baking.ApplyConfigFile(authored, "");
+        auto saved = baking.Save();
+
+        GlobalSettings packaged {false};
+        packaged.ApplyDefaultSettings();
+        ConfigFile baked {strex("Baking.BakeOutput={}\nManagedScript.Dirs={}\n", saved.at("Baking.BakeOutput"), saved.at("ManagedScript.Dirs")).str()};
+        packaged.ApplyConfigFile(baked, "");
+
+        CHECK(packaged.Baking.BakeOutput == unc_path);
+        CHECK(packaged.ManagedScript.Dirs == vector<string> {unc_path, "Scripts"});
     }
 
     SECTION("ApplyConfigAtPathResolvesFileVariables")
@@ -472,6 +587,22 @@ TEST_CASE("Settings")
         CHECK(fs::is_dir(resolved));
 
         ignore_unused(fs::remove_dir_tree(root));
+    }
+
+    SECTION("CommandLinePassKeepsTheResolvedWritableRoot")
+    {
+        // The startup resolves "*" to the per-user data directory, and read again as a setting value it became "*"
+        GlobalSettings settings {false};
+        settings.ApplyDefaultSettings();
+        settings.ApplyWritableRoot("/home/player/.local/share/Game");
+
+        char arg0[] = "app";
+        char arg1[] = "--Common.UserWritablePath";
+        char arg2[] = "*";
+        char* argv[] = {arg0, arg1, arg2};
+        settings.ApplyCommandLine(CommandLineArgs {3, argv});
+
+        CHECK(settings.Common.UserWritablePath == "/home/player/.local/share/Game");
     }
 
     SECTION("WritableRootWithoutMarkerStaysInTheWorkingDirectory")

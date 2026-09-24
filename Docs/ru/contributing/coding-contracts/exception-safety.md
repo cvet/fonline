@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"98d763e9284ebb8cbf35c33d24638cabfb7b4db6b7b3bc787364143bbaa8abf8"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"afb4d473355a7b4ac5947d87c2acb2a745c098bded2b3cec918e219e44f8e258"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -263,6 +263,8 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 детерминированно останавливается на реальной ошибке.
 
 ## 4. Инварианты после изменения требуют `FO_STRONG_ASSERT`
+
+Условие каждого `FO_VERIFY_*` и `FO_STRONG_ASSERT` — предикат, а не выполняемое действие. Запись, flush, чтение, вставку в контейнер, изменение файловой системы или вызов с выходным параметром выполняют сначала; результат сохраняют в именованной локальной переменной и проверяют её. Например: `bool written = file.write(data) && file.flush(); FO_VERIFY_AND_THROW(written, "Resource footer was not committed");`, а не write/flush внутри макроса. Макросы выполняют условия во всех конфигурациях, но действие не должно прятаться под видом проверки.
 
 Если необратимое изменение уже произошло и ложность проверки означает
 повреждение мира, использовать бросающий verify поздно: `WorkerPool` поймал бы

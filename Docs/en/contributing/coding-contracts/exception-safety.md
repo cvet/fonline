@@ -140,6 +140,8 @@ This is the **unexpected-and-unhandled** tier (§5). A verify placed **after** a
 
 Such invariants must abort in **every** build. `FO_STRONG_ASSERT` (`Source/Essentials/ExceptionHandling.h`) is **unconditional** — it always evaluates its condition and calls `ReportExceptionAndExit` on failure, regardless of build profile — so it is the correct tool for load-bearing post-mutation invariants.
 
+The condition of every `FO_VERIFY_*` and `FO_STRONG_ASSERT` variant is a predicate, never the operation being checked. Perform a write, flush, read, insertion, filesystem mutation, or out-parameter call first, bind its result to a named local, and check that local. For example, write `bool written = file.write(data) && file.flush(); FO_VERIFY_AND_THROW(written, "Resource footer was not committed");`, not the write and flush inside `FO_VERIFY_AND_THROW(...)`. The macros do evaluate their conditions in all builds; this rule keeps an action from being hidden inside what reads as an assertion.
+
 Examples converted to `FO_STRONG_ASSERT` (all post-mutation, can't-happen-with-correct-code):
 - `EntityManager` typed-registry duplicate checks and `Unregister*`/global lookup checks (forward registration implies the typed/global maps agree).
 - `Critter` visibility-graph symmetry (`AddVisibleCritter` reverse insert, `RemoveVisibleCritter`/`ClearVisibleEnitites` reverse lookups: a forward link implies its reverse).

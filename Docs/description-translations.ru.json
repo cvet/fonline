@@ -4675,6 +4675,10 @@
           "source_sha256": "1db447979446c1832dc28d82b16cbb174aad3b02f41b48cada1c99dfede5433c",
           "translation": "суффикс, добавляемый к именам каталогов выходных бинарных файлов"
         },
+        "/cli/arguments/@id=package.cli.argument.bundle_compress_level/description": {
+          "source_sha256": "c43e9ea3f9e604aa2dc432064c47f293c71983ae1ea5992128d33df69dddffc0",
+          "translation": "переопределить уровень сжатия внешнего пакета (шкала zlib: 0 без сжатия, 9 максимально)"
+        },
         "/cli/arguments/@id=package.cli.argument.buildhash/description": {
           "source_sha256": "f9266c7f36c9ffabb805ff021eb8db871069d6b2c60da6f85321cb611eefb61a",
           "translation": "хеш сборки"
@@ -4715,13 +4719,13 @@
           "source_sha256": "caff39e103adc9a3ba5c88a33555b1118d301d33dd57dde05d24123b387461af",
           "translation": "тип платформы"
         },
+        "/cli/arguments/@id=package.cli.argument.resource_pack_compress_level/description": {
+          "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
+          "translation": "переопределить уровень сжатия пакета ресурсов (шкала zlib: 0 без сжатия, 9 максимально)"
+        },
         "/cli/arguments/@id=package.cli.argument.target/description": {
           "source_sha256": "2c1f7b79e49ccc8890357c8defc768c79d51a8c7919d853ae61efc423a3f2aa4",
           "translation": "тип цели упаковки"
-        },
-        "/cli/arguments/@id=package.cli.argument.zip_compress_level/description": {
-          "source_sha256": "5257a4823bfec01a56e0d648c13e0d0edcfdc43962304552f6b86315636eb563",
-          "translation": "переопределение уровня сжатия ZIP"
         },
         "/cli/description": {
           "source_sha256": "90c6a6e8f9678a9624e853ed62b47f16eb5d1a31911ef007719254b5353dc2dc",
@@ -18087,6 +18091,10 @@
           "source_sha256": "351296212815c67270504519c771d19c6052ca32ce2a0e13ffbbaab93fab77fe",
           "translation": "Период ping в миллисекундах"
         },
+        "/symbols/@id=setting.client.ClientNetwork.PingTimeout/description": {
+          "source_sha256": "242d85e22e8fdfb7b143e25881828989e85fcf66d2cb3f206c82febc24313293",
+          "translation": "Время в миллисекундах, в течение которого при полном отсутствии данных от сервера можно ждать ответа на защищённое рукопожатие или ping до признания соединения потерянным (0 — ждать бесконечно)"
+        },
         "/symbols/@id=setting.client.ClientNetwork.ProxyHost/description": {
           "source_sha256": "d609fcc9b1b76210c47b335240db086610de3c841fa6a774d5a2c28387f83b1f",
           "translation": "Адрес proxy-хоста"
@@ -18327,6 +18335,10 @@
           "source_sha256": "b6d09bfc4cf6066366c5d8235af3e1452157ad4f7d78edde54006a6f8ca0ebba",
           "translation": "Настройки игры, которые встраиваемый проект читает до доступности метаданных (в ApplicationInitHook и раньше); записываются в бинарную конфигурацию полностью, а не как дельта подконфигурации"
         },
+        "/symbols/@id=setting.common.Baking.BundleCompressLevel/description": {
+          "source_sha256": "6ac0ec394437e5145700bab5f90f9eaf6dca5edd134e5a7cfd5125242cfc9791",
+          "translation": "Уровень сжатия дистрибутивов и встроенного в исполняемый файл пакета Embedded по шкале zlib для любого кодека: 0 без сжатия, 9 максимально"
+        },
         "/symbols/@id=setting.common.Baking.CacheResources/description": {
           "source_sha256": "b73a2fe61ba6dd64d06526898296c8f00b854b8a246968335211b76fc4e4000a",
           "translation": "Каталог кеша ресурсов"
@@ -18371,6 +18383,14 @@
           "source_sha256": "b2df2c59477113ca8fae7e1a1f46fe0e75acb2616835da936bacb7014063f497",
           "translation": "Расширения файлов для копирования без преобразования"
         },
+        "/symbols/@id=setting.common.Baking.ResourcePackCompressLevel/description": {
+          "source_sha256": "e973fad524f8cd2c9edd0716e60fd07537887db20626ff44a62b18f818b19d17",
+          "translation": "Уровень сжатия пакетов ресурсов по шкале zlib для любого кодека: 0 без сжатия, 9 максимально"
+        },
+        "/symbols/@id=setting.common.Baking.ResourcePackMinCompressGain/description": {
+          "source_sha256": "1121119449f0a3a821492bc433765e465befe0c69c14be557d7fa808edac656f",
+          "translation": "Минимальный процент уменьшения размера блока, при котором он сжимается вместо хранения без сжатия"
+        },
         "/symbols/@id=setting.common.Baking.ServerResources/description": {
           "source_sha256": "6adc8d3d036c22236ced92bf4220e2208b7ce1cd338009818220607f67ac2c43",
           "translation": "Каталог ресурсов сервера"
@@ -18378,10 +18398,6 @@
         "/symbols/@id=setting.common.Baking.SingleThreadBaking/description": {
           "source_sha256": "512a88fdecba368e21484023c0027693dde8b95bef2435c3c0f6c5506109502d",
           "translation": "Если true, включено однопоточное запекание"
-        },
-        "/symbols/@id=setting.common.Baking.ZipCompressLevel/description": {
-          "source_sha256": "8bec84deaa696259862dc934e5d3332682b252a4c8bd62155be607e220c508d3",
-          "translation": "Уровень deflate-сжатия Zip (0-9)"
         },
         "/symbols/@id=setting.common.Common.AsyncLogWrite/description": {
           "source_sha256": "436ee2776ffc7d3214d7e8c18beab0c492386c5ca87908c52830efa9b1b64780",
@@ -18680,8 +18696,8 @@
           "translation": "Доля egg-маски, остающаяся полностью прозрачной перед линейным переходом к непрозрачности"
         },
         "/symbols/@id=setting.common.Render.FixedFPS/description": {
-          "source_sha256": "536dc68b9109674e2f10fcb66ae6050cc5666d1b0d2649c6f11474adb00b3776",
-          "translation": "Фиксированная частота кадров в секунду (0 отключает)"
+          "source_sha256": "cab1ca537bc84be2350a572fab2d9fa165723987fe9a7caed03e508447522541",
+          "translation": "Ограничение частоты кадров; имеет приоритет над Sleep (0 отключает)"
         },
         "/symbols/@id=setting.common.Render.ForceDirect3D/description": {
           "source_sha256": "4461296882785b960a564020694d36f3541b0ab6fbe29a5dff6dd312d1e8f167",
@@ -18788,8 +18804,8 @@
           "translation": "Предпочтительное имя драйвера SDL_GPU (vulkan / metal / direct3d12); пустое значение позволяет SDL выбрать драйвер"
         },
         "/symbols/@id=setting.common.Render.Sleep/description": {
-          "source_sha256": "e1c116230e4caaa0e4b3e180669ccbe2fd2d3f784824749689ba5fdbe4f489b0",
-          "translation": "Длительность сна в миллисекундах (-1 отключает)"
+          "source_sha256": "a11de795aa83921966ddcf8539af57a194b68a036645f538a85f3908683e5736",
+          "translation": "Ожидание между кадрами в миллисекундах, только при FixedFPS = 0 (0 уступает поток, -1 отключает)"
         },
         "/symbols/@id=setting.common.Render.SpriteHitValue/description": {
           "source_sha256": "f5aab8884635d252427936d82bc703b45aab5671320813d121fc568088a16bcf",

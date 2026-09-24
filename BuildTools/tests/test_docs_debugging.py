@@ -103,7 +103,7 @@ class DebuggingDocumentationTests(unittest.TestCase):
         self.assertIn("stack_trace::capture_native_frames(ctx_ext->BirthNativeFrames", context)
         self.assertIn("stack_trace::set_script_provider", context)
         self.assertIn("FO_MEMORY_SANITIZER", exception_cpp)
-        self.assertIn("HAS_NATIVE_TRACE 0", exception_cpp)
+        self.assertIn("HAS_NATIVE_TRACE 0", stack_cpp)
 
         for mode in (
             "main_null_read",

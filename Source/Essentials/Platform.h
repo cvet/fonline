@@ -64,6 +64,10 @@ namespace platform
     // Windows: GetModuleFileNameW; Linux: /proc/self/exe; macOS: proc_pidpath; other: nullopt
     auto get_exe_path() noexcept -> optional<string>;
 
+    // Windows: the wide command line split into UTF-8 arguments, since a console entry point receives argv in the
+    // ANSI code page; other: nullopt, argv is already UTF-8
+    auto get_command_line_args() -> optional<vector<string>>;
+
     // Per-user writable data root from environment only: LOCALAPPDATA/APPDATA, Library/Application Support, or XDG_DATA_HOME.
     // Return an empty string when no platform path is available
     auto get_user_data_base() noexcept -> string;

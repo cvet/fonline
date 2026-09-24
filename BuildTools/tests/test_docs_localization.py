@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 191)
-        self.assertEqual(first["summary"]["current_translation_count"], 191)
+        self.assertEqual(first["summary"]["required_document_count"], 192)
+        self.assertEqual(first["summary"]["current_translation_count"], 192)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -264,6 +264,7 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "packaging-and-release",
                 "repository-home",
                 "remote-calls",
+                "resource-pack-format",
                 "script-lifecycle-concurrency",
                 "script-methods-map",
                 "scripting-runtime",

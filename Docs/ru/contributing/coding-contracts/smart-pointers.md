@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/smart-pointers.html
 ---
 
 # Умные указатели
-<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"7a3112e49c059a2dcc8810339ed00d0b80f22bf043a9c33001ef6ebb3ee0c004"} -->
+<!-- docs-translation: {"document_id":"smart-pointers","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/smart-pointers.md","source_sha256":"00127de2f7ad8dc83ae4397bee91938e88a859e61e5d4d9ce1f581f7dff69a4e"} -->
 > Документация движка. Эта страница определяет словарь native C++-указателей
 > из `Source/Essentials/SmartPointers.h`: владение, nullability, правила
 > миграции и требования к проверке.
@@ -255,6 +255,8 @@ Member casts: `shared_ptr<U>::dyn_cast<T>()` разделяет control block и
 в wrapper vocabulary. Для внутренних view используйте `CommandLineArg` /
 `CommandLineArgs`; временный `char**` создавайте только перед последним ABI
 handoff.
+
+Точка входа вне SDL владеет аргументами через `ProgramArgs` (`Source/Common/Common.h`): в Windows он читает UTF-8 из широкой командной строки вместо `argv` в ANSI code page и выдаёт `CommandLineArgs` view на срок своей жизни.
 
 На проверенной raw cleanup boundary применяйте именованный helper вместо owner
 construction из `.get()`: `adopt_unique_ptr(ptr<T>)` для scalar object и

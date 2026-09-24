@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4794,
-    "current_count": 4794,
+    "entry_count": 4798,
+    "current_count": 4798,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2536,
-      "current_count": 2536,
+      "entry_count": 2539,
+      "current_count": 2539,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -14674,6 +14674,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.ClientNetwork.PingTimeout/description",
+          "source": "Time in milliseconds the secure channel handshake or a ping may stay unanswered while nothing at all arrives from the server before the connection counts as lost (0 = wait for ever)",
+          "source_sha256": "242d85e22e8fdfb7b143e25881828989e85fcf66d2cb3f206c82febc24313293",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.ClientNetwork.ProxyHost/description",
           "source": "Proxy host address",
           "source_sha256": "d609fcc9b1b76210c47b335240db086610de3c841fa6a774d5a2c28387f83b1f",
@@ -15034,6 +15040,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.BundleCompressLevel/description",
+          "source": "Compression level of the distribution bundles and the executable's Embedded resource pack, on the zlib scale whatever the codec: 0 stores, 9 is the strongest",
+          "source_sha256": "6ac0ec394437e5145700bab5f90f9eaf6dca5edd134e5a7cfd5125242cfc9791",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.CacheResources/description",
           "source": "Cache resources directory",
           "source_sha256": "b73a2fe61ba6dd64d06526898296c8f00b854b8a246968335211b76fc4e4000a",
@@ -15100,6 +15112,18 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.ResourcePackCompressLevel/description",
+          "source": "Compression level of the resource packs, on the zlib scale whatever the codec: 0 stores, 9 is the strongest",
+          "source_sha256": "e973fad524f8cd2c9edd0716e60fd07537887db20626ff44a62b18f818b19d17",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Baking.ResourcePackMinCompressGain/description",
+          "source": "Percent a blob must give back before it is deflated rather than stored as it is",
+          "source_sha256": "1121119449f0a3a821492bc433765e465befe0c69c14be557d7fa808edac656f",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.ServerResources/description",
           "source": "Server resources directory",
           "source_sha256": "6adc8d3d036c22236ced92bf4220e2208b7ce1cd338009818220607f67ac2c43",
@@ -15109,12 +15133,6 @@
           "locator": "/symbols/@id=setting.common.Baking.SingleThreadBaking/description",
           "source": "If true, single-threaded baking is enabled",
           "source_sha256": "512a88fdecba368e21484023c0027693dde8b95bef2435c3c0f6c5506109502d",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Baking.ZipCompressLevel/description",
-          "source": "Zip deflate level (0-9)",
-          "source_sha256": "8bec84deaa696259862dc934e5d3332682b252a4c8bd62155be607e220c508d3",
           "status": "current"
         },
         {
@@ -15563,8 +15581,8 @@
         },
         {
           "locator": "/symbols/@id=setting.common.Render.FixedFPS/description",
-          "source": "Fixed frames per second (0 to disable)",
-          "source_sha256": "536dc68b9109674e2f10fcb66ae6050cc5666d1b0d2649c6f11474adb00b3776",
+          "source": "Frame rate cap, takes precedence over Sleep (0 to disable)",
+          "source_sha256": "cab1ca537bc84be2350a572fab2d9fa165723987fe9a7caed03e508447522541",
           "status": "current"
         },
         {
@@ -15725,8 +15743,8 @@
         },
         {
           "locator": "/symbols/@id=setting.common.Render.Sleep/description",
-          "source": "Sleep duration in milliseconds (-1 to disable)",
-          "source_sha256": "e1c116230e4caaa0e4b3e180669ccbe2fd2d3f784824749689ba5fdbe4f489b0",
+          "source": "Per-frame sleep in milliseconds when FixedFPS is 0 (0 yields, -1 to disable)",
+          "source_sha256": "a11de795aa83921966ddcf8539af57a194b68a036645f538a85f3908683e5736",
           "status": "current"
         },
         {
@@ -23741,8 +23759,8 @@
     },
     "package": {
       "source_model": "Docs/generated/package.json",
-      "entry_count": 63,
-      "current_count": 63,
+      "entry_count": 64,
+      "current_count": 64,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -23762,6 +23780,12 @@
           "locator": "/cli/arguments/@id=package.cli.argument.buildhash/description",
           "source": "build hash",
           "source_sha256": "f9266c7f36c9ffabb805ff021eb8db871069d6b2c60da6f85321cb611eefb61a",
+          "status": "current"
+        },
+        {
+          "locator": "/cli/arguments/@id=package.cli.argument.bundle_compress_level/description",
+          "source": "override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)",
+          "source_sha256": "c43e9ea3f9e604aa2dc432064c47f293c71983ae1ea5992128d33df69dddffc0",
           "status": "current"
         },
         {
@@ -23819,15 +23843,15 @@
           "status": "current"
         },
         {
-          "locator": "/cli/arguments/@id=package.cli.argument.target/description",
-          "source": "package target type",
-          "source_sha256": "2c1f7b79e49ccc8890357c8defc768c79d51a8c7919d853ae61efc423a3f2aa4",
+          "locator": "/cli/arguments/@id=package.cli.argument.resource_pack_compress_level/description",
+          "source": "override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)",
+          "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
           "status": "current"
         },
         {
-          "locator": "/cli/arguments/@id=package.cli.argument.zip_compress_level/description",
-          "source": "override zip compression level",
-          "source_sha256": "5257a4823bfec01a56e0d648c13e0d0edcfdc43962304552f6b86315636eb563",
+          "locator": "/cli/arguments/@id=package.cli.argument.target/description",
+          "source": "package target type",
+          "source_sha256": "2c1f7b79e49ccc8890357c8defc768c79d51a8c7919d853ae61efc423a3f2aa4",
           "status": "current"
         },
         {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import inspect
 from pathlib import Path
 import re
+import shutil
 import sys
 import tarfile
 import urllib.error
@@ -48,12 +49,9 @@ class FakeRuntimeBuild:
         self.calls = 0
         self.reused_markers: list[str] = []
 
+    # Runs whenever it is called, like the real build: whether a published tree makes it unnecessary is setup_mono's call
     def __call__(self, os_name: str, arch: str, config: str, env: dict[str, str]) -> None:
         layout = _buildtools.resolve_mono_layout(os_name, arch, config, env)
-
-        if layout.ready_marker.exists():
-            return
-
         self.calls += 1
         self.reused_markers.extend(marker.name for marker in (layout.clone_marker, layout.built_marker) if marker.exists())
         make_published_tree(layout.output_dir, f"built by call {self.calls}")
@@ -129,6 +127,41 @@ def test_a_ready_workspace_neither_fetches_nor_publishes(tmp_path: Path, cache: 
     assert cache.fetched == []
     assert cache.archives == {}
     assert build.calls == 1
+
+
+def test_a_tree_restored_from_the_cache_is_not_rebuilt_by_another_build_directory(
+    tmp_path: Path, cache: FakeWorkspaceCache, build: FakeRuntimeBuild,
+) -> None:
+    # A restored tree carries its ready marker but none of the clone and build markers, and a second build directory
+    # sharing the workspace used to take that for an unfinished source build
+    _buildtools.setup_mono("linux", "x64", "Release", make_env(tmp_path / "first"))
+    env = make_env(tmp_path / "second")
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    layout = _buildtools.resolve_mono_layout("linux", "x64", "Release", env)
+    assert not layout.clone_marker.exists()
+    assert not layout.built_marker.exists()
+    cache.fetched.clear()
+
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+
+    assert build.calls == 1
+    assert cache.fetched == []
+
+
+def test_a_ready_marker_without_its_tree_is_published_again(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, cache: FakeWorkspaceCache, build: FakeRuntimeBuild,
+) -> None:
+    monkeypatch.delenv(_buildtools.WORKSPACE_CACHE_VAR)
+    env = make_env(tmp_path / "workspace")
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+    layout = _buildtools.resolve_mono_layout("linux", "x64", "Release", env)
+    shutil.rmtree(layout.output_dir)
+
+    _buildtools.setup_mono("linux", "x64", "Release", env)
+
+    assert build.calls == 2
+    assert layout.ready_marker.is_file()
+    assert (layout.output_dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll").read_text(encoding="utf-8") == "built by call 2"
 
 
 def test_an_incomplete_cached_tree_is_a_miss(tmp_path: Path, cache: FakeWorkspaceCache, build: FakeRuntimeBuild) -> None:

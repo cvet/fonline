@@ -6674,7 +6674,8 @@ void MapperEngine::SaveMapToDir(ptr<MapView> map, string_view sub_dir, string_vi
     FO_VERIFY_AND_THROW(!name.empty(), "Map save name is empty");
 
     MergeItemsToMultihexMeshes(map);
-    FO_VERIFY_AND_THROW(MergeItemsToMultihexMeshes(map) == 0, "Failed to merge items to multihex meshes before save");
+    size_t merged_again = MergeItemsToMultihexMeshes(map);
+    FO_VERIFY_AND_THROW(merged_again == 0, "Failed to merge items to multihex meshes before save");
 
     auto it = std::ranges::find_if(LoadedMaps, [map](const refcount_ptr<MapView>& loaded_map) noexcept {
         auto loaded_map_view = loaded_map.as_nptr();

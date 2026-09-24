@@ -141,7 +141,7 @@ Inspect the generated artifact before installation:
 
 - application id, version code/name, min/target SDK, ABI, activity, permissions, and signature;
 - exactly one intended `libmain.so` per declared ABI;
-- `assets/Resources/Metadata.zip` and expected resource packs;
+- uncompressed `assets/Resources/*.fores` bases (or the configured resource directory) and the expected metadata inside them;
 - for Managed builds, the target assemblies plus `ManagedRuntime/runtime.manifest` and the target-specific class-library payload inside the expected resource pack;
 - absence of keystore passwords, private credentials, local paths, stale configs, and unlicensed SDK payloads.
 
@@ -203,22 +203,16 @@ Never put real signing values in authored or baked config, documentation, fixtur
 
 ## Runtime bootstrap and resource staging
 
-The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, prepares resources before SDL startup, and constructs the native argument vector itself. It always adds:
+The generated `FOnlineActivity` extends SDL's `SDLActivity`, loads only `libmain.so`, passes APK resources directly to the engine before SDL startup, and constructs the native argument vector itself. It always adds:
 
 - `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <files-dir>/Resources`;
+- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
+- `--Common.UserWritablePath <files-dir>`;
 - `--Baking.CacheResources <files-dir>/Cache`.
 
 If the launch Intent contains a non-empty string extra named `server_host`, the activity also adds `--ClientNetwork.ServerHost <value>`. It does not accept a generic command-line extra. Add a reviewed typed bridge before claiming other runtime overrides.
 
-Packaged assets are copied from `assets/Resources` into the app-private files directory when either condition is true:
-
-- `.asset_revision` differs from `PackageInfo.lastUpdateTime`;
-- `<files-dir>/Resources/Metadata.zip` is missing.
-
-The activity deletes the old resource directory, copies the asset tree recursively, and writes the new revision only after a successful copy. Enumeration, directory, copy, delete, or revision-write failures throw and stop startup. The cache directory is created separately and is not cleared by an APK update. If resource formats or cache keys change incompatibly, the project must own explicit invalidation and migration evidence.
-
-`adb install -r` preserves app data, including the runtime cache and copied resources. Clearing app storage or uninstalling removes that data. Distinguish a stale APK, retained cache, failed asset copy, updater state, and server incompatibility before changing gameplay code.
+Packaging stores `.fores` assets without outer ZIP compression. The engine opens their bounded regions inside the APK with 64-bit positional reads; compressed or encrypted entries cannot be mounted this way. No complete resource tree is copied on startup or package update. Full writable replacements and `Pack.patch.fores` live under the private `<files-dir>/Resources` directory and take precedence over the APK base. `adb install -r` preserves that writable state and the runtime cache; clearing app storage or uninstalling removes them. Distinguish a stale APK, retained writable replacement or patch, retained cache, and server incompatibility before changing gameplay code. See [Resource Pack Format](../../../ResourcePackFormat.md).
 
 Android may update writable resources through the normal client resource path, but `Updater::CanSelfUpdateNativeModules()` returns false for Android. A native compatibility mismatch cannot be repaired by downloading a new shared library in place; build, package, install, and restart a compatible APK.
 
@@ -309,12 +303,12 @@ Use [Packaging and Release](../release/packaging.md) for manifest, provenance, p
 | Route | Minimum project evidence | Failure signal |
 |---|---|---|
 | ABI and install | APK declares only intended ABI(s); clean install and `-r` update succeed on representative API levels | `INSTALL_FAILED_NO_MATCHING_ABIS`, downgrade, signature, or policy rejection |
-| Cold and warm startup | Resource copy, SDL/native load, config application, and first rendered frame | crash before `libmain`, missing `Metadata.zip`, black screen, or wrong config |
+| Cold and warm startup | APK resource mount, SDL/native load, config application, and first rendered frame | crash before `libmain`, missing `.fores` base, black screen, or wrong config |
 | Rendering | Representative map, GUI, fonts, images, sprites/models, effects, and orientation on GLES 3 devices | shader/driver failure, clipping, corruption, unsupported orientation |
 | Input | Touch, back/navigation, keyboard/IME where used, and each claimed controller class | trapped input, duplicate events, unusable focus, controller mapping drift |
 | Audio and lifecycle | audible sound/music, interruption, background/pause/resume, screen lock, and process recreation | stuck audio, lost device, duplicate runtime, crash or state loss |
 | Networking | device-to-server route, reconnect, incompatible-version response, latency/loss behavior, firewall policy | loopback/host mismatch, silent timeout, insecure exposure, update loop |
-| Resource/cache update | APK update, retained data, changed assets, missing metadata, and explicit cache invalidation | old assets after update, partial copy, incompatible retained cache |
+| Resource/cache update | APK update, retained writable base/patch, changed assets, missing metadata, and cache recovery | stale writable pair, invalid APK entry compression, incompatible retained cache |
 | Native compatibility | mismatched native generation reports unsupported self-update and recovers by APK replacement | downloaded native module assumed to hot-replace Android binary |
 | Permissions and privacy | manifest merge, exported components, runtime permissions, data backup, SDK collection, privacy disclosure | unexpected permission/component, rejected policy, undeclared data flow |
 | Release identity | release certificate digest, monotonic version code, signed final APK, install/update from previous supported release | debug key, unsigned artifact, wrong alias, non-upgradable package |
@@ -329,7 +323,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Host preparation fails | Java 17/system package group, disk permissions, network access, pinned SDK/NDK descriptors, and accepted licenses. Truncated Google CDN archives (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) are retried by `download_file` / `run_with_retry`; a persistent failure is a host/network problem, not a missing pin |
 | CMake cannot configure Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor, and clean build directory |
 | Native build succeeds but package input is missing | `FO_OUTPUT`, target/config/build hash, expected `lib<ProjectDevName>_Client.so`, and matching resource bake |
-| Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `Metadata.zip`, and no `NoRes` token |
+| Packaging rejects resources | selected sub-config, `Baking.ClientResources`, fresh `.fores` bases with metadata, and no `NoRes` token |
 | Packaging rejects icon or Java source | real PNG signature, project-relative path, `.java` suffix, unique basename, and no `FOnlineActivity.java` override |
 | Gradle cannot find SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version, and provisioned compile SDK |
 | Gradle dependency resolution fails | generated repositories/dependencies, credentials, dependency locks, proxy/TLS, and repository availability |
@@ -343,7 +337,7 @@ The Engine CI matrix intentionally does not supply this device evidence. A proje
 | Startup says `Executable path could not be resolved` | the bundled-runtime path was resolved on a mobile target; it must remain behind `CanSelfUpdateNativeModules` |
 | Engine log is absent from logcat | read the app-private `files/<project>.log` from a debug APK with `adb shell run-as <package> cat ...` |
 | Emulator renderer dies before a non-visual probe | emulator Vulkan may lack BGRA8 and GLES may reject the updater path; use `Render.NullRenderer=True` for `ManagedScript.InteropProbeOnStart`, but keep real-device rendering qualification |
-| Content is missing or stale | installed APK hash/path, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
+| Content is missing or stale | installed APK hash/path and uncompressed `.fores` entries, chosen writable replacement/patch, retained `.foindex` cache, and server descriptor |
 | Client cannot reach host | typed `server_host` extra, selected LAN address, server bind address, firewall, ports, and compatibility version |
 | Client asks for native update | Android native self-update is unsupported; install a compatible APK instead of retrying the resource updater |
 | Resume/orientation fails | SDL lifecycle logs, manifest `configChanges`, orientation setting, renderer/device loss, and project state restoration |

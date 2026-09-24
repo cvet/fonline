@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"14373783b7a28e08b6a26435253637d76db0456286670159a416f25993f759f8"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"267b0234e2da43f27bde553d17e31764d39c6184d225bb0b74247b4011d81d92"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -46,8 +46,8 @@ helper или target проверяйте его точное написание
 - База движка и общая настройка: `EngineBase.*`, `Common.*`.
 - Entities/properties/prototypes: `Entity.*`, `EntityProperties.*`, `EntityProtos.*`, `Properties.*`, `ProtoManager.*`.
 - Карты и движение: `MapLoader.*`, `Geometry.*`, `Movement.*`, `PathFinding.*`, `LineTracer.*`.
-- Networking primitives: `NetBuffer.*`, `NetworkUdp.*`.
-- Config/data access: `ConfigFile.*`, `DataSource.*`, `FileSystem.*`, `CacheStorage.*`.
+- Сетевые примитивы: `NetBuffer.*`, `NetworkUdp.*` и общий для сервера/клиента разбор списка файлов updater в `UpdateDescriptor.*`.
+- Конфигурация и данные: `ConfigFile.*`, `DataSource.*`, `ResourcePack.*`, `ResourceIndex.*`, `FileSystem.*`, `CacheStorage.*`.
 - Общие presentation metadata и resources: `AnimationInfo.*`, `ModelBounds.*`, `SpriteResource.*`.
 - Script bridge: `ScriptSystem.*`.
 

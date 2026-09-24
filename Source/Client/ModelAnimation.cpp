@@ -880,7 +880,8 @@ void ModelAnimationRuntimePose::BuildModelMatrices(const mat44& root_matrix)
     local_to_model_job.root = &ozz_root_matrix;
     local_to_model_job.input = ozz::make_span(_impl->_finalLocals);
     local_to_model_job.output = ozz::make_span(_impl->_modelMatrices);
-    FO_STRONG_ASSERT(local_to_model_job.Run(), "Invalid animation runtime pose local-to-model job");
+    bool local_to_model_done = local_to_model_job.Run();
+    FO_STRONG_ASSERT(local_to_model_done, "Invalid animation runtime pose local-to-model job");
 
     for (size_t joint = 0; joint < _impl->_modelMatrices.size(); joint++) {
         _impl->_worldMatrices[joint] = ConvertModelAnimationRuntimeMatrix(_impl->_modelMatrices[joint]);
@@ -1462,7 +1463,8 @@ static void SampleModelAnimationRuntimeTrack(const ModelAnimationRuntimeResolved
     sampling_job.context = &context;
     sampling_job.ratio = track.SampleRatio;
     sampling_job.output = locals;
-    FO_STRONG_ASSERT(sampling_job.Run(), "Invalid animation runtime pose sampling job", track.Clip->GetSourceFile(), track.Clip->GetClipName(), track.SampleRatio);
+    bool sampled = sampling_job.Run();
+    FO_STRONG_ASSERT(sampled, "Invalid animation runtime pose sampling job", track.Clip->GetSourceFile(), track.Clip->GetClipName(), track.SampleRatio);
 }
 
 static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeResolvedTrackInput, 2>& tracks, size_t joint_count, ozz::span<const ozz::math::SoaTransform> rest_pose, ozz::span<const ozz::math::SoaTransform> track_locals0, ozz::span<const ozz::math::SoaTransform> track_locals1, ozz::span<ozz::math::SimdFloat4> joint_weights0, ozz::span<ozz::math::SimdFloat4> joint_weights1, ozz::span<ozz::math::SoaTransform> output)
@@ -1519,7 +1521,8 @@ static void BlendModelAnimationRuntimeTracks(const array<ModelAnimationRuntimeRe
     blending_job.layers = ozz::make_span(layers);
     blending_job.rest_pose = rest_pose;
     blending_job.output = output;
-    FO_STRONG_ASSERT(blending_job.Run(), "Invalid animation runtime pose blending job");
+    bool blended = blending_job.Run();
+    FO_STRONG_ASSERT(blended, "Invalid animation runtime pose blending job");
 
     auto unpack_rotations = [](const ozz::math::SoaTransform& transform) {
         array<float32_t, 4> x {};
@@ -1622,7 +1625,8 @@ static void SelectModelAnimationRuntimeMovementPose(const array<ModelAnimationRu
     blending_job.layers = ozz::make_span(layers);
     blending_job.rest_pose = body_locals;
     blending_job.output = output;
-    FO_STRONG_ASSERT(blending_job.Run(), "Invalid animation runtime pose movement-selection job");
+    bool blended = blending_job.Run();
+    FO_STRONG_ASSERT(blended, "Invalid animation runtime pose movement-selection job");
 }
 
 static auto ComposeModelAnimationRuntimeTransform(const ozz::math::Transform& transform) noexcept -> mat44

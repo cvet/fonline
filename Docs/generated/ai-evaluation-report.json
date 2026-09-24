@@ -372,10 +372,10 @@
           "passed": true,
           "top_document_ids": [
             "project-local-dependencies",
+            "client-updater",
             "baking-pipeline",
             "exception-safety",
-            "native-essentials",
-            "generated-api-metadata"
+            "native-essentials"
           ]
         }
       ],
@@ -1031,8 +1031,8 @@
             "viewer-tools",
             "tools",
             "model-format-guide",
-            "client-runtime",
-            "baking-pipeline"
+            "baking-pipeline",
+            "client-runtime"
           ]
         },
         {
@@ -1558,7 +1558,7 @@
             "web-debugging",
             "server-runtime",
             "debugging",
-            "testing"
+            "managed-csharp-scripting"
           ]
         }
       ],

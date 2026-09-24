@@ -247,6 +247,8 @@ MemorySanitizer and ThreadSanitizer configurations are rejected with `FO_MANAGED
 
 ## Diagnostics and debugging
 
+No C++ exception may unwind through a Mono internal-call frame: doing so bypasses managed `catch`/`finally` and can leave a nested script entry active after an awaited continuation. `RegisterInternalCalls` therefore accepts only `noexcept` function pointers. Fallible calls capture the native failure in `CaptureNativeError`, return an error payload to `CoreScripts/Native.cs`, and throw `NativeCallException` only after control is back in managed code. The native error remains catchable at the C# call site, including after `await`; genuinely non-failing calls remain `noexcept` and terminate deterministically if that contract is broken.
+
 The managed backend reports fixed native context plus managed exception text and stack information through the common script error path. A build that merely produces assemblies does not prove startup or callback dispatch. Set `ManagedScript.InteropProbeOnStart = True` for a client/device/browser qualification run that cannot host the native test suite; startup logs one `INTEROP-TRANSPORT` line per condition and a final summary.
 
 Both script backends retain at most 32 distinct overrun entry names per Engine, counting repeats while preserving independent maximum execution and lock-wait times. `TakeScriptOverruns()` drains that buffer. The client drains before `OnLoop` and dispatches `OnScriptOverrun(entry, execution, lockWait, count)` outside the buffer lock; server and mapper do not publish the event in their loops. An overrun caused by a subscriber waits for the next drain. The usual threshold/debugger suppression still applies.

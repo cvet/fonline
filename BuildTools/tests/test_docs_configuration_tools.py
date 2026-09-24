@@ -148,8 +148,8 @@ class ConfigurationAndToolsDocumentationTests(unittest.TestCase):
 
     def test_complete_localization_and_ci_gate_are_current(self) -> None:
         model = docs_localization.generate_localization_status(ENGINE_ROOT)
-        self.assertEqual(model["summary"]["required_document_count"], 191)
-        self.assertEqual(model["summary"]["current_translation_count"], 191)
+        self.assertEqual(model["summary"]["required_document_count"], 192)
+        self.assertEqual(model["summary"]["current_translation_count"], 192)
         self.assertEqual(model["summary"]["missing_translation_count"], 0)
         self.assertTrue(model["summary"]["complete"])
 

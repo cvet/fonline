@@ -94,8 +94,10 @@ auto ReadSpriteInfoFile(string_view file_name, string_view content) -> vector<Sp
         entry.SourcePath = GetRequiredSpriteInfoValue(values, file_name, section_name, "SourcePath");
         entry.ResourcePath = section_name;
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty(), "Sprite info source path is empty", file_name, section_name);
-        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);
-        FO_VERIFY_AND_THROW(resource_paths.emplace(entry.ResourcePath).second, "Sprite info resource contains a duplicate resource path", file_name, entry.ResourcePath);
+        bool first_source = source_paths.emplace(entry.SourcePath).second;
+        FO_VERIFY_AND_THROW(first_source, "Sprite info resource contains a duplicate source path", file_name, entry.SourcePath);
+        bool first_resource = resource_paths.emplace(entry.ResourcePath).second;
+        FO_VERIFY_AND_THROW(first_resource, "Sprite info resource contains a duplicate resource path", file_name, entry.ResourcePath);
 
         int32_t info_version = ParseSpriteInfoScalar(values, file_name, section_name, "InfoVersion");
         int32_t frame_count = ParseSpriteInfoScalar(values, file_name, section_name, "FrameCount");
@@ -168,8 +170,10 @@ auto WriteSpriteInfoFile(const vector<SpriteInfoFileEntry>& entries) -> string
     for (size_t entry_index : entry_order) {
         const SpriteInfoFileEntry& entry = entries[entry_index];
         FO_VERIFY_AND_THROW(!entry.SourcePath.empty() && !entry.ResourcePath.empty(), "Sprite info file entry contains an empty path", entry.SourcePath, entry.ResourcePath);
-        FO_VERIFY_AND_THROW(source_paths.emplace(entry.SourcePath).second, "Sprite info file contains a duplicate source path", entry.SourcePath);
-        FO_VERIFY_AND_THROW(resource_paths.emplace(entry.ResourcePath).second, "Sprite info file contains a duplicate resource path", entry.ResourcePath);
+        bool first_source = source_paths.emplace(entry.SourcePath).second;
+        FO_VERIFY_AND_THROW(first_source, "Sprite info file contains a duplicate source path", entry.SourcePath);
+        bool first_resource = resource_paths.emplace(entry.ResourcePath).second;
+        FO_VERIFY_AND_THROW(first_resource, "Sprite info file contains a duplicate resource path", entry.ResourcePath);
         FO_VERIFY_AND_THROW(entry.Info.FrameCount != 0, "Sprite info file entry contains no frames", entry.ResourcePath);
         FO_VERIFY_AND_THROW(!entry.Info.Directions.empty(), "Sprite info file entry contains no directions", entry.ResourcePath);
 

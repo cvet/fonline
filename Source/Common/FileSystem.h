@@ -39,6 +39,16 @@
 
 FO_BEGIN_NAMESPACE
 
+struct ClientSettings;
+class FileSystem;
+
+auto GetClientPackDirs(const ClientSettings& settings) -> vector<string>;
+auto GetClientWritableResourceDir(const ClientSettings& settings) -> string;
+auto GetClientResourcePackPath(const ClientSettings& settings, string_view pack_name) -> string;
+auto GetClientResourcePatchPath(const ClientSettings& settings, string_view pack_name) -> string;
+auto IsClientResourcePackCurrent(const ClientSettings& settings, string_view pack_name, uint64_t content_hash) -> bool;
+void AddClientPackSource(FileSystem& resources, const ClientSettings& settings, string_view pack_name, bool optional = false);
+
 FO_DECLARE_EXCEPTION(FileSystemExeption);
 
 class FileHeader

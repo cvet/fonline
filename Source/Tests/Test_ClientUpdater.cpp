@@ -34,6 +34,8 @@
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
+#include "FileSystem.h"
+#include "ResourcePack.h"
 #include "Settings.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -132,6 +134,185 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
     // The generic Failed result would tell the player to reinstall a client that is not at fault, and
     // would file one crash report for every server restart
     CHECK_FALSE(IsUpdaterFailureReportable(updater.GetResult()));
+}
+
+TEST_CASE("ClientUpdaterGivesUpOnAServerThatStopsAnswering")
+{
+    using namespace TestClientUpdater;
+
+    REQUIRE(net_sockets::startup());
+    uint16_t port = OfflineServerPort.fetch_add(1);
+
+    // The system accepts the connection and nothing ever serves it, which is what a stopped or hung server, or a peer
+    // gone from the network, looks like from the client
+    tcp_server silent_server;
+    REQUIRE(silent_server.listen("127.0.0.1", port, 8));
+
+    GlobalSettings client_settings = MakeUpdaterClientSettings(port);
+    string bake_output = PrepareUpdaterBakeOutput();
+    auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
+    BakerTests::OverrideSetting(client_settings.Baking.BakeOutput, bake_output);
+    BakerTests::OverrideSetting(client_settings.ClientNetwork.PingTimeout, 300);
+
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+
+    CHECK(updater.IsAborted());
+    CHECK(updater.GetResult() == UpdaterResult::ConnectionFailed);
+}
+
+TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+    });
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
+    settings.ApplyWritableRoot(writable);
+    string resources = GetClientWritableResourceDir(settings);
+    string live = strex(resources).combine_path("Held.fores").str();
+    string backup = strex("{}{}", live, REPLACED_FILE_BACKUP_SUFFIX).str();
+    REQUIRE(fs::write_file(backup, "previous"));
+
+    // Held by a thread of its own, because on Windows the thread that owns the named mutex may take it again
+    std::promise<bool> held;
+    std::promise<void> release;
+    std::thread other_client([&] {
+        fs::disk_directory_lock lock {resources};
+        held.set_value(static_cast<bool>(lock));
+        release.get_future().wait();
+    });
+    auto join_other_client = scope_exit([&]() noexcept {
+        safe_call([&] {
+            release.set_value();
+            other_client.join();
+        });
+    });
+    REQUIRE(held.get_future().get());
+
+    Updater updater {&settings, &GetApp()->MainWindow};
+
+    for (int32_t i = 0; i < 20; i++) {
+        CHECK_FALSE(updater.Process());
+        coarse_sleep(std::chrono::milliseconds {5});
+    }
+
+    // Waiting is neither a failure nor a start: the interrupted replacement the other client may be finishing stays put
+    CHECK_FALSE(updater.IsAborted());
+    CHECK(fs::exists(backup));
+    CHECK_FALSE(fs::exists(live));
+
+    release.set_value();
+    other_client.join();
+    join_other_client.release();
+
+    REQUIRE(WaitForUpdaterResult(updater));
+    CHECK(updater.GetResult() == UpdaterResult::ConnectionFailed);
+    CHECK(fs::read_file(live) == optional<string> {"previous"});
+    CHECK_FALSE(fs::exists(backup));
+}
+
+TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+    });
+    BakerTests::OverrideSetting(settings.Baking.BakeOutput, install);
+    settings.ApplyWritableRoot(writable);
+    string resources = GetClientWritableResourceDir(settings);
+    string binaries = GetClientBinaryDir(settings.Common.UserWritablePath);
+
+    auto in_dir = [](string_view directory, string_view name) { return strex(directory).combine_path(name).str(); };
+    auto backup_of = [](string_view name) { return strex("{}{}", name, REPLACED_FILE_BACKUP_SUFFIX).str(); };
+
+    for (const string& directory : {resources, binaries}) {
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/Missing")), "previous"));
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/Current")), "previous"));
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Current"), "current"));
+        REQUIRE(fs::write_file(in_dir(directory, backup_of("Sub/")), "unrelated"));
+
+        // A portable client sweeps the folder the player unpacked it into, where their own copies live too
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Notes.txt"), "notes"));
+        REQUIRE(fs::write_file(in_dir(directory, "Sub/Notes.txt-backup"), "player copy"));
+    }
+
+    Updater updater {&settings, &GetApp()->MainWindow};
+
+    for (const string& directory : {resources, binaries}) {
+        CHECK(fs::read_file(in_dir(directory, "Sub/Missing")) == optional<string> {"previous"});
+        CHECK(fs::read_file(in_dir(directory, "Sub/Current")) == optional<string> {"current"});
+        CHECK_FALSE(fs::exists(in_dir(directory, backup_of("Sub/Missing"))));
+        CHECK_FALSE(fs::exists(in_dir(directory, backup_of("Sub/Current"))));
+        CHECK(fs::read_file(in_dir(directory, backup_of("Sub/"))) == optional<string> {"unrelated"});
+        CHECK(fs::read_file(in_dir(directory, "Sub/Notes.txt-backup")) == optional<string> {"player copy"});
+    }
+}
+
+TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
+{
+    using namespace TestClientUpdater;
+
+    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    string install = PrepareUpdaterBakeOutput();
+    string writable = strex("{}_writable", install).str();
+    string remote = strex("{}_remote", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(writable);
+        (void)fs::remove_dir_tree(remote);
+    });
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    settings.ApplyWritableRoot(writable);
+    REQUIRE(fs::create_directories(remote));
+
+    string base_path = strex(install).combine_path("Art.fores").str();
+    string target_path = strex(remote).combine_path("Art.fores").str();
+    auto write_pack = [](string_view path, string_view content) {
+        ResourcePackWriter writer {path};
+        writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>("shared"), 6});
+        writer.AddFile("Changed.txt", {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        writer.Finish();
+    };
+    write_pack(base_path, "installed");
+    write_pack(target_path, "server");
+
+    ResourcePackHeader base_header;
+    REQUIRE(ReadResourcePackHeader(base_path, base_header));
+    ResourcePackSource target {target_path};
+    CHECK(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Art", target.GetContentHash()));
+
+    // An installed base plus a committed patch never has the server base's size, so only the content identity
+    // of the pair can tell the game client what the updater already knows
+    string patch_path = GetClientResourcePatchPath(settings, "Art");
+    REQUIRE(fs::create_directories(strex(patch_path).extract_dir().str()));
+    ResourcePatchWriter writer {base_path, patch_path, target.GetEntryRefs(), target.GetContentHash()};
+    fs::disk_read_file remote_file {target_path};
+    fs::disk_directory_lock patch_lock {strex(patch_path).extract_dir().str()};
+    writer.Begin(patch_lock);
+
+    for (const ResourcePackEntryRef& entry : writer.GetDownloads()) {
+        vector<uint8_t> payload(numeric_cast<size_t>(entry.StoredSize));
+        REQUIRE(remote_file.read_at(entry.DataOffset, payload));
+        writer.AddEncodedFile(payload);
+    }
+
+    writer.Finish();
+    CHECK(IsClientResourcePackCurrent(settings, "Art", target.GetContentHash()));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
+    CHECK_FALSE(IsClientResourcePackCurrent(settings, "Missing", target.GetContentHash()));
 }
 
 FO_END_NAMESPACE

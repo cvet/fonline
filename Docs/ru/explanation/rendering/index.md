@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"07223083cdf25be178f30049b61df8d2ecbf32cded7261782a916a2d640c6917"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"13f59b82cfa1d15568db8e942122d48b0956cd0fec14cd6eea1d22db6c9fab51"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -249,6 +249,10 @@ Stub layer не является полноценным renderer. Он позв�
 non-graphical flows проверять engine logic без GPU/window/audio device. Тест,
 которому нужен видимый рендеринг, должен заявлять это явно и не полагаться на
 stub behavior.
+
+### Ограничение частоты кадров
+
+Циклы desktop-клиента, Mapper и viewers используют `FrameBalancer` (`Source/Common/Common.h`). При `Render.VSync = true` собственное ожидание выключено: представление кадра уже ждёт дисплей. Иначе положительный `Render.FixedFPS` ограничивает частоту через `precise_sleep` независимо от `Render.Sleep`; превышенный бюджет компенсируется более короткими ожиданиями следующих кадров, с долгом не более секунды. `Render.Sleep` применяется только при `FixedFPS = 0`: ноль уступает поток, положительное значение использует `coarse_sleep`, `-1` оставляет цикл без ограничения. Ветви проверены в `Source/Tests/Test_Common.cpp`.
 
 ## Абстракция рендеринга
 

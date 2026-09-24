@@ -30,7 +30,7 @@
       "status": "complete"
     }
   ],
-  "locale_pair_count": 191,
+  "locale_pair_count": 192,
   "locale_pairs": [
     {
       "document_id": "adr-documentation-version-locale-routing",
@@ -2269,6 +2269,19 @@
       }
     },
     {
+      "document_id": "resource-pack-format",
+      "en": {
+        "title": "Resource Pack Format",
+        "path": "Docs/en/reference/resource-pack-format.md",
+        "url": "/Docs/en/reference/resource-pack-format.html"
+      },
+      "ru": {
+        "title": "\u0424\u043e\u0440\u043c\u0430\u0442 \u043f\u0430\u043a\u0435\u0442\u0430 \u0440\u0435\u0441\u0443\u0440\u0441\u043e\u0432",
+        "path": "Docs/ru/reference/resource-pack-format.md",
+        "url": "/Docs/ru/reference/resource-pack-format.html"
+      }
+    },
+    {
       "document_id": "script-lifecycle-concurrency",
       "en": {
         "title": "Script Lifecycle and Concurrency",
@@ -2517,7 +2530,7 @@
     }
   ],
   "routes_path": "Docs/generated/document-routes.json",
-  "navigation_item_count": 112,
+  "navigation_item_count": 113,
   "navigation": [
     {
       "id": "start",
@@ -3123,6 +3136,25 @@
               "title": "\u0420\u0430\u0437\u0434\u0435\u043b\u0435\u043d\u0438\u0435 \u043a\u043b\u0438\u0435\u043d\u0442\u0441\u043a\u043e\u0439 \u0441\u0440\u0435\u0434\u044b \u0432\u044b\u043f\u043e\u043b\u043d\u0435\u043d\u0438\u044f \u0438 \u043e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435",
               "path": "Docs/ru/explanation/runtime/client-updater.md",
               "url": "/Docs/ru/explanation/runtime/client-updater.html"
+            }
+          }
+        },
+        {
+          "id": "resource-pack-format",
+          "title": "Resource Pack Format",
+          "path": "Docs/en/reference/resource-pack-format.md",
+          "url": "/Docs/en/reference/resource-pack-format.html",
+          "diataxis": "reference",
+          "locales": {
+            "en": {
+              "title": "Resource Pack Format",
+              "path": "Docs/en/reference/resource-pack-format.md",
+              "url": "/Docs/en/reference/resource-pack-format.html"
+            },
+            "ru": {
+              "title": "\u0424\u043e\u0440\u043c\u0430\u0442 \u043f\u0430\u043a\u0435\u0442\u0430 \u0440\u0435\u0441\u0443\u0440\u0441\u043e\u0432",
+              "path": "Docs/ru/reference/resource-pack-format.md",
+              "url": "/Docs/ru/reference/resource-pack-format.html"
             }
           }
         }

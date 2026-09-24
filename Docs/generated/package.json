@@ -615,8 +615,8 @@
   "cli": {
     "program": "package.py",
     "description": "FOnline packager",
-    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]",
-    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-zip-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -expect-client-runtime EXPECT_CLIENT_RUNTIME\n                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -zip-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override zip compression level\n",
+    "usage": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]",
+    "help_output": "usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH\n                  [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]\n                  [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]\n\nFOnline packager\n\noptions:\n  -h, --help            show this help message and exit\n  -maincfg MAINCFG      Main config path\n  -buildhash BUILDHASH  build hash\n  -devname DEVNAME      Dev game name\n  -nicename NICENAME    Representable game name\n  -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer}\n                        package target type\n  -platform {Windows,Linux,Android,macOS,iOS,Web}\n                        platform type\n  -arch ARCH            architectures to include (divided by +)\n  -expect-client-runtime EXPECT_CLIENT_RUNTIME\n                        Client variant whose runtime payload this server package must distribute, as Platform:arch[:postfix]. Repeatable\n  -pack PACK            package type\n  -config CONFIG        config name\n  -input INPUT          input dir (from FO_OUTPUT_PATH)\n  -binary-output-postfix BINARY_OUTPUT_POSTFIX\n                        suffix appended to binary output dir names\n  -output OUTPUT        output dir\n  -resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)\n  -bundle-compress-level {0,1,2,3,4,5,6,7,8,9}\n                        override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)\n",
     "arguments": [
       {
         "id": "package.cli.argument.maincfg",
@@ -815,11 +815,11 @@
         "description": "output dir"
       },
       {
-        "id": "package.cli.argument.zip_compress_level",
-        "destination": "zip_compress_level",
+        "id": "package.cli.argument.resource_pack_compress_level",
+        "destination": "resource_pack_compress_level",
         "action": "store",
         "option_strings": [
-          "-zip-compress-level"
+          "-resource-pack-compress-level"
         ],
         "required": false,
         "nargs": 1,
@@ -837,7 +837,32 @@
         ],
         "default": null,
         "type": "int",
-        "description": "override zip compression level"
+        "description": "override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)"
+      },
+      {
+        "id": "package.cli.argument.bundle_compress_level",
+        "destination": "bundle_compress_level",
+        "action": "store",
+        "option_strings": [
+          "-bundle-compress-level"
+        ],
+        "required": false,
+        "nargs": 1,
+        "choices": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9
+        ],
+        "default": null,
+        "type": "int",
+        "description": "override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)"
       }
     ]
   },
@@ -850,7 +875,7 @@
     "pack_count": 19,
     "implemented_pack_count": 18,
     "artifact_pack_count": 8,
-    "cli_argument_count": 14
+    "cli_argument_count": 15
   },
-  "contract_digest": "f90e1b530632280246337a3056819b0815d380346128d2c4174584b4eada31cb"
+  "contract_digest": "be83fb2d181b0a244ec30e08ddc5fe64ea10e717c3597e9df7c706e3f67aea98"
 }

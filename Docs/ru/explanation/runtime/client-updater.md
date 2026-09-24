@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"06c323b6113ad46d7dff93e81c72e0cefa1847e86ea68ff18aafacac1212ae21"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"edfe22e1a7abfcc6a3d7346e736f4e8d3c2ef3d24bc73ddc80210efd6edbcd8e"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -95,7 +95,8 @@ Backend сканирует клиентские resource packs и native runtime
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_resource_pack.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -296,7 +297,7 @@ PDB другой сборки не должен уничтожить подхо�
 
 ## Протокол updater
 
-Протокол версионируется константой `FO_UPDATER_VERSION = 3` из
+Протокол версионируется константой `FO_UPDATER_VERSION = 5` из
 [Common.h](../../../../Source/Common/Common.h). Поколение меняется при изменении
 wire format или когда lifecycle старого updater/host больше нельзя безопасно
 продолжать. Эта генерация требует защищённый канал до любого сообщения updater;
@@ -316,10 +317,7 @@ wire format или когда lifecycle старого updater/host больше
 | server → client | `metadata_outdated` | `bool` | client resources запечены из другой ревизии |
 | server → client | `MetadataVersion` | `string` | версия metadata, которую сейчас использует server |
 
-Всё рукопожатие и обновление проходят внутри аутентифицированного [защищённого канала](../authority-and-networking/#защищённый-канал). Старых полей ключей XOR больше нет. `FO_UPDATER_VERSION = 3` отмечает разрыв wire-контракта: клиент до защищённого канала вообще не достигнет updater и должен один раз установить полный новый пакет. После установления канала `updater_outdated == true` фатален для соединения: дальнейшие сообщения нельзя
-интерпретировать по известному контракту. `compatibility_outdated == true`
-блокирует игру, но updater всё ещё может доставить ресурсы и native module,
-возвращающие клиент к текущей совместимости.
+Всё рукопожатие и обновление проходят внутри аутентифицированного [защищённого канала](../authority-and-networking/#защищённый-канал). Поколение 5 объединяет его с descriptor пакетов `.fores` и запросами ограниченных диапазонов. Клиенты поколений 3 и 4 не могут безопасно интерпретировать обе части и должны получить новый полный пакет. После установления канала `updater_outdated == true` фатален для соединения; `compatibility_outdated == true` блокирует игру, но updater ещё может доставить ресурсы и native module.
 
 `metadata_outdated == true` означает, что binaries совпадают, а baked data — нет.
 Server и client обязаны использовать metadata из одной bake, потому что entity
@@ -359,9 +357,10 @@ hard disconnect без exception stack trace. Ошибки decode после han
 | `name_len` | `int16`, `-1` завершает список | длина client-relative path |
 | `name` | `char[name_len]` | client-relative path |
 | `size` | `uint64` | полный размер файла |
-| `hash` | `uint64` | FNV-1a 64-bit от содержимого |
+| `hash` | `uint64` | `PackHash` из заголовка базы `.fores` для ресурсов; FNV-1a всего файла для native payload |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` или `ClientBinaries` |
 | `file_index` | `uint32` | индекс, назначенный сервером для `GetUpdateFile` |
+| `pack_header_size`, `pack_header` | `uint32`, bytes | 80-байтный заголовок базы версии 2 для ресурса; ноль bytes для native payload |
 
 Общие gameplay-resource entries входят в descriptor любого target. Записи
 `UpdateFileTarget::ClientBinaries` добавляются только для `binary_target` из
@@ -374,17 +373,11 @@ handshake. Затем client фильтрует binary entries по basename run
 Клиент последовательно управляет одной передачей:
 
 ```text
-client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64 }
+client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64, requested_size: uint64, expected_hash: uint64 }
 server → client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-Размер `update_portion` выбирает сервер и ограничивает
-`Network.UpdateFileMaxPortionSize`. Значение движка по умолчанию в
-[Settings.inc](../../../../Source/Common/Settings.inc) равно 1 000 000 bytes.
-Проект может изменить его после измерения throughput и memory pressure одного
-message. Следующий запрос передаёт `start_offset = bytes_already_written`, поэтому
-после reconnect клиент продолжает с размера временного файла, а серверу не нужно
-хранить session state передачи.
+Сервер ограничивает portion настройкой `Network.UpdateFileMaxPortionSize` (по умолчанию 1 000 000 bytes) и отвергает неверные границы, несовпадение ожидаемого hash и ошибку чтения. Клиент запрашивает остаток ограниченного диапазона. Полная загрузка файла возобновляется от размера временного файла после reconnect без server-side состояния; ресурсный диапазон охватывает каталог либо целый закодированный ресурс, но не бинарную дельту внутри него.
 
 Updater connection участвует и в общем протоколе connection stages. После
 `InitData` сервер может отправить `NetMessage::HashList` с message id 122, чтобы
@@ -397,48 +390,32 @@ Updater connection участвует и в общем протоколе connec
 
 - `file_index` вне range приводит к `LogType::Warning` и `HardDisconnect`;
 - `start_offset > file_size` приводит к warning и hard disconnect;
+- `requested_size` за пределами файла или несовпадающий `expected_hash` приводит к hard disconnect;
 - `update_file_max_portion_size <= 0` считается ошибкой конфигурации и разрывает соединение;
-- ошибка чтения disk-mode payload также завершает соединение;
-- изменение размера disk-mode файла относительно объявленного descriptor приводит
-  к warning и hard disconnect. При `ServerNetwork.UpdateFilesInMemory = False`
-  descriptor является startup snapshot, а bytes читаются по требованию, поэтому
-  pack нельзя подменить под работающим server и отправить с hash старого файла.
+- ошибка чтения disk-mode payload также завершает соединение. Disk mode держит открытый позиционный reader именно того artifact, который был объявлен, а memory mode — его bytes; развёртывание заменяет опубликованные файлы, но не переписывает их на месте.
 
-Клиент пишет части в `~<filename>`, после завершения считает streamed
-`fs_hash_file` из
-[DiskFileSystem.cpp](../../../../Source/Essentials/DiskFileSystem.cpp) и атомарно
-заменяет live-файл через `ReplaceFileSafely`. Hash updater - FNV-1a 64-bit; он
-отличается от wyhash-backed `hashing_ex::hash`, используемого для hash tables и
-`hstring`. Streamed hash chunked-файла совпадает с `fs_hash_data` полного buffer,
-поэтому server memory mode и client disk mode согласованы без загрузки multi-GB
-pack целиком в память.
+Для native files updater сохраняет загрузку во временном файле, проверяет потоковый FNV-1a hash и только затем заменяет live-файл. Для `.fores` он сравнивает логический `ContentHash` выбранной пары base/patch с descriptor, получает актуальный каталог, повторно использует локальные ресурсы по hash и размеру и скачивает лишь отсутствующие закодированные bytes. Append публикует полный каталог и footer после проверки payload; прерванный хвост может возобновить уже проверенные payload. Если итоговый patch достигнет размера полного pack или превысит его, либо base отсутствует или негодна, скачивается и проверяется полная замена. См. [формат пакетов ресурсов](../../../ResourcePackFormat.md).
 
-`Updater::IsDiskFileHashMatch` кэширует проверку существующих файлов в
-`CacheStorage` под `Baking.CacheResources`. Key имеет вид
-`<basename>-<path-hash>.hash`: suffix - 16 lowercase hexadecimal digits результата
-`hashing::hash<string_view>` от полного path string, переданного проверке. Например,
-получается `Embedded.zip-0123456789abcdef.hash`, но реальный suffix зависит от
-пути. Digest не содержит недопустимый Windows colon и одновременно разделяет
-одноимённые файлы в разных каталогах. Cached value хранит `(size, mtime, hash)`.
-Изменение size или mtime инвалидирует запись, а удаление cache entry вызывает
-обычный re-hash.
+До подключения updater по частям проверяет каждую локальную пару, не доказанную для текущей file identity: физический `PackHash` базы и hashes payload в зафиксированном patch. `ResourcePairVerifier` ограничивает объём работы за шаг, чтобы экран продолжал обновляться. Cache хранит path, size, mtime и identity пары; изменившийся файл проверяется снова. Повреждённая база заменяется полной загрузкой, повреждённый patch payload скачивается повторно. Отдельный cache `(size, mtime, hash)` остаётся для native files. После успешной синхронизации пересоздаётся удаляемый `Resources.foindex`; его ошибка не делает авторитетные пары непригодными. Web пропускает постоянный cache и этот этап проверки.
 
 Backward-compatible fallback отсутствует. Старый протокол с server-side session
 state, file index и portion counter удалён при введении `FO_UPDATER_VERSION`.
 Client и server обязаны использовать одно поколение.
 
+Updater держит lock writable resource directory на протяжении всего запуска. Второй клиент с тем же каталогом ждёт и повторяет попытку, не соревнуясь за запись. Под lock восстанавливаются прерванные замены `.fobackup`; полная база продвигается только после проверки physical hash и каталога, а patch удаляется только после успешного продвижения. Append записывает и flush-ит payload и полный каталог до commit footer, поэтому ошибка оставляет прежний commit читаемым. Перед `ResourcesReady` повторно сверяются все объявленные ресурсы, затем — metadata. Packs фиксируются независимо; частичный набор не допускается в игру, но общего atomic switch и rollback всех packs нет. Ошибка обработчика обновления означает `Failed`, даже если вызванный ею disconnect случился при наличии ожидаемых файлов; действительно молчащий сервер ограничен `ClientNetwork.PingTimeout` и даёт `ConnectionFailed`.
+
 ## Серверная сторона: `UpdaterBackend`
 
 [UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) принадлежит
-`ServerEngine` как `unique_ptr`. В unpackaged dev server `_updaterBackend` равен
-null, поэтому запрос `GetUpdateFile` получает `HardDisconnect`: серверу нечего
+`ServerEngine` как `optional`. В unpackaged dev server `_updaterBackend` пуст,
+поэтому запрос `GetUpdateFile` получает `HardDisconnect`: серверу нечего
 отдавать.
 
 Текущий native interface является внутренней частью движка, а не стабильным
 public API:
 
 ```cpp
-void LoadFromClientResources(const GlobalSettings& settings);
+void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
 void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 ```
@@ -451,11 +428,7 @@ Descriptor возвращается как borrowed view `const_span<uint8_t>` �
 `Settings.PlatformBinaries/<target>/` для target-specific binaries. По умолчанию
 это `PlatformBinaries/`, соседний с `Resources/` в package layout.
 
-Каждый файл хранится как
-`UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. В memory mode
-весь payload остаётся в RAM на всё время работы server. В disk mode backend
-держит только path, size и streamed hash, а `ReadUpdateFilePortion(...)` читает
-запрошенный диапазон. Descriptor кэшируется по `binary_target_name`; общие
+Записи сохраняют size, hash и заголовок ресурса. Memory mode держит bytes, disk mode — открытый позиционный reader именно объявленного artifact, так что замена path позднее не меняет отдаваемые bytes. Descriptor кэшируется по `binary_target_name`; общие
 resource entries объединяются с target-specific, а неизвестный target получает
 только common descriptor.
 
@@ -489,17 +462,7 @@ Portable build хранит cache, log и self-update относительно w
 
 Resolution идемпотентен и создаёт выбранный root. После загрузки имён settings `LoadAppSettings` также создаёт cache и client-resource-overlay subdirectories. Если root нельзя определить или создать, записывается warning и процесс безопасно возвращается к working directory. Разрешённое значение доступно всем приложениям, включая server, как read-only `Common.UserWritablePath`.
 
-Через `fs_make_writable_path(UserWritablePath, relative)` в writable root
-перемещаются cache (`CacheStorage`, login keys, secure local storage и local
-config), log, resource patches и self-updated native runtime. Read-only base
-`ClientResources` остаётся смонтированным, а `<root>/<ClientResources>` добавляется
-как overlay с более высоким priority. Поэтому обновлённые файлы выигрывают lookup
-без изменения install directory. `GetClientResources()` в `Client.cpp` является
-единственной точкой сборки этого pack set: updater использует её и для проверки
-локальной metadata version, поэтому принятая перед соединением версия совпадает
-с той, которую затем читает gameplay. Updater также монтирует writable overlay
-поверх install-dir splash pack, чтобы до начала текущего скачивания использовать
-splash, исправленный предыдущим updater run. Packaged-режим и выбор resource root
+Через `fs::make_writable_path(UserWritablePath, relative)` в writable root попадают cache, log, resource patches и self-updated native runtime. `GetClientResources()` выбирает для каждого логического pack один effective source: writable полную базу при её наличии, иначе read-only installed/APK базу, и только привязанный к ней writable `Pack.patch.fores`. Порядок настроенных packs сохраняется. Gameplay и updater проверяют одинаковую metadata version из этого вида. Splash выбирается с тем же writable-first правилом; повреждённый splash журналируется и пропускается, но не останавливает обновление, которое должно его исправить. Packaged-режим и выбор resource root
 в updater читают уже загруженный снимок `Common.Packaged`; прямые проверки marker
 исполняемого файла остаются только в bootstrap до настроек и в физическом выборе
 архива против каталога в файловой системе.
@@ -554,23 +517,14 @@ Windows OpenGL runtime получает `ForceOpenGL=1`. Embedded zip созда
 фиксированными timestamp и permissions, поэтому bundled runtime и соответствующий
 server payload остаются byte-identical при раздельной упаковке Server/Client.
 
-Resource zips также используют sorted normalized paths и стабильные metadata.
 Incremental baker может touch неизменившийся output, но content-identical repack
 не должен менять FNV descriptor hash и заставлять пользователей скачивать pack
-заново. После закрытия packager повторно открывает каждый resource zip, требует
-точный ожидаемый entry list и полностью читает entries через CRC-checking ZIP
-reader. `Embedded` pack проходит ту же проверку в памяти до patch binary.
-Truncated, CRC-invalid или структурно несовпадающий resource archive поэтому
-останавливает package до публикации client payload или server updater source.
-Это закрепляет
-[test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py).
+заново. Client packs записываются как `.fores` из отсортированных нормализованных путей без timestamps. Packager проверяет каталог и каждый декодированный payload по длине и content hash. `Embedded` остаётся ZIP и проходит CRC-проверку в памяти до patch binary. Дефектный artifact останавливает упаковку до публикации. См. [test_package_resource_pack.py](../../../../BuildTools/tests/test_package_resource_pack.py) и [test_package_zip_helpers.py](../../../../BuildTools/tests/test_package_zip_helpers.py).
 
 Packaging может передать reuse детерминированных resource archives
 принадлежащему проекту helper из `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. Helper
 получает операции `restore`, `store` и `release` с ключом содержимого и
-compression; miss или явно недоступный optional cache переходят к локальному
-созданию. Восстановленный archive всё равно проходит точные entry и CRC checks
-выше, поэтому caching не ослабляет проверку updater payload.
+compression и минимального выигрыша; miss или явно недоступный optional cache переходят к локальному созданию. Восстановленный `.fores` всё равно проходит полную проверку payload, поэтому caching не ослабляет проверку updater.
 
 Internal config patch area имеет фиксированную движком ёмкость 10000 bytes;
 подключаемые проекты не могут менять её размер. Перед записью bootstrap config
@@ -732,7 +686,7 @@ compatibility на этих платформах updater возвращает `P
 4. Запустите с `--ClientLibPath <path>` и валидным alternate runtime.
 5. Добавьте `--ClientLibCompatibilityVersion <other>` и удалите runtime: host обязан завершиться без embedded fallback.
 6. Укажите invalid path без strict compatibility: host должен перейти на embedded client.
-7. Соберите project-owned packaged server и проверьте `PlatformBinaries/<target>/<name><ext>` и полный list resource zips.
+7. Соберите project-owned packaged server и проверьте `PlatformBinaries/<target>/<name><ext>` и полный список `.fores` баз ресурсов.
 8. Прервите network mid-download и подключитесь снова: `GetUpdateFile` должен продолжить с temp-file size без полной загрузки.
 9. Соедините client со старой `FO_COMPATIBILITY_VERSION` и новый server. После prompt закройте client: host должен заменить `<live>-staging`, выйти без load и загрузить promoted runtime только при следующем запуске.
 10. Убейте host во время binary download. При restart полный staging продвигается, а неполный temp продолжается обычным updater session.

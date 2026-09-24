@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"f480ca504b9ab23e4608273406e18eabef6472a6040e62a77920a8c69083dbbc"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"1564d454360361df2ff64097bc0b9776c76acd8608b8830beb46009a941d0089"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -225,6 +225,10 @@ Send callback возвращает outgoing bytes **по значению**, и 
 `ServerDisconnectsPreLoginConnectionAfterLoginTimeout` проверяет runtime deadline, а `NetworkServerInterthreadCopiedListenerRejectsAfterShutdown`, `NetworkServerInterthreadOptsOutOfPingWatchdog` и тесты остановки транспортов — владение принятыми соединениями, отказ конкурентному accept и исключение interthread из watchdog.
 
 `NetworkServer` запускает реализации через фабрики:
+
+Клиентский `ClientConnection` также ограничивает молчание сервера. Во время handshake защищённого канала или ожидания ответа на ping отсутствие любых входящих bytes дольше `ClientNetwork.PingTimeout` (по умолчанию 30000 мс; ноль отключает таймаут) ведёт к обычному disconnect. Любые входящие bytes считаются прогрессом, чтобы большой update portion не выглядел зависанием; под debugger watchdog отключён. Reconnect очищает ожидаемый ping. Молчание updater-сервера проверяет `Source/Tests/Test_ClientUpdater.cpp`.
+
+Перед уничтожением владельца серверного соединения вызывается `DropAsyncCallbacks()`: под locks он очищает send, receive и disconnect callbacks и ждёт уже исполняемый callback, включая уведомление об отключении, конкурирующее с teardown транспорта (`Source/Server/ServerConnection.cpp`).
 
 - `StartInterthreadServer()`;
 - `StartUdpSocketsServer()`;

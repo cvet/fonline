@@ -353,7 +353,8 @@ protected:
         unordered_map<DataBaseKey, size_t> index_by_id;
 
         for (size_t i = 0; i < ids.size(); i++) {
-            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
+            bool first_request = index_by_id.emplace(ids[i], i).second;
+            FO_VERIFY_AND_THROW(first_request, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
         }
 
         scoped_lock locker {_storageLocker};

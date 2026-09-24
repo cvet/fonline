@@ -5,7 +5,7 @@ locale: ru
 document_id: android-debugging
 permalink: /Docs/ru/how-to/platforms/android-debugging.html
 ---
-<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"90887def74347620feaad9a26dfabebdc4f7d5fc21562cc1384177f55dd0c6a7"} -->
+<!-- docs-translation: {"document_id":"android-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/android-debugging.md","source_sha256":"ab2804a6ebebe324a9c21dd00b9ff52063f0d90269a3adf101210d900ebec66d"} -->
 # Сборка, упаковка и отладка FOnline на Android
 
 Это принадлежащая Engine инструкция по сборке Android-клиента, созданию и сборке APK, установке через Wi-Fi ADB, подключению к серверу разработки и разделению ошибок сборки, пакета, устройства и runtime. Она опирается на текущую реализацию BuildTools, шаблон Android-проекта, модель поддержки, грамматику пакетов, settings и границу updater. Встраивающий проект отвечает за идентичность приложения, release-политику, парк устройств, серверный профиль, доставку через магазин и evidence приёмки.
@@ -141,7 +141,7 @@ cd Workspace/android-debug/<ProjectDevName>-Client-<Config>-Android
 
 - application id, version code/name, min/target SDK, ABI, activity, permissions и signature;
 - ровно один ожидаемый `libmain.so` на объявленный ABI;
-- `assets/Resources/Metadata.zip` и ожидаемые resource packs;
+- несжатые базы `assets/Resources/*.fores` (либо заданный resource directory) и ожидаемые metadata внутри них;
 - для Managed build — target assemblies, `ManagedRuntime/runtime.manifest` и target-specific payload class libraries внутри ожидаемого resource pack;
 - отсутствие keystore passwords, private credentials, local paths, stale configs и нелицензированных SDK payloads.
 
@@ -203,22 +203,16 @@ Android.KeyPassword = $TARGET_ENV{MYGAME_ANDROID_KEY_PASSWORD}
 
 ## Runtime bootstrap и staging ресурсов
 
-Generated `FOnlineActivity` наследует SDL `SDLActivity`, загружает только `libmain.so`, готовит ресурсы до старта SDL и самостоятельно строит native argument vector. Он всегда добавляет:
+Generated `FOnlineActivity` наследует SDL `SDLActivity`, загружает только `libmain.so`, передаёт ресурсы APK движку до старта SDL и самостоятельно строит native argument vector. Он всегда добавляет:
 
 - `--ApplySubConfig <Config>`;
-- `--Baking.ClientResources <files-dir>/Resources`;
+- `--Baking.ClientResources <APK sourceDir>!/assets/<configured client resource directory>`;
+- `--Common.UserWritablePath <files-dir>`;
 - `--Baking.CacheResources <files-dir>/Cache`.
 
 Если launch Intent содержит непустой string extra `server_host`, activity также добавляет `--ClientNetwork.ServerHost <value>`. Произвольный command-line extra не поддерживается. Прежде чем заявлять другие runtime overrides, добавьте проверяемый typed bridge.
 
-Packaged assets копируются из `assets/Resources` в private files directory приложения при выполнении хотя бы одного условия:
-
-- `.asset_revision` отличается от `PackageInfo.lastUpdateTime`;
-- отсутствует `<files-dir>/Resources/Metadata.zip`.
-
-Activity удаляет прежний resource directory, рекурсивно копирует asset tree и только после успешного копирования записывает новую revision. Ошибки enumeration, создания directory, copy, delete или записи revision вызывают exception и останавливают startup. Cache directory создаётся отдельно и не очищается при APK update. При несовместимом изменении resource formats или cache keys проект должен предоставить явные invalidation и migration evidence.
-
-`adb install -r` сохраняет app data, включая runtime cache и скопированные ресурсы. Очистка app storage или uninstall удаляют эти данные. Перед изменением gameplay code различайте stale APK, retained cache, failed asset copy, updater state и несовместимость server.
+Packaging сохраняет `.fores` assets без внешнего ZIP-сжатия. Движок читает их ограниченные регионы непосредственно из APK позиционными 64-битными операциями; сжатый или зашифрованный ZIP entry так смонтировать нельзя. Полное дерево ресурсов при старте или обновлении APK не копируется. Writable замены `Pack.fores` и патчи `Pack.patch.fores` хранятся в приватном `<files-dir>/Resources` и имеют приоритет над базой APK. `adb install -r` сохраняет эти данные и runtime cache; очистка app storage или uninstall удаляют их. До изменения gameplay code различайте устаревший APK, сохранённую замену или патч, кэш и несовместимость сервера. См. [формат пакетов ресурсов](../../../ResourcePackFormat.md).
 
 Android может обновлять writable resources через обычный client resource path, но `Updater::CanSelfUpdateNativeModules()` возвращает false для Android. Native compatibility mismatch нельзя исправить загрузкой новой shared library на месте: соберите, упакуйте, установите и перезапустите совместимый APK.
 
@@ -309,12 +303,12 @@ Android packaging поддерживает только target `Client` и тр�
 | Маршрут | Минимальное project evidence | Признак ошибки |
 |---|---|---|
 | ABI и install | APK содержит только ожидаемые ABI; clean install и `-r` update проходят на представительных API levels | `INSTALL_FAILED_NO_MATCHING_ABIS`, downgrade, signature или policy rejection |
-| Cold и warm startup | Resource copy, SDL/native load, применение config и первый rendered frame | crash до `libmain`, нет `Metadata.zip`, black screen или неверный config |
+| Cold и warm startup | Mount ресурсов APK, SDL/native load, применение config и первый rendered frame | crash до `libmain`, нет базы `.fores`, black screen или неверный config |
 | Rendering | Представительные map, GUI, fonts, images, sprites/models, effects и orientation на GLES 3 devices | shader/driver failure, clipping, corruption, unsupported orientation |
 | Input | Touch, back/navigation, keyboard/IME при использовании и каждый заявленный controller class | trapped input, duplicate events, unusable focus, controller mapping drift |
 | Audio и lifecycle | Слышимые sound/music, interruption, background/pause/resume, screen lock и process recreation | stuck audio, lost device, duplicate runtime, crash или state loss |
 | Networking | Device-to-server route, reconnect, incompatible-version response, latency/loss behavior и firewall policy | loopback/host mismatch, silent timeout, insecure exposure, update loop |
-| Resource/cache update | APK update, retained data, изменённые assets, missing metadata и явная cache invalidation | старые assets после update, partial copy, incompatible retained cache |
+| Resource/cache update | APK update, сохранённая writable base/patch, изменённые assets, missing metadata и восстановление cache | устаревшая writable pair, неверное сжатие entry в APK, несовместимый cache |
 | Native compatibility | Mismatched native generation сообщает unsupported self-update и восстанавливается заменой APK | предполагается hot-replace Android binary загруженным native module |
 | Permissions и privacy | Manifest merge, exported components, runtime permissions, data backup, SDK collection и privacy disclosure | неожиданные permission/component, rejected policy, undeclared data flow |
 | Release identity | Release certificate digest, monotonic version code, signed final APK и update с предыдущего поддерживаемого release | debug key, unsigned artifact, неверный alias, non-upgradable package |
@@ -329,7 +323,7 @@ CI-матрица Engine намеренно не предоставляет эт
 | Ошибка подготовки host | Java 17/system package group, disk permissions, network access, pins SDK/NDK и принятые licenses. Обрезанные архивы Google CDN (`ContentTooShortError`, `Error reading Zip content from a SeekableByteChannel`) повторно загружаются через `download_file` / `run_with_retry`; постоянная ошибка означает проблему host/network, а не отсутствие pin |
 | CMake не конфигурирует Android | `FO_ANDROID_NDK_ROOT`, toolchain file, ABI mapping, native API pin, Clang floor и чистый build directory |
 | Native build успешен, но package input отсутствует | `FO_OUTPUT`, target/config/build hash, ожидаемый `lib<ProjectDevName>_Client.so` и совпадающий resource bake |
-| Packaging отклоняет resources | выбранный sub-config, `Baking.ClientResources`, свежий `Metadata.zip` и отсутствие token `NoRes` |
+| Packaging отклоняет resources | выбранный sub-config, `Baking.ClientResources`, свежие `.fores` с metadata и отсутствие token `NoRes` |
 | Packaging отклоняет icon или Java source | реальная PNG signature, project-relative path, suffix `.java`, уникальный basename и отсутствие override `FOnlineActivity.java` |
 | Gradle не видит SDK/NDK | generated `local.properties`, `ANDROID_HOME` / `ANDROID_SDK_ROOT`, patched NDK path/version и установленный compile SDK |
 | Ошибка Gradle dependency resolution | generated repositories/dependencies, credentials, dependency locks, proxy/TLS и доступность repository |
@@ -343,7 +337,7 @@ CI-матрица Engine намеренно не предоставляет эт
 | Startup сообщает `Executable path could not be resolved` | bundled-runtime path вычислялся на mobile target; он должен оставаться под guard `CanSelfUpdateNativeModules` |
 | Engine log отсутствует в logcat | прочитайте app-private `files/<project>.log` из debug APK через `adb shell run-as <package> cat ...` |
 | Renderer эмулятора падает до non-visual probe | Vulkan эмулятора может не иметь BGRA8, а GLES — отвергать updater path; для `ManagedScript.InteropProbeOnStart` используйте `Render.NullRenderer=True`, но rendering квалифицируйте на реальном устройстве |
-| Content отсутствует или устарел | hash/path установленного APK, `lastUpdateTime`, `.asset_revision`, `Metadata.zip`, copy exception, retained cache |
+| Content отсутствует или устарел | hash/path установленного APK и несжатые `.fores`, выбранная writable замена/patch, сохранённый `.foindex` cache и server descriptor |
 | Client не достигает host | typed extra `server_host`, выбранный LAN address, server bind address, firewall, ports и compatibility version |
 | Client запрашивает native update | Android native self-update не поддержан; установите совместимый APK вместо повторов resource updater |
 | Ошибка resume/orientation | SDL lifecycle logs, manifest `configChanges`, orientation setting, renderer/device loss и project state restoration |

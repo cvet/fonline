@@ -84,6 +84,7 @@ public:
 };
 
 auto GetClientResources(const ClientSettings& settings) -> FileSystem;
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string;
 
 class ClientEngine : public BaseEngine, public AnimationResolver
 {

@@ -159,7 +159,8 @@ void InterthreadServer::ShutdownImpl()
 {
     FO_STACK_TRACE_ENTRY();
 
-    FO_VERIFY_AND_THROW(RemoveInterthreadListener(_virtualPort), "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
+    bool listener_removed = RemoveInterthreadListener(_virtualPort);
+    FO_VERIFY_AND_THROW(listener_removed, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
 }
 
 FO_END_NAMESPACE

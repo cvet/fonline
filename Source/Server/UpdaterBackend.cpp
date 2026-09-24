@@ -38,9 +38,11 @@
 #include "Logging.h"
 #include "MetadataRegistration.h"
 #include "Player.h"
+#include "ResourcePack.h"
 #include "SafeArithmetics.h"
 #include "ServerConnection.h"
 #include "StringUtils.h"
+#include "UpdateDescriptor.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -62,35 +64,37 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     auto add_sync_file = [&settings, &update_files](string_view disk_path, string_view client_path, UpdateFileTarget target) -> UpdateFileInfo {
         UpdateFileData data {};
 
-        auto file = fs::open_ifstream(disk_path);
+        data.File = fs::disk_read_file {disk_path};
+        FO_VERIFY_AND_THROW(data.File, "Client update file is missing", disk_path);
+        data.DiskPath = string(disk_path);
+        data.Size = data.File.get_size();
 
-        if (!file) {
-            throw UpdaterException("Resource pack for client not found", disk_path);
+        bool is_resource_pack = target == UpdateFileTarget::ClientResources;
+
+        if (is_resource_pack) {
+            ResourcePackHeader pack_header;
+            bool header_read = ReadResourcePackHeader(data.File, pack_header);
+            FO_VERIFY_AND_THROW(header_read, "Client update resource header is invalid", disk_path);
+            data.Hash = pack_header.PackHash;
+            data.PackHeader = pack_header;
         }
-
-        size_t file_size = fs::stream_get_size(file);
 
         if (settings.ServerNetwork.UpdateFilesInMemory) {
             data.InMemory = true;
-            data.MemoryData.resize(file_size);
+            data.MemoryData.resize(numeric_cast<size_t>(data.Size));
+            bool file_read = data.File.read_at(0, data.MemoryData);
+            FO_VERIFY_AND_THROW(file_read, "Can't read client update file", disk_path);
 
-            if (!fs::stream_read_exact(file, data.MemoryData)) {
-                throw UpdaterException("Can't read resource pack for client", disk_path);
+            if (!is_resource_pack) {
+                data.Hash = fs::hash_data(data.MemoryData);
             }
 
-            data.Size = numeric_cast<uint64_t>(file_size);
-            data.Hash = fs::hash_data(data.MemoryData);
+            data.File.close();
         }
-        else {
-            data.DiskPath = string(disk_path);
-            data.Size = numeric_cast<uint64_t>(file_size);
-            auto file_hash = fs::hash_file(disk_path);
-
-            if (!file_hash.has_value()) {
-                throw UpdaterException("Can't hash resource pack for client", disk_path);
-            }
-
-            data.Hash = *file_hash;
+        else if (!is_resource_pack) {
+            auto hash = fs::hash_file(disk_path);
+            FO_VERIFY_AND_THROW(hash, "Can't hash client update file", disk_path);
+            data.Hash = *hash;
         }
 
         update_files.emplace_back(std::move(data));
@@ -105,8 +109,8 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     auto client_resources_dir = std::filesystem::path {fs::make_path(settings.Baking.ClientResources)};
 
     for (const auto& resource_entry : settings.GetClientResourcePacks()) {
-        if (resource_entry != "Embedded") {
-            string pack_name = strex("{}.zip", resource_entry).str();
+        if (resource_entry != EMBEDDED_PACK_NAME) {
+            string pack_name = strex("{}.fores", resource_entry).str();
             client_resource_pack_names.emplace(pack_name);
             string pack_disk_path = fs::path_to_string(client_resources_dir / fs::make_path(pack_name));
             auto info = add_sync_file(pack_disk_path, pack_name, UpdateFileTarget::ClientResources);
@@ -142,33 +146,35 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
     }
 
     auto build_update_desc = [&update_files, &common_update_files](vector<uint8_t>& desc, nptr<const vector<UpdateFileInfo>> platform_files) {
-        auto writer = data_writer(desc);
+        vector<UpdateDescriptorEntry> entries;
 
-        auto write_file_info = [&update_files, &writer](const UpdateFileInfo& info) {
+        auto add_entry = [&update_files, &entries](const UpdateFileInfo& info) {
             const auto& data = update_files[info.FileIndex];
-            writer.write<int16_t>(numeric_cast<int16_t>(info.ClientPath.length()));
-            writer.write_string_bytes(info.ClientPath);
-            writer.write<uint64_t>(data.Size);
-            writer.write<uint64_t>(data.Hash);
-            writer.write<UpdateFileTarget>(info.Target);
-            writer.write<uint32_t>(info.FileIndex);
+            UpdateDescriptorEntry entry;
+            entry.Name = info.ClientPath;
+            entry.Size = data.Size;
+            entry.Hash = data.Hash;
+            entry.Target = info.Target;
+            entry.FileIndex = info.FileIndex;
+            entry.PackHeader = data.PackHeader;
+            entries.emplace_back(std::move(entry));
         };
 
         for (const auto& info : common_update_files) {
             bool overridden = platform_files && std::ranges::any_of(*platform_files, [&info](const UpdateFileInfo& platform_info) { return platform_info.Target == info.Target && platform_info.ClientPath == info.ClientPath; });
 
             if (!overridden) {
-                write_file_info(info);
+                add_entry(info);
             }
         }
 
         if (platform_files) {
             for (const auto& info : *platform_files) {
-                write_file_info(info);
+                add_entry(info);
             }
         }
 
-        writer.write<int16_t>(const_numeric_cast<int16_t>(-1));
+        WriteUpdateDescriptor(desc, entries);
     };
 
     build_update_desc(common_update_files_desc, nullptr);
@@ -194,7 +200,12 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
     FileSystem client_resources;
-    client_resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());
+
+    for (const string& name : settings.GetClientResourcePacks()) {
+        if (name != EMBEDDED_PACK_NAME) {
+            client_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(settings.Baking.ClientResources).combine_path(strex("{}.fores", name)).str()));
+        }
+    }
 
     vector<uint8_t> metadata_bin = ReadMetadataBin(&client_resources, "Client");
     string client_metadata_version = ReadMetadataVersion(metadata_bin);
@@ -223,6 +234,8 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
 
     auto file_index = in_buf->Read<uint32_t>();
     auto start_offset = in_buf->Read<uint64_t>();
+    uint64_t requested_size = in_buf->Read<uint64_t>();
+    uint64_t expected_hash = in_buf->Read<uint64_t>();
 
     in_buf.Unlock();
 
@@ -241,52 +254,24 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     const auto& update_file = _updateFiles[file_index];
     uint64_t file_size = update_file.Size;
 
-    if (start_offset > file_size) {
+    if (expected_hash != update_file.Hash || start_offset > file_size || requested_size > file_size - start_offset) {
         logging::write(logging::type::warning, "Wrong update file offset {}, file index {}, client host '{}'", start_offset, file_index, connection->GetHost());
         connection->HardDisconnect(DisconnectReason::UpdaterError);
         return;
     }
 
     uint64_t update_portion_limit = numeric_cast<uint64_t>(update_file_max_portion_size);
-    uint64_t remaining_size = file_size - start_offset;
+    uint64_t remaining_size = requested_size;
     uint64_t update_portion = std::min(update_portion_limit, remaining_size);
     size_t update_portion_size = numeric_cast<size_t>(update_portion);
 
     vector<uint8_t> disk_update_data {};
 
     if (update_portion_size != 0 && !update_file.InMemory) {
-        // The descriptor is a start-time snapshot while the bytes are read now, so a pack replaced under a
-        // live server would travel to the client under the hash announced for the previous one
-        auto current_disk_size = fs::file_size(update_file.DiskPath);
-
-        if (!current_disk_size.has_value() || *current_disk_size != update_file.Size) {
-            logging::write(logging::type::warning, "Update file '{}' changed on disk since startup, announced size {}, current size {}, client host '{}'", update_file.DiskPath, update_file.Size, current_disk_size.value_or(0), connection->GetHost());
-            connection->HardDisconnect(DisconnectReason::UpdaterError);
-            return;
-        }
-
         disk_update_data.resize(update_portion_size);
 
-        auto read_update_file_portion = [](string_view disk_path, uint64_t start_offset, vector<uint8_t>& data) {
-            FO_STACK_TRACE_ENTRY();
-
-            auto file = fs::open_ifstream(disk_path);
-
-            if (!file) {
-                return false;
-            }
-
-            file.seekg(numeric_cast<std::streamoff>(start_offset), std::ios::beg);
-
-            if (!file) {
-                return false;
-            }
-
-            return fs::stream_read_exact(file, data);
-        };
-
-        if (!read_update_file_portion(update_file.DiskPath, start_offset, disk_update_data)) {
-            logging::write(logging::type::warning, "Can't read update file '{}', file index {}, client host '{}'", update_file.DiskPath, file_index, connection->GetHost());
+        if (!update_file.File.read_at(start_offset, disk_update_data)) {
+            logging::write("Can't read pinned client update file {} at {}", update_file.DiskPath, start_offset);
             connection->HardDisconnect(DisconnectReason::UpdaterError);
             return;
         }

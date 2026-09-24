@@ -212,6 +212,8 @@ The portable Raw/Zip artifacts are finalized before the MSI step and never carry
 
 Managed class libraries remain resource payload rather than binary companions. When several binary variants share one updater target, `package.py` validates every prepared `ManagedRuntime` tree and selects the least-qualified matching binary entry, normally the default Release build, to produce the single target-wide resource pack. Independently built equivalent CoreLib payloads are not required to be byte-identical.
 
+`package.py` writes each non-Embedded target pack as `.fores` from the filtered loose bake output; `Embedded` remains ZIP inside the executable. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern `.fores` blobs, while `Baking.BundleCompressLevel` governs Embedded and outer bundles. One-run overrides are `-resource-pack-compress-level` and `-bundle-compress-level`. The format and updater selection/recovery contract are in [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
+
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers stable entry names and contents plus compression level. A restored or newly written archive always passes the same exact-entry and CRC validation; misses and an optional-cache-unavailable result fall back to local creation, while other helper failures remain packaging errors. Repeated identical archives in one packaging process reuse the first validated result.
 
 When several package parts append to one `SingleZip`, byte-identical files at

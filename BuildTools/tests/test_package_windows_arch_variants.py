@@ -228,6 +228,6 @@ def test_missing_web_managed_resource_payload_fails_the_server_package(tmp_path:
         packager.verify_expected_client_runtime_payloads(set(), set(), "Scripts", [])
 
     message = str(failure.value)
-    assert "Scripts.zip" in message
+    assert "Scripts.fores" in message
     assert "PlatformBinaries/Web-wasm" in message
     assert "another platform" in message

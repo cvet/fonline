@@ -218,6 +218,10 @@ Two non-normal modes are important for tools, tests, CI, and platform staging:
 
 The stub layer is not a full renderer. It exists so tests and non-graphical flows can exercise engine logic without assuming that a real GPU/window/audio device is available. When a test depends on visible rendering, it should say so explicitly instead of relying on stub behavior.
 
+### Frame pacing
+
+Desktop client, Mapper, and viewer loops use `FrameBalancer` (`Source/Common/Common.h`). `Render.VSync = true` disables its own pacing because presentation waits for the display. Otherwise a positive `Render.FixedFPS` caps the loop with `precise_sleep` regardless of `Render.Sleep`; an over-budget frame is paid back by shorter following waits, carrying at most one second of debt. `Render.Sleep` applies only when `FixedFPS = 0`: zero yields, a positive value uses `coarse_sleep`, and `-1` leaves the loop unpaced. `Source/Tests/Test_Common.cpp` exercises the branches.
+
 ## Rendering abstraction
 
 `Source/Frontend/Rendering.h` defines the renderer-facing types:

@@ -38,25 +38,61 @@
 #include "MetadataRegistration.h"
 #include "Movement.h"
 #include "ParticleSprites.h"
+#include "ResourceIndex.h"
+#include "UpdateDescriptor.h"
 
 FO_BEGIN_NAMESPACE
 
 void ClientInitHook(ptr<ClientEngine>);
+
+auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
+{
+    FO_STACK_TRACE_ENTRY();
+
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+
+    // Beside the packs the updater writes, which is the writable overlay when there is one
+    return strex(pack_dirs.back()).combine_path(RESOURCE_INDEX_FILE_NAME).str();
+}
 
 auto GetClientResources(const ClientSettings& settings) -> FileSystem
 {
     FO_STACK_TRACE_ENTRY();
 
     FileSystem resources;
-    resources.AddPacksSource(settings.Common.Packaged ? settings.Baking.ClientResources : settings.Baking.BakeOutput, settings.GetClientResourcePacks());
+    vector<string> client_packs = settings.GetClientResourcePacks();
+    vector<string> pack_dirs = GetClientPackDirs(settings);
+    string index_path = GetClientResourceIndexPath(settings);
+    vector<string> indexed_packs = GetResourceIndexPackNames(client_packs);
+    bool index_mounted = false;
 
-    // Downloaded packs land under the writable root, so for an installed client they are the current ones
-    // and must win over the install-dir copies
-    if (settings.Common.Packaged && !settings.Common.UserWritablePath.empty()) {
-        string writable_dir = fs::make_writable_path(settings.Common.UserWritablePath, settings.Baking.ClientResources);
+    // Embedded keeps its configured position
+    if (settings.Common.Packaged && !indexed_packs.empty() && IsResourceIndexCurrent(index_path, pack_dirs, indexed_packs)) {
+        unique_nptr<ResourceIndexSource> index;
 
-        for (const string& pack : settings.GetClientResourcePacks()) {
-            resources.AddPackSource(writable_dir, pack, true);
+        try {
+            index = safe_alloc::make_unique<ResourceIndexSource>(index_path, pack_dirs);
+        }
+        catch (const std::exception& ex) {
+            logging::write("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
+            (void)fs::remove_file(index_path);
+        }
+
+        if (index) {
+            size_t prefix_size = client_packs.size() - indexed_packs.size();
+
+            for (size_t i = 0; i < prefix_size; ++i) {
+                AddClientPackSource(resources, settings, client_packs[i]);
+            }
+
+            resources.AddCustomSource(index.take_not_null());
+            index_mounted = true;
+        }
+    }
+
+    if (!index_mounted) {
+        for (const string& pack : client_packs) {
+            AddClientPackSource(resources, settings, pack);
         }
     }
 
@@ -816,6 +852,7 @@ void ClientEngine::Net_OnInitData()
 
     auto data_size = _conn.InBuf->Read<uint32_t>();
 
+    FO_VERIFY_AND_THROW(data_size <= _conn.InBuf->GetUnreadSize(), "Update descriptor exceeds its message", data_size);
     vector<uint8_t> data;
     data.resize(data_size);
 
@@ -829,54 +866,16 @@ void ClientEngine::Net_OnInitData()
     SetSynchronizedTime(time);
 
     if (!data.empty()) {
-        FileSystem resources;
-        resources.AddDirSource(Settings->Baking.ClientResources, false, true, true);
-
-        if (!Settings->Common.UserWritablePath.empty()) {
-            // Installed client: self-update resource patches live in the per-user writable dir; layer
-            // it on top so the up-to-date file wins the size/hash check below
-            resources.AddDirSource(fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.ClientResources), false, true, true);
-        }
-
-        auto reader = data_reader(data);
-
-        while (true) {
-            int16_t name_len = reader.read<int16_t>();
-
-            if (name_len == -1) {
-                break;
-            }
-
-            FO_VERIFY_AND_THROW(name_len > 0, "Name len must be positive", name_len);
-            size_t fname_size = numeric_cast<size_t>(name_len);
-            string fname;
-            fname.resize(fname_size);
-            reader.read_string_bytes(fname);
-            auto size = reader.read<uint64_t>();
-            auto hash = reader.read<uint64_t>();
-            auto target = reader.read<UpdateFileTarget>();
-            auto data_index = reader.read<uint32_t>();
-
-            ignore_unused(hash);
-            ignore_unused(data_index);
-
-            if (target != UpdateFileTarget::ClientResources) {
+        for (const UpdateDescriptorEntry& entry : ReadUpdateDescriptor(data)) {
+            if (entry.Target != UpdateFileTarget::ClientResources || !Settings->Common.Packaged) {
                 continue;
             }
 
-            // Check size
-            if (auto file = resources.ReadFileHeader(fname)) {
-                if (file.GetSize() == size) {
-                    continue;
-                }
-            }
-
-            if (Settings->Common.Packaged) {
-                throw ResourcesOutdatedException("Resource pack outdated", fname);
+            // The same comparison the updater declares resources ready on, so the two cannot reject each other in a loop
+            if (!IsClientResourcePackCurrent(*Settings, strex(entry.Name).erase_file_extension(), entry.PackHeader.value().ContentHash)) {
+                throw ResourcesOutdatedException("Resource pack outdated", entry.Name);
             }
         }
-
-        reader.verify_end();
     }
 }
 

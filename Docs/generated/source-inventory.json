@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 118,
+    "test_file_count": 120,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -171,6 +171,8 @@
       "Source/Tests/Test_RandomGenerator.cpp",
       "Source/Tests/Test_RawCopyBaker.cpp",
       "Source/Tests/Test_Rendering.cpp",
+      "Source/Tests/Test_ResourceIndex.cpp",
+      "Source/Tests/Test_ResourcePack.cpp",
       "Source/Tests/Test_SafeArithmetics.cpp",
       "Source/Tests/Test_ScriptBuiltins.cpp",
       "Source/Tests/Test_ScriptEntityOps.cpp",
@@ -203,7 +205,7 @@
     ]
   },
   "settings": {
-    "declaration_count": 268,
+    "declaration_count": 271,
     "source": "Source/Common/Settings.inc"
   }
 }

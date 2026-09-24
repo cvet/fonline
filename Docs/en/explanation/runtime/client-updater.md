@@ -76,7 +76,8 @@ Keep long protocol and host-runtime details here; keep server lifecycle and mana
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/package.py`
 - `BuildTools/msicreator/createmsi.py`
-- `BuildTools/tests/test_package_zip_determinism.py`
+- `BuildTools/tests/test_package_resource_pack.py`
+- `BuildTools/tests/test_package_zip_helpers.py`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_DiskFileSystem.cpp`
 - `Source/Tests/Test_Platform.cpp`
@@ -290,7 +291,7 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 ## Updater protocol
 
-Versioned by `FO_UPDATER_VERSION = 3` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
+Versioned by `FO_UPDATER_VERSION = 5` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
 requires the secure channel before any updater message; a pre-channel client cannot self-update.
 Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
@@ -308,7 +309,7 @@ Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes
 | server → client | `metadata_outdated` | `bool` | client resources were baked from another revision |
 | server → client | `MetadataVersion` | `string` | metadata version currently used by the server |
 
-The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). The old XOR session-key fields are absent. `FO_UPDATER_VERSION = 3` marks that wire break: a pre-channel client cannot reach the updater at all and needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection — the protocol contract has changed and no further messages are valid. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources / native modules to bring the client back to current compatibility.
+The entire handshake and updater exchange runs inside the authenticated [secure channel](../authority-and-networking/#secure-channel). Generation 5 combines that channel with the `.fores` pack descriptor and bounded resource-range requests. Generations 3 and 4 cannot safely interpret both halves; an incompatible client needs a current full client package. Once the channel stands, `updater_outdated == true` is fatal to the connection. `compatibility_outdated == true` only blocks gameplay; the updater can still deliver resources or native modules.
 
 `metadata_outdated == true` means the binaries match but the baked data does not. The server and client must run metadata from one bake because entity payloads address properties by that metadata's registration order. A mismatch is a build or deployment defect, not a supported compatibility mode; see [Metadata version](../../reference/metadata/#metadata-version).
 
@@ -333,9 +334,10 @@ Each descriptor entry is:
 | `name_len` | `int16` (`-1` terminates the list) | client-relative path length |
 | `name` | `char[name_len]` | client-relative path |
 | `size` | `uint64` | full file size |
-| `hash` | `uint64` | FNV-1a 64-bit hash of the file content |
+| `hash` | `uint64` | `.fores` base header `PackHash` for resource packs; whole-file FNV-1a for native files |
 | `target` | `UpdateFileTarget` (`uint8`) | `ClientResources` or `ClientBinaries` |
 | `file_index` | `uint32` | server-assigned index for `GetUpdateFile` |
+| `pack_header_size`, `pack_header` | `uint32`, bytes | 80-byte version-2 base header for a resource pack; zero bytes for native files |
 
 Common (gameplay-resource) entries are emitted for every binary target. Per-target binary entries (`UpdateFileTarget::ClientBinaries`) are emitted only for the matching `binary_target` from the handshake. The client then filters binary entries by the current host-derived runtime basename, so `<client-host>.exe` downloads `<client-host>.dll` while `<alternate-host>.exe` downloads `<alternate-host>.dll` even when both report the same CPU/OS target.
 
@@ -344,11 +346,11 @@ Common (gameplay-resource) entries are emitted for every binary target. Per-targ
 The client drives a single transfer at a time:
 
 ```text
-client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64 }
+client → server: GetUpdateFile  { file_index: uint32, start_offset: uint64, requested_size: uint64, expected_hash: uint64 }
 server → client: UpdateFileData { update_portion: int32, raw bytes[update_portion] }
 ```
 
-The server picks `update_portion`, capped by `Network.UpdateFileMaxPortionSize`. The engine default is 1,000,000 bytes in [Settings.inc](../../../../Source/Common/Settings.inc); an embedding project may override it after measuring throughput and per-message memory pressure. The client requests the next portion with `start_offset = bytes_already_written`, so partial transfers resume from disk on reconnect without server-side state.
+The server caps each portion by `Network.UpdateFileMaxPortionSize` (default 1,000,000 bytes). It rejects invalid bounds, a mismatched advertised artifact hash, and failed reads. The client requests the remainder of a bounded range, so complete-file downloads resume from the temporary file on reconnect without server-side state. Resource ranges select catalogs or complete encoded resources rather than binary deltas within a resource.
 
 The updater connection also participates in the shared connection-stage protocol. After `InitData`, a
 server may send `NetMessage::HashList` (message id 122) to teach clients strings that were previously
@@ -364,20 +366,24 @@ Server-side validation (in [Server/UpdaterBackend.cpp](../../../../Source/Server
 - Disk-mode read failure → `LogType::Warning` + `HardDisconnect`.
 - Disk-mode size drift against the announced descriptor entry → `LogType::Warning` + `HardDisconnect`. With `ServerNetwork.UpdateFilesInMemory = False`, the descriptor is a start-time snapshot while bytes are read on demand; replacing a pack under a live server must not deliver new bytes under the old hash.
 
-Client-side, the `Updater` writes each portion to a `~<filename>` temp file, hashes via streamed `fs_hash_file` ([Essentials/DiskFileSystem.cpp](../../../../Source/Essentials/DiskFileSystem.cpp)) once complete, then atomically renames over the live file (`ReplaceFileSafely`). The updater hash is FNV-1a 64-bit (separate from the engine's wyhash-backed `hashing_ex::hash`, which is reserved for hash-tables and `hstring`); streaming a chunked file produces the same digest as `fs_hash_data` over the full buffer, so server in-memory hashing and client streaming hashing agree by construction. Streaming the hash means even multi-GB resource packs never get fully buffered in RAM on either side.
+For native files, the updater retains whole-file temporary downloads and verifies the streamed FNV-1a hash before promotion. For `.fores`, it compares the selected base/patch pair's logical `ContentHash` with the descriptor, fetches the current catalog, reuses local decoded content by hash and size, and requests only missing encoded resources. An append publishes a complete catalog and footer after verified payloads; interrupted tails can resume their already verified payloads. If the resulting patch would reach or exceed the advertised full pack's size, or if the base is missing or unusable, it downloads and verifies a full replacement base instead. See [Resource Pack Format](../../../ResourcePackFormat.md) for binding, byte layout, and crash recovery.
 
-To avoid rehashing existing packs on every startup (the hashing cost dominates the updater's "is this file already current?" pass for multi-GB resource packs), the disk-side hash check goes through `Updater::IsDiskFileHashMatch`, which caches the result in `CacheStorage` under the configured `Baking.CacheResources` directory from [Settings.inc](../../../../Source/Common/Settings.inc). The key is `<basename>-<path-hash>.hash`, where `<path-hash>` is the 16-digit lowercase hexadecimal result of `hashing::hash<string_view>` over the full path string passed to the check. For example, an `Embedded.zip` entry becomes `Embedded.zip-0123456789abcdef.hash`; the exact suffix depends on its path. Including only the digest, rather than the absolute path text, keeps the filename valid on Windows while preventing same-basename resources in different directories from sharing a cache entry. The cached value stores `(size, mtime, hash)`; a size or mtime change invalidates it, and deleting the cache entry causes a transparent re-hash on the next updater pass.
+Before connecting, the updater verifies each local resource pair not already proved at its current file identity: the base's physical `PackHash` and committed patch payload hashes. The bounded `ResourcePairVerifier` keeps the screen responsive. Its cache records path, size, modification time, and base/patch identity; a changed file is checked again. Damaged bases are replaced by full downloads, while damaged patch payloads are fetched again. Native whole-file hash results retain their separate `(size, mtime, hash)` cache. A successful resource synchronization rebuilds the disposable `Resources.foindex`; a failed cache build does not invalidate authoritative pairs. Web skips this persistent cache and verification stage.
 
 There are no backward-compatible fallback paths. The previous "session-state file index + portion counter" protocol was removed when `FO_UPDATER_VERSION` was introduced; clients and servers must agree on the version.
 
+The updater holds the writable resource directory lock for its whole run. A second client sharing that directory waits and retries rather than racing its writes. Under the lock, interrupted `.fobackup` replacements are recovered before local selection; complete bases are promoted only after physical-hash and catalog verification, and a selected patch is removed only after promotion succeeds. A patch append flushes verified payloads and its complete catalog before publishing the footer, so a failed append leaves the prior commit readable. Every advertised resource is checked again before `ResourcesReady`, then metadata compatibility is checked. Packs commit independently; a partial set cannot enter gameplay, and there is no atomic global release switch or rollback of all packs. The updater rebuilds `Resources.foindex` after a successful sync, but a cache failure leaves authoritative pairs usable. See [Resource Pack Format](../../../ResourcePackFormat.md) and the client/server integration tests.
+
+A handler failure during update processing is `Failed`, not `ConnectionFailed`, even when that handler's exception causes the transport to disconnect. A genuinely silent server is bounded by `ClientNetwork.PingTimeout` through the ordinary disconnect route and reports `ConnectionFailed`.
+
 ## Server-side: `UpdaterBackend`
 
-[Server/UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as a `unique_ptr`. When `_updaterBackend` is null (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` — there is nothing to serve.
+[Server/UpdaterBackend.h](../../../../Source/Server/UpdaterBackend.h) is owned by `ServerEngine` as an `optional`. When `_updaterBackend` is empty (unpackaged dev server) the server rejects `GetUpdateFile` with `HardDisconnect` — there is nothing to serve.
 
 Current native interface (an internal engine surface, not a stable public API):
 
 ```cpp
-void LoadFromClientResources(const GlobalSettings& settings);
+void LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version);
 void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 auto GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>;
 ```
@@ -386,7 +392,7 @@ The descriptor is exposed as a borrowed `const_span<uint8_t>` view over storage
 owned by the backend; callers must not retain it beyond that storage's lifetime.
 
 - `LoadFromClientResources` walks `Settings.ClientResources`, picks every pack listed in `Settings.ClientResourceEntries` (excluding `Embedded`), then enumerates `Settings.PlatformBinaries/<target>/` for per-target binaries (default `PlatformBinaries/`, sibling of `Resources/` in the package layout).
-- Entries are stored as `UpdateFileData { InMemory, MemoryData?, DiskPath?, Size, Hash }`. Memory mode keeps the whole pack in RAM for the lifetime of the server. Disk mode keeps only `DiskPath`, `Size`, and the streamed `Hash`; portions are read on demand by `ReadUpdateFilePortion(...)`.
+- Entries retain size, hash, and the resource header. Memory mode retains bytes; disk mode retains an opened positional reader, so the served artifact remains the one advertised even when its path is later replaced.
 - Descriptors are cached per `binary_target_name`. Common-resource entries are merged into every per-target descriptor; targets without specific binaries fall back to the common-only descriptor.
 - `VerifyClientResourcesMetadata` mounts the client packs and compares their metadata version with the version loaded by the server. Because the server runs `Settings.ServerResources` but distributes `Settings.ClientResources`, deploying only one side now fails startup with `UpdaterException` that names both versions.
 
@@ -417,14 +423,11 @@ Resolution is idempotent and creates the selected root. Once settings names are 
 What moves to the writable root (via the free path helper `fs_make_writable_path(UserWritablePath, relative)`
 in `DiskFileSystem.cpp`): the **cache** (`CacheStorage` in `ApplicationInit`/`Client`/`Updater` — login keys, native
 secure storage, local config), the **log** file (re-pointed after settings load), **self-update resource
-patches** — the updater writes them under `<root>/<ClientResources>` and layers that dir on top of the
-read-only install-dir base as a higher-priority resource source, so the base resources are read from the
-install dir and patches override from the user dir — and the **self-updated native runtime** (see below).
-`GetClientResources()` in `Client.cpp` is the single assembly point for that gameplay pack set, and the updater
-uses it for the local metadata-version check. The version accepted before connection is therefore the version
-gameplay will read rather than a separately assembled view with potentially different precedence. The updater
-also mounts the writable overlay above its install-dir splash pack: startup can then use a splash repaired by
-an earlier updater run before the current run downloads anything. The updater's packaged-mode gates and
+patches** — the updater writes a `Pack.patch.fores` beside a writable full `Pack.fores`, or binds it to the
+read-only installed/APK base. `GetClientResources()` selects one effective base/patch pair per logical pack,
+preserving configured pack order, and is shared by gameplay and the updater's metadata check. The splash
+pack uses the same writable-first selection. An unusable splash is logged and omitted while the updater
+continues repairing resources; it must not prevent the repair itself. The updater's packaged-mode gates and
 resource-root choices read the already loaded `Common.Packaged` snapshot; direct executable-marker checks are
 limited to the pre-settings bootstrap and the filesystem's physical archive-versus-directory selection.
 
@@ -472,9 +475,9 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
-Client resource zips are written with the same stable entry metadata and sorted normalized paths. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same FNV hash in the updater descriptor and does not force clients to redownload every pack. After closing each resource zip, the packager reopens it, requires the exact expected entry list, and streams every entry through Python's CRC-checking reader. The `Embedded` pack receives the same check through its in-memory buffer before it is patched into the executable. A truncated, CRC-invalid, or structurally mismatched resource archive therefore fails packaging before it becomes a downloadable client payload or the server's updater source. [test_package_zip_determinism.py](../../../../BuildTools/tests/test_package_zip_determinism.py) covers deterministic metadata, ordering, and the post-build validation boundary.
+Client `.fores` bases are written from sorted normalized paths with no serialized timestamps. The packager validates the catalog and streams every decoded payload through exact-length and content-hash checks before accepting a resource archive. `Embedded` remains an in-memory ZIP with deterministic metadata and a CRC/readback check before it is patched into the executable. A corrupt artifact therefore fails packaging before it becomes an updater source. [test_package_resource_pack.py](../../../../BuildTools/tests/test_package_resource_pack.py) and [test_package_zip_helpers.py](../../../../BuildTools/tests/test_package_zip_helpers.py) cover the two formats.
 
-Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored archive still passes the exact-entry and CRC checks above, so caching cannot weaken updater payload validation.
+Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored `.fores` still passes payload validation, so caching cannot weaken updater integrity checks.
 
 The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
@@ -628,7 +631,7 @@ Local validation steps:
 4. Launch `<client-host> --ClientLibPath <path>` with a valid alternate runtime → host routes through the loaded library.
 5. Launch `<client-host> --ClientLibPath <path> --ClientLibCompatibilityVersion <other>` and remove the runtime → host fails (no fallback).
 6. Point `--ClientLibPath` to an invalid path, no `--ClientLibCompatibilityVersion` → host falls back to embedded client (Case 1).
-7. Build one project-owned packaged-server profile and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that the `ClientResources` pack list contains the resource zips.
+7. Build one project-owned packaged-server profile and confirm `<Settings.PlatformBinaries>/<target>/<name><ext>` (default `PlatformBinaries/`, sibling of the client-resources dir in the package layout) contains the per-target runtime libraries and that the `ClientResources` pack list contains `.fores` bases.
 8. Interrupt a client mid-download (kill the network) and reconnect — the next `GetUpdateFile` resumes from the temp-file size, no full re-download.
 9. Force a Case 2 → restart: package a client against an older `FO_COMPATIBILITY_VERSION`, point it at a server with a newer one, run. The resource updater UI should appear briefly, then the binary updater UI takes over (UI/SplashPic identical). Close the client after the restart prompt; the host renames `<live>-staging` over `<live>` and exits without loading it. The next launch must load the promoted runtime in a fresh process and reach the game.
 10. Crash recovery: kill the host while the binary updater UI is mid-download. Restart `<client-host>`. `ApplyStagedBinaryUpdate` runs at the start of `RunClientFromLibrary`; if `<live>-staging` is fully written it gets promoted, otherwise the runtime's resume logic completes the download in a normal updater session.

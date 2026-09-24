@@ -234,6 +234,10 @@ The first recorded reason wins, preventing the transport's later generic `Client
 
 `NetworkServer` starts transport-specific servers through factories:
 
+On the client side, `ClientConnection` also bounds silence. During secure-channel handshaking, or while a ping is outstanding, receiving no bytes for `ClientNetwork.PingTimeout` milliseconds (default 30000; zero disables the timeout) takes the ordinary disconnect path. Any incoming bytes count as progress, avoiding a false timeout during a large update portion; debugger sessions suppress this watchdog. A reconnect clears the pending ping. `Source/Tests/Test_ClientUpdater.cpp` covers a silent updater server.
+
+Server-side connection owners must call `DropAsyncCallbacks()` before destruction. It clears send, receive, and disconnect callbacks under their locks and waits for a callback already in progress, including a disconnect notification racing transport teardown (`Source/Server/ServerConnection.cpp`).
+
 - `StartInterthreadServer()`;
 - `StartUdpSocketsServer()`;
 - `StartAsioServer()` when `FO_HAVE_ASIO` is enabled;

@@ -18,6 +18,8 @@ The baking pipeline is a revision-pinned `experimental` contract. The Engine own
 
 Treat the current Engine source and generated contract models as authoritative. A project configuration demonstrates one composition of the pipeline; it does not redefine the reusable baker contract.
 
+Baking writes loose target-specific outputs. Packaging then filters each logical pack for its target and writes a deterministic `.fores` base; the executable's `Embedded` pack remains ZIP. A client update may pair a full `.fores` with one append-only writable `.patch.fores`, and a disposable `Resources.foindex` accelerates merged lookup. The byte-level format, hash identities, validation, and recovery rules belong to [Resource Pack Format](../../../ResourcePackFormat.md), while client synchronization belongs to [Client Runtime Split and Updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` compares real baked-tree formats with optional readback verification; `analyze_resource_corpus.py` estimates source distribution and index cost without writing packs.
+
 ## Source paths inspected
 
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`

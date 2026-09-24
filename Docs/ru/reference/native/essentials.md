@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"fd2ddae3725ca4f50c9c0a15a3592b725aaebef2a9fa9eb7d5eb927765cfe261"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"482f9d9e5d8d889046807ad96e38d65c09a63c8d95a75947c74c8d640bc1a268"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -319,7 +319,7 @@ standard stream копируется через `make_stream_string`,
 
 ### Файловая система, сжатие, сокеты и рабочие потоки
 
-`DiskFileSystem.*` является низкоуровневой абстракцией диска. Небольшой policy helper `fs_make_writable_path(user_writable_path, relative)` используется вышележащими слоями для writable overlay установленного клиента: пустой root или absolute input возвращает input без изменений, а relative path помещается под writable root. Вышележащее смонтированное представление ресурсов находится в `Source/Common/FileSystem.*` и описано в разделе [Конфигурация и источники данных](../settings/configuration-and-data-sources.md). `Compressor.*` владеет generic compression round trips, `NetSockets.*` содержит raw socket helpers ниже высокоуровневой модели network commands/connections из раздела [Сеть](../../explanation/authority-and-networking/), а `WorkThread.*` предоставляет простую инфраструктуру фоновых workers.
+`DiskFileSystem.*` владеет низкоуровневым доступом к диску. `fs::disk_read_file` удерживает descriptor и длину, `read_at` делает ограниченное позиционное чтение; region constructor открывает несжатый `.fores` внутри APK без копирования. `fs::disk_write_file` исключает конкурирующих writers, дописывает или обрезает незафиксированный хвост и flush-ит через `fsync`/`_commit`. `fs::disk_directory_lock` сериализует изменение ресурсов без lock file (`flock` в POSIX, named mutex в Windows); в отличие от mutex, повторный flock на тот же каталог не является reentrant даже в одном процессе. `fs::rename_durable` сохраняет rename, а `fs::sync_parent` — directory entry; `fs::available_space` помогает проверить место без preallocation возобновляемой загрузки. `fs::is_contained_relative_path` отвергает rooted path, `..`, colon, NUL и неверный UTF-8 до соединения с writable root. `fs::make_writable_path` помещает относительный path под user root. Для преобразования UTF-8 в `std::filesystem::path` используйте `fs::make_path`, обратно — `fs::path_to_string`: `path.string()` в Windows проходит через ANSI code page и может упасть на кириллическом профиле. Вышележащий mount описан в [конфигурации и источниках данных](../settings/configuration-and-data-sources.md). `Compressor.*` владеет сжатием, `NetSockets.*` — низкоуровневыми сокетами, `WorkThread.*` — фоновыми workers.
 
 В Windows `fs::make_io_path` передаёт standard-library filesystem/file operations буквальный extended-length path, не меняя логический resource path. Дисковые тесты проверяют Unicode names длиннее 320 native characters и поведение trailing names. Применяйте преобразование на native I/O boundary, а не сокращайте project paths.
 

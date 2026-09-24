@@ -200,7 +200,8 @@
       "exclude_document_ids": [
         "tools",
         "script-methods-map",
-        "buildtools-readme"
+        "buildtools-readme",
+        "documentation-site-publication"
       ]
     },
     "public_manifest": {
@@ -307,7 +308,8 @@
           "generated-cli-index",
           "generated-helper-cli-index",
           "generated-package-index",
-          "client-updater"
+          "client-updater",
+          "resource-pack-format"
         ]
       },
       {
@@ -1513,7 +1515,7 @@
       "audiences": ["game-developer", "release-operator", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/release/packaging.md",
-      "sources": ["BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/cmake/stages/Packages.cmake", "BuildTools/tests/test_docs_package.py", "BuildTools/tests/validate_package_interface.cmake", "BuildTools/tests/test_package_include.py", "BuildTools/tests/test_package_security.py", "BuildTools/tests/test_package_zip_determinism.py", "BuildTools/tests/test_packaging_matrix.py", "BuildTools/tests/test_minimal_multiplayer_package.py", "BuildTools/msicreator/createmsi.py", "BuildTools/check_windows7_imports.py", "BuildTools/SupportMatrix.json", ".github/workflows/validate.yml", "Examples/PackagingMatrix", "Examples/MinimalProject", "Examples/MinimalMultiplayer", "Docs/generated/package/index.md", "Docs/en/reference/platforms/support-matrix.md", "Docs/en/how-to/platforms/web-debugging.md", "Docs/en/how-to/platforms/android-debugging.md", "Docs/en/explanation/runtime/client-updater.md"]
+      "sources": ["BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/cmake/stages/Packages.cmake", "BuildTools/tests/test_docs_package.py", "BuildTools/tests/validate_package_interface.cmake", "BuildTools/tests/test_package_include.py", "BuildTools/tests/test_package_security.py", "BuildTools/tests/test_package_resource_pack.py", "BuildTools/tests/test_package_zip_helpers.py", "BuildTools/tests/test_packaging_matrix.py", "BuildTools/tests/test_minimal_multiplayer_package.py", "BuildTools/msicreator/createmsi.py", "BuildTools/check_windows7_imports.py", "BuildTools/SupportMatrix.json", ".github/workflows/validate.yml", "Examples/PackagingMatrix", "Examples/MinimalProject", "Examples/MinimalMultiplayer", "Docs/generated/package/index.md", "Docs/en/reference/platforms/support-matrix.md", "Docs/en/how-to/platforms/web-debugging.md", "Docs/en/how-to/platforms/android-debugging.md", "Docs/en/explanation/runtime/client-updater.md"]
     },
     "Docs/PackagingAndRelease.md": {
       "id": "legacy-packaging-and-release-route",
@@ -1787,13 +1789,29 @@
       "owner": "build-release", "state": "redirect", "disposition": "replace", "target": "Docs/en/explanation/runtime/client-updater.md", "redirect_to": "client-updater",
       "sources": ["Docs/en/explanation/runtime/client-updater.md", "Docs/ru/explanation/runtime/client-updater.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
+    "Docs/ResourcePackFormat.md": {
+      "id": "legacy-resource-pack-format-route",
+      "title": "Resource Pack Format",
+      "audiences": ["game-developer", "engine-contributor", "release-operator"],
+      "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
+      "owner": "build-release", "state": "redirect", "disposition": "replace", "target": "Docs/en/reference/resource-pack-format.md", "redirect_to": "resource-pack-format",
+      "sources": ["Docs/en/reference/resource-pack-format.md", "Docs/ru/reference/resource-pack-format.md"]
+    },
+    "Docs/en/reference/resource-pack-format.md": {
+      "id": "resource-pack-format",
+      "title": "Resource Pack Format",
+      "audiences": ["game-developer", "engine-contributor", "release-operator"],
+      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/reference/resource-pack-format.md",
+      "sources": ["Source/Common/ResourcePack.h", "Source/Common/ResourcePack.cpp", "Source/Common/ResourceIndex.h", "Source/Common/ResourceIndex.cpp", "Source/Client/Updater.cpp", "Source/Tests/Test_ResourcePack.cpp", "Source/Tests/Test_ResourceIndex.cpp", "BuildTools/package.py"]
+    },
     "Docs/en/explanation/runtime/client-updater.md": {
       "id": "client-updater",
       "title": "Client Runtime Split and Updater",
       "audiences": ["game-developer", "engine-contributor", "release-operator"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/explanation/runtime/client-updater.md",
-      "sources": ["Source/Applications/ClientApp.cpp", "Source/Applications/ClientLib.cpp", "Source/Client/ClientRuntimeApi.h", "Source/Client/ClientRuntimeApi.cpp", "Source/Client/Updater.h", "Source/Client/Updater.cpp", "Source/Frontend/ApplicationInit.cpp", "Source/Server/UpdaterBackend.h", "Source/Server/UpdaterBackend.cpp", "Source/Server/Server.cpp", "Source/Server/Player.h", "Source/Server/Player.cpp", "Source/Server/ServerConnection.h", "Source/Server/ServerConnection.cpp", "Source/Common/Common.h", "Source/Common/Settings.inc", "Source/Essentials/DiskFileSystem.h", "Source/Essentials/DiskFileSystem.cpp", "Source/Essentials/Platform.h", "Source/Essentials/Platform.cpp", "BuildTools/cmake/stages/Applications.cmake", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/package.py", "BuildTools/msicreator/createmsi.py", "BuildTools/tests/test_package_zip_determinism.py", "Source/Tests/Test_ClientRuntimeApi.cpp", "Source/Tests/Test_DiskFileSystem.cpp", "Source/Tests/Test_Platform.cpp", "Source/Tests/Test_Settings.cpp", "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c", "BuildTools/ExternalProjectEvidence.json"]
+      "sources": ["Source/Applications/ClientApp.cpp", "Source/Applications/ClientLib.cpp", "Source/Client/ClientRuntimeApi.h", "Source/Client/ClientRuntimeApi.cpp", "Source/Client/Updater.h", "Source/Client/Updater.cpp", "Source/Frontend/ApplicationInit.cpp", "Source/Server/UpdaterBackend.h", "Source/Server/UpdaterBackend.cpp", "Source/Server/Server.cpp", "Source/Server/Player.h", "Source/Server/Player.cpp", "Source/Server/ServerConnection.h", "Source/Server/ServerConnection.cpp", "Source/Common/Common.h", "Source/Common/Settings.inc", "Source/Essentials/DiskFileSystem.h", "Source/Essentials/DiskFileSystem.cpp", "Source/Essentials/Platform.h", "Source/Essentials/Platform.cpp", "BuildTools/cmake/stages/Applications.cmake", "BuildTools/cmake/helpers/Build.cmake", "BuildTools/package.py", "BuildTools/msicreator/createmsi.py", "BuildTools/tests/test_package_resource_pack.py", "Source/Tests/Test_ClientRuntimeApi.cpp", "Source/Tests/Test_DiskFileSystem.cpp", "Source/Tests/Test_Platform.cpp", "Source/Tests/Test_Settings.cpp", "ThirdParty/rpmalloc/rpmalloc/rpmalloc.c", "BuildTools/ExternalProjectEvidence.json"]
     },
     "Docs/FrontendAndRendering.md": {
       "id": "legacy-frontend-rendering-route",

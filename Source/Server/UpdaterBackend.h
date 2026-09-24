@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "ResourcePack.h"
 #include "Settings.h"
 
 FO_BEGIN_NAMESPACE
@@ -67,6 +68,8 @@ private:
         vector<uint8_t> MemoryData {};
         uint64_t Size {};
         uint64_t Hash {};
+        optional<ResourcePackHeader> PackHeader {};
+        fs::disk_read_file File {};
     };
 
     struct UpdateFileInfo
