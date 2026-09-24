@@ -189,6 +189,9 @@ ServerConnection::~ServerConnection()
     });
 
     _netConnection->Disconnect();
+
+    // A transport thread that won Disconnect() first may not have reported yet, and its report must not reach a dead owner
+    _netConnection->DropAsyncCallbacks();
 }
 
 auto ServerConnection::GetHost() const noexcept -> string_view

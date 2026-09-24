@@ -238,26 +238,36 @@ TEST_CASE("CommonUtilities")
 
 TEST_CASE("CommonFrameBalancer")
 {
+    // One preempted loop on a loaded machine overruns any bound, while a balancer that really waits overruns every loop
+    auto fastest_loop = [](FrameBalancer& balancer) {
+        auto measure = [&balancer] {
+            nanotime start = nanotime::now();
+            balancer.StartLoop();
+            balancer.EndLoop();
+            return nanotime::now() - start;
+        };
+
+        timespan fastest = measure();
+
+        for (int32_t i = 1; i < 10; i++) {
+            fastest = std::min(fastest, measure());
+        }
+
+        return fastest;
+    };
+
     SECTION("DisabledBalancerDoesNotWait")
     {
         FrameBalancer balancer {false, 100, 0};
 
-        nanotime start = nanotime::now();
-        balancer.StartLoop();
-        balancer.EndLoop();
-
-        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {50}});
     }
 
     SECTION("ZeroSleepYieldsInsteadOfSleeping")
     {
         FrameBalancer balancer {true, 0, 0};
 
-        nanotime start = nanotime::now();
-        balancer.StartLoop();
-        balancer.EndLoop();
-
-        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {50}});
     }
 
     SECTION("PositiveSleepWaitsForTheRequestedTime")

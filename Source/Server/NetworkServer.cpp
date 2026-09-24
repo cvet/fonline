@@ -202,6 +202,23 @@ void NetworkServerConnection::Disconnect()
     }
 }
 
+void NetworkServerConnection::DropAsyncCallbacks()
+{
+    FO_STACK_TRACE_ENTRY();
+
+    {
+        scoped_lock locker {_sendLocker};
+
+        _sendCallback = {};
+    }
+
+    // The winner of Disconnect() reports under this lock, so a report already in flight finishes before the owner goes
+    scoped_lock locker {_receiveLocker};
+
+    _receiveCallback = {};
+    _disconnectCallback = {};
+}
+
 auto NetworkServerConnection::SendCallback() -> vector<uint8_t>
 {
     FO_STACK_TRACE_ENTRY();
