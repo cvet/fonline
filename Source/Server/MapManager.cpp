@@ -739,9 +739,10 @@ auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, 
     return output;
 }
 
-auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback, int32_t max_length) const -> FindPathOutput
 {
     ValidateEntityAccess(map);
+    FO_VERIFY_AND_THROW(max_length >= 0, "Path search length limit must not be negative", max_length);
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
     if (cut == 0) {
@@ -765,7 +766,8 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     settings.ToHex = to_hex;
     settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
-    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.MaxLength = max_length != 0 ? std::min(max_length, _engine->Settings->Geometry.MaxPathFindLength) : _engine->Settings->Geometry.MaxPathFindLength;
+    settings.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
     settings.Cut = cut;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;

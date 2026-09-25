@@ -40,6 +40,9 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     constexpr msize TEST_MAP_SIZE {20, 20};
+    constexpr msize WIDE_MAP_SIZE {120, 120};
+    constexpr mpos POCKET_CENTER {60, 60};
+    constexpr mpos FAR_START {10, 10};
 
     // Helper: create settings for a clear map (no obstacles)
     static auto MakeClearSettings(mpos from, mpos to, int32_t cut = 0) -> FindPathInput
@@ -731,6 +734,128 @@ TEST_CASE("PathFinding::FindPath")
         CHECK(output.Result == FindPathOutput::ResultType::Ok);
         CHECK(output.NewToHex == mpos {8, 2});
         CHECK(!output.Steps.empty());
+    }
+}
+
+TEST_CASE("PathFinding::EnclosureProbe")
+{
+    // Every CheckHex call is counted, because the probe exists to make a hopeless search cheap, not to change its answer
+    auto make_settings = [](mpos from, mpos to, int32_t probe_limit, int32_t& calls, function<HexBlockResult(mpos)> check) -> FindPathInput {
+        FindPathInput settings;
+        settings.FromHex = from;
+        settings.ToHex = to;
+        settings.MapSize = WIDE_MAP_SIZE;
+        settings.MaxLength = 1000;
+        settings.EnclosureProbeLimit = probe_limit;
+        settings.CheckHex = [&calls, check = std::move(check)](mpos hex) -> HexBlockResult {
+            calls++;
+            return check(hex);
+        };
+        return settings;
+    };
+
+    auto ring_of = [](HexBlockResult ring_result) -> function<HexBlockResult(mpos)> { return [ring_result](mpos hex) -> HexBlockResult { return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? ring_result : HexBlockResult::Passable; }; };
+
+    SECTION("WalledOffTargetIsRefusedWithoutFloodingTheMap")
+    {
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, probed_calls, ring_of(HexBlockResult::Blocked)));
+        int32_t flooded_calls = 0;
+        auto flooded = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 0, flooded_calls, ring_of(HexBlockResult::Blocked)));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(flooded.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(probed_calls < 1000);
+        CHECK(flooded_calls > 10000);
+    }
+
+    SECTION("CutGoalInsideTheWallsIsRefusedToo")
+    {
+        int32_t calls = 0;
+        auto settings = make_settings(FAR_START, POCKET_CENTER, 64, calls, ring_of(HexBlockResult::Blocked));
+        settings.Cut = 1;
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(calls < 1000);
+    }
+
+    SECTION("NegativeCutIsProbedAsTheExactGoal")
+    {
+        int32_t calls = 0;
+        auto settings = make_settings(FAR_START, POCKET_CENTER, 64, calls, ring_of(HexBlockResult::Blocked));
+        settings.Cut = -1;
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(calls < 1000);
+    }
+
+    SECTION("DeferredRingStaysPassable")
+    {
+        int32_t gag_calls = 0;
+        auto gag_output = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, gag_calls, ring_of(HexBlockResult::DeferGag)));
+        int32_t critter_calls = 0;
+        auto critter_output = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, critter_calls, ring_of(HexBlockResult::DeferCritter)));
+
+        CHECK(gag_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(gag_output.NewToHex == POCKET_CENTER);
+        CHECK(critter_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(critter_output.NewToHex == POCKET_CENTER);
+    }
+
+    SECTION("ReachableRouteIsTheSameWithAndWithoutTheProbe")
+    {
+        auto wall = [](mpos hex) -> HexBlockResult { return hex.x == 40 && hex.y >= 5 && hex.y <= 110 ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {20, 60}, mpos {70, 60}, 64, probed_calls, wall));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {20, 60}, mpos {70, 60}, 0, plain_calls, wall));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::Ok);
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed.NewToHex == plain.NewToHex);
+        CHECK(probed.Steps == plain.Steps);
+    }
+
+    SECTION("ShortSearchNeverRunsTheProbe")
+    {
+        // A route found within the budget is answered before the probe could start, so it costs nothing extra
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {50, 60}, mpos {53, 60}, 1024, probed_calls, ring_of(HexBlockResult::Passable)));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {50, 60}, mpos {53, 60}, 0, plain_calls, ring_of(HexBlockResult::Passable)));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::Ok);
+        CHECK(probed_calls == plain_calls);
+    }
+
+    SECTION("RegionLargerThanTheBudgetFallsBackToTheFullSearch")
+    {
+        auto split = [](mpos hex) -> HexBlockResult { return hex.x == 60 ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {30, 60}, mpos {90, 60}, 64, probed_calls, split));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {30, 60}, mpos {90, 60}, 0, plain_calls, split));
+
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(probed_calls > plain_calls);
+    }
+
+    SECTION("MultiTargetSearchIsNotProbed")
+    {
+        int32_t probed_calls = 0;
+        auto probed_settings = make_settings(FAR_START, mpos {}, 64, probed_calls, ring_of(HexBlockResult::Blocked));
+        probed_settings.CheckTarget = [](mpos hex) { return hex == POCKET_CENTER; };
+        auto probed = PathFinding::FindPath(probed_settings);
+        int32_t plain_calls = 0;
+        auto plain_settings = make_settings(FAR_START, mpos {}, 0, plain_calls, ring_of(HexBlockResult::Blocked));
+        plain_settings.CheckTarget = [](mpos hex) { return hex == POCKET_CENTER; };
+        auto plain = PathFinding::FindPath(plain_settings);
+
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed_calls == plain_calls);
     }
 }
 

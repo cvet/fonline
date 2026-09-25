@@ -35,6 +35,8 @@
 
 FO_BEGIN_NAMESPACE
 
+static auto IsTargetWalledOff(const FindPathInput& input) -> bool;
+
 auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     // Single hex: just check center
@@ -186,8 +188,19 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     mpos to_hex = input.ToHex;
     *grid_at(input.FromHex) = 1;
     next_hexes.emplace_back(input.FromHex);
+    bool enclosure_probed = input.CheckTarget || input.EnclosureProbeLimit <= 0;
 
     while (true) {
+        // Only a search that has already outgrown the budget pays for flooding back from the target
+        if (!enclosure_probed && next_hexes.size() > numeric_cast<size_t>(input.EnclosureProbeLimit)) {
+            enclosure_probed = true;
+
+            if (IsTargetWalledOff(input)) {
+                output.Result = FindPathOutput::ResultType::NoWay;
+                return output;
+            }
+        }
+
         bool find_ok = false;
         size_t round_begin = next_hexes_read;
         auto round_end = next_hexes.size();
@@ -518,6 +531,67 @@ auto PathFinding::EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ip
     int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
     int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
     return ipos16 {clamped_ox, clamped_oy};
+}
+
+// Floods back over every hex the forward search could ever enter, deferred gags and critters included and
+// multihex footprints ignored, so a target side that closes without meeting the start cannot be reached
+static auto IsTargetWalledOff(const FindPathInput& input) -> bool
+{
+    msize map_size = input.MapSize;
+    size_t limit = numeric_cast<size_t>(input.EnclosureProbeLimit);
+    int32_t goal_hexes = GeometryHelper::HexesInRadius(std::max(input.Cut, 0));
+
+    if (numeric_cast<size_t>(goal_hexes) > limit) {
+        return false;
+    }
+
+    unordered_set<mpos> seen;
+    vector<mpos> region;
+    seen.reserve(limit);
+    region.reserve(limit);
+
+    for (int32_t i = 0; i < goal_hexes; i++) {
+        mpos goal_hex = input.ToHex;
+
+        if (!GeometryHelper::MoveHexAroundAway(goal_hex, i, map_size)) {
+            continue;
+        }
+
+        seen.emplace(goal_hex);
+
+        if (input.CheckHex(goal_hex) != HexBlockResult::Blocked) {
+            region.emplace_back(goal_hex);
+        }
+    }
+
+    for (size_t i = 0; i < region.size(); i++) {
+        mpos cur_hex = region[i];
+
+        for (int32_t j = 0; j < GameSettings::MAP_DIR_COUNT; j++) {
+            ipos32 raw_hex = ipos32 {cur_hex.x, cur_hex.y};
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, hdir(j));
+
+            if (!map_size.is_valid_pos(raw_hex)) {
+                continue;
+            }
+
+            mpos hex = map_size.from_raw_pos(raw_hex);
+
+            if (hex == input.FromHex) {
+                return false;
+            }
+            if (!seen.emplace(hex).second || input.CheckHex(hex) == HexBlockResult::Blocked) {
+                continue;
+            }
+            if (region.size() == limit) {
+                return false;
+            }
+
+            region.emplace_back(hex);
+        }
+    }
+
+    return true;
 }
 
 FO_END_NAMESPACE

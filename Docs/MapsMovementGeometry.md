@@ -123,7 +123,10 @@ Important `FindPathInput` fields:
 - `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
   only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
   because the search never steps off the map and never travels further than the depth limit. Raising
-  the setting therefore costs nothing on maps smaller than the new limit.
+  the setting therefore costs nothing on maps smaller than the new limit. A server caller may ask for
+  less per request (see [Path length limit per request](#path-length-limit-per-request)).
+- `EnclosureProbeLimit` — hex budget of the enclosure probe (see
+  [Walled-off targets](#walled-off-targets)); `0` disables it.
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -138,6 +141,30 @@ so a server caller can find the nearest reachable exact target with one BFS inst
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
+
+### Walled-off targets
+
+A search toward a target the start cannot reach learns that only by flooding everything the start can
+reach, up to `MaxLength` steps — on a large open map a few hundred thousand hexes for one refusal. When a
+single-target search (`CheckTarget` unset) has enqueued more than `EnclosureProbeLimit` hexes without
+finding the goal, it floods backwards once from the goal (every hex within `Cut` of `ToHex`) over the same
+`CheckHex` answers, within the same budget. Every hex that is not `Blocked` counts as passable there —
+deferred gags and critters included, multihex footprints ignored — so the backward region is a superset of
+what the forward search could ever use. If that region closes before the budget runs out without touching
+`FromHex`, the goal is walled off and the search answers `NoWay` at once; a region that outgrows the budget
+proves nothing and the forward search carries on unchanged. A route found within the budget never pays for
+the probe. `MapManager::FindPath()` and `MapView::FindPath()` take the budget from
+`Geometry.PathFindEnclosureProbe`; `FindPathToAny()` has no single goal to flood from and is not probed.
+
+### Path length limit per request
+
+`MapManager::FindPath()` takes a trailing `max_length`: `0` keeps `Geometry.MaxPathFindLength`, a positive
+value lowers the depth for this request only (a value above the setting is clamped to it), and a negative
+one throws. The server script surface exposes it as the `Critter.MoveToHex(hex, cut, endHexOffset,
+maxPathLength, speed, gagCallback)` overload: a route longer than the limit is refused as `HexTooFar`, and
+the refusal costs no more than a search of that depth. It is for movement whose purpose would be lost on a
+long detour — an idle stroll gains nothing from walking around half the map — so the caller that knows the
+purpose sets the bound instead of every search paying for the global maximum.
 
 Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
 

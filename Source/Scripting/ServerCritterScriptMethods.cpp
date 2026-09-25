@@ -735,7 +735,7 @@ FO_SCRIPT_API bool Server_Critter_IsOnline(ptr<Critter> self)
     return !!self->GetPlayer();
 }
 
-static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gag_callback_func) -> refcount_ptr<MovingContext>
+static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 end_hex_offset, int32_t max_path_length, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gag_callback_func) -> refcount_ptr<MovingContext>
 {
     auto engine = self->GetEngine();
     auto map = self->GetParent<Map>();
@@ -750,6 +750,9 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     }
     if (speed < 0 || speed > std::numeric_limits<uint16_t>::max()) {
         throw ScriptException("Speed arg out of range", speed);
+    }
+    if (max_path_length < 0) {
+        throw ScriptException("Max path length arg out of range", max_path_length);
     }
 
     self->StopMoving();
@@ -769,7 +772,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
     int16_t clamped_ox = std::clamp(end_hex_offset.x, numeric_cast<int16_t>(-GameSettings::MAP_HEX_WIDTH / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_WIDTH / 2));
     int16_t clamped_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
     ipos16 clamped_offset = {clamped_ox, clamped_oy};
-    auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback));
+    auto find_path = engine->MapMngr.FindPath(map, self, self->GetHex(), hex, self->GetMultihex(), cut, clamped_offset, std::move(gag_callback), max_path_length);
 
     if (find_path.Result != FindPathOutput::ResultType::Ok) {
         auto state = MovingState::GenericError;
@@ -812,7 +815,7 @@ static auto StartCritterMoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
 {
-    auto moving = StartCritterMoveToHex(self, hex, cut, ipos16 {}, speed, std::move(gagCallabck));
+    auto moving = StartCritterMoveToHex(self, hex, cut, ipos16 {}, 0, speed, std::move(gagCallabck));
 
     return moving.release_ownership();
 }
@@ -820,7 +823,17 @@ FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpo
 ///@ ExportMethod PassOwnership
 FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
 {
-    auto moving = StartCritterMoveToHex(self, hex, cut, endHexOffset, speed, std::move(gagCallabck));
+    auto moving = StartCritterMoveToHex(self, hex, cut, endHexOffset, 0, speed, std::move(gagCallabck));
+
+    return moving.release_ownership();
+}
+
+// A request whose route would be longer than maxPathLength steps is refused as HexTooFar, and the refusal costs
+// no more than a search of that depth; 0 keeps Geometry.MaxPathFindLength
+///@ ExportMethod PassOwnership
+FO_SCRIPT_API ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, ipos16 endHexOffset, int32_t maxPathLength, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck)
+{
+    auto moving = StartCritterMoveToHex(self, hex, cut, endHexOffset, maxPathLength, speed, std::move(gagCallabck));
 
     return moving.release_ownership();
 }
