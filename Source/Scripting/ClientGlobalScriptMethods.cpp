@@ -1608,13 +1608,8 @@ FO_SCRIPT_API void Client_Game_PresentOffscreenSurface(ptr<ClientEngine> client,
     client->SprMngr.DrawRenderTarget(rt, true, &from, &to);
 }
 
-///@ ExportMethod
-FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_view filePath)
+static auto ReadScreenPixels(ptr<ClientEngine> client, isize32& size) -> vector<ucolor>
 {
-    if (filePath.empty()) {
-        throw ScriptException("Screenshot file path is empty");
-    }
-
     auto main_rt = client->SprMngr.GetMainRenderTarget();
 
     if (!main_rt) {
@@ -1622,11 +1617,11 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
     }
 
     auto texture = main_rt->GetTexture();
-    isize32 size = texture->Size;
-    auto pixels = texture->GetTextureRegion({0, 0}, size);
+    isize32 texture_size = texture->Size;
+    auto pixels = texture->GetTextureRegion({0, 0}, texture_size);
 
     if (texture->FlippedHeight) {
-        auto width = numeric_cast<size_t>(size.width);
+        auto width = numeric_cast<size_t>(texture_size.width);
 
         if (width != 0) {
             vector<ucolor> row_buf(width);
@@ -1637,15 +1632,60 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
             auto pixels_data = make_nptr(pixels.data());
             FO_VERIFY_AND_THROW(pixels_data, "Pixel data is null");
 
-            for (int32_t y = 0; y < size.height / 2; y++) {
+            for (int32_t y = 0; y < texture_size.height / 2; y++) {
                 auto top = numeric_cast<size_t>(y) * width;
-                auto bottom = numeric_cast<size_t>(size.height - 1 - y) * width;
+                auto bottom = numeric_cast<size_t>(texture_size.height - 1 - y) * width;
                 memory::copy(row_buf_data, pixels_data.get() + top, row_bytes);
                 memory::copy(pixels_data.get() + top, pixels_data.get() + bottom, row_bytes);
                 memory::copy(pixels_data.get() + bottom, row_buf_data, row_bytes);
             }
         }
     }
+
+    size = texture_size;
+    return pixels;
+}
+
+// Averages every factor x factor block into one pixel; edge blocks average only the pixels that exist
+static auto DownscalePixels(const_span<ucolor> pixels, isize32 size, int32_t factor, isize32 result_size) -> vector<ucolor>
+{
+    vector<ucolor> result(numeric_cast<size_t>(result_size.width) * numeric_cast<size_t>(result_size.height));
+
+    for (int32_t y = 0; y < result_size.height; y++) {
+        for (int32_t x = 0; x < result_size.width; x++) {
+            uint32_t r = 0;
+            uint32_t g = 0;
+            uint32_t b = 0;
+            uint32_t a = 0;
+            uint32_t count = 0;
+
+            for (int32_t sy = y * factor; sy < std::min((y + 1) * factor, size.height); sy++) {
+                for (int32_t sx = x * factor; sx < std::min((x + 1) * factor, size.width); sx++) {
+                    ucolor pixel = pixels[numeric_cast<size_t>(sy) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(sx)];
+                    r += pixel.comp.r;
+                    g += pixel.comp.g;
+                    b += pixel.comp.b;
+                    a += pixel.comp.a;
+                    count++;
+                }
+            }
+
+            result[numeric_cast<size_t>(y) * numeric_cast<size_t>(result_size.width) + numeric_cast<size_t>(x)] = ucolor {numeric_cast<uint8_t>(r / count), numeric_cast<uint8_t>(g / count), numeric_cast<uint8_t>(b / count), numeric_cast<uint8_t>(a / count)};
+        }
+    }
+
+    return result;
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_view filePath)
+{
+    if (filePath.empty()) {
+        throw ScriptException("Screenshot file path is empty");
+    }
+
+    isize32 size;
+    vector<ucolor> pixels = ReadScreenPixels(client, size);
 
     string path = fs::make_writable_path(client->Settings->Common.UserWritablePath, strex(filePath).format_path());
     string dir = strex(path).extract_dir().str();
@@ -1656,7 +1696,31 @@ FO_SCRIPT_API void Client_Game_SaveScreenshot(ptr<ClientEngine> client, string_v
         }
     }
 
-    ImageWriter::WriteSimplePng(path, size, pixels);
+    ImageWriter::WritePng(path, size, pixels);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API vector<uint8_t> Client_Game_CaptureScreenshot(ptr<ClientEngine> client, int32_t maxSide)
+{
+    if (maxSide < 0) {
+        throw ScriptException("Negative screenshot side limit", maxSide);
+    }
+    if (client->CanDrawInScripts) {
+        throw ScriptException("Screenshot can't be captured while the frame is being drawn");
+    }
+
+    isize32 size;
+    vector<ucolor> pixels = ReadScreenPixels(client, size);
+    int32_t longest_side = std::max(size.width, size.height);
+
+    if (maxSide != 0 && longest_side > maxSide) {
+        int32_t factor = (longest_side + maxSide - 1) / maxSide;
+        isize32 scaled_size {(size.width + factor - 1) / factor, (size.height + factor - 1) / factor};
+        pixels = DownscalePixels(pixels, size, factor, scaled_size);
+        size = scaled_size;
+    }
+
+    return ImageWriter::EncodeCompactPng(size, pixels);
 }
 
 ///@ ExportMethod

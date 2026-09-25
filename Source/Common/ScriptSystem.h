@@ -126,6 +126,9 @@ struct DataAccessor
     virtual void AddArrayElement(ptr<void> /*data*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void ClearDict(ptr<void> /*data*/) const { throw InvalidCallException(FO_LINE_STR); }
     virtual void AddDictElement(ptr<void> /*data*/, ptr<void> /*key*/, ptr<void> /*value*/) const { throw InvalidCallException(FO_LINE_STR); }
+    // An array of plain numbers may cross as one byte block; false leaves the caller on element-wise access
+    [[nodiscard]] virtual auto ReadArrayRaw(ptr<void> /*data*/, span<uint8_t> /*dest*/) const -> bool { return false; }
+    [[nodiscard]] virtual auto WriteArrayRaw(ptr<void> /*data*/, const_span<uint8_t> /*src*/) const -> bool { return false; }
     virtual ~DataAccessor() = default;
 };
 
@@ -591,6 +594,10 @@ namespace NativeDataCaller
     template<typename T>
     concept entity_handle_collection = vector_collection<T> && entity_handle_arg<typename T::value_type>;
 
+    // Plain numbers have one layout in every backend, so an array of them can be copied as bytes
+    template<typename T>
+    concept raw_array_value = std::is_arithmetic_v<T> && !std::is_same_v<T, bool>;
+
     // A collection slot holds the script Entity handle whatever the declared element type says, so it is
     // promoted here rather than reinterpreted, which would let a prototype through and kill the callee
     template<typename ElemT>
@@ -619,6 +626,17 @@ namespace NativeDataCaller
             using value_t = typename raw_t::value_type;
             auto& v = temp.emplace();
             size_t size = accessor.GetArraySize(data);
+
+            if constexpr (raw_array_value<value_t>) {
+                v.resize(size);
+
+                if (size == 0 || accessor.ReadArrayRaw(data, make_span(v))) {
+                    return v;
+                }
+
+                v.clear();
+            }
+
             v.reserve(size);
 
             for (size_t i = 0; i < size; i++) {
@@ -721,6 +739,13 @@ namespace NativeDataCaller
         if constexpr (std::is_lvalue_reference_v<T> && !std::is_const_v<std::remove_reference_t<T>>) {
             if constexpr (vector_collection<raw_t>) {
                 auto& v = temp.value();
+
+                if constexpr (raw_array_value<typename raw_t::value_type>) {
+                    if (accessor.WriteArrayRaw(data, make_const_span(v))) {
+                        return;
+                    }
+                }
+
                 accessor.ClearArray(data);
 
                 for (auto& e : v) {

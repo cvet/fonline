@@ -56,56 +56,7 @@ static auto CalcPngCrc32(const_span<uint8_t> data) noexcept -> uint32_t
 
 TEST_CASE("ImageWriter")
 {
-    SECTION("WriteSimpleTgaCreatesFileWithExpectedHeader")
-    {
-        auto temp_root = std::filesystem::temp_directory_path() / "lf_image_writer_tests" / std::to_string(std::random_device {}());
-        auto file_path = temp_root / "nested" / "sample.tga";
-
-        isize32 image_size {2, 1};
-        vector<ucolor> pixels;
-        pixels.emplace_back(ucolor {1, 2, 3, 4});
-        pixels.emplace_back(ucolor {5, 6, 7, 8});
-
-        ImageWriter::WriteSimpleTga(string(file_path.string()), image_size, pixels);
-
-        REQUIRE(std::filesystem::exists(file_path));
-        CHECK(std::filesystem::file_size(file_path) == 18 + pixels.size() * sizeof(uint32_t));
-
-        std::ifstream input(file_path, std::ios::binary);
-        REQUIRE(input);
-
-        std::array<uint8_t, 18> header {};
-        input.read(reinterpret_cast<char*>(header.data()), static_cast<std::streamsize>(header.size()));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(header.size()));
-
-        CHECK(header[2] == 2);
-        CHECK(header[12] == 2);
-        CHECK(header[13] == 0);
-        CHECK(header[14] == 1);
-        CHECK(header[15] == 0);
-        CHECK(header[16] == 32);
-        CHECK(header[17] == 0x20);
-
-        std::array<uint32_t, 2> stored_pixels {};
-        input.read(reinterpret_cast<char*>(stored_pixels.data()), static_cast<std::streamsize>(sizeof(stored_pixels)));
-        REQUIRE(input.gcount() == static_cast<std::streamsize>(sizeof(stored_pixels)));
-
-        // A TrueColor TGA stores pixels in B, G, R, A order, so the writer swaps red and blue
-        auto to_bgra = [](ucolor c) -> uint32_t {
-            std::swap(c.comp.r, c.comp.b);
-            return c.rgba;
-        };
-
-        CHECK(stored_pixels[0] == to_bgra(pixels[0]));
-        CHECK(stored_pixels[1] == to_bgra(pixels[1]));
-
-        input.close();
-
-        uintmax_t removed = std::filesystem::remove_all(temp_root);
-        CHECK(removed > 0);
-    }
-
-    SECTION("WriteSimplePngCreatesDecodableFile")
+    SECTION("WritePngCreatesDecodableFile")
     {
         auto temp_root = std::filesystem::temp_directory_path() / "lf_image_writer_tests" / std::to_string(std::random_device {}());
         auto file_path = temp_root / "nested" / "sample.png";
@@ -117,7 +68,7 @@ TEST_CASE("ImageWriter")
         pixels.emplace_back(ucolor {9, 10, 11, 12});
         pixels.emplace_back(ucolor {13, 14, 15, 16});
 
-        ImageWriter::WriteSimplePng(string(file_path.string()), image_size, pixels);
+        ImageWriter::WritePng(string(file_path.string()), image_size, pixels);
 
         REQUIRE(std::filesystem::exists(file_path));
 
@@ -186,6 +137,112 @@ TEST_CASE("ImageWriter")
 
         uintmax_t removed = std::filesystem::remove_all(temp_root);
         CHECK(removed > 0);
+    }
+
+    SECTION("EncodeCompactPngRoundTripsOpaquePixels")
+    {
+        // Gradients and repeats make different rows prefer different filters, so every unfilter branch is exercised
+        isize32 image_size {5, 4};
+        vector<ucolor> pixels;
+
+        for (int32_t y = 0; y < image_size.height; y++) {
+            for (int32_t x = 0; x < image_size.width; x++) {
+                pixels.emplace_back(ucolor {numeric_cast<uint8_t>(x * 40 + y), numeric_cast<uint8_t>(y * 60), numeric_cast<uint8_t>((x * y * 37) % 256), numeric_cast<uint8_t>(x * 10)});
+            }
+        }
+
+        vector<uint8_t> png = ImageWriter::EncodeCompactPng(image_size, pixels);
+
+        const uint8_t expected_signature[8] = {0x89, 'P', 'N', 'G', 0x0D, 0x0A, 0x1A, 0x0A};
+        REQUIRE(png.size() > sizeof(expected_signature));
+        CHECK(std::equal(std::begin(expected_signature), std::end(expected_signature), png.begin()));
+
+        auto read_big_endian = [&png](size_t offset) -> uint32_t {
+            return (numeric_cast<uint32_t>(png[offset]) << 24) | (numeric_cast<uint32_t>(png[offset + 1]) << 16) | //
+                (numeric_cast<uint32_t>(png[offset + 2]) << 8) | numeric_cast<uint32_t>(png[offset + 3]);
+        };
+
+        map<string, std::pair<size_t, size_t>> chunks;
+        size_t offset = sizeof(expected_signature);
+
+        while (offset + 12 <= png.size()) {
+            size_t payload_size = numeric_cast<size_t>(read_big_endian(offset));
+            string type(reinterpret_cast<const char*>(png.data()) + offset + 4, 4);
+            REQUIRE(offset + 12 + payload_size <= png.size());
+            CHECK(read_big_endian(offset + 8 + payload_size) == CalcPngCrc32(const_span<uint8_t>(png).subspan(offset + 4, payload_size + 4)));
+            chunks.emplace(type, std::pair {offset + 8, payload_size});
+            offset += 12 + payload_size;
+        }
+
+        CHECK(offset == png.size());
+        REQUIRE(chunks.count("IHDR") == 1);
+        REQUIRE(chunks.count("IDAT") == 1);
+        REQUIRE(chunks.count("IEND") == 1);
+
+        auto header = chunks["IHDR"];
+        REQUIRE(header.second == 13);
+        CHECK(read_big_endian(header.first) == 5);
+        CHECK(read_big_endian(header.first + 4) == 4);
+        CHECK(png[header.first + 8] == 8);
+        CHECK(png[header.first + 9] == 2);
+
+        auto image_data = chunks["IDAT"];
+        vector<uint8_t> scanlines = compressor::decompress(const_span<uint8_t>(png).subspan(image_data.first, image_data.second), 4);
+
+        constexpr size_t pixel_bytes = 3;
+        size_t row_bytes = 5 * pixel_bytes;
+        REQUIRE(scanlines.size() == (row_bytes + 1) * 4);
+
+        // Reverse the filters as a decoder would, independently of the encoder's own helpers
+        vector<uint8_t> prev_row(row_bytes);
+        vector<uint8_t> row(row_bytes);
+
+        for (size_t y = 0; y < 4; y++) {
+            uint8_t filter = scanlines[y * (row_bytes + 1)];
+            REQUIRE(filter <= 4);
+
+            for (size_t i = 0; i < row_bytes; i++) {
+                int32_t left = i >= pixel_bytes ? row[i - pixel_bytes] : 0;
+                int32_t up = prev_row[i];
+                int32_t up_left = i >= pixel_bytes ? prev_row[i - pixel_bytes] : 0;
+                int32_t predictor = 0;
+
+                if (filter == 1) {
+                    predictor = left;
+                }
+                else if (filter == 2) {
+                    predictor = up;
+                }
+                else if (filter == 3) {
+                    predictor = (left + up) / 2;
+                }
+                else if (filter == 4) {
+                    int32_t estimate = left + up - up_left;
+                    int32_t to_left = std::abs(estimate - left);
+                    int32_t to_up = std::abs(estimate - up);
+                    int32_t to_up_left = std::abs(estimate - up_left);
+                    predictor = to_left <= to_up && to_left <= to_up_left ? left : (to_up <= to_up_left ? up : up_left);
+                }
+
+                row[i] = numeric_cast<uint8_t>((scanlines[y * (row_bytes + 1) + 1 + i] + predictor) & 0xFF);
+            }
+
+            for (size_t x = 0; x < 5; x++) {
+                const ucolor& pixel = pixels[y * 5 + x];
+                CHECK(row[x * pixel_bytes] == pixel.comp.r);
+                CHECK(row[x * pixel_bytes + 1] == pixel.comp.g);
+                CHECK(row[x * pixel_bytes + 2] == pixel.comp.b);
+            }
+
+            std::swap(prev_row, row);
+        }
+    }
+
+    SECTION("EncodeCompactPngRejectsMismatchedPixelCount")
+    {
+        vector<ucolor> pixels(3);
+        CHECK_THROWS(ImageWriter::EncodeCompactPng(isize32 {2, 2}, pixels));
+        CHECK_THROWS(ImageWriter::EncodeCompactPng(isize32 {0, 0}, {}));
     }
 }
 

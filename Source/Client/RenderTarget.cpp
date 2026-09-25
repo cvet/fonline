@@ -236,9 +236,9 @@ void RenderTargetManager::DumpTextures(string_view writable_root) const
             atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));
 
     auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
-        string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
+        string fname = strex("{}/{}_{}x{}.png", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
         auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-        ImageWriter::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
+        ImageWriter::WritePng(fname, rt->_texture->Size, tex_data);
     };
 
     size_t num = 1;

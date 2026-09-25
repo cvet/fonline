@@ -368,7 +368,7 @@ conservative contract. `Render.ModelDirectDraw` retains atlas-side preview and
 hit-test data while visible geometry continues to draw directly in the scene.
 
 `Game.DumpAtlases()` and the mapper's **Dump atlases** command annotate the
-read-back TGA copy with the live allocation geometry; the runtime atlas texture
+read-back PNG copy with the live allocation geometry; the runtime atlas texture
 is not modified. Magenta lines show triangle edges, cyan pixels show mesh
 vertices, yellow rectangles identify implicit quad geometry, and a red X marks
 an explicitly empty baked frame. `AtlasSprite` owns its mesh metadata; the live

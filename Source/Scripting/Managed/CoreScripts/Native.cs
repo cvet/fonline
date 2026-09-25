@@ -656,6 +656,60 @@ internal static class Native
         ((IList)list).Add(value);
     }
 
+    // A list of plain numbers crosses the boundary as one byte block; null and false send the engine back to the
+    // element-wise helpers above, which box every value
+    [CallableByEngine]
+    internal static byte[]? GetListRawBytes(object list)
+    {
+        return list switch {
+            List<byte> values => GetListBytes(values),
+            List<sbyte> values => GetListBytes(values),
+            List<short> values => GetListBytes(values),
+            List<ushort> values => GetListBytes(values),
+            List<int> values => GetListBytes(values),
+            List<uint> values => GetListBytes(values),
+            List<long> values => GetListBytes(values),
+            List<ulong> values => GetListBytes(values),
+            List<float> values => GetListBytes(values),
+            List<double> values => GetListBytes(values),
+            _ => null,
+        };
+    }
+
+    [CallableByEngine]
+    internal static bool SetListRawBytes(object list, byte[] raw)
+    {
+        return list switch {
+            List<byte> values => SetListBytes(values, raw),
+            List<sbyte> values => SetListBytes(values, raw),
+            List<short> values => SetListBytes(values, raw),
+            List<ushort> values => SetListBytes(values, raw),
+            List<int> values => SetListBytes(values, raw),
+            List<uint> values => SetListBytes(values, raw),
+            List<long> values => SetListBytes(values, raw),
+            List<ulong> values => SetListBytes(values, raw),
+            List<float> values => SetListBytes(values, raw),
+            List<double> values => SetListBytes(values, raw),
+            _ => false,
+        };
+    }
+
+    private static byte[] GetListBytes<T>(List<T> values)
+        where T : unmanaged
+    {
+        return MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(values)).ToArray();
+    }
+
+    private static bool SetListBytes<T>(List<T> values, byte[] raw)
+        where T : unmanaged
+    {
+        int elementSize = Unsafe.SizeOf<T>();
+        Invariant.Verify(raw.Length % elementSize == 0, "Raw list block must hold a whole number of elements", raw.Length, elementSize);
+        CollectionsMarshal.SetCount(values, raw.Length / elementSize);
+        raw.AsSpan().CopyTo(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(values)));
+        return true;
+    }
+
     [CallableByEngine]
     internal static object CreateDictionary(Type keyType, Type valueType)
     {
@@ -916,6 +970,18 @@ internal static class Native
 
     [MethodImpl(MethodImplOptions.InternalCall)]
     private static extern long GetAndResetContinuationPumpsInternal(IntPtr backend, out string? error);
+
+    // How many list elements crossed the boundary one by one since the last read; counting starts at the first read
+    internal static long GetAndResetListItemCrossings()
+    {
+        string ? error;
+        long value = GetAndResetListItemCrossingsInternal(BoundBackend, out error);
+        ThrowNativeError(error);
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.InternalCall)]
+    private static extern long GetAndResetListItemCrossingsInternal(IntPtr backend, out string? error);
 
     // Drives the InteropProbe adapter from a native loop over one transport and returns the loop time in nanoseconds
     internal static long ProbeCallbackTransport(Delegate handler, int mode, int iterations, IntPtr ucoEntry,
