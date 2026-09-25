@@ -167,7 +167,7 @@ static auto BuildModelAnimationRuntimeProceduralTestFixture() -> ModelAnimationR
 
 TEST_CASE("ModelAnimationRuntimePosesEvaluateIdenticallyOnClientWorkers")
 {
-    // Pose evaluation is the kernel Client.WorkerThreads spreads, and the claim behind it is that separate poses
+    // Pose evaluation is the kernel client workers run, and the claim behind it is that separate poses
     // over one shared rig are independent: the same inputs run twice must give bit-identical world matrices
     ModelAnimationRuntimeProceduralTestFixture fixture = BuildModelAnimationRuntimeProceduralTestFixture();
     constexpr size_t POSE_COUNT = 24;

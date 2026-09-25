@@ -35,29 +35,54 @@
 
 FO_BEGIN_NAMESPACE
 
-auto WorkScheduler::ResolveWorkerCount(int32_t configured_worker_threads) -> int32_t
+auto WorkScheduler::ReadWorkerCountInputs() -> WorkerCountInputs
 {
-    if (configured_worker_threads == 0) {
-        return 0;
+    return WorkerCountInputs {
+        .LogicalCores = numeric_cast<int32_t>(std::thread::hardware_concurrency()),
+        .ThreadsSupported = !FO_WEB,
+        .MobileCpu = FO_ANDROID || FO_IOS,
+    };
+}
+
+auto WorkScheduler::ChooseWorkerCount(const WorkerCountInputs& inputs, const WorkerCountLimits& limits) -> WorkerCountChoice
+{
+    // Checked before the machine is, so a bad cap fails on every platform and not only where it would bite
+    FO_VERIFY_AND_THROW(limits.MaxWorkers >= 0 && limits.MaxWorkers <= MAX_WORKER_THREADS, "Worker count cap is outside the supported range", limits.MaxWorkers, MAX_WORKER_THREADS);
+    FO_VERIFY_AND_THROW(limits.MaxMobileWorkers >= 0 && limits.MaxMobileWorkers <= MAX_WORKER_THREADS, "Mobile worker count cap is outside the supported range", limits.MaxMobileWorkers, MAX_WORKER_THREADS);
+    FO_VERIFY_AND_THROW(limits.HeadroomMinCores >= 0, "Headroom core threshold must not be negative", limits.HeadroomMinCores);
+
+    // The browser build is compiled without -pthread, so the switch can ask for workers there but not get them
+    if (!inputs.ThreadsSupported) {
+        return {.WorkerCount = 0, .Reason = "this build cannot start threads"};
+    }
+    if (inputs.LogicalCores <= 0) {
+        return {.WorkerCount = 0, .Reason = "the machine did not report its core count"};
     }
 
-#if FO_WEB
-    // The browser build is compiled without -pthread, so a worker cannot be started at all. Refused rather than
-    // quietly downgraded, because a client that reports parallel mode and runs serial is the harder bug
-    throw WorkSchedulerException("Client worker threads are not available in this build", configured_worker_threads);
-#else
+    // The application thread runs a share of every batch itself, so it keeps a core of its own
+    int32_t spare_cores = inputs.LogicalCores - 1;
+    bool keeps_headroom = inputs.LogicalCores >= limits.HeadroomMinCores;
 
-    if (configured_worker_threads == AUTO_WORKER_THREADS) {
-        // One core is already spent by the thread that owns the frame, and a machine that reports nothing at all
-        // still has to run, so the automatic answer never drops below a single helper
-        int32_t hardware_threads = numeric_cast<int32_t>(std::thread::hardware_concurrency());
-        return std::clamp(hardware_threads - 1, 1, MAX_WORKER_THREADS);
+    if (keeps_headroom) {
+        spare_cores--;
     }
 
-    FO_VERIFY_AND_THROW(configured_worker_threads > 0 && configured_worker_threads <= MAX_WORKER_THREADS, "Client worker thread count is outside the supported range", configured_worker_threads, MAX_WORKER_THREADS);
+    if (spare_cores <= 0) {
+        return {.WorkerCount = 0, .Reason = "no core is left over beside the application thread"};
+    }
 
-    return configured_worker_threads;
-#endif
+    if (inputs.MobileCpu && limits.MaxMobileWorkers < limits.MaxWorkers && spare_cores > limits.MaxMobileWorkers) {
+        return {.WorkerCount = limits.MaxMobileWorkers, .Reason = limits.MaxMobileWorkers == 0 ? "the mobile worker cap is zero" : "capped for a mobile CPU"};
+    }
+    if (spare_cores > limits.MaxWorkers) {
+        return {.WorkerCount = limits.MaxWorkers, .Reason = limits.MaxWorkers == 0 ? "the worker cap is zero" : "capped at the worker maximum"};
+    }
+
+    if (keeps_headroom) {
+        return {.WorkerCount = spare_cores, .Reason = "one core kept for the application thread and one for driver, audio and runtime"};
+    }
+
+    return {.WorkerCount = spare_cores, .Reason = "one core kept for the application thread"};
 }
 
 WorkScheduler::WorkScheduler(string_view name, int32_t worker_count) :

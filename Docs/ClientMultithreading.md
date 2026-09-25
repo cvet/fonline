@@ -2,11 +2,13 @@
 
 ## What this is
 
-Client multithreading is a **runtime option, not a build option**. One binary runs both modes, and
-`Client.WorkerThreads` decides at startup which one: `0` runs everything on the application thread, a positive
-value starts that many CPU worker threads beside it, and `-1` asks the machine. There is no
-`FO_ENABLE_CLIENT_MULTITHREADING` macro and no separate artifact — a build that could only run one of the modes
-would make the two impossible to compare on the same machine, which is the whole point of the option.
+Client multithreading is a **runtime option, not a build option**. One binary runs both modes, and the boolean
+`Client.Multithreading` decides at startup which one: off runs everything on the application thread, on lets the
+engine start CPU worker threads beside it. **How many is the engine's decision, not a setting** — it is read
+from the machine by the rule in [How many workers](#how-many-workers), because a count written into a config is
+right for the machine it was written on and wrong everywhere else. There is no `FO_ENABLE_CLIENT_MULTITHREADING`
+macro and no separate artifact — a build that could only run one of the modes would make the two impossible to
+compare on the same machine, which is the whole point of the option.
 
 What is implemented today:
 
@@ -37,8 +39,8 @@ batch item exclusively owns, plus immutable data whose lifetime the owner has pi
 ```mermaid
 flowchart LR
     A[Owner: network, input, scripts, map update] --> B[Eligible stage]
-    B -->|WorkerThreads = 0| S[Direct: the owner calls the kernel itself]
-    B -->|WorkerThreads > 0| P[Owner prepares a bounded batch]
+    B -->|no workers| S[Direct: the owner calls the kernel itself]
+    B -->|workers started| P[Owner prepares a bounded batch]
     P --> W[Workers + owner run the kernels]
     W --> J[Batch drains, first failure is kept]
     S --> C[Owner: apply results, effects, callbacks]
@@ -95,10 +97,38 @@ Scheduling details worth knowing before adding a second stage:
 - **Nesting is refused.** A batch submitted from inside a batch throws instead of deadlocking against a pool it
   is itself occupying.
 
-`ResolveWorkerCount` validates the setting before anything starts: `0`, `-1`, or `1..MAX_WORKER_THREADS`.
-Anything else throws, and on Web *any* non-zero request throws, because the browser build is compiled without
-`-pthread` and a client that reports parallel mode while running serial is the harder bug to find. The resolved
-mode and the count actually started are logged at client startup.
+## How many workers
+
+`Client.Multithreading` is a switch, and the worker count behind it is chosen once, at client construction, by
+`WorkScheduler::ChooseWorkerCount`. It reads three facts through `ReadWorkerCountInputs` — the logical core count,
+whether the build can start threads at all, and whether the CPU is a phone's — and applies these rules in order,
+with the three thresholds taken from settings (defaults in brackets):
+
+| Rule | Why |
+|---|---|
+| No thread support (Web) → no workers | The browser build is compiled without `-pthread`. The switch can be on in a config Web shares, and the client then runs serial rather than failing to start. |
+| Unknown core count → no workers | A machine that reports nothing gives the rule nothing to divide; serial is the one answer that cannot oversubscribe it. |
+| One core is kept for the application thread | It is not idle during a batch: it runs a share of the chunks itself, so counting it as a worker would put two busy threads on one core. |
+| From `Client.MultithreadingHeadroomMinCores` (4) cores, one more is kept | Every client keeps threads of its own — the graphics driver's submission thread, the audio mixer, the managed runtime. Below four cores that core is worth more to the batch than as headroom. |
+| A phone is capped at `Client.MultithreadingMaxMobileWorkers` (2) | A phone mixes fast and slow cores and runs on a thermal budget. Chunks are claimed dynamically but are equal in size, so one landing on a slow core holds the whole batch back; the fast cluster a phone can count on is small. The cap applies on top of the general one and never lifts it. |
+| Every machine is capped at `Client.MultithreadingMaxWorkers` (8) | The only batch today is a frame's model poses. Past this many helpers it splits into chunks of a pose or two, and every extra worker adds a wake and a join for no work. |
+
+With the defaults that gives 0 workers on 1 core, 1 on 2, 2 on 3 and 4, 4 on 6, 6 on 8, and 8 from 10 cores up;
+a phone gets at most 2. Zero is a legitimate answer: the client then runs serial with the switch on, which is why the startup log
+names the count actually started and what limited it —
+`Client multithreading: on, 6 worker threads (8 logical cores, one core kept for the application thread and one
+for driver, audio and runtime)`, `Client multithreading: on, running serial (1 logical cores, no core is left
+over beside the application thread)`, or `Client multithreading: off`.
+
+The three thresholds are initial values, set by reasoning rather than measured; the profiling stage is what
+revises them, and because they are settings a capture can sweep them with no rebuild. They tune the rule, not the
+answer: there is still no setting that names a worker count, because a count is right only for the machine it was
+written on, while a cap or a headroom threshold means the same thing on every machine. A cap may be `0` — the
+mobile cap at `0` keeps phones serial while desktops run parallel — and none may exceed `MAX_WORKER_THREADS` (64),
+the scheduler's own construction limit; `ChooseWorkerCount` rejects a cap outside `0..64` or a negative threshold
+on every platform, including the ones where it would not change the answer. Chunk sizes are not part of the rule:
+a stage still sets its own minimum per chunk, and `ShouldRunParallel` still keeps a batch too small to spread on
+the owner.
 
 ## The first stage: sprite CPU updates
 
@@ -173,8 +203,8 @@ there regardless of what the CPU workers do.
 | Target | State |
 |---|---|
 | Windows, Linux | Both modes available. Validate here first. |
-| macOS, Android | Both modes compile and the scheduler is generic, but neither has been validated; do not advertise parallel mode there until it has. |
-| Web | Serial only. `Client.WorkerThreads` must be `0`; a non-zero value is a configuration error. The Emscripten configuration does not enable `-pthread`, and the browser Mono runtime has its own initialization and main-thread attachment rules ([WebDebugging.md](WebDebugging.md), [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads.html)). A threaded Web build is a separate artifact with COOP/COEP isolation and loader selection, and blocking the browser main thread on a worker would stall it — that lane needs non-blocking orchestration of its own. |
+| macOS, Android, iOS | Both modes compile and the scheduler is generic, but neither has been validated; do not advertise parallel mode there until it has. Android and iOS get the mobile cap. |
+| Web | Serial only. The worker-count rule answers zero there, so `Client.Multithreading` may be on in a shared config and the client still starts serial, saying so in its log. The Emscripten configuration does not enable `-pthread`, and the browser Mono runtime has its own initialization and main-thread attachment rules ([WebDebugging.md](WebDebugging.md), [Emscripten pthreads](https://emscripten.org/docs/porting/pthreads.html)). A threaded Web build is a separate artifact with COOP/COEP isolation and loader selection, and blocking the browser main thread on a worker would stall it — that lane needs non-blocking orchestration of its own. |
 | Mapper | Serial always, whatever the setting says. It edits content on one thread and gains nothing. |
 
 ## Measuring it
@@ -184,13 +214,19 @@ Four lanes, identical resources, settings, renderer, optimization and workload:
 | Lane | Purpose |
 |---|---|
 | A: the revision before this feature | Detect cost introduced by splitting the shared kernels. |
-| B: this revision, `WorkerThreads = 0` | The serial path, against A. |
-| C: this revision, `WorkerThreads = N` on a small scene | Scheduler overhead where there is nothing to spread. |
-| D: this revision, `WorkerThreads = N` on a crowded scene | Useful scaling, saturation, and the point where more workers stop paying. |
+| B: this revision, `Multithreading = False` | The serial path, against A. |
+| C: this revision, `Multithreading = True` on a small scene | Scheduler overhead where there is nothing to spread. |
+| D: this revision, `Multithreading = True` on a crowded scene | Useful scaling, and whether the chosen count is the one that pays — lane D rerun with `Client.MultithreadingMaxWorkers` lowered shows where more workers stop paying, and that answer revises the defaults. |
 
 Measure median/p95/p99 frame time, CPU critical-path time, GPU time, batch preparation and join wait, allocations
 after warmup, RSS, and input-to-present latency. Run both uncapped and frame-capped sessions, and include a
 low-core machine so scheduler overhead cannot hide inside a crowd scene. Average FPS proves nothing.
+
+The capture already carries the zones this needs. `SpriteManager::UpdateSprites` and `PrepareSpriteCpuUpdates`
+(`Render`) frame the stage on the application thread; `WorkScheduler::RunBatch` (`Threading`) spans the batch,
+join wait included; each participant's share is a `WorkScheduler::RunClaimedChunks` zone on its own thread, with
+the kernel, `ModelInstance::EvaluateAnimationPose` (`Model`), inside it. The owner's share sits inside `RunBatch`,
+so the join wait is that zone's time outside its `RunClaimedChunks`.
 
 Proposed gates, to pin before promoting the mode: A→B no worse than 1% on median CPU frame time and 2% on
 p95/p99, with enough repeated runs to resolve that; for D, a repeatable end-to-end gain on a declared target
@@ -203,12 +239,16 @@ worker access to owner-only state, bounded pending work, and no task left at tea
 
 ## Tests
 
-- [Test_WorkScheduler.cpp](../Source/Tests/Test_WorkScheduler.cpp) — worker-count resolution, the
-  serial path, every item running exactly once, repeated batches never crossing over, empty and single-item
+- [Test_WorkScheduler.cpp](../Source/Tests/Test_WorkScheduler.cpp) — the worker-count rule against limits of
+  the test's own (every row of the table above, a zero cap, the mobile cap never lifting the general one, a limit
+  out of range refused, and a sweep over 0..256 cores proving more cores never mean fewer workers and the owner
+  always keeps a core), the machine inputs matching the platform, the serial path, every item running exactly once, repeated batches never crossing over, empty and single-item
   batches, the chunk minimum, the parallel threshold, item exceptions reaching the owner with the scheduler still
   usable, nested submission refused, shutdown with workers, two schedulers side by side, serial/parallel producing
-  the same result, `ClientWorkerThreadsFollowTheSetting` — a real client engine starting exactly the workers the
-  setting asks for, and running frames in both modes — and `ClientSpriteUpdatePhasesFollowTheClientMode`, which
+  the same result, `ClientMultithreadingFollowsTheSetting` — a real client engine starting no workers when the
+  switch is off and exactly the count the rule gives this host when it is on, a lowered `Client.MultithreadingMaxWorkers` reaching
+  that count, and running frames in both modes —
+  and `ClientSpriteUpdatePhasesFollowTheClientMode`, which
   drives a real frame over recording sprites: a serial client calls only `Update()`, and a parallel one prepares
   every sprite before any evaluation and finishes none until the whole batch has drained. That last one was
   checked against its own falsification (dropping the serial guard fails it).

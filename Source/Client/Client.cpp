@@ -45,6 +45,8 @@ FO_BEGIN_NAMESPACE
 
 void ClientInitHook(ptr<ClientEngine>);
 
+static auto ChooseClientWorkerCount(const ClientSettings& settings) -> int32_t;
+
 auto GetClientResourceIndexPath(const ClientSettings& settings) -> string
 {
     vector<string> pack_dirs = GetClientPackDirs(settings);
@@ -99,7 +101,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
 
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window) :
     BaseEngine(settings, std::move(resources), [&] { RegisterClientMetadata(this, &resources); }),
-    WorkSched("ClientWorker", WorkScheduler::ResolveWorkerCount(settings->Client.WorkerThreads)),
+    WorkSched("ClientWorker", ChooseClientWorkerCount(*settings)),
     EffectMngr(Settings, make_ptr(&Resources), window->GetRender()),
     SprMngr(Settings, window, make_ptr(&Resources), make_ptr(&GameTime), make_ptr(&EffectMngr), make_ptr(&Hashes), make_ptr(&WorkSched)),
     FontMngr(make_ptr(&SprMngr)),
@@ -139,15 +141,6 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 #if FO_MANAGED_SCRIPTING
     InitManagedScripting(this, &Resources, fs::make_writable_path(Settings->Common.UserWritablePath, Settings->Baking.CacheResources));
 #endif
-
-    // The selected mode is logged with the count actually started, because a report that only echoes the setting
-    // cannot tell an operator whether the client is running serial or parallel
-    if (WorkSched.IsParallel()) {
-        logging::write("Client work threading: {} worker threads", WorkSched.GetWorkerCount());
-    }
-    else {
-        logging::write("Client work threading: serial");
-    }
 
     logging::write("Client compatibility version: {}", Settings->Network.CompatibilityVersion);
 
@@ -281,7 +274,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
 }
 
 // The mapper edits content on one thread and gains nothing from client workers, so its scheduler is constructed
-// serial whatever Client.WorkerThreads says
+// serial whatever Client.Multithreading says
 ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources, ptr<IAppWindow> window, const MetadataRegistrar& mapper_registrar) :
     BaseEngine(settings, std::move(resources), mapper_registrar),
     WorkSched("MapperWorker", 0),
@@ -3132,6 +3125,33 @@ auto ClientEngine::ResolveRequiredEffectScriptValueTarget(EffectType effectType,
     }
 
     return effect;
+}
+
+// Multithreading is a switch and the worker count is the engine's call. The log names the count actually started
+// and what limited it, because a line that only echoed the setting could not tell serial from parallel
+static auto ChooseClientWorkerCount(const ClientSettings& settings) -> int32_t
+{
+    if (!settings.Client.Multithreading) {
+        logging::write("Client multithreading: off");
+        return 0;
+    }
+
+    WorkScheduler::WorkerCountInputs inputs = WorkScheduler::ReadWorkerCountInputs();
+    WorkScheduler::WorkerCountLimits limits {
+        .MaxWorkers = settings.Client.MultithreadingMaxWorkers,
+        .MaxMobileWorkers = settings.Client.MultithreadingMaxMobileWorkers,
+        .HeadroomMinCores = settings.Client.MultithreadingHeadroomMinCores,
+    };
+    WorkScheduler::WorkerCountChoice choice = WorkScheduler::ChooseWorkerCount(inputs, limits);
+
+    if (choice.WorkerCount == 0) {
+        logging::write("Client multithreading: on, running serial ({} logical cores, {})", inputs.LogicalCores, choice.Reason);
+    }
+    else {
+        logging::write("Client multithreading: on, {} worker {} ({} logical cores, {})", choice.WorkerCount, choice.WorkerCount == 1 ? "thread" : "threads", inputs.LogicalCores, choice.Reason);
+    }
+
+    return choice.WorkerCount;
 }
 
 FO_END_NAMESPACE

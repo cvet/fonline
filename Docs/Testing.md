@@ -824,13 +824,14 @@ workers, produce world matrices bit-identical to the serial evaluation.
 `Test_ModelAnimationRuntime.cpp` covers the
 validated direct-model rest path, canonical contributed-joint lookup, and
 cross-model joint-link resolution without physical bones.
-`Test_WorkScheduler.cpp` is the client multithreading gate: worker-count
-resolution, the serial path starting nothing, every batch item running exactly
+`Test_WorkScheduler.cpp` is the client multithreading gate: the serial path starting nothing, every batch item running exactly
 once, repeated batches never crossing over, the chunk minimum and the parallel
 threshold, an item exception reaching the owner with the scheduler still usable,
 nested submission refused, shutdown with workers, two schedulers side by side,
-a client engine that starts exactly the workers `Client.WorkerThreads` asks for
-and runs a frame in both modes, and a real frame over recording sprites proving
+the worker-count rule swept over every core count and its limits range-checked,
+a client engine that starts no workers with `Client.Multithreading` off and
+exactly the count the rule gives the host with it on, a lowered
+`Client.MultithreadingMaxWorkers` reaching that count, and runs a frame in both modes, and a real frame over recording sprites proving
 the two-phase update boundary holds in parallel mode and is skipped entirely in
 serial mode. See
 [ClientMultithreading.md](ClientMultithreading.md).

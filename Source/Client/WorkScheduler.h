@@ -39,7 +39,7 @@ FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(WorkSchedulerException);
 
-// Optional CPU parallelism, selected at startup by Client.WorkerThreads and never by a build option: one binary
+// Optional CPU parallelism, switched on at startup by Client.Multithreading and never by a build option: one binary
 // runs both modes, and zero workers starts no thread and builds no queue at all
 
 // It schedules bounded batches of independent CPU items and nothing else. The application thread stays the sole
@@ -47,10 +47,32 @@ FO_DECLARE_EXCEPTION(WorkSchedulerException);
 class WorkScheduler final
 {
 public:
-    // Asks the machine how many helpers to start instead of naming a number
-    static constexpr int32_t AUTO_WORKER_THREADS = -1;
-    // A client asking for more than this is a configuration mistake rather than a machine worth saturating
+    // A worker count past this is a construction mistake rather than a machine worth saturating, and no cap the
+    // rule is tuned with may exceed it
     static constexpr int32_t MAX_WORKER_THREADS = 64;
+
+    // What the worker-count choice reads about the machine, kept apart so the rule is testable on any host
+    struct WorkerCountInputs
+    {
+        int32_t LogicalCores {};
+        bool ThreadsSupported {};
+        bool MobileCpu {};
+    };
+
+    // The tunable half of the rule, supplied by the owner from its settings; the mobile cap applies on top of the
+    // general one, and a cap of zero keeps that class of machine serial
+    struct WorkerCountLimits
+    {
+        int32_t MaxWorkers {};
+        int32_t MaxMobileWorkers {};
+        int32_t HeadroomMinCores {};
+    };
+
+    struct WorkerCountChoice
+    {
+        int32_t WorkerCount {};
+        string_view Reason {};
+    };
 
     struct Diagnostics
     {
@@ -60,9 +82,10 @@ public:
         uint64_t ParallelChunks {};
     };
 
-    // 0 stays serial, AUTO asks the machine, a positive value is taken as written. Anything else throws: a client
-    // that silently ran serial after being told to use eight workers would look enabled while doing nothing
-    static auto ResolveWorkerCount(int32_t configured_worker_threads) -> int32_t;
+    // How many workers a client with multithreading on starts: every spare core, less the headroom, within a cap.
+    // Zero is a legitimate answer, and the reason names the limiting factor so the startup log can say it
+    static auto ReadWorkerCountInputs() -> WorkerCountInputs;
+    static auto ChooseWorkerCount(const WorkerCountInputs& inputs, const WorkerCountLimits& limits) -> WorkerCountChoice;
 
     explicit WorkScheduler(string_view name, int32_t worker_count);
     WorkScheduler(const WorkScheduler&) = delete;

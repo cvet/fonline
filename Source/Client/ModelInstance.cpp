@@ -2490,7 +2490,7 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
     DrawPosed(true);
 }
 
-// A frame pose runs in three phases so the middle one can be spread across Client.WorkerThreads: the owner settles
+// A frame pose runs in three phases so the middle one can be spread across worker threads: the owner settles
 // the inputs, a worker evaluates, the owner finishes. The three in a row are exactly the serial pose this used to be
 
 void ModelInstance::PrepareFramePose(float32_t scale, bool advance_animation)

@@ -12,7 +12,7 @@ Read this page together with:
 - [MapsMovementGeometry.md](MapsMovementGeometry.md) for map positions, path finding, line tracing, and movement contexts.
 - [Networking.md](Networking.md) for command buffers, transports, and property sync.
 - [FrontendAndRendering.md](FrontendAndRendering.md) for platform windows, input, audio, and renderer backends.
-- [ClientMultithreading.md](ClientMultithreading.md) for the runtime `Client.WorkerThreads` option: what a client worker may run, what stays on the application thread, and how the two modes are compared.
+- [ClientMultithreading.md](ClientMultithreading.md) for the runtime `Client.Multithreading` switch: how many workers the engine starts, what a client worker may run, what stays on the application thread, and how the two modes are compared.
 - [WebDebugging.md](WebDebugging.md), [AndroidDebugging.md](AndroidDebugging.md), and [Debugging.md](Debugging.md) for platform-specific validation flows.
 
 ## Source paths inspected
@@ -82,7 +82,7 @@ Major responsibilities:
 - create, register, unregister, and look up client-side entities by id;
 - receive and apply network messages for critters, items, maps, custom entities, time sync, movement, actions, and properties;
 - own client-facing managers such as sprites, effects, fonts, sounds, video playback, resources, cache storage, and render targets;
-- own the client work scheduler (`WorkSched`), which is inert unless `Client.WorkerThreads` asks for workers;
+- own the client work scheduler (`WorkSched`), which is inert unless `Client.Multithreading` is on and the machine has a core to spare;
 - raise engine events such as `OnStart`, `OnLoop`, `OnConnected`, `OnDisconnected`, render-map stages, input events, entity in/out events, and map load/unload events.
 
 `ClientEngine` is intentionally broad: it is the composition root where Common-layer data (`Entity`, properties, prototypes, networking buffers) meets Frontend-layer services (`Application`, render, input, audio) and game scripts.
@@ -117,10 +117,11 @@ On Windows the process check polls the process handle with a zero timeout. It do
 ## Optional CPU workers
 
 `ClientEngine::WorkSched` is a `WorkScheduler` constructed before every other manager and handed to
-`SpriteManager`, so one embedded client's workers are never another's. `Client.WorkerThreads` decides at startup
-how many exist: `0` (the default) starts none and every eligible stage calls its kernel directly, a positive
-value starts that many, and `-1` asks the machine. The mapper always constructs a serial one. The selected mode
-and the count actually started are logged during construction.
+`SpriteManager`, so one embedded client's workers are never another's. `Client.Multithreading` (off by default)
+decides at startup whether it starts any: when it is on, the engine chooses the count from the machine — every
+spare core beside the application thread, less one of headroom from four cores up, within a cap — and a build that
+cannot start threads stays serial. The caps and the headroom threshold are the `Client.Multithreading*` settings. The mapper always constructs a serial one. The startup log names the count
+actually started and what limited it.
 
 The scheduler runs bounded synchronous batches of independent CPU items and nothing else. Entities, scripts,
 input, the renderer, the sprite and atlas managers and resource publication stay on the application thread in

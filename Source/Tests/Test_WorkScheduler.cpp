@@ -43,33 +43,124 @@ FO_BEGIN_NAMESPACE
 // The scheduler is the whole runtime half of client multithreading: the same call site runs serial or parallel by
 // configuration alone, so the contract these cover is that both answers are the same answer
 
-TEST_CASE("WorkSchedulerWorkerCount")
+// The rule is stated against limits of the test own, so it holds whatever values a project tunes its settings to
+static constexpr WorkScheduler::WorkerCountLimits TEST_WORKER_LIMITS {.MaxWorkers = 8, .MaxMobileWorkers = 2, .HeadroomMinCores = 4};
+
+TEST_CASE("WorkSchedulerWorkerCountHeuristic")
 {
-    SECTION("ZeroStaysSerial")
+    auto choose = [](int32_t logical_cores, bool threads_supported = true, bool mobile_cpu = false, WorkScheduler::WorkerCountLimits limits = TEST_WORKER_LIMITS) { return WorkScheduler::ChooseWorkerCount({.LogicalCores = logical_cores, .ThreadsSupported = threads_supported, .MobileCpu = mobile_cpu}, limits).WorkerCount; };
+
+    SECTION("ABuildWithoutThreadsStaysSerial")
     {
-        CHECK(WorkScheduler::ResolveWorkerCount(0) == 0);
+        CHECK(choose(16, false) == 0);
+        CHECK(choose(16, false, true) == 0);
     }
 
-    SECTION("PositiveIsTakenAsWritten")
+    SECTION("AnUnknownCoreCountStaysSerial")
     {
-        CHECK(WorkScheduler::ResolveWorkerCount(1) == 1);
-        CHECK(WorkScheduler::ResolveWorkerCount(7) == 7);
-        CHECK(WorkScheduler::ResolveWorkerCount(WorkScheduler::MAX_WORKER_THREADS) == WorkScheduler::MAX_WORKER_THREADS);
+        CHECK(choose(0) == 0);
+        CHECK(choose(-1) == 0);
     }
 
-    SECTION("AutoAsksTheMachine")
+    SECTION("TheApplicationThreadKeepsItsCore")
     {
-        int32_t resolved = WorkScheduler::ResolveWorkerCount(WorkScheduler::AUTO_WORKER_THREADS);
-
-        CHECK(resolved >= 1);
-        CHECK(resolved <= WorkScheduler::MAX_WORKER_THREADS);
+        CHECK(choose(1) == 0);
+        CHECK(choose(2) == 1);
+        CHECK(choose(3) == 2);
     }
 
-    SECTION("OutOfRangeIsRefusedRatherThanDowngraded")
+    SECTION("FromTheHeadroomThresholdOneMoreStaysFree")
     {
-        CHECK_THROWS(WorkScheduler::ResolveWorkerCount(-2));
-        CHECK_THROWS(WorkScheduler::ResolveWorkerCount(WorkScheduler::MAX_WORKER_THREADS + 1));
+        CHECK(choose(TEST_WORKER_LIMITS.HeadroomMinCores) == TEST_WORKER_LIMITS.HeadroomMinCores - 2);
+        CHECK(choose(6) == 4);
+        CHECK(choose(8) == 6);
+
+        CHECK(choose(3, true, false, {.MaxWorkers = 8, .MaxMobileWorkers = 2, .HeadroomMinCores = 0}) == 1);
+        CHECK(choose(2, true, false, {.MaxWorkers = 8, .MaxMobileWorkers = 2, .HeadroomMinCores = 0}) == 0);
+        CHECK(choose(8, true, false, {.MaxWorkers = 8, .MaxMobileWorkers = 2, .HeadroomMinCores = 16}) == 7);
     }
+
+    SECTION("ADesktopIsCappedAtTheUsefulMaximum")
+    {
+        CHECK(choose(TEST_WORKER_LIMITS.MaxWorkers + 2) == TEST_WORKER_LIMITS.MaxWorkers);
+        CHECK(choose(TEST_WORKER_LIMITS.MaxWorkers + 3) == TEST_WORKER_LIMITS.MaxWorkers);
+        CHECK(choose(128) == TEST_WORKER_LIMITS.MaxWorkers);
+        CHECK(choose(128, true, false, {.MaxWorkers = 3, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}) == 3);
+        CHECK(choose(128, true, false, {.MaxWorkers = WorkScheduler::MAX_WORKER_THREADS, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}) == WorkScheduler::MAX_WORKER_THREADS);
+    }
+
+    SECTION("AMobileCpuIsCappedLower")
+    {
+        CHECK(choose(8, true, true) == TEST_WORKER_LIMITS.MaxMobileWorkers);
+        CHECK(choose(2, true, true) == 1);
+        CHECK(choose(1, true, true) == 0);
+    }
+
+    SECTION("TheMobileCapNeverLiftsTheGeneralOne")
+    {
+        CHECK(choose(128, true, true, {.MaxWorkers = 4, .MaxMobileWorkers = 16, .HeadroomMinCores = 4}) == 4);
+        CHECK(choose(128, true, false, {.MaxWorkers = 4, .MaxMobileWorkers = 16, .HeadroomMinCores = 4}) == 4);
+    }
+
+    SECTION("AZeroCapKeepsThatMachineSerial")
+    {
+        CHECK(choose(16, true, false, {.MaxWorkers = 0, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}) == 0);
+        CHECK(choose(16, true, true, {.MaxWorkers = 0, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}) == 0);
+        CHECK(choose(16, true, true, {.MaxWorkers = 8, .MaxMobileWorkers = 0, .HeadroomMinCores = 4}) == 0);
+        CHECK(choose(16, true, false, {.MaxWorkers = 8, .MaxMobileWorkers = 0, .HeadroomMinCores = 4}) == 8);
+    }
+
+    SECTION("ALimitOutsideTheSupportedRangeIsRefused")
+    {
+        WorkScheduler::WorkerCountInputs inputs {.LogicalCores = 8, .ThreadsSupported = true};
+
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount(inputs, {.MaxWorkers = -1, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}));
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount(inputs, {.MaxWorkers = WorkScheduler::MAX_WORKER_THREADS + 1, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}));
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount(inputs, {.MaxWorkers = 8, .MaxMobileWorkers = -1, .HeadroomMinCores = 4}));
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount(inputs, {.MaxWorkers = 8, .MaxMobileWorkers = WorkScheduler::MAX_WORKER_THREADS + 1, .HeadroomMinCores = 4}));
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount(inputs, {.MaxWorkers = 8, .MaxMobileWorkers = 2, .HeadroomMinCores = -1}));
+
+        // A bad cap is a configuration error everywhere, not only on the machines where it would change the answer
+        CHECK_THROWS(WorkScheduler::ChooseWorkerCount({.LogicalCores = 8, .ThreadsSupported = false}, {.MaxWorkers = -1, .MaxMobileWorkers = 2, .HeadroomMinCores = 4}));
+    }
+
+    SECTION("MoreCoresNeverMeanFewerWorkersAndTheOwnerAlwaysKeepsACore")
+    {
+        for (bool mobile_cpu : {false, true}) {
+            int32_t previous = 0;
+
+            for (int32_t logical_cores = 0; logical_cores <= 256; logical_cores++) {
+                CAPTURE(mobile_cpu, logical_cores);
+                int32_t workers = choose(logical_cores, true, mobile_cpu);
+
+                CHECK(workers >= previous);
+                CHECK(workers <= std::max(logical_cores - 1, 0));
+                CHECK(workers <= WorkScheduler::MAX_WORKER_THREADS);
+                previous = workers;
+            }
+        }
+    }
+
+    SECTION("EveryAnswerNamesWhatLimitedIt")
+    {
+        for (int32_t logical_cores : {-1, 0, 1, 2, 4, 8, 64}) {
+            for (bool mobile_cpu : {false, true}) {
+                CAPTURE(logical_cores, mobile_cpu);
+                CHECK(!WorkScheduler::ChooseWorkerCount({.LogicalCores = logical_cores, .ThreadsSupported = true, .MobileCpu = mobile_cpu}, TEST_WORKER_LIMITS).Reason.empty());
+            }
+        }
+
+        CHECK(!WorkScheduler::ChooseWorkerCount({.LogicalCores = 8, .ThreadsSupported = false}, TEST_WORKER_LIMITS).Reason.empty());
+    }
+}
+
+TEST_CASE("WorkSchedulerReadsThisMachine")
+{
+    WorkScheduler::WorkerCountInputs inputs = WorkScheduler::ReadWorkerCountInputs();
+
+    CHECK(inputs.LogicalCores == numeric_cast<int32_t>(std::thread::hardware_concurrency()));
+    CHECK(inputs.ThreadsSupported == !FO_WEB);
+    CHECK(inputs.MobileCpu == (FO_ANDROID || FO_IOS));
 }
 
 TEST_CASE("WorkSchedulerSerialMode")
@@ -270,7 +361,7 @@ TEST_CASE("WorkSchedulerParallelMode")
 
 // A client engine with no resources beyond its metadata: enough to see which mode the setting selected and to
 // run a few frames through the sprite update in both of them
-static auto MakeWorkSchedulerTestSettings(int32_t worker_threads) -> GlobalSettings
+static auto MakeWorkSchedulerTestSettings(bool multithreading, optional<int32_t> max_workers = std::nullopt) -> GlobalSettings
 {
     GlobalSettings settings(false);
 
@@ -279,9 +370,26 @@ static auto MakeWorkSchedulerTestSettings(int32_t worker_threads) -> GlobalSetti
     BakerTests::ApplySelfContainedClientSettings(settings);
     BakerTests::OverrideSetting(settings.Common.Packaged, false);
     BakerTests::OverrideSetting(settings.Baking.BakeOutput, string {});
-    BakerTests::OverrideSetting(settings.Client.WorkerThreads, worker_threads);
+    BakerTests::OverrideSetting(settings.Client.Multithreading, multithreading);
+
+    if (max_workers.has_value()) {
+        BakerTests::OverrideSetting(settings.Client.MultithreadingMaxWorkers, max_workers.value());
+    }
 
     return settings;
+}
+
+// The count the rule gives this host under these settings, so a test knows whether parallel mode can happen here
+// and what a client built from the same settings must start
+static auto GetThisMachineWorkerCount(const GlobalSettings& settings) -> int32_t
+{
+    WorkScheduler::WorkerCountLimits limits {
+        .MaxWorkers = settings.Client.MultithreadingMaxWorkers,
+        .MaxMobileWorkers = settings.Client.MultithreadingMaxMobileWorkers,
+        .HeadroomMinCores = settings.Client.MultithreadingHeadroomMinCores,
+    };
+
+    return WorkScheduler::ChooseWorkerCount(WorkScheduler::ReadWorkerCountInputs(), limits).WorkerCount;
 }
 
 static auto MakeWorkSchedulerTestEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
@@ -359,8 +467,8 @@ TEST_CASE("ClientSpriteUpdatePhasesFollowTheClientMode")
 {
     constexpr size_t SPRITE_COUNT = 16;
 
-    auto run_one_frame = [](int32_t worker_threads) {
-        auto settings = MakeWorkSchedulerTestSettings(worker_threads);
+    auto run_one_frame = [](bool multithreading) {
+        auto settings = MakeWorkSchedulerTestSettings(multithreading);
         auto client = MakeWorkSchedulerTestEngine(settings);
         auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
         std::atomic<int32_t> order {0};
@@ -379,7 +487,7 @@ TEST_CASE("ClientSpriteUpdatePhasesFollowTheClientMode")
 
     SECTION("SerialClientRunsTheSinglePassUpdateOnly")
     {
-        auto sprites = run_one_frame(0);
+        auto sprites = run_one_frame(false);
 
         for (const auto& sprite : sprites) {
             CHECK(sprite->PrepareCalls == 0);
@@ -390,7 +498,11 @@ TEST_CASE("ClientSpriteUpdatePhasesFollowTheClientMode")
 
     SECTION("ParallelClientPreparesEverySpriteBeforeAnyEvaluationAndUpdatesAfterAll")
     {
-        auto sprites = run_one_frame(3);
+        if (GetThisMachineWorkerCount(MakeWorkSchedulerTestSettings(true)) == 0) {
+            SKIP("This host leaves no core for a client worker, so the client stays serial with multithreading on");
+        }
+
+        auto sprites = run_one_frame(true);
 
         int32_t last_prepare = -1;
         int32_t first_run = std::numeric_limits<int32_t>::max();
@@ -415,11 +527,11 @@ TEST_CASE("ClientSpriteUpdatePhasesFollowTheClientMode")
     }
 }
 
-TEST_CASE("ClientWorkerThreadsFollowTheSetting")
+TEST_CASE("ClientMultithreadingFollowsTheSetting")
 {
-    SECTION("ZeroKeepsTheClientSerial")
+    SECTION("OffKeepsTheClientSerial")
     {
-        auto settings = MakeWorkSchedulerTestSettings(0);
+        auto settings = MakeWorkSchedulerTestSettings(false);
         auto client = MakeWorkSchedulerTestEngine(settings);
         auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -428,20 +540,35 @@ TEST_CASE("ClientWorkerThreadsFollowTheSetting")
         CHECK(client->WorkSched.GetDiagnostics().ParallelBatches == 0);
     }
 
-    SECTION("APositiveCountStartsThatManyWorkers")
+    SECTION("OnStartsTheWorkersTheMachineWarrants")
     {
-        auto settings = MakeWorkSchedulerTestSettings(2);
+        auto settings = MakeWorkSchedulerTestSettings(true);
         auto client = MakeWorkSchedulerTestEngine(settings);
         auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+        int32_t machine_workers = GetThisMachineWorkerCount(settings);
 
-        CHECK(client->WorkSched.GetWorkerCount() == 2);
-        CHECK(client->WorkSched.IsParallel());
+        CHECK(client->WorkSched.GetWorkerCount() == machine_workers);
+        CHECK(client->WorkSched.IsParallel() == (machine_workers > 0));
+    }
+
+    SECTION("TheCapSettingsReachTheRule")
+    {
+        // A cap below what this host would otherwise get proves the client reads the setting rather than a constant
+        for (int32_t max_workers : {0, 1}) {
+            CAPTURE(max_workers);
+            auto settings = MakeWorkSchedulerTestSettings(true, max_workers);
+            auto client = MakeWorkSchedulerTestEngine(settings);
+            auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+            CHECK(client->WorkSched.GetWorkerCount() == GetThisMachineWorkerCount(settings));
+            CHECK(client->WorkSched.GetWorkerCount() <= max_workers);
+        }
     }
 
     SECTION("AFrameRunsInBothModes")
     {
-        auto run_frames = [](int32_t worker_threads) {
-            auto settings = MakeWorkSchedulerTestSettings(worker_threads);
+        auto run_frames = [](bool multithreading) {
+            auto settings = MakeWorkSchedulerTestSettings(multithreading);
             auto client = MakeWorkSchedulerTestEngine(settings);
             auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
 
@@ -450,8 +577,8 @@ TEST_CASE("ClientWorkerThreadsFollowTheSetting")
             }
         };
 
-        run_frames(0);
-        run_frames(3);
+        run_frames(false);
+        run_frames(true);
     }
 }
 
