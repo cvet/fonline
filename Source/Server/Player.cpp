@@ -457,6 +457,23 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
+    // Identity alone tells a correction of the recipient's own critter from an observer update, as every recipient
+    // send does, so no recipient state is read
+    if (_engine->Settings->Network.MoveSyncTrace) {
+        bool is_own_critter = _controlledCr.load(std::memory_order_acquire) == from_cr.get();
+        mpos hex = from_cr->GetHex();
+        auto moving = from_cr->GetMoving();
+
+        if (moving) {
+            mpos end_hex = moving->GetEndHex();
+
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=move hex={},{} end={},{} offset_ms={}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving->GetRuntimeElapsedTime(_engine->GameTime.GetFrameTime()))).strv());
+        }
+        else {
+            _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=pos hex={},{}", from_cr->GetId(), GetName(), is_own_critter ? 1 : 0, hex.x, hex.y).strv());
+        }
+    }
+
     scoped_lock conn_lock {_connectionLock};
 
     if (from_cr->IsMoving()) {
@@ -631,6 +648,12 @@ void Player::Send_Teleport(ptr<const Critter> cr, mpos to_hex)
 {
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
+
+    if (_engine->Settings->Network.MoveSyncTrace) {
+        bool is_own_critter = _controlledCr.load(std::memory_order_acquire) == cr.get();
+
+        _engine->TraceMoveSync("send", strex("cr={} to={} own={} kind=teleport hex={},{} moving={}", cr->GetId(), GetName(), is_own_critter ? 1 : 0, to_hex.x, to_hex.y, cr->IsMoving() ? 1 : 0).strv());
+    }
 
     scoped_lock conn_lock {_connectionLock};
 

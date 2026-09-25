@@ -329,7 +329,7 @@ TEST_CASE("NetworkServerDummyConnectionCanStayConnected")
     CHECK(conn->IsDisconnected());
 }
 
-TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
+TEST_CASE("ServerConnectionPingsEveryTransportButWatchdogsOnlyRemotePeers")
 {
     SECTION("ordinary transports retain the remote-peer watchdog")
     {
@@ -342,9 +342,10 @@ TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
         connection->MarkHandshakeComplete();
 
         CHECK(connection->NeedPing(nanotime {}));
+        CHECK(connection->NeedsPingWatchdog());
     }
 
-    SECTION("interthread peers use their explicit callback lifetime")
+    SECTION("interthread peers are pinged for the round trip but keep their explicit callback lifetime")
     {
         auto settings = MakeServerNetworkSettings();
         auto port = TestServerPort.fetch_add(1);
@@ -363,7 +364,15 @@ TEST_CASE("ServerConnectionSchedulesPingOnlyForTransportsThatNeedAWatchdog")
         auto connection = safe_alloc::make_unique<ServerConnection>(&settings, accepted_conn, identity);
         connection->MarkHandshakeComplete();
 
-        CHECK_FALSE(connection->NeedPing(nanotime {}));
+        CHECK(connection->NeedPing(nanotime {}));
+        CHECK_FALSE(connection->NeedsPingWatchdog());
+
+        connection->RegisterPingRequest(nanotime {timespan {std::chrono::milliseconds {1000}}});
+        CHECK(connection->HasPendingPing());
+
+        connection->RegisterPingAnswer(nanotime {timespan {std::chrono::milliseconds {1040}}});
+        CHECK_FALSE(connection->HasPendingPing());
+        CHECK(connection->GetRoundTrip() == timespan {std::chrono::milliseconds {40}});
     }
 }
 

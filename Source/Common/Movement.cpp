@@ -408,4 +408,9 @@ void MovingContext::UpdateCurrentTimeToNextHex(nanotime current_time, mpos curre
     _elapsedTime = std::min(high, runtime_elapsed);
 }
 
+void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time, string_view details)
+{
+    logging::write("MOVESYNC side={} ev={} t={} st={} {}", side, event, nanotime::now().microseconds(), sync_time.milliseconds(), details);
+}
+
 FO_END_NAMESPACE

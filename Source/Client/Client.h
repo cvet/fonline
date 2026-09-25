@@ -141,6 +141,10 @@ public:
 
     void CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
+    void CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex);
+    // Writes one client-side MOVESYNC line tagged with this client's chosen critter as the viewer, so several
+    // clients writing into one log stay apart. Call sites test Network.MoveSyncTrace first
+    void TraceMoveSync(string_view event, string_view details);
     void PlayVideo(string_view video_name, bool can_interrupt, bool enqueue);
 
     auto GetEntity(ident_t id) -> refcount_nptr<ClientEntity>;
@@ -326,6 +330,7 @@ protected:
     void Net_SendDir(ptr<CritterHexView> cr);
     void Net_SendMove(ptr<CritterHexView> cr);
     void Net_SendStopMove(ptr<CritterHexView> cr);
+    void Net_SendMoveFinished(ptr<CritterHexView> cr, mpos end_hex);
 
     void Net_OnConnect(ClientConnection::ConnectResult result);
     void Net_OnDisconnect();

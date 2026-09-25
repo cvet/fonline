@@ -112,6 +112,7 @@ public:
         nanotime LastActivityTime {};
         nanotime LastLoginProgressTime {};
         bool PingAnswerReceived {true};
+        timespan RoundTrip {};
         int32_t PendingUpdateFileIndex {-1};
         int32_t PendingUpdateFilePortion {};
     };
@@ -141,7 +142,9 @@ public:
     [[nodiscard]] auto IsInactive(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto IsLoginTimedOut(nanotime time) const noexcept -> bool;
     [[nodiscard]] auto NeedPing(nanotime time) const noexcept -> bool;
+    [[nodiscard]] auto NeedsPingWatchdog() const noexcept -> bool;
     [[nodiscard]] auto HasPendingPing() const noexcept -> bool;
+    [[nodiscard]] auto GetRoundTrip() const noexcept -> timespan;
     [[nodiscard]] auto GetUpdateFileTransferIndex() const noexcept -> optional<size_t>;
 
     void SetDataArrivedCallback(DataArrivedCallback callback);
@@ -169,6 +172,8 @@ private:
         bool HandshakeComplete {};
         nanotime NextPingTime {};
         bool PingAnswerReceived {true};
+        nanotime PingRequestTime {};
+        timespan RoundTrip {};
         nanotime LastActivityTime {};
         nanotime LastLoginProgressTime {};
     };

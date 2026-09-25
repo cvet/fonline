@@ -483,6 +483,7 @@ enum class NetMessage : uint8_t
     InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,
+    SendCritterMoveFinished = 44,
     SendCritterMove = 45,
     SendStopCritterMove = 46,
     CritterMove = 47,

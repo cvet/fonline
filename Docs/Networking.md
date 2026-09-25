@@ -306,7 +306,94 @@ A logged-in connection is additionally dropped when it stops answering pings: `S
 sets the interval, and a connection that has not answered the previous ping when the next one is due is hard
 disconnected. The in-process interthread transport opts out of this watchdog: its peer lifetime is explicit
 through the callback channel, while a busy shared process can delay both ends of the ping exchange together.
-Closing either interthread endpoint still disconnects the other immediately.
+Closing either interthread endpoint still disconnects the other immediately. It is still pinged — the answer is
+the round trip below, and an embedded client is subject to the same movement allowances as a remote one — but a
+late answer only postpones the next ping instead of dropping the peer, so every sample stays paired with its own
+request. `ServerConnection::NeedPing()` schedules the exchange for every transport and
+`ServerConnection::NeedsPingWatchdog()` says whether a missed answer disconnects.
+
+The same exchange also yields the only transport-delay figure the **server** owns. `RegisterPingRequest`
+stamps the request, `RegisterPingAnswer` turns a paired answer into a round-trip sample and folds it into a
+smoothed `GetRoundTrip()`; an unpaired answer is discarded. It is deliberately an upper bound rather than a
+measurement of the wire: the client answers from its frame loop, so the sample carries that frame time too.
+That is the property that makes it usable — every allowance the server grants a client for transport delay is
+clamped by this number, so the figure may be generous but is never a value the client chose. It is zero until
+the first answer, and each consumer states what it does with an unknown round trip.
+
+### The client reports a movement it finished predicting
+
+A client predicts its own critter's movement locally and sends `SendCritterMove` only afterwards, so the
+server starts the same movement one uplink transit later and stays that far behind for its whole duration.
+An **interrupted** movement already closes that gap: the client sends `SendStopCritterMove` with its final
+position and the server reconciles along the movement path. A movement that simply **completed** used to
+report nothing, and the server learned of the arrival only by finishing the movement itself — which is
+exactly when a reach-sensitive action request tends to arrive.
+
+`SendCritterMoveFinished` closes that path. The client sends it when a predicted movement plays out to its
+end (`CritterHexView::ProcessMoving` → `ClientEngine::CritterMovingFinished`, chosen critter only), carrying
+map id, critter id, the hex the finished plan ended on, and the final position/dir. `Process_MoveFinished`
+reconciles through the same `ReconcileCritterStopPosition` the stop path uses, so every hex still passes the
+blocking check, triggers and visibility.
+
+Two rules keep it honest:
+
+- **The report names its movement by that movement's end hex.** It cannot name a server-side movement id,
+  because the initiator is excluded from the `CritterMove` broadcast (`SendAndBroadcast(initiator, …)`) and
+  therefore never receives one for its own movement. A report that does not match the plan the critter is
+  walking is dropped, and that movement plays out as before.
+- **A client may fast-forward only what the transport plausibly cost it.** The allowance is
+  `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs` — the measured delay,
+  capped, plus how late this server's own arrival can be. A larger remainder is refused and logged as
+  `Process_MoveFinished: arrival reported too early`. With no round trip yet the allowance is the movement
+  period alone, which still covers the scheduling quantum.
+
+Because one connection preserves order and the handler is fully synchronous inside `ProcessPlayer`'s message
+loop, the arrival is reconciled **before** any action request behind it is read. That ordering is the point:
+it is a guarantee by construction rather than a race the server usually wins.
+
+Ordinary completion sends no position broadcast — observers walk the same plan and reach its end themselves,
+so a broadcast would only snap clients that are already right. One is sent only when the reconciled hex is
+not the hex the plan ends on.
+
+### Movement synchronization trace
+
+`Network.MoveSyncTrace` (off by default, too verbose for production) makes the server and every client write
+one `MOVESYNC` log line per movement synchronization event, so the three views of one critter — where the
+server holds it, where its own client draws it, and where another client sees it — can be laid side by side
+after a run. The line is a format rather than prose, written by `WriteMoveSyncTrace` (`Movement.h`):
+
+```
+MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
+```
+
+`t` is the local monotonic clock, which every process on one machine shares, so a single-machine run aligns
+all three views without estimating any clock offset. Across machines only `st` is common, and a client's
+`st` trails the server's by the delivery of its last time sync, so cross-machine latencies read from it are
+estimates. Every client line carries `viewer=<its chosen critter id>`, which keeps several clients apart
+when they write into one log (embedded clients do).
+
+| Side | `ev` | Written by | Fields |
+|------|------|------------|--------|
+| srv | `move_req` | `Process_Move`, before the plan starts | `cr player client_start server_hex steps bridge truncated speed rtt_ms` |
+| srv | `move_start` | `StartCritterMoving` (player or script) | `cr uid start end whole_ms offset_ms speed was_moving initiator` |
+| srv | `step` | `ProcessCritterMovingBySteps`, per hex entered | `cr uid hex elapsed_ms runtime_ms` |
+| srv | `stop` | `StopCritterMoving` | `cr uid reason hex broadcast` (`reason` is the `MovingState` value) |
+| srv | `stopmove_req` | `Process_StopMove`, after reconciliation | `cr client_hex server_hex reconciled final_hex rtt_ms` |
+| srv | `finish_req` | `Process_MoveFinished`, at every exit | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `ChangeCritterMovingSpeed` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms`; `runtime_ms - elapsed_ms` is progress the rebase discards |
+| srv | `send` | `Player::Send_Moving` / `Send_Teleport` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]`; `own=1` is a correction of the recipient's own critter |
+| cl | `move_send` / `stop_send` / `finish_send` | `Net_SendMove` / `Net_SendStopMove` / `Net_SendMoveFinished` | what the acting client told the server |
+| cl | `move_recv` / `pos_recv` / `teleport_recv` | the three inbound position messages | `cr own …`; `own=1` is a correction; `pos_recv` carries `jump` (hexes moved) and `err_px` (pixels between where the critter was drawn and the received position — a sub-hex re-split moves the hex but not the picture) |
+| cl | `speed_recv` | `Net_OnCritterMoveSpeed` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` — the client rebases one delivery after the server |
+| cl | `step` / `arrive` | `CritterHexView::ProcessMoving` | where the client draws a critter, hex by hex, and where its plan ended |
+| cl | `in` / `out` | `Net_OnAddCritter` / `Net_OnRemoveCritter` | a critter entered or left this client's view: `cr own hex` (and `moving` on `in`). Between an `out` and the next `in` the client knows nothing about the critter, so a stale last hex is not a disagreement; a client re-entering its own critter on login traces `in` with itself as the viewer |
+| cl | `mark` | project scripts | a scenario boundary (`label=begin:<name>` / `end:<name>`) written through the AI-control bridge |
+| cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
+
+`finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
+`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
+is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
+stable.
 
 ### Disconnect reasons
 

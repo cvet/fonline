@@ -879,6 +879,9 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
 
     cr->StopMoving();
 
+    // A transfer places the critter on a hex; the sub-hex offset an interrupted step left belongs to the old position
+    cr->SetHexOffset({});
+
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();
     }
