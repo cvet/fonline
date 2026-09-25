@@ -169,6 +169,8 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_ResourceIndex.cpp`
+- `Source/Tests/Test_ResourcePack.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
 

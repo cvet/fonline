@@ -305,6 +305,58 @@ TEST_CASE("ServerSyncWidenOfCoveredEntityKeepsHeldLocks", "[server][sync]")
     CHECK(waiter_took_map.load());
 }
 
+// A finish handler runs on the thread destroying its subject, so a widen inside it keeps that subject held
+TEST_CASE("ServerSyncWidenKeepsHeldEntityBeingDestroyed", "[server][sync]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {2, 2}, false};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    refcount_nptr<Map> map;
+    refcount_nptr<Critter> dying;
+    refcount_nptr<Critter> neighbour;
+
+    REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
+        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        REQUIRE(critter_proto);
+        REQUIRE(map_proto);
+        map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
+        dying = safe_alloc::make_refcounted<Critter>(server, ident_t {2}, critter_proto);
+        dying->SetParent(map);
+        neighbour = safe_alloc::make_refcounted<Critter>(server, ident_t {3}, critter_proto);
+        neighbour->SetParent(map);
+    }));
+
+    SyncContext ctx;
+    ctx.Activate();
+    auto deactivate = scope_exit([&ctx]() noexcept {
+        ctx.Release();
+        ctx.Deactivate();
+    });
+
+    vector<ptr<ServerEntity>> held {dying};
+    ctx.SyncEntities(held);
+    dying->MarkAsDestroying();
+
+    vector<ptr<ServerEntity>> extras {neighbour};
+    ctx.WidenEntities(extras);
+
+    CHECK(dying->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(neighbour->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(ctx.GetHeldEntities().size() == 2);
+
+    // Destruction completes once the handler returns, and only then does a widen let the entity go
+    dying->MarkAsDestroyed();
+    ctx.WidenEntities({});
+
+    CHECK_FALSE(dying->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(ctx.GetHeldEntities().size() == 1);
+}
+
 TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();

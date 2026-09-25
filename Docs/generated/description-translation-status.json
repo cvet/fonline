@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4800,
-    "current_count": 4800,
+    "entry_count": 4801,
+    "current_count": 4801,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2541,
-      "current_count": 2541,
+      "entry_count": 2542,
+      "current_count": 2542,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -7330,6 +7330,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.client.Game.CaptureScreenshot/description",
+          "source": "Returns the last complete frame as compact RGB PNG bytes, downscaled to maxSide when positive",
+          "source_sha256": "41811467f6fd9689b362863fb57dd533d280b76d87e002574bca9225275e2096",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.client.Game.ChangeLanguage/description",
           "source": "Loads the named language pack and makes it current without changing the configured startup language",
           "source_sha256": "76190974123d18f8fdd99a4b761314121f332ac0165225eb1b2afa2a837904b1",
@@ -7463,8 +7469,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.client.Game.DumpAtlases/description",
-          "source": "Writes every current texture atlas to a timestamped diagnostic TGA directory whose name includes total atlas memory use",
-          "source_sha256": "b80107cb709020fdecf892a43ecb43ef3757cad2adbe112ca59f24364c2aa3eb",
+          "source": "Writes every current texture atlas to a timestamped diagnostic PNG directory whose name includes total atlas memory use",
+          "source_sha256": "4a33e79192b63c71270794f0f089d138f51490a4c354ec3a793e4d42fdb278fd",
           "status": "current"
         },
         {
@@ -7877,8 +7883,8 @@
         },
         {
           "locator": "/symbols/@id=script.method.client.Game.SaveScreenshot/description",
-          "source": "Reads the main render target, corrects backend vertical flipping, creates parent directories, and writes a TGA screenshot to a required nonempty path",
-          "source_sha256": "7f51d92653801c63f6fd171112d2a3100f69d044a9cdd7204491dafd46859e0c",
+          "source": "Reads the last main render target, corrects backend vertical flipping, and writes a PNG to a required nonempty path",
+          "source_sha256": "28ae6015f128b9f35dca8e466264a4cde57a81da131c7c2c3e4d9c9ed07b319f",
           "status": "current"
         },
         {

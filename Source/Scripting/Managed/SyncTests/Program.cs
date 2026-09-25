@@ -13,11 +13,13 @@ internal static class Program
     private static async Task Main()
     {
         await CheckCase("success and empty requests stay silent", SuccessfulRequests);
-        await CheckCase("all boolean acquisition overloads report the external caller once", EveryOverload);
-        await CheckCase("post-acquisition destruction reports entity and phase", DestroyedDuringAcquire);
+        await CheckCase("every acquisition overload refuses a destroyed root without publishing it", EveryOverload);
+        await CheckCase("destruction during acquisition is refused without a report", DestroyedDuringAcquire);
+        await CheckCase("an entity its own thread is destroying stays available", CoveredDestroyingEntity);
+        await CheckCase("an entity another thread is destroying is refused before any wait", ForeignDestroyingEntity);
         await CheckCase("recovered map migration stays silent", RecoveredMigration);
         await CheckCase("best-effort operations and predicates stay silent", BestEffort);
-        await CheckCase("partial restoration reports once and still covers survivors", PartialRestore);
+        await CheckCase("partial restoration covers survivors and publishes nothing", PartialRestore);
         await CheckCase("holder and mapped-group failures have distinct reasons", DomainReasons);
         await CheckCase("native exceptions keep their existing path", NativeException);
         await CheckCase("caller data is preserved without presentation formatting", RawCallerData);
@@ -28,7 +30,7 @@ internal static class Program
         await CheckCase("subscriber faults preserve false results and other deliveries", SubscriberException);
         await CheckCase("subscribers observe stable entity snapshots and read-only collections", SnapshotIsolation);
         await CheckCase("context IDs and prototypes retain their value types", TypedContext);
-        Console.WriteLine("PASS: 16 sync diagnostic cases");
+        Console.WriteLine("PASS: 18 sync diagnostic cases");
     }
 
     private static async Task CheckCase(string name, Func<Task> run)
@@ -80,9 +82,11 @@ internal static class Program
         Check(Reports.Count == 0, "Success produced a failure log");
     }
 
-    private static Task EveryOverload() => CheckEveryOverload(true);
+    // Every overload is driven with a destroyed root: the refusal is the answer the caller needs, and destruction
+    // explains it, so no overload may publish it
+    private static Task EveryOverload() => CheckEveryOverload();
 
-    private static async Task CheckEveryOverload(bool expectReports)
+    private static async Task CheckEveryOverload()
     {
         int checkedCount = 0;
 
@@ -132,18 +136,7 @@ internal static class Program
             Check(result is Task<bool>, "Missing helper task");
             Check(!await(Task<bool>)(result ?? throw new InvalidOperationException()), "Dead root accepted");
             checkedCount++;
-
-            if (!expectReports) {
-                Check(Reports.Count == 0, method + " emitted a diagnostic without subscribers");
-                continue;
-            }
-
-            Check(Reports.Count == 1, method + " did not emit exactly one diagnostic");
-            Sync.FailureInfo report = Reports[0];
-            Check(report.CallerFile == "/project/Scripts/Quest.cs", "Wrong path");
-            Check(report.CallerMember == nameof(EveryOverload), "Wrong caller");
-            Check(report.CallerLine == 42, "Wrong call line");
-            Check(report.Entities.Count > 0, "Missing entity context");
+            Check(Reports.Count == 0, method + " published a refusal destruction explains");
         }
 
         Check(checkedCount >= 60, "Acquisition overload coverage unexpectedly shrank");
@@ -161,12 +154,32 @@ internal static class Program
         Entity entity = new() { Id = new ident(17) };
         Game.OnAcquire = () => entity.IsDestroyed = true;
         Check(!await Sync.Lock(entity), "Destroyed entity accepted");
-        Sync.FailureInfo report = ReadSingle("entity_unavailable_after_acquire");
-        Sync.FailureEntity entityInfo = report.Entities[0];
-        Check(report.Operation == nameof(Sync.Lock), "Wrong operation");
-        Check(entityInfo.TypeName == nameof(Entity), "Entity type lost");
-        Check(entityInfo.Id == new ident(17), "Entity ID lost");
-        Check(entityInfo.IsDestroyed && !entityInfo.IsDestroying, "Lifecycle flags lost");
+        Check(Reports.Count == 0, "Destruction during acquisition was published");
+    }
+
+    // A finish handler runs on the thread that destroys its subject and already covers it
+    private static async Task CoveredDestroyingEntity()
+    {
+        Entity own = new() { Id = new ident(21), IsDestroying = true };
+        Game.Held.Add(own);
+        Check(Sync.IsCovered(own), "Own teardown subject reported uncovered");
+        Check(await Sync.Widen(own), "Own teardown subject refused by a widen");
+        Check(await Sync.Lock(own), "Own teardown subject refused by a lock");
+        Check(await Sync.Restore(new List<Entity> { own }), "Own teardown subject dropped from a restore");
+        Check(Game.Held.Contains(own), "Own teardown subject lost its cover");
+        Check(Reports.Count == 0, "An available teardown subject produced a failure");
+    }
+
+    private static async Task ForeignDestroyingEntity()
+    {
+        Entity foreign = new() { Id = new ident(22), IsDestroying = true };
+        int acquisitions = 0;
+        Game.OnAcquire = () => acquisitions++;
+        Check(!Sync.IsCovered(foreign), "Foreign teardown subject reported covered");
+        Check(!await Sync.Lock(foreign), "Foreign teardown subject accepted by a lock");
+        Check(!await Sync.Widen(foreign), "Foreign teardown subject accepted by a widen");
+        Check(acquisitions == 0, "The refusal waited on the destroyer");
+        Check(Reports.Count == 0, "A foreign teardown refusal was published");
     }
 
     private static async Task RecoveredMigration()
@@ -207,7 +220,7 @@ internal static class Program
         Entity dead = new() { IsDestroying = true };
         Check(!await Sync.Restore(new List<Entity> { live, dead }), "Partial restore reported complete");
         Check(Game.Held.Contains(live) && !Game.Held.Contains(dead), "Survivor restoration changed");
-        ReadSingle("snapshot_incomplete");
+        Check(Reports.Count == 0, "A snapshot shortened by destruction was published");
     }
 
     private static async Task DomainReasons()
@@ -235,9 +248,9 @@ internal static class Program
 
     private static async Task RawCallerData()
     {
-        Check(!await Sync.Lock(new Entity { IsDestroyed = true }, "C:\\game\\Scripts\\Quest.cs", "Member\"\n\t\\", 3),
-              "Dead root accepted");
-        Sync.FailureInfo report = ReadSingle("entity_unavailable_before_acquire", "Member\"\n\t\\");
+        Check(!await Sync.LockItemWithHolder(new Item(), "C:\\game\\Scripts\\Quest.cs", "Member\"\n\t\\", 3),
+              "Parentless item accepted");
+        Sync.FailureInfo report = ReadSingle("holder_missing", "Member\"\n\t\\");
         Check(report.CallerFile == "C:\\game\\Scripts\\Quest.cs", "Caller path was reformatted");
     }
 
@@ -258,10 +271,10 @@ internal static class Program
 
     private static async Task RepeatedFailures()
     {
-        Entity dead = new() { IsDestroyed = true };
+        Item parentless = new();
 
         for (int i = 0; i < 10; i++) {
-            Check(!await Sync.Lock(dead), "Dead entity accepted");
+            Check(!await Sync.LockItemWithHolder(parentless), "Parentless item accepted");
         }
 
         Check(Reports.Count == 10, "Repeated failures were suppressed");
@@ -270,8 +283,9 @@ internal static class Program
     private static async Task NoSubscribers()
     {
         Sync.OnFailure -= Reports.Add;
-        await CheckEveryOverload(false);
+        await CheckEveryOverload();
         await SuccessfulRequests();
+        Check(!await Sync.LockItemWithHolder(new Item()), "Parentless item accepted");
 
         Entity live = new();
         Entity dead = new() { IsDestroyed = true };
@@ -289,12 +303,12 @@ internal static class Program
         Sync.OnFailure += second.Add;
 
         try {
-            Entity dead = new() { IsDestroyed = true };
-            Check(!await Sync.Lock(dead), "Dead entity accepted");
+            Item parentless = new();
+            Check(!await Sync.LockItemWithHolder(parentless), "Parentless item accepted");
             Check(first.Count == 1 && second.Count == 1, "A subscriber missed the report");
             Check(ReferenceEquals(first[0], second[0]), "Subscribers received different report snapshots");
             Sync.OnFailure -= first.Add;
-            Check(!await Sync.Lock(dead), "Dead entity accepted after unsubscribe");
+            Check(!await Sync.LockItemWithHolder(parentless), "Parentless item accepted after unsubscribe");
             Check(first.Count == 1 && second.Count == 2, "Unsubscribe affected another subscriber");
             Check(Reports.Count == 0, "Removed subscriber received a report");
         }
@@ -315,7 +329,7 @@ internal static class Program
         Sync.OnFailure += later.Add;
 
         try {
-            Check(!await Sync.Lock(new Entity { IsDestroyed = true }), "Subscriber fault changed the result");
+            Check(!await Sync.LockItemWithHolder(new Item()), "Subscriber fault changed the result");
             Check(Reports.Count == 1 && later.Count == 1, "Subscriber fault stopped another delivery");
             Check(Native.Exceptions.Count == 1 && ReferenceEquals(Native.Exceptions[0], failure),
                   "Subscriber exception was not reported");
@@ -329,27 +343,27 @@ internal static class Program
 
     private static async Task SnapshotIsolation()
     {
-        Entity dead = new() { Id = new ident(91), IsDestroying = true };
-        List<Entity> source = new() { dead };
+        Entity root = new() { Id = new ident(91) };
+        List<Entity> source = new() { root };
+        List<Critter> critters = new() { new Critter { MapIdOverride = new ident(7) } };
         Action<Sync.FailureInfo> mutateSource =
             _ =>
         {
-            dead.IsDestroying = false;
-            dead.IsDestroyed = true;
+            root.IsDestroyed = true;
             source.Clear();
+            critters.Clear();
         };
         List<Sync.FailureInfo> later = new();
         Sync.OnFailure += mutateSource;
         Sync.OnFailure += later.Add;
 
         try {
-            Check(!await Sync.Lock(source), "Destroyed entity accepted");
-            Sync.FailureInfo report = ReadSingle("entity_unavailable_before_acquire");
+            Check(!await Sync.LockCrittersInitialInfoGraphs(source, critters), "Unstable graph accepted");
+            Sync.FailureInfo report = ReadSingle("retry_exhausted");
             Check(later.Count == 1 && ReferenceEquals(later[0], report), "Subscribers did not share a snapshot");
-            Check(source.Count == 0 && dead.IsDestroyed, "Source mutation did not run");
+            Check(source.Count == 0 && critters.Count == 0 && root.IsDestroyed, "Source mutation did not run");
             Check(report.Entities.Count == 2, "Source collection mutation changed snapshot");
-            Check(report.Entities[0].Id == new ident(91) && report.Entities[0].IsDestroying &&
-                      !report.Entities[0].IsDestroyed,
+            Check(report.Entities[0].Id == new ident(91) && !report.Entities[0].IsDestroyed,
                   "Entity mutation changed snapshot");
             Check(((ICollection<Sync.FailureEntity>)report.Entities).IsReadOnly, "Mutable entity collection exposed");
             Check(((ICollection<ident>)report.EntityIds).IsReadOnly, "Mutable ID collection exposed");

@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"bacff87ef56afec4865257e3ee388f0263e52fa2dabfb4605dc2a42cab0d3bab"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"5ac0990e679614899f51d36342dabf37e563cc02f5bc124bc97cfe3a3276b18f"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -160,6 +160,8 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_ResourceIndex.cpp`
+- `Source/Tests/Test_ResourcePack.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
 

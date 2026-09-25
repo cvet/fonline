@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 547ef95d841c182d1fe2769237d9f37d5b398b1029b1c6b0bac8f7dbfb98ec05
+Content SHA-256: 6929c6af36d684d3afd1683a00a6284b60c93df0126b08ae1bf59b6fdec7e603
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2539**
-- Symbols with source-backed descriptions: **2539**
+- Discovered symbols: **2540**
+- Symbols with source-backed descriptions: **2540**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2539**
+- Explicitly classified symbols: **2540**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -1051,7 +1051,7 @@ Validate engine changes through a real embedding project whenever possible. The 
 ===== BEGIN DOCUMENT engine-architecture =====
 Source: Docs/en/explanation/architecture/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/architecture/
-Content SHA-256: 9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d
+Content SHA-256: ed29a41d3c3a6b2ccfa73bd8a892142f2657683129e26e7b2d7137403110ad61
 
 ---
 layout: default
@@ -1152,7 +1152,7 @@ See [Applications](../../reference/applications.md) for the application map.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
 - `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
-- `ImageWriter.h` — TGA/PNG encoders for diagnostic images written by the engine, including screenshots, render-target captures, and atlas dumps.
+- `ImageWriter.h` — PNG encoders for screenshots, render-target and atlas dumps. `WritePng` writes RGBA to disk; `EncodeCompactPng` produces filtered opaque RGB bytes for transport. `Game.CaptureScreenshot(maxSide)` reads the last complete frame, applies integer-factor downscaling when requested (`0` keeps full size), and refuses a render-callback capture of a partial frame.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
 
@@ -3562,7 +3562,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3
+Content SHA-256: 9deaf1cfe579b5f1f163daa6a364358c0179ed4ad680c879dd039995237723c3
 
 ---
 layout: default
@@ -3744,6 +3744,8 @@ Native ref types are explicit borrowed wrappers. If a project keeps one beyond t
 `hstring` is an eight-byte blittable value containing the native intern-entry pointer. Frames and value types copy that pointer unchanged; only property and RPC storage uses the 64-bit hash and converts at the storage boundary. Values are interned through the Engine metadata bound to the entry assembly, resolve their text from that exact entry, and do not fall back to a process-wide hash table shared by engine instances. Static managed fields still initialize separately in every load context.
 
 Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
+
+Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
 
 ### Indexed native interop ABI
 
@@ -17288,7 +17290,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: d76178105c833b78e4837d08f58e68f6929b13e23742846923e621febf798c6b
+Content SHA-256: bbc80143c0197bef021c9c4c1b70d929b3f9fed486177be6b96887d24fd756ca
 
 ---
 layout: default
@@ -17698,7 +17700,7 @@ conservative contract. `Render.ModelDirectDraw` retains atlas-side preview and
 hit-test data while visible geometry continues to draw directly in the scene.
 
 `Game.DumpAtlases()` and the mapper's **Dump atlases** command annotate the
-read-back TGA copy with the live allocation geometry; the runtime atlas texture
+read-back PNG copy with the live allocation geometry; the runtime atlas texture
 is not modified. Magenta lines show triangle edges, cyan pixels show mesh
 vertices, yellow rectangles identify implicit quad geometry, and a red X marks
 an explicitly empty baked frame. `AtlasSprite` owns its mesh metadata; the live
@@ -19483,7 +19485,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 2f262d0de7f1ca85e7da0e74327fe5d3ecd7dd830b05d332df3100154e4e2c0c
+Content SHA-256: 0d5b21483339804543aeb52a0c47ba0540c135c277d72c1ed125e007b0e2fa8d
 
 ---
 layout: default
@@ -19768,6 +19770,10 @@ Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and 
 Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
 
 Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
+
+### An entity being destroyed
+
+An entity marked `Destroying` remains in the cover held by its destroyer's thread until it is actually `Destroyed`. `SyncContext::WidenEntities()` retains that owner while adding other entities, so a finish handler can still operate on its subject. A foreign thread must not acquire it: waiting on the destroyer could close a lock cycle. Managed `Sync` helpers accept a destroying handle only when `Game.IsEntityLocked` confirms current-thread cover; a destroyed handle is always unavailable. Lifecycle races that end in an unavailable handle return false without publishing a failure diagnostic; unrelated synchronization failures still report. `ServerSyncWidenKeepsHeldEntityBeingDestroyed` and the managed Sync harness pin both sides of this boundary.
 
 ## Entity ownership and persistence
 
@@ -22441,7 +22447,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 58433e86f26e8a222da9dd4c255a24779b6138319d234b87644d0c6946611713
+Content SHA-256: 7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a
 
 ---
 layout: default
@@ -22490,7 +22496,7 @@ The engine owns:
 - mapper-side `Game.*` script methods;
 - the `Render.HeadlessWindow` off-screen host mode;
 - camera, overlay, visibility, and scroll controls used by automation;
-- PNG screenshot and TGA atlas-diagnostic readback from mapper render targets;
+- PNG screenshot and atlas-diagnostic readback from mapper render targets;
 - the backend-neutral particle preview and the SPARK source editor.
 
 An embedding project owns:
@@ -22628,7 +22634,7 @@ placement, and gameplay validation.
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
 | `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as PNG through the same engine encoder used by client screenshots; application-level ImGui windows are not included. |
-| `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
+| `Game.DumpAtlases()` | Save diagnostic PNG copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
 
@@ -22678,7 +22684,7 @@ Single-process batching is preferred when many maps share one resource set becau
 4. reads RGBA pixels from that target;
 5. flips rows when the render texture reports inverted height;
 6. normalizes the relative output path below `Common.UserWritablePath` and
-   writes through the engine-shared `ImageWriter::WriteSimplePng` helper.
+   writes through the engine-shared `ImageWriter::WritePng` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.
@@ -26038,7 +26044,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: dca3378b9fcb36a61b25f4d794f7034de013e2efd3aa09afd29b74b1d2d1f6b9
+Content SHA-256: fb5f2d89191fae01881f0870e87c79c88c0942adb0d940f92aaead73967dad62
 
 ---
 title: Generated API Reference
@@ -26055,7 +26061,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 990 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 991 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
@@ -26066,25 +26072,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2539 |
-| Symbols with descriptions | 2539 |
+| Addressable symbols | 2540 |
+| Symbols with descriptions | 2540 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2539 |
+| Explicitly classified symbols | 2540 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2538 |
+| <code>experimental</code> | 2539 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2539 stable IDs with SHA-256 <code>e1542cee8670486023810704aa505ef5f9339faa0ff2cfab9feb90edb5ca72b0</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2540 stable IDs with SHA-256 <code>d9768911b69e081b35e89990e4192eebb9891665cc6ce0f73f3d12518b9ec141</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -28172,7 +28178,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: bacff87ef56afec4865257e3ee388f0263e52fa2dabfb4605dc2a42cab0d3bab
+Content SHA-256: 5ac0990e679614899f51d36342dabf37e563cc02f5bc124bc97cfe3a3276b18f
 
 ---
 layout: default
@@ -28345,6 +28351,8 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ProtoBaker.cpp`
 - `Source/Tests/Test_ProtoTextBaker.cpp`
 - `Source/Tests/Test_RawCopyBaker.cpp`
+- `Source/Tests/Test_ResourceIndex.cpp`
+- `Source/Tests/Test_ResourcePack.cpp`
 - `Source/Tests/Test_TextBaker.cpp`
 - `Source/Tests/Test_TextureAtlas.cpp`
 

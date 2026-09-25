@@ -179,6 +179,8 @@ Native ref types are explicit borrowed wrappers. If a project keeps one beyond t
 
 Arrays of primitives, enums, `hstring`, and registered value types use `GetPropertyList<T>` / `SetPropertyList<T>` and cross as raw bytes. Longer reads retry directly into the final list storage while the same cover remains held. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values, and other structured forms keep the converting bridge, but generated access selects the property by registrar index rather than repeating owner and property names.
 
+Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
+
 ### Indexed native interop ABI
 
 `ManagedScriptBaker` and the native backend share `ManagedInteropAbi`: one manifest of dense method, event, setting, and inner-entity ids plus a content hash. Generated `*Abi.gen.cs` bind stubs call `Native.BindAbi` during `Initializator.InitializeEarly`; a hash or count mismatch fails loading before script execution. Generated ABI files participate in the incremental bake stamp, so a generator-only change cannot publish new wrappers with an old assembly.

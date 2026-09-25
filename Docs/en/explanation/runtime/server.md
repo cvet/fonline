@@ -282,6 +282,10 @@ Each active `SyncContext` accumulates only the time its thread is parked in the 
 
 Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
 
+### An entity being destroyed
+
+An entity marked `Destroying` remains in the cover held by its destroyer's thread until it is actually `Destroyed`. `SyncContext::WidenEntities()` retains that owner while adding other entities, so a finish handler can still operate on its subject. A foreign thread must not acquire it: waiting on the destroyer could close a lock cycle. Managed `Sync` helpers accept a destroying handle only when `Game.IsEntityLocked` confirms current-thread cover; a destroyed handle is always unavailable. Lifecycle races that end in an unavailable handle return false without publishing a failure diagnostic; unrelated synchronization failures still report. `ServerSyncWidenKeepsHeldEntityBeingDestroyed` and the managed Sync harness pin both sides of this boundary.
+
 ## Entity ownership and persistence
 
 `EntityManager` (`Source/Server/EntityManager.h`) is the central registry and persistence boundary for server entities.

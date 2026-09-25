@@ -5,7 +5,7 @@ locale: ru
 document_id: mapper-tools
 permalink: /Docs/ru/how-to/tools/mapper.html
 ---
-<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"58433e86f26e8a222da9dd4c255a24779b6138319d234b87644d0c6946611713"} -->
+<!-- docs-translation: {"document_id":"mapper-tools","locale":"ru","source_path":"Docs/en/how-to/tools/mapper.md","source_sha256":"7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a"} -->
 # Инструменты Mapper
 
 > Документация движка по переиспользуемым API жизненного цикла Mapper,
@@ -53,7 +53,7 @@ overlay inputs делают captures сравнимыми, но не обеща�
 - скриптовыми методами `Game.*` на стороне Mapper;
 - внеэкранным режимом хоста `Render.HeadlessWindow`;
 - управлением камерой, оверлеями, видимостью и прокруткой для автоматизации;
-- чтением PNG-снимков и TGA-диагностикой атласов из render target Mapper;
+- чтением PNG-снимков и PNG-диагностикой атласов из render target Mapper;
 - независимым от подсистемы предпросмотром частиц и редактором исходников
   SPARK.
 
@@ -245,7 +245,7 @@ root, draw-frame и wireframe. Частицы прямой сцены показ
 | `Game.AddMapperIgnoredItemPids(pids)` | Добавить id прототипов предметов в список игнорирования текущей карты и пересобрать её. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Включить или выключить ограничение камеры авторскими границами прокрутки. |
 | `Game.SaveMapperScreenshot(path)` | Перерисовать и синхронно сохранить render target карты в PNG через тот же encoder движка, который используется для клиентских снимков; окна ImGui уровня приложения не включаются. |
-| `Game.DumpAtlases()` | Сохранить диагностические TGA-копии живых атласов текстур с оверлеями размещения и мешей спрайтов. |
+| `Game.DumpAtlases()` | Сохранить диагностические PNG-копии живых атласов текстур с оверлеями размещения и мешей спрайтов. |
 
 `CalcMapperFitZoom` использует `ScrollAxialArea`, если она задана, иначе
 границы карты. Пакетный инструмент может применить дополнительный проектный
@@ -318,7 +318,7 @@ runtime-атласа. Точные цвета и правила времени �
 4. считывает RGBA-пиксели из этой цели;
 5. переворачивает строки, если render texture сообщает инвертированную высоту;
 6. нормализует относительный выходной путь внутри `Common.UserWritablePath` и
-   записывает через общий для движка помощник `ImageWriter::WriteSimplePng`.
+   записывает через общий для движка помощник `ImageWriter::WritePng`.
 
 Метод захватывает рисование скриптового интерфейса Mapper, уже находящееся в
 цели карты, но не более поздние меню и окна ImGui уровня приложения.

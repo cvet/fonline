@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"d76178105c833b78e4837d08f58e68f6929b13e23742846923e621febf798c6b"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"bbc80143c0197bef021c9c4c1b70d929b3f9fed486177be6b96887d24fd756ca"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -437,7 +437,7 @@ effects отключают tight crop. Это не bound для shader displacem
 контракта. При `Render.ModelDirectDraw` atlas preview/hit-test сохраняются, а
 видимая geometry рисуется напрямую в scene.
 
-`Game.DumpAtlases()` и команда Mapper **Dump atlases** аннотируют read-back TGA,
+`Game.DumpAtlases()` и команда Mapper **Dump atlases** аннотируют read-back PNG,
 не меняя runtime texture: magenta — triangle edges, cyan — mesh vertices,
 yellow rectangle — implicit quad, red X — explicitly empty baked frame.
 `AtlasSprite` владеет mesh metadata, а live allocation хранит nullable

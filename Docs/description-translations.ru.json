@@ -13195,6 +13195,10 @@
           "source_sha256": "2c7eaa32739a8077a235441994bc41c3e61d80d53b4789f4b4248d8a86d0979d",
           "translation": "Возвращает накопительный счётчик отправленных соединением байтов, суженный до uint32."
         },
+        "/symbols/@id=script.method.client.Game.CaptureScreenshot/description": {
+          "source_sha256": "41811467f6fd9689b362863fb57dd533d280b76d87e002574bca9225275e2096",
+          "translation": "Возвращает последний завершённый кадр как компактный RGB PNG в байтах; при положительном maxSide уменьшает изображение."
+        },
         "/symbols/@id=script.method.client.Game.ChangeLanguage/description": {
           "source_sha256": "76190974123d18f8fdd99a4b761314121f332ac0165225eb1b2afa2a837904b1",
           "translation": "Загружает указанный языковой пакет и делает его текущим, не изменяя настроенный язык запуска."
@@ -13284,8 +13288,8 @@
           "translation": "Во время RenderIface продвигает и рисует ненулевой объект воспроизведения видео в прямоугольнике положительного размера и отмечает объект остановленным после завершения клипа."
         },
         "/symbols/@id=script.method.client.Game.DumpAtlases/description": {
-          "source_sha256": "b80107cb709020fdecf892a43ecb43ef3757cad2adbe112ca59f24364c2aa3eb",
-          "translation": "Записывает все текущие атласы текстур в диагностический каталог с TGA-файлами, меткой времени и общим объёмом памяти атласов в имени."
+          "source_sha256": "4a33e79192b63c71270794f0f089d138f51490a4c354ec3a793e4d42fdb278fd",
+          "translation": "Записывает все текущие атласы текстур в диагностический каталог с PNG-файлами, меткой времени и общим объёмом памяти атласов в имени."
         },
         "/symbols/@id=script.method.client.Game.FlashUnfocusedWindow/description": {
           "source_sha256": "b69d89a173a5282d0498a333c32f32664a626ecff1937f209ab65b78746c7f72",
@@ -13560,8 +13564,8 @@
           "translation": "Возвращает копию текста, в которой вхождения заданной подстроки заменены десятичным представлением целого числа."
         },
         "/symbols/@id=script.method.client.Game.SaveScreenshot/description": {
-          "source_sha256": "7f51d92653801c63f6fd171112d2a3100f69d044a9cdd7204491dafd46859e0c",
-          "translation": "Читает главную цель рендера, исправляет вертикальное отражение backend, создаёт родительские каталоги и записывает TGA-снимок по обязательному непустому пути."
+          "source_sha256": "28ae6015f128b9f35dca8e466264a4cde57a81da131c7c2c3e4d9c9ed07b319f",
+          "translation": "Читает последний главный render target, исправляет вертикальное отражение backend и записывает PNG по обязательному непустому пути."
         },
         "/symbols/@id=script.method.client.Game.SaveText/description": {
           "source_sha256": "3440e88dd91852342a3cf3ebfcc691ddfafb873055293653e5ba047d1527071c",

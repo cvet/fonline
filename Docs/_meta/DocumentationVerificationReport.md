@@ -2,6 +2,24 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-25 - PNG capture, numeric-list interop, and teardown-cover reconciliation
+
+Scope and source revisions:
+
+- Reconciled the Engine documentation head `647373bf9579c67d4ecf3c9721ece4e9ba18db22` with `origin/master` through `c1c9c96837cf167a99ad34f4356ee9f88c4b00c5` (incoming commits `96439006295f1dd629e7b07289bc7429d1d49209` and `c1c9c96837cf167a99ad34f4356ee9f88c4b00c5`).
+- Inspected PNG output and capture, compact screenshot encoding, primitive-list marshalling, native/managed synchronization, and the accompanying image/client/entity-lifetime/managed harness tests. The incoming text in six legacy overview routes was moved to the canonical locale-paired pages, not retained as a competing corpus.
+
+Documentation and contract reconciliation:
+
+- Documented the PNG-only diagnostic output and new client capture path in architecture, rendering, and Mapper guides; documented the raw numeric-list bridge and the destroying-thread cover rule. Updated both locales, source-authored export descriptions, and their Russian generated-description translations.
+- Regenerated the API model and EN/RU reference, public contract index, source inventory, snippets, locale status, site/search/routes, AI evaluation and delivery. The API scope pin now covers 2,540 symbols; 4,801 generated descriptions are current. Updated focused test counts and the test-file README inventory to match the live source.
+- Refreshed the two screenshot catalog source hashes because `MapperGlobalScriptMethods.cpp` now calls the same PNG writer under its new name. The change is in the map-only file helper; neither recorded full-window UI composition nor its capture fixture changed, so no listed recapture trigger fired and the existing PNG assets were not replaced.
+
+Validation and limits:
+
+- The full documentation validator passes 408 Markdown entries, and AI evaluation passes 28 tasks / 67 retrieval checks at 100 percent and 0.918 MRR. Focused API, Mapper, inventory, and description-translation tests pass 31 tests / 34 subtests after updating stale expectations. `LF_UnitTests` builds and the `ImageWriter` plus `ServerSyncWidenKeepsHeldEntityBeingDestroyed` filters pass 140 assertions in two test cases; this target did not register the requested client-binding case. The standalone managed Sync harness passes all 18 diagnostic cases. Project bake, gameplay, and visible capture acceptance remain integration work.
+- The aggregate 17-domain contract diff against the pre-merge documentation head finds four API changes. The new `Game.CaptureScreenshot` symbol is additive/experimental; the changed native-codegen scope hash is classified as breaking and requires owner-reviewed disposition `api-change.model-scope.d437bb70a7cc088d`. It remains missing; no migration or release decision is inferred here. Publication and visible client/Mapper evidence remain separate gates.
+
 ## 2026-09-23 - Windows 7 managed-runtime loader reconciliation
 
 Scope and source revisions:

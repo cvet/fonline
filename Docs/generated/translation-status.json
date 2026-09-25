@@ -300,8 +300,8 @@
       "english_path": "Docs/en/explanation/architecture/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/architecture/index.md",
-      "source_sha256": "9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d",
-      "source_bytes": 11683,
+      "source_sha256": "ed29a41d3c3a6b2ccfa73bd8a892142f2657683129e26e7b2d7137403110ad61",
+      "source_bytes": 11915,
       "status": "current"
     },
     {
@@ -378,7 +378,7 @@
       "english_path": "Docs/en/explanation/rendering/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/rendering/index.md",
-      "source_sha256": "d76178105c833b78e4837d08f58e68f6929b13e23742846923e621febf798c6b",
+      "source_sha256": "bbc80143c0197bef021c9c4c1b70d929b3f9fed486177be6b96887d24fd756ca",
       "source_bytes": 105077,
       "status": "current"
     },
@@ -417,8 +417,8 @@
       "english_path": "Docs/en/explanation/runtime/server.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/server.md",
-      "source_sha256": "2f262d0de7f1ca85e7da0e74327fe5d3ecd7dd830b05d332df3100154e4e2c0c",
-      "source_bytes": 67729,
+      "source_sha256": "0d5b21483339804543aeb52a0c47ba0540c135c277d72c1ed125e007b0e2fa8d",
+      "source_bytes": 68516,
       "status": "current"
     },
     {
@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3",
-      "source_bytes": 49943,
+      "source_sha256": "9deaf1cfe579b5f1f163daa6a364358c0179ed4ad680c879dd039995237723c3",
+      "source_bytes": 50346,
       "status": "current"
     },
     {
@@ -898,8 +898,8 @@
       "english_path": "Docs/en/how-to/tools/mapper.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/tools/mapper.md",
-      "source_sha256": "58433e86f26e8a222da9dd4c255a24779b6138319d234b87644d0c6946611713",
-      "source_bytes": 20447,
+      "source_sha256": "7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a",
+      "source_bytes": 20437,
       "status": "current"
     },
     {
@@ -1990,7 +1990,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "547ef95d841c182d1fe2769237d9f37d5b398b1029b1c6b0bac8f7dbfb98ec05",
+      "source_sha256": "6929c6af36d684d3afd1683a00a6284b60c93df0126b08ae1bf59b6fdec7e603",
       "source_bytes": 7369,
       "status": "current"
     },
@@ -2042,7 +2042,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "dca3378b9fcb36a61b25f4d794f7034de013e2efd3aa09afd29b74b1d2d1f6b9",
+      "source_sha256": "fb5f2d89191fae01881f0870e87c79c88c0942adb0d940f92aaead73967dad62",
       "source_bytes": 3410,
       "status": "current"
     },
@@ -2068,8 +2068,8 @@
       "english_path": "Docs/en/reference/script-api/methods.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/methods.md",
-      "source_sha256": "930ef0f73952f7f6e875c48a1ec0c68d7e05168a7bba0f03a70c4fbc40b33f04",
-      "source_bytes": 705601,
+      "source_sha256": "a7b90f9551e47c55827963b0b416089b4b8f82262592c39a6f1541950906a827",
+      "source_bytes": 706245,
       "status": "current"
     },
     {
@@ -2510,8 +2510,8 @@
       "english_path": "Source/Tests/README.md",
       "english_path_state": "migrated",
       "russian_path": "Source/Tests/README.ru.md",
-      "source_sha256": "bacff87ef56afec4865257e3ee388f0263e52fa2dabfb4605dc2a42cab0d3bab",
-      "source_bytes": 11287,
+      "source_sha256": "5ac0990e679614899f51d36342dabf37e563cc02f5bc124bc97cfe3a3276b18f",
+      "source_bytes": 11366,
       "status": "current"
     }
   ]

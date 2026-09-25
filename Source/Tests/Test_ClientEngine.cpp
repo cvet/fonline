@@ -1296,6 +1296,7 @@ namespace ClientEngineTest
         try { Game.ChangeLanguage("nolang"); } catch { ClientRejectionCount |= 64; }
         try { Game.SaveScreenshot(""); } catch { ClientRejectionCount |= 128; }
         try { Game.SaveText("", "text"); } catch { ClientRejectionCount |= 256; }
+        try { Game.CaptureScreenshot(-1); } catch { ClientRejectionCount |= 512; }
 
         // Video playback is idle, so the query must answer false rather than fail
         if (Game.IsVideoPlaying()) return -1;
@@ -3159,9 +3160,9 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
+    // Only five probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
     // sound handle, queueing nothing, or accepting a pack that resolves to no entries
-    CHECK(rejection_count == 8 + 16 + 128 + 256);
+    CHECK(rejection_count == 8 + 16 + 128 + 256 + 512);
 }
 
 TEST_CASE("MultiFrameSpritesPlayAndCopy")

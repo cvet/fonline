@@ -173,7 +173,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             "main_rt->GetTexture()",
             "texture->GetTextureRegion",
             "string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());",
-            "ImageWriter::WriteSimplePng(path, size, pixels);",
+            "ImageWriter::WritePng(path, size, pixels);",
         ):
             self.assertIn(marker, source)
 

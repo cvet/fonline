@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"2f262d0de7f1ca85e7da0e74327fe5d3ecd7dd830b05d332df3100154e4e2c0c"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"0d5b21483339804543aeb52a0c47ba0540c135c277d72c1ed125e007b0e2fa8d"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение серверной среды выполнения из `Source/Server/`; игровые правила, содержимое мира, конкретный баланс, задания и политика развёртывания отдельного проекта остаются в документации подключающего проекта.
 
 ## Назначение
@@ -284,6 +284,10 @@ Waiters обслуживаются FIFO. Atomic state каждого waiter ра
 Каждый активный `SyncContext` накапливает только то время, которое его поток простоял в атомарном ожидании внутри `EntityLock::Acquire`, `AcquireShared` или `RegisterDescendantHold`. Эта длительность добавляется и каждому внешнему контексту синхронной цепочки вызовов, потому что wall time внешнего скрипта включает ожидание вложенного скриптового callback. Постановка в очередь, неоспоренный захват, учёт блокировок и обычное native/скриптовое исполнение в lock wait не попадают. `ServerEngine::RunScriptContext()` возвращает накопленную длительность в scripting backend, чтобы диагностика отделяла contention от стоимости исполнения.
 
 Holder counts хранятся в inline linear vector: миллионы entity locks обычно имеют лишь несколько concurrent holders и не должны выделять память в idle состоянии. Списки cover/held locks одного sync используют `small_vector` с вместимостью по измеренным common paths; owner collections остаются `vector`, когда incomplete `ServerEntity` не позволяет inline storage.
+
+### Сущность во время уничтожения
+
+Сущность с отметкой `Destroying` остаётся в cover потока, который её уничтожает, пока не станет `Destroyed`. `SyncContext::WidenEntities()` сохраняет этого владельца при добавлении других сущностей, поэтому finish handler может продолжать работать со своим субъектом. Другой поток не должен захватывать уничтожаемую сущность: ожидание потока-уничтожителя может замкнуть цикл блокировок. Managed-помощники `Sync` принимают такой handle лишь если `Game.IsEntityLocked` подтверждает cover текущего потока; уничтоженный handle недоступен всегда. Гонка жизненного цикла, после которой handle недоступен, возвращает `false` без публикации failure diagnostic; остальные ошибки синхронизации по-прежнему сообщаются. Обе стороны закреплены тестами `ServerSyncWidenKeepsHeldEntityBeingDestroyed` и managed Sync harness.
 
 ## Владение сущностями и сохранение
 

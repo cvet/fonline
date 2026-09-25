@@ -5,7 +5,7 @@ locale: ru
 document_id: engine-architecture
 permalink: /Docs/ru/explanation/architecture/
 ---
-<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"9d5ce442feb8d6309265dc18acc95f8fdf52b77fbb4ad2ae3227ed5437a52f2d"} -->
+<!-- docs-translation: {"document_id":"engine-architecture","locale":"ru","source_path":"Docs/en/explanation/architecture/index.md","source_sha256":"ed29a41d3c3a6b2ccfa73bd8a892142f2657683129e26e7b2d7137403110ad61"} -->
 # Архитектура движка
 
 Этот документ содержит основанную на исходном коде карту слоёв FOnline. Используйте её, чтобы определить владельца поведения перед переходом к документации конкретной подсистемы.
@@ -98,7 +98,7 @@ FOnline состоит из переиспользуемого движка, в�
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` - переиспользуемые primitives карт и движения.
 - `NetBuffer.h`, `NetworkUdp.h` - общие networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` - поддержка config и data access.
-- `ImageWriter.h` - кодировщики TGA/PNG для диагностических изображений, которые записывает движок: screenshots, captures render target и dumps atlas.
+- `ImageWriter.h` - кодировщики PNG для screenshots, dumps render target и atlas. `WritePng` записывает RGBA в файл; `EncodeCompactPng` создаёт фильтрованный непрозрачный RGB в памяти для передачи. `Game.CaptureScreenshot(maxSide)` читает последний завершённый кадр, при необходимости уменьшает его целочисленным коэффициентом (`0` сохраняет полный размер) и запрещает захват внутри render callback, когда кадр ещё не дорисован.
 
 Этот слой должен оставаться переиспользуемым. Правила игры обычно выражаются через content/scripts или project-native extensions, а не через включение policy одного проекта в common engine code.
 

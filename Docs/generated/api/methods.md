@@ -246,6 +246,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-bytessend-b1aadbb89e"></a>
 - [`symbol-script-method-client-game-bytessend-b1aadbb89e`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-bytessend-b1aadbb89e)
 
+<a id="symbol-script-method-client-game-capturescreenshot-7079276c3e"></a>
+- [`symbol-script-method-client-game-capturescreenshot-7079276c3e`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-capturescreenshot-7079276c3e)
+
 <a id="symbol-script-method-client-game-changelanguage-e93b5f0f77"></a>
 - [`symbol-script-method-client-game-changelanguage-e93b5f0f77`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-changelanguage-e93b5f0f77)
 

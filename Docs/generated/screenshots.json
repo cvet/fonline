@@ -49,7 +49,7 @@
       ],
       "source_sha256": {
         "Source/Common/Settings.inc": "2f5a7ed743c40dfefc3c7faa80c3e4225a17657663dfca13ea4d2a8c8bc69b29",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "eec3222b87ca67dae1322275e1e319204bf4674a5f7b112a988f7f54ee2d142a",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "aec499103ab6b04773799f6cffb2da0cf5a3d8b6d08c4ab187e536c04e298245",
         "Source/Tools/Mapper.cpp": "d12a64e11fac14f25125b384d13ff69c8430f7ae7775b550a22b971908611d68",
         "Source/Tools/Mapper.h": "21ab332b7e4599da6609876236d845524ad76221db5d26fd3e9d5a39e6e495ca",
         "Source/Tools/ParticleEditor.cpp": "ecaad2d22d3f5bcc24712d77ed665b186e59692a34e566b1976c590f72a7f146",
@@ -106,7 +106,7 @@
         "Source/Common/SpriteResource.cpp": "397d640edf0854999b3a9baf86ea51c4e190c632119010ad980363cdd94ff9f4",
         "Source/Common/SpriteResource.h": "1bc6aac200eb6ce7917e7603a0f10fce85f11d9cb1173dc93ee190a8ffadb745",
         "Source/Common/Settings.inc": "2f5a7ed743c40dfefc3c7faa80c3e4225a17657663dfca13ea4d2a8c8bc69b29",
-        "Source/Scripting/MapperGlobalScriptMethods.cpp": "eec3222b87ca67dae1322275e1e319204bf4674a5f7b112a988f7f54ee2d142a",
+        "Source/Scripting/MapperGlobalScriptMethods.cpp": "aec499103ab6b04773799f6cffb2da0cf5a3d8b6d08c4ab187e536c04e298245",
         "Source/Tools/Mapper.cpp": "d12a64e11fac14f25125b384d13ff69c8430f7ae7775b550a22b971908611d68",
         "Source/Tools/ParticleEditor.cpp": "ecaad2d22d3f5bcc24712d77ed665b186e59692a34e566b1976c590f72a7f146",
         "Source/Tools/SparkParticleEditor.cpp": "4c8957ec19a6508d12bcebd489b037ff4c71a7cb141b6fe0d448bf5ea3ea214c",

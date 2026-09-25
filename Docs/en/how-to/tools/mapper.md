@@ -45,7 +45,7 @@ The engine owns:
 - mapper-side `Game.*` script methods;
 - the `Render.HeadlessWindow` off-screen host mode;
 - camera, overlay, visibility, and scroll controls used by automation;
-- PNG screenshot and TGA atlas-diagnostic readback from mapper render targets;
+- PNG screenshot and atlas-diagnostic readback from mapper render targets;
 - the backend-neutral particle preview and the SPARK source editor.
 
 An embedding project owns:
@@ -183,7 +183,7 @@ placement, and gameplay validation.
 | `Game.AddMapperIgnoredItemPids(pids)` | Add item prototype ids to the current map's mapper ignore list and rebuild it. |
 | `Game.SetMapperScrollCheckEnabled(enabled)` | Enable or disable camera clamping to authored scroll bounds. |
 | `Game.SaveMapperScreenshot(path)` | Redraw and synchronously save the map render target as PNG through the same engine encoder used by client screenshots; application-level ImGui windows are not included. |
-| `Game.DumpAtlases()` | Save diagnostic TGA copies of live texture atlases with allocation and sprite-mesh overlays. |
+| `Game.DumpAtlases()` | Save diagnostic PNG copies of live texture atlases with allocation and sprite-mesh overlays. |
 
 `CalcMapperFitZoom` uses `ScrollAxialArea` when present and falls back to map bounds. A batch tool can apply an additional project-owned padding factor when tall sprites, shadows, or effects extend beyond the playable area.
 
@@ -233,7 +233,7 @@ Single-process batching is preferred when many maps share one resource set becau
 4. reads RGBA pixels from that target;
 5. flips rows when the render texture reports inverted height;
 6. normalizes the relative output path below `Common.UserWritablePath` and
-   writes through the engine-shared `ImageWriter::WriteSimplePng` helper.
+   writes through the engine-shared `ImageWriter::WritePng` helper.
 
 It captures mapper script-interface drawing that is already in the map target,
 but not the later application-level ImGui menu and tool windows.

@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2539,
-      "inventory_sha256": "e1542cee8670486023810704aa505ef5f9339faa0ff2cfab9feb90edb5ca72b0",
+      "symbol_count": 2540,
+      "inventory_sha256": "d9768911b69e081b35e89990e4192eebb9891665cc6ce0f73f3d12518b9ec141",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2539,
+    "symbol_count": 2540,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 57,
       "enum-value": 771,
       "event": 122,
-      "method": 990,
+      "method": 991,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2538,
+      "experimental": 2539,
       "internal": 1
     },
     "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2539,
+    "explicit_contract_symbol_count": 2540,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2538,
+      "experimental": 2539,
       "internal": 1
     },
-    "described_symbol_count": 2539,
+    "described_symbol_count": 2540,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -40475,6 +40475,54 @@
       "arguments": []
     },
     {
+      "id": "script.method.client.Game.CaptureScreenshot",
+      "family_id": "script.method.client.Game.CaptureScreenshot",
+      "kind": "method",
+      "name": "CaptureScreenshot",
+      "runtime_sides": [
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "uint8[] Game.CaptureScreenshot(int32 maxSide)",
+      "description": "Returns the last complete frame as compact RGB PNG bytes, downscaled to maxSide when positive",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+        "line": 1817
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "client",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "uint8[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "maxSide",
+          "type": "int32",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
       "id": "script.method.client.Game.ChangeLanguage",
       "family_id": "script.method.client.Game.ChangeLanguage",
       "kind": "method",
@@ -40493,7 +40541,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1908
+        "line": 1973
       },
       "contract": {
         "explicit": true,
@@ -40638,7 +40686,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1901
+        "line": 1966
       },
       "contract": {
         "explicit": true,
@@ -40678,7 +40726,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1924
+        "line": 1989
       },
       "contract": {
         "explicit": true,
@@ -40901,7 +40949,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1931
+        "line": 1996
       },
       "contract": {
         "explicit": true,
@@ -41852,7 +41900,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.DumpAtlases()",
-      "description": "Writes every current texture atlas to a timestamped diagnostic TGA directory whose name includes total atlas memory use",
+      "description": "Writes every current texture atlas to a timestamped diagnostic PNG directory whose name includes total atlas memory use",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -41900,7 +41948,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1915
+        "line": 1980
       },
       "contract": {
         "explicit": true,
@@ -41988,7 +42036,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1825
+        "line": 1890
       },
       "contract": {
         "explicit": true,
@@ -42036,7 +42084,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1839
+        "line": 1904
       },
       "contract": {
         "explicit": true,
@@ -43633,7 +43681,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1846
+        "line": 1911
       },
       "contract": {
         "explicit": true,
@@ -45200,7 +45248,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1853
+        "line": 1918
       },
       "contract": {
         "explicit": true,
@@ -45364,7 +45412,7 @@
       ],
       "receiver": "Game",
       "signature": "void Game.SaveScreenshot(string filePath)",
-      "description": "Reads the main render target, corrects backend vertical flipping, creates parent directories, and writes a TGA screenshot to a required nonempty path",
+      "description": "Reads the last main render target, corrects backend vertical flipping, and writes a PNG to a required nonempty path",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -45372,7 +45420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1725
+        "line": 1794
       },
       "contract": {
         "explicit": true,
@@ -45420,7 +45468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1777
+        "line": 1842
       },
       "contract": {
         "explicit": true,
@@ -45565,7 +45613,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1812
+        "line": 1877
       },
       "contract": {
         "explicit": true,
@@ -45627,7 +45675,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1805
+        "line": 1870
       },
       "contract": {
         "explicit": true,
@@ -45682,7 +45730,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1832
+        "line": 1897
       },
       "contract": {
         "explicit": true,
@@ -45951,7 +45999,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1893
+        "line": 1958
       },
       "contract": {
         "explicit": true,
@@ -45999,7 +46047,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1886
+        "line": 1951
       },
       "contract": {
         "explicit": true,
@@ -46205,7 +46253,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1938
+        "line": 2003
       },
       "contract": {
         "explicit": true,
@@ -46356,7 +46404,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1873
+        "line": 1938
       },
       "contract": {
         "explicit": true,
@@ -46404,7 +46452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
-        "line": 1860
+        "line": 1925
       },
       "contract": {
         "explicit": true,

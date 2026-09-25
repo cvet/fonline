@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9deaf1cfe579b5f1f163daa6a364358c0179ed4ad680c879dd039995237723c3"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -178,6 +178,8 @@ Native ref types являются явными borrowed wrappers. Если пр�
 `hstring` — восьмибайтовое blittable value с указателем на native intern entry. Frames и value types копируют этот указатель без преобразования; только property/RPC storage хранит 64-bit hash и преобразует его на границе storage. Значение интернируется через Engine metadata, привязанные к entry assembly, и разрешает текст именно из этой записи, без process-wide hash fallback между экземплярами Engine. Static managed fields всё равно инициализируются отдельно в каждом load context.
 
 Массивы primitives, enums, `hstring` и зарегистрированных value types проходят как raw bytes через `GetPropertyList<T>` / `SetPropertyList<T>`. Длинный read повторяется прямо в итоговый storage списка при сохранённом cover. Strings, dictionaries, dynamic ref types, nullable proto/fixed-type values и другие structured forms остаются на converting bridge, но generated access выбирает property по registrar index и не передаёт имена owner/property повторно.
+
+Обычные аргументы и результаты `List<T>` пересекают native/managed границу одним блоком байтов для `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float` и `double`. Другие типы элементов сохраняют поэлементное преобразование. Принимающая сторона отклоняет блок, длина которого не кратна размеру элемента; порядок списка и сигнатура метода не меняются.
 
 ### Indexed native interop ABI
 
