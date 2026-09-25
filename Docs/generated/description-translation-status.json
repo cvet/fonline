@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4797,
-    "current_count": 4797,
+    "entry_count": 4800,
+    "current_count": 4800,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2538,
-      "current_count": 2538,
+      "entry_count": 2541,
+      "current_count": 2541,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15292,6 +15292,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.ManagedScript.ClientPatchesEnabled/description",
+          "source": "If true, a client applies the script patches its server sends; each client reads its own config",
+          "source_sha256": "3abbca1aa2f68a82b6ff63909121efa573e271d84c23b13af7f4ec4d817f5fdf",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.ManagedScript.DeepTrackEntityWrappers/description",
           "source": "If true, every managed entity wrapper is also tracked weakly so shutdown can name the wrappers that still hold a native entity reference; costs a dictionary write per wrapper, while the live wrapper count shutdown reports is always kept",
           "source_sha256": "45e85cf0088313e8edd5772f232059f2c27f5bdef65e9baf64262b418c41f5bd",
@@ -15340,9 +15346,21 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.ManagedScript.PatchPointWeaver/description",
+          "source": "Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)",
+          "source_sha256": "6f9fc7dc0ee3f5cb9c90893d87a979cfbf8aba7383a577c46132b001703f8157",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.ManagedScript.ProjectName/description",
           "source": "Managed project base name",
           "source_sha256": "b683583d33aeadbc31c49a8cae5f98382efefe99ecc9b2a348dfdc5de6cb5ea3",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.ManagedScript.ServerPatchesEnabled/description",
+          "source": "If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way",
+          "source_sha256": "1b51619f0ab2d041c83cf95ef14d9c265a5e8eb6223bca50ab77d2230a644954",
           "status": "current"
         },
         {

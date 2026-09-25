@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"eca9c6eddba8ac2c58c8154a650a16b0ca302110de98709ef15e118786c6fccb"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -59,6 +59,8 @@ Immutable startup settings группы `ManagedScript` определяют gen
 | `ManagedScript.AdditionalFiles` | Файлы конфигурации analyzer, передаваемые как MSBuild `AdditionalFiles`. |
 | `ManagedScript.AnalysisLevel` / `AnalysisMode` | Необязательные overrides analysis level/mode SDK. |
 | `ManagedScript.BakerDryRun` | Структурный режим baker для тестов; он не доказывает наличие исполняемых assemblies. |
+| `ManagedScript.PatchPointWeaver` | Необязательный путь к Engine-проекту weaver точек подмены. При заданном значении методы серверных и клиентских скриптов обрабатываются при компиляции; Mapper не обрабатывается. |
+| `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Разрешение применять патчи отдельно на сервере и клиенте; оба значения по умолчанию `false`. Каждый клиент читает собственный переключатель. Стоимость вплетённых точек от них не зависит. |
 | `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics с именами живых entity wrappers; обычный счётчик активен всегда. |
 
 Добавьте resource pack с `Managed` в списке `Bakers`. Inputs этого pack должны включать Engine `CoreScripts`, project script roots и источники `///@` metadata, которые нужны этим скриптам. Выбор assembly, target, pack и metadata является единым контрактом: сборка отдельного project, отличающегося от входов baker, не является проверкой движка.
@@ -78,6 +80,8 @@ Generated project включает nullable analysis, warnings as errors, сти
 Неподдерживаемая форма type/member останавливает baking через `ManagedScriptBakerException`; baker не должен создавать placeholder, который упадёт только при выполнении gameplay.
 
 Compiled entry assemblies зависят от target, например `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. Они записываются в `Assemblies/<Target>Assemblies/` внутри baked pack. Helpers и dependencies остаются рядом с entry assembly.
+
+При заданном `ManagedScript.PatchPointWeaver` generated build после компиляции запускает принадлежащий движку Mono.Cecil weaver на промежуточных серверной и клиентской assemblies, до последующего копирования и упаковки. Проект weaver и его исходники входят во входы incremental bake/build: их изменение перекомпилирует и заново обрабатывает скрипты. Уже обработанная assembly не меняется. Weaver собирается как инструмент и не попадает в зависимости скриптов.
 
 ## Форма авторского кода
 
@@ -212,6 +216,16 @@ heap. Последующий успешный retry тоже сообщаетс�
 
 Опциональная engine library `FOnline.ScriptCompiler` компилирует live fragments через Roslyn. Проект добавляет её `.csproj` через `ManagedScript.ExtraReferences` только в компилирующие targets; она и dependencies упаковываются рядом с их entry assemblies. `DynamicScriptCompiler.CompileAsync` работает вне Engine thread, создаёт уникальное имя `FOnline.Dynamic.*`, принимает body statements или expression, usings и symbols и привязывает diagnostics к строке/колонке fragment. Можно компилировать против текущих scripts или переданной image другого target. Компиляция допускает private/internal члены scripts, поэтому авторизация отправителя кода полностью принадлежит подключающему проекту. Компилятор выдаёт portable PDB в `DynamicCompileResult.Symbols` вместе с image; загрузка обоих streams сохраняет source locations в runtime frames. Roslyn нужна cryptography уже при привязке strong-named references. На Linux linked shim `System.Security.Cryptography.Native.OpenSsl` открывает системную библиотеку OpenSSL во время работы, поэтому host, компилирующий fragments, должен её иметь. Engine исключает статическую LibreSSL из dynamic symbol table executable, чтобы системная библиотека не связалась с несовместимыми symbols. Горячей выгрузки этих assemblies нет.
 
+### Горячие патчи скриптов
+
+Fragment запускается как новый entry и не заменяет тело метода, который уже вызывают скрипты. Если включён patch-point weaving, `DynamicScriptCompiler` может вместо этого скомпилировать C# compilation unit с `Kind = DynamicCompileKind.Patch`. Его статические методы с `[ReplacesMethod(typeof(TargetType), "MethodName")]` заменяют подходящие методы скриптов. Replacement возвращает тот же тип и принимает те же параметры с теми же `ref`/`out`; для instance-метода первым параметром служит объект (`ref` для value type). Допускаются private replacement и private члены целевого типа. Исходные usings становятся global usings; доступны символы компиляции server/client и члены скриптов, а diagnostics указывают `patch(line,column)`.
+
+Weaver создаёт точки в методах скриптов с телом вне пространства имён Engine `FOnline`. Исключены конструкторы, generic-методы и generic-типы, varargs, compiler-generated тела (в том числе lambda, local function и `MoveNext` state machine), а также методы с `[NoPatchPoint]`. Для lambda либо async/iterator state machine патчите создающий её метод; уже начатый или приостановленный вызов заканчивает прежнее тело. `[NoPatchPoint]` оставляйте только для измеренного горячего метода, неисправность которого можно исправить патчем вызывающего метода. Компилятор отклоняет патч без замен (`FOPATCH001`) или с неверной, неоднозначной, чужой, не обработанной weaver либо несовместимой по сигнатуре целью (`FOPATCH002`) до применения. Патч может содержать собственные helpers и static state, но изменение layout существующего типа, сигнатур методов или generated metadata требует обычного deploy.
+
+`ScriptPatches.Apply(assembly)` проверяет все замены и публикует одну таблицу для целого патча: новые вызовы видят все его методы либо ни одного. Поздний патч того же метода имеет приоритет; `Revert(set)` восстанавливает предыдущий патч или исходное тело, `RevertAll()` снимает все наборы. `IsAvailable`, `PatchPointCount`, `HasPatchPoint(method)` и `Applied` показывают доступность и состояние. Применение запрещено, когда переключатель `ServerPatchesEnabled` или `ClientPatchesEnabled` соответствующей стороны выключен; Mapper патчи не применяет. Каждая опубликованная таблица остаётся в памяти до конца процесса, поскольку конкурентный вызов ещё может держать её; загруженные patch assemblies также не выгружаются. Вплетённый быстрый путь проверяет static active flag и обращается к слоту метода только при наличии патчей. Он остаётся и при отключённом разрешении на применение. Движок предоставляет механизм, а не удалённую авторизацию, хранение, доставку, аудит или политику deploy: эти границы принадлежат подключающему проекту.
+
+Weaver записывает в каждую обработанную assembly манифест `FOnline.PatchPoints.Table`. Компилятор по нему проверяет допустимость цели, в том числе при компиляции против image другой стороны. Манифест замен содержит методы и их function pointers. Redirect разделяется методами с одинаковой упрощённой сигнатурой; на JIT runtime он вызывает native code, а Web interpreter использует method handle. Если конкурентный revert оставил redirect с пустым слотом, он вызывает исходный метод, а не устаревшую замену. Стоимость на desktop JIT и расход памяти зависят от подключающего проекта и нагрузки; Web и Android требуют отдельных измерений.
+
 Shutdown сначала вызывает `BeginManagedTeardown`, который до любой другой очистки выполняет `Native.BeginBackendTeardown` и делает `Native.IsBackendTearingDown` истинным, пока backend ещё bound. Так wrapper, завершённый во время обычного runtime, отличается от wrapper, ставшего недостижимым из-за самого teardown. Wrapper с thread-affine native resource, который нельзя освободить из finalizer thread, в последнем случае может не сообщать о leak, потому что владеющая Engine subsystem уже уничтожается. `Native.IsBackendAlive` не позволяет провести это различие: unbind намеренно остаётся более поздним шагом, чтобы собранные во время shutdown entity wrappers ещё могли вернуть свои native references.
 
 Затем shutdown закрывает scheduler continuations и удаляет queued work до освобождения backend state. Он очищает project static references и persistent callback roots, выполняет ограниченные collect/finalizer passes, пока Engine и assembly images ещё существуют, сообщает оставшиеся entity wrappers (и называет их при deep tracking), затем вызывает `Native.UnbindBackend` для каждой entry assembly до освобождения load scope и native global data. В native runtime ожидание finalizers выполняется на запрошенной Engine pool task с отдельным бюджетом пять секунд, чтобы заблокированный finalizer не остановил teardown thread навсегда. Timeout или оставшиеся wrappers являются diagnostics, и teardown продолжается; wrapper, завершившийся после unbind, не должен освобождать reference через мёртвое native state.
@@ -282,6 +296,7 @@ Managed backend передаёт фиксированный native context, mana
 | Изменение | Обязательные доказательства |
 | --- | --- |
 | Managed CoreScripts или backend | C# format/style checks, CoreScripts tests, generated project build и focused native unit tests. |
+| Patch-point weaving или live patches | `test_managed_patch_points.py`, входы managed baker/incremental build, bake точного target и проектные проверки применения, отката и авторизации каждой включённой стороны; производительность каждого runtime измеряется отдельно. |
 | Generated API shape или native export | Codegen, managed baker, generated diff, API contract diff и tests обоих backend для общего контракта. |
 | Attribute, event, callback, timer или named call | Managed reflection/registration test и owning native/runtime dispatch. |
 | Async scheduler | `test_managed_async_callbacks.py`, tests isolation/frame pump и awaited gameplay path подключающего проекта. |

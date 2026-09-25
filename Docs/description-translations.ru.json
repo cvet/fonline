@@ -18503,6 +18503,10 @@
           "source_sha256": "d00367ffd07cb131f486ae411542a076d6c09eb00338f2414c5da519bb426558",
           "translation": "Заставляет managed baker записывать stub-маркеры вместо компиляции сборок."
         },
+        "/symbols/@id=setting.common.ManagedScript.ClientPatchesEnabled/description": {
+          "source_sha256": "3abbca1aa2f68a82b6ff63909121efa573e271d84c23b13af7f4ec4d817f5fdf",
+          "translation": "Если true, клиент применяет патчи скриптов, присланные его сервером; каждый клиент читает собственную конфигурацию."
+        },
         "/symbols/@id=setting.common.ManagedScript.DeepTrackEntityWrappers/description": {
           "source_sha256": "45e85cf0088313e8edd5772f232059f2c27f5bdef65e9baf64262b418c41f5bd",
           "translation": "Дополнительно отслеживает каждую managed-обёртку сущности слабой ссылкой, чтобы при завершении назвать обёртки, всё ещё удерживающие нативную сущность; это стоит одной записи в словарь на обёртку, а число живых обёрток для отчёта сохраняется всегда."
@@ -18535,9 +18539,17 @@
           "source_sha256": "7caa7c7c060a941c955c47847dc2ce87009fff7b77088025c3a4eecf3f828c4d",
           "translation": "Время выполнения managed-скрипта или ожидания entity-lock в миллисекундах, после которого сообщается превышение; 0 отключает отчёт."
         },
+        "/symbols/@id=setting.common.ManagedScript.PatchPointWeaver/description": {
+          "source_sha256": "6f9fc7dc0ee3f5cb9c90893d87a979cfbf8aba7383a577c46132b001703f8157",
+          "translation": "Путь к проекту weaver точек подмены; при его задании сборка скриптов добавляет точку подмены в каждый подходящий метод, чтобы работающий процесс мог заменить его тело (ScriptPatches)."
+        },
         "/symbols/@id=setting.common.ManagedScript.ProjectName/description": {
           "source_sha256": "b683583d33aeadbc31c49a8cae5f98382efefe99ecc9b2a348dfdc5de6cb5ea3",
           "translation": "Базовое имя managed-проекта."
+        },
+        "/symbols/@id=setting.common.ManagedScript.ServerPatchesEnabled/description": {
+          "source_sha256": "1b51619f0ab2d041c83cf95ef14d9c265a5e8eb6223bca50ab77d2230a644954",
+          "translation": "Если true, сервер применяет патчи скриптов (ScriptPatches.Apply); стоимость вплетённых точек подмены не зависит от этого переключателя."
         },
         "/symbols/@id=setting.common.ManagedScript.TargetFramework/description": {
           "source_sha256": "ba83b843eb1acfced86fd1a2fc0ef7ad35468b874125266cdb5845e03c5bc141",

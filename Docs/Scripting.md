@@ -61,6 +61,10 @@ Continue with [build and baking](en/explanation/scripting-runtime/index.md#build
 
 Continue with [Managed and native roots](en/explanation/scripting-runtime/index.md#managed-and-native-scripting-roots).
 
+## Patch points
+
+Continue with [Managed C# patch points](en/how-to/scripting/managed-csharp.md#live-script-patches). The Russian guide is [here](ru/how-to/scripting/managed-csharp.md).
+
 ## Tests to inspect
 
 Continue with [tests](en/explanation/scripting-runtime/index.md#tests-to-inspect).

@@ -833,8 +833,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "eca9c6eddba8ac2c58c8154a650a16b0ca302110de98709ef15e118786c6fccb",
-      "source_bytes": 45500,
+      "source_sha256": "6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3",
+      "source_bytes": 49943,
       "status": "current"
     },
     {
@@ -1990,7 +1990,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "75bf8748afcf35aafd8ba34d27783aad7127f3eec28166c3964e76f1388c574b",
+      "source_sha256": "547ef95d841c182d1fe2769237d9f37d5b398b1029b1c6b0bac8f7dbfb98ec05",
       "source_bytes": 7369,
       "status": "current"
     },
@@ -2042,7 +2042,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "38916799c1d124c174785f9fe9a9f1cdbf46f46f469b4af6a220549db611dd31",
+      "source_sha256": "dca3378b9fcb36a61b25f4d794f7034de013e2efd3aa09afd29b74b1d2d1f6b9",
       "source_bytes": 3410,
       "status": "current"
     },
@@ -2081,7 +2081,7 @@
       "english_path": "Docs/en/reference/script-api/migrations.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/migrations.md",
-      "source_sha256": "7b90ef896ee125883f45e91a9ee2e37a71599c9569999925fdaf445b19782fd3",
+      "source_sha256": "0b9affef2315e8d9c3813e58efc54124cb1b7678a264a82d49aed533bde209df",
       "source_bytes": 17824,
       "status": "current"
     },
@@ -2107,8 +2107,8 @@
       "english_path": "Docs/en/reference/script-api/settings.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/settings.md",
-      "source_sha256": "cfdb6e2e313be9b8221c708410a949442adab4e3ebef9ec63fb92519bc77d69e",
-      "source_bytes": 164804,
+      "source_sha256": "fe00afaee8e3bd857e2475530ae938037905f8d5db1aefc71db0a258465048ea",
+      "source_bytes": 166829,
       "status": "current"
     },
     {

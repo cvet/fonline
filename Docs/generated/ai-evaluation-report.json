@@ -1555,10 +1555,10 @@
           "passed": true,
           "top_document_ids": [
             "profiling",
+            "managed-csharp-scripting",
             "web-debugging",
             "server-runtime",
-            "debugging",
-            "managed-csharp-scripting"
+            "debugging"
           ]
         }
       ],

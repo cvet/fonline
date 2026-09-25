@@ -16,7 +16,7 @@ CORE = MANAGED / "CoreScripts"
 CORE_FILES = (
     "Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs",
     "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs", "DynamicAssemblies.cs",
-    "ScriptStaticCleanup.cs", "EntityWrapperTracker.cs",
+    "ScriptStaticCleanup.cs", "EntityWrapperTracker.cs", "Any.cs",
 )
 PROBE_PROJECT = """<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><Nullable>enable</Nullable><ImplicitUsings>disable</ImplicitUsings><TreatWarningsAsErrors>true</TreatWarningsAsErrors><NoWarn>$(NoWarn);CS8981</NoWarn></PropertyGroup>

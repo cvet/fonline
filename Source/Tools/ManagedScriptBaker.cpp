@@ -97,6 +97,7 @@ static auto GetManagedConfigDir(const BakingSettings& settings) -> std::filesyst
 static auto ResolveManagedPath(const std::filesystem::path& config_dir, string_view path_value) -> std::filesystem::path;
 static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const vector<string>& path_values) -> vector<string>;
 static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis;
+static auto CollectPatchPointWeaverInputs(const ManagedProjectAnalysis& analysis) -> vector<string>;
 static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>;
 static auto CollectManagedDirSources(const vector<string>& source_dirs, const std::filesystem::path& config_dir) -> vector<std::filesystem::path>;
 static auto MakeRelativeProjectPath(const std::filesystem::path& project_dir, const std::filesystem::path& path) -> string;
@@ -1216,6 +1217,32 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
         file << "  </ItemGroup>\n";
     }
 
+    // Weaving the intermediate assembly lets every later build step copy the woven one; the weaver is built here, not
+    // referenced, because a reference to an executable copies it into the output. The mapper never applies a patch
+    if (!analysis.PatchPointWeaver.empty()) {
+        string weaver_project = EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs::make_path(analysis.PatchPointWeaver)}));
+
+        // A woven assembly is left alone, so a changed weaver has to compile the scripts again
+        file << "  <ItemGroup Condition=\" '$(Configuration)' != 'Mapper' \">\n";
+
+        for (const string& input : CollectPatchPointWeaverInputs(analysis)) {
+            file << "    <CustomAdditionalCompileInputs Include=\"" << EscapeXml(MakeRelativeProjectPath(project_dir, std::filesystem::path {fs::make_path(input)})) << "\" />\n";
+        }
+
+        file << "  </ItemGroup>\n";
+        file << "  <Target Name=\"FOnlineWeavePatchPoints\" AfterTargets=\"CoreCompile\" Condition=\" '@(IntermediateAssembly)' != '' And '$(Configuration)' != 'Mapper' \">\n";
+        file << "    <MSBuild Projects=\"" << weaver_project << "\" Targets=\"Restore\" RemoveProperties=\"OutputPath;Configuration;Platform\" Properties=\"MSBuildRestoreSessionId=$([System.Guid]::NewGuid())\" />\n";
+        file << "    <MSBuild Projects=\"" << weaver_project << "\" Targets=\"Build\" RemoveProperties=\"OutputPath;Configuration;Platform\">\n";
+        file << "      <Output TaskParameter=\"TargetOutputs\" ItemName=\"FOnlinePatchPointWeaver\" />\n";
+        file << "    </MSBuild>\n";
+        file << "    <PropertyGroup>\n";
+        file << "      <FOnlineDotnetHost>$(DOTNET_HOST_PATH)</FOnlineDotnetHost>\n";
+        file << "      <FOnlineDotnetHost Condition=\" '$(FOnlineDotnetHost)' == '' \">dotnet</FOnlineDotnetHost>\n";
+        file << "    </PropertyGroup>\n";
+        file << "    <Exec Command=\"&quot;$(FOnlineDotnetHost)&quot; &quot;@(FOnlinePatchPointWeaver)&quot; &quot;@(IntermediateAssembly->'%(FullPath)')&quot;\" />\n";
+        file << "  </Target>\n";
+    }
+
     file << "</Project>\n";
     WriteTextFileIfChanged(proj_path, file.str(), "Can't create generated project file");
 
@@ -1471,6 +1498,13 @@ static auto GetManagedBakeStamp(const BakingContext& context, string_view target
 
     for (const string& additional_file : analysis.AdditionalFiles) {
         merge_disk_file(additional_file);
+    }
+
+    // The weaver rewrites the compiled assembly, so its sources decide the output as much as the scripts do
+    if (target_name != "Mapper") {
+        for (const string& input : CollectPatchPointWeaverInputs(analysis)) {
+            merge_disk_file(input);
+        }
     }
 
     // The same covers .editorconfig, where severities live: the stamp walks up from each source file exactly
@@ -1940,13 +1974,41 @@ static auto ResolveManagedPaths(const std::filesystem::path& config_dir, const v
 
 static auto MakeManagedProjectAnalysis(const BakingSettings& settings, const std::filesystem::path& config_dir) -> ManagedProjectAnalysis
 {
+    string patch_point_weaver = TrimString(settings.ManagedScript.PatchPointWeaver);
+
     return ManagedProjectAnalysis {
         .Level = TrimString(settings.ManagedScript.AnalysisLevel),
         .Mode = TrimString(settings.ManagedScript.AnalysisMode),
         .AnalyzerProjects = ResolveManagedPaths(config_dir, settings.ManagedScript.Analyzers),
         .AnalyzerPackages = ParseManagedAnalyzerPackages(settings.ManagedScript.AnalyzerPackages),
         .AdditionalFiles = ResolveManagedPaths(config_dir, settings.ManagedScript.AdditionalFiles),
+        .PatchPointWeaver = patch_point_weaver.empty() ? string {} : fs::path_to_string(ResolveManagedPath(config_dir, patch_point_weaver)),
     };
+}
+
+// The weaver project and its sources: whatever changes how the scripts are woven
+static auto CollectPatchPointWeaverInputs(const ManagedProjectAnalysis& analysis) -> vector<string>
+{
+    vector<string> inputs;
+
+    if (analysis.PatchPointWeaver.empty()) {
+        return inputs;
+    }
+
+    inputs.emplace_back(analysis.PatchPointWeaver);
+    vector<string> sources;
+    std::error_code ec;
+
+    for (std::filesystem::directory_iterator it(std::filesystem::path {fs::make_path(analysis.PatchPointWeaver)}.parent_path(), ec); !ec && it != std::filesystem::directory_iterator(); it.increment(ec)) {
+        if (it->is_regular_file() && it->path().extension() == ".cs") {
+            sources.emplace_back(fs::path_to_string(it->path()));
+        }
+    }
+
+    // Directory order differs between file systems, and the stamp must not
+    std::ranges::sort(sources);
+    inputs.insert(inputs.end(), sources.begin(), sources.end());
+    return inputs;
 }
 
 static auto ParseManagedAnalyzerPackages(const vector<string>& entries) -> vector<pair<string, string>>

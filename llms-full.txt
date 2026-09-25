@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 75bf8748afcf35aafd8ba34d27783aad7127f3eec28166c3964e76f1388c574b
+Content SHA-256: 547ef95d841c182d1fe2769237d9f37d5b398b1029b1c6b0bac8f7dbfb98ec05
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2536**
-- Symbols with source-backed descriptions: **2536**
+- Discovered symbols: **2539**
+- Symbols with source-backed descriptions: **2539**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2536**
+- Explicitly classified symbols: **2539**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3562,7 +3562,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: eca9c6eddba8ac2c58c8154a650a16b0ca302110de98709ef15e118786c6fccb
+Content SHA-256: 6e67a1a022dbf62ad267d6fcda52590f8a05f1a2e07f89c9471656dc8cc8d7f3
 
 ---
 layout: default
@@ -3625,6 +3625,8 @@ The immutable startup settings in the `ManagedScript` group define the generated
 | `ManagedScript.AdditionalFiles` | Analyzer configuration files exposed through MSBuild `AdditionalFiles`. |
 | `ManagedScript.AnalysisLevel` / `AnalysisMode` | Optional SDK analysis-level and analysis-mode overrides. |
 | `ManagedScript.BakerDryRun` | Structural baker mode for tests; it does not prove executable assemblies. |
+| `ManagedScript.PatchPointWeaver` | Optional path to the Engine patch-point weaver project. When set, server/client script methods are woven during compilation; Mapper methods are not. |
+| `ManagedScript.ServerPatchesEnabled` / `ClientPatchesEnabled` | Per-side runtime permission to apply patches; both default to `false`. Each client reads its own switch. Weaving cost is independent of these switches. |
 | `ManagedScript.DeepTrackEntityWrappers` | Opt-in shutdown diagnostics that name still-live entity wrappers; ordinary live-wrapper counting is always enabled. |
 
 Add a resource pack whose `Bakers` list contains `Managed`. The pack inputs must include Engine `CoreScripts`, the project script roots, and the `///@` metadata sources needed by those scripts. The assembly, target, pack, and metadata selection are one contract: compiling a loose project that differs from the baker input is not Engine validation.
@@ -3644,6 +3646,8 @@ The generated project enables nullable analysis, warnings as errors, Engine code
 Unsupported type or member shapes fail baking with `ManagedScriptBakerException`; the baker must not emit a placeholder that fails only when gameplay reaches it.
 
 Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. They are written under the baked pack's `Assemblies/<Target>Assemblies/` tree. Helpers and dependencies remain next to the entry assembly.
+
+When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engine-owned Mono.Cecil weaver on the intermediate server and client assemblies after compilation, before the later copy/package steps. The weaver and its sources participate in incremental bake/build inputs, so changing them recompiles and reweaves the scripts. An already woven assembly is left alone. The weaver is built as a tool, not shipped as a script dependency.
 
 ## Authoring shape
 
@@ -3777,6 +3781,16 @@ At startup, baked assemblies are restored into content-hashed subdirectories und
 
 The optional engine-owned `FOnline.ScriptCompiler` library compiles live fragments with Roslyn. Projects add its `.csproj` through `ManagedScript.ExtraReferences` only for targets that compile fragments; it and its dependencies are then packed alongside those entry assemblies. `DynamicScriptCompiler.CompileAsync` works off the Engine thread, uses a unique `FOnline.Dynamic.*` name, accepts a statement body or expression plus usings/symbols, and maps compile diagnostics to fragment line/column. It can compile against the running scripts or a supplied other-target image. Compilation has access to private/internal script members, so authorization to submit code is entirely an embedding-project responsibility. The compiler emits a portable PDB in `DynamicCompileResult.Symbols` alongside the image; load both streams to retain source locations in runtime frames. Roslyn requires cryptography even to bind strong-named references. On Linux the linked `System.Security.Cryptography.Native.OpenSsl` shim opens the system OpenSSL library at runtime, so fragment compilation requires that library on the host. The Engine excludes its static LibreSSL from the executable's dynamic symbol table to prevent the system library from binding to incompatible symbols. These assemblies are not hot-unloadable.
 
+### Live script patches
+
+A fragment runs as a new entry; it cannot replace a method already called by scripts. With patch-point weaving enabled, `DynamicScriptCompiler` can instead compile a C# compilation unit with `Kind = DynamicCompileKind.Patch`. Its static methods marked `[ReplacesMethod(typeof(TargetType), "MethodName")]` replace eligible script methods. The replacement returns the same type and takes the same parameters and `ref`/`out` kinds; for an instance method, its first parameter is the target object (`ref` for a value type). Private replacements and private target members are supported. Source usings become global usings, the server/client compilation symbols and access to script members remain available, and diagnostics refer to `patch(line,column)`.
+
+The weaver gives a point to script methods with bodies outside Engine's `FOnline` namespace. It excludes constructors, generic methods or generic declaring types, varargs, compiler-generated bodies (including lambdas, local functions and state-machine `MoveNext`), and `[NoPatchPoint]` methods. Patch the method creating a lambda or async/iterator state machine instead; an invocation already running or suspended keeps its original body. Reserve `[NoPatchPoint]` for a measured hot method and patch its callers if needed. The compiler rejects a patch with no replacements (`FOPATCH001`) or an invalid, ambiguous, foreign, unweaved or signature-incompatible target (`FOPATCH002`) before application. A patch may define its own helpers and static state, but changing existing type layout, method signatures, or generated metadata requires a normal deploy.
+
+`ScriptPatches.Apply(assembly)` validates every replacement and publishes one table for the whole patch, so new calls see all of its replacements or none. A later patch of a method takes precedence; `Revert(set)` restores an earlier patch or the original body, and `RevertAll()` clears all sets. `IsAvailable`, `PatchPointCount`, `HasPatchPoint(method)` and `Applied` expose availability and state. Applying is refused when that side's `ServerPatchesEnabled` or `ClientPatchesEnabled` switch is off; Mapper has no patch application. Every published table remains allocated until process exit because concurrent callers can still hold it; loaded patch assemblies are non-collectible too. The woven fast path tests a static active flag, then consults a per-method slot only while patches are active. It remains present even if application is disabled. The Engine exposes the mechanism, not remote authorization, persistence, delivery, audit, or deployment policy; the embedding project must own those boundaries.
+
+The weaver writes a `FOnline.PatchPoints.Table` manifest into each woven assembly. The compiler uses that manifest, including when compiling against an image for the other side, to verify target eligibility. The replacement manifest records each method and its function pointer. The redirect is shared per erased signature; on JIT runtimes it calls native code, while the Web interpreter uses its method handle. A concurrent revert can leave a redirect with an empty slot; it falls back to the original method rather than calling a stale replacement. Desktop JIT cost and memory measurements depend on the embedding project and workload; Web and Android performance need separate measurement.
+
 Shutdown first calls `BeginManagedTeardown`, which invokes `Native.BeginBackendTeardown` before any other cleanup and makes `Native.IsBackendTearingDown` true while the backend is still bound. This distinguishes a wrapper finalized during ordinary runtime from one made unreachable by teardown itself. A thread-affine wrapper that cannot release its native resource from the finalizer thread may suppress its leak report in the latter case because the owning Engine subsystem is about to be destroyed. `Native.IsBackendAlive` cannot make that distinction: unbinding deliberately remains later so entity wrappers collected during shutdown can still return their native references.
 
 Shutdown then closes the continuation scheduler and discards queued work before releasing backend state. It clears project static references and persistent callback roots, runs bounded collect/finalizer passes while the Engine and assembly images still exist, reports remaining entity wrappers (and names them when deep tracking is enabled), then calls `Native.UnbindBackend` for every entry assembly before releasing the load scope and native global data. A non-browser finalizer wait runs on an Engine-requested pool task with a separate five-second budget, so a blocked finalizer cannot park the teardown thread indefinitely. A timeout or remaining-wrapper report is diagnostic and teardown continues; a wrapper that finalizes after unbinding must not release through dead native state.
@@ -3848,6 +3862,7 @@ First diagnosis routes:
 | --- | --- |
 | Managed CoreScripts or backend | C# format/style checks, CoreScripts tests, generated project build, focused native unit tests. |
 | Dynamic assemblies or live compiler | `test_managed_dynamic_assemblies.py`, `test_managed_script_compiler.py`, target package/closure check, and an embedding-project runtime authorization and execution test. |
+| Patch-point weaving or live patches | `test_managed_patch_points.py`, managed baker/incremental inputs, exact target bake, and embedding-project application/revert/authorization tests on each enabled side; profile the target runtime separately. |
 | Synchronization failures | `FOnline.Sync.Tests.csproj`, analyzer tests, and the embedding-project subscriber/log behavior. |
 | Generated API shape or native export | Codegen, managed baker, generated diff, API contract diff, both backend tests where the contract is shared. |
 | Attribute, event, callback, timer, or named call | Managed reflection/registration test plus the owning native/runtime dispatch. |
@@ -26023,7 +26038,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 38916799c1d124c174785f9fe9a9f1cdbf46f46f469b4af6a220549db611dd31
+Content SHA-256: dca3378b9fcb36a61b25f4d794f7034de013e2efd3aa09afd29b74b1d2d1f6b9
 
 ---
 title: Generated API Reference
@@ -26044,32 +26059,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 270 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 273 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2536 |
-| Symbols with descriptions | 2536 |
+| Addressable symbols | 2539 |
+| Symbols with descriptions | 2539 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2536 |
+| Explicitly classified symbols | 2539 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2535 |
+| <code>experimental</code> | 2538 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2536 stable IDs with SHA-256 <code>67524372da7853a7f8cd123842dfcf3371d4838516a82cb4631e9afd3f1afd20</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2539 stable IDs with SHA-256 <code>e1542cee8670486023810704aa505ef5f9339faa0ff2cfab9feb90edb5ca72b0</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

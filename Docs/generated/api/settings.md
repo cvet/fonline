@@ -458,6 +458,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-managedscript-bakerdryrun-4deada73d4"></a>
 - [`symbol-setting-common-managedscript-bakerdryrun-4deada73d4`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-bakerdryrun-4deada73d4)
 
+<a id="symbol-setting-common-managedscript-clientpatchesenabled-5fb9b9d7a8"></a>
+- [`symbol-setting-common-managedscript-clientpatchesenabled-5fb9b9d7a8`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-clientpatchesenabled-5fb9b9d7a8)
+
 <a id="symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48"></a>
 - [`symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-deeptrackentitywrappers-bbf6341b48)
 
@@ -482,8 +485,14 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7"></a>
 - [`symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-overrunreporttime-5735c4c2d7)
 
+<a id="symbol-setting-common-managedscript-patchpointweaver-5bb6db5cbd"></a>
+- [`symbol-setting-common-managedscript-patchpointweaver-5bb6db5cbd`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-patchpointweaver-5bb6db5cbd)
+
 <a id="symbol-setting-common-managedscript-projectname-a78932f585"></a>
 - [`symbol-setting-common-managedscript-projectname-a78932f585`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-projectname-a78932f585)
+
+<a id="symbol-setting-common-managedscript-serverpatchesenabled-b1512f6bdf"></a>
+- [`symbol-setting-common-managedscript-serverpatchesenabled-b1512f6bdf`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-serverpatchesenabled-b1512f6bdf)
 
 <a id="symbol-setting-common-managedscript-targetframework-daea779031"></a>
 - [`symbol-setting-common-managedscript-targetframework-daea779031`](../../en/reference/script-api/settings.md#symbol-setting-common-managedscript-targetframework-daea779031)

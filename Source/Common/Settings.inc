@@ -77,6 +77,9 @@ SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configurati
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
+SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
+SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way
+SETTING(bool, ManagedScript, ClientPatchesEnabled, false); // If true, a client applies the script patches its server sends; each client reads its own config
 SETTING_GROUP_END(ManagedScript);
 
 ///@ ExportSettings Common

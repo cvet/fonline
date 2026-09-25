@@ -17,32 +17,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 270 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 273 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2536 |
-| Symbols with descriptions | 2536 |
+| Addressable symbols | 2539 |
+| Symbols with descriptions | 2539 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2536 |
+| Explicitly classified symbols | 2539 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2535 |
+| <code>experimental</code> | 2538 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2536 stable IDs with SHA-256 <code>67524372da7853a7f8cd123842dfcf3371d4838516a82cb4631e9afd3f1afd20</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2539 stable IDs with SHA-256 <code>e1542cee8670486023810704aa505ef5f9339faa0ff2cfab9feb90edb5ca72b0</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
