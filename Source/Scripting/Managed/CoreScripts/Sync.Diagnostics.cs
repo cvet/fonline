@@ -83,6 +83,11 @@ public static partial class Sync
                 return false;
             }
 
+            // A teardown the caller could not prevent explains the refusal, so it says nothing about the code that asked
+            if (IsLifecycleReason(reason) && (IsGone(first) || IsGone(second) || IsGone(third))) {
+                return false;
+            }
+
             List<FailureEntity> entities = new List<FailureEntity>();
             List<ident> entityIds = new List<ident>();
             List<hstring> protoIds = new List<hstring>();
@@ -111,6 +116,30 @@ public static partial class Sync
             }
 
             return false;
+        }
+
+        private static bool IsLifecycleReason(string reason)
+        {
+            return reason is "entity_unavailable_before_acquire" or "entity_unavailable_after_acquire" or
+                             "entity_unavailable" or "dependency_unavailable" or "snapshot_incomplete";
+        }
+
+        private static bool IsGone(object? value)
+        {
+            switch (value) {
+            case Entity entity:
+                return entity.IsDestroyed || entity.IsDestroying;
+            case IEnumerable<Entity> entries:
+                foreach (Entity entry in entries) {
+                    if (entry.IsDestroyed || entry.IsDestroying) {
+                        return true;
+                    }
+                }
+
+                return false;
+            default:
+                return false;
+            }
         }
 
         private static void CaptureContext(object? value, List<FailureEntity> entities, List<ident> entityIds,

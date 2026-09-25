@@ -994,8 +994,9 @@ void SyncContext::WidenEntities(const_span<ptr<ServerEntity>> extras)
     vector<ptr<ServerEntity>> request;
     request.reserve(_heldLockOwners.size() + extras.size());
 
+    // A held owner being destroyed stays: only its destroyer's thread can hold it, and its handlers still work on it
     for (auto& owner : _heldLockOwners) {
-        if (!owner->IsDestroyed() && !owner->IsDestroying()) {
+        if (!owner->IsDestroyed()) {
             request.emplace_back(owner);
         }
     }

@@ -290,8 +290,12 @@ reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/C
 ### Managed synchronization failure diagnostics
 
 Every public `Task<bool>` acquisition/restoration helper in managed `CoreScripts/Sync.cs` publishes an
-externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`). Each
-subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
+externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`), unless
+destruction explains it. A refusal for availability (`entity_unavailable_before_acquire`,
+`entity_unavailable_after_acquire`, `entity_unavailable`, `dependency_unavailable`, `snapshot_incomplete`)
+whose context holds a destroyed or destroying entity is the expected answer to a teardown the caller could not
+prevent, so the helper still returns `false` and publishes nothing; the structural reasons are always published.
+Each subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
 and owns no enable/disable setting; the embedding project chooses its subscribers and reactions with
 `Sync.OnFailure += HandleFailure` and can unsubscribe with `-=`. The handler receives data directly and
 chooses its own text, JSON, metrics or other representation.
@@ -344,7 +348,9 @@ Offline regression coverage compiles the actual helpers against an acquisition f
 dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
 ```
 
-It checks all boolean acquisition overloads, caller forwarding, destruction during acquisition, recovered
+It checks that every boolean acquisition overload refuses a destroyed root without publishing it, that
+destruction during acquisition stays unpublished, that an entity its own thread is destroying stays available
+while one another thread destroys is refused before any acquisition, and covers caller forwarding, recovered
 map migration, best-effort silence, partial restoration, reason distinctions, JSON escaping and exception
 propagation. Embedding projects also validate their baked scripts on the native backend.
 
@@ -425,7 +431,7 @@ own lock the way `EnsureEntitySynced()` does, and nothing is released. Each enti
 entry, which is the contract script widening relies on. A request that drops a held lock, or adds an entity
 covered only through the Critter-Player widen link or not covered at all, takes the full release-and-reacquire
 path, which re-proves the link under the acquired cover. `Game.SyncWiden` (`SyncContext::WidenEntities()`) is the
-primitive behind the managed `Sync.Widen` family: it requests the live held set plus the extras natively, so
+primitive behind the managed `Sync.Widen` family: it requests the held set plus the extras natively, so
 widening materializes no snapshot of the held set on the script side and prunes held entries that were destroyed.
 Pinned by `Source/Tests/Test_ServerEntityLifetime.cpp` → `ServerSyncWidenOfCoveredEntityKeepsHeldLocks`, where a
 job queued for the map must not get it while the widening context keeps working.
@@ -436,6 +442,20 @@ held exclusively nor marked by this context, the request takes the full path to 
 only the critter's own lock would let a foreign job acquire its new map concurrently. This applies even to a
 request identical to the held set, including an empty native widen. Pinned by
 `ServerSyncRetainedCoverRefreshesReparentedAncestors` for both replacement and widening.
+
+### An entity being destroyed
+
+`MarkAsDestroying()` is set by the thread that holds the entity's lock, and that thread keeps the lock until
+the entity is destroyed. Whether a destroying entity may be taken therefore depends on who asks, and the managed
+`Sync` helpers decide it in one place (`IsUnavailable()` in `CoreScripts/Sync.cs`). To the destroying thread the
+entity stays available: its finish, map-out and hide handlers run during the teardown on that thread, already
+cover the entity (`Game.IsEntityLocked`), and may read and write it under the lock like any other entity, so
+`Lock`, `Widen`, `Restore` and `IsCovered` accept it without waiting. To any other thread it is unavailable
+before anything is acquired: taking it would park on the destroyer, which may itself be waiting on the marks the
+asking job keeps, and would hand the entity back destroyed. A destroyed entity is unavailable to everyone.
+`SyncContext::WidenEntities()` follows the same rule for the held set, keeping a held owner that is being
+destroyed and dropping only destroyed ones. Pinned by `ServerSyncWidenKeepsHeldEntityBeingDestroyed` and by the
+[managed Sync harness](#managed-synchronization-failure-diagnostics).
 
 ### Storage shape
 

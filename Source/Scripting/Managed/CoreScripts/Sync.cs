@@ -13,7 +13,7 @@ public static partial class Sync
     // aborted by server shutdown (after the Server.ShutdownGraceMs drain window expires) it throws
     // EntityLockWaitAbortedException, which is not caught here — the exception unwinds the async job and
     // stops its work during teardown. These Sync::Lock(...) helpers add the liveness policy on top: they
-    // check IsDestroyed before and after acquiring and return `false` so the caller can early-out without
+    // check IsUnavailable before and after acquiring and return `false` so the caller can early-out without
     // touching dead handles. A destroyed entity is not always fatal — e.g. a critter's presumed map can
     // change and the old one be destroyed, in which case the caller re-reads the map and locks again
     // rather than treating `false` as a hard stop.
@@ -24,7 +24,7 @@ public static partial class Sync
     //     if (!Sync::Lock(npc, map)) return;
     //     if (!Sync::Lock(npc, map, nearbyCritters)) return;
 
-    // Lifecycle: strict — a destroyed/destroying entity returns false before or after acquisition; it is never skipped
+    // Lifecycle: strict — an unavailable entity returns false before or after acquisition; it is never skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity entity, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -32,7 +32,7 @@ public static partial class Sync
     {
         FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
 
-        if (entity.IsDestroyed || entity.IsDestroying) {
+        if (IsUnavailable(entity)) {
             return failure.Report("entity_unavailable_before_acquire", entity);
         }
 
@@ -44,11 +44,10 @@ public static partial class Sync
 
         Game.Sync(entity);
 
-        return (!entity.IsDestroyed && !entity.IsDestroying) ||
-               failure.Report("entity_unavailable_after_acquire", entity);
+        return !IsUnavailable(entity) || failure.Report("entity_unavailable_after_acquire", entity);
     }
 
-    // Lifecycle: strict — either destroyed/destroying entity makes the call return false; neither one is skipped
+    // Lifecycle: strict — either unavailable entity makes the call return false; neither one is skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity,
                                         [CallerFilePath] string callerFile = "",
@@ -59,7 +58,7 @@ public static partial class Sync
         return await Lock(new List<Entity> { firstEntity, secondEntity }, callerFile, callerMember, callerLine);
     }
 
-    // Lifecycle: strict — any destroyed/destroying entity makes the call return false; no partial set is accepted
+    // Lifecycle: strict — any unavailable entity makes the call return false; no partial set is accepted
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(Entity firstEntity, Entity secondEntity, Entity thirdEntity,
                                         [CallerFilePath] string callerFile = "",
@@ -72,7 +71,7 @@ public static partial class Sync
                           callerLine);
     }
 
-    // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying member returns false and is not skipped
+    // Lifecycle: an empty array succeeds without changing cover; any unavailable member returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Entity> entities, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -85,7 +84,7 @@ public static partial class Sync
         }
 
         for (int i = 0; i < entities.Count; i++) {
-            if (entities[i].IsDestroyed || entities[i].IsDestroying) {
+            if (IsUnavailable(entities[i])) {
                 return failure.Report("entity_unavailable_before_acquire", entities[i], entities);
             }
         }
@@ -101,7 +100,7 @@ public static partial class Sync
         Game.Sync(coverable);
 
         for (int i = 0; i < entities.Count; i++) {
-            if (entities[i].IsDestroyed || entities[i].IsDestroying) {
+            if (IsUnavailable(entities[i])) {
                 return failure.Report("entity_unavailable_after_acquire", entities[i], entities);
             }
         }
@@ -121,11 +120,11 @@ public static partial class Sync
         return Game.GetHeldSyncEntities();
     }
 
-    // Lifecycle: strict query — destroyed/destroying entities return false before the native coverage probe
+    // Lifecycle: strict query — a destroyed entity returns false before the native coverage probe
     [CoverProbe]
     public static bool IsCovered(Entity entity)
     {
-        return !entity.IsDestroyed && !entity.IsDestroying && Game.IsEntityLocked(entity);
+        return !entity.IsDestroyed && Game.IsEntityLocked(entity);
     }
 
     // Puts the snapshot back on the way out, where the caller has nothing left to decide: it is returning
@@ -157,7 +156,7 @@ public static partial class Sync
             List<Entity> survivors = new List<Entity>();
 
             for (int i = 0; i < candidates.Count; i++) {
-                if (!candidates[i].IsDestroyed && !candidates[i].IsDestroying) {
+                if (!IsUnavailable(candidates[i])) {
                     survivors.Add(candidates[i]);
                 }
             }
@@ -193,7 +192,7 @@ public static partial class Sync
         FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
 
         for (int i = 0; i < extras.Count; i++) {
-            if (extras[i].IsDestroyed || extras[i].IsDestroying) {
+            if (IsUnavailable(extras[i])) {
                 return failure.Report("entity_unavailable_before_acquire", extras[i], extras);
             }
         }
@@ -201,7 +200,7 @@ public static partial class Sync
         WidenLockable(extras);
 
         for (int i = 0; i < extras.Count; i++) {
-            if (extras[i].IsDestroyed || extras[i].IsDestroying) {
+            if (IsUnavailable(extras[i])) {
                 return failure.Report("entity_unavailable_after_acquire", extras[i], extras);
             }
         }
@@ -224,16 +223,16 @@ public static partial class Sync
     [PreservesCover]
     public static async Task WidenBestEffort(List<Entity> extras)
     {
-        WidenLockable(extras.FindAll(static extra => !extra.IsDestroyed && !extra.IsDestroying));
+        WidenLockable(extras.FindAll(static extra => !IsUnavailable(extra)));
     }
 
     // Single-entity best-effort widening overload.
-    // Lifecycle: best-effort — a destroyed/destroying extra is intentionally omitted; an explicitly held live extra is a no-op
+    // Lifecycle: best-effort — an unavailable extra is intentionally omitted; an explicitly held live extra is a no-op
     [CoverEffect(CoverEffectKind.Extend)]
     [PreservesCover]
     public static async Task WidenBestEffort(Entity extra)
     {
-        if (extra.IsDestroyed || extra.IsDestroying) {
+        if (IsUnavailable(extra)) {
             return;
         }
 
@@ -248,6 +247,11 @@ public static partial class Sync
                            ? extras
                            : extras.FindAll(static extra => !extra.IsAlwaysCovered));
     }
+
+    // The thread destroying an entity already covers it, so its own teardown handlers take it without waiting;
+    // any other thread would park on the destroyer and could close a cycle with the marks its own cover keeps
+    private static bool IsUnavailable(Entity entity) => entity.IsDestroyed ||
+                                                        (entity.IsDestroying && !Game.IsEntityLocked(entity));
 
     // Widens cover with cr and its current map when mapped; retries if cr migrates during acquisition.
     // Lifecycle: a stale cr/current map returns false; a map destroyed during escalation is retried through the current cr-to-map link
@@ -437,7 +441,7 @@ public static partial class Sync
         _ = await Restore(snapshot);
     }
 
-    // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying critter returns false and is not skipped
+    // Lifecycle: an empty array succeeds without changing cover; any unavailable critter returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Critter> critters, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -460,7 +464,7 @@ public static partial class Sync
         return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
-    // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying item returns false and is not skipped
+    // Lifecycle: an empty array succeeds without changing cover; any unavailable item returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Item> items, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -483,7 +487,7 @@ public static partial class Sync
         return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
-    // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying map returns false and is not skipped
+    // Lifecycle: an empty array succeeds without changing cover; any unavailable map returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Map> maps, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -506,7 +510,7 @@ public static partial class Sync
         return await Lock(entities, callerFile, callerMember, callerLine);
     }
 
-    // Lifecycle: an empty array succeeds without changing cover; any destroyed/destroying location returns false and is not skipped
+    // Lifecycle: an empty array succeeds without changing cover; any unavailable location returns false and is not skipped
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> Lock(List<Location> locations, [CallerFilePath] string callerFile = "",
                                         [CallerMemberName] string callerMember = "",
@@ -642,8 +646,8 @@ public static partial class Sync
         Game.SyncRelease();
     }
 
-    // A destroying parent is terminal: its destroyer may be parked on the marks this job's outer context keeps on it
-    // Lifecycle: a stale or destroying cr/current map returns false; a changed cr->map link is retried
+    // A parent another thread destroys is terminal: its destroyer may be parked on this job's outer-context marks
+    // Lifecycle: a stale cr or an unavailable current map returns false; a changed cr->map link is retried
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMap(Critter cr, [CallerFilePath] string callerFile = "",
                                                       [CallerMemberName] string callerMember = "",
@@ -666,7 +670,7 @@ public static partial class Sync
                 return true;
             }
 
-            if (map.IsDestroyed || map.IsDestroying) {
+            if (IsUnavailable(map)) {
                 return failure.Report("entity_unavailable", map, cr);
             }
 
@@ -695,7 +699,7 @@ public static partial class Sync
         FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
 
         while (true) {
-            if (first.IsDestroyed || first.IsDestroying || second.IsDestroyed || second.IsDestroying) {
+            if (IsUnavailable(first) || IsUnavailable(second)) {
                 return failure.Report("entity_unavailable", first, second);
             }
 
@@ -706,10 +710,10 @@ public static partial class Sync
             Map? firstMap = first.GetMap();
             Map? secondMap = second.GetMap();
 
-            if (firstMap != null && (firstMap.IsDestroyed || firstMap.IsDestroying)) {
+            if (firstMap != null && IsUnavailable(firstMap)) {
                 return failure.Report("entity_unavailable", firstMap, first, second);
             }
-            if (secondMap != null && (secondMap.IsDestroyed || secondMap.IsDestroying)) {
+            if (secondMap != null && IsUnavailable(secondMap)) {
                 return failure.Report("entity_unavailable", secondMap, first, second);
             }
 
@@ -736,7 +740,7 @@ public static partial class Sync
         }
     }
 
-    // Lifecycle: a stale or destroying cr or resolved map/location returns false; acquisition races retry against the current parent chain
+    // Lifecycle: an unavailable cr or resolved map/location returns false; acquisition races retry against the current parent chain
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockCritterWithMapAndLocation(Critter cr, [CallerFilePath] string callerFile = "",
                                                                  [CallerMemberName] string callerMember = "",
@@ -759,7 +763,7 @@ public static partial class Sync
                 return true;
             }
 
-            if (map.IsDestroyed || map.IsDestroying) {
+            if (IsUnavailable(map)) {
                 return failure.Report("entity_unavailable", map, cr);
             }
 
@@ -775,7 +779,7 @@ public static partial class Sync
             }
 
             Location loc = map.GetLocation();
-            if (loc.IsDestroyed || loc.IsDestroying) {
+            if (IsUnavailable(loc)) {
                 return failure.Report("entity_unavailable", loc, cr);
             }
 
@@ -799,7 +803,7 @@ public static partial class Sync
         }
     }
 
-    // Lifecycle: a stale cr/member/destination chain or a destroying source map/location returns false; a changed source graph is retried because cr may have migrated or changed groups
+    // Lifecycle: a stale cr/member/destination chain or an unavailable source map/location returns false; a changed source graph is retried because cr may have migrated or changed groups
     [CoverEffect(CoverEffectKind.Replace)]
     public static async Task<bool> LockForTransferToMap(Critter cr, Map destMap,
                                                         [CallerFilePath] string callerFile = "",
@@ -809,7 +813,7 @@ public static partial class Sync
         FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
 
         while (true) {
-            if (cr.IsDestroyed || cr.IsDestroying || destMap.IsDestroyed || destMap.IsDestroying) {
+            if (IsUnavailable(cr) || IsUnavailable(destMap)) {
                 return failure.Report("entity_unavailable", cr, destMap);
             }
 
@@ -819,10 +823,10 @@ public static partial class Sync
 
             Map? srcMap = cr.GetMap();
             Location destLoc = destMap.GetLocation();
-            if (destLoc.IsDestroyed || destLoc.IsDestroying) {
+            if (IsUnavailable(destLoc)) {
                 return failure.Report("entity_unavailable", destLoc, cr, destMap);
             }
-            if (srcMap != null && (srcMap.IsDestroyed || srcMap.IsDestroying)) {
+            if (srcMap != null && IsUnavailable(srcMap)) {
                 return failure.Report("entity_unavailable", srcMap, cr, destMap);
             }
 
@@ -843,7 +847,7 @@ public static partial class Sync
 
             if (srcMap != null) {
                 Location srcLoc = srcMap.GetLocation();
-                if (srcLoc.IsDestroyed || srcLoc.IsDestroying) {
+                if (IsUnavailable(srcLoc)) {
                     return failure.Report("entity_unavailable", srcLoc, cr, destMap);
                 }
 
@@ -866,7 +870,7 @@ public static partial class Sync
         }
     }
 
-    // Lifecycle: strict — a mapped root, stable destroyed/destroying member, or exhausted retry budget returns false
+    // Lifecycle: strict — a mapped root, stable unavailable member, or exhausted retry budget returns false
     [CoverEffect(CoverEffectKind.Extend)]
     public static Task<bool> WidenCritterWithGlobalMapGroup(Critter cr, [CallerFilePath] string callerFile = "",
                                                             [CallerMemberName] string callerMember = "",
@@ -1127,7 +1131,7 @@ public static partial class Sync
             }
 
             Location loc = map.GetLocation();
-            if (loc.IsDestroyed || loc.IsDestroying) {
+            if (IsUnavailable(loc)) {
                 return failure.Report("entity_unavailable", loc, player, map);
             }
 
@@ -1154,7 +1158,7 @@ public static partial class Sync
         FailureDiagnostic failure = new FailureDiagnostic(callerFile, callerMember, callerLine);
 
         while (true) {
-            if (player.IsDestroyed || player.IsDestroying || cr.IsDestroyed || cr.IsDestroying) {
+            if (IsUnavailable(player) || IsUnavailable(cr)) {
                 return failure.Report("entity_unavailable", player, cr);
             }
 
@@ -1167,7 +1171,7 @@ public static partial class Sync
                 return true;
             }
 
-            if (map.IsDestroyed || map.IsDestroying) {
+            if (IsUnavailable(map)) {
                 return failure.Report("entity_unavailable", map, player, cr);
             }
 
@@ -1177,7 +1181,7 @@ public static partial class Sync
             }
 
             Location loc = map.GetLocation();
-            if (loc.IsDestroyed || loc.IsDestroying) {
+            if (IsUnavailable(loc)) {
                 return failure.Report("entity_unavailable", loc, player, cr);
             }
 
@@ -1553,7 +1557,7 @@ public static partial class Sync
             if (map == null) {
                 return true;
             }
-            if (map.IsDestroyed || map.IsDestroying) {
+            if (IsUnavailable(map)) {
                 return failure.Report("entity_unavailable", map, item);
             }
 

@@ -151,11 +151,12 @@ The synchronization harness compiles the real `Sync` helpers with deterministic 
 dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
 ```
 
-It proves one report per externally returned false across every acquisition overload when subscribed,
-unchanged results without subscribers, multiple independent subscribers, unsubscription and callback-fault
-isolation with exception accounting. It also covers caller metadata forwarding, phase/entity information,
-successful retry and best-effort silence, partial restoration, native exception propagation, unchanged caller
-strings, typed IDs/prototypes and immutable snapshots across subscribers. Its fixture exposes neither a logging
+It proves that every acquisition overload refuses a destroyed root without publishing it, that an entity its
+own thread is destroying stays available while one another thread destroys is refused before any acquisition,
+one report per structural refusal when subscribed, unchanged results without subscribers, multiple independent
+subscribers, unsubscription and callback-fault isolation with exception accounting. It also covers caller
+metadata forwarding, successful retry and best-effort silence, partial restoration, native exception
+propagation, unchanged caller strings, typed IDs/prototypes and immutable snapshots across subscribers. Its fixture exposes neither a logging
 API nor a diagnostics setting to Sync. The data contract lives in
 [ServerRuntime.md](ServerRuntime.md#managed-synchronization-failure-diagnostics).
 
