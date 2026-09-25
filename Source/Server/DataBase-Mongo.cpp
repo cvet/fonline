@@ -65,8 +65,6 @@ public:
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _escapeDot {db_settings->DataBase.MongoEscapeChar.empty() ? '\0' : db_settings->DataBase.MongoEscapeChar.front()}
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (db_settings->DataBase.MongoEscapeChar.length() > 1) {
             throw DataBaseException("DbMongo escape char must be empty or a single character", db_settings->DataBase.MongoEscapeChar);
         }
@@ -176,8 +174,6 @@ public:
 
     ~DbMongo() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         StopCommitThread();
 
         scoped_lock locker {_storageLocker};
@@ -195,8 +191,6 @@ protected:
 
     void EnsureCollection(hstring collection_name, DataBaseKeyType key_type) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(key_type);
 
         scoped_lock locker {_storageLocker};
@@ -222,7 +216,7 @@ protected:
 
     [[nodiscard]] auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -302,7 +296,7 @@ protected:
 protected:
     [[nodiscard]] auto GetRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -347,13 +341,14 @@ protected:
 
     [[nodiscard]] auto GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document> override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         vector<AnyData::Document> docs(ids.size());
         unordered_map<DataBaseKey, size_t> index_by_id;
 
         for (size_t i = 0; i < ids.size(); i++) {
-            FO_VERIFY_AND_THROW(index_by_id.emplace(ids[i], i).second, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
+            bool first_request = index_by_id.emplace(ids[i], i).second;
+            FO_VERIFY_AND_THROW(first_request, "Batch read requested the same record twice", collection_name, FormatMongoDbKey(ids[i]));
         }
 
         scoped_lock locker {_storageLocker};
@@ -431,7 +426,7 @@ protected:
 
     void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database insert received an empty document", collection_name, id);
 
@@ -457,7 +452,7 @@ protected:
 
     void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         FO_VERIFY_AND_THROW(!doc.Empty(), "Mongo database update received an empty document", collection_name, id);
 
@@ -497,7 +492,7 @@ protected:
 
     void DeleteRecord(hstring collection_name, const DataBaseKey& id) override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -519,7 +514,7 @@ protected:
 
     auto TryReconnect() -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Database);
 
         scoped_lock locker {_storageLocker};
 
@@ -548,8 +543,6 @@ protected:
 private:
     ptr<mongoc_collection_t> GetCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto it = _collections.find(collection_name.as_str());
 
         if (it == _collections.end()) {
@@ -587,17 +580,10 @@ private:
         return "Unknown";
     }
 
-    static void AppendMongoDbKey(ptr<bson_t> bson, const DataBaseKey& key, hstring collection_name)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        AppendMongoDbValue(bson, "_id", key, collection_name);
-    }
+    static void AppendMongoDbKey(ptr<bson_t> bson, const DataBaseKey& key, hstring collection_name) { AppendMongoDbValue(bson, "_id", key, collection_name); }
 
     static void AppendMongoDbValue(ptr<bson_t> bson, string_view field_name, const DataBaseKey& key, hstring collection_name)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
         string field_name_str {field_name};
         auto field_name_ptr = make_ptr(field_name_str.c_str());
@@ -624,8 +610,6 @@ private:
 
     static auto ReadMongoDbKey(ptr<const bson_t> bson, hstring collection_name) -> DataBaseKey
     {
-        FO_STACK_TRACE_ENTRY();
-
         bson_iter_t iter;
         auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
@@ -668,8 +652,6 @@ auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, str
 // handshake data and its lock, and no later init restores them, so a second database would run on freed state
 static void InitializeMongoRuntime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     static std::once_flag once;
     std::call_once(once, [] {
         mongoc_init();
@@ -679,8 +661,6 @@ static void InitializeMongoRuntime()
 
 static void MongoLogHandler(mongoc_log_level_t log_level, const char* log_domain, const char* message, void* user_data)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(user_data);
 
     auto domain_text = make_nptr(log_domain);

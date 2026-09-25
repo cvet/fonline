@@ -50,24 +50,18 @@ FO_BEGIN_NAMESPACE
 
 static auto LookupScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) noexcept -> nptr<AngelScriptBackend>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return cast_from_void<AngelScriptBackend*>(as_engine->GetUserData());
 }
 
 template<size_t... I>
 [[noreturn]] static void ThrowWithArgs(string_view message, const vector<string>& obj_infos, std::index_sequence<I...> /*unused*/)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     throw ScriptException(message, obj_infos[I]...);
 }
 
 template<size_t ArgsCount>
 static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     auto message = GetGenericAddressArgAs<const string>(generic, 0);
 
@@ -92,8 +86,6 @@ static void Global_ThrowException(AngelScript::asIScriptGeneric* gen)
 
 static void Global_Yield(int32_t durationMs)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
@@ -106,8 +98,6 @@ static void Global_Yield(int32_t durationMs)
 
 static auto Global_GetGlobalExceptionCount() -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     ptr<AngelScript::asIScriptEngine> as_engine = ctx->GetEngine();
@@ -117,8 +107,6 @@ static auto Global_GetGlobalExceptionCount() -> int32_t
 
 static auto Global_GetContextExceptionCount() -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
@@ -128,8 +116,6 @@ static auto Global_GetContextExceptionCount() -> int32_t
 
 static auto Global_GetExceptionInfo() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
     auto ctx_ext = AngelScriptContextExtendedData::Get(ctx);
@@ -154,7 +140,7 @@ static auto Global_GetExceptionInfo() -> string
 
 static void Global_RunScriptGC()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto ctx = make_nptr(AngelScript::asGetActiveContext());
     FO_VERIFY_AND_THROW(ctx, "Missing script execution context");
@@ -164,8 +150,6 @@ static void Global_RunScriptGC()
 
 static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg) -> vector<ComplexTypeDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
 
     if (args_count > MAX_CALL_ARGS) {
@@ -195,8 +179,6 @@ static auto ResolveInvokeArgTypes(ptr<AngelScript::asIScriptGeneric> gen, AngelS
 
 static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT result_arg) -> ComplexTypeDesc
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     int32_t result_type_id = gen->GetArgTypeId(result_arg);
     auto result_type = ResolveScriptFuncType(as_engine, result_type_id);
@@ -211,8 +193,6 @@ static auto ResolveInvokeResultType(ptr<AngelScript::asIScriptGeneric> gen, Ange
 
 static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT first_arg, nptr<void> ret_data = nullptr) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(func_desc->Call, "Script function descriptor has no native call handler");
 
     auto args_count = numeric_cast<size_t>(gen->GetArgCount()) - first_arg;
@@ -254,8 +234,6 @@ static auto InvokeResolvedFunction(ptr<const ScriptFuncDesc> func_desc, ptr<Ange
 
 static void Global_NameOf(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     nptr<const AngelScript::asITypeInfo> as_type_info = as_engine->GetTypeInfoById(gen->GetArgTypeId(0));
     nptr<const AngelScript::asIScriptFunction> funcdef {};
@@ -295,8 +273,6 @@ static void Global_NameOf(AngelScript::asIScriptGeneric* gen)
 
 static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     auto func_name = GetGenericAddressArgAs<const string>(gen, 0);
@@ -315,8 +291,6 @@ static void Global_InvokeByName(AngelScript::asIScriptGeneric* gen)
 
 static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<BaseEngine> engine = GetGameEngine(gen->GetEngine());
     const auto& func_name = *cast_from_void<const string*>(gen->GetAddressOfArg(0));
     hstring hashed_func_name = engine->Hashes.to_hashed_string(func_name);
@@ -353,8 +327,6 @@ static void Global_InvokeByNameWithResult(AngelScript::asIScriptGeneric* gen)
 
 static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = LookupScriptBackend(as_engine);
 
@@ -368,8 +340,6 @@ static void Global_GetGame(AngelScript::asIScriptGeneric* gen)
 
 static void Global_IsGameDestroying(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // True once the game engine is gone, e.g. in script object destructors during backend destruction (when Game is null)
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = LookupScriptBackend(as_engine);
@@ -380,16 +350,12 @@ static void Global_IsGameDestroying(AngelScript::asIScriptGeneric* gen)
 
 static void Global_GetPropertyGroup(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arr = GetGenericAuxiliaryAs<ScriptArray>(gen);
     ReturnGenericScriptArray(gen, arr);
 }
 
 static void Game_ParseEnum(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -401,8 +367,6 @@ static void Game_ParseEnum(AngelScript::asIScriptGeneric* gen)
 
 static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -423,8 +387,6 @@ static void Game_TryParseEnum(AngelScript::asIScriptGeneric* gen)
 
 static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -446,8 +408,6 @@ static void Game_TryEnumToString(AngelScript::asIScriptGeneric* gen)
 
 static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -473,8 +433,6 @@ static void Game_EnumToString(AngelScript::asIScriptGeneric* gen)
 
 static auto Game_ParseGenericEnum(Entity* entity, string enum_name, string value_name) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<Entity> entity_ref = entity;
     auto engine = entity_ref.dyn_cast<BaseEngine>();
     FO_VERIFY_AND_THROW(engine, "Missing required engine");
@@ -484,8 +442,6 @@ static auto Game_ParseGenericEnum(Entity* entity, string enum_name, string value
 template<typename T>
 static void Setting_GetEngineValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto value = GetGenericAuxiliaryAs<const T>(gen);
     new (gen->GetAddressOfReturnLocation()) T(*value);
 }
@@ -493,8 +449,6 @@ static void Setting_GetEngineValue(AngelScript::asIScriptGeneric* gen)
 template<typename T>
 static void Setting_SetEngineValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto value = GetGenericAuxiliaryAs<T>(gen);
     auto new_value = GetGenericAddressArgAs<const T>(gen, 0);
     *value = *new_value;
@@ -579,8 +533,6 @@ struct IsVectorSetting<vector<U>> : std::true_type
 template<typename T>
 static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto vec = GetGenericAuxiliaryAs<const vector<T>>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
 
@@ -598,8 +550,6 @@ static void Setting_GetEngineVectorValue(AngelScript::asIScriptGeneric* gen)
 
 static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
@@ -679,8 +629,6 @@ static void Setting_GetValue(AngelScript::asIScriptGeneric* gen)
 
 static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
@@ -747,16 +695,12 @@ static void Setting_SetValue(AngelScript::asIScriptGeneric* gen)
 
 static void Setting_GetGroup(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<void> obj = gen->GetObject();
     new (gen->GetAddressOfReturnLocation()) void*(obj.get());
 }
 
 static auto SplitSettingPath(string_view setting_name) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> path;
     size_t prev_pos = 0;
 
@@ -777,8 +721,6 @@ static auto SplitSettingPath(string_view setting_name) -> vector<string>
 
 static auto MakeScriptSettingGroupTypeName(const vector<string>& path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result = "GlobalSettingsGroup";
 
     for (const auto& part : path) {
@@ -791,7 +733,7 @@ static auto MakeScriptSettingGroupTypeName(const vector<string>& path) -> string
 
 void RegisterAngelScriptEnums(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     auto meta = GetEngineMetadata(as_engine);
@@ -808,7 +750,7 @@ void RegisterAngelScriptEnums(ptr<AngelScript::asIScriptEngine> as_engine)
 
 void RegisterAngelScriptGlobals(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     auto backend = GetScriptBackend(as_engine);

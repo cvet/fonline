@@ -185,8 +185,6 @@ static constexpr string_view UnknownObjectParticle = R"PARTICLE(
 #if FO_SPARK_PARTICLES || FO_EFFEKSEER_PARTICLES
 static auto MakeTempParticleBakerDir() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::filesystem::path path = std::filesystem::temp_directory_path() / std::format("fo_particle_baker_{}", std::chrono::steady_clock::now().time_since_epoch().count());
     return fs::path_to_string(path);
 }
@@ -195,8 +193,6 @@ static auto MakeTempParticleBakerDir() -> string
 #if FO_SPARK_PARTICLES
 static auto BakeValidParticleBinary() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakerTests::TestRig rig;
     rig.AddSourceFile("Particles/UnitTest.spark", ValidParticle, 10);
 
@@ -216,8 +212,6 @@ enum class ParticleReferenceMutation
 
 static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferenceMutation mutation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto require_range = [&binary](size_t offset, size_t length, size_t limit) { FO_VERIFY_AND_THROW(limit <= binary.size() && offset <= limit && length <= limit - offset, "Particle binary fixture has an invalid range"); };
     auto read_uint32 = [&binary, &require_range](size_t offset, size_t limit) -> uint32_t {
         require_range(offset, sizeof(uint32_t), limit);
@@ -292,7 +286,8 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
                 attribute_position += numeric_cast<size_t>(transform_value_count) * sizeof(float32_t);
             }
 
-            FO_VERIFY_AND_THROW(read_bool(attribute_position, object_end), "Particle binary fixture has no System.groups value");
+            bool groups_defined = read_bool(attribute_position, object_end);
+            FO_VERIFY_AND_THROW(groups_defined, "Particle binary fixture has no System.groups value");
             uint32_t group_count = read_uint32(attribute_position, object_end);
             attribute_position += sizeof(uint32_t);
             FO_VERIFY_AND_THROW(group_count == 1 && numeric_cast<size_t>(group_count) <= (object_end - attribute_position) / sizeof(uint32_t), "Particle binary fixture has unexpected System.groups data");
@@ -337,8 +332,6 @@ static void MutateSystemGroupsReference(vector<uint8_t>& binary, ParticleReferen
 
 static auto GenerateSparkRandomValues(SPK::SPKContext& context, uint32_t& random_seed, size_t count) -> vector<uint32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     SPK::RandomSeedScope random_seed_scope {context, random_seed};
     vector<uint32_t> values;
     values.reserve(count);

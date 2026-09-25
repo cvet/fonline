@@ -92,12 +92,11 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto ClientApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
     global_data::create();
 
 #if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args = program_args.GetArgs();
 #endif
     bool run_result = RunEmbeddedOrLoadedClient(args);
 
@@ -106,8 +105,6 @@ int main(int argc, char** argv) // Handled by SDL
 
 static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The same rule the runtime applies, and it needs no settings, so both halves of the client agree on
     // one writable root without the runtime having to hand it back
     Data->WritableRoot = ResolveWritableRoot(args);
@@ -158,8 +155,6 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 
 static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRuntime& requested_runtime, string_view session_marker) -> optional<ClientRuntimeHostResult>
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Client runtime host: preparing DLL {}, compatibility check {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled");
 
     if (!ApplyStagedBinaryUpdate(requested_runtime.Path)) {
@@ -215,8 +210,6 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
 
 static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!runtime_path.empty(), "Client runtime host received a reload result without a requested runtime path");
 
     if (!ApplyStagedBinaryUpdate(runtime_path)) {
@@ -243,8 +236,6 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
 
 static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write("Client runtime host: entering embedded client build {}, compatibility {}", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     ClientRuntimeHostResult runtime_result {};
@@ -257,8 +248,6 @@ static auto RunEmbeddedClient(CommandLineArgs args) -> ClientRuntimeHostResult
 
 static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     ClientRuntimeResult runtime_result {};
     runtime_result.StructSize = numeric_cast<uint32_t>(sizeof(ClientRuntimeResult));
     runtime_result.ResultKind = ClientRuntimeResultKind::Shutdown;
@@ -334,15 +323,13 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
 
 static auto GetClient() -> ptr<ClientEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Client, "Client engine is not created");
     return Data->Client;
 }
 
 static void MainEntry([[maybe_unused]] void* data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (GetApp()->IsQuitRequested()) {
 #if FO_WEB
@@ -460,7 +447,7 @@ static void MainEntry([[maybe_unused]] void* data)
 
 static void CleanupClientApp() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     Data->ResourceUpdater.reset();
 
@@ -475,7 +462,7 @@ static void CleanupClientApp() noexcept
 
 static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, ClientRuntimeExports& exports) -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     // Pinned from the first moment and never unloaded, even when rejected below: the library's static
     // initialization already registered process-wide callbacks into it (the allocator's per-thread cleanup)
@@ -519,7 +506,7 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
 
 static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     // Staging follows the runtime being loaded: the install-dir base DLL on the initial load, the
     // writable-root DLL on an installed client's reload, and the exe dir for portable clients
@@ -533,7 +520,7 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     }
 
     string final_path = string(runtime_live_path);
-    string backup_path = strex("{}.bak", final_path).str();
+    string backup_path = strex("{}{}", final_path, REPLACED_FILE_BACKUP_SUFFIX).str();
     bool final_exists = fs::exists(final_path);
 
     logging::write("Client runtime host: promoting staged DLL {} to {}, backup {}, live DLL exists {}", staged_path, final_path, backup_path, final_exists ? "yes" : "no");
@@ -566,8 +553,6 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
 
 static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClientRuntime
 {
-    FO_STACK_TRACE_ENTRY();
-
     RequestedClientRuntime requested_runtime {};
 
     // Only a platform that loads native modules has a runtime beside an executable; an Android or iOS app has
@@ -607,8 +592,6 @@ static auto ResolveRequestedClientRuntime(CommandLineArgs args) -> RequestedClie
 
 static auto ResolveBundledRuntimePath() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string install_runtime_path = GetClientRuntimeLivePath();
     auto bootstrap_path = MakeClientRuntimeBootstrapPath(Data->WritableRoot);
 
@@ -630,7 +613,5 @@ static auto ResolveBundledRuntimePath() -> string
 
 static auto GetCurrentClientRuntimeFileName() -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("{}{}", GetCurrentClientRuntimeLibraryName(), GetClientRuntimeLibraryExtension()).str();
 }

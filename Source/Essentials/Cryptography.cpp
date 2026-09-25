@@ -44,8 +44,6 @@ static auto parse_hex_digit(char ch) noexcept -> optional<uint8_t>;
 
 void crypto::fill_random(span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!platform::fill_system_random(buf)) {
         throw CryptographyException("Operating system randomness is unavailable", buf.size());
     }
@@ -53,8 +51,6 @@ void crypto::fill_random(span<uint8_t> buf)
 
 auto crypto::generate_secret_key() -> key_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     key_bytes secret_key {};
     fill_random(secret_key);
     return secret_key;
@@ -62,8 +58,6 @@ auto crypto::generate_secret_key() -> key_bytes
 
 auto crypto::derive_public_key(const key_bytes& secret_key) noexcept -> key_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     key_bytes public_key {};
     crypto_x25519_public_key(public_key.data(), secret_key.data());
     return public_key;
@@ -71,8 +65,6 @@ auto crypto::derive_public_key(const key_bytes& secret_key) noexcept -> key_byte
 
 auto crypto::x25519(const key_bytes& secret_key, const key_bytes& public_key) noexcept -> key_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     key_bytes shared_secret {};
     crypto_x25519(shared_secret.data(), secret_key.data(), public_key.data());
     return shared_secret;
@@ -80,8 +72,6 @@ auto crypto::x25519(const key_bytes& secret_key, const key_bytes& public_key) no
 
 auto crypto::hash_data(initializer_list<const_span<uint8_t>> parts) noexcept -> hash_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto_blake2b_ctx ctx;
     crypto_blake2b_init(&ctx, hash_size);
 
@@ -96,8 +86,6 @@ auto crypto::hash_data(initializer_list<const_span<uint8_t>> parts) noexcept -> 
 
 auto crypto::hmac(const_span<uint8_t> key, initializer_list<const_span<uint8_t>> parts) noexcept -> hash_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     array<uint8_t, hash_block_size> block_key {};
 
     if (key.size() > hash_block_size) {
@@ -140,8 +128,6 @@ auto crypto::hmac(const_span<uint8_t> key, initializer_list<const_span<uint8_t>>
 
 void crypto::aead_seal(const key_bytes& key, const aead_nonce& nonce, const_span<uint8_t> ad, const_span<uint8_t> plaintext, span<uint8_t> sealed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(sealed.size() == plaintext.size() + aead_tag_size, "Sealed buffer must hold the ciphertext and its tag", plaintext.size(), sealed.size());
 
     // The streaming context rekeys after its first message, so a fresh one per message is what keeps this RFC 8439
@@ -153,8 +139,6 @@ void crypto::aead_seal(const key_bytes& key, const aead_nonce& nonce, const_span
 
 auto crypto::aead_open(const key_bytes& key, const aead_nonce& nonce, const_span<uint8_t> ad, const_span<uint8_t> sealed, span<uint8_t> plaintext) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(sealed.size() >= aead_tag_size, "Sealed message is shorter than its tag", sealed.size());
     FO_VERIFY_AND_THROW(plaintext.size() == sealed.size() - aead_tag_size, "Plaintext buffer must match the sealed ciphertext", sealed.size(), plaintext.size());
 
@@ -168,15 +152,11 @@ auto crypto::aead_open(const key_bytes& key, const aead_nonce& nonce, const_span
 
 auto crypto::is_equal(const key_bytes& first, const key_bytes& second) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return crypto_verify32(first.data(), second.data()) == 0;
 }
 
 void crypto::wipe(span<uint8_t> buf) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!buf.empty()) {
         crypto_wipe(buf.data(), buf.size());
     }
@@ -184,8 +164,6 @@ void crypto::wipe(span<uint8_t> buf) noexcept
 
 auto crypto::parse_key(string_view hex) noexcept -> optional<key_bytes>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (hex.size() != key_size * 2) {
         return std::nullopt;
     }
@@ -209,8 +187,6 @@ auto crypto::parse_key(string_view hex) noexcept -> optional<key_bytes>
 
 auto crypto::format_key(const key_bytes& value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr string_view digits = "0123456789abcdef";
 
     string result;
@@ -226,8 +202,6 @@ auto crypto::format_key(const key_bytes& value) -> string
 
 static auto parse_hex_digit(char ch) noexcept -> optional<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (ch >= '0' && ch <= '9') {
         return numeric_cast<uint8_t>(ch - '0');
     }

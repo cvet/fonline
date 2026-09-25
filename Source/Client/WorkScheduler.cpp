@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 auto WorkScheduler::ResolveWorkerCount(int32_t configured_worker_threads) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (configured_worker_threads == 0) {
         return 0;
     }
@@ -66,7 +64,7 @@ WorkScheduler::WorkScheduler(string_view name, int32_t worker_count) :
     _name {name},
     _workerCount {worker_count}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     FO_VERIFY_AND_THROW(worker_count >= 0 && worker_count <= MAX_WORKER_THREADS, "Client work scheduler worker count is outside the supported range", name, worker_count, MAX_WORKER_THREADS);
 
@@ -92,15 +90,11 @@ WorkScheduler::WorkScheduler(string_view name, int32_t worker_count) :
 
 WorkScheduler::~WorkScheduler()
 {
-    FO_STACK_TRACE_ENTRY();
-
     StopWorkers();
 }
 
 auto WorkScheduler::GetDiagnostics() const noexcept -> Diagnostics
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return Diagnostics {
         .WorkerCount = _workerCount,
         .ParallelBatches = _parallelBatches.load(std::memory_order_relaxed),
@@ -111,14 +105,12 @@ auto WorkScheduler::GetDiagnostics() const noexcept -> Diagnostics
 
 auto WorkScheduler::ShouldRunParallel(size_t item_count, size_t min_parallel_items) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _workerCount > 0 && item_count >= std::max<size_t>(min_parallel_items, 2);
 }
 
 void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t min_items_per_chunk, const function<void(size_t)>& item_work)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     FO_VERIFY_AND_THROW(item_work, "Client work batch has no item work", batch_name);
 
@@ -203,7 +195,7 @@ void WorkScheduler::RunBatch(string_view batch_name, size_t item_count, size_t m
 
 void WorkScheduler::RunClaimedChunks(const Batch& batch) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     while (true) {
         size_t chunk_index = _nextChunk.fetch_add(1, std::memory_order_acq_rel);
@@ -239,8 +231,6 @@ void WorkScheduler::RunClaimedChunks(const Batch& batch) noexcept
 
 void WorkScheduler::RunChunkItems(const Batch& batch, size_t chunk_index)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t first_item = chunk_index * batch.ItemsPerChunk;
     size_t last_item = std::min(first_item + batch.ItemsPerChunk, batch.ItemCount);
 
@@ -251,8 +241,6 @@ void WorkScheduler::RunChunkItems(const Batch& batch, size_t chunk_index)
 
 void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     set_this_thread_name(strex("{}-{}", _name, worker_index));
 
     uint64_t last_generation = 0;
@@ -290,7 +278,7 @@ void WorkScheduler::WorkerEntry(int32_t worker_index) noexcept
 
 void WorkScheduler::StopWorkers() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     {
         scoped_lock locker {_mutex};

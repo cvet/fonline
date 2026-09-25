@@ -2088,8 +2088,9 @@ def append_ref_method_registration(
             '.Call = [](FuncCallData& call) {' + (' ignore_unused(call); }' if is_stub else ''))
     if not is_stub:
         is_property = getter or setter
-        register_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::' + method_name +
-                (' (Getter)' if getter else '') + (' (Setter)' if setter else '') + '");')
+        # A property accessor is a field read or write, cheaper than the zone that would time it
+        if not is_property:
+            register_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::' + method_name + '");')
         register_lines.append('        struct Wrapped { static ' +
                 ('auto' if ret != 'void' else 'void') + ' Call(ptr<' + ref_type_tag.name + '> self' + (', ' if params else '') +
         ', '.join([meta_type_to_engine_type(p.arg_type, ref_type_tag.target, True, wrap_handles=True, nullable=p.nullable) + ' ' + p.name for p in params]) + ') ' +
@@ -2235,7 +2236,7 @@ def append_ref_type_registration(helper_lines: list[str], register_lines: list[s
                     '.Ret = meta->ResolveComplexType("' + ref_type_tag.name + '"), .Call = [](FuncCallData& call) {' +
                     (' ignore_unused(call); } },' if is_stub else ''))
             if not is_stub:
-                body_lines.append('        FO_STACK_TRACE_ENTRY_NAMED("' + ref_type_tag.name + '::__Factory");')
+                body_lines.append('        FO_TRACE_ZONE_NAMED(Script, "' + ref_type_tag.name + '::__Factory");')
 
                 body_lines.append('        struct Wrapped { ' + 'static auto Call() -> ptr<' + ref_type_tag.name + '> ' +
                         '{ return safe_alloc::make_refcounted<' + ref_type_tag.name + '>().release_ownership(); }' + ' };')
@@ -2331,7 +2332,7 @@ def append_method_registration(extern_lines: list[str], helper_lines: list[str],
                     '.Ret = ' + ('meta->ResolveComplexType("' + meta_type_to_unified_type(method_tag.ret, self_entity=entity) + '")' if method_tag.ret != 'void' else '{' + '}') + ', ' +
                     '.Call = [](FuncCallData& call) {']
             if not is_stub:
-                method_body_lines.append('    FO_STACK_TRACE_ENTRY_NAMED("' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
+                method_body_lines.append('    FO_TRACE_ZONE_NAMED(Script, "' + calc_unique_zone_name(zone_names, registration_info.function_name) + '");')
                 for arg_index, p in enumerate(method_tag.args):
                     if p.nullable:
                         continue

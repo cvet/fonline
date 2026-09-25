@@ -60,6 +60,7 @@
 #include "ModelSourceLoader.h"
 #include "ModelSprites.h"
 #include "PlayerView.h"
+#include "ResourceIndex.h"
 #include "SettingsStorage.h"
 #include "Test_BakerHelpers.h"
 #include "Test_DumpArtifacts.h"
@@ -79,8 +80,6 @@ namespace
 
     static auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
     {
-        FO_STACK_TRACE_ENTRY();
-
         return [](string_view name) -> string {
             if (name == "Effects/Test_Recording.fofx") {
                 return "[Effect]\nPasses = 1\n";
@@ -100,13 +99,10 @@ namespace
         RecordingQuadEffect() :
             RenderEffect(EffectUsage::QuadSprite, "Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
         {
-            FO_STACK_TRACE_ENTRY();
         }
 
         void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
         {
-            FO_STACK_TRACE_ENTRY();
-
             RecordedQuadDraw draw;
             draw.Vertices.assign(dbuf->Vertices.begin(), dbuf->Vertices.begin() + numeric_cast<ptrdiff_t>(dbuf->VertCount));
             draw.Indices.assign(dbuf->Indices.begin(), dbuf->Indices.begin() + numeric_cast<ptrdiff_t>(dbuf->IndCount));
@@ -140,6 +136,18 @@ namespace
     static auto CanUseDirectoryBackedClientResourceFixtures() noexcept -> bool
     {
         return !IsPackaged();
+    }
+
+    static void WriteClientTestPack(string_view directory, string_view name, const vector<pair<string, string>>& files)
+    {
+        REQUIRE(fs::create_directories(directory));
+        ResourcePackWriter writer {strex(directory).combine_path(strex("{}.fores", name)).str()};
+
+        for (const auto& [path, contents] : files) {
+            writer.AddFile(path, {reinterpret_cast<const uint8_t*>(contents.data()), contents.size()});
+        }
+
+        writer.Finish();
     }
 
     static auto MakeClientScriptBinary(const FileSystem& metadata_resources) -> vector<uint8_t>
@@ -1576,8 +1584,6 @@ namespace ClientEngineTest
     // offscreen effect is what makes the offscreen surface bindings usable at all
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
-        FO_STACK_TRACE_ENTRY();
-
         constexpr string_view EFFECT_SOURCE = R"EFFECT(
 [Effect]
 
@@ -1626,8 +1632,6 @@ void main(void)
 #if FO_ENABLE_3D
     static void WriteRuntimeModelBoneHeader(data_writer& writer, string_view name, bool attached_mesh)
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write_string(name);
         writer.write<mat44>(mat44 {1.0f});
         writer.write<mat44>(mat44 {1.0f});
@@ -1636,8 +1640,6 @@ void main(void)
 
     static auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         vector<uint8_t> data;
         data_writer writer {data};
         WriteModelMeshHeader(writer);
@@ -1647,8 +1649,6 @@ void main(void)
 
     static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return MakeRuntimeModelMesh([&](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
             array<Vertex3D, 1> vertices {vertex};
@@ -1676,8 +1676,6 @@ void main(void)
     // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
     static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return MakeRuntimeModelMesh([origin](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
@@ -1711,8 +1709,6 @@ void main(void)
     // silhouette is genuinely skeleton-driven
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         root_bone->Name = "Root";
         root_bone->TransformationMatrix = mat44 {1.0f};
@@ -1761,8 +1757,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionPrefix(data_writer& writer, string_view base_model = "Models/UnusedBase.fbx")
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
@@ -1779,8 +1773,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionLinkPrefix(data_writer& writer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write<int32_t>(0);
         writer.write<int32_t>(0);
         writer.write_string({});
@@ -1796,8 +1788,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionLink(data_writer& writer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         WriteRuntimeModelDescriptionLinkPrefix(writer);
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {0});
@@ -1810,8 +1800,6 @@ void main(void)
     // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         string anim_info = strex(R"([{}]
 BoundsVersion = 2
 ModelBoundsMinX = -1
@@ -1848,8 +1836,6 @@ BoundsMaxZ = 1 1 1 1
     // source asset directly through the loader callback, so no source-file format has to be reproduced
     static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         BakerTests::TestRig rig;
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
         // after the model line — where the description's own default link is authored
@@ -1957,12 +1943,8 @@ BoundsMaxZ = 1 1 1 1
 #endif
 }
 
-TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
+TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableBase")
 {
-    if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
-    }
-
     string unique_name = strex("lf_client_metadata_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
     bool removed_base_before = fs::remove_dir_tree(unique_name);
@@ -1990,11 +1972,11 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     outdated_writer.write<uint16_t>(uint16_t {0});
 
     vector<uint8_t> current_metadata = BakerTests::MakeEmptyMetadataBlob();
-    REQUIRE(fs::write_file(strex(unique_name).combine_path(pack_name).combine_path(metadata_file).str(), outdated_metadata));
-    REQUIRE(fs::write_file(strex(writable_resources).combine_path(pack_name).combine_path(metadata_file).str(), current_metadata));
+    WriteClientTestPack(unique_name, pack_name, {{metadata_file, string(outdated_metadata.begin(), outdated_metadata.end())}});
+    WriteClientTestPack(writable_resources, pack_name, {{metadata_file, string(current_metadata.begin(), current_metadata.end())}});
 
     FileSystem install_resources;
-    install_resources.AddPacksSource(unique_name, {pack_name});
+    install_resources.AddCustomSource(safe_alloc::make_unique<ResourcePackSource>(strex(unique_name).combine_path(strex("{}.fores", pack_name)).str()));
     vector<uint8_t> installed_metadata = ReadMetadataBin(&install_resources, "Client");
     CHECK_THROWS_AS(ReadMetadataVersion(installed_metadata), MetadataOutdatedException);
 
@@ -2015,12 +1997,75 @@ TEST_CASE("ClientResourcesRecoverOutdatedInstalledMetadataFromWritableOverlay")
     CHECK_NOTHROW(RegisterDynamicMetadata(&metadata, recovered_metadata));
 }
 
-TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
+TEST_CASE("ClientResourceIndexPreservesEmbeddedAndWritablePrecedence")
 {
     if (!CanUseDirectoryBackedClientResourceFixtures()) {
-        SKIP("Directory-backed resource-pack fixtures require an unpackaged test binary");
+        SKIP("Directory-backed prefix and overlay fixtures require an unpackaged test binary");
     }
 
+    string dir = MakeTempClientResourceDir("merged_index");
+    string install = strex("lf_client_index_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    auto cleanup = scope_exit([&dir, &install]() noexcept {
+        (void)fs::remove_dir_tree(dir);
+        (void)fs::remove_dir_tree(install);
+    });
+    string writable = strex(dir).combine_path("Writable").str();
+    string overlay = fs::make_writable_path(writable, install);
+
+    WriteClientTestPack(install, "Before", {{"Shared.txt", "before"}});
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Shared.txt").str(), string_view {"embedded"}));
+    REQUIRE(fs::write_file(strex(install).combine_path("Embedded/Bootstrap.txt").str(), string_view {"bootstrap"}));
+    WriteClientTestPack(overlay, "Before", {{"Shared.txt", "before"}, {"Overlay.txt", "writable"}});
+
+    {
+        ResourcePackWriter writer {strex(install).combine_path("Art.fores").str()};
+        string payload = "art";
+        writer.AddFile("Shared.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
+        writer.AddFile("Overlay.txt", {reinterpret_cast<const uint8_t*>(payload.data()), payload.size()});
+        writer.Finish();
+    }
+
+    GlobalSettings settings = MakeClientTestSettings();
+    BakerTests::OverrideSetting(settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(settings.Baking.ClientResources, install);
+    auto pack_config = ConfigFile("[ResourcePack]\nName = Before\nClientOnly = True\n[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+    settings.ApplyConfigFile(pack_config, "");
+    settings.ApplyWritableRoot(writable);
+
+    vector<ResourceIndexPack> packs;
+    vector<string> pack_paths;
+    vector<string> indexed_names = GetResourceIndexPackNames(settings.GetClientResourcePacks());
+    REQUIRE(ResolveResourceIndexPacks({install}, indexed_names, packs, pack_paths));
+    string index_path = GetClientResourceIndexPath(settings);
+    REQUIRE(fs::create_directories(strex(index_path).extract_dir().str()));
+    BuildResourceIndex(index_path, pack_paths, packs, ResourcePackWriteSettings {0, 100});
+
+    SECTION("MountsTheIndexWithoutDroppingBootstrapOrOverlayFiles")
+    {
+        FileSystem resources = GetClientResources(settings);
+        CHECK(resources.ReadFileText("Shared.txt") == "art");
+        CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK(resources.ReadFileText("Overlay.txt") == "art");
+        CHECK(resources.ReadFileHeader("Shared.txt").GetDataSource()->GetPackName() == index_path);
+    }
+
+    SECTION("DiscardsACorruptDerivedIndexAndMountsThePacks")
+    {
+        auto original = fs::read_file(index_path);
+        REQUIRE(original.has_value());
+        vector<uint8_t> bytes(original->begin(), original->end());
+        span_write_uint32(bytes, RESOURCE_INDEX_HEADER_SIZE + RESOURCE_INDEX_PACK_SIZE, std::numeric_limits<uint32_t>::max());
+        REQUIRE(fs::write_file(index_path, bytes));
+
+        FileSystem resources = GetClientResources(settings);
+        CHECK(resources.ReadFileText("Shared.txt") == "art");
+        CHECK(resources.ReadFileText("Bootstrap.txt") == "bootstrap");
+        CHECK_FALSE(fs::exists(index_path));
+    }
+}
+
+TEST_CASE("InstalledClientResourcesSelectWritableBaseWithoutOldCatalogLayering")
+{
     string unique_name = strex("lf_client_pack_mount_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
     string writable_root = MakeTempClientResourceDir("writable_overlay");
     bool removed_base_before = fs::remove_dir_tree(unique_name);
@@ -2034,11 +2079,9 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     });
 
     string writable_resources = fs::make_writable_path(writable_root, unique_name);
-    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/shared.txt").str(), string_view {"install-base"}));
-    REQUIRE(fs::write_file(strex(unique_name).combine_path("Main/base-only.txt").str(), string_view {"base-only"}));
-    REQUIRE(fs::write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"base-fallback"}));
-    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/shared.txt").str(), string_view {"writable-overlay"}));
-    REQUIRE(fs::write_file(strex(writable_resources).combine_path("Main/overlay-only.txt").str(), string_view {"overlay-only"}));
+    WriteClientTestPack(unique_name, "Main", {{"shared.txt", "install-base"}, {"base-only.txt", "base-only"}});
+    WriteClientTestPack(unique_name, "Fallback", {{"fallback.txt", "base-fallback"}});
+    WriteClientTestPack(writable_resources, "Main", {{"shared.txt", "writable-base"}, {"overlay-only.txt", "overlay-only"}});
 
     GlobalSettings settings = MakeClientTestSettings();
     BakerTests::OverrideSetting(settings.Common.Packaged, true);
@@ -2048,10 +2091,18 @@ TEST_CASE("InstalledClientResourcesMountWritablePacksAboveReadOnlyBase")
     settings.ApplyWritableRoot(writable_root);
 
     FileSystem resources = GetClientResources(settings);
-    CHECK(resources.ReadFileText("shared.txt") == "writable-overlay");
-    CHECK(resources.ReadFileText("base-only.txt") == "base-only");
+    CHECK(resources.ReadFileText("shared.txt") == "writable-base");
+    CHECK_FALSE(resources.IsFileExists("base-only.txt"));
     CHECK(resources.ReadFileText("overlay-only.txt") == "overlay-only");
     CHECK(resources.ReadFileText("fallback.txt") == "base-fallback");
+
+    SECTION("MissingBaseDoesNotMountLooseFiles")
+    {
+        resources.CleanDataSources();
+        REQUIRE(fs::remove_file(strex(unique_name).combine_path("Fallback.fores").str()));
+        REQUIRE(fs::write_file(strex(unique_name).combine_path("Fallback/fallback.txt").str(), string_view {"loose"}));
+        CHECK_THROWS(GetClientResources(settings));
+    }
 }
 
 #if FO_ENABLE_3D

@@ -241,6 +241,20 @@ Concrete files include:
 
 The client runtime should depend on the abstract connection interface where possible; transport-specific behavior belongs in the implementation files.
 
+`ClientConnection` watches the server from its side too. It pings every `ClientNetwork.PingPeriod` milliseconds,
+and a ping - or, before that, the secure channel handshake - that stays unanswered while **nothing at all**
+arrives for `ClientNetwork.PingTimeout` milliseconds (default 30000, `0` waits for ever) ends the connection with
+`Connection lost: the server has sent nothing for ... ms` - through the ordinary disconnect path, so the updater
+reports `ConnectionFailed` and the game client its usual connection loss. The handshake half matters because the
+first ping goes out only once the channel stands, so a server that accepts the transport and then answers nothing
+would otherwise never be pinged at all. Without it a peer that vanished without closing the connection was waited on for ever:
+the ordered UDP channel resends to a silent address indefinitely, and a half-open TCP link or a stopped server
+process keeps its socket established while nothing is served. Any received byte counts as an answer, so a large
+update portion queued ahead of the ping reply on a slow link is not mistaken for silence; the check is skipped
+under a debugger, like the server's own ping watchdog. The pending ping is cleared on disconnect, so a reconnect
+starts pinging afresh. Pinned by `ClientUpdaterGivesUpOnAServerThatStopsAnswering`
+(`Source/Tests/Test_ClientUpdater.cpp`).
+
 ## Server connection abstraction
 
 `Source/Server/NetworkServer.h` defines two server-side abstractions:
@@ -253,6 +267,7 @@ The client runtime should depend on the abstract connection interface where poss
 - `SetAsyncCallbacks(send, receive, disconnect)`;
 - `Dispatch()`;
 - `Disconnect()`;
+- `DropAsyncCallbacks()`;
 - `GetHost()` / `GetPort()`;
 - `IsDisconnected()`.
 
@@ -264,8 +279,14 @@ refilled by a second dispatch, or freed when its owner disconnects, while a tran
 which is how a partly compressed packet turned into a SIGSEGV inside zlib on the UDP send thread.
 `Disconnect()` clears the send-callback flag before disconnecting, so a transport that ticks afterwards
 stops pulling from a sender that is going away. Each callback is also invoked under the lock that guards
-it, and `Disconnect()` drops the callbacks under those same locks on every call, so a destructor that
-disconnects waits for a call already running on a transport thread instead of racing it.
+it, and `Disconnect()` drops the send and receive callbacks under those same locks on every call, so a
+destructor that disconnects waits for a call already running on a transport thread instead of racing it.
+The disconnect callback is the exception: only the call that wins the disconnect flag reports it, and the
+winner may be a transport thread still inside the transport teardown when the owner's own `Disconnect()`
+returns - the server sees `IsDisconnected()` as soon as the flag is won and may destroy the owner at once.
+An owner therefore finishes with `DropAsyncCallbacks()`, which clears every callback under its lock: a
+report already running is waited out, and one not yet started finds nothing to call
+(`ServerConnection::~ServerConnection`).
 
 `NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
 against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the

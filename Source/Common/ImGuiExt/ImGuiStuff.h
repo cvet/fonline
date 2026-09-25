@@ -490,8 +490,6 @@ enum class ImGui_StyleVar : int32_t
 
 inline void ImGuiTextUnformatted(string_view text)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (text.empty()) {
         ImGui::TextUnformatted("");
         return;
@@ -504,8 +502,6 @@ inline void ImGuiTextUnformatted(string_view text)
 
 [[nodiscard]] inline auto ToImU32(ucolor color) noexcept -> ImU32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return IM_COL32(color.comp.r, color.comp.g, color.comp.b, color.comp.a);
 }
 

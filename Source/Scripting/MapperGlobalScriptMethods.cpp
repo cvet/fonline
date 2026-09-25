@@ -45,8 +45,6 @@ FO_BEGIN_NAMESPACE
 
 static void CenterMapperViewOnHex(ptr<MapView> map, mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     map->InstantScrollTo(hex);
 
     constexpr ipos32 hex_center {GameSettings::MAP_HEX_WIDTH / 2, GameSettings::MAP_HEX_HEIGHT / 2};
@@ -61,8 +59,6 @@ static void CenterMapperViewOnHex(ptr<MapView> map, mpos hex)
 
 static void CenterMapperViewOnRawHex(ptr<MapView> map, ipos32 rawHex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ipos32 new_screen_hex = map->ConvertToScreenRawHex(rawHex);
     ipos32 offset_to_new_pos = GeometryHelper::GetHexOffset(map->GetScreenRawHex(), new_screen_hex);
     map->InstantScroll(fpos32(offset_to_new_pos));
@@ -80,8 +76,6 @@ static void CenterMapperViewOnRawHex(ptr<MapView> map, ipos32 rawHex)
 
 static auto RequireCurMapperMap(ptr<MapperEngine> mapper_ptr) -> ptr<MapView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto map = mapper_ptr->GetCurMap();
 
     if (!map) {

@@ -87,16 +87,19 @@ Use this split when debugging Android output:
 - **Release-package APK artifact issue** -> inspect the embedding project's `DefinePackage(...)` entries, its CI package matrix, `MakePackage-<type>`, and `Workspace/output/<DevName>-<type>` rather than the local debug Gradle directory first.
 - **AndroidTest package issue** -> remember it is defined as `BINARY Client Android arm64 Raw`, not an APK-producing package target.
 
-## Runtime Resource Copy
+## Runtime Resource Access
 
-Android packaging moves baked client resources into the Gradle project under `app/src/main/assets/Resources`.
+Packaging places complete `.fores` bases under `app/src/main/assets/` using the configured client resource
+directory (`Resources` by default) and marks `fores` as `noCompress`. `FOnlineActivity` passes that directory
+inside `<APK sourceDir>!/assets/` as `Baking.ClientResources`, the app files directory as
+`Common.UserWritablePath`, and its `Cache` directory as `Baking.CacheResources`.
+It does not copy or delete the resource tree on startup or package updates.
 
-On first launch after install/update, `FOnlineActivity` copies those assets into the app files directory and starts the engine with absolute overrides for:
-
-- `Baking.ClientResources`
-- `Baking.CacheResources`
-
-The activity tracks an `.asset_revision` based on Android package metadata and recopies resources when the installed package changes.
+The engine locates each `.fores` entry stored in the APK ZIP and reads its bounded file region with 64-bit positional reads.
+A compressed/encrypted outer entry is not seekable through this route and is rejected. Updates append to
+`<files>/Resources/Pack.patch.fores`; a full refresh installs `<files>/Resources/Pack.fores`, which takes
+precedence over the APK base. Patch binding excludes an old patch when the selected physical base changes.
+See [ResourcePackFormat.md](ResourcePackFormat.md) and [ClientUpdater.md](ClientUpdater.md).
 
 ## Practical Debugging Notes
 
@@ -108,7 +111,7 @@ When Android launch behavior fails, isolate the failing layer before rebuilding 
 - **device is not found** -> run `android_device.py discover` / `connect`; the helper uses `adb mdns services`, caches `Workspace/android-debug/device-endpoint.txt`, and falls back to manual `IP[:port]` input.
 - **RemoteSceneLaunch app cannot connect back to host** -> check the `launch-game` `ClientNetwork.ServerHost` override, the selected Wi-Fi route, and whether host ports `4025`/`4026` are already occupied by a stale server.
 - **scene launch opens the wrong scene** -> inspect the selected `startupSceneName`, `LF_ServerHeadless --ApplySubConfig RemoteSceneLaunch --Scene.Startup <SceneId>`, and the installed package path.
-- **resources are stale after reinstall** -> verify the APK was rebuilt from the expected `Workspace/android-debug/LF-Client-*-Android` directory and that `FOnlineActivity` recopied assets by checking app logs for resource-copy failures.
+- **resources are stale after reinstall** -> verify the APK was rebuilt from the expected `Workspace/android-debug/LF-Client-*-Android` directory, that its `.fores` assets are stored with `noCompress`, and that `FOnlineActivity` forwards the configured APK asset path. Check which base the runtime selects and whether app-private `Resources` contains a replacement base or patch overriding the APK.
 - **packaging fails on icon, signing, or manifest metadata** -> inspect `Android.Icon`, `Android.Keystore`, `Android.KeystorePassword`, `Android.KeyAlias`, `Android.KeyPassword`, and any `Android.ManifestMetaData.*` keys in `../../LastFrontier.fomain`; icon input must be a PNG, manifest metadata values must be non-empty, and partial signing config is invalid.
 - **Gradle cannot resolve an Android SDK dependency** -> inspect the selected package config's `Android.GradleMavenRepository.*` and `Android.GradleDependency.*` settings in `../../LastFrontier.fomain`; the packager copies those entries into the generated Gradle project only for configs that define them.
 - **package-specific Java bridge is missing or in the wrong package** -> inspect `Android.JavaSource.*` settings in `../../LastFrontier.fomain`; non-empty entries are copied into the generated app package namespace and get `$PACKAGE$` / `$CONFIG$` placeholders patched by `package.py`.
@@ -131,7 +134,7 @@ If you need to trace the Android debug flow through the live repository, start w
 - `../BuildTools/android_device.py` - Wi-Fi ADB discovery, connection caching, install, launch, `launch-game`, stop, and logcat helper
 - `../BuildTools/package.py` - Android Gradle project generation, resource movement, icon/signing config, and APK build integration used by both debug and package targets
 - `../BuildTools/android-project/` - Gradle and activity template patched by the packager
-- `../BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java` - runtime resource copy and `ClientNetwork.ServerHost` argument forwarding
+- `../BuildTools/android-project/app/src/main/java-template/FOnlineActivity.java` - APK asset-path, writable-root and `ClientNetwork.ServerHost` argument forwarding
 - `../../LastFrontier.fomain` - `Android.*`, `LocalTest`, and `RemoteSceneLaunch` config values used by packaging and launch
 - `BuildAndLaunch.md` and `Docs/Scenes.md` - companion references for general launch selection and scene-debug behavior
 
@@ -145,7 +148,7 @@ Current checks worth running when Android build, packaging, or launch docs chang
 - the embedding project's CI config confirms it prepares the Android workspace only for APK-producing package types.
 - `../BuildTools/android_device.py` confirms the current helper commands and failure messages around Wi-Fi ADB discovery/installation.
 - `../BuildTools/package.py` confirms Android config keys, icon requirements, signing behavior, and resource movement into APK assets.
-- `FOnlineActivity.java` confirms runtime resource copy and `ClientNetwork.ServerHost` override handling.
+- `FOnlineActivity.java` confirms APK asset-path forwarding, the private writable root and `ClientNetwork.ServerHost` override handling.
 
 ## See Also
 

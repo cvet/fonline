@@ -96,16 +96,12 @@ static constexpr float32_t DRAG_DEG_PER_PX = 0.7f;
 // Wrap a facing angle into [0, 360)
 static auto NormalizeAngle(float32_t angle) -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return angle - std::floor(angle / 360.0f) * 360.0f;
 }
 
 template<size_t Size>
 static auto InputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto end = std::find(buffer.begin(), buffer.end(), char {0});
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
@@ -116,8 +112,6 @@ AnimationViewer::AnimationViewer(ptr<BaseEngine> engine, ptr<SpriteManager> spr_
     _resMngr {res_mngr},
     _gameTime {game_time}
 {
-    FO_STACK_TRACE_ENTRY();
-
     LoadSettings();
 }
 
@@ -125,7 +119,7 @@ AnimationViewer::~AnimationViewer() = default;
 
 void AnimationViewer::LoadSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     _pendingImguiLayout = _settings.GetString("ImGuiLayout");
     _zoom = numeric_cast<float32_t>(_settings.GetFloat("Zoom", _zoom));
@@ -153,7 +147,7 @@ void AnimationViewer::LoadSettings()
 
 void AnimationViewer::SaveSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (auto ctx = make_nptr(ImGui::GetCurrentContext())) {
         size_t ini_size = 0;
@@ -176,7 +170,7 @@ void AnimationViewer::SaveSettings()
 
 void AnimationViewer::Draw()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_pendingImguiLayout.empty()) {
         ImGui::LoadIniSettingsFromMemory(_pendingImguiLayout.c_str(), _pendingImguiLayout.size());
@@ -247,7 +241,7 @@ void AnimationViewer::Draw()
 
 void AnimationViewer::DrawCritterList()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     ImGui::TextUnformatted("Critters");
     ImGui::Separator();
@@ -273,7 +267,7 @@ void AnimationViewer::DrawCritterList()
 
 void AnimationViewer::DrawPreview()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_selectedProtoId) {
         ImGui::TextUnformatted("Select a critter");
@@ -355,8 +349,6 @@ void AnimationViewer::DrawPreview()
 
 void AnimationViewer::DrawDebugToggles()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ImGui::Checkbox("Direct draw", &_directDraw);
     ImGui::SameLine();
     ImGui::Checkbox("Root", &_drawRoot);
@@ -369,7 +361,7 @@ void AnimationViewer::DrawDebugToggles()
 
 void AnimationViewer::DrawAnimationList()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     ImGui::TextUnformatted("Animations");
     ImGui::Separator();
@@ -405,7 +397,7 @@ void AnimationViewer::DrawAnimationList()
 
 void AnimationViewer::SelectCritter(hstring proto_id)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     _selectedProtoId = proto_id;
     _selectionError.clear();
@@ -453,8 +445,6 @@ void AnimationViewer::SelectCritter(hstring proto_id)
 
 void AnimationViewer::ApplyDir()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_previewSprite) {
         return;
     }
@@ -476,8 +466,6 @@ void AnimationViewer::ApplyDir()
 
 void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _modelLayers.clear();
 
     // Which critter property feeds which model layer is game-specific, so `Render.ModelLayerProperties`
@@ -527,7 +515,7 @@ void AnimationViewer::CollectModelLayers(ptr<const ProtoCritter> proto)
 
 void AnimationViewer::CollectAnimations()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     _animations.clear();
 
@@ -565,8 +553,6 @@ void AnimationViewer::CollectAnimations()
 
 void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bool instant)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_previewSprite) {
         return;
     }
@@ -603,8 +589,6 @@ void AnimationViewer::PlayAnimation(const AnimationEntry& entry, bool looped, bo
 
 void AnimationViewer::PlayIdle(bool instant)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _playingIndex = -1;
 
     if (!_previewSprite) {
@@ -618,8 +602,6 @@ void AnimationViewer::PlayIdle(bool instant)
 
 void AnimationViewer::PrewarmModel()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_previewSprite) {
         return;
     }
@@ -632,7 +614,7 @@ void AnimationViewer::PrewarmModel()
 
 void AnimationViewer::RenderPreview()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_previewSprite) {
         return;
@@ -735,8 +717,6 @@ void AnimationViewer::RenderPreview()
 
 void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Two full-span segments (LineList draws consecutive point pairs), crossing
     // at the anchor to mark the root the same way for every clip
     array<PrimitivePoint, 4> lines = {
@@ -751,8 +731,6 @@ void AnimationViewer::DrawRootCrosshair(ipos32 anchor)
 
 void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float32_t draw_scale)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Map a sprite-local pixel to the preview render target (same transform the
     // model draw uses: top-left at sprite_pos, scaled by the residual draw scale;
     // sprite-local geometry already carries the model's own render scale)
@@ -855,7 +833,7 @@ void AnimationViewer::DrawOverlays(ipos32 sprite_pos, isize32 sprite_size, float
 
 void AnimationViewer::DrawHierarchy()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     ImGui::TextUnformatted("Model hierarchy");
     ImGui::Separator();
@@ -899,8 +877,6 @@ void AnimationViewer::DrawHierarchy()
 #if FO_ENABLE_3D
 void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<ModelAttachPoint>& attach_points)
 {
-    FO_STACK_TRACE_ENTRY();
-
     hstring name = bone->Name;
     string name_str = string(name);
     bool has_attachments = false;
@@ -960,8 +936,6 @@ void AnimationViewer::DrawHierarchyNode(ptr<const ModelBone> bone, const vector<
 
 void AnimationViewer::DrawAttachNode(const vector<ModelAttachPoint>& attach_points, int32_t index)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const ModelAttachPoint& point = attach_points[numeric_cast<size_t>(index)];
     bool particle = point.Kind == ModelAttachKind::Particle;
     string key = AttachKey(point);
@@ -1026,8 +1000,6 @@ void AnimationViewer::DrawAttachNode(const vector<ModelAttachPoint>& attach_poin
 
 auto AnimationViewer::AttachKey(const ModelAttachPoint& point) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Keep the key stable when live attachment indices shift as effects finish, but distinguish repeated uses of the
     // same resource on one bone at different authored offsets
     return strex("{}@{}@{}@{}:{}:{}", static_cast<int32_t>(point.Kind), point.Name, point.BoneName, std::bit_cast<uint32_t>(point.Move.x), std::bit_cast<uint32_t>(point.Move.y), std::bit_cast<uint32_t>(point.Move.z)).str();
@@ -1036,8 +1008,6 @@ auto AnimationViewer::AttachKey(const ModelAttachPoint& point) -> string
 
 auto AnimationViewer::BoneColor(hstring bone_name) -> ucolor
 {
-    FO_STACK_TRACE_ENTRY();
-
     string name = string(bone_name);
     uint32_t hash = 2166136261u;
 
@@ -1052,8 +1022,6 @@ auto AnimationViewer::BoneColor(hstring bone_name) -> ucolor
 
 auto AnimationViewer::MakeAnimationLabel(CritterStateAnim state_anim, CritterActionAnim action_anim) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool state_failed = false;
     bool action_failed = false;
     string_view state_name = _engine->ResolveEnumValueName("CritterStateAnim", static_cast<int32_t>(state_anim), &state_failed);

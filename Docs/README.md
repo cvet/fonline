@@ -34,6 +34,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [BakingPipeline.md](BakingPipeline.md) — resource baking, baker classes, script compile adjacency, and validation.
 - [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md) — codegen, metadata registration, generated files, and property contracts.
 - [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md) — config parsing, settings application, resource-pack data sources, file lookup, and caches.
+- [ResourcePackFormat.md](ResourcePackFormat.md) — the two resource formats: the `.fores` pack binary contract (header, index, codecs, what a reader must validate) and the derived `.foindex` merged tree, plus what Android staging and the Web preload do to both.
 
 ## Runtime model
 
@@ -50,7 +51,7 @@ This directory contains maintained documentation for reusable engine behavior. I
 - [ServerRuntime.md](ServerRuntime.md) — authoritative server lifecycle, managers, entity ownership, networking, persistence, movement, and updater backend.
 - [FrontendAndRendering.md](FrontendAndRendering.md) — application abstraction, windows/input/audio, headless/stub modes, renderers, the screen-size/resolution + letterbox model (windowed, fullscreen, multi-client virtual windows), effects, and platform package boundaries.
 - [ClientUpdater.md](ClientUpdater.md) — client host/runtime split, runtime ABI, updater protocol, and server-side updater backend.
-- [Debugging.md](Debugging.md) — native debugger support, stack traces, Visual Studio helpers, and client host/runtime validation.
+- [Debugging.md](Debugging.md) — native debugger support, profiling zones and their categories, stack traces, Visual Studio helpers, and client host/runtime validation.
 - [Scripting.md](Scripting.md) — script system lifecycle, AngelScript backend, native method exports, core scripts, and compile flow.
 - [ScriptMethodsMap.md](ScriptMethodsMap.md) — native `///@ ExportMethod` file map by runtime side and receiver family.
 - [Nullability.md](Nullability.md) — `T?` script / `ptr<T>`·`nptr<T>` native boundary contract and analyzers.

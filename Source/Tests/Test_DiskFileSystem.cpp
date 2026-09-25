@@ -295,8 +295,6 @@ TEST_CASE("DiskFileSystem")
 // filesystem kinds — the split callers addressing files by exact name depend on (Docs/ConfigurationAndDataSources.md)
 static auto IsCaseInsensitiveFs(string_view dir) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string upper_probe = strex(dir).combine_path("CaseProbe.tmp").str();
     string lower_probe = strex(dir).combine_path("caseprobe.tmp").str();
 
@@ -312,8 +310,6 @@ static auto IsCaseInsensitiveFs(string_view dir) -> bool
 
 static auto HasExactDirEntry(string_view dir, string_view name) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code ec;
 
     for (const auto& entry : std::filesystem::directory_iterator {std::filesystem::path {fs::make_path(dir)}, ec}) {
@@ -399,6 +395,200 @@ TEST_CASE("DiskFileSystemNameCase")
         // the old spelling for every path underneath until a caller reconciles it, as the baker does
         CHECK(HasExactDirEntry(temp_dir, "Data"));
         CHECK(HasExactDirEntry(temp_dir, "data") == !case_insensitive);
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+}
+
+TEST_CASE("DiskFilePrimitives")
+{
+    SECTION("WriteHandleAppendsWhileReadHandleSeeksFreely")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_handles");
+        string file_path = strex(temp_dir).combine_path("pack.bin").str();
+
+        ignore_unused(fs::remove_dir_tree(temp_dir));
+        REQUIRE(fs::create_directories(temp_dir));
+
+        array<uint8_t, 4> head_bytes = {'a', 'b', 'c', 'd'};
+        array<uint8_t, 4> tail_bytes = {'e', 'f', 'g', 'h'};
+        array<uint8_t, 1> patch_byte = {'A'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.preallocate(8));
+            REQUIRE(writer.write(const_span<uint8_t> {head_bytes.data(), head_bytes.size()}));
+            REQUIRE(writer.write(const_span<uint8_t> {tail_bytes.data(), tail_bytes.size()}));
+            REQUIRE(writer.seek_to_begin());
+            REQUIRE(writer.write(const_span<uint8_t> {patch_byte.data(), patch_byte.size()}));
+            REQUIRE(writer.flush());
+        }
+
+        REQUIRE(fs::file_size(file_path).has_value());
+        CHECK(*fs::file_size(file_path) == 8);
+
+        fs::disk_read_file reader {file_path};
+        REQUIRE(static_cast<bool>(reader));
+        CHECK(reader.get_size() == 8);
+
+        // Reads carry their own offset, so they neither disturb each other nor depend on the order they run in
+        array<uint8_t, 4> read_tail = {};
+        array<uint8_t, 4> read_head = {};
+        REQUIRE(reader.read_at(4, span<uint8_t> {read_tail.data(), read_tail.size()}));
+        REQUIRE(reader.read_at(0, span<uint8_t> {read_head.data(), read_head.size()}));
+        CHECK(string_view {reinterpret_cast<const char*>(read_head.data()), read_head.size()} == "Abcd");
+        CHECK(string_view {reinterpret_cast<const char*>(read_tail.data()), read_tail.size()} == "efgh");
+
+        // A read running past the end fails outright rather than reporting a short count
+        CHECK_FALSE(reader.read_at(6, span<uint8_t> {read_tail.data(), read_tail.size()}));
+
+        // Windows refuses to unlink a file while a handle on it is open, so the reader goes first
+        reader.close();
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    SECTION("HandlesAndDurableRenameTakeUnicodeAndLongPaths")
+    {
+        // A writable root under a profile such as C:/Users/Иван is the common case for a Russian player, and the
+        // engine's own long paths pass through these handles as they do through every other fs call
+        string temp_dir = MakeTempTestDir("diskfs_handles_unicode");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string dir = strex(temp_dir).combine_path("Игрок").str();
+
+        // Bytes, not characters: 600 of mostly two-byte letters still passes MAX_PATH as UTF-16
+        while (dir.size() < 600) {
+            dir = strex(dir).combine_path("вложенный-каталог").str();
+        }
+
+        REQUIRE(fs::create_directories(dir));
+        string file_path = strex(dir).combine_path("Ресурсы.fores").str();
+        string moved_path = strex(dir).combine_path("Перемещён.fores").str();
+        array<uint8_t, 3> bytes = {'a', 'b', 'c'};
+
+        {
+            fs::disk_write_file writer {file_path};
+            REQUIRE(static_cast<bool>(writer));
+            REQUIRE(writer.write(const_span<uint8_t> {bytes.data(), bytes.size()}));
+            REQUIRE(writer.flush());
+        }
+
+        REQUIRE(fs::rename_durable(file_path, moved_path));
+        CHECK_FALSE(fs::exists(file_path));
+
+        fs::disk_read_file reader {moved_path};
+        REQUIRE(static_cast<bool>(reader));
+        array<uint8_t, 3> read_back = {};
+        REQUIRE(reader.read_at(0, span<uint8_t> {read_back.data(), read_back.size()}));
+        CHECK(read_back == bytes);
+        CHECK(fs::available_space(dir).has_value());
+        reader.close();
+    }
+
+    SECTION("SyncParentPersistsEntriesOnEveryPlatform")
+    {
+        // An answer of true has to mean the directory was flushed, so a directory that is not there answers false
+        string temp_dir = MakeTempTestDir("diskfs_sync_parent");
+        auto cleanup = scope_exit([&temp_dir]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        string dir = strex(temp_dir).combine_path("Каталог").str();
+        REQUIRE(fs::create_directories(dir));
+        string file_path = strex(dir).combine_path("Файл.bin").str();
+
+        REQUIRE(fs::write_file(file_path, string_view {"x"}));
+        CHECK(fs::sync_parent(file_path));
+        REQUIRE(fs::remove_file(file_path));
+        CHECK(fs::sync_parent(file_path));
+        CHECK_FALSE(fs::sync_parent(strex(temp_dir).combine_path("Нет").combine_path("Файл.bin").str()));
+    }
+
+    SECTION("OpeningAMissingFileLeavesTheHandleClosed")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_missing");
+        fs::disk_read_file reader {strex(temp_dir).combine_path("absent.bin").str()};
+
+        CHECK_FALSE(static_cast<bool>(reader));
+    }
+
+    SECTION("ListingNamesKeepsWhatIterationHides")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_listing");
+
+        ignore_unused(fs::remove_dir_tree(temp_dir));
+        REQUIRE(fs::create_directories(temp_dir));
+        REQUIRE(fs::create_directories(strex(temp_dir).combine_path("sub").str()));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("plain.bin").str(), string_view {"a"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("~temp.bin").str(), string_view {"b"}));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path(".hidden").str(), string_view {"c"}));
+
+        vector<string> listed = fs::list_dir_file_names(temp_dir);
+        vector<string> iterated;
+
+        fs::iterate_dir(temp_dir, false, [&](string_view path, size_t size, uint64_t write_time) {
+            ignore_unused(size, write_time);
+            iterated.emplace_back(path);
+        });
+
+        // The updater sweeps its own '~' temp files, which the filtering iteration never shows it
+        CHECK(std::find(listed.begin(), listed.end(), "~temp.bin") != listed.end());
+        CHECK(std::find(listed.begin(), listed.end(), ".hidden") != listed.end());
+        CHECK(std::find(iterated.begin(), iterated.end(), "~temp.bin") == iterated.end());
+        CHECK(listed.size() == 3);
+
+        CHECK(fs::remove_dir_tree(temp_dir));
+    }
+
+    SECTION("ContainedRelativePathRefusesWhatWouldResolveOutside")
+    {
+        CHECK(fs::is_contained_relative_path("Core.fores"));
+        CHECK(fs::is_contained_relative_path("Packs/Core.fores"));
+        CHECK(fs::is_contained_relative_path("Packs\\Core.fores"));
+
+        CHECK_FALSE(fs::is_contained_relative_path(""));
+        CHECK_FALSE(fs::is_contained_relative_path("../Core.fores"));
+        CHECK_FALSE(fs::is_contained_relative_path("Packs/../../Core.fores"));
+        CHECK_FALSE(fs::is_contained_relative_path("Packs\\..\\Core.fores"));
+        CHECK_FALSE(fs::is_contained_relative_path("/etc/passwd"));
+        CHECK(fs::is_contained_relative_path("Ресурсы/Core.fores"));
+
+        // A server-sent name is placed on disk, so what a native path would read differently is refused everywhere
+        CHECK_FALSE(fs::is_contained_relative_path(string_view {"x.dll\0.fores", 12}));
+        CHECK_FALSE(fs::is_contained_relative_path("C:Core.fores"));
+        CHECK_FALSE(fs::is_contained_relative_path("Core.fores:stream"));
+        CHECK_FALSE(fs::is_contained_relative_path("Core\xFF.fores"));
+
+#if FO_WINDOWS
+        // A drive-qualified path is absolute here and an ordinary file name on POSIX, so it is asserted
+        // only where the answer is the interesting one
+        CHECK_FALSE(fs::is_contained_relative_path("C:\\Windows\\System32\\evil.dll"));
+#endif
+    }
+
+    SECTION("RecursiveFileListingIncludesUnfilteredRelativeNames")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_recursive_listing");
+        auto cleanup = scope_exit([&]() noexcept { (void)fs::remove_dir_tree(temp_dir); });
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("_Nested/.Hidden/File-backup").str(), "data"));
+        REQUIRE(fs::write_file(strex(temp_dir).combine_path("~Pending").str(), "data"));
+        vector<string> direct = fs::list_dir_file_names(temp_dir);
+        vector<string> recursive = fs::list_dir_file_names(temp_dir, true);
+        CHECK(std::find(direct.begin(), direct.end(), "~Pending") != direct.end());
+        CHECK(std::find(direct.begin(), direct.end(), "_Nested/.Hidden/File-backup") == direct.end());
+        CHECK(std::find(recursive.begin(), recursive.end(), "~Pending") != recursive.end());
+        CHECK(std::find(recursive.begin(), recursive.end(), "_Nested/.Hidden/File-backup") != recursive.end());
+    }
+
+    SECTION("AvailableSpaceAnswersForAnExistingDirectoryOnly")
+    {
+        string temp_dir = MakeTempTestDir("diskfs_space");
+
+        ignore_unused(fs::remove_dir_tree(temp_dir));
+        REQUIRE(fs::create_directories(temp_dir));
+
+        auto available = fs::available_space(temp_dir);
+        REQUIRE(available.has_value());
+        CHECK(*available > 0);
+
+        CHECK_FALSE(fs::available_space(strex(temp_dir).combine_path("no/such/place").str()).has_value());
 
         CHECK(fs::remove_dir_tree(temp_dir));
     }

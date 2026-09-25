@@ -63,8 +63,6 @@ namespace
 
     auto BytesTail(const vector<uint8_t>& data, size_t offset) -> const_span<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(offset <= data.size(), "Tail offset past end of buffer");
 
         size_t size = data.size() - offset;

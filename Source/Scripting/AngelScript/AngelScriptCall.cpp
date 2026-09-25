@@ -48,16 +48,12 @@ FO_BEGIN_NAMESPACE
 
 auto ScriptDataAccessor::GetArraySize(ptr<void> data) const -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
     return arr ? numeric_cast<size_t>(arr->GetSize()) : 0;
 }
 
 auto ScriptDataAccessor::GetArrayElement(ptr<void> data, size_t index) const -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
     FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     return arr->At(numeric_cast<int32_t>(index));
@@ -65,16 +61,12 @@ auto ScriptDataAccessor::GetArrayElement(ptr<void> data, size_t index) const -> 
 
 auto ScriptDataAccessor::GetDictSize(ptr<void> data) const -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
     return dict ? numeric_cast<size_t>(dict->GetSize()) : 0;
 }
 
 auto ScriptDataAccessor::GetDictElement(ptr<void> data, size_t index) const -> pair<ptr<void>, ptr<void>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
     FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     auto it = std::next(dict->GetMap()->begin(), static_cast<ptrdiff_t>(index));
@@ -83,8 +75,6 @@ auto ScriptDataAccessor::GetDictElement(ptr<void> data, size_t index) const -> p
 
 auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<ScriptFuncDesc>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(data);
 
     if (func) {
@@ -98,8 +88,6 @@ auto ScriptDataAccessor::GetCallback(ptr<void> data) const -> unique_del_nptr<Sc
 
 void ScriptDataAccessor::ClearArray(ptr<void> data) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
     FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     arr->Resize(0);
@@ -107,8 +95,6 @@ void ScriptDataAccessor::ClearArray(ptr<void> data) const
 
 void ScriptDataAccessor::AddArrayElement(ptr<void> data, ptr<void> value) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arr = NativeDataProvider::ReadTypedHandleSlot<ScriptArray>(data);
     FO_VERIFY_AND_THROW(arr, "Missing AngelScript array");
     arr->InsertLast(value);
@@ -116,8 +102,6 @@ void ScriptDataAccessor::AddArrayElement(ptr<void> data, ptr<void> value) const
 
 void ScriptDataAccessor::ClearDict(ptr<void> data) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
     FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     dict->Clear();
@@ -125,8 +109,6 @@ void ScriptDataAccessor::ClearDict(ptr<void> data) const
 
 void ScriptDataAccessor::AddDictElement(ptr<void> data, ptr<void> key, ptr<void> value) const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto dict = NativeDataProvider::ReadTypedHandleSlot<ScriptDict>(data);
     FO_VERIFY_AND_THROW(dict, "Missing AngelScript dictionary");
     dict->Set(key.get(), value.get());
@@ -134,8 +116,6 @@ void ScriptDataAccessor::AddDictElement(ptr<void> data, ptr<void> key, ptr<void>
 
 auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t type_id, uint32_t flags, bool is_ret) -> ComplexTypeDesc
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type_id != AngelScript::asTYPEID_VOID, "AngelScript type id unexpectedly resolves to void", type_id);
 
     auto meta = GetEngineMetadata(as_engine);
@@ -244,8 +224,6 @@ auto ResolveScriptFuncType(ptr<AngelScript::asIScriptEngine> as_engine, int32_t 
 
 auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFuncDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData())) {
         return func_desc;
     }
@@ -311,8 +289,6 @@ auto IndexScriptFunc(ptr<AngelScript::asIScriptFunction> func) -> ptr<ScriptFunc
 // Registration descriptors identify mutable arguments, whose pointee comes from GetArgAddress
 static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index, const ComplexTypeDesc& arg_type) -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (arg_type.IsMutable) {
         auto arg_address = GetGenericArgAddress(gen, arg_index);
         FO_VERIFY_AND_THROW(arg_address, "Reference argument address is null");
@@ -324,8 +300,6 @@ static auto GetGenericArgSlot(ptr<AngelScript::asIScriptGeneric> gen, AngelScrip
 
 void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, const_span<ArgDesc> args_desc, const function<void(FuncCallData&)>& callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(gen->GetArgCount()) == args_desc.size(), "Generic call argument count does not match descriptor", gen->GetArgCount(), args_desc.size());
 
     int32_t as_result = 0;
@@ -423,7 +397,7 @@ void ScriptGenericCall(ptr<AngelScript::asIScriptGeneric> gen, bool add_obj, con
 
 void ScriptFuncCall(ptr<AngelScript::asIScriptFunction> func, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(call.ArgsData.size() == func->GetParamCount(), "Script function call argument storage does not match function signature", func->GetDeclaration(), call.ArgsData.size(), func->GetParamCount());
     FO_VERIFY_AND_THROW(!!call.RetData == (func->GetReturnTypeId() != AngelScript::asTYPEID_VOID), "Script call return storage does not match function return type", !!call.RetData, func->GetReturnTypeId());

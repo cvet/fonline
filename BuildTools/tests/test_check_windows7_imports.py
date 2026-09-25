@@ -103,3 +103,11 @@ def test_check_binary_accepts_import_windows_7_resolves(library: str, import_nam
     binary.write_bytes(_make_pe(import_name, is_64bit=False, library=library))
 
     assert _check.check_binary(binary) == []
+
+
+@pytest.mark.parametrize("is_64bit", [False, True])
+def test_check_binary_rejects_runtime_shader_compiler(is_64bit: bool, tmp_path: Path) -> None:
+    binary = tmp_path / "fixture.dll"
+    binary.write_bytes(_make_pe("D3DCompile", is_64bit, library="D3DCOMPILER_47.dll"))
+
+    assert _check.check_binary(binary) == [_check.ImportedSymbol(library="D3DCOMPILER_47.dll", name="D3DCompile")]

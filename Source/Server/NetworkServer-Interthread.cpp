@@ -75,7 +75,7 @@ private:
 
 auto NetworkServer::StartInterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     return safe_alloc::make_unique<InterthreadServer>(settings, std::move(callback));
 }
@@ -84,12 +84,11 @@ NetworkServerConnection_Interthread::NetworkServerConnection_Interthread(ptr<Ser
     NetworkServerConnection(settings),
     _send {std::move(send)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!buf.empty()) {
         ReceiveCallback(buf);
@@ -107,8 +106,6 @@ void NetworkServerConnection_Interthread::Receive(const_span<uint8_t> buf)
 
 void NetworkServerConnection_Interthread::DispatchImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto buf = SendCallback();
 
     if (!buf.empty()) {
@@ -122,8 +119,6 @@ void NetworkServerConnection_Interthread::DispatchImpl()
 
 void NetworkServerConnection_Interthread::DisconnectImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_sendLocker};
 
     if (_send) {
@@ -135,8 +130,6 @@ void NetworkServerConnection_Interthread::DisconnectImpl()
 InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) :
     _virtualPort {numeric_cast<uint16_t>(settings->Network.ServerPort)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection_registry = GetConnectionRegistry();
     // The registry hands the listener out by copy, so the move-only connection callback travels behind a shared owner
     auto shared_callback = safe_alloc::make_shared<NewConnectionCallback>(std::move(callback));
@@ -157,9 +150,10 @@ InterthreadServer::InterthreadServer(ptr<ServerNetworkSettings> settings, NewCon
 
 void InterthreadServer::ShutdownImpl()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
-    FO_VERIFY_AND_THROW(RemoveInterthreadListener(_virtualPort), "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
+    bool listener_removed = RemoveInterthreadListener(_virtualPort);
+    FO_VERIFY_AND_THROW(listener_removed, "Interthread server shutdown cannot find the registered virtual port listener", _virtualPort);
 }
 
 FO_END_NAMESPACE

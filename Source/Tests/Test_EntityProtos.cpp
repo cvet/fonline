@@ -55,7 +55,6 @@ namespace
         explicit TestLifecycleEntity(ptr<const PropertyRegistrar> registrar) noexcept :
             Entity(registrar, nullptr, nullptr)
         {
-            FO_NO_STACK_TRACE_ENTRY();
         }
         ~TestLifecycleEntity() override = default;
 

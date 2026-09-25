@@ -43,6 +43,7 @@
 #include "Client.h"
 #include "DataSerialization.h"
 #include "ImGuiStuff.h"
+#include "ResourcePack.h"
 #include "Server.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
@@ -781,8 +782,6 @@ namespace ClientServerIntegrationClient
 
     static auto MakeTempClientUpdaterBakeDir(string_view name) -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("lf_client_updater_{}_{}", name, suffix).str();
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
@@ -791,8 +790,6 @@ namespace ClientServerIntegrationClient
 
     static auto PrepareClientUpdaterBakeOutput() -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         string bake_dir = MakeTempClientUpdaterBakeDir("resources");
         string fonts_dir = strex(bake_dir).combine_path("Embedded/Fonts").str();
 
@@ -2190,6 +2187,190 @@ TEST_CASE("ClientReportsUnresolvedHashAndLearnsWithoutDisconnect")
     REQUIRE(WaitForConnected(second_client, server, 2));
     REQUIRE(WaitForLearnedHash(second_client, reported.as_hash(), "integration_test_only_hash"));
     CHECK(GetServerConnectionCount(server) == 2);
+}
+
+TEST_CASE("ClientUpdaterResourcePatchLifecycle")
+{
+    using namespace TestClientServerIntegration;
+
+    string install = PrepareClientUpdaterBakeOutput();
+    string published = MakeTempClientUpdaterBakeDir("published");
+    string writable = MakeTempClientUpdaterBakeDir("writable");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    auto write_art = [](string_view directory, const vector<pair<string, string>>& files) {
+        ResourcePackWriter writer {strex(directory).combine_path("Art.fores").str(), {0, 100}};
+
+        for (const auto& [name, content] : files) {
+            writer.AddFile(name, {reinterpret_cast<const uint8_t*>(content.data()), content.size()});
+        }
+
+        writer.Finish();
+    };
+    string unchanged(65536, 'b');
+    write_art(install, {{"Keep.bin", unchanged}, {"Change.txt", "old"}, {"Removed.txt", "removed"}});
+    write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "first update"}});
+    string installed_base = strex(install).combine_path("Art.fores").str();
+    auto original = fs::read_file(installed_base);
+    REQUIRE(original);
+    string writable_resources = strex(writable).combine_path("Resources").str();
+    string patch = strex(writable_resources).combine_path("Art.patch.fores").str();
+    string replacement = strex(writable_resources).combine_path("Art.fores").str();
+
+    auto synchronize = [&](bool in_memory, bool replace_published = false) {
+        uint16_t port = IntegrationTestPort.fetch_add(1);
+        GlobalSettings server_settings = MakeServerTestSettings(port);
+        BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+        auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        server_settings.ApplyConfigFile(server_pack_config, "");
+        BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, strex(published).combine_path("NoBinaries").str());
+        BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+        auto server = MakeServerEngine(server_settings);
+        auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
+        string error = WaitForServerStart(server);
+        INFO(error);
+        REQUIRE(error.empty());
+
+#if !FO_WINDOWS
+        if (replace_published) {
+            REQUIRE(fs::rename_durable(strex(published).combine_path("Art.fores").str(), strex(published).combine_path("Pinned.fores").str()));
+            write_art(published, {{"Keep.bin", unchanged}, {"Change.txt", "replaced after server start"}});
+        }
+#else
+        ignore_unused(replace_published);
+#endif
+
+        GlobalSettings client_settings = MakeClientTestSettings(port);
+        BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+        BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+        auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n[ResourcePack]\nName = Art\nClientOnly = True\n");
+        client_settings.ApplyConfigFile(client_pack_config, "");
+        client_settings.ApplyWritableRoot(writable);
+        Updater updater {&client_settings, &GetApp()->MainWindow};
+        REQUIRE(WaitForUpdaterResult(updater));
+        REQUIRE(updater.GetResult() == UpdaterResult::ResourcesReady);
+        REQUIRE_FALSE(updater.IsAborted());
+        FileSystem resources = GetClientResources(client_settings);
+        CHECK(resources.ReadFileText("Keep.bin") == unchanged);
+        CHECK_FALSE(resources.IsFileExists("Removed.txt"));
+    };
+
+    synchronize(false);
+    REQUIRE(fs::exists(patch));
+    CHECK_FALSE(fs::exists(replacement));
+    CHECK(fs::read_file(installed_base) == original);
+    auto first = fs::read_file(patch);
+    REQUIRE(first);
+    CHECK(first->size() < 1024);
+
+    SECTION("SecondUpdateAppendsAndRetainsTheCommittedPrefix")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Renamed.txt", "first update"}, {"Added.txt", "second update"}});
+        synchronize(true);
+        auto second = fs::read_file(patch);
+        REQUIRE(second);
+        CHECK(second->size() > first->size());
+        CHECK(second->starts_with(*first));
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Renamed.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+
+    SECTION("DamagedBaseTheCatalogStillNamesIsDownloadedAgain")
+    {
+        // One flipped payload byte leaves the header and the catalog intact, so the pair still reports the advertised
+        // content; only reading its bytes back tells the damage apart, and the whole pack is the repair
+        string damaged = *original;
+        damaged[RESOURCE_PACK_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PACK_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(installed_base, damaged));
+
+        synchronize(false);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
+        CHECK(fs::read_file(installed_base) == optional<string> {damaged});
+    }
+
+    SECTION("DamagedPatchPayloadIsFetchedAgain")
+    {
+        string damaged = *first;
+        damaged[RESOURCE_PATCH_HEADER_SIZE] = static_cast<char>(damaged[RESOURCE_PATCH_HEADER_SIZE] ^ 0x01);
+        REQUIRE(fs::write_file(patch, damaged));
+
+        synchronize(false);
+        CHECK_FALSE(fs::exists(replacement));
+        auto repaired = fs::read_file(patch);
+        REQUIRE(repaired);
+        CHECK(repaired->starts_with(damaged));
+        ResourcePackSource pair {installed_base, patch};
+        size_t size = 0;
+        uint64_t write_time = 0;
+        CHECK(static_cast<bool>(pair.OpenFile("Change.txt", size, write_time)));
+        CHECK(size == string_view {"first update"}.size());
+    }
+
+    SECTION("PatchThatWouldOutgrowItsPackIsReplacedByThePack")
+    {
+        constexpr size_t large_size = 65 * 1024 * 1024;
+
+        {
+            vector<uint8_t> content(large_size, 'n');
+            string intermediate = strex(writable).combine_path("Intermediate.fores").str();
+
+            {
+                ResourcePackWriter writer {intermediate, {0, 100}};
+                writer.AddFile("Keep.bin", {reinterpret_cast<const uint8_t*>(unchanged.data()), unchanged.size()});
+                writer.AddFile("Change.txt", content);
+                writer.Finish();
+            }
+
+            ResourcePackSource target {intermediate};
+            ResourcePatchWriter writer {installed_base, patch, target.GetEntryRefs(), target.GetContentHash()};
+            REQUIRE(writer.GetDownloads().size() == 1);
+            REQUIRE(writer.GetDownloads().front().Path == "Change.txt");
+            fs::disk_directory_lock patch_lock {strex(patch).extract_dir().str()};
+            writer.Begin(patch_lock);
+            writer.AddEncodedFile(content);
+            writer.Finish();
+        }
+
+        // The published pack dropped the large payload again, so another append would leave a patch far larger than
+        // the pack it patches: the pack replaces the pair instead
+        REQUIRE(fs::file_size(patch).value() > large_size);
+        synchronize(false);
+        CHECK(fs::read_file(replacement) == fs::read_file(strex(published).combine_path("Art.fores").str()));
+        CHECK_FALSE(fs::exists(patch));
+        synchronize(true);
+        CHECK_FALSE(fs::exists(patch));
+        CHECK(fs::read_file(installed_base) == original);
+    }
+
+#if !FO_WINDOWS
+    SECTION("DiskBackendPinsTheAdvertisedArtifactAcrossReplacement")
+    {
+        write_art(published, {{"Keep.bin", unchanged}, {"Pinned.txt", "advertised before replacement"}});
+        synchronize(false, true);
+        ResourcePackSource pair {installed_base, patch};
+        CHECK(pair.IsFileExists("Pinned.txt"));
+        CHECK_FALSE(pair.IsFileExists("Change.txt"));
+        CHECK(pair.GetContentHash() == ResourcePackSource(strex(published).combine_path("Pinned.fores").str()).GetContentHash());
+        CHECK(pair.GetContentHash() != ResourcePackSource(strex(published).combine_path("Art.fores").str()).GetContentHash());
+    }
+#endif
 }
 
 TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")

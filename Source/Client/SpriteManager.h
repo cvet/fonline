@@ -263,6 +263,7 @@ private:
 
     void UpdateSprites();
     void PrepareSpriteCpuUpdates();
+    void FlushBatch();
     void RefreshScissor();
     void EnableScissor();
     void DisableScissor();

@@ -50,10 +50,9 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ManagedScriptBakerApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
-    CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
+    ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
+    CommandLineArgs args = program_args.GetArgs();
 #endif
 
     try {

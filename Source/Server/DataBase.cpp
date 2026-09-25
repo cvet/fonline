@@ -71,29 +71,21 @@ static auto DecodeHexDigit(char ch) -> uint8_t;
 
 static auto BsonMalloc(size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::malloc_raw(size).get();
 }
 
 static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::calloc_raw(num, size).get();
 }
 
 static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::realloc_raw(mem, size).get();
 }
 
 static void BsonFree(void* mem) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     safe_alloc::free_raw(mem);
 }
 
@@ -101,8 +93,6 @@ static void BsonFree(void* mem) noexcept
 // Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
 static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_HAVE_RPMALLOC || !FO_WINDOWS
     return safe_alloc::malloc_aligned_raw(size, alignment).get();
 #else
@@ -114,8 +104,6 @@ static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
 
 void InitializeBsonMemory() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static std::once_flag once;
     std::call_once(once, [] {
         bson_mem_vtable_t vtable {};
@@ -134,8 +122,6 @@ DataBase::DataBase(DataBase&&) noexcept = default;
 
 auto DataBase::operator=(DataBase&& other) noexcept -> DataBase&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (this != &other) {
         _impl = std::move(other._impl);
     }
@@ -148,30 +134,24 @@ DataBase::~DataBase() = default;
 DataBase::DataBase(unique_ptr<DataBaseImpl> impl) :
     _impl {std::move(impl)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Missing database backend state");
 }
 
 auto DataBase::InValidState() const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_impl, "Database implementation is null");
     return _impl->InValidState();
 }
 
 auto DataBase::GetDbRequestsPerMinute() const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     return _impl->GetDbRequestsPerMinute();
 }
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     auto key_type = _impl->GetCollectionKeyType(collection_name);
@@ -190,8 +170,6 @@ auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 
 auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     auto key_type = _impl->GetCollectionKeyType(collection_name);
 
@@ -210,8 +188,6 @@ auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
 
 auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     auto key_type = _impl->GetCollectionKeyType(collection_name);
 
@@ -230,96 +206,72 @@ auto DataBase::GetAllStringIds(hstring collection_name) const -> vector<string>
 
 auto DataBase::Get(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     return _impl->GetDocument(collection_name, id);
 }
 
 auto DataBase::GetMany(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     return _impl->GetDocuments(collection_name, ids);
 }
 
 auto DataBase::Valid(hstring collection_name, const DataBaseKey& id) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     return !_impl->GetDocument(collection_name, id).Empty();
 }
 
 void DataBase::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->Insert(collection_name, id, doc);
 }
 
 void DataBase::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->Update(collection_name, id, key, value);
 }
 
 void DataBase::Delete(hstring collection_name, const DataBaseKey& id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->Delete(collection_name, id);
 }
 
 void DataBase::StartCommitChanges()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->StartCommitChanges();
 }
 
 void DataBase::WaitCommitChanges()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->WaitCommitChanges();
 }
 
 auto DataBase::CreateSnapshot() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     return _impl->CreateSnapshot();
 }
 
 void DataBase::RestoreSnapshot(const_span<uint8_t> snapshot_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
     _impl->RestoreSnapshot(snapshot_data);
 }
 
 void DataBase::ClearChanges() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_impl, "Database implementation is null");
     _impl->ClearChanges();
 }
 
 void DataBase::DrawGui()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!InValidState()) {
         ImGui::TextColored(ImVec4 {1.0f, 0.4f, 0.4f, 1.0f}, "Database is in failed state");
         return;
@@ -337,13 +289,10 @@ DataBaseImpl::DataBaseImpl(ptr<DataBaseSettings> db_settings, DataBasePanicCallb
     _reconnectRetryPeriod {std::chrono::milliseconds {std::max(_settings->DataBase.ReconnectRetryPeriod, 1)}},
     _panicCallback {std::move(panic_callback)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _collectionKeyTypes.find(collection_name);
 
     if (it == _collectionKeyTypes.end()) {
@@ -355,8 +304,6 @@ auto DataBaseImpl::GetCollectionKeyType(hstring collection_name) const -> DataBa
 
 auto DataBaseImpl::ResolveCollectionName(string_view collection_name) const -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _collectionNames.find(collection_name);
 
     if (it == _collectionNames.end()) {
@@ -368,7 +315,7 @@ auto DataBaseImpl::ResolveCollectionName(string_view collection_name) const -> h
 
 void DataBaseImpl::InitializeCollections(const DataBaseCollectionSchemas& collection_schemas)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     for (const auto& [collection_name, key_type] : collection_schemas) {
         FO_VERIFY_AND_THROW(!_collectionNames.contains(collection_name.as_str()), "Database collection name is already registered", collection_name, key_type);
@@ -380,7 +327,7 @@ void DataBaseImpl::InitializeCollections(const DataBaseCollectionSchemas& collec
 
 void DataBaseImpl::InitializeOpLogs()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (!_opLogEnabled) {
         return;
@@ -478,7 +425,7 @@ void DataBaseImpl::InitializeOpLogs()
 
 void DataBaseImpl::RestorePendingChanges()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (!_opLogEnabled) {
         return;
@@ -592,22 +539,16 @@ void DataBaseImpl::RestorePendingChanges()
 
 auto DataBaseImpl::InValidState() const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !_backendFailed.load(std::memory_order_relaxed) && !_panicStarted.load(std::memory_order_relaxed);
 }
 
 auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
 }
 
 auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto docs = GetDocuments(collection_name, {id});
     FO_VERIFY_AND_THROW(docs.size() == 1, "Database returned a different number of documents than requested", collection_name, id, docs.size());
     return std::move(docs.front());
@@ -615,7 +556,7 @@ auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) c
 
 auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (!InValidState()) {
         throw DataBaseException("Database backend is in failed state");
@@ -763,14 +704,12 @@ auto DataBaseImpl::GetDocuments(hstring collection_name, const vector<DataBaseKe
 
 auto DataBaseImpl::GetRecords(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return vec_transform(ids, [&](const DataBaseKey& id) -> AnyData::Document { return GetRecord(collection_name, id); });
 }
 
 void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (doc.Empty()) {
         throw DataBaseException("Cannot insert empty document");
@@ -799,8 +738,6 @@ void DataBaseImpl::Insert(hstring collection_name, const DataBaseKey& id, const 
 
 void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string_view key, const AnyData::Value& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateFiniteAnyValue(value);
     ValidateCollectionKey(collection_name, id);
 
@@ -824,7 +761,7 @@ void DataBaseImpl::Update(hstring collection_name, const DataBaseKey& id, string
 
 void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     ValidateCollectionKey(collection_name, id);
 
@@ -847,8 +784,6 @@ void DataBaseImpl::Delete(hstring collection_name, const DataBaseKey& id)
 
 void DataBaseImpl::StartCommitChanges()
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_stateLocker};
 
@@ -860,7 +795,7 @@ void DataBaseImpl::StartCommitChanges()
 
 void DataBaseImpl::WaitCommitChanges()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     unique_lock locker {_stateLocker};
 
@@ -880,7 +815,7 @@ void DataBaseImpl::WaitCommitChanges()
 
 auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     {
         unique_lock locker {_stateLocker};
@@ -924,7 +859,7 @@ auto DataBaseImpl::CreateSnapshot() -> vector<uint8_t>
 
 void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (snapshot_data.empty()) {
         throw DataBaseException("Database snapshot data is empty");
@@ -963,22 +898,16 @@ void DataBaseImpl::RestoreSnapshot(const_span<uint8_t> snapshot_data)
 
 auto DataBaseImpl::CreateSnapshotData() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     throw DataBaseException("Database backend does not support snapshots");
 }
 
 void DataBaseImpl::RestoreSnapshotData(const_span<uint8_t> snapshot_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     throw DataBaseException("Database backend does not support snapshots", snapshot_data.size());
 }
 
 void DataBaseImpl::ClearChanges() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_stateLocker};
 
     _pendingCommitOperations.clear();
@@ -986,8 +915,6 @@ void DataBaseImpl::ClearChanges() noexcept
 
 void DataBaseImpl::DrawGui()
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_RowBg | ImGuiTableFlags_BordersInnerH | ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp;
 
     auto info_row = [](string_view key, string_view value) {
@@ -1061,8 +988,6 @@ void DataBaseImpl::DrawGui()
 
 void DataBaseImpl::ScheduleCommit()
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool should_notify = false;
 
     {
@@ -1080,8 +1005,6 @@ void DataBaseImpl::ScheduleCommit()
 
 void DataBaseImpl::StartCommitThread()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_commitThread.joinable(), "Commit thread joinable is already set");
 
     {
@@ -1095,7 +1018,7 @@ void DataBaseImpl::StartCommitThread()
 
 void DataBaseImpl::StopCommitThread() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     try {
         FO_VERIFY_AND_THROW(_commitThread.joinable(), "Commit thread is not joinable");
@@ -1120,8 +1043,6 @@ void DataBaseImpl::StopCommitThread() noexcept
 
 void DataBaseImpl::CommitThreadEntry() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (true) {
         try {
             bool has_changes = false;
@@ -1193,7 +1114,7 @@ void DataBaseImpl::CommitThreadEntry() noexcept
 
 void DataBaseImpl::CommitNextChange() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     shared_ptr<CommitOperationData> op;
 
@@ -1296,8 +1217,6 @@ void DataBaseImpl::CommitNextChange() noexcept
 
 void DataBaseImpl::RegisterDbRequests(size_t request_count) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (request_count == 0) {
         return;
     }
@@ -1328,8 +1247,6 @@ void DataBaseImpl::RegisterDbRequests(size_t request_count) const
 
 void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBaseKey& id) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!IsDbKeyValueValid(id)) {
         throw DataBaseException("Invalid database key value", collection_name, id);
     }
@@ -1343,8 +1260,6 @@ void DataBaseImpl::ValidateCollectionKey(hstring collection_name, const DataBase
 
 void DataBaseImpl::StartPanic(string_view message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_panicStarted) {
         return;
     }
@@ -1365,7 +1280,7 @@ void DataBaseImpl::StartPanic(string_view message)
 DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
     _path {std::move(path)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (_path.empty()) {
         throw DataBaseException("Empty recovery log file path");
@@ -1399,15 +1314,11 @@ DataBaseImpl::RecoveryLogHandle::RecoveryLogHandle(string path) :
 
 DataBaseImpl::RecoveryLogHandle::~RecoveryLogHandle() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     osfile::close_exclusive_file(_fd);
 }
 
 auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     int64_t size = osfile::seek_file_end(_fd);
 
     if (size < 0) {
@@ -1445,7 +1356,7 @@ auto DataBaseImpl::RecoveryLogHandle::Read() noexcept -> optional<string>
 
 auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (!osfile::truncate_file(_fd)) {
         return false;
@@ -1466,7 +1377,7 @@ auto DataBaseImpl::RecoveryLogHandle::Truncate() noexcept -> bool
 
 auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     if (_fd < 0) {
         return false;
@@ -1570,7 +1481,7 @@ auto DataBaseImpl::RecoveryLogHandle::Append(string_view text) noexcept -> bool
 
 auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection_info, const DataBaseCollectionSchemas& collection_schemas, DataBasePanicCallback panic_callback) -> DataBase
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Database);
 
     auto finish_connect = [&](unique_ptr<DataBaseImpl> impl) -> DataBase {
         impl->InitializeCollections(collection_schemas);
@@ -1605,8 +1516,6 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
 
 static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     strex key_buf = strex(key);
     string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
     string_view key_data = escaped_key;
@@ -1684,8 +1593,6 @@ static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t
 
 void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto&& [doc_key, doc_value] : doc) {
         ValueToBson(doc_key, doc_value, bson, escape_dot);
     }
@@ -1693,8 +1600,6 @@ void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_
 
 static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto value = make_ptr(bson_iter_value(iter));
 
     if (value->value_type == BSON_TYPE_INT32) {
@@ -1759,8 +1664,6 @@ static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
 
 void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bson_iter_t iter;
     auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
 
@@ -1784,8 +1687,6 @@ void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_
 
 static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (value.Type()) {
     case AnyData::ValueType::Int64:
         return value.AsInt64();
@@ -1828,8 +1729,6 @@ static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
 
 static void ValidateFiniteAnyValue(const AnyData::Value& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (value.Type()) {
     case AnyData::ValueType::Float64:
         if (!std::isfinite(value.AsDouble())) {
@@ -1857,8 +1756,6 @@ static void ValidateFiniteAnyValue(const AnyData::Value& value)
 
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& doc_entry : doc) {
         ValidateFiniteAnyValue(doc_entry.second);
     }
@@ -1866,8 +1763,6 @@ static void ValidateFiniteAnyDocument(const AnyData::Document& doc)
 
 static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.is_number_integer() || value.is_number_unsigned()) {
         return numeric_cast<int64_t>(value.get<int64_t>());
     }
@@ -1910,8 +1805,6 @@ static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
 
 static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto doc_json = nlohmann::json::object();
 
     for (auto&& [doc_key, doc_value] : doc) {
@@ -1924,8 +1817,6 @@ static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
 
 static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!doc_json.is_object()) {
         throw DataBaseException("Invalid pending database json document");
     }
@@ -1941,15 +1832,11 @@ static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Docume
 
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return left == right;
 }
 
 static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::Document& patch) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     for (auto&& [patch_key, patch_value] : patch) {
         if (!target.Contains(patch_key)) {
             return false;
@@ -1964,8 +1851,6 @@ static auto DoesDocumentContain(const AnyData::Document& target, const AnyData::
 
 static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::visit(
         [](const auto& value) noexcept -> bool {
             using T = std::decay_t<decltype(value)>;
@@ -1982,15 +1867,11 @@ static auto IsDbKeyValueValid(const DataBaseKey& key) noexcept -> bool
 
 auto GetDbKeyType(const DataBaseKey& key) noexcept -> DataBaseKeyType
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::holds_alternative<ident_t>(key) ? DataBaseKeyType::IntId : DataBaseKeyType::String;
 }
 
 static auto DbKeyTypeName(DataBaseKeyType key_type) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (key_type) {
     case DataBaseKeyType::IntId:
         return "Id";
@@ -2003,8 +1884,6 @@ static auto DbKeyTypeName(DataBaseKeyType key_type) noexcept -> string_view
 
 static auto EncodeStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (GetDbKeyType(key) != key_type) {
         throw DataBaseException("Database key type mismatch", DbKeyTypeName(key_type), key);
     }
@@ -2029,8 +1908,6 @@ static auto EncodeStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 
 static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key_str.empty()) {
         throw DataBaseException("Invalid database key value", key_str);
     }
@@ -2063,8 +1940,6 @@ static auto DecodeStorageDbKey(string_view key_str, DataBaseKeyType key_type, Da
 
 static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key_type == DataBaseKeyType::IntId) {
         return key;
     }
@@ -2089,8 +1964,6 @@ static auto EncodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 
 static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type, DataBaseStringKeyEscaping escaping) -> DataBaseKey
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key_type == DataBaseKeyType::IntId) {
         return key;
     }
@@ -2121,8 +1994,6 @@ static auto DecodeBackendDbKey(const DataBaseKey& key, DataBaseKeyType key_type,
 
 static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     static constexpr char hex_digits[] = "0123456789abcdef";
 
     if (escaping == DataBaseStringKeyEscaping::Hex) {
@@ -2160,8 +2031,6 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (escaping == DataBaseStringKeyEscaping::Hex) {
         if (!value.starts_with("s_")) {
             throw DataBaseException("Invalid database string key format", value);
@@ -2209,8 +2078,6 @@ static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (byte == '%') {
         return true;
     }
@@ -2229,8 +2096,6 @@ static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping esc
 
 static auto DecodeHexDigit(char ch) -> uint8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (ch >= '0' && ch <= '9') {
         return static_cast<uint8_t>(ch - '0');
     }

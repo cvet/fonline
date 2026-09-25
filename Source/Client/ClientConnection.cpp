@@ -41,8 +41,6 @@ ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
     _netIn(_settings->Network.NetBufferSize),
     _netOut(_settings->Network.NetBufferSize)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _connectCallback = [](auto&&) FO_DEFERRED { };
     _disconnectCallback = []() FO_DEFERRED { };
 
@@ -53,22 +51,16 @@ ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
 
 void ClientConnection::SetConnectHandler(ConnectCallback handler)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _connectCallback = handler ? std::move(handler) : [](auto&&) FO_DEFERRED { };
 }
 
 void ClientConnection::SetDisconnectHandler(DisconnectCallback handler)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _disconnectCallback = handler ? std::move(handler) : []() FO_DEFERRED { };
 }
 
 void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_handlers.count(msg) == 0, "Duplicate client network message handler registration", msg, _handlers.size());
 
     _handlers.emplace(msg, std::move(handler));
@@ -76,8 +68,6 @@ void ClientConnection::AddMessageHandler(NetMessage msg, MessageCallback handler
 
 void ClientConnection::CreateNetworkConnection(bool use_udp)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto connection = use_udp ? NetworkClientConnection::CreateUdpSocketsConnection(_settings) : NetworkClientConnection::CreateSocketsConnection(_settings);
 
     _connectingOverUdp = use_udp;
@@ -86,7 +76,7 @@ void ClientConnection::CreateNetworkConnection(bool use_udp)
 
 void ClientConnection::Connect()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     FO_VERIFY_AND_THROW(!_netConnection, "Net connection is already set");
 
@@ -135,8 +125,6 @@ void ClientConnection::Connect()
 
 void ClientConnection::Process()
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         ProcessConnection();
     }
@@ -171,7 +159,7 @@ void ClientConnection::Process()
 
 void ClientConnection::ProcessConnection()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!_netConnection) {
         return;
@@ -208,7 +196,23 @@ void ClientConnection::ProcessConnection()
     _netConnection->CheckStatus(true);
 
     // Receive and send data
-    (void)ReceiveData();
+    if (ReceiveData()) {
+        _lastReceiveTime = nanotime::now();
+    }
+
+    // A server that vanished without closing the connection never answers again, and UDP or a half-open TCP link has
+    // no other way to tell. Any arriving data proves it alive, so a large portion ahead of the answer is no silence
+    bool awaits_answer = _pingTime || (_channel && !_channel->IsEstablished());
+
+    if (awaits_answer && _settings->ClientNetwork.PingTimeout != 0 && !is_run_in_debugger()) {
+        nanotime silent_since = std::max(_pingTime, _lastReceiveTime);
+
+        if (nanotime::now() - silent_since >= std::chrono::milliseconds {_settings->ClientNetwork.PingTimeout}) {
+            logging::write("Connection lost: the server has sent nothing for {} ms", (nanotime::now() - silent_since).to_ms<int32_t>());
+            Disconnect();
+            return;
+        }
+    }
 
     if (!IsInboundLagged()) {
         while (_netIn.NeedProcess()) {
@@ -266,7 +270,7 @@ void ClientConnection::ProcessConnection()
 
 void ClientConnection::Disconnect()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!_netConnection) {
         return;
@@ -291,15 +295,11 @@ void ClientConnection::Disconnect()
 
 void ClientConnection::FlushPendingData()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SendData();
 }
 
 auto ClientConnection::TryFallbackToTcp() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_connectingOverUdp || _udpFallbackTried) {
         return false;
     }
@@ -315,7 +315,7 @@ auto ClientConnection::TryFallbackToTcp() -> bool
 
 void ClientConnection::StartSecureChannel()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     vector<crypto::key_bytes> server_keys;
     server_keys.reserve(_settings->ClientNetwork.ChannelServerKeys.size());
@@ -325,16 +325,20 @@ void ClientConnection::StartSecureChannel()
     }
 
     _channel.emplace(server_keys);
+
+    // The transport answering is the last sign of life until the channel handshake is answered
+    _lastReceiveTime = nanotime::now();
 }
 
 void ClientConnection::ResetConnectionState() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Every connection starts its own channel and compressed stream, so nothing buffered for the last one survives
     _channel.reset();
     _channelPlaintext.clear();
     _sealedOut.clear();
+    _pingTime = nanotime::zero;
+    _pingCallTime = nanotime::zero;
+    _lastReceiveTime = nanotime::zero;
     _artificalInboundLagTime.reset();
     _artificalOutboundLagTime.reset();
     _netIn.ResetBuf();
@@ -344,7 +348,7 @@ void ClientConnection::ResetConnectionState() noexcept
 
 void ClientConnection::SendData()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     // Until the transport connects there is no channel, and nothing may leave unsealed
     if (!_channel) {
@@ -378,23 +382,17 @@ void ClientConnection::SendData()
 
 auto ClientConnection::IsInboundLagged() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return IsArtificalLagPending(_artificalInboundLagTime, _netIn.NeedProcess());
 }
 
 auto ClientConnection::IsOutboundLagged() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool has_data = !_netOut.IsEmpty() || !_sealedOut.empty() || (_channel && _channel->HasHandshakeOutput());
     return IsArtificalLagPending(_artificalOutboundLagTime, has_data);
 }
 
 auto ClientConnection::IsArtificalLagPending(optional<nanotime>& deadline, bool has_data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A negative value builds a distribution whose lower bound exceeds its upper bound, which is undefined
     // rather than merely odd, and the zero early-out below does not screen it
     FO_VERIFY_AND_THROW(_settings->Network.ArtificalLags >= 0 && _settings->Network.ArtificalLagsJitter >= 0, "Artifical lag settings must not be negative", _settings->Network.ArtificalLags, _settings->Network.ArtificalLagsJitter);
@@ -426,7 +424,7 @@ auto ClientConnection::IsArtificalLagPending(optional<nanotime>& deadline, bool 
 
 auto ClientConnection::ReceiveData() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     FO_VERIFY_AND_THROW(_netConnection, "Network connection is not established");
     FO_VERIFY_AND_THROW(_channel, "Secure channel is not started on a connected transport");
@@ -471,15 +469,11 @@ auto ClientConnection::ReceiveData() -> bool
 
 void ClientConnection::SetMetadataVersion(string_view version)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _metadataVersion = version;
 }
 
 void ClientConnection::Net_SendHandshake()
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t updater_version = FO_UPDATER_VERSION;
     string binary_update_target_name {GetCurrentBinaryUpdateTargetName()};
 
@@ -493,7 +487,7 @@ void ClientConnection::Net_SendHandshake()
 
 void ClientConnection::Net_OnHandshakeAnswer()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     bool compatibility_outdated = _netIn.Read<bool>();
     bool updater_outdated = _netIn.Read<bool>();
@@ -518,7 +512,7 @@ void ClientConnection::Net_OnHandshakeAnswer()
 
 void ClientConnection::Net_OnPing()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     bool answer = _netIn.Read<bool>();
 

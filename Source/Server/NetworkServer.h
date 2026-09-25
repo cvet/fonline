@@ -67,6 +67,7 @@ public:
     void SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect);
     void Dispatch();
     void Disconnect();
+    void DropAsyncCallbacks();
 
 protected:
     explicit NetworkServerConnection(ptr<ServerNetworkSettings> settings);

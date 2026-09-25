@@ -84,7 +84,7 @@ struct CompilerContext final
 
 auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> project_data) -> EffekseerCompilerOutput
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (project_data.empty()) {
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
@@ -97,7 +97,7 @@ auto CompileEffekseerProject(string_view project_path, const_span<uint8_t> proje
 
 auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_t> project_data) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (project_data.empty()) {
         throw EffekseerCompilerException("Effekseer project is empty", project_path);
@@ -111,15 +111,11 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
 
 [[nodiscard]] static auto IsXmlSpace(char ch) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n';
 }
 
 [[nodiscard]] static auto TrimXmlText(string_view value) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     size_t begin = 0;
     size_t end = value.size();
 
@@ -135,8 +131,6 @@ auto GetEffekseerProjectDependencies(string_view project_path, const_span<uint8_
 
 [[nodiscard]] static auto DecodeXmlText(string_view value, string_view project_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(value.size());
 
@@ -186,12 +180,11 @@ public:
         _projectPath(project_path),
         _xml(xml)
     {
-        FO_NO_STACK_TRACE_ENTRY();
     }
 
     [[nodiscard]] auto Parse() -> XmlNode
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Baking);
 
         if (_xml.starts_with("\xEF\xBB\xBF")) {
             _position = 3;
@@ -224,33 +217,19 @@ public:
     }
 
 private:
-    [[noreturn]] void Fail(string_view message) const
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        throw EffekseerCompilerException(message, _projectPath, _position);
-    }
+    [[noreturn]] void Fail(string_view message) const { throw EffekseerCompilerException(message, _projectPath, _position); }
 
     void SkipSpace()
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         while (_position < _xml.size() && IsXmlSpace(_xml[_position])) {
             ++_position;
         }
     }
 
-    [[nodiscard]] auto StartsWith(string_view value) const noexcept -> bool
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return _xml.substr(_position).starts_with(value);
-    }
+    [[nodiscard]] auto StartsWith(string_view value) const noexcept -> bool { return _xml.substr(_position).starts_with(value); }
 
     [[nodiscard]] auto ParseName() -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         size_t begin = _position;
 
         while (_position < _xml.size()) {
@@ -273,8 +252,6 @@ private:
 
     [[nodiscard]] auto ParseElement() -> XmlNode
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_position >= _xml.size() || _xml[_position] != '<' || StartsWith("</") || StartsWith("<!") || StartsWith("<?")) {
             Fail("Effekseer project contains invalid XML markup");
         }
@@ -340,16 +317,12 @@ private:
 
 [[nodiscard]] static auto ParseXmlProject(string_view project_path, string_view xml) -> XmlNode
 {
-    FO_STACK_TRACE_ENTRY();
-
     XmlParser parser {project_path, xml};
     return parser.Parse();
 }
 
 [[nodiscard]] static auto Child(nptr<const XmlNode> node, string_view name) noexcept -> nptr<const XmlNode>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!node) {
         return nullptr;
     }
@@ -360,8 +333,6 @@ private:
 
 [[nodiscard]] static auto Find(nptr<const XmlNode> node, string_view path) noexcept -> nptr<const XmlNode>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     while (node && !path.empty()) {
         size_t separator = path.find('/');
         string_view name = path.substr(0, separator);
@@ -379,16 +350,12 @@ private:
 
 [[nodiscard]] static auto Text(nptr<const XmlNode> node, string_view path, string_view default_value = {}) -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> value = Find(node, path);
     return value ? string_view {value->Text} : default_value;
 }
 
 [[nodiscard]] static auto IntValue(nptr<const XmlNode> node, string_view path, int32_t default_value = 0) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> value = Find(node, path);
 
     if (!value) {
@@ -409,8 +376,6 @@ private:
 
 [[nodiscard]] static auto FloatValue(nptr<const XmlNode> node, string_view path, float32_t default_value = 0.0f) -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> value = Find(node, path);
 
     if (!value) {
@@ -431,8 +396,6 @@ private:
 
 [[nodiscard]] static auto BoolValue(nptr<const XmlNode> node, string_view path, bool default_value = false) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> value = Find(node, path);
 
     if (!value) {
@@ -450,23 +413,17 @@ private:
 
 void BinaryWriter::WriteUInt8(uint8_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _data.emplace_back(value);
 }
 
 void BinaryWriter::WriteUInt16(uint16_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _data.emplace_back(numeric_cast<uint8_t>(value & 0xffU));
     _data.emplace_back(numeric_cast<uint8_t>((value >> 8U) & 0xffU));
 }
 
 void BinaryWriter::WriteInt32(int32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t encoded = std::bit_cast<uint32_t>(value);
     _data.emplace_back(numeric_cast<uint8_t>(encoded & 0xffU));
     _data.emplace_back(numeric_cast<uint8_t>((encoded >> 8U) & 0xffU));
@@ -476,30 +433,22 @@ void BinaryWriter::WriteInt32(int32_t value)
 
 void BinaryWriter::WriteFloat(float32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     WriteInt32(std::bit_cast<int32_t>(value));
 }
 
 void BinaryWriter::WriteBytes(const_span<uint8_t> value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _data.insert(_data.end(), value.begin(), value.end());
 }
 
 void BinaryWriter::WriteSized(const BinaryWriter& value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     WriteInt32(numeric_cast<int32_t>(value.GetData().size()));
     WriteBytes(value.GetData());
 }
 
 void BinaryWriter::WriteUtf16(string_view value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Decode the UTF-8 input directly rather than through a platform wide string: strex::to_wide_char is
     // Windows-only, and wchar_t is 16-bit only there, so the wide detour is not portable either way
     vector<uint16_t> units;
@@ -533,30 +482,22 @@ void BinaryWriter::WriteUtf16(string_view value)
 
 auto BinaryWriter::MoveData() -> vector<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::move(_data);
 }
 
 auto BinaryWriter::GetData() const noexcept -> const vector<uint8_t>&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _data;
 }
 
 static void WriteVector2(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x = 0.0f, float32_t default_y = 0.0f, float32_t multiplier = 1.0f)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteFloat(FloatValue(node, "X", default_x) * multiplier);
     writer.WriteFloat(FloatValue(node, "Y", default_y) * multiplier);
 }
 
 static void WriteVector3(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x = 0.0f, float32_t default_y = 0.0f, float32_t default_z = 0.0f, float32_t multiplier = 1.0f)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteFloat(FloatValue(node, "X", default_x) * multiplier);
     writer.WriteFloat(FloatValue(node, "Y", default_y) * multiplier);
     writer.WriteFloat(FloatValue(node, "Z", default_z) * multiplier);
@@ -564,24 +505,18 @@ static void WriteVector3(BinaryWriter& writer, nptr<const XmlNode> node, float32
 
 static void WriteRandomFloat(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_value = 0.0f, float32_t multiplier = 1.0f)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteFloat(FloatValue(node, "Max", default_value) * multiplier);
     writer.WriteFloat(FloatValue(node, "Min", default_value) * multiplier);
 }
 
 static void WriteRandomInt(BinaryWriter& writer, nptr<const XmlNode> node, int32_t default_value = 0)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteInt32(IntValue(node, "Max", default_value));
     writer.WriteInt32(IntValue(node, "Min", default_value));
 }
 
 static void WriteRandomVector2(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x = 0.0f, float32_t default_y = 0.0f, float32_t multiplier_x = 1.0f, float32_t multiplier_y = 1.0f)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> x = Child(node, "X");
     nptr<const XmlNode> y = Child(node, "Y");
     writer.WriteFloat(FloatValue(x, "Max", default_x) * multiplier_x);
@@ -592,8 +527,6 @@ static void WriteRandomVector2(BinaryWriter& writer, nptr<const XmlNode> node, f
 
 static void WriteRandomVector3(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x = 0.0f, float32_t default_y = 0.0f, float32_t default_z = 0.0f, float32_t multiplier = 1.0f)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> x = Child(node, "X");
     nptr<const XmlNode> y = Child(node, "Y");
     nptr<const XmlNode> z = Child(node, "Z");
@@ -607,8 +540,6 @@ static void WriteRandomVector3(BinaryWriter& writer, nptr<const XmlNode> node, f
 
 [[nodiscard]] static auto EasingCoefficients(int32_t start, int32_t end) -> std::array<float32_t, 3>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t gradient_start = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(start) + 45.0) / 180.0 * std::numbers::pi));
     float32_t gradient_end = numeric_cast<float32_t>(std::tan((numeric_cast<float64_t>(end) + 45.0) / 180.0 * std::numbers::pi));
     float32_t c = gradient_start;
@@ -619,8 +550,6 @@ static void WriteRandomVector3(BinaryWriter& writer, nptr<const XmlNode> node, f
 
 static void WriteLegacyEasing(BinaryWriter& writer, int32_t start, int32_t end)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto coefficients = EasingCoefficients(start, end);
 
     for (float32_t coefficient : coefficients) {
@@ -630,8 +559,6 @@ static void WriteLegacyEasing(BinaryWriter& writer, int32_t start, int32_t end)
 
 static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x, float32_t default_y, float32_t default_z, float32_t multiplier)
 {
-    FO_STACK_TRACE_ENTRY();
-
     BinaryWriter data;
 
     for (size_t index = 0; index < 4; ++index) {
@@ -691,8 +618,6 @@ static void WriteVector3Easing(BinaryWriter& writer, nptr<const XmlNode> node, f
 
 static void WriteFloatEasing(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_value, float32_t multiplier, bool with_size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     BinaryWriter data;
 
     for (size_t index = 0; index < 4; ++index) {
@@ -742,8 +667,6 @@ struct CurveKey final
 
 [[nodiscard]] static auto ReadCurveKeys(nptr<const XmlNode> channel) -> vector<CurveKey>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<CurveKey> keys;
     nptr<const XmlNode> keys_node = Child(channel, "Keys");
 
@@ -778,22 +701,16 @@ struct CurveKey final
 
 [[nodiscard]] static auto CubicRoot(float32_t value) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return value == 0.0f ? 0.0f : value > 0.0f ? numeric_cast<float32_t>(std::pow(value, 1.0 / 3.0)) : -numeric_cast<float32_t>(std::pow(-value, 1.0 / 3.0));
 }
 
 [[nodiscard]] static auto IsCurveRootValid(float32_t value) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !std::isnan(value) && value >= -0.00000001f && value <= 1.000001f;
 }
 
 [[nodiscard]] static auto SolveCurveT(float32_t frame, float32_t x0, float32_t x1, float32_t x2, float32_t x3) -> optional<float32_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t c3_source = x3 - x0 + 3.0f * (x1 - x2);
     float32_t c2_source = 3.0f * (x0 - 2.0f * x1 + x2);
     float32_t c1_source = 3.0f * (x1 - x0);
@@ -868,8 +785,6 @@ struct CurveKey final
 
 [[nodiscard]] static auto SampleCurve(const vector<CurveKey>& keys, int32_t frame, int32_t start_edge, int32_t end_edge, float32_t default_value) -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (keys.empty()) {
         return default_value;
     }
@@ -950,8 +865,6 @@ struct CurveKey final
 
 static void WriteCurveChannel(BinaryWriter& writer, nptr<const XmlNode> channel, float32_t default_value, float32_t multiplier)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t start_edge = IntValue(channel, "StartType", 0);
     int32_t end_edge = IntValue(channel, "EndType", 0);
     writer.WriteInt32(start_edge);
@@ -991,8 +904,6 @@ static void WriteCurveChannel(BinaryWriter& writer, nptr<const XmlNode> channel,
 
 static void WriteVector3Curve(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x, float32_t default_y, float32_t default_z, float32_t multiplier)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteInt32(IntValue(node, "Timeline", 0));
     nptr<const XmlNode> keys = Find(node, "Keys");
     WriteCurveChannel(writer, Child(keys, "X"), default_x, multiplier);
@@ -1002,8 +913,6 @@ static void WriteVector3Curve(BinaryWriter& writer, nptr<const XmlNode> node, fl
 
 static void WriteVector2Curve(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_x, float32_t default_y, float32_t multiplier_x, float32_t multiplier_y)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteInt32(IntValue(node, "Timeline", 0));
     nptr<const XmlNode> keys = Find(node, "Keys");
     WriteCurveChannel(writer, Child(keys, "X"), default_x, multiplier_x);
@@ -1012,8 +921,6 @@ static void WriteVector2Curve(BinaryWriter& writer, nptr<const XmlNode> node, fl
 
 static void WriteScalarCurve(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_value, float32_t multiplier)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteInt32(IntValue(node, "Timeline", 0));
     nptr<const XmlNode> keys = Find(node, "Keys");
     WriteCurveChannel(writer, Child(keys, "S"), default_value, multiplier);
@@ -1021,29 +928,21 @@ static void WriteScalarCurve(BinaryWriter& writer, nptr<const XmlNode> node, flo
 
 [[nodiscard]] static auto NodeDrawingType(nptr<const XmlNode> node) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return IntValue(Find(node, "DrawingValues"), "Type", 2);
 }
 
 [[nodiscard]] static auto NodeIsRendered(nptr<const XmlNode> node) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return BoolValue(node, "IsRendered", true);
 }
 
 [[nodiscard]] static auto IsRenderedNode(nptr<const XmlNode> node) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (NodeIsRendered(node) && NodeDrawingType(node) != 0) || IntValue(Find(node, "SoundValues"), "Type", 0) == 1 || BoolValue(Find(node, "GpuParticles"), "Enabled", false);
 }
 
 [[nodiscard]] static auto HasRenderedNode(nptr<const XmlNode> node) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (IsRenderedNode(node)) {
         return true;
     }
@@ -1054,8 +953,6 @@ static void WriteScalarCurve(BinaryWriter& writer, nptr<const XmlNode> node, flo
 
 static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const XmlNode>>& nodes)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> children = Child(parent, "Children");
 
     if (!children) {
@@ -1072,8 +969,6 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
 
 [[nodiscard]] static auto ChangeDependencyExtension(string_view path, string_view ext) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (path.empty()) {
         return {};
     }
@@ -1084,8 +979,6 @@ static void CollectExportedNodes(nptr<const XmlNode> parent, vector<nptr<const X
 
 static void AssignResourceIndices(const set<string>& resources, map<string, int32_t>& indices)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t index = 0;
 
     for (const string& resource : resources) {
@@ -1095,8 +988,6 @@ static void AssignResourceIndices(const set<string>& resources, map<string, int3
 
 static void CollectResources(CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     set<string> color_textures;
     set<string> normal_textures;
     set<string> distortion_textures;
@@ -1177,8 +1068,6 @@ static void CollectResources(CompilerContext& context)
 
 static void WriteResourceTable(BinaryWriter& writer, const map<string, int32_t>& resources)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteInt32(numeric_cast<int32_t>(resources.size()));
 
     for (const auto& [path, index] : resources) {
@@ -1189,15 +1078,11 @@ static void WriteResourceTable(BinaryWriter& writer, const map<string, int32_t>&
 
 [[nodiscard]] static auto DynamicEquationIndex(nptr<const XmlNode> node, string_view path) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return IntValue(node, path, -1);
 }
 
 static void WriteCommonValues(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> common = Find(node, "CommonValues");
     nptr<const XmlNode> generation = Find(common, "Generation");
     nptr<const XmlNode> removal = Find(common, "Removal");
@@ -1250,8 +1135,6 @@ static void WriteCommonValues(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "LocationValues");
     int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
@@ -1299,8 +1182,6 @@ static void WriteLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, 
 
 static void WriteLocationAbsValues(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "LocationAbsValues");
     writer.WriteInt32(4);
 
@@ -1358,8 +1239,6 @@ static void WriteLocationAbsValues(BinaryWriter& writer, nptr<const XmlNode> nod
 
 static void WriteRotationValues(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "RotationValues");
     int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
@@ -1419,8 +1298,6 @@ static void WriteRotationValues(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteScaleValues(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "ScalingValues");
     int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
@@ -1473,8 +1350,6 @@ static void WriteScaleValues(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "GenerationLocationValues");
     writer.WriteInt32(BoolValue(values, "EffectsRotation", false) ? 1 : 0);
     int32_t type = IntValue(values, "Type", 0);
@@ -1532,16 +1407,12 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 
 [[nodiscard]] static auto ResolveDependencyPath(const CompilerContext& context, string_view path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::filesystem::path resolved = (std::filesystem::path {fs::make_path(context.ProjectDirectory)} / std::filesystem::path {fs::make_path(strex(path).normalize_path_slashes())}).lexically_normal();
     return fs::path_to_string(resolved);
 }
 
 [[nodiscard]] static auto ReadTextureSize(const CompilerContext& context, string_view path) -> optional<std::pair<float32_t, float32_t>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<string> bytes = fs::read_file(ResolveDependencyPath(context, path));
 
     if (!bytes || bytes->size() < 18) {
@@ -1582,16 +1453,12 @@ static void WriteGenerationLocationValues(BinaryWriter& writer, nptr<const XmlNo
 
 [[nodiscard]] static auto TextureIndex(const CompilerContext& context, string_view path, const map<string, int32_t>& indices) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto it = indices.find(string {path});
     return it != indices.end() && ReadTextureSize(context, path) ? it->second : -1;
 }
 
 static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, const CompilerContext& context, string_view texture_path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t width = 128.0f;
     float32_t height = 128.0f;
 
@@ -1640,8 +1507,6 @@ static void WriteBasicUv(BinaryWriter& writer, nptr<const XmlNode> renderer, con
 
 static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> renderer = Find(node, "RendererCommonValues");
     int32_t material = IntValue(renderer, "Material", 0);
     string color_path {Text(renderer, "ColorTexture")};
@@ -1727,8 +1592,6 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 
 [[nodiscard]] static auto ByteValue(nptr<const XmlNode> node, string_view path, uint8_t default_value) -> uint8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t value = IntValue(node, path, default_value);
 
     if (value < 0 || value > 255) {
@@ -1740,8 +1603,6 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 
 [[nodiscard]] static auto HsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value) -> std::array<uint8_t, 3>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t h = hue;
     int32_t s = saturation;
     int32_t v = value;
@@ -1769,8 +1630,6 @@ static void WriteRendererCommonValues(BinaryWriter& writer, nptr<const XmlNode> 
 
 static void WriteColor(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t default_r, uint8_t default_g, uint8_t default_b, uint8_t default_a)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint8_t r = ByteValue(node, "R", default_r);
     uint8_t g = ByteValue(node, "G", default_g);
     uint8_t b = ByteValue(node, "B", default_b);
@@ -1791,8 +1650,6 @@ static void WriteColor(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t d
 
 static void WriteRandomColor(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t default_r, uint8_t default_g, uint8_t default_b, uint8_t default_a)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteUInt8(numeric_cast<uint8_t>(IntValue(node, "ColorSpace", 0)));
     writer.WriteUInt8(0);
 
@@ -1808,8 +1665,6 @@ static void WriteRandomColor(BinaryWriter& writer, nptr<const XmlNode> node, uin
 
 static void WriteColorEasing(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t default_r = 255, uint8_t default_g = 255, uint8_t default_b = 255, uint8_t default_a = 255)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     WriteRandomColor(writer, Find(node, "Start"), default_r, default_g, default_b, default_a);
     WriteRandomColor(writer, Find(node, "End"), default_r, default_g, default_b, default_a);
     WriteLegacyEasing(writer, IntValue(node, "StartSpeed", 0), IntValue(node, "EndSpeed", 0));
@@ -1817,8 +1672,6 @@ static void WriteColorEasing(BinaryWriter& writer, nptr<const XmlNode> node, uin
 
 static void WriteGradient(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> colors = Find(node, "ColorMarkers");
     nptr<const XmlNode> alphas = Find(node, "AlphaMarkers");
     size_t color_count = 2;
@@ -1872,8 +1725,6 @@ static void WriteGradient(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteStandardColor(BinaryWriter& writer, nptr<const XmlNode> node, uint8_t default_r = 255, uint8_t default_g = 255, uint8_t default_b = 255, uint8_t default_a = 255)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t type = IntValue(node, "Type", 0);
     writer.WriteInt32(type);
 
@@ -1905,8 +1756,6 @@ static void WriteStandardColor(BinaryWriter& writer, nptr<const XmlNode> node, u
 
 static void WriteTextureUvType(BinaryWriter& writer, nptr<const XmlNode> drawing)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> uv = Find(drawing, "TextureUVType");
     int32_t type = IntValue(uv, "Type", 0);
     writer.WriteInt32(type);
@@ -1924,8 +1773,6 @@ static void WriteTextureUvType(BinaryWriter& writer, nptr<const XmlNode> drawing
 
 static void WriteSpriteRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> sprite = Find(drawing, "Sprite");
     writer.WriteInt32(IntValue(sprite, "RenderingOrder", 0));
     writer.WriteInt32(IntValue(sprite, "Billboard", 0));
@@ -1958,8 +1805,6 @@ static void WriteSpriteRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
 
 static void WriteRibbonRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> ribbon = Find(drawing, "Ribbon");
     WriteTextureUvType(writer, drawing);
     writer.WriteInt32(IntValue(drawing, "TrailTimeSource", 1));
@@ -2002,8 +1847,6 @@ static void WriteRibbonRenderer(BinaryWriter& writer, nptr<const XmlNode> drawin
 
 static void WriteRingShape(BinaryWriter& writer, nptr<const XmlNode> ring)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> shape = Find(ring, "RingShape");
     int32_t type = IntValue(shape, "Type", 0);
     writer.WriteInt32(type);
@@ -2044,8 +1887,6 @@ static void WriteRingShape(BinaryWriter& writer, nptr<const XmlNode> ring)
 
 static void WriteLegacyFloatEasing(BinaryWriter& writer, nptr<const XmlNode> node, float32_t default_value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     writer.WriteFloat(FloatValue(node, "Start/Max", default_value));
     writer.WriteFloat(FloatValue(node, "Start/Min", default_value));
     writer.WriteFloat(FloatValue(node, "End/Max", default_value));
@@ -2055,8 +1896,6 @@ static void WriteLegacyFloatEasing(BinaryWriter& writer, nptr<const XmlNode> nod
 
 static void WriteRingLocation(BinaryWriter& writer, nptr<const XmlNode> ring, string_view name, float32_t default_x)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t type = IntValue(ring, name, 0);
     writer.WriteInt32(type);
 
@@ -2082,8 +1921,6 @@ static void WriteRingLocation(BinaryWriter& writer, nptr<const XmlNode> ring, st
 
 static void WriteRingColor(BinaryWriter& writer, nptr<const XmlNode> ring, string_view name, uint8_t default_alpha)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t type = IntValue(ring, name, 0);
     writer.WriteInt32(type);
 
@@ -2100,8 +1937,6 @@ static void WriteRingColor(BinaryWriter& writer, nptr<const XmlNode> ring, strin
 
 static void WriteRingRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> ring = Find(drawing, "Ring");
     writer.WriteInt32(IntValue(ring, "RenderingOrder", 0));
     writer.WriteInt32(IntValue(ring, "Billboard", 2));
@@ -2144,8 +1979,6 @@ static void WriteRingRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
 
 static void WriteModelRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> model = Find(drawing, "Model");
     int32_t reference_type = IntValue(model, "ModelReference", 0);
     writer.WriteInt32(reference_type);
@@ -2169,8 +2002,6 @@ static void WriteModelRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
 
 static void WriteTrackRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> track = Find(drawing, "Track");
     WriteTextureUvType(writer, drawing);
     writer.WriteInt32(IntValue(track, "TrackSizeFor", 0));
@@ -2190,8 +2021,6 @@ static void WriteTrackRenderer(BinaryWriter& writer, nptr<const XmlNode> drawing
 
 static void WriteRendererValues(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context, bool exported)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> drawing = Find(node, "DrawingValues");
     int32_t type = exported ? NodeDrawingType(node) : 0;
     writer.WriteInt32(type);
@@ -2221,8 +2050,6 @@ static void WriteRendererValues(BinaryWriter& writer, nptr<const XmlNode> node, 
 
 static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "SoundValues");
     int32_t type = IntValue(values, "Type", 0);
     writer.WriteInt32(type);
@@ -2244,8 +2071,6 @@ static void WriteSoundValues(BinaryWriter& writer, nptr<const XmlNode> node, con
 
 static void WriteDepthValues(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> depth = Find(node, "DepthValues");
     writer.WriteFloat(FloatValue(depth, "DepthOffset", 0.0f));
     writer.WriteInt32(BoolValue(depth, "IsScaleChangedDependingOnDepthOffset", false) ? 1 : 0);
@@ -2259,8 +2084,6 @@ static void WriteDepthValues(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteKillRules(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> rules = Find(node, "KillRulesValues");
     int32_t type = IntValue(rules, "Type", 0);
     writer.WriteInt32(type);
@@ -2294,8 +2117,6 @@ static void WriteKillRules(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> values = Find(node, "CollisionsValues");
     writer.WriteInt32(BoolValue(values, "IsGroundCollisionEnabled", false) ? 1 : 0);
     writer.WriteInt32(BoolValue(values, "IsSceneCollisionEnabled", false) ? 1 : 0);
@@ -2308,8 +2129,6 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
 
 [[nodiscard]] static auto HasChildColorInheritance(nptr<const XmlNode> node) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<const XmlNode> children = Child(node, "Children");
 
     if (!children) {
@@ -2328,8 +2147,6 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
 
 [[nodiscard]] static auto OutputNodeType(nptr<const XmlNode> node, bool renderer_exported) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!renderer_exported || NodeDrawingType(node) == 0) {
         return 0;
     }
@@ -2339,8 +2156,6 @@ static void WriteCollisions(BinaryWriter& writer, nptr<const XmlNode> node)
 
 static void WriteNode(BinaryWriter& writer, nptr<const XmlNode> node, const CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool renderer_exported = NodeIsRendered(node) || HasChildColorInheritance(node);
     writer.WriteInt32(OutputNodeType(node, renderer_exported));
     BinaryWriter data;
@@ -2382,8 +2197,6 @@ static void WriteNode(BinaryWriter& writer, nptr<const XmlNode> node, const Comp
 
 static void BuildRenderIndices(CompilerContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<std::pair<nptr<const XmlNode>, size_t>> sorted;
     sorted.reserve(context.ExportedNodes.size());
 
@@ -2404,8 +2217,6 @@ static void BuildRenderIndices(CompilerContext& context)
 
 static void ValidateSupportedFeatures(const CompilerContext& context, string_view project_path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (nptr<const XmlNode> node : context.ExportedNodes) {
         if (BoolValue(Find(node, "GpuParticles"), "Enabled", false)) {
             throw EffekseerCompilerException("Effekseer GPU particles are not supported by the fixed project profile", project_path, Text(node, "Name"));
@@ -2424,7 +2235,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
 
 [[nodiscard]] static auto CreateCompilerContext(string_view project_path, const XmlNode& project) -> CompilerContext
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (Text(&project, "ToolVersion") != "1.80.5" || IntValue(&project, "Version", -1) != 3) {
         throw EffekseerCompilerException("Effekseer project must be normalized with Editor 1.80.5 and project version 3", project_path, Text(&project, "ToolVersion"), Text(&project, "Version"));
@@ -2459,7 +2270,7 @@ static void ValidateSupportedFeatures(const CompilerContext& context, string_vie
 
 [[nodiscard]] static auto CompileProject(string_view project_path, const XmlNode& project) -> EffekseerCompilerOutput
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     CompilerContext context = CreateCompilerContext(project_path, project);
     nptr<const XmlNode> root = Find(&project, "Root");

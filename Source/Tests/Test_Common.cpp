@@ -49,15 +49,9 @@ public:
     explicit FramePumpTestBackend(function<void()> callback) :
         _callback {std::move(callback)}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    void Process() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _callback();
-    }
+    void Process() override { _callback(); }
 
 private:
     function<void()> _callback;
@@ -79,7 +73,6 @@ public:
             }
         })
     {
-        FO_STACK_TRACE_ENTRY();
     }
 };
 
@@ -238,26 +231,36 @@ TEST_CASE("CommonUtilities")
 
 TEST_CASE("CommonFrameBalancer")
 {
+    // One preempted loop on a loaded machine overruns any bound, while a balancer that really waits overruns every loop
+    auto fastest_loop = [](FrameBalancer& balancer) {
+        auto measure = [&balancer] {
+            nanotime start = nanotime::now();
+            balancer.StartLoop();
+            balancer.EndLoop();
+            return nanotime::now() - start;
+        };
+
+        timespan fastest = measure();
+
+        for (int32_t i = 1; i < 10; i++) {
+            fastest = std::min(fastest, measure());
+        }
+
+        return fastest;
+    };
+
     SECTION("DisabledBalancerDoesNotWait")
     {
         FrameBalancer balancer {false, 100, 0};
 
-        nanotime start = nanotime::now();
-        balancer.StartLoop();
-        balancer.EndLoop();
-
-        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {50}});
     }
 
     SECTION("ZeroSleepYieldsInsteadOfSleeping")
     {
         FrameBalancer balancer {true, 0, 0};
 
-        nanotime start = nanotime::now();
-        balancer.StartLoop();
-        balancer.EndLoop();
-
-        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {50}});
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {50}});
     }
 
     SECTION("PositiveSleepWaitsForTheRequestedTime")
@@ -273,7 +276,7 @@ TEST_CASE("CommonFrameBalancer")
 
     SECTION("FixedFpsBalancesTheIdleTime")
     {
-        // A negative sleep hands control to the fixed-fps arm, which pads each loop up to the frame budget
+        // The fixed-fps arm pads each loop up to the frame budget
         FrameBalancer balancer {true, -1, 200};
 
         nanotime start = nanotime::now();
@@ -284,6 +287,28 @@ TEST_CASE("CommonFrameBalancer")
         }
 
         CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {5}});
+    }
+
+    SECTION("FixedFpsCapsTheLoopWhenSleepYields")
+    {
+        // Sleep 0 is a plain uncapped default, and FixedFPS set beside it must still hold the loop to its budget
+        FrameBalancer balancer {true, 0, 200};
+
+        nanotime start = nanotime::now();
+
+        for (int32_t i = 0; i < 3; i++) {
+            balancer.StartLoop();
+            balancer.EndLoop();
+        }
+
+        CHECK(nanotime::now() - start >= timespan {std::chrono::milliseconds {10}});
+    }
+
+    SECTION("FixedFpsTakesPrecedenceOverPositiveSleep")
+    {
+        FrameBalancer balancer {true, 200, 1000};
+
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {100}});
     }
 }
 

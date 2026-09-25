@@ -62,7 +62,7 @@ static void ReportManagedScriptOverrun(ptr<ManagedScriptBackend>, ptr<BaseEngine
 }
 static void DispatchManagedCallbackInContext(ptr<ManagedScriptBackend>, uint32_t, const ManagedCallbackPlan&, FuncCallData& call)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     call.Body();
 }

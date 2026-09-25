@@ -49,29 +49,22 @@ ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> fa
     _model {std::move(model)},
     _atlasType {atlas_type}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelSprite::~ModelSprite() = default;
 
 auto ModelSprite::GetModel() -> ptr<ModelInstance>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _model;
 }
 
 auto ModelSprite::IsPlaying() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _model->IsAnimationPlaying();
 }
 
 auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_size.is_valid_pos(pos)) {
         return false;
     }
@@ -85,8 +78,6 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     irect32 view_rect = _model->GetViewRect();
 
     return irect32 {
@@ -99,15 +90,11 @@ auto ModelSprite::GetViewSize() const -> optional<irect32>
 
 auto ModelSprite::IsDirectDraw() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _factory->_settings->Render.ModelDirectDraw;
 }
 
 auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const tuple<ucolor, ucolor>& colors) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_frameSize.width > 0 && _frameSize.height > 0 && _cropRect.x >= 0 && _cropRect.y >= 0 && _cropRect.width > 0 && _cropRect.height > 0 && numeric_cast<int64_t>(_cropRect.x) + _cropRect.width <= _frameSize.width && numeric_cast<int64_t>(_cropRect.y) + _cropRect.height <= _frameSize.height, "Model sprite crop is outside the logical frame", _cropRect, _frameSize);
 
     isize32 lighting_size = _model->GetLightingSize();
@@ -141,7 +128,7 @@ auto ModelSprite::FillData(ptr<RenderDrawBuffer> dbuf, const frect32& pos, const
 
 void ModelSprite::Prewarm()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // SPARK particles are emitted in world space, so establish attachment-bone transforms before warming them
     _model->PrepareFrameLayout();
@@ -152,16 +139,12 @@ void ModelSprite::Prewarm()
 
 void ModelSprite::SetDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _model->SetLookDir(dir);
     _model->SetMoveDir(dir, true);
 }
 
 void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(anim_name);
     ignore_unused(looped);
     ignore_unused(reversed);
@@ -171,13 +154,10 @@ void ModelSprite::Play(hstring anim_name, bool looped, bool reversed)
 
 void ModelSprite::Stop()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ModelSprite::PrepareUpdate() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _frameUpdatePrepared = true;
     _frameCpuPosePrepared = false;
     _model->PrepareFrameLayout();
@@ -200,15 +180,11 @@ auto ModelSprite::PrepareUpdate() -> bool
 
 void ModelSprite::RunPreparedUpdate()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _model->EvaluateFramePose();
 }
 
 auto ModelSprite::Update() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Without a preparation pass this is the original single-pass update, predicate included
     if (!_frameUpdatePrepared) {
         _model->PrepareFrameLayout();
@@ -229,8 +205,6 @@ auto ModelSprite::Update() -> bool
 
 void ModelSprite::SetSize(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
@@ -245,15 +219,11 @@ void ModelSprite::SetSize(isize32 size)
 
 void ModelSprite::DrawToAtlas()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _factory->DrawModelToAtlas(this);
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
     mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
@@ -265,8 +235,6 @@ void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 
 void ModelSprite::SetupFrame(isize32 frame_size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
     FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
 
@@ -285,8 +253,6 @@ void ModelSprite::SetupFrame(isize32 frame_size)
 
 auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_size.width > 0, "Frame width must be positive", frame_size.width);
     FO_VERIFY_AND_THROW(frame_size.height > 0, "Frame height must be positive", frame_size.height);
 
@@ -360,8 +326,6 @@ auto ModelSprite::PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBound
 
 void ModelSprite::CommitFrameCrop(PreparedFrameCrop&& prepared_crop)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetupFrame(prepared_crop.FrameSize);
     _cropRect = prepared_crop.CropRect;
     _size = prepared_crop.Size;
@@ -378,8 +342,6 @@ void ModelSprite::CommitFrameCrop(PreparedFrameCrop&& prepared_crop)
 
 void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CommitFrameCrop(PrepareFrameCrop(frame_size, bounds));
 }
 
@@ -395,21 +357,18 @@ ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSe
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
         })}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelSpriteFactory::~ModelSpriteFactory() = default;
 
 auto ModelSpriteFactory::GetModelMngr() -> ptr<ModelManager>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _modelMngr;
 }
 
 auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto model = _modelMngr->CreateModel(path);
 
@@ -428,7 +387,7 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
 
 auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto result = pair<nptr<RenderTexture>, frect32>();
 
@@ -455,8 +414,6 @@ auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, 
 
 auto ModelSpriteFactory::SettleModelFrame(ptr<ModelSprite> model_spr) -> isize32
 {
-    FO_STACK_TRACE_ENTRY();
-
     model_spr->GetModel()->PrepareFrameLayout();
     isize32 max_logical_frame = ResolveModelSpriteMaxLogicalFrame(_settings->Render.ModelSpriteMaxTextureWidth, _settings->Render.ModelSpriteMaxTextureHeight, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
     isize32 render_frame_size = model_spr->_requestedFrameSize.value_or(model_spr->GetModel()->GetDrawSize());
@@ -472,7 +429,7 @@ auto ModelSpriteFactory::SettleModelFrame(ptr<ModelSprite> model_spr) -> isize32
 
 void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto request_redraw_on_fail = scope_fail([model = model_spr->GetModel()]() mutable noexcept { model->RequestRedraw(); });
 

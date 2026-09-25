@@ -37,16 +37,12 @@ FO_BEGIN_NAMESPACE
 
 mdir::mdir(int32_t angle) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t mod = angle % 360;
     _value = static_cast<int16_t>(mod < 0 ? mod + 360 : mod);
 }
 
 mdir::mdir(hdir dir) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         _value = static_cast<int16_t>(dir.value() * 60 + 30);
     }
@@ -60,8 +56,6 @@ mdir::mdir(hdir dir) noexcept
 
 auto mdir::hex() const noexcept -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         return hdir(_value / 60);
     }
@@ -75,39 +69,29 @@ auto mdir::hex() const noexcept -> hdir
 
 auto mdir::incHex() const noexcept -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
     return mdir(static_cast<int16_t>(_value + step));
 }
 
 auto mdir::decHex() const noexcept -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
     return mdir(static_cast<int16_t>(_value - step));
 }
 
 auto mdir::rotateHex(int32_t steps) const noexcept -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t step = 360 / GameSettings::MAP_DIR_COUNT;
     return mdir(static_cast<int16_t>(_value + steps * step));
 }
 
 auto mdir::reverse() const noexcept -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(static_cast<int16_t>(_value + 180));
 }
 
 auto GeometryHelper::GetDistance(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         int32_t dx = x1 > x2 ? x1 - x2 : x2 - x1;
 
@@ -143,22 +127,16 @@ auto GeometryHelper::GetDistance(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 
 auto GeometryHelper::GetDistance(mpos hex1, mpos hex2) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
 auto GeometryHelper::GetDistance(ipos32 hex1, ipos32 hex2) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y);
 }
 
 auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         float32_t hx = numeric_cast<float32_t>(x1);
         float32_t hy = numeric_cast<float32_t>(y1);
@@ -219,8 +197,6 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -
 
 auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, float32_t offset) -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
         float32_t hx = numeric_cast<float32_t>(x1);
         float32_t hy = numeric_cast<float32_t>(y1);
@@ -295,22 +271,16 @@ auto GeometryHelper::GetHexDir(int32_t x1, int32_t y1, int32_t x2, int32_t y2, f
 
 auto GeometryHelper::GetHexDir(mpos from_hex, mpos to_hex) -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
 auto GeometryHelper::GetHexDir(mpos from_hex, mpos to_hex, float32_t offset) -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexDir(from_hex.x, from_hex.y, to_hex.x, to_hex.y, offset);
 }
 
 auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t hx = numeric_cast<float32_t>(x1);
     float32_t hy = numeric_cast<float32_t>(y1);
     float32_t tx = numeric_cast<float32_t>(x2);
@@ -339,15 +309,11 @@ auto GeometryHelper::GetDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2)
 
 auto GeometryHelper::GetDirAngle(mpos from_hex, mpos to_hex) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetDirAngle(from_hex.x, from_hex.y, to_hex.x, to_hex.y);
 }
 
 auto GeometryHelper::GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t r = 180.0f - std::abs(std::abs(a1 - a2) - 180.0f);
     FO_VERIFY_AND_THROW(r >= 0.0f, "Unsigned direction angle difference calculation produced a negative value", a1, a2, r);
     FO_VERIFY_AND_THROW(r <= 180.0f, "Unsigned direction angle difference exceeded 180 degrees", a1, a2, r);
@@ -357,8 +323,6 @@ auto GeometryHelper::GetDirAngleDiff(float32_t a1, float32_t a2) -> float32_t
 
 auto GeometryHelper::GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t a1_r = a1 * DEG_TO_RAD_FLOAT;
     float32_t a2_r = a2 * DEG_TO_RAD_FLOAT;
     float32_t r = std::atan2(std::sin(a2_r - a1_r), std::cos(a2_r - a1_r)) * RAD_TO_DEG_FLOAT;
@@ -370,23 +334,17 @@ auto GeometryHelper::GetDirAngleDiffSided(float32_t a1, float32_t a2) -> float32
 
 auto GeometryHelper::CheckDist(mpos hex1, mpos hex2, int32_t dist) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetDistance(hex1.x, hex1.y, hex2.x, hex2.y) <= dist;
 }
 
 auto GeometryHelper::HexesInRadius(int32_t radius) noexcept -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t count = radius % 2 != 0 ? radius * (radius / 2 + 1) : radius * radius / 2 + radius / 2;
     return 1 + GameSettings::MAP_DIR_COUNT * count;
 }
 
 auto GeometryHelper::MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ipos32 raw_pos = ipos32 {hex.x, hex.y};
     MoveHexByDirUnsafe(raw_pos, dir);
 
@@ -400,8 +358,6 @@ auto GeometryHelper::MoveHexByDir(mpos& hex, mdir dir, msize map_size) -> bool
 
 void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     hdir hex_dir = dir.hex();
 
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -472,8 +428,6 @@ void GeometryHelper::MoveHexByDirUnsafe(ipos32& hex, mdir dir) noexcept
 
 auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32_t index, msize map_size) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ipos32 raw_hex = {hex.x, hex.y};
     MoveHexAroundAwayUnsafe(raw_hex, index);
 
@@ -488,8 +442,6 @@ auto GeometryHelper::MoveHexAroundAway(mpos& hex, int32_t index, msize map_size)
 
 void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (index <= 0) {
         return;
     }
@@ -598,15 +550,11 @@ void GeometryHelper::MoveHexAroundAwayUnsafe(ipos32& hex, int32_t index)
 
 auto GeometryHelper::GetYProj() -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return 1.0f / std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 }
 
 auto GeometryHelper::GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t y2) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t x1_f = numeric_cast<float32_t>(x1);
     float32_t y1_f = numeric_cast<float32_t>(y1) * GetYProj();
     float32_t x2_f = numeric_cast<float32_t>(x2);
@@ -629,15 +577,11 @@ auto GeometryHelper::GetLineDirAngle(int32_t x1, int32_t y1, int32_t x2, int32_t
 
 auto GeometryHelper::GetHexPos(mpos hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexPos(ipos32(hex));
 }
 
 auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
@@ -658,8 +602,6 @@ auto GeometryHelper::GetHexPos(ipos32 raw_hex) -> ipos32
 
 auto GeometryHelper::GetHexScreenRow(mpos hex) noexcept -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Row index of GetHexPos().y in MAP_HEX_LINE_HEIGHT units: hexes sharing it project to the same
     // screen row and therefore the same ground view depth (+2X/-1Y walks along one such row)
     if constexpr (GameSettings::HEXAGONAL_GEOMETRY) {
@@ -672,15 +614,11 @@ auto GeometryHelper::GetHexScreenRow(mpos hex) noexcept -> int32_t
 
 auto GeometryHelper::GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexWorldPos(ipos32(hex), hex_offset, elevation);
 }
 
 auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Anchoring the ground point at z = legacy_y / sin(angle) is what makes ProjectWorldToMap reproduce
     // the legacy GetHexPos position at elevation 0 (Docs/MapsMovementGeometry.md, "Map camera projection")
     ipos32 hex_pos = GetHexPos(raw_hex);
@@ -696,8 +634,6 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t
 
 auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Reference projection without scroll or zoom, returning map pixels in .x/.y and view depth in .z
     // (larger == nearer). Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
@@ -713,8 +649,6 @@ auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
 
 auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevation) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -726,8 +660,6 @@ auto GeometryHelper::ProjectMapYToGroundDepth(float32_t map_y, float32_t elevati
 
 auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t anchor_map_y, float32_t anchor_depth) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -739,8 +671,6 @@ auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t ancho
 
 auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // The GPU form of ProjectWorldToMap with scroll, zoom, and yaw folded in; yaw == 0 reproduces the fixed
     // isometric view. Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
     float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
@@ -766,8 +696,6 @@ auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw
 
 auto GeometryHelper::MakeMapAnchoredProj(const mat44& base_proj, const mat44& map_ortho, fpos32 anchor_pos, float32_t anchor_depth) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Shift `base_proj` in clip space so its local origin lands at the map-space anchor encoded by
     // `map_ortho`. This keeps direct-draw models and in-scene particle systems on the same root/depth formula
     glm::vec4 origin_clip = base_proj * glm::vec4 {0.0f, 0.0f, 0.0f, 1.0f};
@@ -781,15 +709,11 @@ auto GeometryHelper::MakeMapAnchoredProj(const mat44& base_proj, const mat44& ma
 
 auto GeometryHelper::GetHexAxialCoord(mpos hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexAxialCoord(ipos32(hex));
 }
 
 auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
     ipos32 hex_pos = GetHexPos(raw_hex);
@@ -801,8 +725,6 @@ auto GeometryHelper::GetHexAxialCoord(ipos32 raw_hex) -> ipos32
 
 auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
     constexpr int32_t half_w = w / 2;
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
@@ -910,22 +832,16 @@ auto GeometryHelper::GetHexPosCoord(ipos32 pos, nptr<ipos32> hex_offset) -> ipos
 
 auto GeometryHelper::GetHexOffset(mpos from_hex, mpos to_hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return GetHexOffset(ipos32(from_hex), ipos32(to_hex));
 }
 
 auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return NormalizeHexOffset(hex, hex_offset, map_size, {});
 }
 
 auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map_size, const function<bool(mpos)>& is_movable) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ipos32 world_pos = GetHexPos(hex) + ipos32(hex_offset);
     ipos32 normalized_offset;
     ipos32 normalized_raw_hex = GetHexPosCoord(world_pos, &normalized_offset);
@@ -953,8 +869,6 @@ auto GeometryHelper::NormalizeHexOffset(mpos& hex, ipos16& hex_offset, msize map
 
 auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr int32_t w = GameSettings::MAP_HEX_WIDTH;
     constexpr int32_t h = GameSettings::MAP_HEX_LINE_HEIGHT;
 
@@ -979,7 +893,7 @@ auto GeometryHelper::GetHexOffset(ipos32 from_raw_hex, ipos32 to_raw_hex) -> ipo
 
 auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -> vector<mpos>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     vector<mpos> hexes;
 
@@ -1105,8 +1019,6 @@ auto GeometryHelper::GetAxialHexes(mpos from_hex, mpos to_hex, msize map_size) -
 
 void GeometryHelper::ForEachMultihexLines(const_span<uint8_t> dir_line, mpos hex, msize map_size, const function<void(mpos)>& callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ipos32 step_raw_hex = ipos32 {hex.x, hex.y};
 
     for (size_t i = 0; i < dir_line.size() / 2; i++) {
@@ -1129,8 +1041,6 @@ void GeometryHelper::ForEachMultihexLines(const_span<uint8_t> dir_line, mpos hex
 
 auto GeometryHelper::IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius, int32_t x1, int32_t y1, int32_t x2, int32_t y2) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t x01 = x1 - cx;
     int32_t y01 = y1 - cy;
     int32_t x02 = x2 - cx;
@@ -1153,8 +1063,6 @@ auto GeometryHelper::IntersectCircleLine(int32_t cx, int32_t cy, int32_t radius,
 
 auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> fpos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (from_pos == to_pos) {
         return {};
     }
@@ -1184,8 +1092,6 @@ auto GeometryHelper::GetStepsCoords(ipos32 from_pos, ipos32 to_pos) noexcept -> 
 
 auto GeometryHelper::ChangeStepsCoords(fpos32 pos, float32_t deq) noexcept -> fpos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t rad = deq * DEG_TO_RAD_FLOAT;
     float32_t x = pos.x * std::cos(rad) - pos.y * std::sin(rad);
     float32_t y = pos.x * std::sin(rad) + pos.y * std::cos(rad);

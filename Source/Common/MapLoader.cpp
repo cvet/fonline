@@ -42,7 +42,7 @@ static constexpr string_view CONTEXT_PREFIX = "$Name";
 
 void MapLoader::Load(string_view name, string_view file_name, const string& buf, const EngineMetadata& meta, hash_resolver& hashes, const CrLoadFunc& cr_load, const ItemLoadFunc& item_load)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     // Load from file
     ConfigFile map_data(buf);
@@ -223,7 +223,7 @@ void MapLoader::Load(string_view name, string_view file_name, const string& buf,
 // than by an extension: an empty result means the file is not a map container
 auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Map);
 
     auto map_data = ConfigFile(buf, ConfigFileOption::SkipNestedSections);
     auto anchor_sections = map_data.GetSections(MAP_ANCHOR_SECTION);
@@ -247,8 +247,6 @@ auto MapLoader::EnumerateMaps(string_view file_name, const string& buf) -> vecto
 
 void MapLoader::ReadBakedFileHeader(data_reader& reader, string_view map_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t magic = reader.read<uint32_t>();
 
     if (magic != BAKED_MAP_FILE_MAGIC) {

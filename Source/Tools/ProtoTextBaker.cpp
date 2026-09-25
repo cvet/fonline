@@ -43,8 +43,6 @@ FO_BEGIN_NAMESPACE
 ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_context->Settings->Baking.BakeLanguages.empty()) {
         throw ProtoTextBakerException("No bake languages specified");
     }
@@ -52,12 +50,11 @@ ProtoTextBaker::ProtoTextBaker(shared_ptr<BakingContext> ctx) :
 
 ProtoTextBaker::~ProtoTextBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ProtoTextBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fotxt-")) {
         return;

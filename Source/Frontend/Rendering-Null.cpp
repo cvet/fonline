@@ -37,8 +37,6 @@ FO_BEGIN_NAMESPACE
 
 static void ValidateTextureRect(const RenderTexture& tex, ipos32 pos, isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
     FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
@@ -49,8 +47,6 @@ static void ValidateTextureRect(const RenderTexture& tex, ipos32 pos, isize32 si
 
 static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
     FO_VERIFY_AND_THROW(pos.x < tex.Size.width, "Position x is outside allowed range", pos.x, tex.Size.width);
@@ -61,8 +57,6 @@ static auto CalcTextureIndex(const RenderTexture& tex, ipos32 pos) -> size_t
 
 static void ValidateScissorRect(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(rect.x >= 0, "Rectangle x is negative", rect.x);
     FO_VERIFY_AND_THROW(rect.y >= 0, "Rectangle y is negative", rect.y);
     FO_VERIFY_AND_THROW(rect.width >= 0, "Rectangle width is negative", rect.width);
@@ -71,8 +65,6 @@ static void ValidateScissorRect(irect32 rect)
 
 static auto GetFallbackTextureSizeData() -> ptr<const float32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     static constexpr float32_t FallbackSizeData[4] {1.0f, 1.0f, 1.0f, 1.0f};
 
     return FallbackSizeData;
@@ -85,20 +77,12 @@ public:
         RenderTexture(size, linear_filtered, with_depth),
         _pixels(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height))
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _pixels[CalcTextureIndex(*this, pos)];
-    }
+    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override { return _pixels[CalcTextureIndex(*this, pos)]; }
 
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ValidateTextureRect(*this, pos, size);
 
         vector<ucolor> result;
@@ -117,8 +101,6 @@ public:
 
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ValidateTextureRect(*this, pos, size);
 
         if (size.width == 0 || size.height == 0) {
@@ -138,12 +120,7 @@ public:
         }
     }
 
-    void Clear(ucolor color)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        std::fill(_pixels.begin(), _pixels.end(), color);
-    }
+    void Clear(ucolor color) { std::fill(_pixels.begin(), _pixels.end(), color); }
 
 private:
     vector<ucolor> _pixels;
@@ -155,13 +132,10 @@ public:
     explicit Null_DrawBuffer(bool is_static) :
         RenderDrawBuffer(is_static)
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     void Upload(EffectUsage usage, optional<size_t> custom_vertices_size, optional<size_t> custom_indices_size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (IsStatic && !StaticDataChanged) {
             return;
         }
@@ -190,19 +164,9 @@ public:
         _lastUploadedIndices = upload_indices;
     }
 
-    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t
-    {
-        FO_STACK_TRACE_ENTRY();
+    [[nodiscard]] auto GetLastUploadedVertices() const -> size_t { return _lastUploadedVertices; }
 
-        return _lastUploadedVertices;
-    }
-
-    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _lastUploadedIndices;
-    }
+    [[nodiscard]] auto GetLastUploadedIndices() const -> size_t { return _lastUploadedIndices; }
 
 private:
     size_t _lastUploadedVertices {};
@@ -211,8 +175,6 @@ private:
 
 static auto GetNullEffectConfig(string_view name, const RenderEffectLoader& loader) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto fofx_content = loader(name);
 
     if (!fofx_content.empty()) {
@@ -232,13 +194,10 @@ public:
     Null_Effect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) :
         RenderEffect(usage, name, [&loader](string_view effect_name) { return GetNullEffectConfig(effect_name, loader); })
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         size_t draw_indices = indices_to_draw.value_or(dbuf->IndCount - start_index);
         FO_VERIFY_AND_THROW(start_index <= dbuf->IndCount, "Draw buffer start index is outside index buffer bounds", start_index, dbuf->IndCount);
         FO_VERIFY_AND_THROW(draw_indices <= dbuf->IndCount - start_index, "Draw buffer index range is outside index buffer bounds", start_index, draw_indices, dbuf->IndCount);
@@ -296,29 +255,21 @@ public:
 
 auto Null_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<Null_Texture>(size, linear_filtered, with_depth);
 }
 
 auto Null_Renderer::CreateDrawBuffer(bool is_static) -> unique_ptr<RenderDrawBuffer>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<Null_DrawBuffer>(is_static);
 }
 
 auto Null_Renderer::CreateEffect(EffectUsage usage, string_view name, const RenderEffectLoader& loader) -> unique_ptr<RenderEffect>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<Null_Effect>(usage, name, loader);
 }
 
 auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t bottom, float32_t top, float32_t nearp, float32_t farp) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t r_l = right - left;
     float32_t t_b = top - bottom;
     float32_t f_n = farp - nearp;
@@ -353,22 +304,16 @@ auto Null_Renderer::CreateOrthoMatrix(float32_t left, float32_t right, float32_t
 
 auto Null_Renderer::GetViewPort() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _viewPortRect;
 }
 
 auto Null_Renderer::IsRenderTargetFlipped() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return false;
 }
 
 void Null_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> screen, nptr<WindowInternalHandle> window)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(settings, window);
 
     FO_VERIFY_AND_THROW(screen->Size.width > 0, "Screen width must be positive");
@@ -382,13 +327,10 @@ void Null_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> scr
 
 void Null_Renderer::Present()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void Null_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _currentRenderTarget = tex;
 
     if (tex) {
@@ -398,8 +340,6 @@ void Null_Renderer::SetRenderTarget(nptr<RenderTexture> tex)
 
 void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool stencil)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(depth);
     ignore_unused(stencil);
 
@@ -414,8 +354,6 @@ void Null_Renderer::ClearRenderTarget(optional<ucolor> color, bool depth, bool s
 
 void Null_Renderer::EnableScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateScissorRect(rect);
     _scissorEnabled = true;
     _scissorRect = rect;
@@ -423,16 +361,12 @@ void Null_Renderer::EnableScissor(irect32 rect)
 
 void Null_Renderer::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _scissorEnabled = false;
     _scissorRect = {};
 }
 
 void Null_Renderer::OnResizeWindow(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 

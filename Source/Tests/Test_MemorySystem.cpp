@@ -37,7 +37,7 @@
 
 #include <thread>
 
-#if FO_HAVE_RPMALLOC && !FO_TRACY && defined(RPMALLOC_ENABLE_TESTS)
+#if FO_HAVE_RPMALLOC && !FO_TRACE_ENABLED && defined(RPMALLOC_ENABLE_TESTS)
 #include "rpmalloc.h"
 #endif
 
@@ -113,7 +113,7 @@ TEST_CASE("MemorySystem")
         safe_alloc::free_raw(bytes);
     }
 
-#if FO_HAVE_RPMALLOC && !FO_TRACY && defined(RPMALLOC_ENABLE_TESTS)
+#if FO_HAVE_RPMALLOC && !FO_TRACE_ENABLED && defined(RPMALLOC_ENABLE_TESTS)
     SECTION("RpmallocPropagatesLaterPageCommitFailure")
     {
         size_t block_count = 0;

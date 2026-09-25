@@ -50,8 +50,6 @@ FO_BEGIN_NAMESPACE
 
 static void Entity_AddRef(const Entity* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     self->AddRef();
@@ -59,8 +57,6 @@ static void Entity_AddRef(const Entity* self)
 
 static void Entity_Release(const Entity* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     self->Release();
@@ -68,8 +64,6 @@ static void Entity_Release(const Entity* self)
 
 static auto Entity_IsDestroyed(const Entity* self) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return self->IsDestroyed();
@@ -77,8 +71,6 @@ static auto Entity_IsDestroyed(const Entity* self) -> bool
 
 static auto Entity_IsDestroying(const Entity* self) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return self->IsDestroying();
@@ -86,8 +78,6 @@ static auto Entity_IsDestroying(const Entity* self) -> bool
 
 static auto Entity_Name(const Entity* self) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return string(self->GetName());
@@ -95,8 +85,6 @@ static auto Entity_Name(const Entity* self) -> string
 
 static auto Entity_Id(const Entity* self) -> ident_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return self->GetId();
@@ -104,8 +92,6 @@ static auto Entity_Id(const Entity* self) -> ident_t
 
 static auto Entity_ProtoId(const Entity* self) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     CheckScriptEntityNonDestroyed(self);
 
@@ -123,8 +109,6 @@ static auto Entity_ProtoId(const Entity* self) -> hstring
 
 static auto Entity_Proto(const Entity* self) -> const Entity*
 {
-    FO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     CheckScriptEntityNonDestroyed(self);
 
@@ -142,8 +126,6 @@ static auto Entity_Proto(const Entity* self) -> const Entity*
 
 static auto Entity_GetSelfForEvent(Entity* entity) -> Entity*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return entity;
@@ -151,8 +133,6 @@ static auto Entity_GetSelfForEvent(Entity* entity) -> Entity*
 
 static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
     auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
@@ -173,8 +153,6 @@ static auto Entity_GetValueAsInt(const Entity* entity, int32_t prop_index) -> in
 
 static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
     auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
@@ -198,8 +176,6 @@ static void Entity_SetValueAsInt(Entity* entity, int32_t prop_index, int32_t val
 
 static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> any_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
     auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
@@ -220,8 +196,6 @@ static auto Entity_GetValueAsAny(const Entity* entity, int32_t prop_index) -> an
 
 static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     CheckScriptEntityAccessAndNonDestroyed(entity);
 
     auto prop = entity->GetProperties()->GetRegistrar()->GetPropertyByIndex(prop_index);
@@ -245,8 +219,6 @@ static void Entity_SetValueAsAny(Entity* entity, int32_t prop_index, any_t value
 
 static void Entity_GetComponent(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(entity);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
@@ -262,8 +234,6 @@ static void Entity_GetComponent(AngelScript::asIScriptGeneric* gen)
 
 static void Entity_HasComponent(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     // May call on unsynced entity
     CheckScriptEntityNonDestroyed(entity);
@@ -275,8 +245,6 @@ static void Entity_HasComponent(AngelScript::asIScriptGeneric* gen)
 
 static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityNonNull(entity);
 
@@ -308,8 +276,6 @@ static void Entity_GetPropertyValue(AngelScript::asIScriptGeneric* gen)
 
 static void Entity_SetPropertyValue(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityNonNull(entity);
 
@@ -327,8 +293,6 @@ static void Entity_SetPropertyValue(AngelScript::asIScriptGeneric* gen)
 
 static auto Entity_DownCast(Entity* entity) -> Entity*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // May call on unsynced entity
     // May call on destroyed entity
     return entity;
@@ -336,8 +300,6 @@ static auto Entity_DownCast(Entity* entity) -> Entity*
 
 static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     // May call on unsynced entity
     // May call on destroyed entity
@@ -371,8 +333,6 @@ static void Entity_UpCast(AngelScript::asIScriptGeneric* gen)
 
 static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
@@ -392,8 +352,6 @@ static void Game_GetProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
 
 static void Game_CheckProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto engine = GetGameEngine(as_engine);
@@ -406,7 +364,7 @@ static void Game_CheckProtoCustomEntity(AngelScript::asIScriptGeneric* gen)
 
 static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -430,7 +388,7 @@ static void Game_GetProtoCustomEntities(AngelScript::asIScriptGeneric* gen)
 
 static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -473,8 +431,6 @@ static void Game_GetProtoCustomEntitiesByProperty(AngelScript::asIScriptGeneric*
 
 static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     auto backend = GetScriptBackend(as_engine);
@@ -494,8 +450,6 @@ static void Game_GetEntity(AngelScript::asIScriptGeneric* gen)
 
 static void Game_DestroyOne(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
     auto entity_mngr = backend->GetEntityMngr();
@@ -508,8 +462,6 @@ static void Game_DestroyOne(AngelScript::asIScriptGeneric* gen)
 
 static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
     auto entity_mngr = backend->GetEntityMngr();
@@ -527,8 +479,6 @@ static void Game_DestroyAll(AngelScript::asIScriptGeneric* gen)
 
 static void CustomEntity_Add(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto entry = GetGenericAuxiliaryAs<const hstring>(gen);
     auto holder = GetGenericObjectAs<Entity>(gen);
@@ -543,8 +493,6 @@ static void CustomEntity_Add(AngelScript::asIScriptGeneric* gen)
 
 static void CustomEntity_HasAny(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = GetGenericAuxiliaryAs<const hstring>(gen);
     auto holder = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(holder);
@@ -555,8 +503,6 @@ static void CustomEntity_HasAny(AngelScript::asIScriptGeneric* gen)
 
 static void CustomEntity_GetOne(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = GetGenericAuxiliaryAs<const hstring>(gen);
     auto holder = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(holder);
@@ -590,8 +536,6 @@ static void CustomEntity_GetOne(AngelScript::asIScriptGeneric* gen)
 
 static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = GetGenericAuxiliaryAs<const hstring>(gen);
     auto holder = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(holder);
@@ -631,8 +575,6 @@ static void CustomEntity_GetAll(AngelScript::asIScriptGeneric* gen)
 
 static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto backend = GetScriptBackend(as_engine);
@@ -725,8 +667,6 @@ static void Game_SetPropertyGetter(AngelScript::asIScriptGeneric* gen)
 
 static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t as_result = 0;
     auto entity_name = GetGenericAuxiliaryAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
@@ -871,8 +811,6 @@ static void Game_AddPropertySetter(AngelScript::asIScriptGeneric* gen)
 
 static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
     int32_t prop_enum = static_cast<int32_t>(*GetGenericAddressArgAs<ScriptEnum_uint16>(gen, 0));
@@ -913,8 +851,6 @@ static void Game_GetPropertyInfo(AngelScript::asIScriptGeneric* gen)
 
 static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto entity = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(entity);
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
@@ -925,8 +861,6 @@ static void Entity_MethodCall(AngelScript::asIScriptGeneric* gen)
 
 static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
 
@@ -952,8 +886,6 @@ static void Entity_GlobalMethodCall(AngelScript::asIScriptGeneric* gen)
 
 static void ValidateCallbackFunc(nptr<AngelScript::asIScriptFunction> func)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto resolve_callback_func = [](nptr<AngelScript::asIScriptFunction> callback) noexcept -> nptr<AngelScript::asIScriptFunction> {
         if (callback && callback->GetFuncType() == AngelScript::asFUNC_DELEGATE) {
             if (auto delegate_func = callback->GetDelegateFunction(); delegate_func) {
@@ -976,8 +908,6 @@ static void ValidateCallbackFunc(nptr<AngelScript::asIScriptFunction> func)
 
 static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity = GetGenericObjectAs<Entity>(gen);
     CheckScriptEntityAccessAndNonDestroyed(entity);
@@ -1012,8 +942,6 @@ static void EntityEvent_Subscribe(AngelScript::asIScriptGeneric* gen)
 
 static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity = GetGenericObjectAs<Entity>(gen);
     auto func = NativeDataProvider::ReadTypedHandleSlot<AngelScript::asIScriptFunction>(GetGenericAddressArg(gen, 0));
@@ -1030,8 +958,6 @@ static void EntityEvent_Unsubscribe(AngelScript::asIScriptGeneric* gen)
 
 static void EntityEvent_UnsubscribeAll(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity = GetGenericObjectAs<Entity>(gen);
 
@@ -1046,7 +972,7 @@ static void EntityEvent_UnsubscribeAll(AngelScript::asIScriptGeneric* gen)
 
 static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto event = GetGenericAuxiliaryAs<const EntityEventDesc>(gen);
     auto entity = GetGenericObjectAs<Entity>(gen);
@@ -1066,8 +992,6 @@ static void EntityEvent_Fire(AngelScript::asIScriptGeneric* gen)
 
 static void Game_SetConstGlobalVar(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto engine = GetGameEngine(as_engine);
 
@@ -1138,7 +1062,7 @@ static void Game_SetConstGlobalVar(AngelScript::asIScriptGeneric* gen)
 
 void RegisterAngelScriptEntity(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     auto backend = GetScriptBackend(as_engine);

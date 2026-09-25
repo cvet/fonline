@@ -38,8 +38,6 @@ FO_BEGIN_NAMESPACE
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (reason) {
     case DisconnectReason::None:
         return "none";
@@ -73,8 +71,6 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, op
     _outBuf {&_owner->_outBuf},
     _msg {msg}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _owner->_outBufLocker.lock();
 
     if (_msg) {
@@ -90,8 +86,6 @@ ServerConnection::OutBufAccessor::OutBufAccessor(ptr<ServerConnection> owner, op
 
 ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_outBuf) {
         if (!_isStackUnwinding) {
             if (_msg) {
@@ -118,22 +112,16 @@ ServerConnection::OutBufAccessor::~OutBufAccessor() noexcept(false)
 ServerConnection::InBufAccessor::InBufAccessor(ptr<ServerConnection> owner) :
     _owner {owner}
 {
-    FO_STACK_TRACE_ENTRY();
-
     Lock();
 }
 
 ServerConnection::InBufAccessor::~InBufAccessor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Unlock();
 }
 
 void ServerConnection::InBufAccessor::Lock()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_inBuf, "In buf is already set");
     _owner->_inBufLocker.lock();
     _inBuf = &_owner->_inBuf;
@@ -141,8 +129,6 @@ void ServerConnection::InBufAccessor::Lock()
 
 void ServerConnection::InBufAccessor::Unlock() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_inBuf) {
         _owner->_inBufLocker.unlock();
         _inBuf = nullptr;
@@ -156,8 +142,6 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     _outBuf(_settings->Network.NetBufferSize),
     _channel {channel_identity}
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
     auto disconnect = [this]() FO_DEFERRED {
@@ -180,8 +164,6 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
 
 ServerConnection::~ServerConnection()
 {
-    FO_STACK_TRACE_ENTRY();
-
     safe_call([this] {
         scoped_lock locker {_inBufLocker};
 
@@ -189,62 +171,49 @@ ServerConnection::~ServerConnection()
     });
 
     _netConnection->Disconnect();
+
+    // A transport thread that won Disconnect() first may not have reported yet, and its report must not reach a dead owner
+    _netConnection->DropAsyncCallbacks();
 }
 
 auto ServerConnection::GetHost() const noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _netConnection->GetHost();
 }
 
 auto ServerConnection::GetPort() const noexcept -> uint16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _netConnection->GetPort();
 }
 
 auto ServerConnection::IsHardDisconnected() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _netConnection->IsDisconnected();
 }
 
 auto ServerConnection::IsGracefulDisconnected() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _gracefulDisconnected;
 }
 
 auto ServerConnection::IsInputRejected() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _inputRejected.load(std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDisconnectReason() const noexcept -> DisconnectReason
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _disconnectReason.load(std::memory_order_relaxed);
 }
 
 void ServerConnection::RecordDisconnectReason(DisconnectReason reason) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     DisconnectReason expected = DisconnectReason::None;
     (void)_disconnectReason.compare_exchange_strong(expected, reason, std::memory_order_relaxed);
 }
 
 auto ServerConnection::GetDiagnostics() const -> Diagnostics
 {
-    FO_STACK_TRACE_ENTRY();
-
     Diagnostics result;
     result.HandshakeComplete = _activity.HandshakeComplete;
     result.LastActivityTime = _activity.LastActivityTime;
@@ -261,57 +230,41 @@ auto ServerConnection::GetDiagnostics() const -> Diagnostics
 
 auto ServerConnection::IsHandshakeComplete() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _activity.HandshakeComplete;
 }
 
 auto ServerConnection::IsInactive(nanotime time) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _settings->ServerNetwork.InactivityDisconnectTime != 0 && time - _activity.LastActivityTime >= std::chrono::milliseconds {_settings->ServerNetwork.InactivityDisconnectTime};
 }
 
 auto ServerConnection::IsLoginTimedOut(nanotime time) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _settings->ServerNetwork.LoginTimeout != 0 && time - _activity.LastLoginProgressTime >= std::chrono::milliseconds {_settings->ServerNetwork.LoginTimeout};
 }
 
 auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _netConnection->NeedsPingWatchdog() && _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
 }
 
 auto ServerConnection::HasPendingPing() const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return !_activity.PingAnswerReceived;
 }
 
 auto ServerConnection::GetUpdateFileTransferIndex() const noexcept -> optional<size_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _updateFileTransfer.PendingFileIndex;
 }
 
 void ServerConnection::MarkHandshakeComplete() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _activity.HandshakeComplete = true;
 }
 
 void ServerConnection::EnsureActivityTime(nanotime time) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_activity.LastActivityTime) {
         _activity.LastActivityTime = time;
     }
@@ -322,46 +275,34 @@ void ServerConnection::EnsureActivityTime(nanotime time) noexcept
 
 void ServerConnection::RegisterActivity(nanotime time) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _activity.LastActivityTime = time;
 }
 
 void ServerConnection::RegisterLoginProgress(nanotime time) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _activity.LastLoginProgressTime = time;
 }
 
 void ServerConnection::RegisterPingRequest(nanotime time) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = false;
 }
 
 void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = true;
 }
 
 void ServerConnection::BeginUpdateFileTransfer(size_t file_index) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _updateFileTransfer.PendingFileIndex = file_index;
     _updateFileTransfer.PortionIndex = 0;
 }
 
 auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_updateFileTransfer.PendingFileIndex, "Updater file portion requested without an active pending file", _updateFileTransfer.PortionIndex, file_size, max_portion_size);
     FO_VERIFY_AND_THROW(max_portion_size != 0, "Max portion size must be non-zero", max_portion_size);
 
@@ -384,14 +325,12 @@ auto ServerConnection::PullUpdateFilePortion(size_t file_size, size_t max_portio
 
 void ServerConnection::StartAsyncSend()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _netConnection->Dispatch();
 }
 
 auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     scoped_lock locker {_outBufLocker};
     scoped_lock channel_locker {_channelLocker};
@@ -419,8 +358,6 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
 
 void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DataArrivedCallback callback;
     bool has_handshake_output = false;
 
@@ -464,8 +401,6 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
 
 void ServerConnection::RejectInput(const std::exception& ex, bool report) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_inputRejected.exchange(true, std::memory_order_relaxed)) {
         return;
     }
@@ -481,8 +416,6 @@ void ServerConnection::RejectInput(const std::exception& ex, bool report) noexce
 
 void ServerConnection::HardDisconnect(DisconnectReason reason)
 {
-    FO_STACK_TRACE_ENTRY();
-
     RecordDisconnectReason(reason);
     SetDataArrivedCallback({});
     _netConnection->Disconnect();
@@ -490,8 +423,6 @@ void ServerConnection::HardDisconnect(DisconnectReason reason)
 
 void ServerConnection::GracefulDisconnect()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _gracefulDisconnected = true;
 
     WriteMsg(NetMessage::Disconnect);
@@ -499,8 +430,6 @@ void ServerConnection::GracefulDisconnect()
 
 void ServerConnection::SetDataArrivedCallback(DataArrivedCallback callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Same lock as AsyncReceiveData: that runs on the network thread and may read this callback
     // concurrently, so the assignment must be synchronized to avoid a torn std::function move
     scoped_lock locker {_inBufLocker};

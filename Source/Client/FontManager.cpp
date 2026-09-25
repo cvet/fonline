@@ -42,13 +42,10 @@ static constexpr int32_t CACHE_INVALIDATION_FRAME_COUNT = 3;
 FontManager::FontManager(ptr<SpriteManager> spr_mngr) :
     _sprMngr {spr_mngr}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto FontManager::GetFont(FontType font) -> ptr<FontData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (static_cast<int64_t>(font) < 0) {
         throw FontManagerException("Invalid font type", static_cast<int32_t>(font));
     }
@@ -64,8 +61,6 @@ auto FontManager::GetFont(FontType font) -> ptr<FontData>
 
 auto FontManager::GetFont(FontType font) const -> ptr<const FontData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (static_cast<int64_t>(font) < 0) {
         throw FontManagerException("Invalid font type", static_cast<int32_t>(font));
     }
@@ -81,23 +76,17 @@ auto FontManager::GetFont(FontType font) const -> ptr<const FontData>
 
 void FontManager::ClearFonts()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _allFonts.clear();
     _formatCache.clear();
 }
 
 void FontManager::SetFontEffect(FontType font, nptr<RenderEffect> effect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     GetFont(font)->DrawEffect = effect ? effect : _sprMngr->_effectMngr->Effects.Font;
 }
 
 void FontManager::StoreFont(int32_t index, FontData&& font_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _formatCache.clear();
 
     if (index >= numeric_cast<int32_t>(_allFonts.size())) {
@@ -111,7 +100,7 @@ void FontManager::StoreFont(int32_t index, FontData&& font_data)
 
 void FontManager::FrameUpdate()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     for (auto it = _formatCache.begin(); it != _formatCache.end();) {
         if (_frameIndex - it->second->LastUsedFrame >= CACHE_INVALIDATION_FRAME_COUNT) {
@@ -127,7 +116,7 @@ void FontManager::FrameUpdate()
 
 void FontManager::BuildFont(int32_t index)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     auto font = make_ptr(&*_allFonts[index]);
 
@@ -268,7 +257,7 @@ void FontManager::BuildFont(int32_t index)
 
 void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isize32 sheet_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     float32_t scale = font.BakeScale;
     auto scale_value = [scale](int32_t value) -> int32_t { return iround<int32_t>(numeric_cast<float32_t>(value) * scale); };
@@ -376,15 +365,13 @@ void FontManager::BakeFontScale(FontData& font, vector<ucolor>& sheet_data, isiz
 
 auto FontManager::ResolveFontScale(float32_t scale) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(std::isfinite(scale) && scale > 0.0f && scale <= 1.0f, "Font scale must be in range (0..1] - author a bigger font asset for larger text", scale);
     return scale;
 }
 
 void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atlas_type, bool not_bordered, bool skip_if_loaded, float32_t default_scale)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     int32_t index = static_cast<int32_t>(font);
     FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
@@ -542,7 +529,7 @@ void FontManager::BindFoFont(FontType font, string_view font_path, AtlasType atl
 
 void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType atlas_type, float32_t default_scale)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     int32_t index = static_cast<int32_t>(font);
     FO_VERIFY_AND_THROW(index >= 0, "Font index must not be negative", index);
@@ -653,7 +640,7 @@ void FontManager::BindBmfFont(FontType font, string_view font_path, AtlasType at
 
 void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
     string& str = fi.Text;
     auto flags = fi.Format.Flags;
@@ -1053,8 +1040,6 @@ void FontManager::FormatText(FontFormatInfo& fi, FormatMode mode) const
 
 auto FontManager::IsInlineColorHex(string_view value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value.size() >= 2 && value[0] == '0' && (value[1] == 'x' || value[1] == 'X')) {
         value.remove_prefix(2);
     }
@@ -1068,8 +1053,6 @@ auto FontManager::IsInlineColorHex(string_view value) -> bool
 
 auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t& tag_end, ucolor& color, bool& reset) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (marker_pos + InlineColorTagPrefix.size() >= str.size()) {
         return false;
     }
@@ -1120,8 +1103,6 @@ auto FontManager::ParseInlineColorTag(string_view str, size_t marker_pos, size_t
 
 auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, ucolor color, FormatMode mode, string_view str) const -> ptr<const FontFormatInfo>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(static_cast<size_t>(font) < _allFonts.size(), "Text formatting requested a font index outside the loaded font table", font, _allFonts.size(), str.size(), rect);
     FO_VERIFY_AND_THROW(format.SkipLines >= 0, "Text format skip-line count must not be negative");
     FO_VERIFY_AND_THROW(rect.width >= 0, "Text layout rectangle width must not be negative", rect.width);
@@ -1170,8 +1151,6 @@ auto FontManager::GetOrFormat(TextFormat format, FontType font, irect32 rect, uc
 
 void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextFormat format)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (str.empty()) {
         return;
     }
@@ -1350,8 +1329,6 @@ void FontManager::DrawText(irect32 rect, string_view str, ucolor color, TextForm
 
 auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size.width <= 0 || size.height <= 0) {
         return 0;
     }
@@ -1370,8 +1347,6 @@ auto FontManager::GetLinesCount(isize32 size, string_view str, FontType num_font
 
 auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_font) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (size.width <= 0 || size.height <= 0) {
         return 0;
     }
@@ -1388,15 +1363,11 @@ auto FontManager::GetLinesHeight(isize32 size, string_view str, FontType num_fon
 
 auto FontManager::GetLineHeight(FontType num_font) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetFont(num_font)->LineHeight;
 }
 
 auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, isize32& result_size, int32_t& lines) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     result_size = {};
     lines = {};
 
@@ -1416,8 +1387,6 @@ auto FontManager::GetTextInfo(isize32 size, string_view str, TextFormat format, 
 
 auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (cstr.empty()) {
         return {};
     }
@@ -1430,8 +1399,6 @@ auto FontManager::SplitLines(irect32 rect, string_view cstr, FontType num_font) 
 
 auto FontManager::HaveLetter(FontType num_font, uint32_t letter) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetFont(num_font)->Letters.count(letter) != 0;
 }
 

@@ -80,16 +80,12 @@ class ModelMeshOptimizationAllocator final
 public:
     static auto MESHOPTIMIZER_ALLOC_CALLCONV Allocate(size_t size) noexcept -> void*
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         constexpr safe_allocator<uint8_t> allocator;
         return allocator.allocate(size);
     }
 
     static void MESHOPTIMIZER_ALLOC_CALLCONV Deallocate(void* raw_memory) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         auto memory = make_nptr(raw_memory).reinterpret_as<uint8_t>();
 
         if (memory) {
@@ -101,8 +97,6 @@ public:
 
 static void PrepareModelMeshOptimizationRuntime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // meshoptimizer exposes one allocator table per linked module. This synchronization has no
     // per-engine semantics; it only makes the identical process-wide setup safe before worker jobs
     static std::once_flag init_once;
@@ -139,17 +133,15 @@ static_assert(sizeof(ModelMeshVertexData) <= 256);
 ModelMeshBaker::ModelMeshBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ModelMeshBaker::~ModelMeshBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ModelMeshBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     PrepareModelMeshOptimizationRuntime();
 
@@ -234,7 +226,7 @@ static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vec
 
 auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ufbx_load_opts opts = {};
     opts.ignore_embedded = true;
@@ -276,8 +268,6 @@ auto ModelMeshBaker::BakeFbxFile(string_view fname, const File& file) const -> v
 
 static auto FindBakedModelBone(ptr<const ModelMeshBoneData> bone, string_view name) -> nptr<const ModelMeshBoneData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bone->Name == name) {
         return bone;
     }
@@ -293,8 +283,6 @@ static auto FindBakedModelBone(ptr<const ModelMeshBoneData> bone, string_view na
 
 static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname, uint32_t depth) -> unique_ptr<ModelMeshBoneData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
         throw ModelMeshBakerException("FBX hierarchy exceeds the safe depth limit at node", fname, MODEL_MESH_MAX_HIERARCHY_DEPTH, fbx_node->name.data);
     }
@@ -315,7 +303,7 @@ static auto ConvertFbxHierarchy(ptr<const ufbx_node> fbx_node, string_view fname
 
 static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vector<uint32_t>& indices, string_view fname, string_view node_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (vertices.empty()) {
         throw ModelMeshBakerException("FBX mesh node has no indexed vertices to optimize", fname, node_name);
@@ -352,8 +340,6 @@ static void OptimizeBakedMeshGeometry(vector<ModelMeshVertexData>& vertices, vec
 
 static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBoneData> bone, ptr<const ufbx_node> fbx_node, string_view fname)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const ufbx_mesh> fbx_mesh = fbx_node->mesh;
 
     if (fbx_mesh && fbx_mesh->num_faces != 0) {
@@ -564,8 +550,6 @@ static void ConvertFbxMeshes(ptr<ModelMeshBoneData> root_bone, ptr<ModelMeshBone
 
 static auto ConvertFbxFloat(double value, const FbxValidationContext& context, string_view component) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr double min_float = static_cast<double>(std::numeric_limits<float32_t>::lowest());
     constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
 
@@ -578,8 +562,6 @@ static auto ConvertFbxFloat(double value, const FbxValidationContext& context, s
 
 static auto ConvertFbxVec3(const ufbx_vec3& value, const FbxValidationContext& context) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vec3 result;
 
     result.x = ConvertFbxFloat(value.x, context, "x");
@@ -591,8 +573,6 @@ static auto ConvertFbxVec3(const ufbx_vec3& value, const FbxValidationContext& c
 
 static auto ConvertFbxColor(const ufbx_vec4& value, const FbxValidationContext& context) -> ucolor
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ucolor color;
 
     color.comp.r = ConvertFbxColorComponent(value.x, context, "r");
@@ -605,8 +585,6 @@ static auto ConvertFbxColor(const ufbx_vec4& value, const FbxValidationContext& 
 
 static auto ConvertFbxColorComponent(double value, const FbxValidationContext& context, string_view component) -> uint8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     (void)ConvertFbxFloat(value, context, component);
 
     if (value < 0.0 || value > 1.0) {
@@ -618,8 +596,6 @@ static auto ConvertFbxColorComponent(double value, const FbxValidationContext& c
 
 static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContext& context) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     mat44 result {1.0f};
 
     result[0][0] = ConvertFbxFloat(value.m00, context, "m00");
@@ -644,8 +620,6 @@ static auto ConvertFbxMatrix(const ufbx_matrix& value, const FbxValidationContex
 
 static void ValidateFbxVertex(const ModelMeshVertexData& vertex, size_t skin_bone_count, const FbxValidationContext& context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(skin_bone_count != 0, "FBX vertex validation has no available skin bones", context.FileName, context.NodeName, context.ElementIndex);
 
     auto validate_vec3 = [&](const vec3& value, string_view field_name) {

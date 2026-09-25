@@ -45,17 +45,15 @@ FO_BEGIN_NAMESPACE
 ProtoBaker::ProtoBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ProtoBaker::~ProtoBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fopro-")) {
         return;
@@ -132,7 +130,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
 auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     hstring proto_rule_name = meta->Hashes.to_hashed_string("Proto");
 

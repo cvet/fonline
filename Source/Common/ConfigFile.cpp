@@ -38,7 +38,7 @@ FO_BEGIN_NAMESPACE
 ConfigFile::ConfigFile(string str, ConfigFileOption options) :
     _options {options}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     // The input is the first owned node, so the section views into it keep a stable address even
     // after this object is moved; appending further nodes never invalidates it
@@ -190,8 +190,6 @@ ConfigFile::ConfigFile(string str, ConfigFileOption options) :
 
 auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, string_view& value, bool& append_value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool inside_double_quotes = false;
     size_t backslash_run = 0;
     size_t separator_pos = string_view::npos;
@@ -248,8 +246,6 @@ auto ConfigFile::ParseConfigKeyValueLine(string_view line, string_view& key, str
 
 void ConfigFile::TrimConfigRange(string_view line, size_t& begin, size_t& end)
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (begin < end && IsConfigSpace(line[begin])) {
         begin++;
     }
@@ -260,31 +256,23 @@ void ConfigFile::TrimConfigRange(string_view line, size_t& begin, size_t& end)
 
 auto ConfigFile::IsConfigSpace(char ch) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ch == ' ' || ch == '\t' || ch == '\r' || ch == '\n' || ch == '\f' || ch == '\v';
 }
 
 auto ConfigFile::StoreOwnedString(string_view value) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ownedStrings.emplace_back(value);
     return _ownedStrings.back();
 }
 
 auto ConfigFile::StoreOwnedString(string&& value) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ownedStrings.emplace_back(std::move(value));
     return _ownedStrings.back();
 }
 
 auto ConfigFile::FindFirstSection(string_view section_name) const noexcept -> multimap<string_view, map<string_view, string_view>>::const_iterator
 {
-    FO_STACK_TRACE_ENTRY();
-
     // multimap::find may answer with any section of a repeated name (libc++ returns the one its descent meets
     // first), so the first declared section is the lower bound
     multimap<string_view, map<string_view, string_view>>::const_iterator it_section = _sectionKeyValues.lower_bound(section_name);
@@ -298,8 +286,6 @@ auto ConfigFile::FindFirstSection(string_view section_name) const noexcept -> mu
 
 auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) const noexcept -> nptr<const string_view>
 {
-    FO_STACK_TRACE_ENTRY();
-
     multimap<string_view, map<string_view, string_view>>::const_iterator it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
@@ -317,8 +303,6 @@ auto ConfigFile::GetRawValue(string_view section_name, string_view key_name) con
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str = GetRawValue(section_name, key_name);
 
     return str ? *str : string_view {};
@@ -326,8 +310,6 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name) const 
 
 auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string_view def_val) const noexcept -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str = GetRawValue(section_name, key_name);
 
     return str ? *str : def_val;
@@ -335,8 +317,6 @@ auto ConfigFile::GetAsStr(string_view section_name, string_view key_name, string
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str = GetRawValue(section_name, key_name);
 
     if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
@@ -351,8 +331,6 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name) const 
 
 auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_t def_val) const noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str = GetRawValue(section_name, key_name);
 
     if (str && str->length() == "true"_len && strvex(*str).compare_ignore_case("true")) {
@@ -367,8 +345,6 @@ auto ConfigFile::GetAsInt(string_view section_name, string_view key_name, int32_
 
 auto ConfigFile::GetSection(string_view section_name) const -> const map<string_view, string_view>&
 {
-    FO_STACK_TRACE_ENTRY();
-
     multimap<string_view, map<string_view, string_view>>::const_iterator it = FindFirstSection(section_name);
     FO_VERIFY_AND_THROW(it != _sectionKeyValues.end(), "Lookup failed in section key values");
 
@@ -377,8 +353,6 @@ auto ConfigFile::GetSection(string_view section_name) const -> const map<string_
 
 auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<map<string_view, string_view>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The equal range rather than find plus count: find may land inside a repeated name, and counting on from
     // there walks past its last section
     auto [first_it, last_it] = _sectionKeyValues.equal_range(section_name);
@@ -395,23 +369,17 @@ auto ConfigFile::GetSections(string_view section_name) -> vector<ptr<map<string_
 
 auto ConfigFile::GetSections() noexcept -> ptr<multimap<string_view, map<string_view, string_view>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return &_sectionKeyValues;
 }
 
 auto ConfigFile::HasSection(string_view section_name) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it_section = _sectionKeyValues.find(section_name);
     return it_section != _sectionKeyValues.end();
 }
 
 auto ConfigFile::HasKey(string_view section_name, string_view key_name) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
@@ -429,8 +397,6 @@ auto ConfigFile::HasKey(string_view section_name, string_view key_name) const no
 
 auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<const map<string_view, string_view>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it_section = FindFirstSection(section_name);
 
     if (it_section == _sectionKeyValues.end()) {
@@ -442,8 +408,6 @@ auto ConfigFile::GetSectionKeyValues(string_view section_name) noexcept -> nptr<
 
 auto ConfigFile::GetSectionContent(string_view section_name) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(is_enum_set(_options, ConfigFileOption::CollectContent), "Config file content collection was not enabled");
 
     auto it_section = FindFirstSection(section_name);

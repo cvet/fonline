@@ -68,7 +68,7 @@ static void ValidateModelSourceTimes(const vector<float32_t>& times, string_view
 
 auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsset
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (path.empty()) {
         throw ModelSourceLoaderException("Can't load a model source with an empty path");
@@ -114,8 +114,6 @@ auto LoadModelSourceAsset(string_view path, const File& file) -> ModelSourceAsse
 
 void ValidateModelSourceAsset(const ModelSourceAsset& asset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelSourceName(asset.FileName, "model source file name", false);
 
     if (asset.Skeleton.FileName != asset.FileName) {
@@ -217,12 +215,11 @@ ModelSourceAssetCache::ModelSourceAssetCache(const FileCollection& files, LoadCa
     _files {&files},
     _loadCallback {std::move(load_callback)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const ModelSourceAsset>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (path.empty()) {
         throw ModelSourceLoaderException("Can't cache a model source with an empty path");
@@ -271,8 +268,6 @@ auto ModelSourceAssetCache::Get(string_view path) const -> shared_ptr<const Mode
 
 static auto ConvertModelSourceString(const ufbx_string& value, const ModelSourceValidationContext& context) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto data = make_nptr(value.data);
 
     if (value.length != 0 && !data) {
@@ -284,8 +279,6 @@ static auto ConvertModelSourceString(const ufbx_string& value, const ModelSource
 
 static auto ConvertModelSourceFloat(double value, const ModelSourceValidationContext& context, string_view component) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     constexpr double min_float = static_cast<double>(std::numeric_limits<float32_t>::lowest());
     constexpr double max_float = static_cast<double>(std::numeric_limits<float32_t>::max());
 
@@ -298,8 +291,6 @@ static auto ConvertModelSourceFloat(double value, const ModelSourceValidationCon
 
 static auto ConvertModelSourceVec3(const ufbx_vec3& value, const ModelSourceValidationContext& context) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return vec3 {
         ConvertModelSourceFloat(value.x, context, "x"),
         ConvertModelSourceFloat(value.y, context, "y"),
@@ -309,8 +300,6 @@ static auto ConvertModelSourceVec3(const ufbx_vec3& value, const ModelSourceVali
 
 static auto ConvertModelSourceQuaternion(const ufbx_quat& value, const ModelSourceValidationContext& context) -> quaternion
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     quaternion result;
     result.x = ConvertModelSourceFloat(value.x, context, "x");
     result.y = ConvertModelSourceFloat(value.y, context, "y");
@@ -321,8 +310,6 @@ static auto ConvertModelSourceQuaternion(const ufbx_quat& value, const ModelSour
 
 static auto ConvertModelSourceMatrix(const ufbx_matrix& value, const ModelSourceValidationContext& context) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     mat44 result {1.0f};
     result[0][0] = ConvertModelSourceFloat(value.m00, context, "m00");
     result[1][0] = ConvertModelSourceFloat(value.m01, context, "m01");
@@ -345,8 +332,6 @@ static auto ConvertModelSourceMatrix(const ufbx_matrix& value, const ModelSource
 
 static void AppendModelSourceSkeletonJoint(ptr<const ufbx_node> node, const vector<string>& parent_hierarchy, ModelSkeletonSource& skeleton)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (parent_hierarchy.size() >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
         throw ModelSourceLoaderException("Model source hierarchy depth exceeds the joint limit", skeleton.FileName, MODEL_MESH_MAX_HIERARCHY_DEPTH, node->name.data);
     }
@@ -369,8 +354,6 @@ static void AppendModelSourceSkeletonJoint(ptr<const ufbx_node> node, const vect
 
 static auto ExtractModelSourceAnimations(ptr<const ufbx_scene> scene, string_view path) -> vector<ModelAnimationSource>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (scene->anim_stacks.count > MODEL_ANIMATION_RIG_MAX_CLIPS) {
         throw ModelSourceLoaderException("Model source has too many animation stacks", path, scene->anim_stacks.count, MODEL_ANIMATION_RIG_MAX_CLIPS);
     }
@@ -387,7 +370,7 @@ static auto ExtractModelSourceAnimations(ptr<const ufbx_scene> scene, string_vie
 
 static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const ufbx_anim_stack> anim_stack, string_view path) -> ModelAnimationSource
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(anim_stack->anim, "Model source animation stack has no animation", path);
     ufbx_bake_opts bake_opts = {};
@@ -459,8 +442,6 @@ static auto ExtractModelSourceAnimation(ptr<const ufbx_scene> scene, ptr<const u
 
 static auto BuildModelSourceHierarchy(ptr<const ufbx_node> node, string_view path, string_view clip_name) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> result;
     nptr<const ufbx_node> hierarchy_node = node;
 
@@ -479,8 +460,6 @@ static auto BuildModelSourceHierarchy(ptr<const ufbx_node> node, string_view pat
 
 static void ValidateModelSourceName(string_view value, string_view context, bool allow_empty)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!allow_empty && value.empty()) {
         throw ModelSourceLoaderException("Empty name", context);
     }
@@ -494,8 +473,6 @@ static void ValidateModelSourceName(string_view value, string_view context, bool
 
 static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, const set<vector<string>>& skeleton_hierarchies)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateModelSourceName(animation.Name, strex("animation name in '{}'", animation.FileName), false);
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f || !std::isfinite(1.0f / animation.Duration)) {
@@ -544,8 +521,6 @@ static void ValidateModelSourceAnimation(const ModelAnimationSource& animation, 
 
 static void ValidateModelSourceVec3Track(const ModelAnimationVec3Track& track, string_view source_file, string_view clip_name, string_view output_name, string_view track_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
         throw ModelSourceLoaderException("Animation output has invalid track sizes", source_file, clip_name, output_name, track_name, track.Times.size(), track.Values.size());
     }
@@ -569,8 +544,6 @@ static void ValidateModelSourceVec3Track(const ModelAnimationVec3Track& track, s
 
 static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTrack& track, string_view source_file, string_view clip_name, string_view output_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (track.Times.empty() || track.Times.size() != track.Values.size()) {
         throw ModelSourceLoaderException("Animation output has invalid rotation track sizes", source_file, clip_name, output_name, track.Times.size(), track.Values.size());
     }
@@ -600,8 +573,6 @@ static void ValidateModelSourceQuaternionTrack(const ModelAnimationQuaternionTra
 
 static void ValidateModelSourceTimes(const vector<float32_t>& times, string_view source_file, string_view clip_name, string_view output_name, string_view track_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < times.size(); i++) {
         if (!std::isfinite(times[i])) {
             throw ModelSourceLoaderException("Animation output has a non-finite track time", source_file, clip_name, output_name, track_name, i);

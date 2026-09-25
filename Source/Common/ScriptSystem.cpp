@@ -44,8 +44,6 @@ FO_BEGIN_NAMESPACE
 
 void ThrowScriptEntityTypeMismatch(ptr<Entity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     throw ScriptException("Script entity is not usable as this entity type", entity->GetTypeName(), entity->GetName());
 }
 
@@ -59,24 +57,18 @@ DynamicRefTypeInstance::~DynamicRefTypeInstance() noexcept = default;
 
 auto DynamicRefTypeInstance::GetProps() noexcept -> ptr<Properties>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_props.has_value(), "Dynamic ref-type instance has no properties");
     return &*_props;
 }
 
 auto DynamicRefTypeInstance::GetProps() const noexcept -> ptr<const Properties>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_props.has_value(), "Dynamic ref-type instance has no properties");
     return &*_props;
 }
 
 void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -135,8 +127,6 @@ void DynamicRefTypeInstance::LoadFromRawData(const BaseTypeDesc& base_type, span
 
 auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> span<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->GetRegistrar() == _registrar, "Dynamic ref-type property belongs to a different registrar", prop->GetName(), prop->GetRegistrar()->GetTypeName(), _registrar->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
     return _props->GetRawData(prop);
@@ -144,8 +134,6 @@ auto DynamicRefTypeInstance::GetRawData(ptr<const Property> prop) const -> span<
 
 void DynamicRefTypeInstance::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->GetRegistrar() == _registrar, "Dynamic ref-type property belongs to a different registrar", prop->GetName(), prop->GetRegistrar()->GetTypeName(), _registrar->GetTypeName());
     FO_VERIFY_AND_THROW(_props, "Missing required properties");
 
@@ -155,8 +143,6 @@ void DynamicRefTypeInstance::SetValue(ptr<const Property> prop, PropertyRawData&
 
 auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type) -> const_span<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -238,8 +224,6 @@ auto DynamicRefTypeInstance::GetSerializedRawData(const BaseTypeDesc& base_type)
 
 void ScriptSystem::MapScriptTypes(ptr<EngineMetadata> meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     MapEngineType<bool>(meta->GetBaseType("bool"));
     MapEngineType<int8_t>(meta->GetBaseType("int8"));
     MapEngineType<int16_t>(meta->GetBaseType("int16"));
@@ -289,8 +273,6 @@ void ScriptSystem::MapScriptTypes(ptr<EngineMetadata> meta)
 
 void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend> backend)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto [it, inserted] = _backends.emplace(index, std::move(backend));
     ignore_unused(it);
     FO_VERIFY_AND_THROW(inserted, "Backends[index] is already set");
@@ -298,7 +280,7 @@ void ScriptSystem::RegisterBackend(size_t index, unique_ptr<ScriptSystemBackend>
 
 void ScriptSystem::ShutdownBackends()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     _engineTypes.clear();
     _globalFuncMap.clear();
@@ -308,7 +290,7 @@ void ScriptSystem::ShutdownBackends()
 
 void ScriptSystem::ProcessBackends()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     for (auto& [index, backend] : _backends) {
         ignore_unused(index);
@@ -318,16 +300,12 @@ void ScriptSystem::ProcessBackends()
 
 void ScriptSystem::AddInitFunc(ScriptFunc<void> func, int32_t priority)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _initFunc.emplace_back(std::move(func), priority);
     std::ranges::stable_sort(_initFunc, [](auto&& a, auto&& b) { return a.second < b.second; });
 }
 
 auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_t> arg_types, size_t ret_type) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!func->Call) {
         return false;
     }
@@ -360,8 +338,6 @@ auto ScriptSystem::ValidateArgs(ptr<const ScriptFuncDesc> func, const_span<size_
 
 auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noexcept -> nptr<ScriptFuncDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
@@ -375,8 +351,6 @@ auto ScriptSystem::FindFunc(hstring func_name, const_span<size_t> arg_types) noe
 
 auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types) noexcept -> nptr<ScriptFuncDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto range = _globalFuncMap.equal_range(func_name);
 
     auto args_compatible = [](const ComplexTypeDesc& func_arg, const ComplexTypeDesc& caller_arg) noexcept {
@@ -420,8 +394,6 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 
 auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_types, const ComplexTypeDesc& ret_type) noexcept -> nptr<ScriptFuncDesc>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto range = _globalFuncMap.equal_range(func_name);
 
     for (auto it = range.first; it != range.second; ++it) {
@@ -450,8 +422,6 @@ auto ScriptSystem::FindFunc(hstring func_name, span<const ComplexTypeDesc> arg_t
 
 auto ScriptSystem::FindFuncCandidates(hstring func_name) noexcept -> vector<ptr<ScriptFuncDesc>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ptr<ScriptFuncDesc>> result;
     auto range = _globalFuncMap.equal_range(func_name);
 
@@ -464,8 +434,6 @@ auto ScriptSystem::FindFuncCandidates(hstring func_name) noexcept -> vector<ptr<
 
 void ScriptSystem::AddGlobalScriptFunc(ptr<ScriptFuncDesc> func)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(func->Name, "Script function descriptor has no name");
 
     _globalFuncMap.emplace(func->Name, func);
@@ -473,7 +441,7 @@ void ScriptSystem::AddGlobalScriptFunc(ptr<ScriptFuncDesc> func)
 
 void ScriptSystem::InitModules()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     UnfreezeGlobalVars();
 
@@ -488,8 +456,6 @@ void ScriptSystem::InitModules()
 
 auto ScriptSystem::AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_type, const ComplexTypeDesc& caller_type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (func_type.Kind != caller_type.Kind) {
         return false;
     }
@@ -506,8 +472,6 @@ auto ScriptSystem::AreComplexScriptTypesCompatible(const ComplexTypeDesc& func_t
 
 auto ScriptHelpers::GetIntConvertibleEntityProperty(ptr<const BaseEngine> engine, string_view type_name, int32_t prop_index) -> ptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop_reg = engine->GetPropertyRegistrar(type_name);
     FO_VERIFY_AND_THROW(prop_reg, "Missing required property registrar");
     auto prop = prop_reg->GetPropertyByIndex(prop_index);

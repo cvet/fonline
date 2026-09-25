@@ -44,36 +44,27 @@ TimeEventContext::TimeEventContext(uint32_t id, timespan repeat, vector<any_t> d
     _repeat {repeat},
     _data {std::move(data)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void TimeEventContext::Stop() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _stopped = true;
 }
 
 void TimeEventContext::Repeat(timespan repeat) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _repeat = repeat;
     _repeatChanged = true;
 }
 
 void TimeEventContext::SetData(any_t data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _data = {std::move(data)};
     _dataChanged = true;
 }
 
 void TimeEventContext::SetDataArray(readonly_vector<any_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _data = to_vector(data);
     _dataChanged = true;
 }
@@ -81,13 +72,10 @@ void TimeEventContext::SetDataArray(readonly_vector<any_t> data)
 TimeEventManager::TimeEventManager(ptr<BaseEngine> engine) :
     _engine {engine}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData::FuncType func, timespan delay, timespan repeat, vector<any_t> data) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
     FO_VERIFY_AND_THROW(!entity->IsDestroying(), "Cannot start a time event for an entity that is being destroyed", entity->GetTypeName(), entity->GetId());
 
@@ -117,8 +105,6 @@ auto TimeEventManager::StartTimeEvent(ptr<Entity> entity, Entity::TimeEventData:
 
 auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), 0, "Destroyed entity used to count time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     std::scoped_lock lock {_timeEventLocker};
@@ -156,8 +142,6 @@ auto TimeEventManager::CountTimeEvent(ptr<Entity> entity, ScriptFuncName func_na
 
 auto TimeEventManager::GetDiagnostics() const -> Diagnostics
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::scoped_lock lock {_timeEventLocker};
 
     Diagnostics diagnostics;
@@ -174,8 +158,6 @@ auto TimeEventManager::GetDiagnostics() const -> Diagnostics
 
 void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id, optional<timespan> repeat, optional<vector<any_t>> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!entity->IsDestroyed(), "Entity is already destroyed");
 
     struct ResubmitInfo
@@ -234,8 +216,6 @@ void TimeEventManager::ModifyTimeEvent(ptr<Entity> entity, ScriptFuncName func_n
 
 void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_name, uint32_t id)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_RETURN(!entity->IsDestroyed(), "Destroyed entity used to stop time events", entity->GetName(), entity->GetTypeName(), entity->GetId(), id);
 
     vector<uint32_t> cancelled_ids;
@@ -280,8 +260,6 @@ void TimeEventManager::StopTimeEvent(ptr<Entity> entity, ScriptFuncName func_nam
 
 void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::scoped_lock lock {_timeEventLocker};
 
     _timeEventEntities.emplace(entity.hold_ref());
@@ -289,8 +267,6 @@ void TimeEventManager::AddEntityTimeEventPolling(ptr<Entity> entity)
 
 void TimeEventManager::RemoveEntityTimeEventPolling(ptr<Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::scoped_lock lock {_timeEventLocker};
 
     _timeEventEntities.erase(entity.hold_ref());
@@ -298,7 +274,7 @@ void TimeEventManager::RemoveEntityTimeEventPolling(ptr<Entity> entity)
 
 void TimeEventManager::ProcessTimeEvents()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto entities = [&] {
         std::scoped_lock lock {_timeEventLocker};
@@ -329,7 +305,7 @@ void TimeEventManager::ProcessTimeEvents()
 
 void TimeEventManager::ClearTimeEvents()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     vector<uint32_t> cancelled_ids;
 
@@ -362,8 +338,6 @@ void TimeEventManager::ClearTimeEvents()
 
 void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     small_vector<shared_ptr<Entity::TimeEventData>, 8> ready_events;
     nanotime time = _engine->GameTime.GetFrameTime();
 
@@ -421,7 +395,7 @@ void TimeEventManager::ProcessEntityTimeEvents(ptr<Entity> entity)
 
 auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_next) -> vector<ReadyTimeEvent>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     std::scoped_lock lock {_timeEventLocker};
 
@@ -464,8 +438,6 @@ auto TimeEventManager::CollectReadyTimeEvents(optional<timespan>& time_until_nex
 
 void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te, const FiredTimeEvent& result)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (entity->IsDestroyed()) {
         return;
     }
@@ -524,7 +496,7 @@ void TimeEventManager::PostFireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::
 
 auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::TimeEventData> te) -> FiredTimeEvent
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_RETURN_VALUE(!entity->IsDestroyed(), {}, "Destroyed entity tried to fire a time event", entity->GetName(), entity->GetTypeName(), entity->GetId(), te->Id);
 
@@ -592,16 +564,12 @@ auto TimeEventManager::FireTimeEvent(ptr<Entity> entity, shared_ptr<Entity::Time
 
 void TimeEventManager::SetDispatcherHooks(DispatcherHooks hooks)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _dispatcher = std::move(hooks);
     _dispatcherPaused.store(false, std::memory_order_release);
 }
 
 void TimeEventManager::PauseDispatcherHooks()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Workers read notifications lock-free, so hook objects cannot change until every worker exits.
     // Pause through the atomic flag while workers drain
     _dispatcherPaused.store(true, std::memory_order_release);
@@ -609,15 +577,11 @@ void TimeEventManager::PauseDispatcherHooks()
 
 void TimeEventManager::ClearDispatcherHooks()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _dispatcher = DispatcherHooks {};
 }
 
 void TimeEventManager::NotifySchedule(ptr<Entity> entity, uint32_t event_id, timespan delay)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_dispatcher.Schedule && !_dispatcherPaused.load(std::memory_order_acquire)) {
         _dispatcher.Schedule(entity.hold_ref(), event_id, delay);
     }
@@ -625,8 +589,6 @@ void TimeEventManager::NotifySchedule(ptr<Entity> entity, uint32_t event_id, tim
 
 void TimeEventManager::NotifyCancel(uint32_t event_id)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_dispatcher.Cancel && !_dispatcherPaused.load(std::memory_order_acquire)) {
         _dispatcher.Cancel(event_id);
     }
@@ -634,8 +596,6 @@ void TimeEventManager::NotifyCancel(uint32_t event_id)
 
 void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint32_t> cancelled_ids;
 
     {
@@ -672,8 +632,6 @@ void TimeEventManager::CancelAllForEntity(ptr<Entity> entity) noexcept
 
 auto TimeEventManager::FireAndAdvance(ptr<Entity> entity, uint32_t event_id) -> optional<timespan>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (entity->IsDestroyed()) {
         return std::nullopt;
     }

@@ -50,40 +50,30 @@ FO_BEGIN_NAMESPACE
 template<typename T>
 static void Type_Construct(T* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) T();
 }
 
 template<typename T>
 static void Type_ConstructCopy(T* self, const T& other)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) T(other);
 }
 
 template<typename T>
 static auto Type_GetStr(const T& self) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", self).str();
 }
 
 template<typename T>
 static auto Type_AnyConv(const T& self) -> any_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return any_t(strex("{}", self).str());
 }
 
 template<typename T>
 static auto Type_Cmp(const T& self, const T& other) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (self < other) {
         return -1;
     }
@@ -97,31 +87,23 @@ static auto Type_Cmp(const T& self, const T& other) -> int32_t
 template<typename T>
 static auto Type_FastCompare(ptr<const void> a, ptr<const void> b) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return Type_Cmp<T>(*cast_from_void<const T*>(a.get()), *cast_from_void<const T*>(b.get()));
 }
 
 template<typename T, typename U = T>
 static auto Type_Equals(const T& self, const U& other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self == other;
 }
 
 static auto GetMutableStructFieldStorage(ptr<void> obj, size_t offset) noexcept -> ptr<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto bytes = obj.reinterpret_as<uint8_t>();
     return bytes.offset(offset);
 }
 
 static auto ReadRequiredHandleSlot(ptr<void> slot) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto obj = NativeDataProvider::ReadHandleSlot(slot);
     FO_STRONG_ASSERT(obj, "Required handle slot holds a null object");
     return obj;
@@ -129,23 +111,17 @@ static auto ReadRequiredHandleSlot(ptr<void> slot) noexcept -> ptr<void>
 
 static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ReadRequiredHandleSlot(GetGenericAddressArg(gen, arg_index));
 }
 
 template<typename T>
 static auto GetGenericAddressArgObject(ptr<AngelScript::asIScriptGeneric> gen, AngelScript::asUINT arg_index) noexcept -> ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return cast_from_void<T*>(GetGenericAddressArgObject(gen, arg_index).get());
 }
 
 static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     memory::fill(obj, 0, type.Size);
 
     if (type.StructLayout) {
@@ -164,8 +140,6 @@ static void DefaultInitStructFields(ptr<void> obj, const BaseTypeDesc& type)
 
 static void GenericType_Construct(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<void>(gen);
 
@@ -174,8 +148,6 @@ static void GenericType_Construct(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
@@ -185,8 +157,6 @@ static void GenericType_ConstructCopy(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<void>(gen);
     AngelScript::asUINT index = 0;
@@ -200,8 +170,6 @@ static void GenericType_ConstructArgs(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_GetStr(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
 
@@ -219,8 +187,6 @@ static void GenericType_GetStr(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_AnyConv(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
 
@@ -238,8 +204,6 @@ static void GenericType_AnyConv(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const any_t>(gen);
     auto tokens = strvex(*obj).split(' ');
@@ -288,8 +252,6 @@ static void GenericType_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
@@ -308,8 +270,6 @@ static void GenericType_Cmp(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
@@ -320,8 +280,6 @@ static void GenericType_Equals(AngelScript::asIScriptGeneric* gen)
 
 static void GenericType_GetZero(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto type = GetGenericAuxiliaryAs<const BaseTypeDesc>(gen);
     ptr<void> result = gen->GetAddressOfReturnLocation();
     VisitBaseTypePrimitive(result.get(), *type, [](auto&& v) { v = {}; });
@@ -329,61 +287,45 @@ static void GenericType_GetZero(AngelScript::asIScriptGeneric* gen)
 
 static void HashedString_Construct(hstring* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) hstring();
 }
 
 static void HashedString_Destruct(hstring* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self->~hstring();
 }
 
 static void HashedString_ConstructCopy(hstring* self, const hstring& other)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) hstring(other);
 }
 
 static void HashedString_Assign(hstring& self, const hstring& other)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self = other;
 }
 
 template<typename T>
 static auto HstringWrapper_HstringCast(const T& self) -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.underlying_value();
 }
 
 template<typename T>
 static auto HstringWrapper_StringCast(const T& self) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return strex("{}", self);
 }
 
 template<typename T>
 static auto HstringWrapper_AnyConv(const T& self) -> any_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return any_t(strex("{}", self).str());
 }
 
 template<typename T>
 static void HstringWrapper_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
@@ -392,8 +334,6 @@ static void HstringWrapper_AnyConvRev(AngelScript::asIScriptGeneric* gen)
 
 static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, bool hstring_key1)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto self = GetGenericObjectAs<TextPackKey>(gen);
@@ -427,85 +367,61 @@ static void TextPackKey_ConstructFromGen(AngelScript::asIScriptGeneric* gen, boo
 
 static void TextPackKey_Construct1(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, false);
 }
 
 static void TextPackKey_ConstructH1(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, true);
 }
 
 static void TextPackKey_Construct2(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, false);
 }
 
 static void TextPackKey_ConstructH2(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, true);
 }
 
 static void TextPackKey_Construct3(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, false);
 }
 
 static void TextPackKey_ConstructH3(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     TextPackKey_ConstructFromGen(gen, true);
 }
 
 static auto HashedString_EqualsString(const hstring& self, const string& other) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.as_str() == other;
 }
 
 static auto HashedString_StringCast(const hstring& self) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return string(self.as_str());
 }
 
 static auto HashedString_StringConv(const hstring& self) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return string(self.as_str());
 }
 
 static auto HashedString_GetString(const hstring& self) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return string(self.as_str());
 }
 
 static auto HashedString_GetHash(const hstring& self) -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.as_int64();
 }
 
 static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto str = GetGenericObjectAs<const string>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
@@ -515,52 +431,38 @@ static void String_ToHashedString(AngelScript::asIScriptGeneric* gen)
 
 static auto HashedString_GetUHash(const hstring& self) -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.as_uint64();
 }
 
 static void Any_Construct(any_t* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) any_t();
 }
 
 static void Any_Destruct(any_t* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self->~any_t();
 }
 
 template<typename T>
 static void Any_ConstructFrom(any_t* self, const T& other)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) any_t(strex("{}", other).str());
 }
 
 static void Any_ConstructCopy(any_t* self, const any_t& other)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) any_t(other);
 }
 
 static auto Any_Assign(any_t& self, const any_t& other) -> any_t&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self = other;
     return self;
 }
 
 static auto Any_MakeEnumValue(ptr<const EngineMetadata> meta, string_view enum_name, int32_t enum_value) -> any_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     bool failed = false;
     string_view enum_value_name = meta->ResolveEnumValueName(enum_name, enum_value, &failed);
 
@@ -573,8 +475,6 @@ static auto Any_MakeEnumValue(ptr<const EngineMetadata> meta, string_view enum_n
 
 static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -587,8 +487,6 @@ static void Any_ConstructFromEnum(AngelScript::asIScriptGeneric* gen)
 
 static auto Any_ResolveEnumValue(const any_t& self, ptr<const EngineMetadata> meta, string_view enum_name) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto self_view = string_view {self};
     bool failed = false;
     int32_t enum_value = 0;
@@ -628,8 +526,6 @@ static auto Any_ResolveEnumValue(const any_t& self, ptr<const EngineMetadata> me
 
 static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
     auto enum_name = GetGenericAuxiliaryAs<const string>(gen);
@@ -643,8 +539,6 @@ static void Any_ConvEnum(AngelScript::asIScriptGeneric* gen)
 template<typename T>
 static auto Any_Conv(const any_t& self) -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if constexpr (std::same_as<T, bool>) {
         return strvex(self).to_bool();
     }
@@ -685,8 +579,6 @@ static auto Any_Conv(const any_t& self) -> T
 template<typename T>
 static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto self = GetGenericObjectAs<const any_t>(gen);
     ptr<AngelScript::asIScriptEngine> as_engine = gen->GetEngine();
     auto meta = GetEngineMetadata(as_engine);
@@ -729,22 +621,16 @@ static void Any_ConvGen(AngelScript::asIScriptGeneric* gen)
 template<typename T>
 static auto Any_ConvFrom(const T& self) -> any_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return any_t(strex("{}", self).str());
 }
 
 static void Ucolor_ConstructRawRgba(ucolor* self, uint32_t rgba)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) ucolor {rgba};
 }
 
 static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, int32_t a)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto clamped_r = numeric_cast<uint8_t>(std::clamp(r, 0, 255));
     auto clamped_g = numeric_cast<uint8_t>(std::clamp(g, 0, 255));
     auto clamped_b = numeric_cast<uint8_t>(std::clamp(b, 0, 255));
@@ -756,8 +642,6 @@ static void Ucolor_ConstructRgba(ucolor* self, int32_t r, int32_t g, int32_t b, 
 template<typename T>
 static void Time_ConstructWithPlace(T* self, int64_t value, int32_t place)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (place == 0) {
         new (self) T {std::chrono::nanoseconds {value}};
     }
@@ -777,15 +661,11 @@ static void Time_ConstructWithPlace(T* self, int64_t value, int32_t place)
 
 static void Ipos_ConstructXandY(ipos32* self, int32_t x, int32_t y)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) ipos32 {x, y};
 }
 
 static auto Ipos_AddAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x += pos.x;
     self.y += pos.y;
     return self;
@@ -793,8 +673,6 @@ static auto Ipos_AddAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 
 static auto Ipos_SubAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x -= pos.x;
     self.y -= pos.y;
     return self;
@@ -802,29 +680,21 @@ static auto Ipos_SubAssignIpos(ipos32& self, const ipos32& pos) -> ipos32&
 
 static auto Ipos_AddIpos(const ipos32& self, const ipos32& pos) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ipos32 {self.x + pos.x, self.y + pos.y};
 }
 
 static auto Ipos_SubIpos(const ipos32& self, const ipos32& pos) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ipos32 {self.x - pos.x, self.y - pos.y};
 }
 
 static auto Ipos_NegIpos(const ipos32& self) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ipos32 {-self.x, -self.y};
 }
 
 static auto Ipos_AddAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x += size.width;
     self.y += size.height;
     return self;
@@ -832,8 +702,6 @@ static auto Ipos_AddAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 
 static auto Ipos_SubAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x -= size.width;
     self.y -= size.height;
     return self;
@@ -841,57 +709,41 @@ static auto Ipos_SubAssignIsize(ipos32& self, const isize32& size) -> ipos32&
 
 static auto Ipos_AddIsize(const ipos32& self, const isize32& size) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ipos32 {self.x + size.width, self.y + size.height};
 }
 
 static auto Ipos_SubIsize(const ipos32& self, const isize32& size) -> ipos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ipos32 {self.x - size.width, self.y - size.height};
 }
 
 static auto Ipos_FitToSize(const ipos32& self, isize32 size) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.x >= 0 && self.y >= 0 && self.x < size.width && self.y < size.height;
 }
 
 static auto Ipos_FitToRect(const ipos32& self, irect32 rect) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.x >= rect.x && self.y >= rect.y && self.x < rect.x + rect.width && self.y < rect.y + rect.height;
 }
 
 static void Isize_ConstructWandH(isize32* self, int32_t width, int32_t height)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) isize32 {width, height};
 }
 
 static void Irect_ConstructXandYandWandH(irect32* self, int32_t x, int32_t y, int32_t width, int32_t height)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) irect32 {x, y, width, height};
 }
 
 static void Fpos_ConstructXandY(fpos32* self, float32_t x, float32_t y)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) fpos32 {x, y};
 }
 
 static auto Fpos_AddAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x += pos.x;
     self.y += pos.y;
     return self;
@@ -899,8 +751,6 @@ static auto Fpos_AddAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 
 static auto Fpos_SubAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self.x -= pos.x;
     self.y -= pos.y;
     return self;
@@ -908,78 +758,56 @@ static auto Fpos_SubAssignFpos(fpos32& self, const fpos32& pos) -> fpos32&
 
 static auto Fpos_AddFpos(const fpos32& self, const fpos32& pos) -> fpos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return fpos32 {self.x + pos.x, self.y + pos.y};
 }
 
 static auto Fpos_SubFpos(const fpos32& self, const fpos32& pos) -> fpos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return fpos32 {self.x - pos.x, self.y - pos.y};
 }
 
 static auto Fpos_NegFpos(const fpos32& self) -> fpos32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return fpos32 {-self.x, -self.y};
 }
 
 static void Fsize_ConstructWandH(fsize32* self, float32_t width, float32_t height)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) fsize32 {width, height};
 }
 
 static void Mpos_ConstructXandY(mpos* self, int32_t x, int32_t y)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) mpos {numeric_cast<int16_t>(x), numeric_cast<int16_t>(y)};
 }
 
 static auto Mpos_FitToSize(const mpos& self, msize size) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return size.is_valid_pos(self);
 }
 
 static void Hdir_ConstructValue(hdir* self, int32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) hdir(value);
 }
 
 static auto Hdir_GetValue(const hdir& self) -> int8_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.value();
 }
 
 static void Hdir_SetValue(hdir& self, int8_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self = hdir(value);
 }
 
 static auto Hdir_ToMdir(const hdir& self) -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return mdir(self);
 }
 
 static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto engine = GetGameEngine(gen->GetEngine());
     hdir dir = hdir(static_cast<int8_t>(engine->Random(0, GameSettings::MAP_DIR_COUNT - 1)));
     new (gen->GetAddressOfReturnLocation()) hdir(dir);
@@ -987,71 +815,51 @@ static void Global_GetRandomHdir(AngelScript::asIScriptGeneric* gen)
 
 static auto Mdir_GetAngle(const mdir& self) -> int16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.angle();
 }
 
 static void Mdir_SetAngle(mdir& self, int16_t angle)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     self = mdir(angle);
 }
 
 static void Mdir_ConstructAngle(mdir* self, int32_t angle)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) mdir(numeric_cast<int16_t>(angle));
 }
 
 static void Mdir_ConstructHdir(mdir* self, hdir dir)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (self) mdir(dir);
 }
 
 static auto Mdir_GetHex(const mdir& self) -> hdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.hex();
 }
 
 static auto Mdir_IncHex(const mdir& self) -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.incHex();
 }
 
 static auto Mdir_DecHex(const mdir& self) -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.decHex();
 }
 
 static auto Mdir_RotateHex(const mdir& self, int32_t steps) -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.rotateHex(steps);
 }
 
 static auto Mdir_Reverse(const mdir& self) -> mdir
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return self.reverse();
 }
 
 static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call function is null");
 
@@ -1060,8 +868,6 @@ static void RefType_Factory(AngelScript::asIScriptGeneric* gen)
 
 static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto method = GetGenericAuxiliaryAs<const MethodDesc>(gen);
     FO_VERIFY_AND_THROW(method->Call, "Method call function is null");
 
@@ -1070,8 +876,6 @@ static void RefType_MethodCall(AngelScript::asIScriptGeneric* gen)
 
 static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto obj = GetGenericObjectAs<const void>(gen);
     auto other = GetGenericAddressArgObject(gen, 0);
 
@@ -1080,8 +884,6 @@ static void RefType_Equals(AngelScript::asIScriptGeneric* gen)
 
 static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     ptr<const DynamicRefTypeInstance> self_ref = self;
     self_ref->addref();
@@ -1089,8 +891,6 @@ static void DynamicRefType_AddRef(const DynamicRefTypeInstance* self)
 
 static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(self != nullptr, "Script object instance is null");
     ptr<const DynamicRefTypeInstance> self_ref = self;
     self_ref->release();
@@ -1098,8 +898,6 @@ static void DynamicRefType_Release(const DynamicRefTypeInstance* self)
 
 static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto registrar = GetGenericAuxiliaryAs<const PropertyRegistrar>(gen);
 
     auto ref_instance = safe_alloc::make_refcounted<DynamicRefTypeInstance>(registrar);
@@ -1109,8 +907,6 @@ static void DynamicRefType_Factory(AngelScript::asIScriptGeneric* gen)
 
 static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
 
@@ -1122,8 +918,6 @@ static void DynamicRefType_GetProperty(AngelScript::asIScriptGeneric* gen)
 
 static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
 
     new (gen->GetAddressOfReturnLocation()) DynamicRefTypeInstance*(self.get());
@@ -1131,8 +925,6 @@ static void DynamicRefType_GetComponent(AngelScript::asIScriptGeneric* gen)
 
 static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto self = GetGenericObjectAs<DynamicRefTypeInstance>(gen);
     auto prop = GetGenericAuxiliaryAs<const Property>(gen);
 
@@ -1142,8 +934,6 @@ static void DynamicRefType_SetProperty(AngelScript::asIScriptGeneric* gen)
 
 static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> as_engine, const BaseTypeDesc& type)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t as_result = 0;
     const char* name = type.Name.c_str();
     const auto& ref_type = *type.RefType;
@@ -1175,15 +965,13 @@ static void RegisterDynamicRefTypeProperties(ptr<AngelScript::asIScriptEngine> a
 template<typename T>
 static void Global_GetConstant(AngelScript::asIScriptGeneric* gen)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto value = GetGenericAuxiliaryAs<const T>(gen);
     new (gen->GetAddressOfReturnLocation()) T(*value);
 }
 
 void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     auto backend = GetScriptBackend(as_engine);
@@ -1583,7 +1371,7 @@ void RegisterAngelScriptTypes(ptr<AngelScript::asIScriptEngine> as_engine)
 
 void RegisterAngelScriptTypeProperties(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto backend = GetScriptBackend(as_engine);
     auto meta = backend->GetMetadata();

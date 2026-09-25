@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 62
+///@ MigrationRule Version 0 0 63
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -107,7 +107,22 @@ public:
         }
     }
 
-    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool { return arg.starts_with('-'); }
+    // An option names a setting, so its name starts with a letter; a dash before anything else opens a value such as -1
+    [[nodiscard]] static auto IsOption(string_view arg) noexcept -> bool
+    {
+        if (!arg.starts_with('-')) {
+            return false;
+        }
+
+        string_view name = arg.substr(arg.starts_with("--") ? 2 : 1);
+
+        if (name.empty()) {
+            return false;
+        }
+
+        char first = name.front();
+        return (first >= 'A' && first <= 'Z') || (first >= 'a' && first <= 'z');
+    }
     [[nodiscard]] auto Get(size_t index) const noexcept -> string_view { return index < _args.size() ? string_view(_args[index].get()) : string_view(); }
     [[nodiscard]] auto size() const noexcept -> size_t { return _args.size(); }
     [[nodiscard]] auto empty() const noexcept -> bool { return _args.empty(); }
@@ -117,6 +132,25 @@ public:
 
 private:
     vector<CommandLineArg> _args {};
+};
+
+// Owns a process's arguments in UTF-8 for an entry point SDL does not run: on Windows its argv arrives in the ANSI
+// code page, which cannot carry every path, so the arguments are read from the wide command line instead
+class ProgramArgs final
+{
+public:
+    ProgramArgs(int32_t argc, nptr<char*> argv);
+    ProgramArgs(const ProgramArgs&) = delete;
+    ProgramArgs(ProgramArgs&&) noexcept = delete;
+    auto operator=(const ProgramArgs&) = delete;
+    auto operator=(ProgramArgs&&) noexcept = delete;
+    ~ProgramArgs() = default;
+
+    [[nodiscard]] auto GetArgs() const -> CommandLineArgs { return CommandLineArgs {_pointers}; }
+
+private:
+    vector<string> _values {};
+    vector<CommandLineArg> _pointers {};
 };
 
 // Custom any as string
@@ -413,7 +447,7 @@ enum class EngineInfoMessage : uint16_t
     ServerLog = 5001,
 };
 
-static constexpr uint32_t FO_UPDATER_VERSION = 3;
+static constexpr uint32_t FO_UPDATER_VERSION = 5;
 
 enum class UpdatePlatform : uint8_t
 {

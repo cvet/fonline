@@ -40,12 +40,10 @@ PlayerView::PlayerView(ptr<ClientEngine> engine, ident_t id, nptr<const Properti
     ClientEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props, nullptr),
     PlayerProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void PlayerView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 FO_END_NAMESPACE

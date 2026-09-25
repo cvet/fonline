@@ -272,8 +272,6 @@ TEST_CASE("WorkSchedulerParallelMode")
 // run a few frames through the sprite update in both of them
 static auto MakeWorkSchedulerTestSettings(int32_t worker_threads) -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
-
     GlobalSettings settings(false);
 
     settings.ApplyDefaultSettings();
@@ -288,8 +286,6 @@ static auto MakeWorkSchedulerTestSettings(int32_t worker_threads) -> GlobalSetti
 
 static auto MakeWorkSchedulerTestEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("WorkScheduler");
     source->AddFile("Metadata.fometa-client", metadata);

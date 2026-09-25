@@ -40,8 +40,6 @@ class StubAppRender final : public IAppRender
 public:
     explicit StubAppRender(ptr<GlobalSettings> settings)
     {
-        FO_STACK_TRACE_ENTRY();
-
         _screen.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
         _screen.Fullscreen = settings->Render.Fullscreen;
         _renderer.Init(*settings, &_screen, nullptr);
@@ -57,39 +55,17 @@ public:
 
     void SetRenderTarget(nptr<RenderTexture> tex) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         _renderTarget = tex;
         _renderer.SetRenderTarget(tex);
     }
 
-    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetOrthoDepthRange(float32_t nearp, float32_t farp) noexcept override { _renderer.SetOrthoDepthRange(nearp, farp); }
 
-        _renderer.SetOrthoDepthRange(nearp, farp);
-    }
+    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override { _renderer.ClearRenderTarget(color, depth, stencil); }
 
-    void ClearRenderTarget(optional<ucolor> color, bool depth = false, bool stencil = false) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void EnableScissor(irect32 rect) override { _renderer.EnableScissor(rect); }
 
-        _renderer.ClearRenderTarget(color, depth, stencil);
-    }
-
-    void EnableScissor(irect32 rect) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _renderer.EnableScissor(rect);
-    }
-
-    void DisableScissor() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _renderer.DisableScissor();
-    }
+    void DisableScissor() override { _renderer.DisableScissor(); }
 
 private:
     Null_Renderer _renderer;
@@ -100,12 +76,7 @@ private:
 class StubAppInput final : public IAppInput
 {
 public:
-    explicit StubAppInput(ptr<GlobalSettings> settings)
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        ignore_unused(settings);
-    }
+    explicit StubAppInput(ptr<GlobalSettings> settings) { ignore_unused(settings); }
 
     [[nodiscard]] auto IsMouseAvailable() const noexcept -> bool override { return false; }
     [[nodiscard]] auto GetMousePosition() const -> ipos32 override { return _lastMousePos; }
@@ -117,8 +88,6 @@ public:
 
     auto PollEvent(InputEvent& ev) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_eventsQueue.empty() && !_nextFrameEventsQueue.empty()) {
             _eventsQueue.swap(_nextFrameEventsQueue);
         }
@@ -134,24 +103,18 @@ public:
 
     void ClearEvents() override
     {
-        FO_STACK_TRACE_ENTRY();
-
         _eventsQueue.clear();
         _nextFrameEventsQueue.clear();
     }
 
     void SetMousePosition(ipos32 pos, nptr<const IAppWindow> relative_to = nullptr) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(relative_to);
         _lastMousePos = pos;
     }
 
     void PushEvent(const InputEvent& ev, bool push_to_this_frame = false) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         UpdateModifierState(ev);
 
         if (push_to_this_frame) {
@@ -162,25 +125,13 @@ public:
         }
     }
 
-    void SetScreenKeyboardEnabled(bool enabled) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetScreenKeyboardEnabled(bool enabled) override { ignore_unused(enabled); }
 
-        ignore_unused(enabled);
-    }
-
-    void SetClipboardText(string_view text) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _clipboardTextStorage = string(text);
-    }
+    void SetClipboardText(string_view text) override { _clipboardTextStorage = string(text); }
 
 private:
     void UpdateModifierState(const InputEvent& ev)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto update_key_state = [this](KeyCode key, bool pressed) {
             if (key == KeyCode::Lshift || key == KeyCode::Rshift) {
                 _shiftDown = pressed;
@@ -217,29 +168,17 @@ public:
 
     auto ConvertAudio(int32_t channels, int32_t rate, vector<uint8_t>& buf) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(channels, rate, buf);
         return false;
     }
 
-    void SetSource(AudioStreamCallback stream_callback) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetSource(AudioStreamCallback stream_callback) override { ignore_unused(stream_callback); }
 
-        ignore_unused(stream_callback);
-    }
+    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override { ignore_unused(output, buf, volume); }
 
-    void MixAudio(span<uint8_t> output, const_span<uint8_t> buf, int32_t volume) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void LockDevice() override { }
 
-        ignore_unused(output, buf, volume);
-    }
-
-    void LockDevice() override { FO_STACK_TRACE_ENTRY(); }
-
-    void UnlockDevice() override { FO_STACK_TRACE_ENTRY(); }
+    void UnlockDevice() override { }
 };
 
 class StubAppWindow final : public IAppWindow
@@ -249,8 +188,6 @@ public:
         _render {settings},
         _input {settings}
     {
-        FO_STACK_TRACE_ENTRY();
-
         _state.Size = {settings->View.ScreenWidth, settings->View.ScreenHeight};
     }
 
@@ -268,17 +205,10 @@ public:
     [[nodiscard]] auto GetOnLowMemory() noexcept -> ptr<EventObserver<>> override { return &OnLowMemory; }
     [[nodiscard]] auto GetWindowHandleForInput() const -> nptr<WindowInternalHandle> override { return nullptr; }
 
-    void GrabInput(bool enable) override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _grabbed = enable;
-    }
+    void GrabInput(bool enable) override { _grabbed = enable; }
 
     void SetSize(isize32 size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_state.Size != size) {
             _state.Size = size;
             _onWindowSizeChangedDispatcher();
@@ -287,48 +217,29 @@ public:
 
     void SetScreenSize(isize32 size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (_state.Size != size) {
             _state.Size = size;
             _onScreenSizeChangedDispatcher();
         }
     }
 
-    void SetPosition(ipos32 pos) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void SetPosition(ipos32 pos) override { _state.Position = pos; }
 
-        _state.Position = pos;
-    }
-
-    void Minimize() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _state.Minimized = true;
-    }
+    void Minimize() override { _state.Minimized = true; }
 
     auto ToggleFullscreen(bool enable) -> bool override
     {
-        FO_STACK_TRACE_ENTRY();
-
         // The interface reports whether the state changed, not the resulting state
         bool changed = _state.Fullscreen != enable;
         _state.Fullscreen = enable;
         return changed;
     }
 
-    void Blink() override { FO_STACK_TRACE_ENTRY(); }
+    void Blink() override { }
 
-    void AlwaysOnTop(bool enable) override
-    {
-        FO_STACK_TRACE_ENTRY();
+    void AlwaysOnTop(bool enable) override { _state.AlwaysOnTop = enable; }
 
-        _state.AlwaysOnTop = enable;
-    }
-
-    void Destroy() override { FO_STACK_TRACE_ENTRY(); }
+    void Destroy() override { }
 
     EventObserver<> OnWindowSizeChanged {};
     EventObserver<> OnScreenSizeChanged {};
@@ -346,8 +257,6 @@ private:
 
 auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<StubAppWindow>(&settings);
 }
 

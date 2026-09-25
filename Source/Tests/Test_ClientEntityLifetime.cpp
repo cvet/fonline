@@ -42,8 +42,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeClientLifetimeSettings() -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
-
     GlobalSettings settings(false);
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
@@ -55,8 +53,6 @@ static auto MakeClientLifetimeSettings() -> GlobalSettings
 
 static auto MakeClientLifetimeEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEntityLifetime");
     source->AddFile("Metadata.fometa-client", metadata);

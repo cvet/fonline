@@ -44,16 +44,12 @@ static constexpr int32_t PARTICLE_PREVIEW_OFFSET_LIMIT = 100000;
 template<size_t Size>
 static auto ParticleInputBufferView(const array<char, Size>& buffer) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto end = std::find(buffer.begin(), buffer.end(), '\0');
     return {buffer.data(), numeric_cast<size_t>(std::distance(buffer.begin(), end))};
 }
 
 static auto ParticlePathContainsCaseInsensitive(string_view text, string_view filter) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (filter.empty()) {
         return true;
     }
@@ -69,10 +65,9 @@ public:
     explicit ParticlePreviewSubEditor(ptr<MapperEngine> mapper) :
         _mapper {mapper}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    ~ParticlePreviewSubEditor() override { FO_STACK_TRACE_ENTRY(); }
+    ~ParticlePreviewSubEditor() override { }
 
     void Initialize() override;
     void Shutdown() override;
@@ -115,8 +110,6 @@ private:
 
 void ParticlePreviewSubEditor::Initialize()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _particleFactory = _mapper->SprMngr.GetSpriteFactory(typeid(ParticleSpriteFactory)).dyn_cast<ParticleSpriteFactory>();
     FO_VERIFY_AND_THROW(_particleFactory, "Particle sprite factory is not registered");
 
@@ -144,23 +137,17 @@ void ParticlePreviewSubEditor::Initialize()
 
 void ParticlePreviewSubEditor::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Remove();
 }
 
 void ParticlePreviewSubEditor::ResetLayout()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _windowVisible = false;
     Remove();
 }
 
 void ParticlePreviewSubEditor::OnFocusGained()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_resourcesIndexed) {
         RefreshResources();
     }
@@ -168,8 +155,6 @@ void ParticlePreviewSubEditor::OnFocusGained()
 
 void ParticlePreviewSubEditor::OnCurrentMapChanging(nptr<MapView> next_map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_previewMap && _previewMap != next_map) {
         Remove();
     }
@@ -179,8 +164,6 @@ void ParticlePreviewSubEditor::OnCurrentMapChanging(nptr<MapView> next_map)
 
 void ParticlePreviewSubEditor::OnMapUnloading(ptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<MapView> map_view = map;
 
     if (_previewMap == map_view) {
@@ -193,8 +176,6 @@ void ParticlePreviewSubEditor::OnMapUnloading(ptr<MapView> map)
 
 void ParticlePreviewSubEditor::DrawMenuItem()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_enabled) {
         ImGui::MenuItem("Particle preview", nullptr, &_windowVisible);
     }
@@ -202,7 +183,7 @@ void ParticlePreviewSubEditor::DrawMenuItem()
 
 void ParticlePreviewSubEditor::DrawWindows()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_enabled) {
         return;
@@ -353,7 +334,7 @@ void ParticlePreviewSubEditor::DrawWindows()
 
 void ParticlePreviewSubEditor::Play(mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     if (!_mapper->GetCurMap() || _resourcePath.empty()) {
         return;
@@ -392,8 +373,6 @@ void ParticlePreviewSubEditor::Play(mpos hex)
 
 void ParticlePreviewSubEditor::AttachMapSprite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_previewSprite, "Particle preview sprite is missing", _resourcePath);
     FO_VERIFY_AND_THROW(_previewMap && _mapper->GetCurMap() == _previewMap, "Particle preview map is not current", _resourcePath, _previewHex);
     FO_VERIFY_AND_THROW(!_previewMapSprite, "Particle preview already has a map sprite", _resourcePath, _previewHex);
@@ -407,8 +386,6 @@ void ParticlePreviewSubEditor::AttachMapSprite()
 
 void ParticlePreviewSubEditor::Remove()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_mapSpriteValid || _previewMapSprite, "Valid particle preview is missing its map sprite", _resourcePath);
 
     if (_mapSpriteValid) {
@@ -423,7 +400,7 @@ void ParticlePreviewSubEditor::Remove()
 
 void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Editor);
 
     bool resources_changed = _mapper->Resources.ReindexDataSources();
 
@@ -531,8 +508,6 @@ void ParticlePreviewSubEditor::RefreshResources(bool force_reload)
 
 auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_mapper->GetCurMap()) {
         return std::nullopt;
     }
@@ -555,8 +530,6 @@ auto ParticlePreviewSubEditor::ResolveHex() -> optional<mpos>
 
 ParticleEditorManager::ParticleEditorManager(ptr<MapperEngine> mapper)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_SPARK_PARTICLES
     _subEditors.emplace_back(CreateSparkParticleSubEditor(mapper));
 #endif
@@ -565,13 +538,10 @@ ParticleEditorManager::ParticleEditorManager(ptr<MapperEngine> mapper)
 
 ParticleEditorManager::~ParticleEditorManager()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ParticleEditorManager::Initialize()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->Initialize();
     }
@@ -579,8 +549,6 @@ void ParticleEditorManager::Initialize()
 
 void ParticleEditorManager::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->Shutdown();
     }
@@ -588,8 +556,6 @@ void ParticleEditorManager::Shutdown()
 
 void ParticleEditorManager::ResetLayout()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->ResetLayout();
     }
@@ -597,8 +563,6 @@ void ParticleEditorManager::ResetLayout()
 
 void ParticleEditorManager::OnFocusGained()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnFocusGained();
     }
@@ -606,8 +570,6 @@ void ParticleEditorManager::OnFocusGained()
 
 void ParticleEditorManager::OnCurrentMapChanging(nptr<MapView> next_map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnCurrentMapChanging(next_map);
     }
@@ -615,8 +577,6 @@ void ParticleEditorManager::OnCurrentMapChanging(nptr<MapView> next_map)
 
 void ParticleEditorManager::OnMapUnloading(ptr<MapView> map)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->OnMapUnloading(map);
     }
@@ -624,8 +584,6 @@ void ParticleEditorManager::OnMapUnloading(ptr<MapView> map)
 
 void ParticleEditorManager::DrawMenuItems()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         sub_editor->DrawMenuItem();
     }
@@ -633,8 +591,6 @@ void ParticleEditorManager::DrawMenuItems()
 
 void ParticleEditorManager::DrawWindows()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sub_editor : _subEditors) {
         try {
             sub_editor->DrawWindows();

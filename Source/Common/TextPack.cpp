@@ -38,8 +38,6 @@ FO_BEGIN_NAMESPACE
 
 static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool allow_multiline, nptr<istringstream> sstr) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto first = line.find('{', offset);
 
     if (first == string::npos) {
@@ -68,8 +66,6 @@ static auto ExtractBraceToken(string& line, size_t& offset, string& token, bool 
 
 auto TextPackKey::FromParts(hash_resolver& hashes, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
-    FO_STACK_TRACE_ENTRY();
-
     hstring hcollection = hashes.to_hashed_string(collection);
     hstring hkey1 = hashes.to_hashed_string(key1);
     hstring hkey2 = hashes.to_hashed_string(key2);
@@ -79,15 +75,11 @@ auto TextPackKey::FromParts(hash_resolver& hashes, string_view collection, strin
 
 auto TextPackKey::FromPack(hash_resolver& hashes, string_view collection, string_view key1, string_view key2, string_view key3) -> TextPackKey
 {
-    FO_STACK_TRACE_ENTRY();
-
     return FromParts(hashes, collection, key1, key2, key3);
 }
 
 auto TextPackKey::Parse(hash_resolver& hashes, string_view str, TextPackKey& result) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string source {str};
     size_t offset = 0;
     string tokens[4];
@@ -105,41 +97,30 @@ auto TextPackKey::Parse(hash_resolver& hashes, string_view str, TextPackKey& res
 TextPack::TextPack(ptr<hash_resolver> hashes) :
     _hashResolver {hashes}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto TextPack::GetText(TextPackKey key) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetStr(key);
 }
 
 auto TextPack::GetText(TextPackKey key, size_t text_index) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetStr(key, text_index);
 }
 
 auto TextPack::GetTextCount(TextPackKey key) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetStrCount(key);
 }
 
 auto TextPack::IsTextPresent(TextPackKey key) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetTextCount(key) != 0;
 }
 
 auto TextPack::GetStr(TextPackKey key) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     const_span<pair<TextPackKey, string>> entries = FindEntries(key);
 
     if (entries.empty()) {
@@ -155,8 +136,6 @@ auto TextPack::GetStr(TextPackKey key) const -> string_view
 
 auto TextPack::GetStr(TextPackKey key, size_t text_index) const -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     const_span<pair<TextPackKey, string>> entries = FindEntries(key);
 
     if (text_index >= entries.size()) {
@@ -168,21 +147,17 @@ auto TextPack::GetStr(TextPackKey key, size_t text_index) const -> string_view
 
 auto TextPack::GetStrCount(TextPackKey key) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return FindEntries(key).size();
 }
 
 auto TextPack::GetSize() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _strData.size();
 }
 
 auto TextPack::CheckIntersections(TextPack& other) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     bool result = false;
 
@@ -203,7 +178,7 @@ auto TextPack::CheckIntersections(TextPack& other) -> bool
 
 auto TextPack::GetBinaryData() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<uint8_t> data;
     auto writer = data_writer {data};
@@ -228,7 +203,7 @@ auto TextPack::GetBinaryData() -> vector<uint8_t>
 
 auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view collection) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto reader = data_reader {data};
     auto collection_key = TextPackName {MakeKeyPart(collection)};
@@ -271,7 +246,7 @@ auto TextPack::LoadFromBinaryData(const vector<uint8_t>& data, string_view colle
 
 auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     bool failed = false;
 
@@ -312,7 +287,7 @@ auto TextPack::LoadFromString(const string& str, string_view collection) -> bool
 
 void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (auto&& [key, value] : kv) {
         TextPackKey text_key;
@@ -334,7 +309,7 @@ void TextPack::LoadFromMap(const map<string, string>& kv, string_view collection
 
 void TextPack::LoadFromResources(FileSystem& resources, string_view language)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto text_files = resources.FilterFiles("fotxt-bin");
 
@@ -361,24 +336,18 @@ void TextPack::LoadFromResources(FileSystem& resources, string_view language)
 
 void TextPack::AddStr(TextPackKey key, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _strDataSorted = _strDataSorted && (_strData.empty() || !(key < _strData.back().first));
     _strData.emplace_back(key, string(str));
 }
 
 void TextPack::AddStr(TextPackKey key, string&& str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _strDataSorted = _strDataSorted && (_strData.empty() || !(key < _strData.back().first));
     _strData.emplace_back(key, std::move(str));
 }
 
 void TextPack::EraseStr(TextPackKey key)
 {
-    FO_STACK_TRACE_ENTRY();
-
     pair<size_t, size_t> range = EqualRange(key);
 
     _strData.erase(_strData.begin() + static_cast<ptrdiff_t>(range.first), _strData.begin() + static_cast<ptrdiff_t>(range.second));
@@ -386,7 +355,7 @@ void TextPack::EraseStr(TextPackKey key)
 
 void TextPack::Merge(const TextPack& other)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (auto&& [key, value] : other._strData) {
         AddStr(key, value);
@@ -397,7 +366,7 @@ void TextPack::Merge(const TextPack& other)
 
 void TextPack::FixStr(TextPack& base_pack)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     EnsureSorted();
     base_pack.EnsureSorted();
@@ -431,8 +400,6 @@ void TextPack::FixStr(TextPack& base_pack)
 
 void TextPack::Clear()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _strData.clear();
     _strDataSorted = true;
 }
@@ -441,8 +408,6 @@ void TextPack::Clear()
 // read — several threads resolve text from one pack at once. Stable, so strings under one key keep their order
 void TextPack::EnsureSorted()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_strDataSorted) {
         std::stable_sort(_strData.begin(), _strData.end(), [](const pair<TextPackKey, string>& left, const pair<TextPackKey, string>& right) { return left.first < right.first; });
         _strDataSorted = true;
@@ -453,8 +418,6 @@ void TextPack::EnsureSorted()
 // a lookup from a binary search over unsorted data
 auto TextPack::SortedEntries() const -> const_span<pair<TextPackKey, string>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_strDataSorted, "Text pack must be sorted before it is read", _strData.size());
 
     return {_strData.data(), _strData.size()};
@@ -462,8 +425,6 @@ auto TextPack::SortedEntries() const -> const_span<pair<TextPackKey, string>>
 
 auto TextPack::FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey, string>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     pair<size_t, size_t> range = EqualRange(key);
 
     return {_strData.data() + range.first, range.second - range.first};
@@ -472,8 +433,6 @@ auto TextPack::FindEntries(TextPackKey key) const -> const_span<pair<TextPackKey
 // One binary search, then a walk over the duplicates, of which a key has one or two
 auto TextPack::EqualRange(TextPackKey key) const -> pair<size_t, size_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const_span<pair<TextPackKey, string>> entries = SortedEntries();
 
     auto first = std::lower_bound(entries.begin(), entries.end(), key, [](const pair<TextPackKey, string>& entry, const TextPackKey& probe) { return entry.first < probe; });
@@ -488,7 +447,7 @@ auto TextPack::EqualRange(TextPackKey key) const -> pair<size_t, size_t>
 
 auto TextPack::ParseBakeLanguages(const_span<string> declarations) -> BakeLanguageConfig
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(!declarations.empty(), "BakeLanguages must contain at least one language declaration");
 
@@ -516,7 +475,7 @@ auto TextPack::ParseBakeLanguages(const_span<string> declarations) -> BakeLangua
 
 void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<string, map<string, TextPack>>>& lang_packs)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(!bake_languages.Languages.empty(), "Text pack normalization cannot choose a base language because BakeLanguages is empty", lang_packs.size());
 
@@ -586,15 +545,11 @@ void TextPack::FixPacks(const BakeLanguageConfig& bake_languages, vector<pair<st
 
 auto TextPack::MakeKeyPart(string_view value) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !value.empty() ? _hashResolver->to_hashed_string(value) : hstring {};
 }
 
 void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     string_view str = part.as_str();
     writer.write<uint32_t>(numeric_cast<uint32_t>(str.length()));
 
@@ -605,8 +560,6 @@ void TextPack::WriteKeyPart(data_writer& writer, hstring part) const
 
 auto TextPack::ReadKeyPart(data_reader& reader) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto str_len = reader.read<uint32_t>();
 
     if (str_len == 0) {

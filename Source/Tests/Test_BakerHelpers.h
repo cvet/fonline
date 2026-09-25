@@ -52,8 +52,6 @@ namespace BakerTests
     template<typename T>
     [[nodiscard]] inline auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return const_cast<T*>(&setting);
     }
 
@@ -183,16 +181,12 @@ namespace BakerTests
 
     inline void CleanupMemoryDataSourceFileBuffer(ptr<const uint8_t> p) FO_DEFERRED
     {
-        FO_STACK_TRACE_ENTRY();
-
         unique_arr_ptr<const uint8_t> owned_buf {p.get()};
         ignore_unused(owned_buf);
     }
 
     inline auto MakeMemoryDataSourceFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto released_buf = make_ptr<const uint8_t*>(buf.release());
         return make_unique_del_ptr(released_buf, CleanupMemoryDataSourceFileBuffer);
     }

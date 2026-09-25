@@ -49,8 +49,6 @@ static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span
 template<typename T>
 static auto ReadTrivialValue(const_span<uint8_t> data) -> T
 {
-    FO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_standard_layout_v<T>);
     static_assert(std::is_trivially_copyable_v<T>);
     FO_VERIFY_AND_THROW(data.size() == sizeof(T), "Trivial value payload size does not match the expected type size");
@@ -67,8 +65,6 @@ static auto ReadTrivialValue(const_span<uint8_t> data) -> T
 
 static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(data.size() <= sizeof(int32_t), "Padded int32 payload is wider than a 32-bit integer");
 
     int32_t value = 0;
@@ -85,8 +81,6 @@ static auto ReadPaddedInt32(const_span<uint8_t> data) -> int32_t
 // the payload is untrusted network input, so skipped padding is verified to actually be zero
 static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> data, size_t& offset, size_t alignment)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t aligned_offset = align_up(offset, alignment);
 
     if (aligned_offset > data.size()) {
@@ -104,7 +98,7 @@ static void SkipAlignmentPadding(string_view owner_name, const_span<uint8_t> dat
 
 void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_span<uint8_t> data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     try {
         if (inbound_call.MaxPayloadSize != 0 && data.size() > inbound_call.MaxPayloadSize) {
@@ -132,7 +126,7 @@ void ValidateInboundRemoteCallData(const RemoteCallDesc& inbound_call, const_spa
 
 void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (prop->IsPlainData()) {
         if (data.size() != prop->GetBaseSize()) {
@@ -183,8 +177,6 @@ void ValidateInboundPropertyData(ptr<const Property> prop, const_span<uint8_t> d
 
 static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t max_collection_size, data_reader& reader, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.Kind == ComplexTypeKind::Simple) {
         ValidateInboundSimpleRemoteCallData(type.BaseType, reader, meta);
     }
@@ -265,8 +257,6 @@ static void ValidateInboundRemoteCallArgData(const ComplexTypeDesc& type, size_t
 
 static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, data_reader& reader, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type.IsBool) {
         uint8_t value = reader.read<uint8_t>();
 
@@ -358,8 +348,6 @@ static void ValidateInboundSimpleRemoteCallData(const BaseTypeDesc& type, data_r
 
 static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseTypeDesc& ref_type, span<const uint8_t> raw_data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ref_type.IsRefType, "Type is not a reference type");
     FO_VERIFY_AND_THROW(ref_type.RefType, "Missing required reference type descriptor");
     FO_VERIFY_AND_THROW(ref_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -408,8 +396,6 @@ static void ValidateInboundRefTypeRawData(string_view owner_name, const BaseType
 
 static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDesc& type, const_span<uint8_t> data, size_t& offset, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(offset <= data.size(), "Packed value read offset is past the end of the data buffer");
 
     if (type.IsString) {
@@ -478,8 +464,6 @@ static void ValidateInboundPackedValue(string_view owner_name, const BaseTypeDes
 
 static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& base_type = prop->GetBaseType();
     uint32_t arr_size = 0;
     size_t offset = 0;
@@ -511,8 +495,6 @@ static void ValidateInboundArrayPropertyData(ptr<const Property> prop, const_spa
 
 static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span<uint8_t> data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& base_type = prop->GetBaseType();
     const auto& dict_key_type_raw = prop->GetDictKeyType();
     const auto& dict_key_type = dict_key_type_raw.IsSimpleStruct ? dict_key_type_raw.StructLayout->Fields.front().Type : dict_key_type_raw;
@@ -544,8 +526,6 @@ static void ValidateInboundDictPropertyData(ptr<const Property> prop, const_span
 
 static void ValidateInboundPlainData(const BaseTypeDesc& type, const_span<uint8_t> data, const EngineMetadata& meta)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (data.size() != type.Size) {
         throw ClientDataValidationException("Plain data size mismatch", type.Name, data.size(), type.Size);
     }

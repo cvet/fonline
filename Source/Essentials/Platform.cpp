@@ -43,12 +43,12 @@
 
 FO_BEGIN_NAMESPACE
 
+#if FO_WINDOWS || FO_LINUX || FO_MAC
 static auto make_module_file_name(const string& module_name) noexcept -> string;
+#endif
 
 void platform::info_log(const string& str) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     winapi::output_debug_string(str);
 #elif FO_ANDROID
@@ -62,8 +62,6 @@ void platform::info_log(const string& str) noexcept
 
 void platform::set_thread_name(const string& str) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     (void)winapi::set_thread_description(str);
 #else
@@ -73,8 +71,6 @@ void platform::set_thread_name(const string& str) noexcept
 
 auto platform::get_exe_path() noexcept -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::get_module_file_name();
 #else
@@ -82,18 +78,25 @@ auto platform::get_exe_path() noexcept -> optional<string>
 #endif
 }
 
+auto platform::get_command_line_args() -> optional<vector<string>>
+{
+#if FO_WINDOWS
+    return winapi::get_command_line_args();
+#else
+    return std::nullopt;
+#endif
+}
+
 auto platform::get_user_data_base() noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The environment answers first, because a user who redirected it meant to. Only when it is silent
     // is the OS asked: nothing here drops the caller back to the install directory it cannot write
 #if FO_WINDOWS
-    if (const char* local = std::getenv("LOCALAPPDATA"); local != nullptr && local[0] != 0) {
-        return local;
+    if (auto local = winapi::get_environment_variable("LOCALAPPDATA"); local.has_value() && !local->empty()) {
+        return local.value();
     }
-    if (const char* roaming = std::getenv("APPDATA"); roaming != nullptr && roaming[0] != 0) {
-        return roaming;
+    if (auto roaming = winapi::get_environment_variable("APPDATA"); roaming.has_value() && !roaming->empty()) {
+        return roaming.value();
     }
     if (auto shell_path = winapi::get_local_app_data_path(); shell_path.has_value()) {
         return shell_path.value();
@@ -128,8 +131,6 @@ auto platform::get_user_data_base() noexcept -> string
 
 auto platform::fork_process() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return false;
 #else
@@ -139,8 +140,6 @@ auto platform::fork_process() noexcept -> bool
 
 auto platform::get_current_process_id_str() noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return strex("{}", winapi::get_current_process_id()).str();
 #else
@@ -150,8 +149,6 @@ auto platform::get_current_process_id_str() noexcept -> string
 
 auto platform::get_current_process_identity() noexcept -> process_identity
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     uint32_t pid = winapi::get_current_process_id();
     return process_identity {.pid = pid, .start_time = winapi::get_running_process_start_time(pid).value_or(0)};
@@ -163,8 +160,6 @@ auto platform::get_current_process_identity() noexcept -> process_identity
 
 auto platform::is_process_running(const process_identity& identity) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (identity.pid <= 0 || identity.start_time == 0) {
         return false;
     }
@@ -189,8 +184,6 @@ auto platform::is_process_running(const process_identity& identity) noexcept -> 
 
 auto platform::get_process_memory_usage() noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::get_process_working_set_size();
 #else
@@ -200,8 +193,6 @@ auto platform::get_process_memory_usage() noexcept -> size_t
 
 auto platform::get_process_private_memory_usage() noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::get_process_private_usage();
 #else
@@ -211,8 +202,6 @@ auto platform::get_process_private_memory_usage() noexcept -> size_t
 
 auto platform::get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot
 {
-    FO_STACK_TRACE_ENTRY();
-
     cpu_usage_snapshot result;
 
 #if FO_WINDOWS
@@ -248,8 +237,6 @@ auto platform::get_cpu_usage_snapshot() noexcept -> cpu_usage_snapshot
 
 auto platform::fill_system_random(span<uint8_t> buf) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::fill_system_random(buf);
 #else
@@ -259,65 +246,68 @@ auto platform::fill_system_random(span<uint8_t> buf) noexcept -> bool
 
 auto platform::load_module(const string& module_name) noexcept -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::load_library(make_module_file_name(module_name));
-#else
+#elif FO_LINUX || FO_MAC
     return posix::load_library(make_module_file_name(module_name));
+#else
+    // Android links its runtime into the package and the web build has no module system at all, so there is
+    // nothing to load rather than a loader that fails
+    ignore_unused(module_name);
+    return nullptr;
 #endif
 }
 
 auto platform::load_pinned_module(const string& module_name) noexcept -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::load_pinned_library(make_module_file_name(module_name));
-#else
+#elif FO_LINUX || FO_MAC
     return posix::load_pinned_library(make_module_file_name(module_name));
+#else
+    ignore_unused(module_name);
+    return nullptr;
 #endif
 }
 
 void platform::unload_module(nptr<void> module_handle) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!module_handle) {
         return;
     }
 
 #if FO_WINDOWS
     winapi::free_library(module_handle);
-#else
+#elif FO_LINUX || FO_MAC
     posix::free_library(module_handle);
 #endif
 }
 
 auto platform::get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::get_proc_address(module_handle, func_name).get();
-#else
+#elif FO_LINUX || FO_MAC
     return posix::get_symbol_address(module_handle, func_name).get();
+#else
+    ignore_unused(module_handle, func_name);
+    return nullptr;
 #endif
 }
 
+#if FO_WINDOWS || FO_LINUX || FO_MAC
 static auto make_module_file_name(const string& module_name) noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     string_view extension = ".dll";
 #elif FO_MAC
     string_view extension = ".dylib";
-#else
+#elif FO_LINUX
     string_view extension = ".so";
 #endif
 
     return module_name.ends_with(extension) ? module_name : strex(strex::safe_format, "{}{}", module_name, extension).str();
 }
+#endif
 
 FO_END_NAMESPACE

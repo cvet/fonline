@@ -65,8 +65,6 @@ static_assert(offsetof(ModelMeshVertexData, Color) == offsetof(Vertex3D, Color))
 
 auto ResolveModelParticleSceneBackground(bool direct_scene_draw, bool direct_model_draw, const ParticleSceneBackgroundProvider& scene_background_provider) -> ParticleSceneBackgroundResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!direct_scene_draw) {
         // A direct model still renders an auxiliary atlas frame for preview/hit testing. Its distortion attachments
         // must survive that offscreen pass and retry when the real scene draw follows
@@ -88,8 +86,6 @@ ModelManager::ModelManager(ptr<RenderSettings> settings, ptr<FileSystem> resourc
     _sceneBackgroundProvider {std::move(scene_background_provider)},
     _particleMngr(settings, effect_mngr, render, resources, game_time, std::move(tex_loader), std::move(draw_wireframe), [this]() FO_DEFERRED { return ResolveModelParticleSceneBackground(_directSceneDraw, _settings->Render.ModelDirectDraw, _sceneBackgroundProvider); })
 {
-    FO_STACK_TRACE_ENTRY();
-
     _moveTransitionTime = numeric_cast<float32_t>(_settings->Render.Animation3dSmoothTime) / 1000.0f;
     _moveTransitionTime = std::max(_moveTransitionTime, 0.001f);
 
@@ -108,14 +104,12 @@ ModelManager::~ModelManager() = default;
 
 auto ModelManager::GetBoneHashedString(string_view name) const -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _engineMetadata->Hashes.to_hashed_string(name);
 }
 
 auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // Find already loaded
     hstring name_hashed = _engineMetadata->Hashes.to_hashed_string(fname);
@@ -167,7 +161,7 @@ auto ModelManager::LoadModel(string_view fname) -> nptr<ModelBone>
 
 auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto model_info = GetInformation(name);
 
@@ -199,16 +193,12 @@ auto ModelManager::CreateModel(string_view name) -> unique_nptr<ModelInstance>
 
 void ModelManager::PreloadModel(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto model_info = GetInformation(name);
     ignore_unused(model_info);
 }
 
 auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Try to find instance
     for (size_t i = 0; i != _allModelInfos.size(); ++i) {
         auto model_info = _allModelInfos[i].as_ptr();
@@ -231,8 +221,6 @@ auto ModelManager::GetInformation(string_view name) -> nptr<ModelInformation>
 
 auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i != _hierarchyFiles.size(); ++i) {
         auto model_hierarchy = _hierarchyFiles[i].as_ptr();
 
@@ -258,7 +246,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
 
 static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, hash_resolver& hashes, ptr<ModelBone> owner) -> MeshData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto mesh = MeshData {
         .Owner = owner,
@@ -294,8 +282,6 @@ static auto ConvertModelMeshGeometry(ModelMeshGeometryData&& source, hash_resolv
 
 static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hashes) -> unique_ptr<ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto bone = safe_alloc::make_unique<ModelBone>();
     hstring source_name = hashes.to_hashed_string(source.Name);
     bone->Name = source_name;
@@ -321,8 +307,6 @@ static auto ConvertModelMeshBone(ModelMeshBoneData&& source, hash_resolver& hash
 // ReSharper disable once CppMemberFunctionMayBeConst
 static void FixModelBoneAfterLoad(ptr<ModelBone> bone, ptr<ModelBone> root_bone)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (bone->AttachedMesh) {
         for (size_t i = 0; i < bone->AttachedMesh->SkinBoneNames.size(); i++) {
             if (bone->AttachedMesh->SkinBoneNames[i]) {

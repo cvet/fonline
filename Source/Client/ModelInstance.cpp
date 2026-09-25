@@ -55,8 +55,6 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
     _modelMngr {model_mngr},
     _modelInfo {info}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _speedAdjustBase = 1.0f;
     _speedAdjustCur = 1.0f;
     _speedAdjustLink = 1.0f;
@@ -82,8 +80,6 @@ ModelInstance::ModelInstance(ptr<ModelManager> model_mngr, ptr<ModelInformation>
 
 ModelInstance::~ModelInstance()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     InvalidateCombinedMeshes();
 
     // Children reach the combined-mesh root by walking _parent, so they cannot be left to implicit member
@@ -98,8 +94,6 @@ ModelInstance::~ModelInstance()
 
 void ModelInstance::StartMeshGeneration()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_allowMeshGeneration) {
         _allowMeshGeneration = true;
         GenerateCombinedMeshes();
@@ -108,8 +102,6 @@ void ModelInstance::StartMeshGeneration()
 
 void ModelInstance::PrewarmParticles()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_modelParticles.empty()) {
         return;
     }
@@ -125,8 +117,6 @@ void ModelInstance::PrewarmParticles()
 
 void ModelInstance::AddMoveOffset(ipos32 offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vec3 pos_zero = Convert2dTo3d({0, 0});
     vec3 pos = Convert2dTo3d(offset);
     vec3 diff = pos - pos_zero;
@@ -137,8 +127,6 @@ void ModelInstance::AddMoveOffset(ipos32 offset)
 
 void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Transformations
     if (clear) {
         _matScaleBase = mat44 {1.0f};
@@ -319,8 +307,6 @@ void ModelInstance::SetAnimData(ModelAnimationData& data, bool clear)
 
 void ModelInstance::ApplyDisabledMeshes(const vector<hstring>& disabled_meshes)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // An empty name stands for every mesh of the model, which is how a link hides the whole base body
     for (hstring disabled_mesh_name : disabled_meshes) {
         for (size_t mesh_index = 0; mesh_index != _allMeshes.size(); ++mesh_index) {
@@ -335,16 +321,12 @@ void ModelInstance::ApplyDisabledMeshes(const vector<hstring>& disabled_meshes)
 
 void ModelInstance::SetDir(mdir dir, bool smooth_rotation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetMoveDir(dir, smooth_rotation);
     SetLookDir(dir);
 }
 
 void ModelInstance::SetLookDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!_noRotate) {
@@ -360,8 +342,6 @@ void ModelInstance::SetLookDir(mdir dir)
 
 void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t new_angle = numeric_cast<float32_t>(180 - dir.angle());
 
     if (!is_float_equal(new_angle, _targetMoveDirAngle) || (!smooth_rotation && !is_float_equal(new_angle, _moveDirAngle))) {
@@ -382,8 +362,6 @@ void ModelInstance::SetMoveDir(mdir dir, bool smooth_rotation)
 
 void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 {
-    FO_STACK_TRACE_ENTRY();
-
     mat44 mx = glm::rotate(mat44 {1.0f}, rx, vec3 {1.0f, 0.0f, 0.0f});
     mat44 my = glm::rotate(mat44 {1.0f}, ry, vec3 {0.0f, 1.0f, 0.0f});
     mat44 mz = glm::rotate(mat44 {1.0f}, rz, vec3 {0.0f, 0.0f, 1.0f});
@@ -394,16 +372,12 @@ void ModelInstance::SetRotation(float32_t rx, float32_t ry, float32_t rz)
 
 void ModelInstance::SetScale(float32_t sx, float32_t sy, float32_t sz)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _matScale = glm::scale(mat44 {1.0f}, vec3 {sx, sy, sz});
     RefreshFrameLayout();
 }
 
 void ModelInstance::EnableShadow(bool enabled)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool shadow_disabled = !enabled;
 
     if (_shadowDisabled == shadow_disabled) {
@@ -417,23 +391,17 @@ void ModelInstance::EnableShadow(bool enabled)
 
 void ModelInstance::SetSpeed(float32_t speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _speedAdjustBase = speed;
 }
 
 auto ModelInstance::FindBone(hstring bone_name) const noexcept -> nptr<const ModelBone>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto binding = FindPoseJoint(bone_name);
     return binding ? binding->SourceBone : nullptr;
 }
 
 auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<PoseJointBinding>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto joint_it = _modelInfo->_poseJointIndexes.find(bone_name); joint_it != _modelInfo->_poseJointIndexes.end()) {
         FO_STRONG_ASSERT(joint_it->second < _modelInfo->_poseBones.size(), "Resolved model pose joint index is outside the physical bone map", _modelInfo->_fileName, joint_it->second, _modelInfo->_poseBones.size());
         return PoseJointBinding {this, joint_it->second, _modelInfo->_poseBones[joint_it->second]};
@@ -453,8 +421,6 @@ auto ModelInstance::FindPoseJoint(hstring bone_name) const noexcept -> optional<
 
 void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, vec3 move)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto target_joint = FindPoseJoint(bone_name); target_joint) {
         if (optional<ParticleSystem> particle = _modelMngr->_particleMngr.CreateParticle(particle_name); particle) {
             _modelParticles.emplace_back(ModelParticleSystem {0, safe_alloc::make_unique<ParticleSystem>(std::move(*particle)), target_joint->Owner, target_joint->JointIndex, move, _lookDirAngle, string(particle_name), bone_name});
@@ -464,7 +430,7 @@ void ModelInstance::RunParticle(string_view particle_name, hstring bone_name, ve
 
 auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<const int32_t> layers, float32_t ntime, ModelAnimFlags flags) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto prev_state_anim = _curStateAnim;
     auto prev_action_anim = _curActionAnim;
@@ -798,8 +764,6 @@ auto ModelInstance::PlayAnim(CritterStateAnim state_anim, CritterActionAnim acti
 
 void ModelInstance::SetMovementState(bool staying_pose, bool moving, int32_t moving_speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _isStayingPose = staying_pose;
     _isMoving = staying_pose && moving;
 
@@ -830,7 +794,7 @@ void ModelInstance::SetMovementState(bool staying_pose, bool moving, int32_t mov
 
 void ModelInstance::RefreshMoveAnimation()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (!_moveAnimController) {
         return;
@@ -958,44 +922,32 @@ void ModelInstance::RefreshMoveAnimation()
 
 void ModelInstance::SetAnimInitCallback(function<void(CritterStateAnim&, CritterActionAnim&)> anim_init)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animInitCallback = std::move(anim_init);
 }
 
 void ModelInstance::AddAnimationCallback(ModelAnimationCallback callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animationCallbacks.emplace_back(std::move(callback));
 }
 
 void ModelInstance::SetAnimationCallbacks(vector<ModelAnimationCallback> callbacks)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animationCallbacks = std::move(callbacks);
 }
 
 auto ModelInstance::TakeAnimationCallbacks() -> vector<ModelAnimationCallback>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::move(_animationCallbacks);
 }
 
 void ModelInstance::ClearAnimationCallbacks()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animationCallbacks.clear();
     RequestRedraw();
 }
 
 auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim action_anim) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto index = std::make_pair(state_anim, action_anim);
     auto it = _modelInfo->_animIndexes.find(index);
 
@@ -1004,15 +956,11 @@ auto ModelInstance::HasAnimation(CritterStateAnim state_anim, CritterActionAnim 
 
 auto ModelInstance::ResolveAnimation(CritterStateAnim& state_anim, CritterActionAnim& action_anim) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _modelInfo->GetAnimationIndex(state_anim, action_anim, nullptr) != -1;
 }
 
 auto ModelInstance::GetMovingAnim() const noexcept -> CritterActionAnim
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_curMovingAnimIndex != -1) {
         return _curMovingAnim;
     }
@@ -1023,8 +971,6 @@ auto ModelInstance::GetMovingAnim() const noexcept -> CritterActionAnim
 
 auto ModelInstance::IsAnimationPlaying() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_bodyAnimController) {
         bool track0_playing = _bodyAnimController->GetTrackEnable(0) && _bodyAnimController->GetTrackSpeed(0) > 0.0f;
         bool track1_playing = _bodyAnimController->GetTrackEnable(1) && _bodyAnimController->GetTrackSpeed(1) > 0.0f;
@@ -1037,8 +983,6 @@ auto ModelInstance::IsAnimationPlaying() const -> bool
 
 auto ModelInstance::GetDrawSize() const -> isize32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_frameSize.width % FRAME_SCALE == 0, "3D model frame width is not aligned to the frame scale", _frameSize.width, FRAME_SCALE);
     FO_VERIFY_AND_THROW(_frameSize.height % FRAME_SCALE == 0, "3D model frame height is not aligned to the frame scale", _frameSize.height, FRAME_SCALE);
 
@@ -1047,7 +991,7 @@ auto ModelInstance::GetDrawSize() const -> isize32
 
 auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (_frameSize.width <= 0 || _frameSize.height <= 0 || _frameSize.width % FRAME_SCALE != 0 || _frameSize.height % FRAME_SCALE != 0) {
         return std::nullopt;
@@ -1384,36 +1328,26 @@ auto ModelInstance::GetSpriteBounds() const -> optional<ModelSpriteBounds>
 
 auto ModelInstance::GetViewRect() const -> irect32
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _viewRect;
 }
 
 auto ModelInstance::GetSpeed() const -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _speedAdjustCur * _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
 }
 
 auto ModelInstance::GetMovementSpeed() const -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _speedAdjustBase * _speedAdjustLink * _modelMngr->_globalSpeedAdjust;
 }
 
 auto ModelInstance::GetTime() const -> nanotime
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _modelMngr->_gameTime->GetFrameTime();
 }
 
 auto ModelInstance::GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _modelInfo->_poseBoneJointIndexes.find(bone);
     FO_VERIFY_AND_THROW(it != _modelInfo->_poseBoneJointIndexes.end(), "Model bone is absent from the canonical pose", _modelInfo->_fileName, bone->Name);
     return it->second;
@@ -1421,16 +1355,12 @@ auto ModelInstance::GetPoseJointIndex(ptr<const ModelBone> bone) const -> uint32
 
 auto ModelInstance::GetWorldMatrix(uint32_t joint_index) const -> const mat44&
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(joint_index < _worldMatrices.size(), "Model pose joint index is outside the instance world-matrix snapshot", _modelInfo->_fileName, joint_index, _worldMatrices.size());
     return _worldMatrices[joint_index];
 }
 
 auto ModelInstance::GetProceduralJointRotationAngle(uint32_t joint_index) const noexcept -> optional<float32_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_modelInfo->_rotationBone || is_float_equal(_lookDirAngle, _moveDirAngle)) {
         return std::nullopt;
     }
@@ -1446,8 +1376,6 @@ auto ModelInstance::GetProceduralJointRotationAngle(uint32_t joint_index) const 
 
 auto ModelInstance::FillAnimationProceduralRotations(array<ModelAnimationRuntimePose::ProceduralLocalRotation, ModelAnimationRuntimePose::MAX_PROCEDURAL_ROTATIONS>& procedural_rotations) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t procedural_rotation_count = 0;
     auto append_rotation = [this, &procedural_rotations, &procedural_rotation_count](uint32_t joint_index) {
         auto angle = GetProceduralJointRotationAngle(joint_index);
@@ -1476,8 +1404,6 @@ auto ModelInstance::FillAnimationProceduralRotations(array<ModelAnimationRuntime
 
 void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController> controller, bool active, array<vector<uint8_t>, 2>& joint_masks, array<ModelAnimationRuntimePose::TrackInput, 2>& track_inputs) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t track_index = 0; track_index < track_inputs.size(); track_index++) {
         vector<uint8_t>& joint_mask = joint_masks[track_index];
         FO_STRONG_ASSERT(joint_mask.size() == _modelInfo->_poseJointRuntimeNames.size(), "Animation runtime track mask does not match the canonical model pose", _modelInfo->_fileName, track_index, joint_mask.size(), _modelInfo->_poseJointRuntimeNames.size());
@@ -1507,7 +1433,7 @@ void ModelInstance::FillAnimationTrackInputs(nptr<const ModelAnimationController
 
 void ModelInstance::PrepareAnimationPose(float32_t elapsed, ipos32 pos, float32_t scale)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // Update world matrix, only for root
     if (!_parent) {
@@ -1585,7 +1511,7 @@ void ModelInstance::PrepareAnimationPose(float32_t elapsed, ipos32 pos, float32_
 
 void ModelInstance::EvaluateAnimationPose()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // Pure CPU work over this hierarchy own buffers and the immutable rig behind them: no controller, no callback,
     // no particle, no manager and no GPU object is reached from here, which is what lets a worker run it
@@ -1629,7 +1555,7 @@ void ModelInstance::EvaluateAnimationPose()
 
 void ModelInstance::FinalizeAnimationPose()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     // Children finalize first, exactly where the recursive traversal used to leave them
     for (size_t i = 0; i != _children.size(); ++i) {
@@ -1690,8 +1616,6 @@ void ModelInstance::FinalizeAnimationPose()
 
 void ModelInstance::SnapshotAnimationWorldMatrices()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_animationRuntimePose, "Model instance has no animation runtime pose to snapshot", _modelInfo->_fileName);
     const_span<mat44> animation_world_matrices = _animationRuntimePose->GetWorldMatrices();
     FO_STRONG_ASSERT(animation_world_matrices.size() == _worldMatrices.size(), "Animation world-matrix count does not match the model instance snapshot", _modelInfo->_fileName, animation_world_matrices.size(), _worldMatrices.size());
@@ -1700,7 +1624,7 @@ void ModelInstance::SnapshotAnimationWorldMatrices()
 
 void ModelInstance::BuildRestWorldMatrices()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     FO_STRONG_ASSERT(!_animationRuntimePose, "Runtime-animated model entered the direct-model rest-pose path", _modelInfo->_fileName);
     BuildModelRestWorldMatrices(const_span<ModelPoseJoint> {_modelInfo->_restPoseJoints}, _parentMatrix, span<mat44> {_worldMatrices});
@@ -1727,15 +1651,11 @@ void ModelInstance::BuildRestWorldMatrices()
 
 auto ModelInstance::GetAnimDuration() const -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::chrono::milliseconds(iround<int32_t>(_animDuration * 1000.0f));
 }
 
 auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAnim action_anim) -> timespan
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_bodyAnimController) {
         return {};
     }
@@ -1758,7 +1678,7 @@ auto ModelInstance::GetAnimDuration(CritterStateAnim state_anim, CritterActionAn
 
 void ModelInstance::GenerateCombinedMeshes()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     _spriteBoundsPoseReady = false;
 
@@ -1804,8 +1724,6 @@ void ModelInstance::GenerateCombinedMeshes()
 
 void ModelInstance::InvalidateCombinedMeshes() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ModelInstance* root = this;
 
     while (root->_parent) {
@@ -1822,8 +1740,6 @@ void ModelInstance::InvalidateCombinedMeshes() noexcept
 
 void ModelInstance::FillCombinedMeshes(ptr<const ModelInstance> cur)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Combine meshes
     for (size_t i = 0; i < cur->_allMeshes.size(); i++) {
         CombineMesh(cur, cur->_allMeshes[i], cur->_parent ? cur->_animLink.Layer : 0);
@@ -1837,8 +1753,6 @@ void ModelInstance::FillCombinedMeshes(ptr<const ModelInstance> cur)
 
 auto ModelInstance::CreateCombinedMesh() -> unique_ptr<CombinedMesh>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<CombinedMesh>(CombinedMesh {
         .MeshBuf = _modelMngr->_render->CreateDrawBuffer(true),
         .SkinBindings = vector<SkinBinding>(MODEL_MAX_BONES),
@@ -1847,8 +1761,6 @@ auto ModelInstance::CreateCombinedMesh() -> unique_ptr<CombinedMesh>
 
 void ModelInstance::CombineMesh(ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Skip disabled meshes
     if (mesh_instance->Disabled) {
         return;
@@ -1873,8 +1785,6 @@ void ModelInstance::CombineMesh(ptr<const ModelInstance> owner, ptr<const MeshIn
 
 auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, ptr<const MeshInstance> mesh_instance) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (combined_mesh->EncapsulatedMeshCount == 0) {
         return true;
     }
@@ -1891,7 +1801,7 @@ auto ModelInstance::CanBatchCombinedMesh(ptr<const CombinedMesh> combined_mesh, 
 
 void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelInstance> owner, ptr<const MeshInstance> mesh_instance, int32_t anim_layer)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     ptr<MeshData> mesh_data = mesh_instance->Mesh.get_no_const();
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
@@ -1983,8 +1893,6 @@ void ModelInstance::BatchCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const
 
 void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Cut meshes
     if (!cur->_allCuts.empty()) {
         for (ptr<const ModelCutData> cut : cur->_allCuts) {
@@ -2005,8 +1913,6 @@ void ModelInstance::CutCombinedMeshes(ptr<const ModelInstance> cur)
 // -2 ignore, -1 inside, 0 outside, 1 one point
 static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const vec3& sp, float32_t r, Vertex3D& in) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto sq = [](float32_t f) -> float32_t { return f * f; };
     float32_t a = sq(p2.Position.x - p1.Position.x) + sq(p2.Position.y - p1.Position.y) + sq(p2.Position.z - p1.Position.z);
     float32_t b = 2 * ((p2.Position.x - p1.Position.x) * (p1.Position.x - sp.x) + (p2.Position.y - p1.Position.y) * (p1.Position.y - sp.y) + (p2.Position.z - p1.Position.z) * (p1.Position.z - sp.z));
@@ -2059,7 +1965,7 @@ static auto SphereLineIntersection(const Vertex3D& p1, const Vertex3D& p2, const
 
 void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const ModelCutData> cut)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto& vertices = combined_mesh->MeshBuf->Vertices3D;
     auto& indices = combined_mesh->MeshBuf->Indices;
@@ -2320,8 +2226,6 @@ void ModelInstance::CutCombinedMesh(ptr<CombinedMesh> combined_mesh, ptr<const M
 
 void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Rejected here, where the model that produced the size is still known, instead of failing later as an opaque
     // invalid-argument deep inside the atlas draw
     int32_t max_draw_width = AppRender::MAX_ATLAS_WIDTH / FRAME_SCALE;
@@ -2367,8 +2271,6 @@ void ModelInstance::SetupFrame(isize32 draw_size, ipos32 frame_pivot)
 
 void ModelInstance::PrepareFrameLayout()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_frameLayoutDirty) {
         RefreshFrameLayout();
     }
@@ -2376,14 +2278,12 @@ void ModelInstance::PrepareFrameLayout()
 
 void ModelInstance::RequestRedraw() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _forceDraw = true;
 }
 
 void ModelInstance::RefreshFrameLayout()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     mat44 post_direction_transform = _matTransBase * _matRot;
     mat44 pre_direction_transform = _matRotBase * _matScale * _matScaleBase;
@@ -2421,7 +2321,7 @@ void ModelInstance::RefreshFrameLayout()
 
 void ModelInstance::RefreshConfigurationLayout()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (_parent) {
         return;
@@ -2468,8 +2368,6 @@ void ModelInstance::RefreshConfigurationLayout()
 
 auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 {
-    FO_STACK_TRACE_ENTRY();
-
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     vec3 out {};
     mat44 identity {1.0f};
@@ -2483,8 +2381,6 @@ auto ModelInstance::Convert3dTo2d(vec3 pos) const -> ipos32
 
 auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     const int32_t viewport[4] = {0, 0, _frameSize.width, _frameSize.height};
     float32_t xf = numeric_cast<float32_t>(pos.x) * numeric_cast<float32_t>(FRAME_SCALE);
     float32_t yf = numeric_cast<float32_t>(pos.y) * numeric_cast<float32_t>(FRAME_SCALE);
@@ -2501,8 +2397,6 @@ auto ModelInstance::Convert2dTo3d(ipos32 pos) const -> vec3
 
 auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ProjectPointClip(obj_pos, proj_matrix * model_matrix, viewport, out_pos);
 }
 
@@ -2510,8 +2404,6 @@ auto ModelInstance::ProjectPoint(vec3 obj_pos, const mat44& model_matrix, const 
 // callers like the bounds projection, which projects each envelope corner through several facings
 auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     glm::vec<4, float32_t, glm::defaultp> clip_pos = clip_matrix * glm::vec<4, float32_t, glm::defaultp> {obj_pos.x, obj_pos.y, obj_pos.z, 1.0f};
 
     if (clip_pos.w == 0.0f) {
@@ -2528,8 +2420,6 @@ auto ModelInstance::ProjectPointClip(vec3 obj_pos, const mat44& clip_matrix, con
 
 auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, const mat44& proj_matrix, const int32_t viewport[4], vec3& out_pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t ndc_x = (win_pos.x - numeric_cast<float32_t>(viewport[0])) / numeric_cast<float32_t>(viewport[2]) * 2.0f - 1.0f;
     float32_t ndc_y = (win_pos.y - numeric_cast<float32_t>(viewport[1])) / numeric_cast<float32_t>(viewport[3]) * 2.0f - 1.0f;
     float32_t ndc_z = win_pos.z * 2.0f - 1.0f;
@@ -2546,8 +2436,6 @@ auto ModelInstance::UnprojectPoint(vec3 win_pos, const mat44& model_matrix, cons
 
 auto ModelInstance::MakeRootTransformation(ipos32 pos, float32_t scale, bool direct_scene) const -> mat44
 {
-    FO_STACK_TRACE_ENTRY();
-
     vec3 pos3d = direct_scene ? vec3 {} : Convert2dTo3d(pos);
     mat44 mat_scale = glm::scale(mat44 {1.0f}, vec3 {scale, scale, scale});
     mat44 mat_rot_y = glm::rotate(mat44 {1.0f}, (_moveDirAngle + (_isMovingBack ? 180.0f : 0.0f)) * DEG_TO_RAD_FLOAT, vec3 {0.0f, 1.0f, 0.0f});
@@ -2558,15 +2446,11 @@ auto ModelInstance::MakeRootTransformation(ipos32 pos, float32_t scale, bool dir
 
 auto ModelInstance::NeedDraw() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetTime() - _lastDrawTime >= std::chrono::milliseconds(_modelMngr->_animUpdateThreshold);
 }
 
 void ModelInstance::PoseSpriteFrame(bool advance_animation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     PrepareSpriteFramePose(advance_animation);
     EvaluateFramePose();
     FinalizeFramePose();
@@ -2574,8 +2458,6 @@ void ModelInstance::PoseSpriteFrame(bool advance_animation)
 
 void ModelInstance::PrepareSpriteFramePose(bool advance_animation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // GetSpriteBounds derives the extent from the posed skeleton and the baked particle box rather than from pixels,
     // so the atlas path sizes the frame from this pose and draws only once, at the final size
     _drawProj = _frameProj;
@@ -2585,15 +2467,13 @@ void ModelInstance::PrepareSpriteFramePose(bool advance_animation)
 
 void ModelInstance::DrawSpriteFrame()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Draw the pose established by the preceding PoseSpriteFrame into the currently bound sprite render target
     DrawPosed(true);
 }
 
 void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     _drawProj = proj;
     _directSceneDraw = true;
@@ -2615,8 +2495,6 @@ void ModelInstance::DrawInScene(const mat44& proj, float32_t scale)
 
 void ModelInstance::PrepareFramePose(float32_t scale, bool advance_animation)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _spriteBoundsPoseReady = false;
 
     // The atlas frame-sizing loop re-poses the model several times to converge, and those re-poses must not step the
@@ -2644,15 +2522,11 @@ void ModelInstance::PrepareFramePose(float32_t scale, bool advance_animation)
 
 void ModelInstance::EvaluateFramePose()
 {
-    FO_STACK_TRACE_ENTRY();
-
     EvaluateAnimationPose();
 }
 
 void ModelInstance::FinalizeFramePose()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FinalizeAnimationPose();
 
     _spriteBoundsPoseReady = !_directSceneDraw;
@@ -2660,8 +2534,6 @@ void ModelInstance::FinalizeFramePose()
 
 void ModelInstance::DrawPosed(bool draw_particles)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_actualCombinedMeshesCount != 0) {
         for (size_t i = 0; i < _actualCombinedMeshesCount; i++) {
             DrawCombinedMesh(_combinedMeshes[i], _shadowDisabled || _modelInfo->_shadowDisabled);
@@ -2675,7 +2547,7 @@ void ModelInstance::DrawPosed(bool draw_particles)
 
 void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shadow_disabled)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     auto effect = combined_mesh->DrawEffect ? combined_mesh->DrawEffect : _modelMngr->_effectMngr->Effects.SkinnedModel;
     FO_VERIFY_AND_THROW(effect, "Combined mesh has no draw effect");
@@ -2755,8 +2627,6 @@ void ModelInstance::DrawCombinedMesh(ptr<CombinedMesh> combined_mesh, bool shado
 
 void ModelInstance::DrawAllParticles()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& model_particle : _modelParticles) {
         model_particle.Particle->Draw();
     }
@@ -2768,8 +2638,6 @@ void ModelInstance::DrawAllParticles()
 
 auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto binding = FindPoseJoint(bone_name);
 
     if (!binding) {
@@ -2796,8 +2664,6 @@ auto ModelInstance::GetBonePos(hstring bone_name) const -> optional<ipos32>
 
 auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto binding = FindPoseJoint(bone_name);
 
     if (!binding) {
@@ -2812,7 +2678,7 @@ auto ModelInstance::GetBoneSpritePos(hstring bone_name) const -> optional<ipos32
 
 auto ModelInstance::GetAttachPoints() const -> vector<ModelAttachPoint>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     vector<ModelAttachPoint> points;
 
@@ -2823,8 +2689,6 @@ auto ModelInstance::GetAttachPoints() const -> vector<ModelAttachPoint>
 
 void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int32_t parent_index, vector<ModelAttachPoint>& points) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Every point in the hierarchy is projected through the projector - the root model, the only one that owns a frame
     for (const auto& model_particle : _modelParticles) {
         FO_VERIFY_AND_THROW(model_particle.Owner, "Model particle has no pose owner", model_particle.Id);
@@ -2854,8 +2718,6 @@ void ModelInstance::CollectAttachPoints(ptr<const ModelInstance> projector, int3
 
 auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<ModelBounds3D> active_bounds;
     small_vector<int32_t, 4> active_clips;
     auto include_active_tracks = [this, &active_bounds, &active_clips](const optional<ModelAnimationController>& controller) {
@@ -2873,7 +2735,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
             FO_STRONG_ASSERT(state.ClipIndex >= 0 && numeric_cast<size_t>(state.ClipIndex) < _modelInfo->_animationBounds.size() && _modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)], "Active animation has no baked bounds", _modelInfo->_fileName, state.ClipIndex);
 
             const ModelBounds3D& bounds = *_modelInfo->_animationBounds[numeric_cast<size_t>(state.ClipIndex)];
-            FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, bounds), "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
+            bool bounds_included = IncludeModelBounds(active_bounds, bounds);
+            FO_STRONG_ASSERT(bounds_included, "Active animation bounds are invalid", _modelInfo->_fileName, state.ClipIndex);
             active_clips.emplace_back(state.ClipIndex);
         }
     };
@@ -2882,7 +2745,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
     include_active_tracks(_moveAnimController);
 
     if (!active_bounds) {
-        FO_STRONG_ASSERT(IncludeModelBounds(active_bounds, _modelInfo->_modelBounds), "Aggregate model bounds are invalid", _modelInfo->_fileName);
+        bool bounds_included = IncludeModelBounds(active_bounds, _modelInfo->_modelBounds);
+        FO_STRONG_ASSERT(bounds_included, "Aggregate model bounds are invalid", _modelInfo->_fileName);
     }
 
     optional<mat44> root_inverse;
@@ -2908,7 +2772,8 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
 
         for (int32_t clip_index : active_clips) {
             if (clip_index >= 0 && numeric_cast<size_t>(clip_index) < link.ClipBounds.size() && link.ClipBounds[numeric_cast<size_t>(clip_index)]) {
-                FO_STRONG_ASSERT(IncludeModelBounds(selected, *link.ClipBounds[numeric_cast<size_t>(clip_index)]), "Model link clip bounds are invalid", link.ChildName, clip_index);
+                bool bounds_included = IncludeModelBounds(selected, *link.ClipBounds[numeric_cast<size_t>(clip_index)]);
+                FO_STRONG_ASSERT(bounds_included, "Model link clip bounds are invalid", link.ChildName, clip_index);
             }
         }
 
@@ -2950,15 +2815,14 @@ auto ModelInstance::CollectActiveAnimationBounds() const -> ModelBounds3D
         return true;
     };
 
-    FO_STRONG_ASSERT(include_active_links(this, include_active_links), "Active model link bounds are invalid", _modelInfo->_fileName);
+    bool links_included = include_active_links(this, include_active_links);
+    FO_STRONG_ASSERT(links_included, "Active model link bounds are invalid", _modelInfo->_fileName);
 
     return *active_bounds;
 }
 
 auto ModelInstance::ProjectWorldToSpritePos(vec3 world_pos) const -> optional<ipos32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_frameSize.width <= 0 || _frameSize.height <= 0 || _frameSize.width % FRAME_SCALE != 0 || _frameSize.height % FRAME_SCALE != 0) {
         return std::nullopt;
     }

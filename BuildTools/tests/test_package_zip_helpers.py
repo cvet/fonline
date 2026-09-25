@@ -17,43 +17,6 @@ sys.path.insert(0, str(BUILDTOOLS_DIR))
 import package as _package  # noqa: E402
 
 
-def _write_resource_zip(archive_path: Path, base_path: Path, files: list[Path]) -> bytes:
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.write_files_zip(str(archive_path), str(base_path), [str(path) for path in files])
-    return archive_path.read_bytes()
-
-
-def test_resource_pack_zip_ignores_input_mtime_and_file_order(tmp_path: Path) -> None:
-    base_path = tmp_path / "Pack"
-    nested_path = base_path / "nested"
-    nested_path.mkdir(parents=True)
-
-    first_file = base_path / "z.txt"
-    second_file = nested_path / "b.txt"
-    first_file.write_text("same content\n", encoding="utf-8")
-    second_file.write_text("more content\n", encoding="utf-8")
-
-    first_archive = tmp_path / "first.zip"
-    second_archive = tmp_path / "second.zip"
-
-    first_bytes = _write_resource_zip(first_archive, base_path, [second_file, first_file])
-
-    os.utime(first_file, (1_800_000_000, 1_800_000_000))
-    os.utime(second_file, (1_900_000_000, 1_900_000_000))
-
-    second_bytes = _write_resource_zip(second_archive, base_path, [first_file, second_file])
-
-    assert second_bytes == first_bytes
-
-    with zipfile.ZipFile(second_archive) as archive:
-        infos = archive.infolist()
-        assert [info.filename for info in infos] == ["nested/b.txt", "z.txt"]
-        assert {info.date_time for info in infos} == {(1980, 1, 1, 0, 0, 0)}
-        assert {info.create_system for info in infos} == {3}
-        assert {info.external_attr for info in infos} == {0o644 << 16}
-
-
 def test_resource_pack_validation_rejects_corrupted_entry(tmp_path: Path) -> None:
     base_path = tmp_path / "Pack"
     base_path.mkdir()
@@ -61,7 +24,11 @@ def test_resource_pack_validation_rejects_corrupted_entry(tmp_path: Path) -> Non
     source_path.write_bytes(b"resource payload" * 64)
     archive_path = tmp_path / "resources.zip"
 
-    _write_resource_zip(archive_path, base_path, [source_path])
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.resource_pack_compress_level = 6
+
+    with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        packager.write_stable_zip_entry(archive, str(source_path), "payload.txt")
 
     with zipfile.ZipFile(archive_path) as archive:
         info = archive.getinfo("payload.txt")
@@ -80,20 +47,29 @@ def test_resource_pack_validation_rejects_corrupted_entry(tmp_path: Path) -> Non
         _package.validate_resource_zip(archive_path, ["payload.txt"])
 
 
+def _make_resource_packager() -> _package.Packager:
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.resource_pack_compress_level = 6
+    packager.resource_pack_min_compress_gain = 5
+    packager.resource_archive_paths = {}
+    return packager
+
+
 def test_resource_pack_write_validates_finished_archive(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     base_path = tmp_path / "Pack"
     base_path.mkdir()
     source_path = base_path / "payload.txt"
     source_path.write_text("payload", encoding="utf-8")
-    archive_path = tmp_path / "resources.zip"
+    archive_path = tmp_path / "resources.fores"
     validated: list[tuple[Path, list[str]]] = []
 
     def record_validation(path: str | Path, entries: list[str]) -> None:
         validated.append((Path(path), entries))
 
-    monkeypatch.setattr(_package, "validate_resource_zip", record_validation)
+    monkeypatch.setattr(_package, "validate_resource_pack", record_validation)
 
-    _write_resource_zip(archive_path, base_path, [source_path])
+    packager = _make_resource_packager()
+    packager.write_resource_pack_files(str(archive_path), str(base_path), [str(source_path)])
 
     assert validated == [(archive_path, ["payload.txt"])]
 
@@ -101,18 +77,21 @@ def test_resource_pack_write_validates_finished_archive(tmp_path: Path, monkeypa
 def test_resource_archive_cache_key_uses_names_content_and_compression(tmp_path: Path) -> None:
     source = tmp_path / "payload.txt"
     source.write_bytes(b"payload")
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
+    packager = _make_resource_packager()
 
     baseline = packager.resource_archive_cache_key([("payload.txt", str(source))])
     os.utime(source, (1_900_000_000, 1_900_000_000))
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) == baseline
     assert packager.resource_archive_cache_key([("renamed.txt", str(source))]) != baseline
 
-    packager.zip_compress_level = 7
+    packager.resource_pack_compress_level = 7
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
 
-    packager.zip_compress_level = 6
+    packager.resource_pack_compress_level = 6
+    packager.resource_pack_min_compress_gain = 6
+    assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
+
+    packager.resource_pack_min_compress_gain = 5
     source.write_bytes(b"changed")
     assert packager.resource_archive_cache_key([("payload.txt", str(source))]) != baseline
 
@@ -122,26 +101,23 @@ def test_resource_archive_cache_hit_skips_compression(tmp_path: Path, monkeypatc
     base_path.mkdir()
     source = base_path / "payload.txt"
     source.write_bytes(b"payload")
-    output = tmp_path / "cached.zip"
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.resource_archive_paths = {}
+    output = tmp_path / "cached.fores"
+    packager = _make_resource_packager()
+    real_write = _package.write_resource_pack
 
     def helper(action: str, _key: str, archive_path: str) -> int:
         assert action == "restore"
-        with zipfile.ZipFile(archive_path, "w", zipfile.ZIP_DEFLATED) as archive:
-            archive.writestr("payload.txt", b"payload")
+        real_write(archive_path, [("payload.txt", str(source))], 6, 5)
         return 0
 
     monkeypatch.setattr(packager, "run_resource_archive_cache_helper", helper)
     monkeypatch.setattr(
-        packager, "write_stable_zip_entry",
+        _package, "write_resource_pack",
         lambda *_: pytest.fail("a cache hit must not compress the resource files"))
 
-    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(output), str(base_path), [str(source)])
 
-    with zipfile.ZipFile(output) as archive:
-        assert archive.read("payload.txt") == b"payload"
+    _package.validate_resource_pack(output, ["payload.txt"])
 
 
 def test_resource_archive_cache_miss_is_stored_after_validation(
@@ -150,10 +126,8 @@ def test_resource_archive_cache_miss_is_stored_after_validation(
     base_path.mkdir()
     source = base_path / "payload.txt"
     source.write_bytes(b"payload")
-    output = tmp_path / "created.zip"
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.resource_archive_paths = {}
+    output = tmp_path / "created.fores"
+    packager = _make_resource_packager()
     actions: list[str] = []
 
     def helper(action: str, _key: str, archive_path: str) -> int:
@@ -162,11 +136,10 @@ def test_resource_archive_cache_miss_is_stored_after_validation(
         return _package.RESOURCE_ARCHIVE_CACHE_MISS if action == "restore" else 0
 
     monkeypatch.setattr(packager, "run_resource_archive_cache_helper", helper)
-    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(output), str(base_path), [str(source)])
 
     assert actions == ["restore", "store"]
-    with zipfile.ZipFile(output) as archive:
-        assert archive.read("payload.txt") == b"payload"
+    _package.validate_resource_pack(output, ["payload.txt"])
 
 
 def test_resource_archive_cache_helper_receives_the_generic_protocol(
@@ -182,11 +155,11 @@ def test_resource_archive_cache_helper_receives_the_generic_protocol(
     monkeypatch.setenv("HELPER_REPORT", str(report))
     packager = _package.Packager.__new__(_package.Packager)
 
-    status = packager.run_resource_archive_cache_helper("restore", "a" * 64, str(tmp_path / "pack.zip"))
+    status = packager.run_resource_archive_cache_helper("restore", "a" * 64, str(tmp_path / "pack.fores"))
 
     assert status == _package.RESOURCE_ARCHIVE_CACHE_MISS
     assert json.loads(report.read_text(encoding="utf-8")) == [
-        "restore", "--key", "a" * 64, "--archive", str(tmp_path / "pack.zip")]
+        "restore", "--key", "a" * 64, "--archive", str(tmp_path / "pack.fores")]
 
 
 def test_unavailable_resource_archive_cache_is_not_probed_again(
@@ -197,9 +170,9 @@ def test_unavailable_resource_archive_cache_is_not_probed_again(
     packager = _package.Packager.__new__(_package.Packager)
 
     first_status = packager.run_resource_archive_cache_helper(
-        "restore", "a" * 64, str(tmp_path / "first.zip"))
+        "restore", "a" * 64, str(tmp_path / "first.fores"))
     second_status = packager.run_resource_archive_cache_helper(
-        "restore", "b" * 64, str(tmp_path / "second.zip"))
+        "restore", "b" * 64, str(tmp_path / "second.fores"))
 
     assert first_status == _package.RESOURCE_ARCHIVE_CACHE_UNAVAILABLE
     assert second_status is None
@@ -211,18 +184,15 @@ def test_unavailable_resource_archive_cache_falls_back_to_compression(
     base_path.mkdir()
     source = base_path / "payload.txt"
     source.write_bytes(b"payload")
-    output = tmp_path / "created.zip"
+    output = tmp_path / "created.fores"
     helper = tmp_path / "helper.py"
     helper.write_text("raise SystemExit(3)\n", encoding="utf-8")
     monkeypatch.setenv(_package.RESOURCE_ARCHIVE_CACHE_HELPER_ENV, str(helper))
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.resource_archive_paths = {}
+    packager = _make_resource_packager()
 
-    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(output), str(base_path), [str(source)])
 
-    with zipfile.ZipFile(output) as archive:
-        assert archive.read("payload.txt") == b"payload"
+    _package.validate_resource_pack(output, ["payload.txt"])
 
 
 def test_repeated_resource_archive_in_one_package_is_copied_locally(
@@ -231,17 +201,15 @@ def test_repeated_resource_archive_in_one_package_is_copied_locally(
     base_path.mkdir()
     source = base_path / "payload.txt"
     source.write_bytes(b"payload")
-    first = tmp_path / "first.zip"
-    second = tmp_path / "second.zip"
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.resource_archive_paths = {}
+    first = tmp_path / "first.fores"
+    second = tmp_path / "second.fores"
+    packager = _make_resource_packager()
 
-    packager.write_files_zip(str(first), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(first), str(base_path), [str(source)])
     monkeypatch.setattr(
-        packager, "write_stable_zip_entry",
+        _package, "write_resource_pack",
         lambda *_: pytest.fail("an identical archive in one package must be copied locally"))
-    packager.write_files_zip(str(second), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(second), str(base_path), [str(source)])
 
     assert second.read_bytes() == first.read_bytes()
 
@@ -251,16 +219,14 @@ def test_overwritten_resource_archive_does_not_leave_a_stale_local_key(tmp_path:
     base_path.mkdir()
     source = base_path / "payload.txt"
     source.write_bytes(b"first")
-    output = tmp_path / "resources.zip"
-    packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
-    packager.resource_archive_paths = {}
+    output = tmp_path / "resources.fores"
+    packager = _make_resource_packager()
     first_key = packager.resource_archive_cache_key([("payload.txt", str(source))])
 
-    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(output), str(base_path), [str(source)])
     source.write_bytes(b"second")
     second_key = packager.resource_archive_cache_key([("payload.txt", str(source))])
-    packager.write_files_zip(str(output), str(base_path), [str(source)])
+    packager.write_resource_pack_files(str(output), str(base_path), [str(source)])
 
     assert first_key not in packager.resource_archive_paths
     assert packager.resource_archive_paths == {second_key: str(output)}
@@ -277,7 +243,7 @@ def test_embedded_pack_is_validated_before_it_is_embedded(tmp_path: Path, monkey
     validated: list[list[str]] = []
 
     packager = _package.Packager.__new__(_package.Packager)
-    packager.zip_compress_level = 6
+    packager.bundle_compress_level = 6
 
     real_validate = _package.validate_resource_zip
 
@@ -293,6 +259,35 @@ def test_embedded_pack_is_validated_before_it_is_embedded(tmp_path: Path, monkey
 
     with zipfile.ZipFile(io.BytesIO(data[4:])) as archive:
         assert [info.filename for info in archive.infolist()] == ["nested/b.txt", "z.txt"]
+
+
+def test_embedded_pack_ignores_input_mtime(tmp_path: Path) -> None:
+    # The bundled runtime must stay byte-identical to the PlatformBinaries payload, or the updater sees a change
+    # that is not there, so file times and attributes never reach the archive
+    base_path = tmp_path / "Pack"
+    nested_path = base_path / "nested"
+    nested_path.mkdir(parents=True)
+    first_file = base_path / "z.txt"
+    second_file = nested_path / "b.txt"
+    first_file.write_text("same content\n", encoding="utf-8")
+    second_file.write_text("more content\n", encoding="utf-8")
+
+    packager = _package.Packager.__new__(_package.Packager)
+    packager.bundle_compress_level = 6
+    files = [str(second_file), str(first_file)]
+
+    first_bytes = packager.make_embedded_pack(files, str(base_path))
+    os.utime(first_file, (1_800_000_000, 1_800_000_000))
+    os.utime(second_file, (1_900_000_000, 1_900_000_000))
+    second_bytes = packager.make_embedded_pack(files, str(base_path))
+
+    assert second_bytes == first_bytes
+
+    with zipfile.ZipFile(io.BytesIO(second_bytes[4:])) as archive:
+        infos = archive.infolist()
+        assert {info.date_time for info in infos} == {(1980, 1, 1, 0, 0, 0)}
+        assert {info.create_system for info in infos} == {3}
+        assert {info.external_attr for info in infos} == {0o644 << 16}
 
 
 def test_single_zip_merge_coalesces_identical_package_entries(tmp_path: Path) -> None:

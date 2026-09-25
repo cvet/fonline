@@ -164,6 +164,15 @@ Three tiers, classified by whether an error is *expected* and whether it is *han
 
 Rule of thumb: if you are (or might be) inside a `noexcept` region you **cannot** use `FO_VERIFY_AND_THROW` — pick `CONTINUE` / `RETURN` / `RETURN_VALUE` so the report is emitted *and* the caller is left in a defined state. (`FO_STRONG_ASSERT` is also valid from a `noexcept` region, when the right response is to terminate rather than continue.)
 
+**The condition is a predicate, not an operation.** Every macro of the family - and `FO_STRONG_ASSERT` / `FO_BASIC_STRONG_ASSERT` with it - is written as if it were stripped like an `assert`: the work the rest of the function depends on happens first, into a named local, and the macro only reads the answer. A write, a flush, a read that fills a buffer or advances a reader, a container insertion checked through its `.second`, a file-system change, a job run, a call that fills an out parameter - none of them goes inside the condition:
+
+```cpp
+bool written = _file.write(footer) && _file.flush();
+FO_VERIFY_AND_THROW(written, "Can't commit resource patch footer", _patchPath);
+```
+
+never `FO_VERIFY_AND_THROW(_file.write(footer) && _file.flush(), ...)`. The macros are never compiled out, so the rule is not about losing the call: an operation hidden inside a check reads as a check and is skimmed past as one, and a check that acts cannot be moved, reworded or swapped for another variant without changing what the function does. The script-side `verify` follows the same rule.
+
 **Echeloned (defense-in-depth) detection.** The *same* underlying error may be caught by more than one tier, at different depths — and that is **intentional**: the path from a high-level entry point to the low-level mutation varies, so we catch it as early as possible *without* removing the deeper backstops. Catching an error earlier is always better than later, and there can never be "too much" error protection — so the tiers are **additive, not either/or**. Canonical example, "a script adds a child to an entity that is being destroyed":
 
 1. **`throw` at the top** — the `FO_SCRIPT_API` add-method rejects with `ScriptException` (expected script misuse, caught early).
