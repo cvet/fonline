@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4798,
-    "current_count": 4798,
+    "entry_count": 4797,
+    "current_count": 4797,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2539,
-      "current_count": 2539,
+      "entry_count": 2538,
+      "current_count": 2538,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15058,6 +15058,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.Direct3DLevel9Shaders/description",
+          "source": "If true, Direct3D effects other than model ones also carry level 9.3 code and a build without 3D accepts feature level 9.3 devices; an effect that does not fit level 9.3 fails the bake",
+          "source_sha256": "c5f0bcdce449a6108e365ad6a097523424836f7fc952d408a832cef7b52b0d7b",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.ForceBaking/description",
           "source": "If true, baking of all packs are forced",
           "source_sha256": "4db6ccbe94bccb8b5aaada22144eec3f24de082096ddf1fad3825ff7c38c1883",
@@ -15541,18 +15547,6 @@
           "locator": "/symbols/@id=setting.common.Render.DefaultParticleDrawWidth/description",
           "source": "Default particle draw width",
           "source_sha256": "d1a78073978f041d3ea9cbadf5f0bf4779bb3c378479df54fab14c5194ef0483",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Render.Direct3DPixelShaderProfile/description",
-          "source": "Direct3D pixel shader compile profile",
-          "source_sha256": "d25f66102b6a292aa496df8581912e6d860e4717e38446f268c6c9b11d5c67d8",
-          "status": "current"
-        },
-        {
-          "locator": "/symbols/@id=setting.common.Render.Direct3DVertexShaderProfile/description",
-          "source": "Direct3D vertex shader compile profile",
-          "source_sha256": "501f29a190a679aa233e9e59810b6e224ef0a7aa9fe3b462efdfaa7a058f80ad",
           "status": "current"
         },
         {

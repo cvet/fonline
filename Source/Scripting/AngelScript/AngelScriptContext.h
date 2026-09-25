@@ -52,7 +52,7 @@ FO_BEGIN_NAMESPACE
 struct DebuggerStepState;
 class Property;
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
 struct AngelScriptTracyCallEntry;
 #endif
 
@@ -77,7 +77,7 @@ struct AngelScriptContextExtendedData
     std::atomic_bool ExecutionSuspended {};
     std::atomic<uint64_t> Generation {};
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Script)
     bool TracyExecutionActive {};
     size_t TracyExecutionCalls {};
     vector<nptr<const AngelScriptTracyCallEntry>> TracyStackTrace {};

@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"2351a3223bfd6d2d9ab3968124720f4e39fa9b94e7dac04facf13f56a8f62138"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"5448dfa4ec49d80cd2b93ba87a8804bf13a7ae0fb0e35fc4703c6812aa94aacc"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -236,7 +236,7 @@ Engine захватывает ограниченный массив нативн
 
 Native capture теперь использует bundled LLVM libunwind на Linux, системный libunwind на macOS, Windows unwind tables на 64-bit и frame pointers на 32-bit; crash может начинаться с сохранённого POSIX/SEH register context. На Linux symbols разрешает bundled libbacktrace с fallback `dladdr` для позже загруженных modules; macOS использует `dladdr`, Windows — DbgHelp с каталогами executable/module в search path. Неопознанный frame сохраняет `module+offset` для offline lookup. Обычный trace начинается с вызвавшего capture кода, crash trace — с faulting instruction. Birth stacks managed entries сохраняются как resume points и разворачиваются только при подготовке отчёта, пока opening frame активен.
 
-`FO_STACK_TRACE_ENTRY()` не является ручным thread-local call stack. Вне конфигураций Tracy он не добавляет stack frame; с Tracy он раскрывается в profiling zone. Нативные call stacks получаются платформенным захватом в момент вызова `GetStackTrace()`.
+Нативный call stack захватывается платформой в момент вызова `GetStackTrace()`. `FO_TRACE_ZONE(Category)` — отдельная зона измерения Tracy с фильтрацией по категориям, а не ручная запись в call stack; см. [размещение зон](../how-to/quality/profiling.md#размещение-зон).
 
 ### Мост AngelScript
 

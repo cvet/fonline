@@ -45,8 +45,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeSkeletonJoint(string_view name, initializer_list<string_view> hierarchy, float32_t translation_x = 0.0f) -> ModelSkeletonJoint
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSkeletonJoint joint;
     joint.Name = name;
 

@@ -49,13 +49,10 @@ CritterHexView::CritterHexView(ptr<MapView> map, ident_t id, ptr<const ProtoCrit
     CritterView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void CritterHexView::Init()
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_ENABLE_3D
     RefreshModel();
 #endif
@@ -68,8 +65,6 @@ void CritterHexView::Init()
 
 void CritterHexView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
-
     CritterView::OnDestroySelf();
 
     _spr = nullptr;
@@ -87,8 +82,6 @@ void CritterHexView::OnDestroySelf()
 
 void CritterHexView::SetupSprite(ptr<MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     HexView::SetupSprite(mspr);
 
     mspr->SetElevation(GetElevation());
@@ -101,8 +94,6 @@ void CritterHexView::SetupSprite(ptr<MapSprite> mspr)
 
 void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_moving) {
         _moving->Complete(MovingState::Stopped);
     }
@@ -114,8 +105,6 @@ void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
 
 void CritterHexView::StopMoving()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_moving) {
         _moving->Complete(MovingState::Stopped);
     }
@@ -131,8 +120,6 @@ void CritterHexView::StopMoving()
 
 void CritterHexView::MoveAttachedCritters()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto hex = GetHex();
     auto hex_offset = GetHexOffset();
 
@@ -152,8 +139,6 @@ void CritterHexView::MoveAttachedCritters()
 
 void CritterHexView::Action(CritterAction action, int32_t action_data, nptr<Entity> context_item, bool local_call /* = true */)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _engine->OnCritterAction.Fire(local_call, this, action, action_data, context_item);
 
     switch (action) {
@@ -201,8 +186,6 @@ void CritterHexView::Action(CritterAction action, int32_t action_data, nptr<Enti
 
 void CritterHexView::NextAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _curAnim.reset();
 
     if (_animSequence.empty()) {
@@ -254,8 +237,6 @@ void CritterHexView::NextAnim()
 
 void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim action_anim, nptr<Entity> context_item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     refcount_nptr<Entity> resolved_context_item {};
 
     if (context_item) {
@@ -279,16 +260,12 @@ void CritterHexView::AppendAnim(CritterStateAnim state_anim, CritterActionAnim a
 
 void CritterHexView::StopAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animSequence.clear();
     _curAnim.reset();
 }
 
 void CritterHexView::RefreshView(bool no_smooth)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_ENABLE_3D
     if (_model) {
         int32_t scale_factor = GetScaleFactor();
@@ -386,8 +363,6 @@ void CritterHexView::RefreshView(bool no_smooth)
 
 auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionAnim action_anim) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_ENABLE_3D
     if (_model) {
         return _model->HasAnimation(state_anim, action_anim);
@@ -400,8 +375,6 @@ auto CritterHexView::IsAnimAvailable(CritterStateAnim state_anim, CritterActionA
 #if FO_ENABLE_3D
 auto CritterHexView::GetModelLayersData() const -> ptr<const int32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop_raw_data = GetProperties()->GetRawData(GetPropertyModelLayers());
     FO_VERIFY_AND_THROW(prop_raw_data.size() == sizeof(int32_t) * MODEL_LAYERS_COUNT, "Model layer property raw data size does not match layer count", prop_raw_data.size(), MODEL_LAYERS_COUNT, sizeof(int32_t));
     auto data = make_nptr(prop_raw_data.data());
@@ -410,7 +383,7 @@ auto CritterHexView::GetModelLayersData() const -> ptr<const int32_t>
 
 void CritterHexView::RefreshModel()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     vector<ModelAnimationCallback> animCallbacks {};
 
@@ -463,16 +436,12 @@ void CritterHexView::RefreshModel()
 
 void CritterHexView::ChangeDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ChangeLookDir(dir);
     ChangeMoveDir(dir);
 }
 
 void CritterHexView::ChangeLookDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (dir == GetDir()) {
         return;
     }
@@ -494,8 +463,6 @@ void CritterHexView::ChangeLookDir(mdir dir)
 
 void CritterHexView::ChangeMoveDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_ENABLE_3D
     if (_model) {
         _model->SetMoveDir(dir, true);
@@ -509,8 +476,6 @@ void CritterHexView::ChangeMoveDir(mdir dir)
 
 void CritterHexView::Process()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsFading()) {
         ProcessFading();
     }
@@ -655,8 +620,6 @@ void CritterHexView::Process()
 
 void CritterHexView::SynchronizeMoving()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsMoving()) {
         ProcessMoving();
     }
@@ -664,8 +627,6 @@ void CritterHexView::SynchronizeMoving()
 
 void CritterHexView::NormalizeHexOffset()
 {
-    FO_STACK_TRACE_ENTRY();
-
     mpos hex = GetHex();
     ipos16 hex_offset = GetHexOffset();
 
@@ -689,8 +650,6 @@ void CritterHexView::NormalizeHexOffset()
 
 void CritterHexView::ProcessMoving()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto moving = GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
@@ -748,8 +707,6 @@ void CritterHexView::ProcessMoving()
 
 auto CritterHexView::GetViewRect() const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsMapSpriteValid(), "Critter map sprite is not valid");
 
     return GetMapSprite()->GetViewRect();
@@ -757,8 +714,6 @@ auto CritterHexView::GetViewRect() const -> irect32
 
 void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t cur_index = frm_index % anim->GetFramesCount();
 
     _spr = anim->GetSpr(cur_index);
@@ -826,8 +781,6 @@ void CritterHexView::SetAnimSpr(ptr<const SpriteSheet> anim, int32_t frm_index)
 
 auto CritterHexView::EvaluateMovementDisplacement() const -> ipos32
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsMoving(), "Critter is not currently moving");
 
     auto moving = GetMoving();
@@ -848,8 +801,6 @@ auto CritterHexView::EvaluateMovementDisplacement() const -> ipos32
 
 auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsMoving(), "Critter is not currently moving");
 
     int32_t frames_count = anim->GetFramesCount();
@@ -906,8 +857,6 @@ auto CritterHexView::EvaluateMovementFrameIndex(ptr<const SpriteSheet> anim) con
 
 void CritterHexView::AddExtraOffs(ipos32 offset)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _offsExt.x += numeric_cast<float32_t>(offset.x);
     _offsExt.y += numeric_cast<float32_t>(offset.y);
 
@@ -922,16 +871,12 @@ void CritterHexView::AddExtraOffs(ipos32 offset)
 
 void CritterHexView::RefreshOffs()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto hex_offset = GetHexOffset();
     _sprOffset = ipos32(hex_offset) + _offsExt.round<int32_t>() + _offsAnim;
 }
 
 auto CritterHexView::GetNameTextPos(ipos32& pos) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsMapSpriteValid()) {
         irect32 rect = GetViewRect();
         pos = _map->MapToScreenPos({rect.x + rect.width / 2, rect.y});

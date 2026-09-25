@@ -41,8 +41,6 @@ ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const Prope
     _engine {engine},
     _id {id}
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = GetTypeName();
 
     // The engine is borrowed, not owned: it owns the property registrars, protos, hashes and views this entity
@@ -57,8 +55,6 @@ ClientEntity::ClientEntity(ptr<ClientEngine> engine, ident_t id, ptr<const Prope
 
 ClientEntity::~ClientEntity()
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Usually retired through DestroySelf, but the last owner (a script handle to a received item) may release it instead, and the
     // registry holds borrows, so that release must take the entry with it or a lookup by id returns freed memory
     if (_registered) {
@@ -71,8 +67,6 @@ ClientEntity::~ClientEntity()
 
 void ClientEntity::SetId(ident_t id, bool register_entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_id, "Id is already set");
     FO_VERIFY_AND_THROW(id, "Id is empty");
 
@@ -86,7 +80,7 @@ void ClientEntity::SetId(ident_t id, bool register_entity)
 
 void ClientEntity::DestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     MarkAsDestroying();
 
@@ -123,7 +117,6 @@ void ClientEntity::DestroySelf()
 
 void CustomEntityView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 FO_END_NAMESPACE

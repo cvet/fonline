@@ -55,30 +55,22 @@ struct EffekseerRuntimeState;
 
 static auto EffekseerMalloc(uint32_t size) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::malloc_raw(size).get();
 }
 
 static void EffekseerFree(void* mem, uint32_t size)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(size);
     safe_alloc::free_raw(mem);
 }
 
 static auto EffekseerAlignedMalloc(uint32_t size, uint32_t alignment) -> void*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return safe_alloc::malloc_aligned_raw(size, alignment).get();
 }
 
 static void EffekseerAlignedFree(void* mem, uint32_t size)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Effekseer hands back the size but not the alignment, which is why the aligned tier releases a block
     // without needing it
     ignore_unused(size);
@@ -87,8 +79,6 @@ static void EffekseerAlignedFree(void* mem, uint32_t size)
 
 void InitializeEffekseerMemory() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static std::once_flag once;
     std::call_once(once, [] {
         Effekseer::SetMallocFunc(&EffekseerMalloc);
@@ -100,15 +90,11 @@ void InitializeEffekseerMemory() noexcept
 
 static void LogEffekseerRejection(string_view path, string_view reason)
 {
-    FO_STACK_TRACE_ENTRY();
-
     logging::write(logging::type::warning, "Effekseer particle '{}' rejected: {}", path, reason);
 }
 
 static auto ToUtf8(const char16_t* value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value == nullptr) {
         return {};
     }
@@ -121,8 +107,6 @@ static auto ToUtf8(const char16_t* value) -> string
 
 static auto ToUtf16(string_view value) -> vector<char16_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string source {value};
     vector<char16_t> result(source.size() + 1);
     (void)Effekseer::ConvertUtf8ToUtf16(result.data(), numeric_cast<int32_t>(result.size()), source.c_str());
@@ -131,7 +115,7 @@ static auto ToUtf16(string_view value) -> vector<char16_t>
 
 auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     static_assert(sizeof(Effekseer::Model::Vertex) == 68);
     static_assert(sizeof(Effekseer::Model::Face) == 12);
@@ -249,8 +233,6 @@ auto ValidateEffekseerModelPayload(const_span<uint8_t> data) -> optional<string>
 
 static auto ToEffekseerMatrix43(const mat44& matrix) -> Effekseer::Matrix43
 {
-    FO_STACK_TRACE_ENTRY();
-
     Effekseer::Matrix43 result {};
     // GLM indexes column-major matrices as [column][row] while Effekseer stores the row-vector transform as
     // [row][column], so keeping the same two indices performs the convention swap
@@ -264,8 +246,6 @@ static auto ToEffekseerMatrix43(const mat44& matrix) -> Effekseer::Matrix43
 
 static auto ToEffekseerMatrix44(const mat44& matrix) -> Effekseer::Matrix44
 {
-    FO_STACK_TRACE_ENTRY();
-
     Effekseer::Matrix44 result {};
     // See ToEffekseerMatrix43: equal indices transpose the mathematical
     // convention because GLM's first index denotes a column
@@ -279,36 +259,26 @@ static auto ToEffekseerMatrix44(const mat44& matrix) -> Effekseer::Matrix44
 
 static auto ToVec3(const Effekseer::SIMD::Vec3f& value) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {value.GetX(), value.GetY(), value.GetZ()};
 }
 
 static auto ToColor(const Effekseer::Color& value) -> ucolor
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {value.R, value.G, value.B, value.A};
 }
 
 static auto IsFinite(const Effekseer::SIMD::Vec2f& value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.GetX()) && std::isfinite(value.GetY());
 }
 
 static auto IsFinite(const Effekseer::SIMD::Vec3f& value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.GetX()) && std::isfinite(value.GetY()) && std::isfinite(value.GetZ());
 }
 
 static auto IsFinite(const Effekseer::SIMD::Mat43f& value) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.X.GetX()) && std::isfinite(value.X.GetY()) && std::isfinite(value.X.GetZ()) && std::isfinite(value.X.GetW()) && std::isfinite(value.Y.GetX()) && std::isfinite(value.Y.GetY()) && std::isfinite(value.Y.GetZ()) && std::isfinite(value.Y.GetW()) && std::isfinite(value.Z.GetX()) && std::isfinite(value.Z.GetY()) && std::isfinite(value.Z.GetZ()) && std::isfinite(value.Z.GetW());
 }
 
@@ -319,8 +289,6 @@ public:
         RenderTextureRef {texture},
         AtlasRect {atlas_rect}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(RenderTextureRef, "Effekseer texture wrapper requires a render texture");
         param_.Size = {RenderTextureRef->Size.width, RenderTextureRef->Size.height, 1};
     }
@@ -335,15 +303,11 @@ public:
     explicit FOnlineEffekseerTextureLoader(ParticleTextureLoader texture_loader) :
         _textureLoader {std::move(texture_loader)}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_textureLoader, "Effekseer runtime requires a texture loader");
     }
 
     auto Load(const char16_t* path, Effekseer::TextureType texture_type) -> Effekseer::TextureRef override
     {
-        FO_STACK_TRACE_ENTRY();
-
         // A distortion map is an ordinary image in the atlas; what differs is how the shader reads it, not how it loads
         if (texture_type != Effekseer::TextureType::Color && texture_type != Effekseer::TextureType::Distortion) {
             logging::write(logging::type::warning, "Effekseer texture '{}' rejected: only color and distortion textures are supported", ToUtf8(path));
@@ -375,12 +339,11 @@ public:
     explicit FOnlineEffekseerModelLoader(ptr<FileSystem> resources) :
         _resources {resources}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     auto Load(const char16_t* path) -> Effekseer::ModelRef override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Particles);
 
         string model_path = strex(ToUtf8(path)).format_path().str();
         File file = _resources->ReadFile(model_path);
@@ -411,24 +374,12 @@ private:
 class DetectingGpuParticleFactory final : public Effekseer::GpuParticleFactory
 {
 public:
-    void Reset()
-    {
-        FO_STACK_TRACE_ENTRY();
+    void Reset() { _createResourceCount = 0; }
 
-        _createResourceCount = 0;
-    }
-
-    [[nodiscard]] auto WasRequested() const -> bool
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return _createResourceCount != 0;
-    }
+    [[nodiscard]] auto WasRequested() const -> bool { return _createResourceCount != 0; }
 
     auto CreateResource(const Effekseer::GpuParticles::ParamSet& parameter_set, const Effekseer::Effect* effect) -> Effekseer::GpuParticles::ResourceRef override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter_set, effect);
         _createResourceCount++;
         return nullptr;
@@ -448,13 +399,10 @@ struct EffekseerParticleRuntimeSystem::Impl
         BakedPositionMax {position_max},
         BakedBillboardRadius {billboard_radius}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     void Fail(string_view reason)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (!Failed) {
             Failed = true;
             LogEffekseerRejection(Path, reason);
@@ -480,23 +428,14 @@ struct EffekseerDrawBinding
 {
     void Bind(ptr<EffekseerParticleRuntimeSystem::Impl> system)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(!CurrentSystem, "Effekseer renderer is already bound to a particle system");
         CurrentSystem = system;
     }
 
-    void Unbind()
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        CurrentSystem = nullptr;
-    }
+    void Unbind() { CurrentSystem = nullptr; }
 
     void Fail(string_view reason)
     {
-        FO_STACK_TRACE_ENTRY();
-
         if (CurrentSystem) {
             CurrentSystem->Fail(reason);
         }
@@ -606,8 +545,6 @@ private:
 
 EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mngr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     static constexpr string_view effect_names[BLEND_MODES] = {
         "Effects/Particles_ColorMulAtlas.fofx",
         "Effects/Particles_ColorAddAtlas.fofx",
@@ -635,8 +572,6 @@ EffekseerParticleEffects::EffekseerParticleEffects(ptr<EffectManager> effect_mng
 
 auto EffekseerParticleEffects::ResolveDepthVariant(bool z_test, bool z_write) -> DepthVariantType
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (z_test) {
         return z_write ? DepthVariantType::TestWrite : DepthVariantType::TestNoWrite;
     }
@@ -646,8 +581,6 @@ auto EffekseerParticleEffects::ResolveDepthVariant(bool z_test, bool z_write) ->
 
 auto EffekseerParticleEffects::ResolveWrap(Effekseer::TextureWrapType wrap, EffekseerNodeRenderState& state) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (wrap) {
     case Effekseer::TextureWrapType::Clamp:
         state.ClampInShader = true;
@@ -661,8 +594,6 @@ auto EffekseerParticleEffects::ResolveWrap(Effekseer::TextureWrapType wrap, Effe
 
 auto EffekseerParticleEffects::ResolveDistortion(Effekseer::AlphaBlendType blend, Effekseer::TextureWrapType wrap, bool z_test, bool z_write) -> optional<EffekseerNodeRenderState>
 {
-    FO_STACK_TRACE_ENTRY();
-
     EffekseerNodeRenderState state;
     size_t blend_index = 0;
 
@@ -694,8 +625,6 @@ auto EffekseerParticleEffects::ResolveDistortion(Effekseer::AlphaBlendType blend
 
 auto EffekseerParticleEffects::Resolve(Effekseer::AlphaBlendType blend, Effekseer::TextureWrapType wrap, bool z_test, bool z_write) -> optional<EffekseerNodeRenderState>
 {
-    FO_STACK_TRACE_ENTRY();
-
     EffekseerNodeRenderState state;
     size_t blend_index = 0;
 
@@ -747,7 +676,7 @@ struct EffekseerRingInstanceSnapshot
 template<typename T>
 static void StableSortSnapshotsByCameraDepth(vector<T>& instances, bool reverse_order)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     vector<size_t> draw_order(instances.size());
 
@@ -771,8 +700,6 @@ static void StableSortSnapshotsByCameraDepth(vector<T>& instances, bool reverse_
 
 static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodeParameter& parameter) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (parameter.EffectPointer == nullptr || parameter.BasicParameterPtr == nullptr || parameter.DepthParameterPtr == nullptr) {
         return "sprite renderer received incomplete node parameters";
     }
@@ -830,8 +757,6 @@ static auto ValidateSpriteNodeParameter(const Effekseer::SpriteRenderer::NodePar
 
 static auto ValidateRingNodeParameter(const Effekseer::RingRenderer::NodeParameter& parameter) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (parameter.EffectPointer == nullptr || parameter.BasicParameterPtr == nullptr || parameter.DepthParameterPtr == nullptr) {
         return "ring renderer received incomplete node parameters";
     }
@@ -890,8 +815,6 @@ static auto ValidateRingNodeParameter(const Effekseer::RingRenderer::NodeParamet
 // vector, despite the Manager.h comment claiming normalize(focus - position)
 static auto ExtractCameraBackward(const mat44& view_matrix) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     vec3 backward {view_matrix[0][2], view_matrix[1][2], view_matrix[2][2]};
 
     return glm::dot(backward, backward) > 0.0f ? glm::normalize(backward) : vec3 {0.0f, 0.0f, 1.0f};
@@ -899,8 +822,6 @@ static auto ExtractCameraBackward(const mat44& view_matrix) -> vec3
 
 static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> glm::mat3
 {
-    FO_STACK_TRACE_ENTRY();
-
     Effekseer::SIMD::Vec3f scale;
     Effekseer::SIMD::Mat43f rotation;
     Effekseer::SIMD::Vec3f translation;
@@ -955,8 +876,6 @@ static auto CalculateBillboardBasis(Effekseer::BillboardType billboard, const Ef
 
 static auto CalculateParticlePosition(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& local_position, const vec3& camera_backward) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (billboard == Effekseer::BillboardType::Fixed) {
         Effekseer::SIMD::Vec3f local {local_position.x, local_position.y, local_position.z};
         return ToVec3(Effekseer::SIMD::Vec3f::Transform(local, srt_matrix));
@@ -986,8 +905,6 @@ struct EffekseerNodeTexture
 // unservable slot fails the handle here so every family fails closed through one path
 static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl> system, int32_t texture_index, Effekseer::TextureFilterType filter, ptr<RenderTexture> white_texture, bool distortion = false) -> optional<EffekseerNodeTexture>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (texture_index < 0) {
         return EffekseerNodeTexture {.Texture = white_texture, .AtlasRect = {0.0f, 0.0f, 1.0f, 1.0f}, .PointSampled = false};
     }
@@ -1020,8 +937,6 @@ static auto ResolveEffekseerNodeTexture(ptr<EffekseerParticleRuntimeSystem::Impl
 // binormal; a billboard takes them from its camera-facing basis, a fixed quad from its own rotation
 static auto CalculateParticleTangentFrame(Effekseer::BillboardType billboard, const Effekseer::SIMD::Mat43f& srt_matrix, const Effekseer::SIMD::Vec3f& direction, const vec3& camera_backward) -> pair<vec3, vec3>
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto normalize_axis = [](const vec3& axis, const vec3& fallback) -> vec3 { return glm::dot(axis, axis) > 0.0f ? glm::normalize(axis) : fallback; };
 
     if (billboard == Effekseer::BillboardType::Fixed) {
@@ -1058,8 +973,6 @@ public:
         _render {render},
         _drawWireframe {draw_wireframe}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding, "Effekseer sprite renderer requires draw binding");
 
 #if FO_ENABLE_3D
@@ -1073,8 +986,6 @@ public:
 
     void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(user_data);
         _instances.clear();
         _node.reset();
@@ -1114,8 +1025,6 @@ public:
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
             return;
@@ -1184,8 +1093,6 @@ public:
 
     void EndRendering(const NodeParameter& parameter, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
@@ -1220,7 +1127,7 @@ public:
 private:
     void Render(ptr<EffekseerParticleRuntimeSystem::Impl> system)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         FO_VERIFY_AND_THROW(_node, "Effekseer sprite render called without a node snapshot");
 
@@ -1326,7 +1233,7 @@ private:
     // particle's frame rather than the screen's, which is why this path fills Vertices3D
     void RenderDistortion(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerNodeTexture& texture)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         FO_VERIFY_AND_THROW(_node, "Effekseer sprite distortion render called without a node snapshot");
 
@@ -1458,8 +1365,6 @@ public:
         _drawWireframe {draw_wireframe},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding, "Effekseer ring renderer requires draw binding");
 
         constexpr ucolor white_pixel {255, 255, 255, 255};
@@ -1469,8 +1374,6 @@ public:
 
     void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(user_data);
         ResetState();
 
@@ -1509,8 +1412,6 @@ public:
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
@@ -1584,8 +1485,6 @@ public:
 
     void EndRendering(const NodeParameter& parameter, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
@@ -1615,8 +1514,6 @@ public:
 private:
     void ResetState()
     {
-        FO_STACK_TRACE_ENTRY();
-
         _instances.clear();
         _node.reset();
         _declaredInstanceCount = 0;
@@ -1624,8 +1521,6 @@ private:
 
     void Render(ptr<EffekseerParticleRuntimeSystem::Impl> system)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_node, "Effekseer ring render called without a node snapshot");
 
         optional<EffekseerNodeTexture> texture = ResolveEffekseerNodeTexture(system, _node->TextureIndex, _node->TextureFilter, _whiteTexture.get());
@@ -1646,7 +1541,7 @@ private:
 
     void RenderChunk(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerNodeTexture& texture, size_t first_instance, size_t instance_count)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         FO_VERIFY_AND_THROW(_node, "Effekseer ring chunk render called without a node snapshot");
 
@@ -1837,8 +1732,6 @@ private:
 // what the family calls its axis: the emitter's up for a ribbon, the travel direction for a track
 static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_direction) -> vec3
 {
-    FO_STACK_TRACE_ENTRY();
-
     vec3 width_axis = glm::cross(band_axis, view_direction);
 
     if (glm::dot(width_axis, width_axis) <= std::numeric_limits<float32_t>::epsilon()) {
@@ -1854,8 +1747,6 @@ static auto CalculateStripWidthAxis(const vec3& band_axis, const vec3& view_dire
 // product into the byte range and truncates it rather than rounding, so this reproduces that exactly
 static auto LerpTrackColor(const Effekseer::Color& from, const Effekseer::Color& to, float32_t factor) -> Effekseer::Color
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto lerp_channel = [factor](uint8_t from_channel, uint8_t to_channel) -> uint8_t {
         float32_t value = numeric_cast<float32_t>(from_channel) + (numeric_cast<float32_t>(to_channel) - numeric_cast<float32_t>(from_channel)) * factor;
 
@@ -1875,8 +1766,6 @@ static auto LerpTrackColor(const Effekseer::Color& from, const Effekseer::Color&
 // found spline smoothing, tiled UVs, trail smoothing, view offset and left-handed strips entirely unused
 static auto ValidateStripNodeParameter(const Effekseer::NodeRendererBasicParameter* basic, const Effekseer::NodeRendererDepthParameter* depth, const Effekseer::NodeRendererTextureUVTypeParameter* texture_uv, int32_t spline_division, bool enable_view_offset, bool is_right_hand) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (basic == nullptr || depth == nullptr || texture_uv == nullptr) {
         return "strip renderer received incomplete node parameters";
     }
@@ -1932,8 +1821,6 @@ static auto ValidateStripNodeParameter(const Effekseer::NodeRendererBasicParamet
 // Effekseer picks which faces to discard per node; the renderer carries the same choice per draw
 static auto ConvertEffekseerCulling(Effekseer::CullingType culling) -> optional<CullModeType>
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (culling) {
     case Effekseer::CullingType::Front:
         return CullModeType::Front;
@@ -1948,8 +1835,6 @@ static auto ConvertEffekseerCulling(Effekseer::CullingType culling) -> optional<
 
 static auto ValidateModelNodeParameter(const Effekseer::ModelRenderer::NodeParameter& parameter) -> string_view
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (parameter.EffectPointer == nullptr || parameter.BasicParameterPtr == nullptr || parameter.DepthParameterPtr == nullptr) {
         return "model renderer received incomplete node parameters";
     }
@@ -2022,8 +1907,6 @@ public:
         _drawBuffer {render->CreateDrawBuffer(false)},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
-        FO_STACK_TRACE_ENTRY();
-
         constexpr ucolor white_pixel {255, 255, 255, 255};
         _whiteTexture->UpdateTextureRegion({}, {1, 1}, {&white_pixel, 1});
         _drawBuffer->PrimType = RenderPrimitiveType::TriangleList;
@@ -2033,8 +1916,6 @@ public:
     // owns the texture stretch so the mapping stays the emitter's regardless of how many instances were alive
     void Draw(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerStripNodeSnapshot& node, const vector<EffekseerStripWidthTriple>& chain, size_t declared_instance_count)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(chain.size() >= 2, "Effekseer strip draw requires at least one segment", chain.size());
         FO_VERIFY_AND_THROW(declared_instance_count >= chain.size(), "Effekseer strip declared fewer instances than it delivered", declared_instance_count, chain.size());
 
@@ -2056,7 +1937,7 @@ public:
 private:
     void DrawChunk(ptr<EffekseerParticleRuntimeSystem::Impl> system, const EffekseerStripNodeSnapshot& node, const vector<EffekseerStripWidthTriple>& chain, size_t declared_instance_count, const EffekseerNodeTexture& texture, size_t first_segment, size_t segment_count)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         optional<EffekseerNodeRenderState> render_state = _particleEffects.Resolve(node.AlphaBlend, node.TextureWrap, node.ZTest, node.ZWrite);
 
@@ -2190,15 +2071,11 @@ public:
         _binding {std::move(binding)},
         _geometry {effect_mngr, render, draw_wireframe}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding, "Effekseer ribbon renderer requires draw binding");
     }
 
     void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(count, user_data);
         ResetGroup();
         _node.reset();
@@ -2229,8 +2106,6 @@ public:
     // A node draws one strip per instance group, so the chain restarts here rather than in BeginRendering
     void BeginRenderingGroup(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
         ResetGroup();
 
@@ -2248,8 +2123,6 @@ public:
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed || _declaredInstanceCount == 0) {
@@ -2285,8 +2158,6 @@ public:
 
     void EndRenderingGroup(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, count, user_data);
 
         // A band needs two instances to span a segment; a shorter group draws nothing, exactly as upstream leaves it
@@ -2299,8 +2170,6 @@ public:
 
     void EndRendering(const NodeParameter& parameter, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
         ResetGroup();
         _node.reset();
@@ -2309,8 +2178,6 @@ public:
 private:
     [[nodiscard]] auto MakeWidthTriple(const InstanceParameter& instance) const -> EffekseerStripWidthTriple
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer ribbon triple built without a bound system");
 
         float32_t left_offset = instance.Positions[0];
@@ -2350,8 +2217,6 @@ private:
 
     void ResetGroup()
     {
-        FO_STACK_TRACE_ENTRY();
-
         _chain.clear();
         _declaredInstanceCount = 0;
     }
@@ -2390,15 +2255,11 @@ public:
         _binding {std::move(binding)},
         _geometry {effect_mngr, render, draw_wireframe}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding, "Effekseer track renderer requires draw binding");
     }
 
     void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(count, user_data);
         ResetGroup();
         _node.reset();
@@ -2435,8 +2296,6 @@ public:
 
     void BeginRenderingGroup(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
         ResetGroup();
 
@@ -2454,8 +2313,6 @@ public:
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed || _declaredInstanceCount == 0) {
@@ -2499,8 +2356,6 @@ public:
 
     void EndRenderingGroup(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, count, user_data);
 
         if (_binding->CurrentSystem && _node && !_binding->CurrentSystem->Failed && _instances.size() >= 2) {
@@ -2512,8 +2367,6 @@ public:
 
     void EndRendering(const NodeParameter& parameter, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
         ResetGroup();
         _node.reset();
@@ -2522,8 +2375,6 @@ public:
 private:
     [[nodiscard]] auto MakeWidthChain() const -> vector<EffekseerStripWidthTriple>
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding->CurrentSystem, "Effekseer track chain built without a bound system");
         FO_VERIFY_AND_THROW(_instances.size() >= 2, "Effekseer track chain requires at least one segment", _instances.size());
 
@@ -2574,8 +2425,6 @@ private:
 
     [[nodiscard]] static auto NormalizeTrailAxis(const EffekseerTrackInstanceSnapshot& to, const EffekseerTrackInstanceSnapshot& from) -> vec3
     {
-        FO_STACK_TRACE_ENTRY();
-
         vec3 axis = ToVec3(to.SRTMatrix43.GetTranslation()) - ToVec3(from.SRTMatrix43.GetTranslation());
 
         return glm::dot(axis, axis) > 0.0f ? glm::normalize(axis) : vec3 {};
@@ -2583,8 +2432,6 @@ private:
 
     void ResetGroup()
     {
-        FO_STACK_TRACE_ENTRY();
-
         _instances.clear();
         _declaredInstanceCount = 0;
     }
@@ -2634,8 +2481,6 @@ public:
         _drawWireframe {draw_wireframe},
         _whiteTexture {render->CreateTexture({1, 1}, true, false)}
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_binding, "Effekseer model renderer requires draw binding");
 
         constexpr ucolor white_pixel {255, 255, 255, 255};
@@ -2645,8 +2490,6 @@ public:
 
     void BeginRendering(const NodeParameter& parameter, int32_t count, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(user_data);
         ResetState();
 
@@ -2690,8 +2533,6 @@ public:
 
     void Rendering(const NodeParameter& parameter, const InstanceParameter& instance, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
@@ -2740,8 +2581,6 @@ public:
 
     void EndRendering(const NodeParameter& parameter, void* user_data) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         ignore_unused(parameter, user_data);
 
         if (!_binding->CurrentSystem || !_node || _binding->CurrentSystem->Failed) {
@@ -2758,8 +2597,6 @@ public:
 private:
     void ResetState()
     {
-        FO_STACK_TRACE_ENTRY();
-
         _instances.clear();
         _node.reset();
         _declaredInstanceCount = 0;
@@ -2767,8 +2604,6 @@ private:
 
     void Render(ptr<EffekseerParticleRuntimeSystem::Impl> system)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(_node, "Effekseer model render called without a node snapshot");
 
         if (_node->ModelIndex < 0 || _node->ModelIndex >= system->Effect->GetModelCount()) {
@@ -2814,7 +2649,7 @@ private:
 
     void RenderChunk(ptr<EffekseerParticleRuntimeSystem::Impl> system, const Effekseer::ModelRef& model, const EffekseerNodeTexture& texture, size_t first_instance, size_t instance_count)
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Render);
 
         FO_VERIFY_AND_THROW(_node, "Effekseer model chunk render called without a node snapshot");
 
@@ -2927,12 +2762,7 @@ private:
     }
 
     // An animated mesh cycles through its frames, exactly as the reference renderer indexes them
-    [[nodiscard]] static auto ResolveFrame(const Effekseer::ModelRef& model, int32_t frame) -> int32_t
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        return frame % model->GetFrameCount();
-    }
+    [[nodiscard]] static auto ResolveFrame(const Effekseer::ModelRef& model, int32_t frame) -> int32_t { return frame % model->GetFrameCount(); }
 
     shared_ptr<EffekseerDrawBinding> _binding;
     EffekseerParticleEffects _particleEffects;
@@ -2951,8 +2781,6 @@ private:
 // rejecting the rest here keeps an undrawable effect from being accepted and then vanishing mid-play
 static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::EffectBasicRenderParameter& parameter, ptr<Effekseer::Effect> effect, bool sprite_family) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool distortion = parameter.MaterialType == Effekseer::RendererMaterialType::BackDistortion;
 
     if ((parameter.MaterialType != Effekseer::RendererMaterialType::Default && !distortion) || parameter.MaterialIndex != -1) {
@@ -3016,8 +2844,6 @@ static auto ValidateStaticNodeMaterial(string_view path, const Effekseer::Effect
 
 static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> node, ptr<Effekseer::Effect> effect) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!node) {
         LogEffekseerRejection(path, "effect contains a null node");
         return false;
@@ -3053,8 +2879,6 @@ static auto ValidateEffectNode(string_view path, nptr<Effekseer::EffectNode> nod
 
 static auto ValidateEffect(string_view path, ptr<Effekseer::Effect> effect, bool gpu_particles_requested) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (gpu_particles_requested) {
         LogEffekseerRejection(path, "GPU particles are unsupported");
         return false;
@@ -3088,7 +2912,7 @@ struct EffekseerRuntimeState
         TrackRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerTrackRenderer>(effect_mngr, render, draw_wireframe, Binding)},
         ModelRenderer {Effekseer::MakeRefPtr<FOnlineEffekseerModelRenderer>(effect_mngr, render, draw_wireframe, Binding)}
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Particles);
 
         FO_VERIFY_AND_THROW(Setting, "Failed to create Effekseer setting");
         FO_VERIFY_AND_THROW(Manager, "Failed to create Effekseer manager");
@@ -3121,7 +2945,7 @@ struct EffekseerRuntimeState
 
 static void RetireEffekseerHandle(ptr<EffekseerParticleRuntimeSystem::Impl> system)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (system->Handle < 0) {
         return;
@@ -3147,7 +2971,6 @@ struct EffekseerParticleRuntimeBackend::Impl
         Runtime {safe_alloc::make_shared<EffekseerRuntimeState>(services.EffectMngr, services.Render, services.DrawWireframe, services.Resources, services.TextureLoader, services.SceneBackgroundProvider)},
         Resources {services.Resources}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     shared_ptr<EffekseerRuntimeState> Runtime;
@@ -3157,41 +2980,30 @@ struct EffekseerParticleRuntimeBackend::Impl
 EffekseerParticleRuntimeSystem::EffekseerParticleRuntimeSystem(unique_ptr<Impl>&& impl) :
     _impl {std::move(impl)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 EffekseerParticleRuntimeSystem::~EffekseerParticleRuntimeSystem()
 {
-    FO_STACK_TRACE_ENTRY();
-
     RetireEffekseerHandle(_impl.as_ptr());
 }
 
 auto EffekseerParticleRuntimeSystem::IsActive() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !_impl->Failed && _impl->Handle >= 0 && _impl->Runtime->Manager->Exists(_impl->Handle);
 }
 
 auto EffekseerParticleRuntimeSystem::GetDrawInScene() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return true;
 }
 
 auto EffekseerParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return MakeParticleBounds(_impl->BakedPositionMin, _impl->BakedPositionMax, _impl->BakedBillboardRadius);
 }
 
 auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Framed from the mandatory bake-time box and only while instances exist, so nothing is measured per frame and
     // a finished or unstarted effect reserves no space
     if (_impl->Failed || _impl->Handle < 0 || !_impl->Runtime->Manager->Exists(_impl->Handle) || _impl->Runtime->Manager->GetInstanceCount(_impl->Handle) == 0) {
@@ -3209,8 +3021,6 @@ auto EffekseerParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<
 
 void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (setup.LookDirectionAngle != 0.0f) {
         _impl->Fail("look-direction oriented particles are unsupported");
         return;
@@ -3236,7 +3046,7 @@ void EffekseerParticleRuntimeSystem::Setup(const ParticleRuntimeSetup& setup)
 
 auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (_impl->Handle >= 0 && !_impl->Runtime->Manager->Exists(_impl->Handle)) {
         RetireEffekseerHandle(_impl.as_ptr());
@@ -3263,7 +3073,7 @@ auto EffekseerParticleRuntimeSystem::Prewarm() -> float32_t
 
 void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     RetireEffekseerHandle(_impl.as_ptr());
     if (_impl->Failed) {
@@ -3284,7 +3094,7 @@ void EffekseerParticleRuntimeSystem::Respawn(optional<int32_t> seed)
 
 void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Invalid Effekseer update delta", delta_seconds);
     if (_impl->Failed || _impl->Handle < 0) {
@@ -3307,8 +3117,6 @@ void EffekseerParticleRuntimeSystem::Update(float32_t delta_seconds)
 
 void EffekseerParticleRuntimeSystem::RefreshRenderTransform()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsActive()) {
         Update(0.0f);
     }
@@ -3316,7 +3124,7 @@ void EffekseerParticleRuntimeSystem::RefreshRenderTransform()
 
 void EffekseerParticleRuntimeSystem::Draw()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (!IsActive()) {
         return;
@@ -3344,31 +3152,25 @@ void EffekseerParticleRuntimeSystem::Draw()
 EffekseerParticleRuntimeBackend::EffekseerParticleRuntimeBackend(const ParticleRuntimeServices& services) :
     _impl {safe_alloc::make_unique<Impl>(services)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 EffekseerParticleRuntimeBackend::~EffekseerParticleRuntimeBackend()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto EffekseerParticleRuntimeBackend::GetExtensions() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {"efk"};
 }
 
 void EffekseerParticleRuntimeBackend::InvalidateResource(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(path);
 }
 
 auto EffekseerParticleRuntimeBackend::Create(string_view path) -> unique_nptr<ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     if (strex(path).get_file_extension() != "efk") {
         LogEffekseerRejection(path, "unsupported file extension");
@@ -3437,8 +3239,6 @@ static constexpr size_t EFFEKSEER_BOUNDS_TRAILER_SIZE = EFFEKSEER_BOUNDS_TRAILER
 
 static void WriteLittleEndianUint32(vector<uint8_t>& out, uint32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     out.push_back(numeric_cast<uint8_t>(value & 0xFFu));
     out.push_back(numeric_cast<uint8_t>((value >> 8) & 0xFFu));
     out.push_back(numeric_cast<uint8_t>((value >> 16) & 0xFFu));
@@ -3447,15 +3247,11 @@ static void WriteLittleEndianUint32(vector<uint8_t>& out, uint32_t value)
 
 static auto ReadLittleEndianUint32(const_span<uint8_t> data, size_t offset) -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return uint32_t {data[offset]} | (uint32_t {data[offset + 1]} << 8) | (uint32_t {data[offset + 2]} << 16) | (uint32_t {data[offset + 3]} << 24);
 }
 
 void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bounds, const vec3& max_bounds, float32_t billboard_radius)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t payload_size = numeric_cast<uint32_t>(binary.size());
     const float32_t values[EFFEKSEER_BOUNDS_TRAILER_FLOATS] = {min_bounds.x, min_bounds.y, min_bounds.z, max_bounds.x, max_bounds.y, max_bounds.z, billboard_radius};
 
@@ -3469,8 +3265,6 @@ void AppendEffekseerBoundsTrailer(vector<uint8_t>& binary, const vec3& min_bound
 
 auto ReadEffekseerBoundsTrailer(const_span<uint8_t> binary) -> EffekseerBoundsTrailer
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Every baked .efk carries the trailer, so each of these is a violated invariant of our own baked data, not an
     // expected "maybe absent" case: fail loudly instead of skipping
     FO_VERIFY_AND_THROW(binary.size() >= EFFEKSEER_BOUNDS_TRAILER_SIZE, "Baked Effekseer binary is too small to hold its mandatory bounds trailer", binary.size());

@@ -19,6 +19,12 @@ project inventory and release evidence there.
 `ThirdParty/<Library>/` directories are engine-owned vendored source trees used
 by `BuildTools/cmake/stages/ThirdParty.cmake` and related CMake helpers.
 
+Keep Engine-owned build glue and `FONLINE_PRUNED_FILES.md` directly under
+`ThirdParty/<Library>/`; keep the preserved upstream subtree separately under
+`ThirdParty/<Library>/<library>/` when that is the library's layout. The
+vendored `vkd3d` integration follows this pattern. Do not mistake build glue
+for an upstream patch or overwrite it during an upstream refresh.
+
 Plain files directly under `ThirdParty/`, such as `emscripten`,
 `android-sdk`, `dotnet-runtime`, and `xwin`, are version pins consumed by
 `BuildTools/buildtools.py` and workspace/package preparation scripts. Do not add

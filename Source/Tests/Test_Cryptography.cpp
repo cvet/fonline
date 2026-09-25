@@ -41,8 +41,6 @@ namespace
 {
     auto FromHex(string_view hex) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex text must hold whole bytes", hex.size());
 
         vector<uint8_t> result;
@@ -60,8 +58,6 @@ namespace
 
     auto KeyFromHex(string_view hex) -> crypto::key_bytes
     {
-        FO_STACK_TRACE_ENTRY();
-
         optional<crypto::key_bytes> key = crypto::parse_key(hex);
         FO_VERIFY_AND_THROW(key.has_value(), "Test key must be 64 hex digits", hex);
         return key.value();
@@ -69,8 +65,6 @@ namespace
 
     auto ToHex(const_span<uint8_t> data) -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         string result;
 
         for (uint8_t byte : data) {
@@ -82,8 +76,6 @@ namespace
 
     auto TextBytes(string_view text) -> const_span<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return make_const_span(text.data(), text.size());
     }
 }

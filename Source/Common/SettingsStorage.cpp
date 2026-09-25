@@ -64,8 +64,6 @@ private:
 
 SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     _subKey = strex("Software\\{}\\{}", FO_NICE_NAME, app_name).str();
 
@@ -84,15 +82,11 @@ SettingsStorageImpl::SettingsStorageImpl(string_view app_name)
 
 auto SettingsStorageImpl::HasEntry(string_view key) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return GetEntry(key).has_value();
 }
 
 auto SettingsStorageImpl::GetEntry(string_view key) const -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return winapi::registry_read_value(_subKey, string(key));
 
@@ -107,8 +101,6 @@ auto SettingsStorageImpl::GetEntry(string_view key) const -> optional<string>
 
 void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     if (!winapi::registry_write_value(_subKey, string(key), string(value))) {
         logging::write("Settings: failed to write registry value - {}\\{}", _subKey, key);
@@ -123,8 +115,6 @@ void SettingsStorageImpl::SetEntry(string_view key, string_view value)
 
 void SettingsStorageImpl::RemoveEntry(string_view key)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     winapi::registry_delete_value(_subKey, string(key));
 
@@ -138,7 +128,6 @@ void SettingsStorageImpl::RemoveEntry(string_view key)
 SettingsStorage::SettingsStorage(string_view app_name) :
     _impl {safe_alloc::make_unique<SettingsStorageImpl>(app_name)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 SettingsStorage::SettingsStorage(SettingsStorage&&) noexcept = default;
@@ -146,75 +135,55 @@ SettingsStorage::~SettingsStorage() = default;
 
 auto SettingsStorage::HasKey(string_view key) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->HasEntry(key);
 }
 
 auto SettingsStorage::GetString(string_view key, string_view default_value) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = _impl->GetEntry(key);
     return entry ? *entry : string(default_value);
 }
 
 auto SettingsStorage::GetInt(string_view key, int64_t default_value) const -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_int64() : default_value;
 }
 
 auto SettingsStorage::GetBool(string_view key, bool default_value) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_bool() : default_value;
 }
 
 auto SettingsStorage::GetFloat(string_view key, float64_t default_value) const -> float64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = _impl->GetEntry(key);
     return entry ? strex(*entry).to_float64() : default_value;
 }
 
 void SettingsStorage::SetString(string_view key, string_view value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetEntry(key, value);
 }
 
 void SettingsStorage::SetInt(string_view key, int64_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetEntry(key, strex("{}", value).str());
 }
 
 void SettingsStorage::SetBool(string_view key, bool value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetEntry(key, value ? "1" : "0");
 }
 
 void SettingsStorage::SetFloat(string_view key, float64_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetEntry(key, strex("{}", value).str());
 }
 
 void SettingsStorage::Remove(string_view key)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->RemoveEntry(key);
 }
 

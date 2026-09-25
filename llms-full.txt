@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 2734caf72d0d2fe274a53e9c9a565fc7f081b0149c01d3add4825f37647120f3
+Content SHA-256: 75bf8748afcf35aafd8ba34d27783aad7127f3eec28166c3964e76f1388c574b
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2537**
-- Symbols with source-backed descriptions: **2537**
+- Discovered symbols: **2536**
+- Symbols with source-backed descriptions: **2536**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2537**
+- Explicitly classified symbols: **2536**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3562,7 +3562,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: a04517ffb25dcc1108d5b29893770087a4bfb9a281aae6a7d3a962e7384a0512
+Content SHA-256: eca9c6eddba8ac2c58c8154a650a16b0ca302110de98709ef15e118786c6fccb
 
 ---
 layout: default
@@ -3821,7 +3821,7 @@ Both script backends retain at most 32 distinct overrun entry names per Engine, 
 
 `InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
 
-When `FO_TRACY` is enabled, the backend installs a Mono profiler immediately after runtime initialization and before any entry assembly executes. Method-call instrumentation is restricted to registered game assembly images and methods with metadata tokens; runtime plumbing and generated wrappers stay out of the call tree. JIT zones are not image-filtered because a handler's first invocation pays for every method it reaches. The hook requests `ENTER | LEAVE | EXCEPTION_LEAVE`, deliberately not `TAIL_CALL`: Mono can eliminate a self tail call without a matching enter event, so treating that notification as an ordinary leave would close the caller's zone. An exceptional or inlined leave closes the per-thread zone stack down to the method Mono names.
+When `FO_TRACE_ENABLED` and the `Script` category are enabled, the backend installs a Mono profiler immediately after runtime initialization and before any entry assembly executes. Method-call instrumentation is restricted to registered game assembly images and methods with metadata tokens; runtime plumbing and generated wrappers stay out of the call tree. JIT zones are not image-filtered because a handler's first invocation pays for every method it reaches. The hook requests `ENTER | LEAVE | EXCEPTION_LEAVE`, deliberately not `TAIL_CALL`: Mono can eliminate a self tail call without a matching enter event, so treating that notification as an ordinary leave would close the caller's zone. An exceptional or inlined leave closes the per-thread zone stack down to the method Mono names.
 
 Method names and source locations are resolved once into a process-wide table shared by all managed backends and then read under a shared lock. Zone names omit parameter lists and commas because Tracy's CSV hotspot exporter does not quote that field. Mono profiler callbacks are `noexcept` C-ABI boundaries and must never unwind through JIT-generated code. See [Profiling](../quality/profiling.md#managed-script-zones) for how to read these zones beneath a `Script execution overrun` entry.
 
@@ -4675,7 +4675,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 5fbb100b4d38bfaae76c76737b0af2ef4faeace7149ff32e55de46e9b7355120
+Content SHA-256: c44a800aae7d65187e500465dff8f085c91206adfb3812c36f22b07d281f0e77
 
 ---
 layout: default
@@ -4712,7 +4712,7 @@ Use this page when choosing native validation for an engine change or when addin
 
 `BuildTools/cmake/stages/EngineSources.cmake` owns `FO_TESTS_SOURCE`, the explicit list of test source files compiled into test builds. `BuildTools/cmake/stages/Applications.cmake` builds test executables through `SetupTestBuild(name)`:
 
-`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files and fails closed on unreadable or malformed input. It rejects a curated set of Windows 8+ `kernel32`, `user32`, `dxgi`, and `d3d11` exports (including `CreateFile2` and `GetCurrentThreadStackLimits`), libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`), and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add any newly discovered incompatible export to the list with its import fix. Static third-party libraries, including the managed runtime, contribute to the same final PE import table. Embedding-project CI should check every linked Win7 executable and DLL after linking and before packaging; this static gate does not prove runtime behavior on a real Windows 7 SP1 host. See the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
+`BuildTools/check_windows7_imports.py <binary> [...]` is the standalone PE-level regression check for Windows 7 artifacts. It accepts one or more PE files and fails closed on unreadable or malformed input. It rejects a curated set of Windows 8+ `kernel32`, `user32`, `dxgi`, and `d3d11` exports (including `CreateFile2` and `GetCurrentThreadStackLimits`), libraries absent from Windows 7 (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`, `d3dcompiler_47.dll`), and API-set contracts except Universal CRT forwarders (`api-ms-win-crt-*`). Add any newly discovered incompatible export to the list with its import fix. Static third-party libraries, including the managed runtime, contribute to the same final PE import table. Embedding-project CI should check every linked Win7 executable and DLL after linking and before packaging; this static gate does not prove runtime behavior on a real Windows 7 SP1 host. See the [Windows 7 compatibility lane](../../how-to/build/#windows-7-compatibility-lane).
 
 - `UnitTests` when `FO_UNIT_TESTS` is enabled;
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
@@ -5661,7 +5661,7 @@ names, and QA policy in their owning projects.
 ===== BEGIN DOCUMENT native-extensions-guide =====
 Source: Docs/en/how-to/native-extensions.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions.html
-Content SHA-256: 6b964a987dc6d4be653e758ec1ce50e9bfc07583eb92592384d1e508c83e1d55
+Content SHA-256: d47ba2f16bb6246de9ab1a3587eca03692e57105a62cd651af38df7a5f5cdac9
 
 ---
 layout: default
@@ -5803,7 +5803,7 @@ int32_t FO_NAMESPACE Server_Game_ProjectValue(ptr<ServerEngine> server)
 
 Metadata declarations must compile with the engine namespace enabled or disabled. Keep declarations inside `FO_BEGIN_NAMESPACE` / `FO_END_NAMESPACE`, and qualify definitions with `FO_NAMESPACE`.
 
-`FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_STACK_TRACE_ENTRY()` or `FO_NO_STACK_TRACE_ENTRY()`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
+`FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_TRACE_ZONE(Script)`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
 
 ## Script exports and metadata
 
@@ -7817,7 +7817,7 @@ refresh behavior require project tests rather than Engine fixtures.
 ===== BEGIN DOCUMENT effect-format-guide =====
 Source: Docs/en/how-to/content/effect-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/effect-format.html
-Content SHA-256: 6c1d1e311816be8c4049c69ba79b24e3c7beab13bccbedca344196cfcbcacb01
+Content SHA-256: dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145
 
 ---
 layout: default
@@ -8282,9 +8282,15 @@ For each pass and stage, EffectBaker emits:
 | `spv_sdl` | SDL_GPU Vulkan path |
 | `glsl` | OpenGL desktop (`330`) |
 | `glsl_es` | OpenGL ES/WebGL (`300 es`) |
-| `hlsl` | Direct3D (Shader Model `4.0`) |
+| `hlsl` | Intermediate HLSL Shader Model `4.0`, compiled at bake time |
+| `dxbc` | Direct3D 11 bytecode, compiled from HLSL by vendored vkd3d-shader |
 | `msl_mac` | SDL_GPU Metal on macOS |
 | `msl_ios` | SDL_GPU Metal on iOS |
+
+With `Baking.Direct3DLevel9Shaders = True`, the baker also embeds an `Aon9`
+level-9.3 bytecode chunk in non-model effects. A shader that exceeds that
+profile fails baking; 3D-model effects do not receive it. The default is off.
+This is an opt-in for 2D-only Direct3D builds, not support for 9.1/9.2.
 
 Naming is:
 
@@ -10944,7 +10950,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 14dcf3c998c62f4eccac348cb14ffdfb1cefdf02d8c1feacd0f493f9d3c376e6
+Content SHA-256: 64a2ed7f73f2cf5dd88fd2aff9c8a584a77aac761330e2fb7507668fd162cd8c
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11130,7 +11136,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - **Inside a class, what reports on the object comes before what changes it.** A class body opens with construction and destruction, then the informational block — the `[[nodiscard]]` accessors (`Get*`, `Has*`, `Is*`, `Check*`) a reader consults to learn what the object holds — and only below them the methods that mutate it, ordered by lifecycle: the initializing ones (`Set*`, `Add*`, `Attach*`, `Load*`) before the finalizing ones (`Remove*`, `Detach*`, `Clear*`, the teardown helpers). So `Critter::ClearAllAssociations` sits at the bottom of the mutating run rather than beside the destructor it serves, and `MapManager::ClearStaticMaps` below `ViewMap` rather than inside the accessor block. Blank lines separate the groups, and a family that already owns a block of its own — the `Send_*` / `Broadcast_*` runs, the `///@ ExportEvent` declarations — keeps it where the file puts it.
 - Every standalone native module must be created as a complete `.h` + `.cpp` pair and both files must be registered in the owning build source list. A named subsystem/module must never be introduced as a lone header; keep the translation unit as the module anchor even when all current declarations are passive data and no out-of-line implementation is needed yet. Pure template/constexpr/umbrella headers are not standalone modules.
 - Order code top-down by importance and abstraction level: high-level entry points and orchestration first, secondary helpers and low-level details below, unless a nearby file has a stronger established ordering.
-- First statement of every `.cpp` method/function body: `FO_STACK_TRACE_ENTRY()` or `FO_NO_STACK_TRACE_ENTRY()`. If the body continues after the marker, keep one blank line after it. Do not put either macro in headers, inline header-defined bodies, or lambda bodies. **Exception: `FO_SCRIPT_API` script-export functions (`///@ ExportMethod`, `///@ EngineHook`, and the other script-bound exports) take *no* stack-trace marker at all — the body starts directly after the opening brace.**
+- **A `.cpp` function earns a profiling zone by what it explains: `FO_TRACE_ZONE(<Category>)` as its first statement**, followed by one blank line when the body continues. It goes on what frames the capture (main loop and tick steps), on units of work whose cost is non-trivial or varies, on what can block, and on rare expensive operations. It stays off accessors and trivial forwarders, small pure helpers, anything called per element in a hot loop, member-only constructors and destructors, the profiler's own path (allocator, logging, stack traces, crash handling), functions that do not return during a capture, headers, lambdas and tests. The category is the subsystem the work belongs to, not necessarily the file's; the categories are the `FO_TRACE_COLOR_<Category>` lines of `Source/Essentials/BasicCore.h`, and a build compiles in only those `FO_TRACE_CATEGORIES` selects (every zone category by default; allocation tracking and log messages are the opt-in `Memory` and `Log`, declared by `FO_TRACE_OPT_IN_<Category>`). **`FO_SCRIPT_API` script-export functions (`///@ ExportMethod`, `///@ EngineHook`, and the other script-bound exports) take *no* zone — the generated binding that calls them opens a named `Script` zone — and neither do the file-local helpers only exports call.** The full rules: [profiling guide](Docs/en/how-to/quality/profiling.md#placing-zones).
 - Separate semantically distinct code blocks with a blank line. In particular, surround every control-flow statement (`if`/`else`, `for`, `while`/`do`, `switch`, `try`/`catch`, and similar constructs) with a blank line before and after the complete statement. Blank lines may be omitted only inside a consecutive run of the same construct (`if` + `if`, `for` + `for`, and so on).
 - Treat preprocessor directives as transparent to the blank-line rule: do not add or remove blank lines merely because code is enclosed by `#if`/`#else`/`#endif`; apply spacing to the surrounding C++ blocks as if the directives were not there.
 - Keep a comment attached to the code block it describes below: put a blank line before the comment, but no blank line between the comment and that block. For control-flow spacing, the comment is part of the following block.
@@ -13733,7 +13739,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: 03c406ad91eb9c68be1f898b5ebf521501d071d3ad2500f35e8f44ccd681aaea
+Content SHA-256: b3fe2ab600bd540e2de1bf1f684ecc9a4be887f50ef448b724fff8ac4828112d
 
 ---
 layout: default
@@ -14047,7 +14053,7 @@ Generated-surface triggers:
 | `Examples/PublicRepositories.json`, `Examples/PublicRepositoryTemplate`, `Examples/MinimalProject`, public example ownership/lifecycle/remote visibility/pins, source-staging exclusions/materialization, common fixed settings required by the minimal config, or a compatibility boundary consumed by examples | Update [Public Example Repositories](../../how-to/build/public-example-repositories.md), regenerate/check the public-example model with `docs_examples.py`, run its focused tests, rematerialize the affected candidate from a clean remotely fetchable exact Engine commit, and validate each affected source-staged or published repository in pinned and current modes. Keep private remote state separate from source readiness, and do not publish or update external links until its owner-gated exit gate is green. |
 | `BuildTools/buildtools.py` validation profiles, required workflow platform matrices, platform detection, application construction, runtime smoke evidence, or uploaded validation artifacts | Update `BuildTools/SupportMatrix.json` and the [Support Matrix](../../reference/platforms/support-matrix.md), regenerate/check its model/page with `docs_support_matrix.py`, run the affected validation target, and keep build, smoke, package-fixture, source-capable, and project-qualified claims separate. |
 | `BuildTools/gameplay_test_runner.py`, its manifest schema, `Examples/GameplayTestHarness`, or an Engine example's process smoke | Update [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md), `HelperCliInterface.json` when CLI syntax/ownership changes, and the affected example manifest; run `test_gameplay_test_runner.py`, `test_docs_gameplay_testing.py`, helper-CLI generation/tests, and at least one real baked headless server/client smoke. Keep project script registries, fixtures, content assertions, ports, backends, platform labs, and thresholds in the embedding project. |
-| `Profiling_*` configurations, `FO_TRACY`/`TRACY_*` wiring, `TracyVersion.hpp`, native/script zones, frame marks, plots, log messages, thread names, or allocation tracking | Update [Profiling](../../how-to/quality/profiling.md), run `test_docs_profiling.py`, build the affected on-demand/total profile, and record one isolated client or server capture as appropriate. A Tracy update also requires matching capture/export tools and one capture on each runtime side before changing protocol/version claims. |
+| `Profiling_*` configurations, `FO_TRACE_ENABLED`/`FO_TRACE_CATEGORIES`/`TRACY_*` wiring, `TracyVersion.hpp`, native/script zones, frame marks, plots, log messages, thread names, or allocation tracking | Update [Profiling](../../how-to/quality/profiling.md), run `test_docs_profiling.py`, build the affected on-demand/total profile, and record one isolated client or server capture as appropriate. A Tracy update also requires matching capture/export tools and one capture on each runtime side before changing protocol/version claims. |
 | Canonical English human prose, locale targets, glossary terms, or an existing Russian translation | Update the paired Russian page, retain identical fenced code, refresh only after review, regenerate `Docs/generated/translation-status.json` with `docs_localization.py`, then regenerate both locale search indexes and the route/navigation model with `docs_site.py`. Run focused parity, site, artifact, and browser locale-interaction tests. Complete manifest enforcement rejects every missing or stale page pair. |
 | Reader-facing prose in any generated contract model, `Docs/description-translations.ru.json`, or a Russian generated reference | Keep canonical JSON and stable IDs unchanged, update the stable-locator translation and its exact source hash, regenerate the owning model/pages, then regenerate `Docs/generated/description-translation-status.json` with `docs_description_translations.py`. Run its focused test plus the owning generator test. Missing records remain explicit until semantic enforcement becomes `complete`; unknown, stale, position-based, type-changing, or code-changing records are defects. |
 | `BuildTools/DocumentationDiagrams.json`, a diagram-owning document, diagram source provenance, caption/alt text, or shared diagram CSS | Update the source manifest and owning prose together, regenerate/check `Docs/generated/diagrams.json` plus `Docs/assets/diagrams/*.svg` with `docs_diagrams.py`, run `test_docs_diagrams.py`, rebuild Jekyll, and inspect the retained desktop/mobile diagram screenshots. Do not edit generated SVG by hand or use a diagram as the only representation of a required procedure. |
@@ -14649,7 +14655,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: 2ea8479c0b9f7cc61958f1f27b160a6929b303bc5e68dd61f73a9d937b8f2eaf
+Content SHA-256: 98088cac30033f30c2788fbaf1c245356590b2bd29ce4ad6ed77ad568f2e5bd7
 
 ---
 layout: default
@@ -14671,6 +14677,12 @@ project inventory and release evidence there.
 
 `ThirdParty/<Library>/` directories are engine-owned vendored source trees used
 by `BuildTools/cmake/stages/ThirdParty.cmake` and related CMake helpers.
+
+Keep Engine-owned build glue and `FONLINE_PRUNED_FILES.md` directly under
+`ThirdParty/<Library>/`; keep the preserved upstream subtree separately under
+`ThirdParty/<Library>/<library>/` when that is the library's layout. The
+vendored `vkd3d` integration follows this pattern. Do not mistake build glue
+for an upstream patch or overwrite it during an upstream refresh.
 
 Plain files directly under `ThirdParty/`, such as `emscripten`,
 `android-sdk`, `dotnet-runtime`, and `xwin`, are version pins consumed by
@@ -15272,7 +15284,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: f9ed0ece27bc8ad5759fb91ae1ce5a3798c9d8664ef2f9ea857e928879ef7b99
+Content SHA-256: aaf7e3da5ec6927f165462eb072de6f1bb6380effbaab4faf34ce7353ba43f70
 
 ---
 layout: default
@@ -15896,6 +15908,13 @@ fullscreen/embedded behavior, separate audio, diagnostics, and the mandatory
 visible-client gate.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses. Use [Effect Format](../../how-to/content/effect-format.md) and the generated [effect-format reference](../../reference/effect-format/index.md) for the owning authoring, resource, runtime-cache, script-value, and validation contract.
+
+Direct3D consumes baked `-dxbc`, produced from SPIRV-Cross HLSL by vendored
+vkd3d-shader, not runtime HLSL compilation. Optional
+`Baking.Direct3DLevel9Shaders` invokes `Direct3DLevel9.cpp` to add an `Aon9`
+level-9.3 chunk to non-model effects only. Unsupported 9.3 constructs fail
+the bake. A 3D-enabled renderer cannot use a 9.3 device, and 9.1/9.2 are not
+supported; see [Effect Format](../../how-to/content/effect-format.md#baking-outputs).
 
 `ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
 frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
@@ -17254,7 +17273,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 13f59b82cfa1d15568db8e942122d48b0956cd0fec14cd6eea1d22db6c9fab51
+Content SHA-256: d76178105c833b78e4837d08f58e68f6929b13e23742846923e621febf798c6b
 
 ---
 layout: default
@@ -17782,6 +17801,13 @@ OpenGL is the path to inspect for WebAssembly/WebGL behavior. Pair renderer chan
 
 `Source/Frontend/Rendering-Direct3D.cpp` implements the Direct3D 11 path.
 
+It loads baked `-dxbc` shader bytecode; the client does not compile HLSL at
+runtime or require `d3dcompiler_47.dll`. The normal hardware floor is feature
+level 10.0. A 2D-only build may accept feature level 9.3 when effects were
+baked with `Baking.Direct3DLevel9Shaders`; 3D-enabled builds never create a
+9.3 device. That path limits atlases to 4096 pixels and uses point-list draws
+without an index buffer. Levels 9.1 and 9.2 are unsupported.
+
 Important behaviors:
 
 - creates D3D device/swap-chain/render-target resources;
@@ -17957,7 +17983,7 @@ When adding an effect feature, document whether the change belongs in:
 
 The engine ships a fixed set of base effects under `Resources/Core/Effects/` (loaded as the default for each draw slot by the `LOAD_DEFAULT_EFFECT` table in `Source/Client/EffectManager.cpp`) plus a few bootstrap effects under `Resources/Embedded/Effects/` (compiled into the binary so the renderer can draw before external resource packs are mounted). Each `.fofx` opens with a top-of-file `#` comment header stating what the effect does, which slot uses it, and how it works.
 
-These base shaders are deliberately written for the **lowest Direct3D feature level** (down to feature level 9_x): no `gl_FragCoord` / position-semantic reads, no screen-space derivatives (`dFdx`/`dFdy`/`fwidth`), and no dynamic array/vector indexing — only constructs that compile and run on the weakest supported hardware. The cross-compiler still emits HLSL Shader Model 4.0, GLSL 330, GLSL ES 300 and Metal for every effect (`Source/Tools/EffectBaker.cpp`), but the *source* must avoid features that fail on the lowest runtime profile. Keep an engine base effect minimal; that is what its header's `Profile: minimal` line records.
+These base shaders are deliberately written for the optional Direct3D feature level 9.3 profile: no `gl_FragCoord` / position-semantic reads, screen-space derivatives (`dFdx`/`dFdy`/`fwidth`), texture-size queries, or dynamic array/vector indexing. The baker emits GLSL 330, GLSL ES 300, Metal, and HLSL Shader Model 4.0, then compiles HLSL to `-dxbc` bytecode; an opt-in 9.3 bake adds `Aon9` for non-model effects. Keep an engine base effect minimal, as its `Profile: minimal` header records. The standard Direct3D path remains feature level 10.0 or newer.
 
 Default slot → effect mapping (`Source/Client/EffectManager.cpp`): `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`; `Roof`/`Tile`/`Flat` → `2D_NoDepth`; `Primitive` → `Primitive_Default`; `Light` → `Primitive_Light`; `Fog` → `Primitive_Fog`; `FlushPrimitive`/`FlushMap`/`FlushLight`/`FlushFog`/`FlushRenderTarget` → the matching `Flush_*`; `SkinnedModel` → `3D_Skinned`; `ImGui` → the `ImGuiDefaultEffect` setting (`ImGui_Default`). `2D_WithoutEgg`, `3D_NormalMapping`, `Flush_Map_BlackWhite`, `Font_Default`, `Interface_Default` and the `Particles_*` set are available effects selected per-draw / per-mesh / by the particle system rather than fixed slot defaults.
 
@@ -18001,6 +18027,11 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
 
 - Screen-space quads (GUI, fonts, render-target blits, and non-map sprite effects) initialize `Vertex2D::PosZ` to `0.0f`; map sprites may start from the same atlas data, but `SpriteManager` overwrites their Z before flushing them into `_rtMap`.
 - Standing map sprites (`Item`/`Critter`) **write** the shared depth buffer but do **not** test it (`DepthFunc = Always` in `2D_Default.fofx` / `2D_WithoutEgg.fofx`): the write is what lets direct-draw particles / 3D models occlude against sprites, while sprite-vs-sprite occlusion is decided purely by the painter order. That is exact rather than approximate, because every standing sprite's depth plane shares one gradient (`ProjectMapYToVerticalDepth`): parallel planes never intersect, so "which sprite is in front" is a whole-sprite fact, and ordering by the anchor depth reproduces a per-pixel `LessEqual` result pixel for pixel — without the interpolation noise that made *coincident* planes (hexes on the same screen row) flip the winner per pixel row and show up as horizontal z-fighting stripes on far rows of large maps. This is why `MapSpriteList::MakeDrawOrderPos` sorts standing sprites by `GeometryHelper::GetHexScreenRow` (the row of `GetHexPos().y`, i.e. the equivalence class of equal ground depth — hexes related by +2X/−1Y) instead of the hex row: the hex row disagrees with depth order (e.g. `hy−1, hx+4` is nearer yet sorts earlier) and would make the painter order wrong for overlapping large scenery. Pinned by `Source/Tests/Test_Geometry.cpp` (`GetHexScreenRow`). The trade-off is that a *flat* depth-writing layer no longer clips a standing sprite per pixel (their planes do intersect): a flattened corpse drawn in an earlier layer is covered by any overlapping standing sprite regardless of depth. Their per-vertex depth is the vertical-billboard proxy (`get_map_sprite_proj` → `GetHexWorldPos`/`ProjectWorldToMap`, anchored on the sprite root; the `MapView::InitView` view layout reproduces `GetHexPos.y` exactly, so the rendered screen position and the depth basis agree). **The depth/sort anchor is the object's LOGICAL root, not the bitmap bottom-center.** For an item the proto `Offset` is the bottom-center→root vector (a tree's trunk): it still positions the bitmap through `MapSprite::_pSprOffset` (so the visual, lighting and `MeasureMapBorders` are unchanged), but it is *also* kept as a separate static root offset (`HexView::_rootOffset` → `MapSprite::_pRootOffset`) that the depth proxy subtracts — in `GetMapRootOffset()` for `sprite_proj.z` and from `scene_pos_y` for the per-vertex reference — so a tall sprite anchors on its trunk instead of `Offset` pixels below it. Without this, the tree's depth anchored at the bitmap bottom (too far south/near) and it wrongly occluded a critter standing in front of it. Critters carry no proto `Offset` (their root comes from the sprite anchor), so their `_rootOffset` is zero. They are the **only** map sprite layer that participates in the depth buffer; every flat/background layer (floor tiles, roofs, flat ground overlays) is painter-only and depth-inert — neither writes nor tests (see below). `MapSprite` receives critter/item `Elevation`; positive elevation shifts the sprite upward in screen Y and increases the same world-Z depth. `MapSprite::HexOffset` plus runtime sprite/tweak offsets are projected along the ground plane before depth is computed, so sub-hex movement changes both screen position and 3D depth continuously; viewport-only `field.Offset` is not part of world depth. The intrinsic `Sprite::Offset` is different: it defines which pixel inside the atlas quad is the logical root on the ground, so vertical depth and direct-to-scene anchors use that root instead of assuming the bitmap's lower center. Floor tile layers (`DrawOrderType::Tile..Tile4`) and flat ground overlays (`FlatItemPreLight`/`HexGrid` pre-light, and `DeadCritter`/`FlatItemAfterLight` post-light — the layers below `NormalBegin`) are upright background sprites: they keep their atlas-provided screen-space XY/UV and **never touch the shared depth buffer**. Entity sprites choose the no-depth effect at the entity level: tiles and roofs resolve `Effects.Tile` / `Effects.Roof`; flat items resolve `Effects.Flat` (`ItemHexView::Init`, by `GetDrawFlatten()`) — all three → `2D_NoDepth.fofx`. Script-created `MapSpriteHolder` sprites have no entity-level effect handle, so `MapView` supplies the pass default effect to `SpriteManager::DrawSprites` from the draw-order segment before batching: `Tile..PreLight` → `Effects.Tile`, `AfterLight..FlatEnd` → `Effects.Flat`, `Roof..RoofParticles` → `Effects.Roof`, and normal layers → `Effects.Generic`. Item draw order is decided by `GetDrawFlatten()`, never by `IsScenery`/`IsWall`: upright → `Item` (the default), flat → `FlatItemPreLight` if `GetStatic()` (drawn pre-light) else `FlatItemAfterLight` (post-light). The former `Scenery`/`Item` (and `FlatScenery`/`FlatItem`) layers were merged, so upright items on one hex no longer force scenery behind items by class — they draw in **add order** (the `MapSprite::_globalPos` tiebreaker once `_drawOrderPos` ties on the merged layer + hex). (Dead critters drawn flattened keep `Effects.Critter` and still write depth, but since standing sprites no longer depth-test, a corpse cannot clip a standing sprite — it is covered by draw order.) All of these (`DepthWrite = False` + `DepthFunc = Always`) are drawn before the standing sprites and fully painter-sorted, so they cannot z-fight (coplanar layers), seam (abutting sprites), or clip a standing sprite's feet / a 3D model — they need no per-vertex depth, no ground-plane projection, and no per-layer bias. Standing sprite layers (`Item`, `Critter`) keep atlas XY/UV but write per-vertex `PosZ` through `GeometryHelper::ProjectMapYToVerticalDepth`, so they behave like vertical planes standing on their ground anchor; they carry no draw-order depth bias, because one would pull the vertical plane toward the camera and move the particle-occlusion line off the logical root point. The only remaining depth-bias user is the direct-draw path (particles / 3D models replayed at the end of each sprite pass): `SpriteManager` divides a half-pixel depth budget (`MAP_LAYER_DEPTH_BIAS`) by `DrawOrderType::Last + 1` and gives each direct-draw sprite a single such step above its world depth, keeping it below the subpixel snapping threshold (see *Direct-to-scene sprites*). Both `Core` and `Embedded` `2D_Default.fofx` must project the full `InPosition.xyz`; if an override flattens to `InPosition.xy, 0.0`, particles have no useful scene depth to test against. `2D_Default.fofx` and `2D_WithoutEgg.fofx` discard fragments whose final alpha is at or below `1/255` (after egg alpha), so fully transparent sprite texels do not populate the depth buffer and clip in-scene particles behind the empty parts of the atlas quad.
+- Within one standing screen row, `MapSpriteList::MakeDrawOrderPos` sorts by
+  `[group 8][primary row 24][sub-layer 8][hex X 16][layer 8]`. The sub-layer
+  precedes X: lower-sub-layer walls are drawn before overlapping items or
+  critters anywhere in that row. Nearer rows still win; equal sub-layer uses
+  X, then layer, with insertion order breaking an otherwise equal key.
 - Roof tiles (`IsRoofTile`) are ordinary floor tiles given a fixed positive `Elevation` (`Geometry.MapRoofElevation`): the projection raises their screen position onto the building's wall tops (the engine still auto-hides the roof group whose `RoofNum` the camera is inside). A roof is just a tile lifted in screen Y — the flat tile/roof sub-hex XY anchor now lives on the `BaseTile` prototype's `Offset`, not on the former per-side `Geometry.MapTileOffs*`/`MapRoofOffs*` settings (removed); the roof-particle and mapper tile-preview paths read the same `Elevation` instead of the old 2D roof offset. The **roof draw-order range (`Roof..Last`) is rendered as a separate trailing pass** (`MapView::DrawSpritesWithFog` splits at `below_roof = Roof-1` and draws `[Roof..Last]` last, via `DrawFoggedSpriteRange`): everything below it — including the direct-draw 3D models / in-scene particles each sprite pass replays at its end — is drawn first. Like floor tiles, roofs do not touch the depth buffer (`Effects.Roof` → `2D_NoDepth.fofx`, `DepthWrite = False` + `DepthFunc = Always`): being drawn last and never depth-tested, the roof layer always paints on top of the building regardless of the scene depth buffer, and being depth-write-free it never clips anything drawn after it.
 - Particle effects (`Particles_*.fofx`) declare `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other. The colour variants (`Particles_Color*.fofx`) additionally declare `DepthVariants = True`, because a particle runtime whose format stores depth-test/depth-write per emitter node selects the matching variant per draw. All colour and distortion `*Atlas` fragments discard final alpha at or below `1/255`, so a node that opts into depth writing cannot turn transparent or filter-fringe atlas texels into invisible occluders. They also read `ParticleSamplingBuf`, whose `.x` snaps the sampled coordinate to the texel centre: filtering is a per-atlas property here (`Render.AtlasLinearFiltration` applies to every atlas) but a per-node one in particle formats, and a bilinear fetch at a texel centre returns exactly that texel, so a node can get true point sampling from a linearly filtered atlas without a second atlas. The `*Atlas` variants additionally read `SpriteBorderBuf` and address the whole coordinate inside that atlas sub-rectangle, tiling or clamping as `ParticleSamplingBuf.y` says: neither a hardware wrap mode nor hardware clamping can serve a shared atlas, because both would reach into neighbouring entries. A runtime whose format supplies raw per-node coordinates therefore draws through the `*Atlas` variants exclusively; the non-atlas variants are for SPARK, which supplies final atlas coordinates and explicitly binds the neutral sampling buffer before every draw.
 - Model effects (`3D_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = True`: direct-to-scene models write real mesh depth into `_rtMap`, so particles and later direct geometry can test against the model surface instead of the old model atlas quad.
@@ -21490,7 +21521,7 @@ Run `python validate.py --web-runtime` from `Examples/ContentShowcase` for the o
 ===== BEGIN DOCUMENT profiling =====
 Source: Docs/en/how-to/quality/profiling.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/quality/profiling.html
-Content SHA-256: 09882fe95db7a3c533154795132e183b81ced3bcfe1d45d355235cd80b51bdab
+Content SHA-256: c9409e4af4f48d4dfca7268211404b7c5d63abab39ee8230f2931d20a46c3d72
 
 ---
 layout: default
@@ -21582,20 +21613,31 @@ itself starts later.
 ## What the Engine instruments
 
 Profiling configurations compile `TracyClient` into the Engine essentials
-layer and define `FO_TRACY=1`. Non-profiling configurations define
-`FO_TRACY=0`; the Engine profiling macros then compile away.
+layer and define `FO_TRACE_ENABLED`. Other configurations compile zones away.
+`FO_TRACE_CATEGORIES` selects which categories are built into a Tracy binary:
+empty (the default) enables all zone categories but neither opt-in signal;
+`Render,Gui` keeps only those zones, `+Memory` adds allocation events, and
+`-Script` removes script zones. Unknown names fail configuration. The selected
+0/1 values are generated into `TraceCategories.gen.h`.
 
 | Signal | Current Engine behavior |
 |---|---|
 | Process identity | `ApplicationInit` sends `FO_NICE_NAME` to Tracy. |
-| Native CPU zones | `FO_STACK_TRACE_ENTRY()` becomes `ZoneScoped`; the named form becomes `ZoneScopedN`. |
-| AngelScript CPU zones | Executed script calls emit zones using the original file, line, and declaration. Suspended contexts restore their script zone stack when execution resumes. |
+| Native CPU zones | `FO_TRACE_ZONE(Category)` and `FO_TRACE_ZONE_NAMED(Category, name)` emit colored zones only for selected categories. They are not native stack traces. |
+| Script CPU zones | The `Script` category gates generated bindings, AngelScript calls, and Mono method zones. AngelScript resumes its script zone stack after suspension. |
 | Frames | Visible and headless `Application::EndFrame()` paths emit `FrameMark`. |
 | Client plot | `Client FPS` is emitted from `ClientEngine::MainLoop()`. |
 | Server plot | `Server jobs per second` is emitted from the server statistics job. |
-| Log messages | Engine log records are also sent as Tracy messages. |
+| Log messages | Engine log records become Tracy messages only with opt-in `Log`. |
 | Threads | Engine thread names are visible in Tracy and in tagged log lines. |
-| Memory | Engine allocations routed through the Tracy-aware rpmalloc path emit allocation/free events. |
+| Memory | Engine allocator events require opt-in `Memory`; ordinary C-library allocations remain outside this accounting. |
+
+Zone categories declared in `Source/Essentials/BasicCore.h` are `App`,
+`Engine`, `Entity`, `Map`, `Script`, `Network`, `Database`, `Threading`,
+`Render`, `Model`, `Particles`, `Gui`, `Audio`, `FileSystem`, `Core`, `Baking`,
+and `Editor`. Frame marks, plots, and thread names remain enabled in every
+Tracy build. `FO_TRACE_CATEGORY_ENABLED(Category)` allows category-dependent
+hooks; a non-Tracy build still validates the category name.
 
 The current first-party integration does not add renderer GPU zones or
 Tracy lock wrappers. A CPU capture therefore must not be reported as GPU
@@ -21831,7 +21873,7 @@ server statistics boundary.
 
 ## Managed script zones
 
-With `FO_TRACY`, the Managed C# backend uses the Mono profiler to make each
+With the `Script` category enabled, the Managed C# backend uses the Mono profiler to make each
 instrumented game-script method a Tracy zone carrying its source file and
 declaration line. Native Engine zones nest below it, so a log line such as
 `Script execution overrun: GameScripts.Audio.OnLoop` identifies the entry to
@@ -21862,13 +21904,21 @@ them directly with `RelWithDebInfo`.
 The profiler-hook lifecycle, image filter, tail-call exclusion, and shared method
 metadata cache are documented in [Managed C# Scripting](../scripting/managed-csharp.md#diagnostics-and-debugging).
 
-## Add focused instrumentation
+## Placing zones
 
-Use existing zones before adding new ones. Most native Engine functions already
-call `FO_STACK_TRACE_ENTRY()`, and AngelScript calls are emitted
-automatically. When a broad function needs a stable semantic label, use
-`FO_STACK_TRACE_ENTRY_NAMED` at the owning native scope. Guard direct
-`TracyPlot`, allocation, or message macros with `#if FO_TRACY`.
+Use existing zones before adding new ones. Put `FO_TRACE_ZONE(Category)` as
+the first statement in selected nontrivial `.cpp` functions: frame/tick
+orchestration, variable work, blocking operations, or rare expensive paths.
+Use `FO_TRACE_ZONE_NAMED(Category, name)` for generated bindings, event
+subscriptions, or a meaningful job lambda. Generated script exports get a
+binding zone rather than another direct zone. Split cheap common work from an
+expensive conditional region when appropriate (for example, entity lock wait
+or sprite flush). Do not instrument accessors, trivial forwarders, hot
+per-element helpers, constructors/destructors, profiler internals,
+non-returning loops, headers, lambdas, or tests indiscriminately; the
+`EntityEventWrapper::FireSubscribed` header zone is a deliberate exception.
+Guard direct Tracy macros with `#if FO_TRACE_ENABLED`, and use the `Memory`
+or `Log` opt-in only when that signal is needed.
 
 Instrumentation must:
 
@@ -21944,7 +21994,7 @@ frame-mark paths when both remain supported.
 Update this page in the same change when:
 
 - profiling configuration names or their base configurations change;
-- `FO_TRACY`, `TRACY_ENABLE`, or `TRACY_ON_DEMAND` wiring changes;
+- `FO_TRACE_ENABLED`, `FO_TRACE_CATEGORIES`, `TRACY_ENABLE`, or `TRACY_ON_DEMAND` wiring changes;
 - the vendored Tracy version or pruned payload changes;
 - frame marks, program/thread naming, logs, plots, allocation tracking, or
   AngelScript zones change;
@@ -24949,7 +24999,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 482f9d9e5d8d889046807ad96e38d65c09a63c8d95a75947c74c8d640bc1a268
+Content SHA-256: aa1252b4a05ee2678c536ac8f423da039025375f0dfa8e95dc0ad2e960e34e8d
 
 ---
 layout: default
@@ -25097,6 +25147,12 @@ Keep new essentials APIs free of dependencies on `Source/Common/`, `Source/Clien
 
 ### Platform and compiler gate
 
+`BasicCore.h` also declares `FO_TRACE_COLOR_<Category>` names and the
+`FO_TRACE_ZONE(Category)` / `FO_TRACE_ZONE_NAMED(Category, name)` macros.
+Profiling builds use generated `TraceCategories.gen.h` to compile in selected
+zones; other builds validate category names but emit no zones. See the
+[profiling guide](../../how-to/quality/profiling.md#placing-zones).
+
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
 `Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` prefers environment values and is shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). When no environment path exists, Windows falls back to `SHGetKnownFolderPath` and supported POSIX hosts to `getpwuid_r`; a host without either source returns no path. Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
@@ -25170,6 +25226,11 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. The sole `std::function` in `StackTrace.h` is also above the engine callable module. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
 #### Third-party allocators
+
+Vendored vkd3d-shader exposes no allocator hook. Its bake-scoped calls use
+plain `malloc` and release returned objects through vkd3d's own free
+functions; errors fail the effect bake. Do not count these temporary
+allocations as Engine-heap or Tracy allocation events.
 
 | Library | Routed to | Where |
 |---|---|---|
@@ -25962,7 +26023,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: cfd5f7fd692abdc9b42f3d6f1e5406a59dd2994b53d8b1222554a9a9aa3944a8
+Content SHA-256: 38916799c1d124c174785f9fe9a9f1cdbf46f46f469b4af6a220549db611dd31
 
 ---
 title: Generated API Reference
@@ -25983,32 +26044,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 271 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 270 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2537 |
-| Symbols with descriptions | 2537 |
+| Addressable symbols | 2536 |
+| Symbols with descriptions | 2536 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2537 |
+| Explicitly classified symbols | 2536 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2536 |
+| <code>experimental</code> | 2535 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2537 stable IDs with SHA-256 <code>afe9defa6d71170590c2db98fbda2fb6b38d76d261ab06f976458253960b2ef7</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2536 stable IDs with SHA-256 <code>67524372da7853a7f8cd123842dfcf3371d4838516a82cb4631e9afd3f1afd20</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -26741,7 +26802,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 2351a3223bfd6d2d9ab3968124720f4e39fa9b94e7dac04facf13f56a8f62138
+Content SHA-256: 5448dfa4ec49d80cd2b93ba87a8804bf13a7ae0fb0e35fc4703c6812aa94aacc
 
 ---
 layout: default
@@ -26981,7 +27042,7 @@ The Engine captures a bounded native return-address array and optional pre-resol
 
 Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
 
-`FO_STACK_TRACE_ENTRY()` is not a manual thread-local call stack. Outside Tracy configurations it contributes no stack frame; under Tracy it expands to a profiling zone. Native call stacks come from platform capture at the moment `GetStackTrace()` runs.
+Native call stacks come from platform capture when `GetStackTrace()` runs. `FO_TRACE_ZONE(Category)` is a separate, category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
 
 ### AngelScript bridge
 

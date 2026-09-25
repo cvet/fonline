@@ -41,16 +41,12 @@ FO_BEGIN_NAMESPACE
 template<typename T>
 static auto FixedSettingForEdit(const T& value) noexcept -> ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return const_cast<T*>(&value);
 }
 
 template<typename T>
 static void SetEntry(T& entry, string_view value, bool append)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!append) {
         entry = {};
     }
@@ -92,8 +88,6 @@ static void SetEntry(T& entry, string_view value, bool append)
 template<typename T>
 static void SetEntry(vector<T>& entry, string_view value, bool append)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!append) {
         entry.clear();
     }
@@ -141,16 +135,12 @@ static void SetEntry(vector<T>& entry, string_view value, bool append)
 template<typename T>
 static void DrawEntry(string_view name, const T& entry)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ImGui::TextUnformatted(strex("{}: {}", name, entry).c_str());
 }
 
 template<typename T>
 static void DrawEditableEntry(string_view name, T& entry)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawEntry(name, entry);
 }
 
@@ -159,8 +149,6 @@ static void DrawEditableEntry(string_view name, T& entry)
 template<typename T, typename Getter>
 static void AddNumericSettingAccess(unordered_map<string, NumericSettingAccess>& accessors, string_view name, Getter /*getter*/)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if constexpr (std::is_arithmetic_v<T>) {
         NumericSettingAccess access;
 
@@ -184,8 +172,6 @@ static void AddNumericSettingAccess(unordered_map<string, NumericSettingAccess>&
 GlobalSettings::GlobalSettings(bool baking_mode) :
     _bakingMode {baking_mode}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_bakingMode) {
         // Auto settings
         _appliedSettings.emplace("ApplyConfig");
@@ -202,7 +188,7 @@ GlobalSettings::GlobalSettings(bool baking_mode) :
 
 void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view config_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (config_name.empty()) {
         return;
@@ -223,7 +209,7 @@ void GlobalSettings::ApplyConfigAtPath(string_view config_name, string_view conf
 
 void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (auto&& [key, value] : config.GetSection("")) {
         SetValue(string(key), string(value), config_dir);
@@ -235,7 +221,7 @@ void GlobalSettings::ApplyConfigFile(ConfigFile& config, string_view config_dir)
 
 void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (size_t i = 0; i < args.size(); i++) {
         string_view arg = args.Get(i);
@@ -268,7 +254,7 @@ void GlobalSettings::ApplyCommandLine(::fo::CommandLineArgs args)
 
 void GlobalSettings::ApplyInternalConfig()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #include "InternalConfig.gen.inc"
 
@@ -284,7 +270,7 @@ void GlobalSettings::ApplyInternalConfig()
 
 void GlobalSettings::ApplyDefaultSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_DISABLE_WARNINGS_PUSH()
 #define SETTING_GROUP(group, ...)
@@ -296,15 +282,13 @@ void GlobalSettings::ApplyDefaultSettings()
 
 void GlobalSettings::ApplyWritableRoot(string_view root)
 {
-    FO_STACK_TRACE_ENTRY();
-
     *FixedSettingForEdit(Common.UserWritablePath) = string(root);
     _settingValues["Common.UserWritablePath"] = string(root);
 }
 
 void GlobalSettings::ApplyAutoSettings()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     ApplyIgnoreInputDirs();
 
@@ -325,8 +309,6 @@ void GlobalSettings::ApplyAutoSettings()
 // so the packs in effect are rebuilt from the declared ones every time
 void GlobalSettings::ApplyIgnoreInputDirs()
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<ResourcePackInfo> res_packs = _declaredResourcePacks;
 
     // A packaged application's baked config declares packs without their inputs, so it has nothing to check against
@@ -352,7 +334,7 @@ void GlobalSettings::ApplyIgnoreInputDirs()
 
 void GlobalSettings::CopyFrom(const GlobalSettings& other)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     _declaredResourcePacks = other._declaredResourcePacks;
     _resourcePacks = other._resourcePacks;
@@ -373,7 +355,7 @@ void GlobalSettings::CopyFrom(const GlobalSettings& other)
 
 void GlobalSettings::ApplySubConfigSection(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto find_predicate = [&](const SubConfigInfo& cfg) { return cfg.Name == name; };
     auto it = std::ranges::find_if(_subConfigs, find_predicate);
@@ -389,8 +371,6 @@ void GlobalSettings::ApplySubConfigSection(string_view name)
 
 auto BaseSettings::FindSettingValue(string_view name) const -> nptr<const string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _settingValues.find(name);
 
     if (it == _settingValues.end()) {
@@ -402,8 +382,6 @@ auto BaseSettings::FindSettingValue(string_view name) const -> nptr<const string
 
 auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
@@ -415,8 +393,6 @@ auto GlobalSettings::GetCustomSetting(string_view name) const -> const any_t&
 
 auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _customSettings.find(name);
 
     if (it == _customSettings.end()) {
@@ -428,8 +404,6 @@ auto GlobalSettings::FindCustomSetting(string_view name) const -> nptr<const any
 
 void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _settingValues[string(name)] = value;
     _customSettings[string(name)] = std::move(value);
     _customSettingsGeneration++;
@@ -437,15 +411,11 @@ void GlobalSettings::SetCustomSetting(string_view name, any_t value)
 
 void GlobalSettings::SetSettingValue(string_view name, string_view value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetValue(string(name), string(value));
 }
 
 auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
 #define SETTING(type, group, setting_name, ...) \
     case const_hash(#group "." #setting_name): \
         if (name == #group "." #setting_name) { \
@@ -470,8 +440,6 @@ auto GlobalSettings::GetRuntimeSetting(const string& name) const -> string
 
 void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #define SETTING(type, group, setting_name, ...) \
     case const_hash(#group "." #setting_name): \
         if (name == #group "." #setting_name) { \
@@ -497,8 +465,6 @@ void GlobalSettings::SetRuntimeSetting(const string& name, const string& value)
 
 void GlobalSettings::SetValue(const string& setting_name, const string& setting_value, string_view config_dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool append = !setting_value.empty() && setting_value[0] == '+';
     string_view value = append ? string_view(setting_value).substr(1) : setting_value;
 
@@ -595,7 +561,7 @@ void GlobalSettings::SetValue(const string& setting_name, const string& setting_
 
 void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_view>>>& res_packs, string_view config_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (ptr<const map<string_view, string_view>> res_pack : res_packs) {
         auto get_map_value = [&](string_view key) -> string {
@@ -669,7 +635,7 @@ void GlobalSettings::AddResourcePacks(const vector<ptr<map<string_view, string_v
 
 void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view>>>& sub_configs, string_view config_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     for (ptr<const map<string_view, string_view>> sub_config : sub_configs) {
         auto get_map_value = [&](string_view key) -> string {
@@ -716,7 +682,7 @@ void GlobalSettings::AddSubConfigs(const vector<ptr<map<string_view, string_view
 
 auto GlobalSettings::Save() const -> map<string, string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     FO_VERIFY_AND_THROW(_bakingMode, "Settings can only be saved in baking mode");
 
@@ -744,7 +710,7 @@ auto GlobalSettings::Save() const -> map<string, string>
 
 void GlobalSettings::Draw(bool editable)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Gui);
 
 #define SETTING(type, group, name, ...) \
     if (editable) { \
@@ -760,8 +726,6 @@ void GlobalSettings::Draw(bool editable)
 
 auto BaseSettings::GetServerResourcePacks() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> packs;
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
@@ -775,8 +739,6 @@ auto BaseSettings::GetServerResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetClientResourcePacks() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> packs;
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
@@ -790,8 +752,6 @@ auto BaseSettings::GetClientResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> packs;
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
@@ -805,8 +765,6 @@ auto BaseSettings::GetMapperResourcePacks() const -> vector<string>
 
 auto BaseSettings::GetResourcePackDeclarations() const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string declarations;
 
     for (const ResourcePackInfo& pack : _resourcePacks) {
@@ -829,8 +787,6 @@ auto BaseSettings::GetResourcePackDeclarations() const -> string
 
 auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_resourcePacks.empty()) {
         throw SettingsException("No information about resource packs found");
     }
@@ -840,8 +796,6 @@ auto BaseSettings::GetResourcePacks() const -> const_span<ResourcePackInfo>
 
 bool GlobalSettings::IsSecretSettingName(string_view name) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     string lower_name = strex(name).lower().str();
 
     for (const auto& token : Common.SecretSettingTokens) {
@@ -855,8 +809,6 @@ bool GlobalSettings::IsSecretSettingName(string_view name) const
 
 auto FindNumericSettingAccess(string_view name) -> nptr<const NumericSettingAccess>
 {
-    FO_STACK_TRACE_ENTRY();
-
     static const unordered_map<string, NumericSettingAccess> accessors = [] {
         unordered_map<string, NumericSettingAccess> result;
 

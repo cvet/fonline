@@ -73,8 +73,6 @@ AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
     _musicVolume {settings->Audio.MusicVolume},
     _soundVolume {settings->Audio.SoundVolume}
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(OV_CALLBACKS_DEFAULT);
     ignore_unused(OV_CALLBACKS_NOCLOSE);
     ignore_unused(OV_CALLBACKS_STREAMONLY);
@@ -99,8 +97,6 @@ AudioManager::AudioManager(ptr<AudioSettings> settings, ptr<FileSystem> resource
 
 AudioManager::~AudioManager()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_isActive) {
         _audio->SetSource(nullptr);
 
@@ -112,7 +108,7 @@ AudioManager::~AudioManager()
 
 void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Audio);
 
     if (output.size() > _outputBuf.size()) {
         _outputBuf.resize(output.size());
@@ -143,8 +139,6 @@ void AudioManager::ProcessSounds(uint8_t silence, span<uint8_t> output)
 
 auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t> output) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Playing
     if (sound->ConvertedBufCur < sound->ConvertedBuf.size()) {
         if (output.size() > sound->ConvertedBuf.size() - sound->ConvertedBufCur) {
@@ -236,7 +230,7 @@ auto AudioManager::ProcessSound(ptr<Sound> sound, uint8_t silence, span<uint8_t>
 
 auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, float32_t attenuation, float32_t pan) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Audio);
 
     // Every audio resource is baked to Ogg Vorbis, so the authored extension names the source format only
     auto file = _resources->ReadFile(fname);
@@ -416,7 +410,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
 
 auto AudioManager::StreamOgg(ptr<Sound> sound) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Audio);
 
     FO_VERIFY_AND_THROW(sound->OggStream, "Sound has no Ogg stream to read");
     auto ogg_stream = sound->OggStream.as_nptr();
@@ -452,8 +446,6 @@ auto AudioManager::StreamOgg(ptr<Sound> sound) -> bool
 
 auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     sound->ConvertedBuf = sound->BaseBuf;
     sound->ConvertedBuf.resize(sound->BaseBufLen);
 
@@ -468,8 +460,6 @@ auto AudioManager::ConvertData(ptr<Sound> sound) -> bool
 
 void AudioManager::ApplyPan(span<uint8_t> buf, float32_t pan)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A stream can decode to nothing, and an empty buffer has no data pointer to walk
     if (buf.empty()) {
         return;
@@ -491,7 +481,7 @@ void AudioManager::ApplyPan(span<uint8_t> buf, float32_t pan)
 
 void AudioManager::IndexFiles()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Audio);
 
     for (const string& sound_ext : _settings->Audio.SoundFileExtensions) {
         for (const auto& file_header : _resources->FilterFiles(sound_ext)) {
@@ -502,15 +492,11 @@ void AudioManager::IndexFiles()
 
 auto AudioManager::PlaySound(string_view name) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return PlaySound(name, 1.0f, 0.0f);
 }
 
 auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t pan) -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     // A silent device plays nothing, so there is no handle to hand out. This is not a refusal: a player who
     // turned the volume down is a normal state, and the resource itself is untouched
     if (!_isActive || _soundVolume == 0) {
@@ -529,8 +515,6 @@ auto AudioManager::PlaySound(string_view name, float32_t attenuation, float32_t 
 
 auto AudioManager::UpdateSound(uint32_t sound_id, float32_t attenuation, float32_t pan) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isActive || sound_id == 0) {
         return false;
     }
@@ -557,8 +541,6 @@ auto AudioManager::UpdateSound(uint32_t sound_id, float32_t attenuation, float32
 
 auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isActive) {
         return true;
     }
@@ -570,8 +552,6 @@ auto AudioManager::PlayMusic(string_view fname, timespan repeat_time) -> bool
 
 void AudioManager::StopSounds()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isActive) {
         return;
     }
@@ -583,8 +563,6 @@ void AudioManager::StopSounds()
 
 void AudioManager::StopMusic()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_isActive) {
         return;
     }

@@ -39,20 +39,15 @@ NoiseCipherState::NoiseCipherState(const crypto::key_bytes& key) noexcept :
     _key {key},
     _hasKey {true}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 NoiseCipherState::~NoiseCipherState()
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto::wipe(_key);
 }
 
 void NoiseCipherState::EncryptWithAd(const_span<uint8_t> ad, const_span<uint8_t> plaintext, vector<uint8_t>& ciphertext)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t offset = ciphertext.size();
 
     if (!_hasKey) {
@@ -68,8 +63,6 @@ void NoiseCipherState::EncryptWithAd(const_span<uint8_t> ad, const_span<uint8_t>
 
 auto NoiseCipherState::DecryptWithAd(const_span<uint8_t> ad, const_span<uint8_t> ciphertext, vector<uint8_t>& plaintext) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t offset = plaintext.size();
 
     if (!_hasKey) {
@@ -95,8 +88,6 @@ auto NoiseCipherState::DecryptWithAd(const_span<uint8_t> ad, const_span<uint8_t>
 
 auto NoiseCipherState::MakeNonce() const -> crypto::aead_nonce
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The largest value is reserved, and a counter that reached it must never encrypt again
     if (_nonce == std::numeric_limits<uint64_t>::max()) {
         throw NoiseException("Cipher nonce is exhausted");
@@ -119,8 +110,6 @@ NoiseHandshakeNK::NoiseHandshakeNK(bool initiator, const_span<uint8_t> prologue,
     _ephemeralSecretKey {ephemeral_secret_key},
     _ephemeralPublicKey {crypto::derive_public_key(ephemeral_secret_key)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     static_assert(PROTOCOL_NAME.size() <= crypto::hash_size);
     memory::copy(_handshakeHash.data(), PROTOCOL_NAME.data(), PROTOCOL_NAME.size());
     _chainingKey = _handshakeHash;
@@ -133,36 +122,26 @@ NoiseHandshakeNK::NoiseHandshakeNK(bool initiator, const_span<uint8_t> prologue,
 
 NoiseHandshakeNK::~NoiseHandshakeNK()
 {
-    FO_STACK_TRACE_ENTRY();
-
     WipeHandshakeSecrets();
 }
 
 auto NoiseHandshakeNK::CreateInitiator(const_span<uint8_t> prologue, const crypto::key_bytes& responder_public_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK
 {
-    FO_STACK_TRACE_ENTRY();
-
     return NoiseHandshakeNK(true, prologue, {}, responder_public_key, ephemeral_secret_key);
 }
 
 auto NoiseHandshakeNK::CreateResponder(const_span<uint8_t> prologue, const crypto::key_bytes& static_secret_key, const crypto::key_bytes& ephemeral_secret_key) -> NoiseHandshakeNK
 {
-    FO_STACK_TRACE_ENTRY();
-
     return NoiseHandshakeNK(false, prologue, static_secret_key, crypto::derive_public_key(static_secret_key), ephemeral_secret_key);
 }
 
 auto NoiseHandshakeNK::IsWriteTurn() const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !_failed && !IsComplete() && (_messageIndex % 2 == 0) == _initiator;
 }
 
 void NoiseHandshakeNK::WriteMessage(const_span<uint8_t> payload, vector<uint8_t>& message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsWriteTurn(), "Noise handshake message written out of turn", _messageIndex, _initiator, _failed);
 
     message.insert(message.end(), _ephemeralPublicKey.begin(), _ephemeralPublicKey.end());
@@ -180,8 +159,6 @@ void NoiseHandshakeNK::WriteMessage(const_span<uint8_t> payload, vector<uint8_t>
 
 auto NoiseHandshakeNK::ReadMessage(const_span<uint8_t> message, vector<uint8_t>& payload) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_failed && !IsComplete() && !IsWriteTurn(), "Noise handshake message read out of turn", _messageIndex, _initiator, _failed);
 
     if (message.size() < MESSAGE_OVERHEAD) {
@@ -208,8 +185,6 @@ auto NoiseHandshakeNK::ReadMessage(const_span<uint8_t> message, vector<uint8_t>&
 
 auto NoiseHandshakeNK::Split() -> TransportCiphers
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsComplete() && !_split, "Noise handshake split before both messages were exchanged or split twice", _messageIndex, _split);
 
     crypto::hash_bytes temp_key = crypto::hmac(_chainingKey, {});
@@ -240,15 +215,11 @@ auto NoiseHandshakeNK::Split() -> TransportCiphers
 
 void NoiseHandshakeNK::MixHash(const_span<uint8_t> data) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _handshakeHash = crypto::hash_data({_handshakeHash, data});
 }
 
 void NoiseHandshakeNK::MixKey(const_span<uint8_t> input_key_material)
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto::hash_bytes temp_key = crypto::hmac(_chainingKey, {input_key_material});
     constexpr uint8_t first_index = 1;
     _chainingKey = crypto::hmac(temp_key, {make_const_span(&first_index, 1)});
@@ -266,8 +237,6 @@ void NoiseHandshakeNK::MixKey(const_span<uint8_t> input_key_material)
 
 void NoiseHandshakeNK::EncryptAndHash(const_span<uint8_t> plaintext, vector<uint8_t>& ciphertext)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t offset = ciphertext.size();
     _cipher.EncryptWithAd(_handshakeHash, plaintext, ciphertext);
     MixHash(const_span<uint8_t> {ciphertext}.subspan(offset));
@@ -275,8 +244,6 @@ void NoiseHandshakeNK::EncryptAndHash(const_span<uint8_t> plaintext, vector<uint
 
 auto NoiseHandshakeNK::DecryptAndHash(const_span<uint8_t> ciphertext, vector<uint8_t>& plaintext) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_cipher.DecryptWithAd(_handshakeHash, ciphertext, plaintext)) {
         return false;
     }
@@ -287,8 +254,6 @@ auto NoiseHandshakeNK::DecryptAndHash(const_span<uint8_t> ciphertext, vector<uin
 
 void NoiseHandshakeNK::WipeHandshakeSecrets() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto::wipe(_chainingKey);
     crypto::wipe(_staticSecretKey);
     crypto::wipe(_ephemeralSecretKey);

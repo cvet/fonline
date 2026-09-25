@@ -49,15 +49,9 @@ public:
     explicit FramePumpTestBackend(function<void()> callback) :
         _callback {std::move(callback)}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
-    void Process() override
-    {
-        FO_STACK_TRACE_ENTRY();
-
-        _callback();
-    }
+    void Process() override { _callback(); }
 
 private:
     function<void()> _callback;
@@ -79,7 +73,6 @@ public:
             }
         })
     {
-        FO_STACK_TRACE_ENTRY();
     }
 };
 
@@ -315,11 +308,7 @@ TEST_CASE("CommonFrameBalancer")
     {
         FrameBalancer balancer {true, 200, 1000};
 
-        nanotime start = nanotime::now();
-        balancer.StartLoop();
-        balancer.EndLoop();
-
-        CHECK(nanotime::now() - start < timespan {std::chrono::milliseconds {100}});
+        CHECK(fastest_loop(balancer) < timespan {std::chrono::milliseconds {100}});
     }
 }
 

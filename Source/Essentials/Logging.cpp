@@ -52,8 +52,6 @@ struct logging_data
 {
     logging_data()
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if !FO_WEB && !FO_MAC && !FO_IOS && !FO_ANDROID
         (void)std::at_quick_exit(flush_log_at_exit);
 #else
@@ -76,8 +74,6 @@ FO_GLOBAL_DATA(logging_data, log_state);
 
 void logging::write_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         if (!log_state.is_created()) {
             string result;
@@ -113,8 +109,6 @@ void logging::write_message(logging::type type, string_view message, nptr<const 
 
 void logging::set_callback(string_view key, logging::callback callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::scoped_lock locker {log_state->locker};
 
     flush_log_message_repeats_locked();
@@ -133,8 +127,6 @@ void logging::set_callback(string_view key, logging::callback callback)
 
 void logging::disable_tags()
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::scoped_lock locker {log_state->locker};
 
     flush_log_message_repeats_locked();
@@ -144,8 +136,6 @@ void logging::disable_tags()
 
 static void emit_log_message(logging::type type, string_view message, nptr<const stack_trace::catched_data> st)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Make message
     string result;
     result.reserve(message.length() + 64);
@@ -187,7 +177,7 @@ static void emit_log_message(logging::type type, string_view message, nptr<const
         platform::info_log(result);
     }
 
-#if FO_TRACY
+#if FO_TRACE_CATEGORY_ENABLED(Log)
     auto tracy_message = make_ptr(result.c_str());
     TracyMessage(tracy_message.get(), result.length());
 #endif
@@ -195,8 +185,6 @@ static void emit_log_message(logging::type type, string_view message, nptr<const
 
 static void flush_log_message_repeats_locked()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!log_state->last_log_type.has_value()) {
         return;
     }
@@ -224,8 +212,6 @@ static void flush_log_message_repeats_locked()
 
 static void flush_log_at_exit()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (log_state.is_created()) {
         std::scoped_lock locker {log_state->locker};
 
@@ -235,15 +221,11 @@ static void flush_log_at_exit()
 
 static auto is_same_as_last_log_message(logging::type type, string_view message) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return log_state->last_log_type.has_value() && *log_state->last_log_type == type && string_view {log_state->last_log_message} == message;
 }
 
 static void remember_last_log_message(logging::type type, string_view message) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     log_state->last_log_type = type;
     log_state->last_log_message.assign(message);
     log_state->same_log_message_count = 0;
@@ -251,8 +233,6 @@ static void remember_last_log_message(logging::type type, string_view message) n
 
 static void clear_last_log_message() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     log_state->last_log_type.reset();
     log_state->last_log_message.clear();
     log_state->same_log_message_count = 0;

@@ -61,23 +61,17 @@ struct ScriptDictInitListValueLayout
 
 static auto ScriptDictBufferAsVoid(ptr<AngelScript::asBYTE> buffer) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return buffer.void_cast();
 }
 
 static void AdvanceScriptDictBuffer(ptr<AngelScript::asBYTE>& buffer, size_t offset) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     buffer = buffer.offset(offset);
 }
 
 template<typename T>
 static auto ReadScriptDictBufferValue(ptr<AngelScript::asBYTE> buffer) noexcept -> T
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(std::is_trivially_copyable_v<T>);
 
     return *cast_from_void<T*>(ScriptDictBufferAsVoid(buffer).get());
@@ -85,8 +79,6 @@ static auto ReadScriptDictBufferValue(ptr<AngelScript::asBYTE> buffer) noexcept 
 
 static auto GetScriptDictObjectType(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id) -> ptr<AngelScript::asITypeInfo>
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asITypeInfo> obj_type = engine->GetTypeInfoById(type_id);
     FO_VERIFY_AND_THROW(obj_type, "Dictionary object type info not found");
     return obj_type;
@@ -94,8 +86,6 @@ static auto GetScriptDictObjectType(ptr<AngelScript::asIScriptEngine> engine, in
 
 static auto GetScriptDictInitListValueLayout(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id) -> ScriptDictInitListValueLayout
 {
-    FO_STACK_TRACE_ENTRY();
-
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         auto obj_type = GetScriptDictObjectType(engine, type_id);
         auto flags = obj_type->GetFlags();
@@ -112,8 +102,6 @@ static auto GetScriptDictInitListValueLayout(ptr<AngelScript::asIScriptEngine> e
 
 static auto ListElementAlignment(int32_t type_id, size_t element_size) noexcept -> AngelScript::asPWORD
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) != 0) {
         if ((type_id & AngelScript::asTYPEID_OBJHANDLE) != 0) {
             return 4;
@@ -131,8 +119,6 @@ static auto ListElementAlignment(int32_t type_id, size_t element_size) noexcept 
 
 static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, int32_t type_id, size_t value_size) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (value_size < 4) {
         return;
     }
@@ -149,8 +135,6 @@ static void AlignScriptDictInitListBuffer(ptr<AngelScript::asBYTE>& buffer, int3
 
 static auto ReadScriptDictInitListEntry(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id, ptr<AngelScript::asBYTE>& buffer) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ScriptDictInitListValueLayout layout = GetScriptDictInitListValueLayout(engine, type_id);
 
     AlignScriptDictInitListBuffer(buffer, type_id, layout.Size);
@@ -169,16 +153,12 @@ static auto ReadScriptDictInitListEntry(ptr<AngelScript::asIScriptEngine> engine
 
 static void CleanupScriptDictTypeData(ptr<ScriptDictTypeData> cache) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto owned_cache = adopt_unique_ptr(cache);
     ignore_unused(owned_cache);
 }
 
 static void CleanupTypeInfoDictCache(AngelScript::asITypeInfo* type)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asITypeInfo> type_info = type;
     auto cache = cast_from_void<ScriptDictTypeData*>(type_info->GetUserData(AS_TYPE_DICT_CACHE));
     if (cache) {
@@ -197,41 +177,30 @@ static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeD
 ScriptDict::ScriptDictComparator::ScriptDictComparator(ptr<ScriptDict> owner) :
     Owner {owner}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ScriptDict::ScriptDictComparator::operator()(ptr<void> a, ptr<void> b) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return Less(Owner->_keyTypeId, Owner->_keyTypeData, Owner->_typeInfo->GetEngine(), a, b);
 }
 
 auto ScriptDict::Create(ptr<AngelScript::asITypeInfo> ti) -> refcount_ptr<ScriptDict>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_refcounted<ScriptDict>(ti);
 }
 
 auto ScriptDict::Create(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) -> refcount_ptr<ScriptDict>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_refcounted<ScriptDict>(ti, init_list);
 }
 
 auto ScriptDict::GetDictTypeId() const -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _typeInfo->GetTypeId();
 }
 
 static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t sub_type_index, bool& dont_garbage_collect) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(ti, "Dictionary type info is null");
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
     int32_t type_id = ti->GetSubTypeId(sub_type_index);
@@ -302,8 +271,6 @@ static auto ScriptDict_TemplateCallbackExt(AngelScript::asITypeInfo* ti, int32_t
 
 static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont_garbage_collect) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     bool key_dont_garbage_collect = false;
     bool value_dont_garbage_collect = false;
 
@@ -320,8 +287,6 @@ static auto ScriptDict_TemplateCallback(AngelScript::asITypeInfo* ti, bool& dont
 
 static auto GetDictSubTypeForPrecache(ptr<AngelScript::asITypeInfo> type_info, AngelScript::asUINT index) -> nptr<AngelScript::asITypeInfo>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return type_info->GetSubType(index);
 }
 
@@ -333,8 +298,6 @@ ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(ti, 1))},
     _data {ScriptDictComparator(make_ptr(this))}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if ((_typeInfo->GetFlags() & AngelScript::asOBJ_GC) != 0) {
         ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
         engine->NotifyGarbageCollectorOfNewObject(this, _typeInfo.get());
@@ -349,8 +312,6 @@ ScriptDict::ScriptDict(ptr<AngelScript::asITypeInfo> ti, ptr<void> init_list) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(ti, 1))},
     _data {ScriptDictComparator(make_ptr(this))}
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> engine = ti->GetEngine();
     auto buffer = init_list.reinterpret_as<AngelScript::asBYTE>();
     AngelScript::asUINT length = ReadScriptDictBufferValue<AngelScript::asUINT>(buffer);
@@ -375,8 +336,6 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
     _valueTypeData {PrecacheSubTypeData(_valueTypeId, GetDictSubTypeForPrecache(_typeInfo, 1))},
     _data {ScriptDictComparator(make_ptr(this))}
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& kv : other._data) {
         Set(kv.first, kv.second);
     }
@@ -389,8 +348,6 @@ ScriptDict::ScriptDict(const ScriptDict& other) :
 
 auto ScriptDict::operator=(const ScriptDict& other) -> ScriptDict&
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (other._typeInfo != _typeInfo) {
         throw ScriptException("Different types on dict assignment");
     }
@@ -408,15 +365,11 @@ auto ScriptDict::operator=(const ScriptDict& other) -> ScriptDict&
 
 ScriptDict::~ScriptDict()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Clear();
 }
 
 auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeInfo> ti) const -> nptr<ScriptDictTypeData>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if ((type_id & ~AngelScript::asTYPEID_MASK_SEQNBR) == 0) {
         return nullptr;
     }
@@ -535,22 +488,16 @@ auto ScriptDict::PrecacheSubTypeData(int32_t type_id, nptr<AngelScript::asITypeI
 
 auto ScriptDict::IsEmpty() const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _data.empty();
 }
 
 auto ScriptDict::GetSize() const -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return numeric_cast<int32_t>(_data.size());
 }
 
 void ScriptDict::Set(ptr<void> key, ptr<void> value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it == _data.end()) {
@@ -568,8 +515,6 @@ void ScriptDict::Set(ptr<void> key, ptr<void> value)
 
 void ScriptDict::SetIfNotExist(ptr<void> key, ptr<void> value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it == _data.end()) {
@@ -581,8 +526,6 @@ void ScriptDict::SetIfNotExist(ptr<void> key, ptr<void> value)
 
 auto ScriptDict::Remove(ptr<void> key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it != _data.end()) {
@@ -599,8 +542,6 @@ auto ScriptDict::Remove(ptr<void> key) -> bool
 
 auto ScriptDict::RemoveValues(ptr<void> value) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t result = 0;
 
     for (auto it = _data.begin(); it != _data.end();) {
@@ -622,8 +563,6 @@ auto ScriptDict::RemoveValues(ptr<void> value) -> int32_t
 
 void ScriptDict::Clear()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (!_data.empty()) {
         auto node = _data.begin();
         ptr<void> key = node->first;
@@ -636,8 +575,6 @@ void ScriptDict::Clear()
 
 auto ScriptDict::Get(ptr<void> key) const -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it == _data.end()) {
@@ -649,8 +586,6 @@ auto ScriptDict::Get(ptr<void> key) const -> ptr<void>
 
 auto ScriptDict::GetOrCreate(ptr<void> key) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it == _data.end()) {
@@ -665,8 +600,6 @@ auto ScriptDict::GetOrCreate(ptr<void> key) -> ptr<void>
 
 auto ScriptDict::GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _data.find(key.get());
 
     if (it == _data.end()) {
@@ -678,8 +611,6 @@ auto ScriptDict::GetDefault(ptr<void> key, ptr<void> def_val) const -> ptr<void>
 
 auto ScriptDict::GetKey(int32_t index) const -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (index < 0 || index >= numeric_cast<int32_t>(_data.size())) {
         throw ScriptException("Index out of bounds");
     }
@@ -695,8 +626,6 @@ auto ScriptDict::GetKey(int32_t index) const -> ptr<void>
 
 auto ScriptDict::GetValue(int32_t index) const -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (index < 0 || index >= numeric_cast<int32_t>(_data.size())) {
         throw ScriptException("Index out of bounds");
     }
@@ -712,8 +641,6 @@ auto ScriptDict::GetValue(int32_t index) const -> ptr<void>
 
 auto ScriptDict::MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name) const -> refcount_ptr<ScriptArray>
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> engine = _typeInfo->GetEngine();
     nptr<AngelScript::asIScriptFunction> accessor = _typeInfo->GetMethodByName(accessor_name);
     FO_VERIFY_AND_THROW(accessor, "Dictionary array accessor not found", accessor_name);
@@ -729,8 +656,6 @@ auto ScriptDict::MakeSubTypeArray(int32_t sub_type_id, const char* accessor_name
 
 auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto arr = MakeSubTypeArray(_keyTypeId, "getKeys");
 
     for (ptr<void> key : _data | std::views::keys) {
@@ -742,8 +667,6 @@ auto ScriptDict::GetKeys() const -> refcount_ptr<ScriptArray>
 
 auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto arr = MakeSubTypeArray(_valueTypeId, "getValues");
 
     for (ptr<void> value : _data | std::views::values) {
@@ -755,15 +678,11 @@ auto ScriptDict::GetValues() const -> refcount_ptr<ScriptArray>
 
 auto ScriptDict::Exists(ptr<void> key) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _data.count(key.get()) != 0;
 }
 
 auto ScriptDict::operator==(const ScriptDict& other) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (&other == this) {
         return true;
     }
@@ -794,16 +713,12 @@ auto ScriptDict::operator==(const ScriptDict& other) const -> bool
 
 void ScriptDict::AddRef() const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _gcFlag.store(false, std::memory_order_relaxed);
     _refCount.fetch_add(1, std::memory_order_acq_rel);
 }
 
 void ScriptDict::Release() const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _gcFlag.store(false, std::memory_order_relaxed);
 
     if (_refCount.fetch_sub(1, std::memory_order_acq_rel) == 1) {
@@ -813,29 +728,21 @@ void ScriptDict::Release() const
 
 auto ScriptDict::GetRefCount() const -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _refCount.load(std::memory_order_relaxed);
 }
 
 void ScriptDict::SetFlag() const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _gcFlag.store(true, std::memory_order_relaxed);
 }
 
 bool ScriptDict::GetFlag() const
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _gcFlag.load(std::memory_order_relaxed);
 }
 
 static void EnumStoredReference(ptr<AngelScript::asIScriptEngine> engine, int32_t type_id, ptr<void> storage)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         return;
     }
@@ -849,8 +756,6 @@ static void EnumStoredReference(ptr<AngelScript::asIScriptEngine> engine, int32_
 
 void ScriptDict::EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& kv : _data) {
         EnumStoredReference(engine, _keyTypeId, kv.first);
         EnumStoredReference(engine, _valueTypeId, kv.second);
@@ -859,15 +764,11 @@ void ScriptDict::EnumReferences(ptr<AngelScript::asIScriptEngine> engine) const
 
 void ScriptDict::ReleaseAllHandles()
 {
-    FO_STACK_TRACE_ENTRY();
-
     Clear();
 }
 
 static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_index) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     nptr<AngelScript::asITypeInfo> sub_type = obj_type->GetSubType(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
@@ -895,8 +796,6 @@ static auto CreateObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_typ
 
 static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_index, ptr<void> value) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     nptr<AngelScript::asITypeInfo> sub_type = obj_type->GetSubType(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
@@ -950,16 +849,12 @@ static auto CopyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_
 
 static void CleanupScriptDictValueBytes(ptr<uint8_t> value_bytes) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     unique_arr_ptr<uint8_t> owned_value_bytes {value_bytes.get()};
     ignore_unused(owned_value_bytes);
 }
 
 static void DestroyObject(ptr<AngelScript::asITypeInfo> obj_type, int32_t sub_type_index, ptr<void> value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t sub_type_id = obj_type->GetSubTypeId(sub_type_index);
     ptr<AngelScript::asIScriptEngine> engine = obj_type->GetEngine();
 
@@ -1003,8 +898,6 @@ static auto Less(int32_t type_id, nptr<const ScriptDictTypeData> type_data, ptr<
 
 static auto Equals(int32_t type_id, nptr<const ScriptDictTypeData> type_data, ptr<AngelScript::asIScriptEngine> engine, ptr<void> a, ptr<void> b) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (type_data) {
         if (!type_data->CmpFunc && !type_data->EqFunc && (type_id & AngelScript::asTYPEID_OBJHANDLE) == 0) {
             nptr<const AngelScript::asITypeInfo> sub_type = engine->GetTypeInfoById(type_id);
@@ -1024,8 +917,6 @@ static auto Equals(int32_t type_id, nptr<const ScriptDictTypeData> type_data, pt
 
 static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeData> type_data, ptr<AngelScript::asIScriptEngine> engine, ptr<void> a, ptr<void> b) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if ((type_id & AngelScript::asTYPEID_MASK_OBJECT) == 0) {
         if (check_less) {
             switch (type_id) {
@@ -1212,8 +1103,6 @@ static auto Compare(bool check_less, int32_t type_id, nptr<const ScriptDictTypeD
 
 static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
     auto dict = ScriptDict::Create(type_info);
@@ -1222,8 +1111,6 @@ static auto ScriptDict_Create(AngelScript::asITypeInfo* ti) -> ScriptDict*
 
 static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list) -> ScriptDict*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
     nptr<void> init_list_ptr = init_list;
@@ -1234,8 +1121,6 @@ static auto ScriptDict_CreateList(AngelScript::asITypeInfo* ti, void* init_list)
 
 static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* other) -> ScriptDict*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asITypeInfo> type_info = ti;
     FO_VERIFY_AND_THROW(type_info, "Dictionary type info is null");
 
@@ -1251,8 +1136,6 @@ static auto ScriptDict_Factory(AngelScript::asITypeInfo* ti, const ScriptDict* o
 
 static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto type_info = make_ptr(const_cast<AngelScript::asITypeInfo*>(std::addressof(*dict.GetDictObjectType())));
     auto clone = ScriptDict::Create(type_info);
     *clone = dict;
@@ -1261,16 +1144,12 @@ static auto ScriptDict_Clone(const ScriptDict& dict) -> ScriptDict*
 
 [[nodiscard]] static auto RequireScriptDictValue(nptr<void> value) -> ptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(value, "Dictionary value is null");
     return value;
 }
 
 static auto ScriptDict_Equals(const ScriptDict& dict, const ScriptDict* other) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const ScriptDict> other_ptr = other;
     if (!other_ptr) {
         throw ScriptException("Dict arg is null");
@@ -1281,8 +1160,6 @@ static auto ScriptDict_Equals(const ScriptDict& dict, const ScriptDict* other) -
 
 static auto ScriptDict_Get(const ScriptDict& dict, void* key) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.Get(key_ptr);
@@ -1291,8 +1168,6 @@ static auto ScriptDict_Get(const ScriptDict& dict, void* key) -> void*
 
 static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     ptr<void> value = dict.GetOrCreate(key_ptr);
@@ -1301,8 +1176,6 @@ static auto ScriptDict_GetOrCreate(ScriptDict& dict, void* key) -> void*
 
 static auto ScriptDict_Remove(ScriptDict& dict, void* key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     return dict.Remove(key_ptr);
@@ -1310,8 +1183,6 @@ static auto ScriptDict_Remove(ScriptDict& dict, void* key) -> bool
 
 static auto ScriptDict_RemoveValues(ScriptDict& dict, void* value) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> value_arg = value;
     auto value_ptr = RequireScriptDictValue(value_arg);
     return dict.RemoveValues(value_ptr);
@@ -1319,8 +1190,6 @@ static auto ScriptDict_RemoveValues(ScriptDict& dict, void* value) -> int32_t
 
 static void ScriptDict_Set(ScriptDict& dict, void* key, void* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     nptr<void> value_arg = value;
     auto key_ptr = RequireScriptDictValue(key_arg);
@@ -1330,8 +1199,6 @@ static void ScriptDict_Set(ScriptDict& dict, void* key, void* value)
 
 static void ScriptDict_SetIfNotExist(ScriptDict& dict, void* key, void* value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     nptr<void> value_arg = value;
     auto key_ptr = RequireScriptDictValue(key_arg);
@@ -1341,8 +1208,6 @@ static void ScriptDict_SetIfNotExist(ScriptDict& dict, void* key, void* value)
 
 static auto ScriptDict_GetDefault(const ScriptDict& dict, void* key, void* def_val) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     nptr<void> def_val_arg = def_val;
     auto key_ptr = RequireScriptDictValue(key_arg);
@@ -1353,40 +1218,30 @@ static auto ScriptDict_GetDefault(const ScriptDict& dict, void* key, void* def_v
 
 static auto ScriptDict_GetKey(const ScriptDict& dict, int32_t index) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<void> key = dict.GetKey(index);
     return key.get();
 }
 
 static auto ScriptDict_GetValue(const ScriptDict& dict, int32_t index) -> void*
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<void> value = dict.GetValue(index);
     return value.get();
 }
 
 static auto ScriptDict_GetKeys(const ScriptDict& dict) -> ScriptArray*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto keys = dict.GetKeys();
     return keys.release_ownership();
 }
 
 static auto ScriptDict_GetValues(const ScriptDict& dict) -> ScriptArray*
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto values = dict.GetValues();
     return values.release_ownership();
 }
 
 static auto ScriptDict_Exists(const ScriptDict& dict, void* key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<void> key_arg = key;
     auto key_ptr = RequireScriptDictValue(key_arg);
     return dict.Exists(key_ptr);
@@ -1394,8 +1249,6 @@ static auto ScriptDict_Exists(const ScriptDict& dict, void* key) -> bool
 
 static void ScriptDict_EnumReferences(const ScriptDict& dict, AngelScript::asIScriptEngine* engine)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asIScriptEngine> engine_arg = engine;
     FO_VERIFY_AND_THROW(engine_arg, "Script engine is null");
     dict.EnumReferences(engine_arg);
@@ -1403,8 +1256,6 @@ static void ScriptDict_EnumReferences(const ScriptDict& dict, AngelScript::asISc
 
 static void ScriptDict_ReleaseAllHandles(ScriptDict& dict, AngelScript::asIScriptEngine* engine)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<AngelScript::asIScriptEngine> engine_arg = engine;
     FO_VERIFY_AND_THROW(engine_arg, "Script engine is null");
     dict.ReleaseAllHandles();
@@ -1412,7 +1263,7 @@ static void ScriptDict_ReleaseAllHandles(ScriptDict& dict, AngelScript::asIScrip
 
 void RegisterAngelScriptDict(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     as_engine->SetTypeInfoUserDataCleanupCallback(CleanupTypeInfoDictCache, AS_TYPE_DICT_CACHE);
 

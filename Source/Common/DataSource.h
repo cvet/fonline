@@ -91,7 +91,6 @@ public:
     explicit DataSourceRef(ptr<DataSource> ds) :
         _dataSource {ds}
     {
-        FO_STACK_TRACE_ENTRY();
     }
     DataSourceRef(const DataSourceRef&) = delete;
     DataSourceRef(DataSourceRef&&) noexcept = delete;

@@ -80,8 +80,6 @@ static auto CollectModuleScriptFunctions(ptr<const AngelScript::asIScriptModule>
 
 static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFunction> func) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!func) {
         return "<unknown>";
     }
@@ -92,8 +90,6 @@ static auto GetFunctionDeclarationString(nptr<const AngelScript::asIScriptFuncti
 
 static auto ResolveDeclaredFunctionSourceLocation(nptr<const AngelScript::asIScriptFunction> func, nptr<const Preprocessor::LineNumberTranslator> lnt) -> optional<pair<string, uint32_t>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!func) {
         return std::nullopt;
     }
@@ -128,8 +124,6 @@ static auto MakeRemoteCallImplementationDecl(const EngineMetadata& meta, const R
 
 static auto RemoteCallConstObjectBytes(nptr<const void> obj) noexcept -> ptr<const uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(obj, "Remote call object is null");
     return cast_from_void<const uint8_t*>(obj.get());
 }
@@ -137,24 +131,18 @@ static auto RemoteCallConstObjectBytes(nptr<const void> obj) noexcept -> ptr<con
 template<typename T>
 static auto RemoteCallConstObjectAs(nptr<const void> obj) noexcept -> ptr<const T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(obj, "Remote call object is null");
     return cast_from_void<const T*>(obj.get());
 }
 
 static auto GetConstStructFieldStorage(nptr<const void> obj, size_t offset) noexcept -> ptr<const uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto bytes = RemoteCallConstObjectBytes(obj);
     return bytes.offset(offset);
 }
 
 static auto ReadMutableObjectHandleSlot(nptr<const void> slot) noexcept -> nptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!slot) {
         return nullptr;
     }
@@ -170,7 +158,7 @@ static auto ResolveInboundRemoteCallImplementation(ptr<const AngelScript::asIScr
 
 static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     ptr<AngelScript::asIScriptGeneric> generic = gen;
     ptr<AngelScript::asIScriptEngine> as_engine = generic->GetEngine();
@@ -289,7 +277,7 @@ static void OutboundRemoteCallFunc(AngelScript::asIScriptGeneric* gen)
 
 static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<Entity> entity, const_span<uint8_t> data, ptr<BaseEngine> engine, ptr<AngelScript::asIScriptFunction> func)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(engine->GetSide() != EngineSideKind::MapperSide, "Remote calls are not supported on mapper side");
 
@@ -489,7 +477,7 @@ static void InboundRemoteCallHandler(const RemoteCallDesc& inbound_call, nptr<En
 
 void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     int32_t as_result = 0;
     auto meta = GetEngineMetadata(as_engine);
@@ -521,7 +509,7 @@ void RegisterAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
 
 void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     nptr<const AngelScript::asIScriptModule> as_module = as_engine->GetModuleByIndex(0);
     FO_VERIFY_AND_THROW(as_module, "Missing required AngelScript module");
@@ -558,6 +546,8 @@ void BindAngelScriptRemoteCalls(ptr<AngelScript::asIScriptEngine> as_engine)
 
 auto ValidateAngelScriptRemoteCallAttributes(ptr<const AngelScript::asIScriptModule> mod, const EngineMetadata& meta, nptr<const Preprocessor::LineNumberTranslator> lnt) -> string
 {
+    FO_TRACE_ZONE(Script);
+
     string errors;
     string_view expected_attr {};
     string_view opposite_attr {};

@@ -65,12 +65,7 @@ public:
     auto operator=(EntityWithProto&&) noexcept = delete;
 
     [[nodiscard]] auto GetProtoId() const noexcept -> hstring { return _proto->GetProtoId(); }
-    [[nodiscard]] auto GetProto() const noexcept -> ptr<const ProtoEntity>
-    {
-        FO_NO_STACK_TRACE_ENTRY();
-
-        return _proto;
-    }
+    [[nodiscard]] auto GetProto() const noexcept -> ptr<const ProtoEntity> { return _proto; }
 
 protected:
     explicit EntityWithProto(ptr<const ProtoEntity> proto) noexcept;

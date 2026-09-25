@@ -52,8 +52,6 @@ FO_BEGIN_NAMESPACE
 #if FO_SPARK_PARTICLES
 static void ValidateSparkTexturePaths(const File& particle_file, const SPK::Ref<SPK::System>& system)
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::filesystem::path particle_dir {fs::make_path(strex(particle_file.GetPath()).extract_dir().normalize_path_slashes())};
 
     for (size_t group_index = 0; group_index < system->getNbGroups(); group_index++) {
@@ -97,8 +95,6 @@ static constexpr string_view EffekseerDependencyCacheHeader = "FONLINE_EFFEKSEER
 
 static auto GetEffekseerDependencyCachePath(const BakingContext& context, string_view output_path) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (context.Settings->Baking.BakeOutput.empty()) {
         return {};
     }
@@ -108,8 +104,6 @@ static auto GetEffekseerDependencyCachePath(const BakingContext& context, string
 
 static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<vector<string>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!snapshot.starts_with(EffekseerDependencyCacheHeader)) {
         return std::nullopt;
     }
@@ -170,8 +164,6 @@ static auto ParseEffekseerDependencySnapshot(string_view snapshot) -> optional<v
 
 static auto BuildEffekseerDependencySnapshot(string_view project_path, size_t project_size, uint64_t project_write_time, const vector<string>& dependency_paths, uint64_t& max_write_time) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string snapshot {EffekseerDependencyCacheHeader};
     snapshot += strex("{}\t{}\t{}\n", project_path, project_size, project_write_time);
     max_write_time = project_write_time;
@@ -194,7 +186,7 @@ static auto BuildEffekseerDependencySnapshot(string_view project_path, size_t pr
 
 static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& context, const FileHeader& project_file, string_view output_path) -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     uint64_t source_write_time = project_file.GetWriteTime();
     string cache_path = GetEffekseerDependencyCachePath(context, output_path);
@@ -221,8 +213,6 @@ static auto TryGetCachedEffekseerDependencyWriteTime(const BakingContext& contex
 
 static auto ResolveEffekseerDependencyPaths(const File& project_file, const vector<string>& compiler_dependencies) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> resolved_paths;
     string project_path = fs::resolve_path(project_file.GetDiskPath());
     string source_root_path = fs::resolve_path(project_file.GetDataSource()->GetPackName());
@@ -262,7 +252,7 @@ static auto ResolveEffekseerDependencyPaths(const File& project_file, const vect
 
 static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, const File& project_file, string_view output_path) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string project_path = fs::resolve_path(project_file.GetDiskPath());
     vector<string> compiler_dependencies;
@@ -296,7 +286,7 @@ static auto RefreshEffekseerDependencySnapshot(const BakingContext& context, con
 
 static void ValidateEffekseerRuntimeBinary(string_view path, const_span<uint8_t> file_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     InitializeEffekseerMemory();
 
@@ -331,8 +321,6 @@ ParticleBaker::ParticleBaker(shared_ptr<BakingContext> ctx) :
     _sparkContext {safe_alloc::make_unique<SPK::SPKContext>()}
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_SPARK_PARTICLES
     SPK::FO::EnsureSparkParticleObjectsRegistered(*_sparkContext);
 #endif
@@ -340,12 +328,11 @@ ParticleBaker::ParticleBaker(shared_ptr<BakingContext> ctx) :
 
 ParticleBaker::~ParticleBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ParticleBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<File> spark_files;
     vector<File> effekseer_files;
@@ -465,7 +452,7 @@ static constexpr size_t SPARK_BOUNDS_MAX_STEPS = 2000;
 
 void ParticleBaker::BakeSparkFile(const File& file) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string_view source_path = file.GetPath();
     string output_path = strex(source_path).change_file_extension("spk");
@@ -573,8 +560,6 @@ static constexpr int32_t EFFEKSEER_BOUNDS_SIM_INSTANCES = 4000;
 
 static auto ToEffekseerUtf8(const char16_t* value) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (value == nullptr) {
         return {};
     }
@@ -587,8 +572,6 @@ static auto ToEffekseerUtf8(const char16_t* value) -> string
 
 static auto ToEffekseerUtf16(string_view value) -> vector<char16_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string source {value};
     vector<char16_t> result(source.size() + 1);
     (void)Effekseer::ConvertUtf8ToUtf16(result.data(), numeric_cast<int32_t>(result.size()), source.c_str());
@@ -604,12 +587,11 @@ public:
         _sourceRoot {std::filesystem::path {fs::make_path(fs::resolve_path(source_root_path))}.lexically_normal()},
         _projectPath {std::move(project_path)}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     auto Load(const char16_t* path) -> Effekseer::ModelRef override
     {
-        FO_STACK_TRACE_ENTRY();
+        FO_TRACE_ZONE(Baking);
 
         string model_path = ToEffekseerUtf8(path);
 
@@ -721,8 +703,6 @@ private:
 template<typename TInstanceParameter>
 static auto GetEffekseerInstanceLocalExtent(const TInstanceParameter& instance) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(instance);
 
     return 0.0f;
@@ -730,8 +710,6 @@ static auto GetEffekseerInstanceLocalExtent(const TInstanceParameter& instance) 
 
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::SpriteRenderer::InstanceParameter& instance) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t extent = 0.0f;
 
     for (const Effekseer::SIMD::Vec2f& position : instance.Positions) {
@@ -743,8 +721,6 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::SpriteRenderer::Ins
 
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::RingRenderer::InstanceParameter& instance) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     float32_t outer = std::hypot(instance.OuterLocation.GetX(), instance.OuterLocation.GetY());
     float32_t inner = std::hypot(instance.InnerLocation.GetX(), instance.InnerLocation.GetY());
     return std::max(outer, inner);
@@ -754,8 +730,6 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::RingRenderer::Insta
 // which the runtime rejects, and the emitter leaves them uninitialised - so they must stay out of the measurement
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::RibbonRenderer::InstanceParameter& instance) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::max(std::abs(instance.Positions[0]), std::abs(instance.Positions[1]));
 }
 
@@ -763,8 +737,6 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::RibbonRenderer::Ins
 // applies depends on where along the trail the instance sits, so the measurement takes the largest of them
 static auto GetEffekseerInstanceLocalExtent(const Effekseer::TrackRenderer::InstanceParameter& instance) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::max({std::abs(instance.SizeFor), std::abs(instance.SizeMiddle), std::abs(instance.SizeBack)}) * 0.5f;
 }
 
@@ -772,8 +744,6 @@ static auto GetEffekseerInstanceLocalExtent(const Effekseer::TrackRenderer::Inst
 // furthest frame - measured once per node, since every instance draws the same mesh
 static auto GetEffekseerNodeLocalExtent(const Effekseer::ModelRenderer::NodeParameter& parameter) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (parameter.EffectPointer == nullptr || parameter.ModelIndex < 0 || parameter.ModelIndex >= parameter.EffectPointer->GetModelCount()) {
         return 0.0f;
     }
@@ -806,8 +776,6 @@ static auto GetEffekseerNodeLocalExtent(const Effekseer::ModelRenderer::NodePara
 template<typename TNodeParameter>
 static auto GetEffekseerNodeLocalExtent(const TNodeParameter& parameter) -> float32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(parameter);
 
     return 0.0f;
@@ -844,7 +812,7 @@ private:
 // instead of measuring live particles every frame
 static void SimulateEffekseerBounds(string_view source_path, string_view source_root_path, const_span<uint8_t> binary, vec3& out_min, vec3& out_max, float32_t& out_billboard_radius)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // The collector outlives the manager (declared first, destroyed last) so the renderers' borrow stays valid for the
     // manager's whole lifetime
@@ -914,7 +882,7 @@ static void SimulateEffekseerBounds(string_view source_path, string_view source_
 
 void ParticleBaker::BakeEffekseerFiles(const_span<File> files) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(!files.empty(), "Effekseer compiler received an empty project list");
 

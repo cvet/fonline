@@ -119,8 +119,6 @@ static_assert(sizeof(FoPalette) == 1024);
 ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Fill default loaders
     AddLoader(std::bind(&ImageBaker::LoadFofrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"fofrm"});
     AddLoader(std::bind(&ImageBaker::LoadFrm, this, std::placeholders::_1, std::placeholders::_2, std::placeholders::_3, std::placeholders::_4), {"frm"});
@@ -138,8 +136,6 @@ ImageBaker::ImageBaker(shared_ptr<BakingContext> ctx) :
 
 void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_extensions)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& ext : file_extensions) {
         _fileLoaders[ext] = loader;
     }
@@ -147,7 +143,7 @@ void ImageBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_ex
 
 void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (IsBakingReportEnabled()) {
         SpriteMeshBakeConfig mesh_config = ResolveSpriteMeshBakeConfig(_context->Settings);
@@ -285,7 +281,7 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
 auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collection) const -> SpriteInfoFileEntry
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<uint8_t> data;
     auto writer = data_writer(data);
@@ -508,8 +504,6 @@ auto ImageBaker::BakeCollection(string_view fname, const FrameCollection& collec
 
 static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -> ImageBaker::FrameShot
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(padding > 0, "Sprite frame padding must be positive", padding);
     FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
@@ -539,8 +533,6 @@ static auto PadSpriteFrame(const ImageBaker::FrameShot& shot, int32_t padding) -
 
 static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const BakedSpriteMesh& mesh, int32_t build_padding) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (mesh.Kind != SpriteMeshKind::Mesh || mesh.Data.Indices.empty()) {
         return 0;
     }
@@ -559,8 +551,6 @@ static auto ResolveSpriteFramePadding(const ImageBaker::FrameShot& shot, const B
 
 static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const ImageBaker::FrameShot& shot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (mesh.Kind != SpriteMeshKind::Mesh || offset == 0) {
         return;
     }
@@ -579,8 +569,6 @@ static void TranslateSpriteMesh(BakedSpriteMesh& mesh, int32_t offset, const Ima
 
 static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const ImageBaker::FrameShot& source_shot, int32_t padding, BakedSpriteMesh& mesh) -> optional<ImageBaker::FrameShot>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(mesh.Kind == SpriteMeshKind::Mesh && !mesh.Data.Vertices.empty() && !mesh.Data.Indices.empty(), "Sprite frame cropping requires a non-empty mesh");
     FO_VERIFY_AND_THROW(shot.Data.size() == numeric_cast<size_t>(shot.Width) * shot.Height * 4, "Animation frame RGBA payload size does not match frame dimensions", shot.Data.size(), shot.Width, shot.Height);
 
@@ -632,8 +620,6 @@ static auto CropSpriteFrameToMeshBounds(const ImageBaker::FrameShot& shot, const
 
 auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
-
     string ext = strex(fname_with_opt).get_file_extension();
     string dir = strex(fname_with_opt).extract_dir();
     string_view name = strvex(fname_with_opt).extract_file_name().erase_file_extension().substring_until('$');
@@ -656,7 +642,7 @@ auto ImageBaker::LoadAny(string_view fname_with_opt, const FileCollection& files
 
 auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
 
@@ -793,7 +779,7 @@ auto ImageBaker::LoadFofrm(string_view fname, string_view opt, FileReader reader
 
 auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
 
@@ -1042,7 +1028,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
 
@@ -1313,7 +1299,7 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(fname);
     ignore_unused(opt);
@@ -1352,7 +1338,7 @@ auto ImageBaker::LoadRix(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(files);
 
@@ -1638,7 +1624,7 @@ auto ImageBaker::LoadArt(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(files);
 
@@ -2099,7 +2085,7 @@ auto ImageBaker::LoadSpr(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
     ignore_unused(files);
@@ -2200,7 +2186,7 @@ auto ImageBaker::LoadZar(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
     ignore_unused(files);
@@ -2332,7 +2318,7 @@ auto ImageBaker::LoadTil(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(opt);
     ignore_unused(files);
@@ -2449,7 +2435,7 @@ auto ImageBaker::LoadMos(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(files);
 
@@ -2610,7 +2596,7 @@ auto ImageBaker::LoadBam(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(fname);
     ignore_unused(opt);
@@ -2636,7 +2622,7 @@ auto ImageBaker::LoadPng(string_view fname, string_view opt, FileReader reader, 
 
 auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, const FileCollection& files) const -> FrameCollection
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(fname);
     ignore_unused(opt);
@@ -2660,24 +2646,18 @@ auto ImageBaker::LoadTga(string_view fname, string_view opt, FileReader reader, 
 
 static auto PngMalloc(png_structp png_ptr, png_alloc_size_t size) -> png_voidp
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(png_ptr);
     return safe_alloc::malloc_raw(size).get();
 }
 
 static void PngFree(png_structp png_ptr, png_voidp mem)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(png_ptr);
     safe_alloc::free_raw(mem);
 }
 
 static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Created through the _2 form so libpng allocates from the engine memory system rather than the CRT heap
     auto png_ptr = make_nptr(png_create_read_struct_2(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr, nullptr, &PngMalloc, &PngFree));
     FO_VERIFY_AND_THROW(png_ptr, "Failed to create PNG read structure");
@@ -2781,8 +2761,6 @@ static auto PngLoad(ptr<const uint8_t> data, int32_t& result_width, int32_t& res
 
 static auto TgaLoad(span<const uint8_t> data, int32_t& result_width, int32_t& result_height) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t cur_pos = 0;
 
     auto read_tga = [&](ptr<void> out, size_t len) {

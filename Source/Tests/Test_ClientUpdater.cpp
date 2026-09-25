@@ -49,8 +49,6 @@ namespace TestClientUpdater
 
     static auto MakeUpdaterClientSettings(uint16_t port) -> GlobalSettings
     {
-        FO_STACK_TRACE_ENTRY();
-
         GlobalSettings settings = GlobalSettings(false);
 
         settings.ApplyDefaultSettings();
@@ -66,8 +64,6 @@ namespace TestClientUpdater
     // at construction; without one it cannot be built at all
     static auto PrepareUpdaterBakeOutput() -> string
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::chrono::steady_clock::rep suffix = std::chrono::steady_clock::now().time_since_epoch().count();
         string dir_name = strex("fo_client_updater_offline_{}", suffix).str();
         std::filesystem::path base = std::filesystem::temp_directory_path() / std::filesystem::path {fs::make_path(dir_name)};
@@ -100,8 +96,6 @@ End
 
     static auto WaitForUpdaterResult(Updater& updater) -> bool
     {
-        FO_STACK_TRACE_ENTRY();
-
         for (int32_t i = 0; i < 2000; i++) {
             if (updater.Process()) {
                 return true;

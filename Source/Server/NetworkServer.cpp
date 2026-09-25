@@ -38,12 +38,11 @@ FO_BEGIN_NAMESPACE
 NetworkServer::NetworkServer() :
     _connectionRegistry {safe_alloc::make_shared<ConnectionRegistry>()}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServer::Shutdown()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     optional<vector<shared_ptr<NetworkServerConnection>>> connections = _connectionRegistry->BeginShutdown();
     if (!connections) {
@@ -59,22 +58,16 @@ void NetworkServer::Shutdown()
 
 auto NetworkServer::GetConnectionRegistry() const noexcept -> shared_ptr<ConnectionRegistry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _connectionRegistry;
 }
 
 auto NetworkServer::TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _connectionRegistry->TrackConnection(std::move(connection));
 }
 
 auto NetworkServer::ConnectionRegistry::BeginShutdown() -> optional<vector<shared_ptr<NetworkServerConnection>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_connectionsLocker};
 
     if (_shutdownStarted) {
@@ -97,8 +90,6 @@ auto NetworkServer::ConnectionRegistry::BeginShutdown() -> optional<vector<share
 
 auto NetworkServer::ConnectionRegistry::TrackConnection(shared_ptr<NetworkServerConnection> connection) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(connection, "Missing accepted network connection");
 
     {
@@ -118,13 +109,10 @@ auto NetworkServer::ConnectionRegistry::TrackConnection(shared_ptr<NetworkServer
 NetworkServerConnection::NetworkServerConnection(ptr<ServerNetworkSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncReceiveCallback receive, DisconnectCallback disconnect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(send, "Missing required send callback");
     FO_VERIFY_AND_THROW(receive, "Missing required receive callback");
     FO_VERIFY_AND_THROW(disconnect, "Missing required disconnect callback");
@@ -158,8 +146,6 @@ void NetworkServerConnection::SetAsyncCallbacks(AsyncSendCallback send, AsyncRec
 
 void NetworkServerConnection::Dispatch()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_isDisconnected) {
         return;
     }
@@ -169,7 +155,7 @@ void NetworkServerConnection::Dispatch()
 
 void NetworkServerConnection::Disconnect()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     {
         scoped_lock locker {_sendLocker};
@@ -204,8 +190,6 @@ void NetworkServerConnection::Disconnect()
 
 void NetworkServerConnection::DropAsyncCallbacks()
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_sendLocker};
 
@@ -221,8 +205,6 @@ void NetworkServerConnection::DropAsyncCallbacks()
 
 auto NetworkServerConnection::SendCallback() -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Held across the call, not just around the lookup: the sender may be destroyed by another thread,
     // and Disconnect() drops this callback under the same lock
     scoped_lock locker {_sendLocker};
@@ -236,8 +218,6 @@ auto NetworkServerConnection::SendCallback() -> vector<uint8_t>
 
 void NetworkServerConnection::ReceiveCallback(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_receiveLocker};
 
     if (_receiveCallback) {
@@ -254,8 +234,6 @@ public:
     explicit DummyNetConnection(ptr<ServerNetworkSettings> settings, NetworkServer::DummyConnectionState state) :
         NetworkServerConnection(settings)
     {
-        FO_STACK_TRACE_ENTRY();
-
         _host = "Dummy";
 
         if (state == NetworkServer::DummyConnectionState::Disconnected) {
@@ -269,15 +247,13 @@ public:
     ~DummyNetConnection() override = default;
 
 protected:
-    void DispatchImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+    void DispatchImpl() override { }
 
-    void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+    void DisconnectImpl() override { }
 };
 
 auto NetworkServer::CreateDummyConnection(ptr<ServerNetworkSettings> settings, DummyConnectionState state) -> shared_ptr<NetworkServerConnection>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_shared<DummyNetConnection>(settings, state);
 }
 

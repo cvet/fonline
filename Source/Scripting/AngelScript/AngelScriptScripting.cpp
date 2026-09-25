@@ -48,16 +48,12 @@ struct AngelScriptAllocator
 {
     static auto Alloc(size_t size) -> void*
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         constexpr safe_allocator<uint8_t> allocator;
         return allocator.allocate(size);
     }
 
     static void Free(void* raw_address)
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         auto address = make_nptr(raw_address);
 
         if (!address) {
@@ -71,8 +67,6 @@ struct AngelScriptAllocator
 
 static void PrepareAngelScriptRuntime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     static std::once_flag init_once;
 
     std::call_once(init_once, [] {
@@ -85,7 +79,7 @@ static void PrepareAngelScriptRuntime()
 
 void InitAngelScriptScripting(ptr<EngineMetadata> meta, const AngelScriptSettings& settings, const FileSystem& resources)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     PrepareAngelScriptRuntime();
 
@@ -103,7 +97,7 @@ void InitAngelScriptScripting(ptr<EngineMetadata> meta, const AngelScriptSetting
 
 auto CompileAngelScript(ptr<EngineMetadata> meta, const AngelScriptSettings& settings, const vector<File>& files, function<void(string_view)> message_callback) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     PrepareAngelScriptRuntime();
 

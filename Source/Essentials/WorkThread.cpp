@@ -39,16 +39,12 @@ FO_BEGIN_NAMESPACE
 
 work_thread::work_thread(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = name;
     _worker = run_thread(name, [this] { thread_entry(); });
 }
 
 work_thread::~work_thread()
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_data_locker};
 
@@ -72,8 +68,6 @@ work_thread::~work_thread()
 
 auto work_thread::get_jobs_count() const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_data_locker};
 
     return _jobs.size() + (_job_active ? 1 : 0);
@@ -81,8 +75,6 @@ auto work_thread::get_jobs_count() const -> size_t
 
 auto work_thread::get_diagnostics() const -> diagnostics
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_data_locker};
 
     return diagnostics {
@@ -94,8 +86,6 @@ auto work_thread::get_diagnostics() const -> diagnostics
 
 void work_thread::set_exception_handler(exception_handler handler)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_data_locker};
 
     _exception_handler = std::move(handler);
@@ -103,22 +93,20 @@ void work_thread::set_exception_handler(exception_handler handler)
 
 void work_thread::add_job(job next_job)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     add_job_internal(std::chrono::milliseconds {0}, std::move(next_job), false);
 }
 
 void work_thread::add_job(timespan delay, job next_job)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     add_job_internal(delay, std::move(next_job), false);
 }
 
 void work_thread::add_job_internal(timespan delay, job next_job, bool no_notify)
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_data_locker};
 
@@ -144,7 +132,7 @@ void work_thread::add_job_internal(timespan delay, job next_job, bool no_notify)
 
 void work_thread::clear()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker(_data_locker);
 
@@ -161,7 +149,7 @@ void work_thread::clear()
 
 void work_thread::wait() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker(_data_locker);
 
@@ -172,7 +160,7 @@ void work_thread::wait() const
 
 void work_thread::pause()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker(_data_locker);
 
@@ -185,8 +173,6 @@ void work_thread::pause()
 
 void work_thread::resume()
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_data_locker};
 
@@ -198,8 +184,6 @@ void work_thread::resume()
 
 void work_thread::thread_entry() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     exceptions::install_crash_handler_stack();
 
     try {

@@ -86,7 +86,6 @@ private:
 CacheStorage::CacheStorage(string_view path) :
     _impl {safe_alloc::make_unique<FileCacheStorage>(path)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 CacheStorage::CacheStorage(CacheStorage&&) noexcept = default;
@@ -94,78 +93,56 @@ CacheStorage::~CacheStorage() = default;
 
 auto CacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->HasEntry(entry_name);
 }
 
 auto CacheStorage::GetString(string_view entry_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetString(entry_name);
 }
 
 auto CacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetData(entry_name);
 }
 
 auto CacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->GetDataBounded(entry_name, max_size);
 }
 
 void CacheStorage::SetString(string_view entry_name, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetString(entry_name, str);
 }
 
 void CacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->SetData(entry_name, data);
 }
 
 auto CacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _impl->SetDataChecked(entry_name, data);
 }
 
 void CacheStorage::RemoveEntry(string_view entry_name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _impl->RemoveEntry(entry_name);
 }
 
 auto FileCacheStorage::MakeCacheEntryPath(string_view work_path, string_view data_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex(work_path).combine_path(strex(data_name).replace('/', '_').replace('\\', '_'));
 }
 
 FileCacheStorage::FileCacheStorage(string_view real_path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _workPath = fs::resolve_path(real_path);
 }
 
 auto FileCacheStorage::CreateCacheStorage() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!fs::is_dir(_workPath)) {
         fs::create_directories(_workPath);
 
@@ -180,15 +157,13 @@ auto FileCacheStorage::CreateCacheStorage() const -> bool
 
 auto FileCacheStorage::HasEntry(string_view entry_name) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     string path = MakeCacheEntryPath(_workPath, entry_name);
     return fs::exists(path);
 }
 
 auto FileCacheStorage::GetString(string_view entry_name) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
     auto str = fs::read_file(path);
@@ -202,7 +177,7 @@ auto FileCacheStorage::GetString(string_view entry_name) const -> string
 
 auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
     auto data = fs::read_file(path);
@@ -216,7 +191,7 @@ auto FileCacheStorage::GetData(string_view entry_name) const -> vector<uint8_t>
 
 auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) const -> CacheStorageReadResult
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
     auto file_size = fs::file_size(path);
@@ -239,7 +214,7 @@ auto FileCacheStorage::GetDataBounded(string_view entry_name, size_t max_size) c
 
 void FileCacheStorage::SetString(string_view entry_name, string_view str)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!CreateCacheStorage()) {
         return;
@@ -255,14 +230,12 @@ void FileCacheStorage::SetString(string_view entry_name, string_view str)
 
 void FileCacheStorage::SetData(string_view entry_name, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)SetDataChecked(entry_name, data);
 }
 
 auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t> data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     if (!CreateCacheStorage()) {
         return false;
@@ -281,7 +254,7 @@ auto FileCacheStorage::SetDataChecked(string_view entry_name, const_span<uint8_t
 
 void FileCacheStorage::RemoveEntry(string_view entry_name)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     string path = MakeCacheEntryPath(_workPath, entry_name);
     fs::remove_file(path);

@@ -51,8 +51,6 @@ namespace
     template<typename T>
     [[nodiscard]] auto FixedSettingForOverride(const T& setting) noexcept -> ptr<T>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return const_cast<T*>(&setting);
     }
 
@@ -367,12 +365,7 @@ namespace
         }
 
     private:
-        static auto SettingsPtr(DataBaseSettings& settings) noexcept -> ptr<DataBaseSettings>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return &settings;
-        }
+        static auto SettingsPtr(DataBaseSettings& settings) noexcept -> ptr<DataBaseSettings> { return &settings; }
 
         hash_storage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
@@ -594,8 +587,6 @@ namespace
     // exercised against data the backend would never have produced itself
     void StoreRawSQLiteRecord(const std::filesystem::path& storage_dir, string_view collection_name, const vector<uint8_t>& key_data, string_view value)
     {
-        FO_STACK_TRACE_ENTRY();
-
         // sqlite3_config only applies before initialization, so initializing directly here would silently lose the
         // engine allocator for the backend created later
         InitializeSQLiteRuntime();

@@ -42,7 +42,7 @@ static void AppendPngBigEndian(vector<uint8_t>& buf, uint32_t value);
 
 void ImageWriter::WriteSimpleTga(string_view fname, isize32 size, vector<ucolor> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     string dir = strex(fname).extract_dir().str();
 
@@ -76,7 +76,7 @@ void ImageWriter::WriteSimpleTga(string_view fname, isize32 size, vector<ucolor>
 
 void ImageWriter::WriteSimplePng(string_view fname, isize32 size, const_span<ucolor> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(size.width > 0 && size.height > 0, "PNG image size must be positive", fname, size);
     FO_VERIFY_AND_THROW(numeric_cast<size_t>(size.width) * numeric_cast<size_t>(size.height) == data.size(), "PNG pixel count does not match image size", fname, size, data.size());
@@ -128,8 +128,6 @@ void ImageWriter::WriteSimplePng(string_view fname, isize32 size, const_span<uco
 
 static void WritePngChunk(std::ofstream& file, string_view type, const_span<uint8_t> payload)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> chunk;
     chunk.reserve(4 + type.length() + payload.size() + 4);
     AppendPngBigEndian(chunk, numeric_cast<uint32_t>(payload.size()));
@@ -154,8 +152,6 @@ static void WritePngChunk(std::ofstream& file, string_view type, const_span<uint
 
 static void AppendPngBigEndian(vector<uint8_t>& buf, uint32_t value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     buf.emplace_back(numeric_cast<uint8_t>((value >> 24) & 0xFF));
     buf.emplace_back(numeric_cast<uint8_t>((value >> 16) & 0xFF));
     buf.emplace_back(numeric_cast<uint8_t>((value >> 8) & 0xFF));

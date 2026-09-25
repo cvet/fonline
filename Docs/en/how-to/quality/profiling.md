@@ -88,20 +88,31 @@ itself starts later.
 ## What the Engine instruments
 
 Profiling configurations compile `TracyClient` into the Engine essentials
-layer and define `FO_TRACY=1`. Non-profiling configurations define
-`FO_TRACY=0`; the Engine profiling macros then compile away.
+layer and define `FO_TRACE_ENABLED`. Other configurations compile zones away.
+`FO_TRACE_CATEGORIES` selects which categories are built into a Tracy binary:
+empty (the default) enables all zone categories but neither opt-in signal;
+`Render,Gui` keeps only those zones, `+Memory` adds allocation events, and
+`-Script` removes script zones. Unknown names fail configuration. The selected
+0/1 values are generated into `TraceCategories.gen.h`.
 
 | Signal | Current Engine behavior |
 |---|---|
 | Process identity | `ApplicationInit` sends `FO_NICE_NAME` to Tracy. |
-| Native CPU zones | `FO_STACK_TRACE_ENTRY()` becomes `ZoneScoped`; the named form becomes `ZoneScopedN`. |
-| AngelScript CPU zones | Executed script calls emit zones using the original file, line, and declaration. Suspended contexts restore their script zone stack when execution resumes. |
+| Native CPU zones | `FO_TRACE_ZONE(Category)` and `FO_TRACE_ZONE_NAMED(Category, name)` emit colored zones only for selected categories. They are not native stack traces. |
+| Script CPU zones | The `Script` category gates generated bindings, AngelScript calls, and Mono method zones. AngelScript resumes its script zone stack after suspension. |
 | Frames | Visible and headless `Application::EndFrame()` paths emit `FrameMark`. |
 | Client plot | `Client FPS` is emitted from `ClientEngine::MainLoop()`. |
 | Server plot | `Server jobs per second` is emitted from the server statistics job. |
-| Log messages | Engine log records are also sent as Tracy messages. |
+| Log messages | Engine log records become Tracy messages only with opt-in `Log`. |
 | Threads | Engine thread names are visible in Tracy and in tagged log lines. |
-| Memory | Engine allocations routed through the Tracy-aware rpmalloc path emit allocation/free events. |
+| Memory | Engine allocator events require opt-in `Memory`; ordinary C-library allocations remain outside this accounting. |
+
+Zone categories declared in `Source/Essentials/BasicCore.h` are `App`,
+`Engine`, `Entity`, `Map`, `Script`, `Network`, `Database`, `Threading`,
+`Render`, `Model`, `Particles`, `Gui`, `Audio`, `FileSystem`, `Core`, `Baking`,
+and `Editor`. Frame marks, plots, and thread names remain enabled in every
+Tracy build. `FO_TRACE_CATEGORY_ENABLED(Category)` allows category-dependent
+hooks; a non-Tracy build still validates the category name.
 
 The current first-party integration does not add renderer GPU zones or
 Tracy lock wrappers. A CPU capture therefore must not be reported as GPU
@@ -337,7 +348,7 @@ server statistics boundary.
 
 ## Managed script zones
 
-With `FO_TRACY`, the Managed C# backend uses the Mono profiler to make each
+With the `Script` category enabled, the Managed C# backend uses the Mono profiler to make each
 instrumented game-script method a Tracy zone carrying its source file and
 declaration line. Native Engine zones nest below it, so a log line such as
 `Script execution overrun: GameScripts.Audio.OnLoop` identifies the entry to
@@ -368,13 +379,21 @@ them directly with `RelWithDebInfo`.
 The profiler-hook lifecycle, image filter, tail-call exclusion, and shared method
 metadata cache are documented in [Managed C# Scripting](../scripting/managed-csharp.md#diagnostics-and-debugging).
 
-## Add focused instrumentation
+## Placing zones
 
-Use existing zones before adding new ones. Most native Engine functions already
-call `FO_STACK_TRACE_ENTRY()`, and AngelScript calls are emitted
-automatically. When a broad function needs a stable semantic label, use
-`FO_STACK_TRACE_ENTRY_NAMED` at the owning native scope. Guard direct
-`TracyPlot`, allocation, or message macros with `#if FO_TRACY`.
+Use existing zones before adding new ones. Put `FO_TRACE_ZONE(Category)` as
+the first statement in selected nontrivial `.cpp` functions: frame/tick
+orchestration, variable work, blocking operations, or rare expensive paths.
+Use `FO_TRACE_ZONE_NAMED(Category, name)` for generated bindings, event
+subscriptions, or a meaningful job lambda. Generated script exports get a
+binding zone rather than another direct zone. Split cheap common work from an
+expensive conditional region when appropriate (for example, entity lock wait
+or sprite flush). Do not instrument accessors, trivial forwarders, hot
+per-element helpers, constructors/destructors, profiler internals,
+non-returning loops, headers, lambdas, or tests indiscriminately; the
+`EntityEventWrapper::FireSubscribed` header zone is a deliberate exception.
+Guard direct Tracy macros with `#if FO_TRACE_ENABLED`, and use the `Memory`
+or `Log` opt-in only when that signal is needed.
 
 Instrumentation must:
 
@@ -450,7 +469,7 @@ frame-mark paths when both remain supported.
 Update this page in the same change when:
 
 - profiling configuration names or their base configurations change;
-- `FO_TRACY`, `TRACY_ENABLE`, or `TRACY_ON_DEMAND` wiring changes;
+- `FO_TRACE_ENABLED`, `FO_TRACE_CATEGORIES`, `TRACY_ENABLE`, or `TRACY_ON_DEMAND` wiring changes;
 - the vendored Tracy version or pruned payload changes;
 - frame marks, program/thread naming, logs, plots, allocation tracking, or
   AngelScript zones change;

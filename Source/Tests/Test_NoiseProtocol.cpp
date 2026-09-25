@@ -54,8 +54,6 @@ namespace
     // Noise_NK_25519_ChaChaPoly_BLAKE2b from three independent implementations' published suites
     auto GetNoiseVectors() -> vector<NoiseVector>
     {
-        FO_STACK_TRACE_ENTRY();
-
         vector<NoiseVector> result;
 
         result.emplace_back(NoiseVector {
@@ -116,8 +114,6 @@ namespace
 
     auto FromHex(string_view hex) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(hex.size() % 2 == 0, "Hex text must hold whole bytes", hex.size());
 
         vector<uint8_t> result;
@@ -135,8 +131,6 @@ namespace
 
     auto KeyFromHex(string_view hex) -> crypto::key_bytes
     {
-        FO_STACK_TRACE_ENTRY();
-
         optional<crypto::key_bytes> key = crypto::parse_key(hex);
         FO_VERIFY_AND_THROW(key.has_value(), "Test key must be 64 hex digits", hex);
         return key.value();
@@ -144,8 +138,6 @@ namespace
 
     auto MakeHandshakePair(const_span<uint8_t> prologue) -> pair<NoiseHandshakeNK, NoiseHandshakeNK>
     {
-        FO_STACK_TRACE_ENTRY();
-
         crypto::key_bytes responder_static = crypto::generate_secret_key();
         NoiseHandshakeNK initiator = NoiseHandshakeNK::CreateInitiator(prologue, crypto::derive_public_key(responder_static), crypto::generate_secret_key());
         NoiseHandshakeNK responder = NoiseHandshakeNK::CreateResponder(prologue, responder_static, crypto::generate_secret_key());

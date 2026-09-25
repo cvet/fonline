@@ -422,8 +422,6 @@ TEST_CASE("ResourcePack")
 
 static void WritePatchTestPack(string_view path, const vector<pair<string, string>>& files, ResourcePackWriteSettings settings = {0, 100})
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResourcePackWriter writer {path, settings};
 
     for (const auto& [name, text] : files) {
@@ -435,8 +433,6 @@ static void WritePatchTestPack(string_view path, const vector<pair<string, strin
 
 static auto ApplyPatchTestUpdate(string_view base, string_view patch, string_view target_path) -> uint64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResourcePackSource target {target_path};
     ResourcePatchWriter writer {base, patch, target.GetEntryRefs(), target.GetContentHash(), {0, 100}};
     fs::disk_read_file target_file {target_path};

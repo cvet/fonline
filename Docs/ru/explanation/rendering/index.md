@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"13f59b82cfa1d15568db8e942122d48b0956cd0fec14cd6eea1d22db6c9fab51"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"d76178105c833b78e4837d08f58e68f6929b13e23742846923e621febf798c6b"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -536,6 +536,13 @@ OpenGL — основной путь WebAssembly/WebGL; изменения пр�
 
 `Source/Frontend/Rendering-Direct3D.cpp` реализует Direct3D 11:
 
+Renderer загружает запечённый `-dxbc` bytecode: runtime-компиляции HLSL и
+зависимости от `d3dcompiler_47.dll` нет. Обычный минимум устройства — feature
+level 10.0. Сборка без 3D может принять level 9.3, если эффекты запечены с
+`Baking.Direct3DLevel9Shaders`; сборка с 3D никогда не создаёт 9.3 device.
+Для 9.3 размер atlas ограничен 4096 пикселями, point-list draws выполняются
+без index buffer. Levels 9.1 и 9.2 не поддерживаются.
+
 - создаёт D3D device, swap chain и render-target resources;
 - не фиксирует refresh rate windowed swap chain, оставляя выбор desktop compositor;
 - создаёт textures/staging textures, draw buffers, constant buffers и effects;
@@ -788,10 +795,11 @@ accumulators через `ScriptValueBuf` требуют того же подхо
 effects в `Resources/Embedded/Effects/`. Header каждого `.fofx` фиксирует
 назначение, slot и принцип работы.
 
-Base shaders рассчитаны на минимальный Direct3D feature level 9_x: без
-`gl_FragCoord`/position semantic, screen derivatives и dynamic array/vector
-indexing. Cross-compiler всё равно выдаёт HLSL SM4, GLSL 330, GLSL ES 300 и
-Metal, но source избегает возможностей, не работающих на weakest profile.
+Base shaders рассчитаны на опциональный Direct3D feature level 9.3: без
+`gl_FragCoord`/position semantic, screen derivatives, texture-size queries и
+dynamic array/vector indexing. Baker выдаёт HLSL SM4, GLSL 330, GLSL ES 300 и
+Metal, затем компилирует HLSL в `-dxbc`; opt-in bake добавляет `Aon9` только
+для non-model effects. Стандартный Direct3D path требует level 10.0 или выше.
 Строка `Profile: minimal` в header фиксирует это ограничение.
 
 Default mapping: `Font`/`Iface`/`Generic`/`Critter`/`Rain` → `2D_Default`;
@@ -876,7 +884,7 @@ depth attachment (UI, light, final screen flush) state является no-op.
 
 - **Screen-space quads** (GUI, fonts, render-target blits, non-map effects) начинают с `Vertex2D::PosZ = 0`. Для map sprite `SpriteManager` перезаписывает Z перед flush в `_rtMap`.
 - **Standing map sprites** (`Item`, `Critter`) пишут depth, но не test-ят его (`Always` + write в `2D_Default`/`2D_WithoutEgg`). Depth нужен direct particles/models; sprite-vs-sprite решает painter order. Их vertical planes имеют общий gradient `ProjectMapYToVerticalDepth` и не пересекаются, поэтому order по anchor depth точно совпадает с per-pixel `LessEqual`, не создавая z-fighting coincident rows.
-- `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Контракт закреплён `Test_Geometry.cpp`.
+- `MapSpriteList::MakeDrawOrderPos` сортирует standing sprites по `GeometryHelper::GetHexScreenRow(GetHexPos().y)`, то есть по классу одинаковой ground depth (`+2X/-1Y`), а не по raw hex row. Внутри строки ключ имеет порядок `[group 8][row 24][sub-layer 8][hex X 16][layer 8]`: стены с низким sub-layer рисуются до пересекающихся сбоку items/critters во всей строке. Ближние строки по-прежнему побеждают; при равном sub-layer действуют X, затем layer и порядок добавления. Контракт закреплён `Test_Geometry.cpp` и `Test_MapSprite.cpp`.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.

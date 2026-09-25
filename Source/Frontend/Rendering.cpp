@@ -42,8 +42,6 @@ RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth
     LinearFiltered {linear_filtered},
     WithDepth {with_depth}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Size.width > 0, "Size width must be positive", Size.width);
     FO_VERIFY_AND_THROW(Size.height > 0, "Size height must be positive", Size.height);
 }
@@ -51,7 +49,6 @@ RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth
 RenderDrawBuffer::RenderDrawBuffer(bool is_static) :
     IsStatic {is_static}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void RenderDrawBuffer::CheckAllocBuf(size_t vcount, size_t icount)
@@ -72,7 +69,7 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
     _name {name},
     _usage {usage}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto fofx_content = loader(name);
     auto fofx = ConfigFile(std::move(fofx_content), ConfigFileOption::CollectContent);
@@ -259,8 +256,6 @@ RenderEffect::RenderEffect(EffectUsage usage, string_view name, const RenderEffe
 
 auto RenderEffect::CanBatch(ptr<const RenderEffect> other) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_name != other->_name) {
         return false;
     }
@@ -282,8 +277,6 @@ auto RenderEffect::CanBatch(ptr<const RenderEffect> other) const -> bool
 
 auto RenderEffect::ResolveCullMode() const -> CullModeType
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(IsCullModeUsed(CullMode), "Draw asks for a cull mode the effect did not build", _name, static_cast<int32_t>(CullMode));
 
     return CullMode;
@@ -291,8 +284,6 @@ auto RenderEffect::ResolveCullMode() const -> CullModeType
 
 auto RenderEffect::GetDepthWrite(size_t pass) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (DepthVariant) {
     case DepthVariantType::TestWrite:
     case DepthVariantType::NoTestWrite:
@@ -309,8 +300,6 @@ auto RenderEffect::GetDepthWrite(size_t pass) const noexcept -> bool
 
 auto RenderEffect::GetDepthFunc(size_t pass) const noexcept -> DepthFuncType
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (DepthVariant) {
     case DepthVariantType::NoTestWrite:
     case DepthVariantType::NoTestNoWrite:
@@ -326,8 +315,6 @@ auto RenderEffect::GetDepthFunc(size_t pass) const noexcept -> DepthFuncType
 
 auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(pass < _passCount, "Depth variant pass is outside the effect's pass range", _name, pass + 1, _passCount);
 
     // The slot encodes the resolved state rather than the requested variant, so an effect that declares no variants
@@ -345,8 +332,6 @@ auto RenderEffect::ResolveDepthVariantSlot(size_t pass) const -> size_t
 
 auto RenderEffect::IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_depthVariants) {
         return true;
     }
@@ -362,15 +347,11 @@ auto RenderEffect::IsDepthVariantSlotUsed(size_t pass, size_t slot) const noexce
 
 auto RenderEffect::GetDepthVariantWrite(size_t slot) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (slot & 1) != 0;
 }
 
 auto RenderEffect::GetDepthVariantFunc(size_t pass, size_t slot) const noexcept -> DepthFuncType
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return (slot & 2) != 0 ? DepthFuncType::Always : _depthFunc[pass];
 }
 

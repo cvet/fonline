@@ -39,17 +39,15 @@ FO_BEGIN_NAMESPACE
 MetadataBaker::MetadataBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 MetadataBaker::~MetadataBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fometa-")) {
         return;
@@ -133,7 +131,7 @@ void MetadataBaker::BakeFiles(const FileCollection& files, string_view target_pa
 
 auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Read codegen tags
     unordered_set<string_view> valid_codegen_tags = {METADATA_ENTITY_SECTION, METADATA_ENTITY_HOLDER_SECTION, METADATA_FIXED_TYPE_SECTION, METADATA_VALUE_TYPE_SECTION, METADATA_REF_TYPE_SECTION, METADATA_ENUM_SECTION, METADATA_PROPERTY_SECTION, METADATA_EVENT_SECTION, METADATA_REMOTE_CALL_SECTION, METADATA_SETTING_SECTION, METADATA_MIGRATION_RULE_SECTION};
@@ -288,7 +286,7 @@ auto MetadataBaker::BakeMetadata(const vector<File>& files, string_view target) 
 
 auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Every codegen tag takes part. These are the raw tags as parsed from the sources, before any target
     // filtering, so all three baked targets derive the same version and no kind of divergence stays invisible
@@ -329,7 +327,7 @@ auto MetadataBaker::MakeMetadataVersion(const TagsParsingContext& ctx) const -> 
 
 void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     struct EnumDesc
     {
@@ -548,7 +546,7 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_entity;
 
@@ -603,7 +601,7 @@ void MetadataBaker::ParseEntity(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_entity_holder;
 
@@ -679,7 +677,7 @@ void MetadataBaker::ParseEntityHolder(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_fixed_type;
 
@@ -723,7 +721,7 @@ void MetadataBaker::ParseFixedType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_value_type;
 
@@ -837,7 +835,7 @@ void MetadataBaker::ParseValueType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     for (const auto& tag_desc : ctx.CodeGenTags[METADATA_REF_TYPE_SECTION]) {
         if (tag_desc.Tokens.size() < 2) {
@@ -875,7 +873,7 @@ void MetadataBaker::ParseRefType(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseProperty(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_property;
     vector<vector<string>> result_tag_ref_type;
@@ -1244,7 +1242,7 @@ static auto SplitTrailingQuestionMarks(span<const string_view> tokens) -> vector
 
 void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_event;
 
@@ -1339,7 +1337,7 @@ void MetadataBaker::ParseEvent(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_remote_call;
 
@@ -1482,7 +1480,7 @@ void MetadataBaker::ParseRemoteCall(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_setting;
 
@@ -1559,7 +1557,7 @@ void MetadataBaker::ParseSetting(TagsParsingContext& ctx) const
 
 void MetadataBaker::ParseMigrationRule(TagsParsingContext& ctx) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     vector<vector<string>> result_tag_migration_rule;
 

@@ -48,7 +48,7 @@ FO_BEGIN_NAMESPACE
 
 void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, string_view server_metadata_version)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     logging::write("Load client data packs for synchronization");
 
@@ -195,7 +195,7 @@ void UpdaterBackend::LoadFromClientResources(const GlobalSettings& settings, str
 
 void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     // The server runs on its own resource directory and hands out another one, so a deploy that refreshed only
     // one of them would hand every synced client a property layout this server cannot talk to
@@ -219,15 +219,13 @@ void UpdaterBackend::VerifyClientResourcesMetadata(const GlobalSettings& setting
 
 auto UpdaterBackend::GetUpdateDescriptor(string_view binary_target_name) const -> const_span<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto desc_it = _platformTargetUpdateFilesDesc.find(string(binary_target_name));
     return desc_it != _platformTargetUpdateFilesDesc.end() ? desc_it->second : _commonUpdateFilesDesc;
 }
 
 void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto connection = player->GetConnection();
     auto in_buf = connection->ReadBuf();

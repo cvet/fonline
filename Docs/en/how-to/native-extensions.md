@@ -138,7 +138,7 @@ int32_t FO_NAMESPACE Server_Game_ProjectValue(ptr<ServerEngine> server)
 
 Metadata declarations must compile with the engine namespace enabled or disabled. Keep declarations inside `FO_BEGIN_NAMESPACE` / `FO_END_NAMESPACE`, and qualify definitions with `FO_NAMESPACE`.
 
-`FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_STACK_TRACE_ENTRY()` or `FO_NO_STACK_TRACE_ENTRY()`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
+`FO_SCRIPT_API` exports are codegen frontiers and intentionally do not start with `FO_TRACE_ZONE(Script)`. Ordinary non-exported project C++ functions keep the normal engine stack-trace convention.
 
 ## Script exports and metadata
 

@@ -57,7 +57,6 @@ namespace
         explicit BytecodeStream(vector<asBYTE>& buf) :
             _buf {BufferPtr(buf)}
         {
-            FO_NO_STACK_TRACE_ENTRY();
         }
 
         int Read(void* raw_data, asUINT size) override
@@ -97,12 +96,7 @@ namespace
         }
 
     private:
-        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return &buf;
-        }
+        static auto BufferPtr(vector<asBYTE>& buf) noexcept -> ptr<vector<asBYTE>> { return &buf; }
 
         ptr<vector<asBYTE>> _buf;
         size_t _readPos {};
@@ -337,22 +331,16 @@ namespace
 
     static auto MessageCallbackUserData(ScriptMessages& messages) noexcept -> ptr<ScriptMessages>
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         return &messages;
     }
 
     static void ReleaseScriptEngine(ptr<asIScriptEngine> engine) noexcept
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         engine->ShutDownAndRelease();
     }
 
     static auto MakeEngine(ScriptMessages& messages) -> unique_del_ptr<asIScriptEngine>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto created_engine = make_nptr(asCreateScriptEngine(ANGELSCRIPT_VERSION));
         REQUIRE(created_engine);
         auto engine = make_unique_del_ptr(created_engine, ReleaseScriptEngine);

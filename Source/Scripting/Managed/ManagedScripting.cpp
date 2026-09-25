@@ -44,7 +44,7 @@ FO_BEGIN_NAMESPACE
 
 void InitManagedScripting(ptr<EngineMetadata> meta, ptr<const FileSystem> resources, string_view assembly_cache_dir, string_view bake_output_dir)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     nptr<ScriptSystem> script_sys = meta.dyn_cast<ScriptSystem>();
     FO_VERIFY_AND_THROW(script_sys, "Managed scripting requires a script system");

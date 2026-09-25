@@ -37,22 +37,16 @@ FO_BEGIN_NAMESPACE
 
 auto IsSupportedClientRuntimeAbi(uint32_t host_abi_version) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return host_abi_version == FO_CLIENT_RUNTIME_HOST_ABI_VERSION;
 }
 
 auto IsValidClientRuntimeMetadata(const ClientRuntimeMetadata& metadata) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return metadata.StructSize == sizeof(ClientRuntimeMetadata) && metadata.HostAbiVersion != 0 && metadata.RuntimeName != nullptr && metadata.BuildHash != nullptr && metadata.CompatibilityVersion != nullptr;
 }
 
 auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (result.StructSize != sizeof(ClientRuntimeResult)) {
         return false;
     }
@@ -75,29 +69,21 @@ auto IsValidClientRuntimeResult(const ClientRuntimeResult& result) noexcept -> b
 
 auto IsValidClientRuntimeExports(const ClientRuntimeExports& exports) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return exports.StructSize == sizeof(ClientRuntimeExports) && IsValidClientRuntimeMetadata(exports.Metadata) && exports.Run != nullptr;
 }
 
 auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeMetadata& metadata, string_view compatibility_version) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return metadata.CompatibilityVersion != nullptr && string_view(metadata.CompatibilityVersion) == compatibility_version;
 }
 
 auto IsClientRuntimeCompatibilityMatch(const ClientRuntimeResult& result, string_view compatibility_version) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return result.RequestedCompatibilityVersion != nullptr && string_view(result.RequestedCompatibilityVersion) == compatibility_version;
 }
 
 auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_result, ClientRuntimeHostPromoteFunc promote_runtime) -> optional<bool>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!runtime_result.has_value()) {
         return std::nullopt;
     }
@@ -112,8 +98,6 @@ auto RunClientRuntimeHostPass(const optional<ClientRuntimeHostResult>& runtime_r
 
 void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runtime_path, string& compatibility_version)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto capture_text = [](nptr<const char> text, string& storage) -> nptr<const char> {
         if (!text) {
             storage.clear();
@@ -135,8 +119,6 @@ void CaptureClientRuntimeResultStrings(ClientRuntimeResult& result, string& runt
 
 auto ClientRuntimeResultKindToString(ClientRuntimeResultKind kind) noexcept -> string_view
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     switch (kind) {
     case ClientRuntimeResultKind::Shutdown:
         return "Shutdown";

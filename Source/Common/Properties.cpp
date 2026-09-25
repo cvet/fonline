@@ -43,15 +43,11 @@ static constexpr uint8_t SEPARATE_PROPS_STORE_TYPE = 1;
 
 static auto RawDataEqual(const_span<uint8_t> left, const_span<uint8_t> right) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return left.size() == right.size() && memory::compare(left.data(), right.data(), left.size());
 }
 
 static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (base_type.IsFloat) {
         return true;
     }
@@ -68,8 +64,6 @@ static auto BaseTypeContainsFloat(const BaseTypeDesc& base_type) noexcept -> boo
 // Script values write an enum into `any` as `EnumType::Member` and property data reads back as the number, so both are accepted
 static auto ResolveAnyEnumValue(string_view value, const BaseTypeDesc& enum_type, const NameResolver& name_resolver) -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (strvex(value).is_number()) {
         return strvex(value).to_int64();
     }
@@ -89,8 +83,6 @@ static auto ResolveAnyEnumValue(string_view value, const BaseTypeDesc& enum_type
 
 static auto GetBaseTypeIntRange(const BaseTypeDesc& base_type) -> pair<int64_t, int64_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (base_type.IsInt8) {
         return {std::numeric_limits<int8_t>::lowest(), std::numeric_limits<int8_t>::max()};
     }
@@ -123,8 +115,6 @@ static auto GetBaseTypeIntRange(const BaseTypeDesc& base_type) -> pair<int64_t, 
 // The tag tokenizer splits '-' and '.' into their own tokens, so a numeric tag value is reassembled from up to four of them
 static auto ReadNumericTagValue(const span<const string_view>& tokens, size_t& token_index) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string value;
 
     if (token_index < tokens.size() && (tokens[token_index] == "-" || tokens[token_index] == "+")) {
@@ -149,8 +139,6 @@ static auto ReadNumericTagValue(const span<const string_view>& tokens, size_t& t
 
 static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseTypeDesc& base_type, span<const uint8_t> raw_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Property raw data size does not match base type", prop_name, base_type.Name, raw_data.size(), base_type.Size);
 
     if (base_type.IsSingleFloat) {
@@ -175,8 +163,6 @@ static void ValidateFiniteRawBaseTypeValue(string_view prop_name, const BaseType
 template<typename T>
 static void ClampRawValueAs(span<uint8_t> raw_data, bool check_min, T min_value, bool check_max, T max_value) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<uint8_t> raw_data_ptr = raw_data.data();
     T value = *raw_data_ptr.reinterpret_as<T>();
 
@@ -192,8 +178,6 @@ static void ClampRawValueAs(span<uint8_t> raw_data, bool check_min, T min_value,
 // to the stored width here is exact and can not trip a checked conversion on this noexcept path
 static void ClampRawBaseTypeValue(const Property& prop, span<uint8_t> raw_data) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const BaseTypeDesc& base_type = prop.GetBaseType();
     bool check_min = prop.IsMinValueChecked();
     bool check_max = prop.IsMaxValueChecked();
@@ -248,8 +232,6 @@ static void ClampRawBaseTypeValue(const Property& prop, span<uint8_t> raw_data) 
 
 auto PropertyRawData::GetPtr() noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_passedPtr) {
         return _passedPtr;
     }
@@ -259,8 +241,6 @@ auto PropertyRawData::GetPtr() noexcept -> ptr<void>
 
 auto PropertyRawData::Alloc(size_t size) -> ptr<uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _dataSize = size;
     _passedPtr = nullptr;
 
@@ -277,15 +257,11 @@ auto PropertyRawData::Alloc(size_t size) -> ptr<uint8_t>
 
 void PropertyRawData::Pass(span<const uint8_t> value)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     Pass(value.data(), value.size());
 }
 
 void PropertyRawData::Pass(nptr<const void> value, size_t size)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(value || size == 0, "Source value pointer is null for non-zero size");
 
     _passedPtr = value.reinterpret_as<uint8_t>().void_cast();
@@ -295,8 +271,6 @@ void PropertyRawData::Pass(nptr<const void> value, size_t size)
 
 void PropertyRawData::StoreIfPassed()
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_passedPtr) {
         PropertyRawData tmp_data;
         tmp_data.Set(_passedPtr.get(), _dataSize);
@@ -307,13 +281,10 @@ void PropertyRawData::StoreIfPassed()
 Property::Property(ptr<const PropertyRegistrar> registrar) :
     _registrar {registrar}
 {
-    FO_NO_STACK_TRACE_ENTRY();
 }
 
 void Property::ClampRawDataToValueRange(span<uint8_t> raw_data) const noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!_checkMinValue && !_checkMaxValue) {
         return;
     }
@@ -332,22 +303,16 @@ void Property::ClampRawDataToValueRange(span<uint8_t> raw_data) const noexcept
 
 void Property::SetGetter(PropertyGetCallback getter) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     _getter = std::move(getter);
 }
 
 void Property::AddSetter(PropertySetCallback setter) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     _setters.emplace(_setters.begin(), std::move(setter));
 }
 
 void Property::AddPostSetter(PropertyPostSetCallback setter) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     _postSetters.emplace(_postSetters.begin(), std::move(setter));
 }
 
@@ -355,8 +320,6 @@ Properties::Properties(ptr<const PropertyRegistrar> registrar, nptr<const Proper
     _registrar {registrar},
     _baseProps {base}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!_baseProps || _registrar == _baseProps->GetRegistrar(), "Base properties registrar mismatch", _registrar->GetTypeName(), _baseProps ? _baseProps->GetRegistrar()->GetTypeName() : hstring {});
 
     if (_registrar->_registeredProperties.size() > 1) {
@@ -366,8 +329,6 @@ Properties::Properties(ptr<const PropertyRegistrar> registrar, nptr<const Proper
 
 void Properties::AllocData() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(!_podData && !_complexData, "Property data is already allocated", _registrar->GetTypeName());
     FO_STRONG_ASSERT(_registrar->_registeredProperties.size() > 1, "Properties registrar has no data properties", _registrar->GetTypeName());
 
@@ -380,23 +341,17 @@ void Properties::AllocData() noexcept
 
 auto Properties::ShouldUseOverlayEntryIndex(size_t entry_count) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return entry_count >= OVERLAY_INDEX_MIN_ENTRY_COUNT;
 }
 
 void Properties::ReleaseOverlayEntryIndex() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vector<int32_t> empty_entry_index;
     _overlayEntryIndex.swap(empty_entry_index);
 }
 
 void Properties::EnsureOverlayEntryIndex() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_overlayEntryIndex.empty()) {
         _overlayEntryIndex.assign(_registrar->_registeredProperties.size(), -1);
     }
@@ -404,8 +359,6 @@ void Properties::EnsureOverlayEntryIndex() noexcept
 
 void Properties::RebuildOverlayEntryIndex() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!ShouldUseOverlayEntryIndex(_overlayEntries.size())) {
         ReleaseOverlayEntryIndex();
         return;
@@ -421,8 +374,6 @@ void Properties::RebuildOverlayEntryIndex() noexcept
 
 auto Properties::FindOverlayEntry(ptr<const Property> prop) const noexcept -> nptr<const OverlayEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_overlayEntryIndex.empty()) {
         uint16_t reg_index = prop->GetRegIndex();
 
@@ -442,8 +393,6 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) const noexcept -> np
 
 auto Properties::FindOverlayEntry(ptr<const Property> prop) noexcept -> nptr<OverlayEntry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_overlayEntryIndex.empty()) {
         uint16_t reg_index = prop->GetRegIndex();
 
@@ -463,8 +412,6 @@ auto Properties::FindOverlayEntry(ptr<const Property> prop) noexcept -> nptr<Ove
 
 auto Properties::IsOverlayPropertyIncluded(ptr<const Property> prop, bool with_protected) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!prop->IsSynced()) {
         return false;
     }
@@ -481,8 +428,6 @@ auto Properties::IsOverlayPropertyIncluded(ptr<const Property> prop, bool with_p
 
 auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (data_size == 0) {
         return 0;
     }
@@ -565,8 +510,6 @@ auto Properties::AllocOverlayData(size_t data_size, size_t data_alignment) noexc
 
 auto Properties::MakeOverlayPackOrder() const noexcept -> vector<size_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Stable alignment-descending order packs fixed-size entries without padding.
     // Only variable-size complex payloads may leave aligned gaps
     vector<size_t> pack_order(_overlayEntries.size());
@@ -583,8 +526,6 @@ auto Properties::MakeOverlayPackOrder() const noexcept -> vector<size_t>
 
 auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<size_t> pack_order = MakeOverlayPackOrder();
 
     size_t used_size = 0;
@@ -647,8 +588,6 @@ auto Properties::RepackOverlayData(size_t min_capacity) noexcept -> void
 
 void Properties::RemoveOverlayEntry(ptr<const Property> prop) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entry = FindOverlayEntry(prop);
 
     if (entry) {
@@ -684,8 +623,6 @@ void Properties::RemoveOverlayEntry(ptr<const Property> prop) noexcept
 
 void Properties::ResetOverlayData() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _overlayEntries.clear();
 
     if (!_overlayEntryIndex.empty()) {
@@ -702,8 +639,6 @@ void Properties::ResetOverlayData() noexcept
 
 void Properties::ResetComplexData() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_complexData) {
         return;
     }
@@ -718,8 +653,6 @@ void Properties::ResetComplexData() noexcept
 
 void Properties::RemoveSyncedOverlayEntries() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_overlayEntries.empty()) {
         return;
     }
@@ -766,8 +699,6 @@ void Properties::RemoveSyncedOverlayEntries() noexcept
 
 void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == other._registrar, "Properties registrar mismatch in clone", _registrar->GetTypeName(), other._registrar->GetTypeName());
     FO_STRONG_ASSERT((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps), "Base properties mismatch in clone", _registrar->GetTypeName());
 
@@ -830,8 +761,6 @@ void Properties::CloneOwnDataFrom(const Properties& other) noexcept
 
 void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == other._registrar, "Properties registrar mismatch in overlay rebuild", _registrar->GetTypeName(), other._registrar->GetTypeName());
     FO_STRONG_ASSERT(_baseProps, "Overlay rebuild target has no base properties", _registrar->GetTypeName());
     FO_STRONG_ASSERT(!other._baseProps, "Overlay rebuild source already has base properties", _registrar->GetTypeName());
@@ -929,8 +858,6 @@ void Properties::RebuildOverlayFromFullData(const Properties& other) noexcept
 
 auto Properties::Copy() const noexcept -> Properties
 {
-    FO_STACK_TRACE_ENTRY();
-
     Properties props {_registrar, _baseProps};
     props.CloneOwnDataFrom(*this);
     return props;
@@ -938,8 +865,6 @@ auto Properties::Copy() const noexcept -> Properties
 
 void Properties::CopyFrom(const Properties& other) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == other._registrar, "Properties registrar mismatch in copy", _registrar->GetTypeName(), other._registrar->GetTypeName());
 
     if ((!_baseProps && !other._baseProps) || (_baseProps && _baseProps == other._baseProps)) {
@@ -975,7 +900,7 @@ void Properties::CopyFrom(const Properties& other) noexcept
 
 void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashes) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     all_data.clear();
 
@@ -1101,7 +1026,7 @@ void Properties::StoreAllData(vector<uint8_t>& all_data, set<hstring>& str_hashe
 
 void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto reader = data_reader(all_data);
     auto whole_pod_data_size = reader.read<uint32_t>();
@@ -1161,7 +1086,7 @@ void Properties::RestoreAllData(const vector<uint8_t>& all_data)
 
 auto Properties::StoreData(bool with_protected) const -> StoredData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto& cache_ptr = _storeDataCaches[with_protected ? 1 : 0];
 
@@ -1247,8 +1172,6 @@ auto Properties::StoreData(bool with_protected) const -> StoredData
 
 void Properties::VerifyRestoredPropertyData(ptr<const Property> prop, size_t data_size) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Serialized payloads are foreign data - a peer or a resource pack baked from another revision resolves an
     // index to the wrong property, and reaching the raw data write would take the process down on a strong assert
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Serialized property data targets a property disabled on this side, metadata is out of sync", _registrar->GetTypeName(), prop->GetName(), prop->GetRegIndex());
@@ -1258,7 +1181,7 @@ void Properties::VerifyRestoredPropertyData(ptr<const Property> prop, size_t dat
 
 void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const vector<uint32_t>& all_data_sizes)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(all_data.size() == all_data_sizes.size(), "Serialized property payload pointer list and size list have different lengths", _registrar->GetTypeName(), all_data.size(), all_data_sizes.size());
 
@@ -1383,8 +1306,6 @@ void Properties::RestoreData(const vector<nptr<const uint8_t>>& all_data, const 
 
 void Properties::RestoreData(const vector<vector<uint8_t>>& all_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<nptr<const uint8_t>> all_data_ext(all_data.size());
     vector<uint32_t> all_data_sizes(all_data.size());
 
@@ -1398,8 +1319,6 @@ void Properties::RestoreData(const vector<vector<uint8_t>>& all_data)
 
 void Properties::ApplyFromText(const map<string, string>& key_values)
 {
-    FO_STACK_TRACE_ENTRY();
-
     map<string_view, string_view> key_values_view;
 
     for (const auto& [key, value] : key_values) {
@@ -1411,7 +1330,7 @@ void Properties::ApplyFromText(const map<string, string>& key_values)
 
 void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     size_t errors = 0;
     auto registrar = GetRegistrar();
@@ -1475,7 +1394,7 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
 
 auto Properties::SaveToText(nptr<const Properties> base) const -> map<string, string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!base || _registrar == base->_registrar, "Base properties use a different registrar");
 
@@ -1515,8 +1434,6 @@ auto Properties::SaveToText(nptr<const Properties> base) const -> map<string, st
 
 auto Properties::CompareData(const Properties& other, const_span<ptr<const Property>> ignore_props, bool ignore_temporary) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_registrar == other._registrar, "Property containers use different registrars");
 
     if (this == &other) {
@@ -1629,8 +1546,6 @@ auto Properties::CompareData(const Properties& other, const_span<ptr<const Prope
 
 void Properties::ApplyPropertyFromText(ptr<const Property> prop, string_view text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_registrar == prop->_registrar, "Property belongs to a different registrar");
     FO_VERIFY_AND_THROW(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value(), "Property has neither POD offset nor complex data index");
 
@@ -1639,8 +1554,6 @@ void Properties::ApplyPropertyFromText(ptr<const Property> prop, string_view tex
 
 auto Properties::SavePropertyToText(ptr<const Property> prop) const -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_registrar == prop->_registrar, "Property belongs to a different registrar");
     FO_VERIFY_AND_THROW(prop->_podDataOffset.has_value() || prop->_complexDataIndex.has_value(), "Property has neither POD offset nor complex data index");
 
@@ -1649,8 +1562,6 @@ auto Properties::SavePropertyToText(ptr<const Property> prop) const -> string
 
 void Properties::ValidateForRawData(ptr<const Property> prop) const noexcept(false)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
 
     if (_registrar != prop->_registrar) {
@@ -1671,8 +1582,6 @@ void Properties::ValidateForRawData(ptr<const Property> prop) const noexcept(fal
 
 auto Properties::GetRawData(ptr<const Property> prop) const noexcept -> span<const uint8_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == prop->_registrar, "Invalid property for raw data", _registrar->GetTypeName(), string_view {prop->GetName()}, prop->_registrar->GetTypeName());
 
     if (_baseProps) {
@@ -1705,8 +1614,6 @@ auto Properties::GetRawData(ptr<const Property> prop) const noexcept -> span<con
 
 auto Properties::GetRawDataSize(ptr<const Property> prop) const noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == prop->_registrar, "Invalid property for raw data size", _registrar->GetTypeName(), string_view {prop->GetName()}, prop->_registrar->GetTypeName());
 
     if (_baseProps) {
@@ -1732,8 +1639,6 @@ auto Properties::GetRawDataSize(ptr<const Property> prop) const noexcept -> size
 
 void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_data) const noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
             auto raw_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
@@ -1751,8 +1656,6 @@ void Properties::CopyRawData(ptr<const Property> prop, PropertyRawData& prop_dat
 
 auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> raw_data) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_baseProps) {
         if (auto entry = FindOverlayEntry(prop)) {
             auto current_overlay_data = span<const uint8_t>(entry->DataSize != 0 ? _overlayData.get() + entry->DataOffset : nullptr, entry->DataSize);
@@ -1767,8 +1670,6 @@ auto Properties::IsRawDataEqual(ptr<const Property> prop, span<const uint8_t> ra
 
 void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_data) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_STRONG_ASSERT(_registrar == prop->_registrar, "Invalid property for raw data write", _registrar->GetTypeName(), string_view {prop->GetName()}, prop->_registrar->GetTypeName());
     FO_STRONG_ASSERT(!prop->IsPlainData() || prop->GetBaseSize() == raw_data.size(), "Plain property raw data write size mismatch", prop->GetName(), _registrar->GetTypeName(), prop->GetBaseSize(), raw_data.size());
 
@@ -1899,8 +1800,6 @@ void Properties::SetRawData(ptr<const Property> prop, span<const uint8_t> raw_da
 
 void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& prop_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
 
@@ -1934,8 +1833,6 @@ void Properties::SetValueFromData(ptr<const Property> prop, PropertyRawData& pro
 
 auto Properties::GetPlainDataValueAsInt(ptr<const Property> prop) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
@@ -1998,8 +1895,6 @@ auto Properties::GetPlainDataValueAsInt(ptr<const Property> prop) const -> int32
 
 auto Properties::GetPlainDataValueAsAny(ptr<const Property> prop) const -> any_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
@@ -2065,8 +1960,6 @@ auto Properties::GetPlainDataValueAsAny(ptr<const Property> prop) const -> any_t
 
 void Properties::SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
@@ -2130,8 +2023,6 @@ void Properties::SetPlainDataValueAsInt(ptr<const Property> prop, int32_t value)
 
 void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsPlainData(), "Property is not plain data");
 
     const auto& base_type = prop->IsBaseTypeSimpleStruct() ? prop->GetStructFirstType() : prop->GetBaseType();
@@ -2204,8 +2095,6 @@ void Properties::SetPlainDataValueAsAny(ptr<const Property> prop, const any_t& v
 
 auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2223,8 +2112,6 @@ auto Properties::GetValueAsInt(int32_t property_index) const -> int32_t
 
 auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2242,8 +2129,6 @@ auto Properties::GetValueAsAny(int32_t property_index) const -> any_t
 
 void Properties::SetValueAsInt(int32_t property_index, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2261,8 +2146,6 @@ void Properties::SetValueAsInt(int32_t property_index, int32_t value)
 
 void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2280,8 +2163,6 @@ void Properties::SetValueAsAny(int32_t property_index, const any_t& value)
 
 void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2364,8 +2245,6 @@ void Properties::SetValueAsIntProps(int32_t property_index, int32_t value)
 
 void Properties::SetValueAsAnyProps(int32_t property_index, const any_t& value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto prop = _registrar->GetPropertyByIndex(property_index);
 
     if (!prop) {
@@ -2386,22 +2265,16 @@ void Properties::SetValueAsAnyProps(int32_t property_index, const any_t& value)
 
 auto Properties::ResolveHash(hstring::hash_t h) const -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _registrar->_hashResolver->resolve_hash(h);
 }
 
 auto Properties::ResolveHash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _registrar->_hashResolver->resolve_hash(h, failed);
 }
 
 void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop.get(), "Property pointer is null");
     FO_VERIFY_AND_THROW(!prop->IsDisabled(), "Property is disabled");
     ValidateAndClampRawData(prop, {prop_data.GetPtrAs<uint8_t>().get(), prop_data.GetSize()});
@@ -2440,8 +2313,6 @@ void Properties::SetValue(ptr<const Property> prop, PropertyRawData& prop_data)
 
 void Properties::ValidateAndClampRawData(ptr<const Property> prop, span<uint8_t> raw_data)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ValidateFiniteRawData(prop, raw_data);
 
     // Clamping runs before the incoming value is compared with the stored one, so a write that the
@@ -2451,8 +2322,6 @@ void Properties::ValidateAndClampRawData(ptr<const Property> prop, span<uint8_t>
 
 void Properties::ValidateFiniteRawData(ptr<const Property> prop, span<const uint8_t> raw_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (raw_data.empty()) {
         return;
     }
@@ -2487,21 +2356,16 @@ PropertyRegistrar::PropertyRegistrar(string_view type_name, EngineSideKind side,
     _hashResolver {hashes},
     _nameResolver {name_resolver}
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Add None entry
     _registeredProperties.emplace_back();
 }
 
 PropertyRegistrar::~PropertyRegistrar()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto PropertyRegistrar::GetPropertyByIndexUnsafe(size_t property_index) const noexcept -> ptr<const Property>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto prop = _registeredProperties[property_index].as_nptr();
     FO_STRONG_ASSERT(prop, "Property at index is null");
     return prop;
@@ -2509,8 +2373,6 @@ auto PropertyRegistrar::GetPropertyByIndexUnsafe(size_t property_index) const no
 
 auto PropertyRegistrar::GetPropertyByIndex(int32_t property_index) const noexcept -> nptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Skip None entry
     if (property_index >= 1 && static_cast<size_t>(property_index) < _registeredProperties.size()) {
         auto prop = _registeredProperties[numeric_cast<size_t>(property_index)].as_nptr();
@@ -2523,8 +2385,6 @@ auto PropertyRegistrar::GetPropertyByIndex(int32_t property_index) const noexcep
 
 auto PropertyRegistrar::FindProperty(string_view property_name) const -> nptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto it = _registeredPropertiesLookup.find(property_name); it != _registeredPropertiesLookup.end()) {
         return it->second;
     }
@@ -2534,8 +2394,6 @@ auto PropertyRegistrar::FindProperty(string_view property_name) const -> nptr<co
 
 auto PropertyRegistrar::FindPersistedProperty(string_view property_name) const -> nptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     hstring hkey = _hashResolver->to_hashed_string(property_name);
 
     if (auto rule = _nameResolver->CheckMigrationRule(_propMigrationRuleName, _typeName, hkey); rule.has_value()) {
@@ -2547,8 +2405,6 @@ auto PropertyRegistrar::FindPersistedProperty(string_view property_name) const -
 
 auto PropertyRegistrar::GetPropertyGroups() const noexcept -> map<string, vector<ptr<const Property>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     map<string, vector<ptr<const Property>>> result;
 
     for (const auto& [group_name, properties] : _propertyGroups) {
@@ -2567,8 +2423,6 @@ auto PropertyRegistrar::GetPropertyGroups() const noexcept -> map<string, vector
 
 auto PropertyRegistrar::RegisterProperty(const span<const string_view>& tokens) -> ptr<const Property>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(tokens.size() >= 3, "Property declaration is missing scope, type or name tokens", _typeName, tokens.size());
 
     auto prop = safe_alloc::make_unique<Property>(this);

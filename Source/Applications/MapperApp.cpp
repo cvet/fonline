@@ -55,15 +55,13 @@ static auto GetMapperResources(GlobalSettings& settings) -> FileSystem;
 
 static auto GetMapper() -> ptr<MapperEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Mapper, "Mapper engine is not created");
     return Data->Mapper;
 }
 
 static void MapperEntry([[maybe_unused]] void* data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     if (!WebRelated::IsPersistentDataReady()) {
         return;
@@ -108,8 +106,6 @@ int main(int argc, char** argv) // Handled by SDL
 [[maybe_unused]] static auto MapperApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
     CommandLineArgs args {numeric_cast<int32_t>(argc), argv};
 #endif
@@ -158,8 +154,6 @@ int main(int argc, char** argv) // Handled by SDL
 
 static auto GetMapperResources(GlobalSettings& settings) -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (settings.Common.Packaged) {
         FileSystem resources;
         resources.AddPacksSource(settings.Baking.ClientResources, settings.GetClientResourcePacks());

@@ -49,8 +49,6 @@ FO_BEGIN_NAMESPACE
 template<typename T>
 static auto DropDestroyingEntity(refcount_nptr<T> entity) -> refcount_nptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (entity && entity->IsDestroying()) {
         return refcount_nptr<T> {};
     }

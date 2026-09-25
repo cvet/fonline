@@ -140,8 +140,6 @@ void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ui
 template<typename T>
 [[nodiscard]] inline auto GetGenericObjectAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto object = GetGenericObject(gen);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
@@ -155,16 +153,12 @@ template<typename T>
 template<typename T>
 [[nodiscard]] inline auto GetGenericAuxiliaryAs(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return cast_from_void<T*>(GetGenericAuxiliary(gen).get());
 }
 
 template<typename T>
 [[nodiscard]] inline auto GetGenericAddressArgAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arg_address = GetGenericAddressArg(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
@@ -178,8 +172,6 @@ template<typename T>
 template<typename T>
 [[nodiscard]] inline auto GetGenericArgAddressAs(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto arg_address = GetGenericArgAddress(gen, arg_index);
 
     if constexpr (std::is_void_v<std::remove_cv_t<T>>) {
@@ -193,8 +185,6 @@ template<typename T>
 template<typename T>
 [[nodiscard]] inline auto GenericValueAs(ptr<const void> value) noexcept -> ptr<const T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return value.reinterpret_as<T>();
 }
 
@@ -280,8 +270,6 @@ namespace aswrap
     template<typename T>
     static auto PointerReturnValueAsAddress(T value) noexcept -> void*
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_function_v<std::remove_pointer_t<T>>) {
             static_assert(sizeof(T) == sizeof(void*));
             return std::bit_cast<void*>(value);
@@ -297,8 +285,6 @@ namespace aswrap
     template<typename T>
     static auto ReferenceReturnValueAsAddress(T& value) noexcept -> void*
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if constexpr (std::is_function_v<T>) {
             static_assert(sizeof(T*) == sizeof(void*));
             return std::bit_cast<void*>(std::addressof(value));

@@ -42,8 +42,6 @@ CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCr
     EntityWithProto(proto),
     CritterProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto unregister_on_fail = scope_fail([this]() noexcept {
         safe_call([this]() {
             if (GetId()) {
@@ -64,16 +62,12 @@ CritterView::CritterView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoCr
 
 CritterView::~CritterView()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_CONTINUE(_invItems.empty(), "Client critter view has inventory items during destruction", GetId(), _invItems.size());
     FO_VERIFY_AND_CONTINUE(_attachedCritters.empty(), "Client critter view has attached critters during destruction", GetId(), _attachedCritters.size());
 }
 
 void CritterView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < _invItems.size(); i++) {
         safe_call([&] { _invItems[i]->DestroySelf(); });
     }
@@ -83,28 +77,22 @@ void CritterView::OnDestroySelf()
 
 void CritterView::SetName(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = name;
 }
 
 auto CritterView::IsAttachedCritter(ident_t cr_id) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::ranges::find(_attachedCritters, cr_id) != _attachedCritters.end();
 }
 
 void CritterView::SetAttachedCritters(vector<ident_t> attached_critters)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _attachedCritters = std::move(attached_critters);
 }
 
 auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, nptr<const Properties> props) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
@@ -119,7 +107,7 @@ auto CritterView::AddMapperInvItem(ident_t id, ptr<const ProtoItem> proto, Critt
 
 auto CritterView::AddReceivedInvItem(ident_t id, ptr<const ProtoItem> proto, CritterItemSlot slot, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
     auto destroy_on_fail = scope_fail([&]() noexcept { safe_call([&] { item->DestroySelf(); }); });
@@ -146,8 +134,6 @@ auto CritterView::AddRawInvItem(ptr<ItemView> item) -> ptr<ItemView>
 
 void CritterView::DeleteInvItem(ptr<ItemView> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto item_ref_holder = item.hold_ref();
     vec_remove_unique_value(_invItems, item_ref_holder);
 
@@ -156,8 +142,6 @@ void CritterView::DeleteInvItem(ptr<ItemView> item)
 
 void CritterView::DeleteAllInvItems()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (!_invItems.empty()) {
         DeleteInvItem(_invItems.front());
     }
@@ -165,8 +149,6 @@ void CritterView::DeleteAllInvItems()
 
 auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < _invItems.size(); i++) {
         auto item = _invItems[i].as_ptr();
 
@@ -180,8 +162,6 @@ auto CritterView::GetInvItem(ident_t item_id) noexcept -> nptr<ItemView>
 
 auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < _invItems.size(); i++) {
         auto item = _invItems[i].as_ptr();
 
@@ -195,8 +175,6 @@ auto CritterView::GetInvItemByPid(hstring item_pid) noexcept -> nptr<ItemView>
 
 auto CritterView::CheckFind(CritterFindType find_type) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (find_type == CritterFindType::Any) {
         return true;
     }

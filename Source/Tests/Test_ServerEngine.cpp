@@ -109,8 +109,6 @@ namespace
     // budget and not the watchdog, by requiring the contention to still be held when the throw lands
     static void ExpectSustainedEnsureStateMutexContentionThrows(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::atomic<bool> state_locked {};
         std::atomic<bool> release_state {};
         std::atomic<bool> ensure_finished {};
@@ -156,8 +154,6 @@ namespace
     // retention must retry through that window and land
     static void ExpectTransientEnsureStateMutexContentionIsAbsorbed(SyncContext& ctx, nptr<ServerEntity> target, ptr<EntityLock> state_lock)
     {
-        FO_STACK_TRACE_ENTRY();
-
         std::atomic<bool> state_locked {};
         std::jthread state_owner {[&](std::stop_token) {
             state_lock->LockStateMutex();

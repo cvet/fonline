@@ -149,8 +149,6 @@ static auto get_stack_trace_state() noexcept -> stack_trace_state&;
 // Kept out of line so that its own frame is the one the capture skips
 FO_NO_INLINE auto stack_trace::get() noexcept -> stack_trace::data
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     stack_trace::data st;
 
     stack_trace::capture_native_frames(st.native_frames, st.native_frame_count, st.native_truncated, 1);
@@ -162,8 +160,6 @@ FO_NO_INLINE auto stack_trace::get() noexcept -> stack_trace::data
 
 auto stack_trace::get_from_context(const void* os_context, void* os_thread) noexcept -> stack_trace::data
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     stack_trace::data st;
 
     stack_trace::capture_native_frames_from_context(os_context, os_thread, st.native_frames, st.native_frame_count, st.native_truncated);
@@ -176,8 +172,6 @@ auto stack_trace::get_from_context(const void* os_context, void* os_thread) noex
 // innermost layer, entered from the native point where st was captured
 void stack_trace::add_unwound_script_frames(stack_trace::data& st, stack_trace::script_layer layer)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     layer.birth_native_frames = st.native_frames;
     layer.birth_native_frame_count = st.native_frame_count;
     layer.birth_native_truncated = st.native_truncated;
@@ -196,8 +190,6 @@ void stack_trace::add_unwound_script_frames(stack_trace::data& st, stack_trace::
 // layer, so the recorded frames replace the live frames above it
 void stack_trace::splice_caught_script_frames(stack_trace::data& st, stack_trace::script_layer layer)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (layer.script_frames.empty()) {
         return;
     }
@@ -226,8 +218,6 @@ void stack_trace::splice_caught_script_frames(stack_trace::data& st, stack_trace
 
 auto stack_trace::resolve(const stack_trace::data& st) -> std::vector<stack_trace::frame>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::vector<stack_trace::frame> frames;
     std::span<const stack_trace::native_frame_address> source {st.native_frames.data(), st.native_frame_count};
     bool collapse_head = st.native_head_is_request;
@@ -280,8 +270,6 @@ auto stack_trace::resolve(const stack_trace::data& st) -> std::vector<stack_trac
 
 auto stack_trace::format(const stack_trace::data& st) -> std::string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::ostringstream ss;
     ss << "Stack trace (most recent call first";
 
@@ -310,8 +298,6 @@ auto stack_trace::format(const stack_trace::data& st) -> std::string
 
 auto stack_trace::format(const stack_trace::catched_data& st) -> std::string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!st.origin.has_value()) {
         return "Catched at: " + stack_trace::format(st.catched);
     }
@@ -340,8 +326,6 @@ auto stack_trace::format(const stack_trace::catched_data& st) -> std::string
 
 auto stack_trace::get_entry(uint32_t deep) noexcept -> std::optional<stack_trace::frame>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         auto resolved = stack_trace::resolve(stack_trace::get());
 
@@ -359,8 +343,6 @@ auto stack_trace::get_entry(uint32_t deep) noexcept -> std::optional<stack_trace
 // Kept out of line: the walk starts in this frame, and the frames skipped are counted from its caller
 FO_NO_INLINE void stack_trace::capture_native_frames(std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated, uint32_t skip) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     out_count = 0;
     out_truncated = false;
 
@@ -394,8 +376,6 @@ FO_NO_INLINE void stack_trace::capture_native_frames(std::array<stack_trace::nat
 
 void stack_trace::capture_native_frames_from_context(const void* os_context, void* os_thread, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     out_count = 0;
     out_truncated = false;
 
@@ -441,8 +421,6 @@ void stack_trace::capture_native_frames_from_context(const void* os_context, voi
 // kept are the return address, the caller's stack pointer after the return and its frame pointer
 __declspec(naked) auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // clang-format off
     __asm {
         mov eax, [esp + 4]
@@ -464,8 +442,6 @@ __declspec(naked) auto stack_trace::save_resume_point(stack_trace::resume_point*
 // Kept out of line: it captures its own frame and steps back once, to the frame that called it
 FO_NO_INLINE auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     CONTEXT context;
     RtlCaptureContext(&context);
 
@@ -484,8 +460,6 @@ static_assert(sizeof(unw_context_t) <= sizeof(stack_trace::resume_point::context
 // Kept out of line so that the frame the capture skips is this one and not the opening frame it was inlined into
 FO_NO_INLINE auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     capture_native_frames(point->frames, point->frame_count, point->truncated, 1);
     return 0;
 }
@@ -493,8 +467,6 @@ FO_NO_INLINE auto stack_trace::save_resume_point(stack_trace::resume_point* poin
 
 void stack_trace::resolve_resume_point(const stack_trace::resume_point& point, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_STACK_TRACE_RESUME_CONTEXT && FO_WINDOWS && defined(_M_IX86)
     out_count = 0;
     out_truncated = false;
@@ -534,8 +506,6 @@ void stack_trace::resolve_resume_point(const stack_trace::resume_point& point, s
 
 void stack_trace::set_script_provider(std::string_view name, stack_trace::script_provider provider) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         stack_trace_state& state = get_stack_trace_state();
         std::scoped_lock locker {state.provider_locker};
@@ -562,8 +532,6 @@ void stack_trace::set_script_provider(std::string_view name, stack_trace::script
 
 auto stack_trace::has_script_provider(std::string_view name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     stack_trace_state& state = get_stack_trace_state();
     std::scoped_lock locker {state.provider_locker};
 
@@ -572,8 +540,6 @@ auto stack_trace::has_script_provider(std::string_view name) noexcept -> bool
 
 void stack_trace::clear_resolved_cache() noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         stack_trace_state& state = get_stack_trace_state();
         std::scoped_lock locker {state.resolved_native_frames_locker};
@@ -588,8 +554,6 @@ void stack_trace::clear_resolved_cache() noexcept
 
 auto stack_trace::get_resolved_cache_size() noexcept -> size_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         stack_trace_state& state = get_stack_trace_state();
         std::scoped_lock locker {state.resolved_native_frames_locker};
@@ -605,8 +569,6 @@ auto stack_trace::get_resolved_cache_size() noexcept -> size_t
 
 static void attach_script_layers(stack_trace::data& st) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         std::vector<stack_trace::script_layer> script_layers;
         collect_script_layers(st, script_layers);
@@ -622,8 +584,6 @@ static void attach_script_layers(stack_trace::data& st) noexcept
 
 static void collect_script_layers(const stack_trace::data& st, std::vector<stack_trace::script_layer>& out_layers) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         std::vector<stack_trace::script_provider> providers;
 
@@ -666,8 +626,6 @@ static void collect_script_layers(const stack_trace::data& st, std::vector<stack
 // A trace asked for while an object is under construction, an exception above all, starts at the code that constructs it
 static void drop_requesting_constructors(const stack_trace::data& st, std::vector<stack_trace::frame>& frames) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!st.native_head_is_request) {
         return;
     }
@@ -680,8 +638,6 @@ static void drop_requesting_constructors(const stack_trace::data& st, std::vecto
 // by script, natives below them are the runtime entering it, so the script frames go where the runtime frames are
 static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address> source, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, const stack_trace::script_layer& layer, bool collapse_head, std::vector<stack_trace::frame>& out)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t first_runtime = to;
     uint32_t last_runtime = to;
 
@@ -708,8 +664,6 @@ static void ResolveLayerRegion(std::span<const stack_trace::native_frame_address
 // capture, which for an exception is its own constructor chain
 static void resolve_native_range(std::span<const stack_trace::native_frame_address> frames, uint32_t from, uint32_t to, const std::vector<stack_trace::native_frame_address>& hidden, bool collapse_head, std::vector<stack_trace::frame>& out) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (from >= to) {
         return;
     }
@@ -739,8 +693,6 @@ static void resolve_native_range(std::span<const stack_trace::native_frame_addre
 
 static auto find_layer_native_anchor(std::span<const stack_trace::native_frame_address> trace, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t trace_n = static_cast<uint32_t>(trace.size());
 
     if (layer.birth_native_frame_count == 0) {
@@ -778,8 +730,6 @@ static auto find_layer_native_anchor(std::span<const stack_trace::native_frame_a
 // read once, from the birth stack
 static auto FindLayerBirthOverlap(std::span<const stack_trace::native_frame_address> trace, const stack_trace::script_layer& layer, uint32_t search_from) noexcept -> uint32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t trace_n = static_cast<uint32_t>(trace.size());
     uint32_t birth_n = layer.birth_native_frame_count;
 
@@ -803,8 +753,6 @@ static auto FindLayerBirthOverlap(std::span<const stack_trace::native_frame_addr
 
 static auto same_frame_function(stack_trace::native_frame_address a, stack_trace::native_frame_address b) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (a == b) {
         return true;
     }
@@ -818,8 +766,6 @@ static auto same_frame_function(stack_trace::native_frame_address a, stack_trace
 
 static auto resolve_function_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (is_low_native_address(addr)) {
         return make_native_address_key(addr);
     }
@@ -835,8 +781,6 @@ static auto resolve_function_key(stack_trace::native_frame_address addr) noexcep
 
 static auto resolve_native_frame(stack_trace::native_frame_address addr) -> resolved_native_frame_cache_entry
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto cached = try_get_resolved_native_frame_from_cache(addr);
 
     if (cached.has_value()) {
@@ -856,8 +800,6 @@ static auto resolve_native_frame(stack_trace::native_frame_address addr) -> reso
 
 static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if HAS_NATIVE_TRACE
     if (is_low_native_address(addr)) {
         return make_native_address_cache_entry(addr);
@@ -917,8 +859,6 @@ static auto resolve_native_frame_uncached(stack_trace::native_frame_address addr
 
 static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_address addr) -> std::optional<resolved_native_frame_cache_entry>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     stack_trace_state& state = get_stack_trace_state();
     std::scoped_lock locker {state.resolved_native_frames_locker};
 
@@ -934,8 +874,6 @@ static auto try_get_resolved_native_frame_from_cache(stack_trace::native_frame_a
 
 static void store_resolved_native_frame_in_cache(stack_trace::native_frame_address addr, const resolved_native_frame_cache_entry& entry) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     try {
         stack_trace_state& state = get_stack_trace_state();
         std::scoped_lock locker {state.resolved_native_frames_locker};
@@ -966,8 +904,6 @@ static void store_resolved_native_frame_in_cache(stack_trace::native_frame_addre
 
 static auto make_native_address_cache_entry(stack_trace::native_frame_address addr) noexcept -> resolved_native_frame_cache_entry
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     resolved_native_frame_cache_entry entry;
     entry.frames.emplace_back(make_native_address_frame(addr));
     entry.function_key = make_native_address_key(addr);
@@ -976,8 +912,6 @@ static auto make_native_address_cache_entry(stack_trace::native_frame_address ad
 
 static auto make_native_address_frame(stack_trace::native_frame_address addr) noexcept -> stack_trace::frame
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     stack_trace::frame frame;
     frame.type = stack_trace::frame::frame_type::native;
 
@@ -990,8 +924,6 @@ static auto make_native_address_frame(stack_trace::native_frame_address addr) no
 
 static auto make_native_function_key(stack_trace::native_frame_address addr, std::string_view name) noexcept -> uintptr_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (is_unresolved_native_name(name)) {
         return make_native_address_key(addr);
     }
@@ -1001,15 +933,11 @@ static auto make_native_function_key(stack_trace::native_frame_address addr, std
 
 static auto make_native_address_key(stack_trace::native_frame_address addr) noexcept -> uintptr_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return addr;
 }
 
 static auto is_low_native_address(stack_trace::native_frame_address addr) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Small synthetic test addresses are not valid native instruction pointers.
     // Skip slow and ambiguous POSIX symbol resolution for them
     return addr < 0x10000U;
@@ -1017,16 +945,12 @@ static auto is_low_native_address(stack_trace::native_frame_address addr) noexce
 
 static auto is_unresolved_native_name(std::string_view s) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return s.empty() || s == "??" || s == "???" || s == "??:0";
 }
 
 // Reads a demangled name as scope::Type::Type, with template arguments and the parameter list after either part
 static auto is_constructor_name(std::string_view name) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (name.find("operator") != std::string_view::npos || name.find('{') != std::string_view::npos) {
         return false;
     }
@@ -1069,8 +993,6 @@ static auto is_constructor_name(std::string_view name) noexcept -> bool
 
 static void trim_in_place(std::string& s) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     size_t first = s.find_first_not_of(" \t\r\n");
 
     if (first == std::string::npos) {
@@ -1085,8 +1007,6 @@ static void trim_in_place(std::string& s) noexcept
 
 static auto get_stack_trace_state() noexcept -> stack_trace_state&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static stack_trace_state state;
     return state;
 }
@@ -1094,8 +1014,6 @@ static auto get_stack_trace_state() noexcept -> stack_trace_state&
 #if HAS_NATIVE_TRACE && FO_WINDOWS
 static void walk_windows_context(const CONTEXT& source, HANDLE thread, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     CONTEXT context;
     std::memcpy(&context, &source, sizeof(context));
     bool resumed_after_call = false;
@@ -1180,8 +1098,6 @@ static void walk_windows_context(const CONTEXT& source, HANDLE thread, std::arra
 
 static auto resolve_windows_symbol(stack_trace_state& state, stack_trace::native_frame_address addr, stack_trace::frame& out_frame) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     prepare_dbghelp(state);
 
     constexpr size_t NAME_CAPACITY = 1024;
@@ -1226,8 +1142,6 @@ static auto resolve_windows_symbol(stack_trace_state& state, stack_trace::native
 
 static void prepare_dbghelp(stack_trace_state& state) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (state.dbghelp_ready) {
         return;
     }
@@ -1257,8 +1171,6 @@ static void prepare_dbghelp(stack_trace_state& state) noexcept
 // starts from elsewhere
 static auto make_symbol_search_path(const void* module_anchor) -> std::wstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::wstring search_path;
 
     auto append_module_dir = [&search_path](HMODULE module) {
@@ -1311,8 +1223,6 @@ static auto make_symbol_search_path(const void* module_anchor) -> std::wstring
 // the frame that saved it, as every later one is
 static void walk_windows_frame_chain(uintptr_t pc, uintptr_t frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const NT_TIB* thread_block = reinterpret_cast<const NT_TIB*>(NtCurrentTeb());
     auto stack_low = reinterpret_cast<uintptr_t>(thread_block->StackLimit);
     auto stack_high = reinterpret_cast<uintptr_t>(thread_block->StackBase);
@@ -1354,8 +1264,6 @@ static void walk_windows_frame_chain(uintptr_t pc, uintptr_t frame, uint32_t ski
 // address of the frame the context was taken in, as every later one is
 static void walk_windows_function_tables(CONTEXT& context, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const NT_TIB* thread_block = reinterpret_cast<const NT_TIB*>(NtCurrentTeb());
     auto stack_low = reinterpret_cast<DWORD64>(thread_block->StackLimit);
     auto stack_high = reinterpret_cast<DWORD64>(thread_block->StackBase);
@@ -1395,8 +1303,6 @@ static void walk_windows_function_tables(CONTEXT& context, uint32_t skip, std::a
 // Moves the context from a frame to its caller through the function table entry of the code it is in
 static auto unwind_windows_frame(CONTEXT& context) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if defined(_M_X64)
     DWORD64 pc = context.Rip;
 #else
@@ -1419,8 +1325,6 @@ static auto unwind_windows_frame(CONTEXT& context) noexcept -> bool
 // Only what the function tables need to go on unwinding: the instruction and stack pointers and the callee-saved registers
 static void store_resume_registers(const CONTEXT& context, stack_trace::resume_point& point) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if defined(_M_X64)
     point.context = {context.Rip, context.Rsp, context.Rbp, context.Rbx, context.Rsi, context.Rdi, context.R12, context.R13, context.R14, context.R15};
 #else
@@ -1434,8 +1338,6 @@ static void store_resume_registers(const CONTEXT& context, stack_trace::resume_p
 
 static void load_resume_registers(const stack_trace::resume_point& point, CONTEXT& context) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if defined(_M_X64)
     context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
     context.Rip = point.context[0];
@@ -1465,8 +1367,6 @@ static void load_resume_registers(const stack_trace::resume_point& point, CONTEX
 #elif HAS_NATIVE_TRACE
 static void walk_native_cursor(unw_cursor_t& cursor, native_first_frame first, bool from_signal_frame, uint32_t skip, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint32_t to_skip = skip;
     bool recording = !from_signal_frame;
 
@@ -1526,8 +1426,6 @@ static void walk_native_cursor(unw_cursor_t& cursor, native_first_frame first, b
 
 static auto walk_signal_context(const ucontext_t& uctx, std::array<stack_trace::native_frame_address, stack_trace::MAX_NATIVE_FRAMES>& out_frames, uint32_t& out_count, bool& out_truncated) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX && (defined(__x86_64__) || defined(__aarch64__))
     unw_context_t context;
 
@@ -1599,8 +1497,6 @@ static auto walk_signal_context(const ucontext_t& uctx, std::array<stack_trace::
 
 static void resolve_posix_frames(stack_trace_state& state, stack_trace::native_frame_address addr, std::vector<stack_trace::frame>& out_frames)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX
     if (backtrace_state* backtrace = get_backtrace_state(state); backtrace != nullptr) {
         (void)backtrace_pcinfo(backtrace, addr, &on_backtrace_frame, &on_backtrace_error, &out_frames);
@@ -1639,8 +1535,6 @@ static void resolve_posix_frames(stack_trace_state& state, stack_trace::native_f
 
 static auto resolve_dynamic_symbol(stack_trace::native_frame_address addr) -> std::string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     Dl_info info {};
 
     if (dladdr(std::bit_cast<const void*>(addr), &info) == 0) {
@@ -1669,8 +1563,6 @@ static auto resolve_dynamic_symbol(stack_trace::native_frame_address addr) -> st
 
 static auto demangle_native_name(const char* name) -> std::string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (name == nullptr) {
         return {};
     }
@@ -1695,8 +1587,6 @@ static auto demangle_native_name(const char* name) -> std::string
 // that never resolves a frame should not pay
 static auto get_backtrace_state(stack_trace_state& state) noexcept -> backtrace_state*
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!state.backtrace_created) {
         state.backtrace_created = true;
         state.backtrace = backtrace_create_state(nullptr, 1, &on_backtrace_error, nullptr);
@@ -1708,8 +1598,6 @@ static auto get_backtrace_state(stack_trace_state& state) noexcept -> backtrace_
 // Called for the innermost inlined call first and for the function that owns the machine frame last
 static auto on_backtrace_frame(void* data, uintptr_t pc, const char* filename, int32_t lineno, const char* function) -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     (void)pc;
 
     if (filename == nullptr && function == nullptr) {
@@ -1732,8 +1620,6 @@ static auto on_backtrace_frame(void* data, uintptr_t pc, const char* filename, i
 
 static void on_backtrace_symbol(void* data, uintptr_t pc, const char* symname, uintptr_t symval, uintptr_t symsize)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     (void)pc;
     (void)symval;
     (void)symsize;
@@ -1749,8 +1635,6 @@ static void on_backtrace_symbol(void* data, uintptr_t pc, const char* symname, u
 // Missing debug info is an ordinary answer here, the fallbacks after libbacktrace cover it
 static void on_backtrace_error(void* data, const char* msg, int32_t errnum)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     (void)data;
     (void)msg;
     (void)errnum;

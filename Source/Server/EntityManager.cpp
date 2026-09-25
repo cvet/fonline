@@ -56,13 +56,10 @@ EntityManager::EntityManager(ptr<ServerEngine> engine) :
     _itemCollectionName {engine->Hashes.to_hashed_string(strex("{}s", Item::ENTITY_TYPE_NAME))},
     _protoMigrationRuleName {engine->Hashes.to_hashed_string("Proto")}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto EntityManager::GetEntity(ident_t id) const noexcept -> refcount_nptr<const ServerEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allEntities.find(id); it != _allEntities.end()) {
@@ -74,8 +71,6 @@ auto EntityManager::GetEntity(ident_t id) const noexcept -> refcount_nptr<const 
 
 auto EntityManager::GetEntity(ident_t id) noexcept -> refcount_nptr<ServerEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allEntities.find(id); it != _allEntities.end()) {
@@ -87,7 +82,7 @@ auto EntityManager::GetEntity(ident_t id) noexcept -> refcount_nptr<ServerEntity
 
 auto EntityManager::GetEntities() noexcept -> vector<refcount_ptr<ServerEntity>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -103,8 +98,6 @@ auto EntityManager::GetEntities() noexcept -> vector<refcount_ptr<ServerEntity>>
 
 auto EntityManager::GetEntitiesCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allEntities.size();
@@ -112,8 +105,6 @@ auto EntityManager::GetEntitiesCount() const noexcept -> size_t
 
 auto EntityManager::GetPlayer(ident_t id) const noexcept -> refcount_nptr<const Player>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allPlayers.find(id); it != _allPlayers.end()) {
@@ -125,8 +116,6 @@ auto EntityManager::GetPlayer(ident_t id) const noexcept -> refcount_nptr<const 
 
 auto EntityManager::GetPlayer(ident_t id) noexcept -> refcount_nptr<Player>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allPlayers.find(id); it != _allPlayers.end()) {
@@ -138,7 +127,7 @@ auto EntityManager::GetPlayer(ident_t id) noexcept -> refcount_nptr<Player>
 
 auto EntityManager::GetPlayers() noexcept -> vector<refcount_ptr<Player>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -154,8 +143,6 @@ auto EntityManager::GetPlayers() noexcept -> vector<refcount_ptr<Player>>
 
 auto EntityManager::GetPlayersCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allPlayers.size();
@@ -163,8 +150,6 @@ auto EntityManager::GetPlayersCount() const noexcept -> size_t
 
 auto EntityManager::GetLocation(ident_t id) const noexcept -> refcount_nptr<const Location>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allLocations.find(id); it != _allLocations.end()) {
@@ -176,8 +161,6 @@ auto EntityManager::GetLocation(ident_t id) const noexcept -> refcount_nptr<cons
 
 auto EntityManager::GetLocation(ident_t id) noexcept -> refcount_nptr<Location>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allLocations.find(id); it != _allLocations.end()) {
@@ -189,7 +172,7 @@ auto EntityManager::GetLocation(ident_t id) noexcept -> refcount_nptr<Location>
 
 auto EntityManager::GetLocations() noexcept -> vector<refcount_ptr<Location>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -205,8 +188,6 @@ auto EntityManager::GetLocations() noexcept -> vector<refcount_ptr<Location>>
 
 auto EntityManager::GetLocationsCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allLocations.size();
@@ -214,8 +195,6 @@ auto EntityManager::GetLocationsCount() const noexcept -> size_t
 
 auto EntityManager::GetMap(ident_t id) const noexcept -> refcount_nptr<const Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allMaps.find(id); it != _allMaps.end()) {
@@ -227,8 +206,6 @@ auto EntityManager::GetMap(ident_t id) const noexcept -> refcount_nptr<const Map
 
 auto EntityManager::GetMap(ident_t id) noexcept -> refcount_nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allMaps.find(id); it != _allMaps.end()) {
@@ -240,7 +217,7 @@ auto EntityManager::GetMap(ident_t id) noexcept -> refcount_nptr<Map>
 
 auto EntityManager::GetMaps() noexcept -> vector<refcount_ptr<Map>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -256,8 +233,6 @@ auto EntityManager::GetMaps() noexcept -> vector<refcount_ptr<Map>>
 
 auto EntityManager::GetMapsCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allMaps.size();
@@ -265,8 +240,6 @@ auto EntityManager::GetMapsCount() const noexcept -> size_t
 
 auto EntityManager::GetCritter(ident_t id) const noexcept -> refcount_nptr<const Critter>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allCritters.find(id); it != _allCritters.end()) {
@@ -278,8 +251,6 @@ auto EntityManager::GetCritter(ident_t id) const noexcept -> refcount_nptr<const
 
 auto EntityManager::GetCritter(ident_t id) noexcept -> refcount_nptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allCritters.find(id); it != _allCritters.end()) {
@@ -291,7 +262,7 @@ auto EntityManager::GetCritter(ident_t id) noexcept -> refcount_nptr<Critter>
 
 auto EntityManager::GetCritters() noexcept -> vector<refcount_ptr<Critter>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -307,8 +278,6 @@ auto EntityManager::GetCritters() noexcept -> vector<refcount_ptr<Critter>>
 
 auto EntityManager::GetCrittersCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allCritters.size();
@@ -316,8 +285,6 @@ auto EntityManager::GetCrittersCount() const noexcept -> size_t
 
 auto EntityManager::GetItem(ident_t id) const noexcept -> refcount_nptr<const Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allItems.find(id); it != _allItems.end()) {
@@ -329,8 +296,6 @@ auto EntityManager::GetItem(ident_t id) const noexcept -> refcount_nptr<const It
 
 auto EntityManager::GetItem(ident_t id) noexcept -> refcount_nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     if (auto it = _allItems.find(id); it != _allItems.end()) {
@@ -342,7 +307,7 @@ auto EntityManager::GetItem(ident_t id) noexcept -> refcount_nptr<Item>
 
 auto EntityManager::GetItems() noexcept -> vector<refcount_ptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     shared_lock lock {_registryLock};
 
@@ -358,8 +323,6 @@ auto EntityManager::GetItems() noexcept -> vector<refcount_ptr<Item>>
 
 auto EntityManager::GetItemsCount() const noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     return _allItems.size();
@@ -367,8 +330,6 @@ auto EntityManager::GetItemsCount() const noexcept -> size_t
 
 void EntityManager::InitEntityIdBoundary()
 {
-    FO_STACK_TRACE_ENTRY();
-
     int64_t last = _engine->GetLastEntityId().underlying_value();
     int64_t start = _engine->Settings->Server.EntityStartId;
 
@@ -385,7 +346,7 @@ void EntityManager::InitEntityIdBoundary()
 // Runs single-threaded during init and calls back into the engine, which re-locks the registry
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     logging::write("Load entities");
 
@@ -436,8 +397,6 @@ void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 
 void EntityManager::FlushExactEntityId()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock lock {_registryLock};
 
     _persistedEntityId = _lastEntityId;
@@ -448,7 +407,7 @@ void EntityManager::FlushExactEntityId()
 
 auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> refcount_nptr<Location>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto&& [loc_doc, loc_pid] = LoadEntityDoc(_locationTypeName, _locationCollectionName, loc_id, true, is_error);
 
@@ -527,7 +486,7 @@ auto EntityManager::LoadLocation(ident_t loc_id, bool& is_error) noexcept -> ref
 
 auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount_nptr<Map>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto&& [map_doc, map_pid] = LoadEntityDoc(_mapTypeName, _mapCollectionName, map_id, true, is_error);
 
@@ -631,7 +590,7 @@ auto EntityManager::LoadMap(ident_t map_id, bool& is_error) noexcept -> refcount
 
 auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) noexcept -> refcount_nptr<Critter>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto&& [cr_doc, cr_pid] = LoadEntityDoc(_critterTypeName, _critterCollectionName, cr_id, true, is_error);
 
@@ -730,8 +689,6 @@ auto EntityManager::LoadCritter(ident_t cr_id, bool for_player, bool& is_error) 
 
 auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcount_nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto items = LoadItems({item_id}, is_error);
     return std::move(items.front());
 }
@@ -740,7 +697,7 @@ auto EntityManager::LoadItem(ident_t item_id, bool& is_error) noexcept -> refcou
 // requests as its deepest container is deep rather than one per item
 auto EntityManager::LoadItems(const vector<ident_t>& item_ids, bool& is_error) noexcept -> vector<refcount_nptr<Item>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     vector<refcount_nptr<Item>> items(item_ids.size());
 
@@ -833,7 +790,7 @@ auto EntityManager::LoadItems(const vector<ident_t>& item_ids, bool& is_error) n
 
 auto EntityManager::RestoreItem(ident_t item_id, const AnyData::Document& item_doc, hstring item_pid, bool& is_error) noexcept -> refcount_nptr<Item>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto proto = _engine->GetProtoItem(item_pid);
 
@@ -868,8 +825,6 @@ auto EntityManager::RestoreItem(ident_t item_id, const AnyData::Document& item_d
 
 void EntityManager::LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         const auto& holder_type = _engine->GetEntityType(holder->GetTypeName());
 
@@ -886,8 +841,6 @@ void EntityManager::LoadInnerEntities(ptr<Entity> holder, bool& is_error) noexce
 
 void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto holder_prop = _engine->GetEntityHolderIdsProp(holder, entry);
         auto holder_props = holder->GetPropertiesForEdit();
@@ -945,15 +898,13 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
 
 auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto docs = LoadEntityDocs(type_name, collection_name, {id}, expect_proto, is_error);
     return std::move(docs.front());
 }
 
 auto EntityManager::LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) const noexcept -> vector<tuple<AnyData::Document, hstring>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     vector<tuple<AnyData::Document, hstring>> result(ids.size());
     vector<DataBaseKey> request_ids;
@@ -996,8 +947,6 @@ auto EntityManager::LoadEntityDocs(hstring type_name, hstring collection_name, c
 
 auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         if (doc.Empty()) {
             logging::write(logging::type::warning, "{} document {} not found", collection_name, id);
@@ -1051,7 +1000,7 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
 
 void EntityManager::CallInit(ptr<Location> loc, bool first_time)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!loc->IsDestroyed(), "Location is already destroyed");
     ValidateEntityAccess(loc);
@@ -1082,7 +1031,7 @@ void EntityManager::CallInit(ptr<Location> loc, bool first_time)
 
 void EntityManager::CallInit(ptr<Map> map, bool first_time)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!map->IsDestroyed(), "Map is already destroyed");
     ValidateEntityAccess(map);
@@ -1125,7 +1074,7 @@ void EntityManager::CallInit(ptr<Map> map, bool first_time)
 
 void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!cr->IsDestroyed(), "Critter is already destroyed");
     ValidateEntityAccess(cr);
@@ -1156,7 +1105,7 @@ void EntityManager::CallInit(ptr<Critter> cr, bool first_time)
 
 void EntityManager::CallInit(ptr<Item> item, bool first_time)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!item->IsDestroyed(), "Item is already destroyed");
     ValidateEntityAccess(item);
@@ -1187,7 +1136,7 @@ void EntityManager::CallInit(ptr<Item> item, bool first_time)
 
 void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persistent)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     // Connection shells are covered before publication. Registration validates that caller-owned
     // cover; it is not a trusted fresh-entity publication boundary
@@ -1218,7 +1167,7 @@ void EntityManager::RegisterPlayer(ptr<Player> player, ident_t id, bool persiste
 
 void EntityManager::UnregisterPlayer(ptr<Player> player)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1230,7 +1179,7 @@ void EntityManager::UnregisterPlayer(ptr<Player> player)
 
 void EntityManager::RegisterLocation(ptr<Location> loc)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
     CaptureFreshEntity(loc);
@@ -1242,7 +1191,7 @@ void EntityManager::RegisterLocation(ptr<Location> loc)
 
 void EntityManager::UnregisterLocation(ptr<Location> loc)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1254,7 +1203,7 @@ void EntityManager::UnregisterLocation(ptr<Location> loc)
 
 void EntityManager::RegisterMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
     CaptureFreshEntity(map);
@@ -1266,7 +1215,7 @@ void EntityManager::RegisterMap(ptr<Map> map)
 
 void EntityManager::UnregisterMap(ptr<Map> map)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1278,7 +1227,7 @@ void EntityManager::UnregisterMap(ptr<Map> map)
 
 void EntityManager::RegisterCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
     CaptureFreshEntity(cr);
@@ -1290,7 +1239,7 @@ void EntityManager::RegisterCritter(ptr<Critter> cr)
 
 void EntityManager::UnregisterCritter(ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1302,7 +1251,7 @@ void EntityManager::UnregisterCritter(ptr<Critter> cr)
 
 void EntityManager::RegisterItem(ptr<Item> item)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
     CaptureFreshEntity(item);
@@ -1314,7 +1263,7 @@ void EntityManager::RegisterItem(ptr<Item> item)
 
 void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1326,7 +1275,7 @@ void EntityManager::UnregisterItem(ptr<Item> item, bool delete_from_db)
 
 void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(!custom_entity->IsDestroying(), "Cannot publish a custom entity that is being destroyed", custom_entity->GetName(), custom_entity->GetId());
     FO_VERIFY_AND_THROW(!custom_entity->IsDestroyed(), "Cannot publish a destroyed custom entity", custom_entity->GetName(), custom_entity->GetId());
@@ -1365,7 +1314,7 @@ void EntityManager::RegisterCustomEntity(ptr<CustomEntity> custom_entity)
 
 void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool delete_from_db)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     scoped_lock lock {_registryLock};
 
@@ -1378,7 +1327,7 @@ void EntityManager::UnregisterCustomEntity(ptr<CustomEntity> custom_entity, bool
 
 void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bool explicitly_requested)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     FO_VERIFY_AND_THROW(entity->GetId(), "Entity has no assigned id");
 
@@ -1406,8 +1355,6 @@ void EntityManager::MakePersistent(ptr<ServerEntity> entity, bool persistent, bo
 
 void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (processed.contains(entity)) {
         return;
     }
@@ -1426,8 +1373,6 @@ void EntityManager::MakePersistentRecursive(ptr<ServerEntity> entity, unordered_
 
 void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unordered_set<ptr<ServerEntity>>& processed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (processed.contains(entity)) {
         return;
     }
@@ -1446,8 +1391,6 @@ void EntityManager::MakeNonPersistentRecursive(ptr<ServerEntity> entity, unorder
 
 void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const function<void(ptr<ServerEntity> child)>& callback) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     ValidateEntityAccess(entity);
 
     if (auto loc = entity.dyn_cast<Location>()) {
@@ -1499,7 +1442,7 @@ void EntityManager::ForEachPersistentChildEntity(ptr<ServerEntity> entity, const
 
 auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Document
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     if (auto entity_with_proto = entity.dyn_cast<EntityWithProto>()) {
         auto proto = entity_with_proto->GetProto();
@@ -1515,8 +1458,6 @@ auto EntityManager::StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Documen
 
 void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ident_t id = entity->GetId();
     FO_VERIFY_AND_THROW(!id || !_allEntities.contains(id), "Fresh entity is already published in the global entity registry", entity->GetTypeName(), id);
     _engine->RequireCurrentSyncContext()->EnsureFreshEntitySynced(entity);
@@ -1524,8 +1465,6 @@ void EntityManager::CaptureFreshEntity(ptr<ServerEntity> entity)
 
 void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Caller must hold _registryLock (unique)
     if (!entity->GetId()) {
         int64_t id_num = ++_lastEntityId;
@@ -1553,8 +1492,6 @@ void EntityManager::RegisterEntity(ptr<ServerEntity> entity)
 
 void EntityManager::UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_db)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Caller must hold _registryLock (unique) for the erase portion
     ident_t entity_id = entity->GetId();
     hstring type_name_plural = entity->GetTypeNamePlural();
@@ -1572,8 +1509,6 @@ void EntityManager::UnregisterEntity(ptr<ServerEntity> entity, bool delete_from_
 
 void EntityManager::DestroyEntity(ptr<Entity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entity_ref = entity.hold_ref();
     ignore_unused(entity_ref);
 
@@ -1601,7 +1536,7 @@ void EntityManager::DestroyEntity(ptr<Entity> entity)
 
 void EntityManager::DestroyInnerEntities(ptr<Entity> holder)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto holder_ref = holder.hold_ref();
     ignore_unused(holder_ref);
@@ -1625,7 +1560,7 @@ void EntityManager::DestroyInnerEntities(ptr<Entity> holder)
 
 void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     // Shutdown skips the destroy flows (database deletes, events for scripts already gone) but not their unlinking, done here while the
     // registry still holds every entity, so nothing dies mid-sweep and each destructor verifies the same empty state as usual
@@ -1675,7 +1610,7 @@ void EntityManager::DestroyAllEntities() FO_TSA_NO_ANALYSIS
 
 auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, hstring pid) -> ptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto holder_ref = holder.hold_ref();
     ignore_unused(holder_ref);
@@ -1721,7 +1656,7 @@ auto EntityManager::CreateCustomInnerEntity(ptr<Entity> holder, hstring entry, h
 
 auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     refcount_ptr<CustomEntity> entity = ConstructCustomEntity(type_name, pid);
 
@@ -1733,8 +1668,6 @@ auto EntityManager::CreateCustomEntity(hstring type_name, hstring pid) -> ptr<Cu
 // its lock, so either way the validator's chain walk finds a real cover on the entity
 void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Entity> holder)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (auto holder_entity = holder.dyn_cast<ServerEntity>()) {
         FO_VERIFY_AND_THROW(holder_entity->GetId(), "Entity holder has no assigned id");
         auto holder_lock = holder_entity->GetEntityLock();
@@ -1753,8 +1686,6 @@ void EntityManager::AttachCustomEntityToHolder(ptr<CustomEntity> entity, ptr<Ent
 
 auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_engine->IsValidEntityType(type_name), "Invalid entity type name");
     FO_VERIFY_AND_THROW(!_engine->GetEntityType(type_name).Exported, "Exported entity type cannot be created as custom entity");
 
@@ -1786,8 +1717,6 @@ auto EntityManager::ConstructCustomEntity(hstring type_name, hstring pid) -> ref
 
 auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, bool& is_error) noexcept -> refcount_nptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto entities = LoadCustomEntities(holder, type_name, {id}, is_error);
     return std::move(entities.front());
 }
@@ -1795,7 +1724,7 @@ auto EntityManager::LoadCustomEntity(ptr<Entity> holder, hstring type_name, iden
 // All ids of one holder entry are read with one database request, like one nesting level of an item tree
 auto EntityManager::LoadCustomEntities(ptr<Entity> holder, hstring type_name, const vector<ident_t>& ids, bool& is_error) noexcept -> vector<refcount_nptr<CustomEntity>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     vector<refcount_nptr<CustomEntity>> entities(ids.size());
 
@@ -1832,7 +1761,7 @@ auto EntityManager::LoadCustomEntities(ptr<Entity> holder, hstring type_name, co
 
 auto EntityManager::RestoreCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, const AnyData::Document& doc, hstring pid, bool& is_error) noexcept -> refcount_nptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     try {
         FO_VERIFY_AND_THROW(id.underlying_value() != 0, "Generated entity id is zero");
@@ -1903,8 +1832,6 @@ auto EntityManager::RestoreCustomEntity(ptr<Entity> holder, hstring type_name, i
 
 auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> refcount_nptr<CustomEntity>
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock lock {_registryLock};
 
     auto type_it = _allCustomEntities.find(type_name);
@@ -1924,7 +1851,7 @@ auto EntityManager::GetCustomEntity(hstring type_name, ident_t id) -> refcount_n
 
 void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     EnsureEntitySynced(entity);
 
@@ -1977,7 +1904,7 @@ void EntityManager::DestroyCustomEntity(ptr<CustomEntity> entity)
 
 void EntityManager::ForEachCustomEntityView(ptr<CustomEntity> entity, const function<void(ptr<Player> player, bool owner)>& callback)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     ValidateEntityAccess(entity);
     auto entity_ref = entity.hold_ref();

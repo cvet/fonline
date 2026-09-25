@@ -43,7 +43,8 @@ class ProfilingDocumentationTests(unittest.TestCase):
         for marker in (
             "$<${expr_TracyEnabled}:TRACY_ENABLE>",
             "$<${expr_TracyOnDemand}:TRACY_ON_DEMAND>",
-            "FO_TRACY=${expr_TracyEnabled}",
+            "FO_TRACE_ENABLED=${expr_TracyEnabled}",
+            "FO_TRACE_CATEGORIES",
             "SetCacheValues(TRACY_STATIC ON)",
             "AppendList(FO_ESSENTIALS_LIBS TracyClient)",
         ):
@@ -103,15 +104,15 @@ class ProfilingDocumentationTests(unittest.TestCase):
             )
             self.assertIn(marker, source, path)
 
-        stack_trace = (
-            ENGINE_ROOT / "Source/Essentials/StackTrace.h"
+        basic_core = (
+            ENGINE_ROOT / "Source/Essentials/BasicCore.h"
         ).read_text(encoding="utf-8")
         self.assertIn(
-            "#define FO_STACK_TRACE_ENTRY() ZoneScoped", stack_trace
+            "#define FO_TRACE_ZONE_1(category) ZoneScopedC", basic_core
         )
         self.assertIn(
-            "#define FO_STACK_TRACE_ENTRY_NAMED(name) ZoneScopedN(name)",
-            stack_trace,
+            "#define FO_TRACE_ZONE_NAMED_1(category, name) ZoneScopedNC",
+            basic_core,
         )
 
     def test_guide_covers_reproducible_client_and_server_workflows(self) -> None:
@@ -130,7 +131,7 @@ class ProfilingDocumentationTests(unittest.TestCase):
             "## Capture a server",
             "## Design a reproducible workload",
             "## Analyze a capture",
-            "## Add focused instrumentation",
+            "## Placing zones",
             "## Common failure modes",
             "## Project-owned automation",
             "## Validation workflow",
@@ -226,7 +227,7 @@ class ProfilingDocumentationTests(unittest.TestCase):
         )
         for marker in (
             "`Profiling_*`",
-            "`FO_TRACY`",
+            "`FO_TRACE_ENABLED`",
             "`TracyVersion.hpp`",
             "[Profiling](../../how-to/quality/profiling.md)",
             "`test_docs_profiling.py`",

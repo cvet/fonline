@@ -385,8 +385,6 @@ extern "C"
     // its timer, video and GL backends, but the engine never reaches those paths
     void emscripten_sleep(unsigned int ms)
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_UNREACHABLE_PLACE();
     }
 
@@ -497,8 +495,6 @@ namespace WebRelated
 
     void SetupClipboard()
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         auto canvas_selector = make_ptr(CanvasSelector.c_str());
         WebSetupClipboardImpl(canvas_selector.get());
@@ -507,8 +503,6 @@ namespace WebRelated
 
     void SyncClipboardToSystem(string_view text)
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         const string clipboard_text = string(text);
         auto text_ptr = make_ptr(clipboard_text.c_str());
@@ -562,8 +556,6 @@ namespace WebRelated
 
     void ShowError(string_view title, string_view text)
     {
-        FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
         const auto title_str = string(title);
         const auto text_str = string(text);

@@ -40,8 +40,6 @@ static void WriteFrameSize(size_t frame_size, vector<uint8_t>& out);
 
 auto ParseSecureChannelKey(string_view hex, string_view setting_name) -> crypto::key_bytes
 {
-    FO_STACK_TRACE_ENTRY();
-
     optional<crypto::key_bytes> key = crypto::parse_key(hex);
 
     // Only the length travels in the report: the text may be a secret key a digit away from valid
@@ -56,21 +54,16 @@ SecureChannelIdentity::SecureChannelIdentity(const crypto::key_bytes& secret_key
     _secretKey {secret_key},
     _publicKey {crypto::derive_public_key(secret_key)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 SecureChannelIdentity::~SecureChannelIdentity()
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto::wipe(_secretKey);
 }
 
 SecureChannel::SecureChannel(const_span<crypto::key_bytes> server_keys) :
     _isServer {false}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (server_keys.empty()) {
         throw SecureChannelException("No server key is pinned");
     }
@@ -100,19 +93,16 @@ SecureChannel::SecureChannel(const SecureChannelIdentity& identity) :
     _isServer {true},
     _serverSecretKey {identity.GetSecretKey()}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 SecureChannel::~SecureChannel()
 {
-    FO_STACK_TRACE_ENTRY();
-
     crypto::wipe(_serverSecretKey);
 }
 
 void SecureChannel::Receive(const_span<uint8_t> data, vector<uint8_t>& plaintext)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (_failed) {
         throw SecureChannelException("Secure channel received data after it failed", data.size());
@@ -162,15 +152,13 @@ void SecureChannel::Receive(const_span<uint8_t> data, vector<uint8_t>& plaintext
 
 void SecureChannel::TakeHandshakeOutput(vector<uint8_t>& out)
 {
-    FO_STACK_TRACE_ENTRY();
-
     out.insert(out.end(), _handshakeOutput.begin(), _handshakeOutput.end());
     _handshakeOutput.clear();
 }
 
 void SecureChannel::Seal(const_span<uint8_t> plaintext, vector<uint8_t>& out)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     FO_VERIFY_AND_THROW(_established, "Secure channel sealed data before its handshake completed", _isServer, plaintext.size());
 
@@ -191,8 +179,6 @@ void SecureChannel::Seal(const_span<uint8_t> plaintext, vector<uint8_t>& out)
 
 auto SecureChannel::IsValidFrameSize(size_t frame_size) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_established) {
         return frame_size >= crypto::aead_tag_size;
     }
@@ -211,8 +197,6 @@ auto SecureChannel::IsValidFrameSize(size_t frame_size) const noexcept -> bool
 
 void SecureChannel::ProcessFrame(const_span<uint8_t> frame, vector<uint8_t>& plaintext)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_established) {
         if (!_receiveCipher.DecryptWithAd({}, frame, plaintext)) {
             throw SecureChannelException("Secure channel frame failed authentication", frame.size(), _receiveCipher.GetNonce());
@@ -228,7 +212,7 @@ void SecureChannel::ProcessFrame(const_span<uint8_t> frame, vector<uint8_t>& pla
 
 void SecureChannel::AcceptOffer(const_span<uint8_t> frame)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     size_t offers_count = frame[0];
 
@@ -264,7 +248,7 @@ void SecureChannel::AcceptOffer(const_span<uint8_t> frame)
 
 void SecureChannel::AcceptAnswer(const_span<uint8_t> frame)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     size_t offer_index = frame[0];
 
@@ -284,8 +268,6 @@ void SecureChannel::AcceptAnswer(const_span<uint8_t> frame)
 
 void SecureChannel::CompleteHandshake(NoiseHandshakeNK& handshake)
 {
-    FO_STACK_TRACE_ENTRY();
-
     NoiseHandshakeNK::TransportCiphers ciphers = handshake.Split();
     _sendCipher = std::move(ciphers.Send);
     _receiveCipher = std::move(ciphers.Receive);
@@ -296,15 +278,11 @@ void SecureChannel::CompleteHandshake(NoiseHandshakeNK& handshake)
 
 static auto GetPrologue() noexcept -> const_span<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return make_const_span(SecureChannel::PROLOGUE.data(), SecureChannel::PROLOGUE.size());
 }
 
 static void WriteFrameSize(size_t frame_size, vector<uint8_t>& out)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(frame_size <= SecureChannel::MAX_FRAME_SIZE, "Secure channel frame exceeds the 16-bit length field", frame_size);
 
     out.emplace_back(numeric_cast<uint8_t>(frame_size >> 8));

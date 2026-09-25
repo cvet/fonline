@@ -48,8 +48,6 @@ struct ParticleManager::Impl
 ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
     Backends {CreateParticleRuntimeBackends(services)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     unordered_set<string> registered_exts;
 
     for (const auto& backend_owner : Backends) {
@@ -70,8 +68,6 @@ ParticleManager::Impl::Impl(const ParticleRuntimeServices& services) :
 
 auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntimeBackend>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
         vector<string> exts = backend->GetExtensions();
@@ -86,8 +82,6 @@ auto ParticleManager::Impl::FindBackend(string_view ext) -> nptr<ParticleRuntime
 
 auto ParticleManager::Impl::FindBackend(string_view ext) const -> nptr<const ParticleRuntimeBackend>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& backend_owner : Backends) {
         auto backend = backend_owner.as_ptr();
         vector<string> exts = backend->GetExtensions();
@@ -105,8 +99,6 @@ ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager
     _settings {settings},
     _gameTime {game_time}
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_settings->Render.Animation3dFPS != 0) {
         _animUpdateThreshold = iround<int32_t>(1000.0f / numeric_cast<float32_t>(_settings->Render.Animation3dFPS));
     }
@@ -114,13 +106,10 @@ ParticleManager::ParticleManager(ptr<RenderSettings> settings, ptr<EffectManager
 
 ParticleManager::~ParticleManager()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleManager::GetExtensions() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<string> exts;
 
     for (const auto& backend_owner : _impl->Backends) {
@@ -133,8 +122,6 @@ auto ParticleManager::GetExtensions() const -> vector<string>
 
 void ParticleManager::InvalidateResource(string_view name)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& backend_owner : _impl->Backends) {
         backend_owner->InvalidateResource(name);
     }
@@ -142,8 +129,6 @@ void ParticleManager::InvalidateResource(string_view name)
 
 auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string ext = strex(name).get_file_extension();
     auto backend = _impl->FindBackend(ext);
 
@@ -166,8 +151,6 @@ ParticleSystem::ParticleSystem(ptr<ParticleManager> particle_mngr, unique_ptr<Pa
     _runtimeSystem {std::move(runtime_system)},
     _particleMngr {particle_mngr}
 {
-    FO_STACK_TRACE_ENTRY();
-
     ResetTiming();
 }
 
@@ -175,62 +158,45 @@ ParticleSystem::ParticleSystem(ParticleSystem&&) noexcept = default;
 
 ParticleSystem::~ParticleSystem()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSystem::GetRuntimeSystem() -> ptr<ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem;
 }
 
 auto ParticleSystem::GetRuntimeSystem() const -> ptr<const ParticleRuntimeSystem>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem;
 }
 
 auto ParticleSystem::IsActive() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem->IsActive();
 }
 
 auto ParticleSystem::GetElapsedTime() const -> float32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return numeric_cast<float32_t>(_elapsedTime);
 }
 
 auto ParticleSystem::GetDrawInScene() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem->GetDrawInScene();
 }
 
 auto ParticleSystem::GetBakedBounds() const -> optional<ParticleBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem->GetBakedBounds();
 }
 
 auto ParticleSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _runtimeSystem->GetLiveBounds();
 }
 
 auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const -> ParticleSpriteFrame
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The box corners are projected through the map camera tilt and then grown by the billboard radius, which is a
     // view-plane length the tilt must not touch; an effect that showed no particle falls back to a default square
     optional<ParticleBounds3D> baked = GetBakedBounds();
@@ -290,29 +256,21 @@ auto ParticleSystem::ComputeSpriteFrame(const RenderSettings& settings) const ->
 
 void ParticleSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     _runtimeSystem->RebaseWorldParticles(delta);
 }
 
 auto ParticleSystem::GetTime() const -> nanotime
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _particleMngr->_gameTime->GetFrameTime();
 }
 
 auto ParticleSystem::NeedDraw() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _renderPending && (!IsActive() || GetTime() - _lastRenderTime >= std::chrono::milliseconds(_particleMngr->_animUpdateThreshold));
 }
 
 void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& pos_offset, float32_t look_dir_angle, const vec3& view_offset, bool tilt_in_proj)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _runtimeSetup = ParticleRuntimeSetup {
         .Projection = proj,
         .World = world,
@@ -331,8 +289,6 @@ void ParticleSystem::Setup(const mat44& proj, const mat44& world, const vec3& po
 
 void ParticleSystem::Prewarm()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!IsActive()) {
         return;
     }
@@ -348,8 +304,6 @@ void ParticleSystem::Prewarm()
 
 void ParticleSystem::Respawn()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _runtimeSystem->Respawn(std::nullopt);
 
     if (IsActive() && _runtimeSetup) {
@@ -361,8 +315,6 @@ void ParticleSystem::Respawn()
 
 auto ParticleSystem::Respawn(int32_t seed) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _runtimeSystem->Respawn(seed);
 
     if (IsActive() && _runtimeSetup) {
@@ -375,8 +327,6 @@ auto ParticleSystem::Respawn(int32_t seed) -> bool
 
 void ParticleSystem::Update()
 {
-    FO_STACK_TRACE_ENTRY();
-
     nanotime time = GetTime();
     float32_t delta_seconds = numeric_cast<float32_t>((time - _lastUpdateTime).nanoseconds()) * 1e-9f;
 
@@ -390,8 +340,6 @@ void ParticleSystem::Update()
 
 void ParticleSystem::Update(float32_t delta_seconds)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(std::isfinite(delta_seconds) && delta_seconds >= 0.0f, "Particle update duration must be finite and non-negative", delta_seconds);
     bool was_active = _runtimeSystem->IsActive();
 
@@ -413,15 +361,11 @@ void ParticleSystem::Update(float32_t delta_seconds)
 
 void ParticleSystem::RefreshRenderTransform()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _runtimeSystem->RefreshRenderTransform();
 }
 
 void ParticleSystem::Draw()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _lastRenderTime = GetTime();
     _forceDraw = false;
     _renderPending = false;
@@ -430,8 +374,6 @@ void ParticleSystem::Draw()
 
 void ParticleSystem::SetScale(float32_t scale)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(std::isfinite(scale) && scale > 0.0f, "Particle scale must be finite and positive", scale);
 
     _scale = scale;
@@ -450,16 +392,12 @@ void ParticleSystem::SetScale(float32_t scale)
 
 void ParticleSystem::ApplyRuntimeSetup()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_runtimeSetup, "Particle runtime setup is missing");
     _runtimeSystem->Setup(*_runtimeSetup);
 }
 
 void ParticleSystem::ResetTiming()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _elapsedTime = 0.0;
     _forceDraw = true;
     _renderPending = true;

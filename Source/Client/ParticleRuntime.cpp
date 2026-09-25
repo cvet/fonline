@@ -43,8 +43,6 @@ static constexpr ucolor PARTICLE_WIREFRAME_COLOR {255, 0, 255, 255};
 
 auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, float32_t billboard_radius) noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(position_min.x) || !std::isfinite(position_min.y) || !std::isfinite(position_min.z) || //
         !std::isfinite(position_max.x) || !std::isfinite(position_max.y) || !std::isfinite(position_max.z) || //
         position_min.x > position_max.x || position_min.y > position_max.y || position_min.z > position_max.z) {
@@ -63,8 +61,6 @@ auto MakeParticleBounds(const vec3& position_min, const vec3& position_max, floa
 
 auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix) noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // The radius follows the placement's scale but never its rotation, because a camera-facing quad keeps the
     // same screen footprint at every orientation
     float32_t placement_scale = std::max({glm::length(vec3 {matrix[0]}), glm::length(vec3 {matrix[1]}), glm::length(vec3 {matrix[2]})});
@@ -107,28 +103,22 @@ auto TransformParticleBounds(const ParticleBounds3D& bounds, const mat44& matrix
 
 auto ParticleRuntimeSystem::GetBakedBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::nullopt;
 }
 
 auto ParticleRuntimeSystem::GetLiveBounds() const noexcept -> optional<ParticleBounds3D>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::nullopt;
 }
 
 void ParticleRuntimeSystem::RebaseWorldParticles(vec3 delta) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(delta);
 }
 
 auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> vector<unique_ptr<ParticleRuntimeBackend>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     ignore_unused(services);
 
@@ -147,7 +137,7 @@ auto CreateParticleRuntimeBackends(const ParticleRuntimeServices& services) -> v
 
 void DrawParticleBufferWireframe(ptr<EffectManager> effect_mngr, ptr<IAppRender> render, unique_nptr<RenderDrawBuffer>& overlay_buf, const RenderDrawBuffer& source_buf, size_t index_count, const mat44& proj_matrix)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(index_count % 3 == 0, "Particle wireframe source indices are not grouped by triangles", index_count);
     FO_VERIFY_AND_THROW(index_count <= source_buf.IndCount, "Particle wireframe source range is outside the index buffer", index_count, source_buf.IndCount);

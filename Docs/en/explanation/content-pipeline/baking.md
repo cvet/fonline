@@ -621,6 +621,13 @@ visible-client gate.
 
 `EffectBaker` compiles each `.fofx` pass once with glslang (Vulkan 1.0 client, SPIR-V 1.0) and emits, per stage, the native `-spv` (consumed by `Rendering-Vulkan`, and cross-compiled by SPIRV-Cross to `-glsl` / `-glsl_es` / `-hlsl`) plus, for the opt-in SDL_GPU backend, a `-spv_sdl` flavor and SDL-remapped `-msl_mac`/`-msl_ios`. The native SPIR-V follows the engine's 2-set descriptor convention (set 0 = uniform buffers, set 1 = combined image samplers, shared by both stages); `-spv_sdl` is that same SPIR-V with its descriptor decorations rewritten in place to SDL_GPU's per-stage convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3, dense 0..N-1 slots). The per-pass `-info` artifact carries two sections: `[EffectInfo]` (program-wide bindings the GL/D3D/Vulkan backends consume, plus a `CHECK_BUF` size validation against the `RenderEffect` uniform structs) and `[EffectInfoSdl]` (per-stage SDL slot per resource plus the sampler/UBO counts `SDL_CreateGPUShader` needs). The baker hard-fails an effect that exceeds SDL_GPU per-stage limits (4 uniform buffers, 16 samplers), declares storage buffers/images, uses duplicate/missing explicit bindings, or declares a resource it never uses. Use [Effect Format](../../how-to/content/effect-format.md) and the generated [effect-format reference](../../reference/effect-format/index.md) for the owning authoring, resource, runtime-cache, script-value, and validation contract.
 
+Direct3D consumes baked `-dxbc`, produced from SPIRV-Cross HLSL by vendored
+vkd3d-shader, not runtime HLSL compilation. Optional
+`Baking.Direct3DLevel9Shaders` invokes `Direct3DLevel9.cpp` to add an `Aon9`
+level-9.3 chunk to non-model effects only. Unsupported 9.3 constructs fail
+the bake. A 3D-enabled renderer cannot use a 9.3 device, and 9.1/9.2 are not
+supported; see [Effect Format](../../how-to/content/effect-format.md#baking-outputs).
+
 `ImageBaker` can also bake an indexed silhouette mesh for every unique RGBA
 frame. The controls live in the dedicated `SpriteMesh.*` setting group inherited
 by `BakingSettings`:

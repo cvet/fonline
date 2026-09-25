@@ -96,7 +96,101 @@ SetValue(FO_TRACY_DIR "${FO_ENGINE_ROOT}/ThirdParty/tracy")
 AddCompileDefinitionsList(
     $<${expr_TracyEnabled}:TRACY_ENABLE>
     $<${expr_TracyOnDemand}:TRACY_ON_DEMAND>
-    FO_TRACY=${expr_TracyEnabled})
+    FO_TRACE_ENABLED=${expr_TracyEnabled})
+
+# Zone categories are the FO_TRACE_COLOR_* lines of BasicCore.h and opt-in ones its FO_TRACE_OPT_IN_* lines.
+# FO_TRACE_CATEGORIES keeps the listed ones (every zone category when none is listed), adds a '+' prefixed one to that set
+# and drops a '-' prefixed one; the result goes to a header only Tracy builds include, not to the command line
+SetValue(traceCategoryListFile "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/Source/Essentials/BasicCore.h")
+FileReadStrings("${traceCategoryListFile}" traceColorLines REGEX "^#define FO_TRACE_COLOR_[A-Za-z]+ ")
+FileReadStrings("${traceCategoryListFile}" traceOptInLines REGEX "^#define FO_TRACE_OPT_IN_[A-Za-z]+ ")
+# An edited category list must reach the validation and the generated header without a manual reconfigure
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${traceCategoryListFile}")
+SetValue(traceZoneCategories "")
+SetValue(traceOptInCategories "")
+
+foreach(traceColorLine ${traceColorLines})
+    StringRegexMatch("^#define FO_TRACE_COLOR_([A-Za-z]+) " traceCategoryMatch "${traceColorLine}")
+    AppendList(traceZoneCategories ${CMAKE_MATCH_1})
+endforeach()
+
+foreach(traceOptInLine ${traceOptInLines})
+    StringRegexMatch("^#define FO_TRACE_OPT_IN_([A-Za-z]+) " traceCategoryMatch "${traceOptInLine}")
+    AppendList(traceOptInCategories ${CMAKE_MATCH_1})
+endforeach()
+
+if(NOT traceZoneCategories)
+    AbortMessage("No profiling zone categories declared in BasicCore.h")
+endif()
+
+SetValue(traceCategories ${traceZoneCategories} ${traceOptInCategories})
+
+StringReplace("," ";" traceSelection "${FO_TRACE_CATEGORIES}")
+StringReplace(" " ";" traceSelection "${traceSelection}")
+SetValue(traceIncluded "")
+SetValue(traceAdded "")
+SetValue(traceExcluded "")
+
+foreach(traceToken ${traceSelection})
+    StringRegexMatch("^([-+]?)(.*)$" traceTokenMatch "${traceToken}")
+    SetValue(traceTokenPrefix "${CMAKE_MATCH_1}")
+    SetValue(traceTokenCategory "${CMAKE_MATCH_2}")
+    ListFind(traceCategories "${traceTokenCategory}" traceCategoryIndex)
+
+    if(traceCategoryIndex EQUAL -1)
+        StringReplace(";" ", " traceKnownCategories "${traceCategories}")
+        AbortMessage("Unknown profiling category '${traceTokenCategory}' in FO_TRACE_CATEGORIES (known: ${traceKnownCategories})")
+    endif()
+
+    if(traceTokenPrefix STREQUAL "-")
+        AppendList(traceExcluded ${traceTokenCategory})
+    elseif(traceTokenPrefix STREQUAL "+")
+        AppendList(traceAdded ${traceTokenCategory})
+    else()
+        AppendList(traceIncluded ${traceTokenCategory})
+    endif()
+endforeach()
+
+if(NOT traceIncluded)
+    SetValue(traceIncluded ${traceZoneCategories})
+endif()
+
+AppendList(traceIncluded ${traceAdded})
+
+SetValue(traceEnabledCategories "")
+SetValue(traceHeaderContent "// Generated from FO_TRACE_CATEGORIES by ThirdParty.cmake\n\n#pragma once\n\n")
+
+foreach(traceCategory ${traceCategories})
+    ListFind(traceIncluded "${traceCategory}" traceIncludedIndex)
+    ListFind(traceExcluded "${traceCategory}" traceExcludedIndex)
+
+    if(NOT traceIncludedIndex EQUAL -1 AND traceExcludedIndex EQUAL -1)
+        SetValue(traceHeaderContent "${traceHeaderContent}#define FO_TRACE_CATEGORY_${traceCategory} 1\n")
+        AppendList(traceEnabledCategories ${traceCategory})
+    else()
+        SetValue(traceHeaderContent "${traceHeaderContent}#define FO_TRACE_CATEGORY_${traceCategory} 0\n")
+    endif()
+endforeach()
+
+# Rewritten only on a change, so an unchanged selection keeps Tracy objects up to date
+SetValue(traceHeaderPath "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/TraceCategories.gen.h")
+SetValue(previousTraceHeaderContent "")
+
+if(EXISTS "${traceHeaderPath}")
+    file(READ "${traceHeaderPath}" previousTraceHeaderContent)
+endif()
+
+if(NOT traceHeaderContent STREQUAL previousTraceHeaderContent)
+    FileWrite("${traceHeaderPath}" "${traceHeaderContent}")
+endif()
+
+if(NOT traceEnabledCategories)
+    SetValue(traceEnabledCategories "none")
+endif()
+
+StringReplace(";" " " traceEnabledCategories "${traceEnabledCategories}")
+StatusMessage("Profiling categories: ${traceEnabledCategories}")
+
 SetCacheValues(TRACY_STATIC ON)
 AddSubdirectory("${FO_TRACY_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
 AddIncludeDirectories("${FO_TRACY_DIR}/public")
@@ -727,6 +821,28 @@ if(FO_BUILD_BAKER_LIB)
     AddIncludeDirectories("${FO_SPIRV_CROSS_DIR}" "${FO_SPIRV_CROSS_DIR}/include")
     AppendList(FO_BAKER_LIBS spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
     DisableLibWarnings(spirv-cross-core spirv-cross-glsl spirv-cross-hlsl spirv-cross-msl)
+
+    # vkd3d-shader compiles the HLSL that SPIRV-Cross emits into DXBC at bake time, so Direct3D needs no compiler at runtime
+    SetValue(FO_VKD3D_DIR "${FO_ENGINE_ROOT}/ThirdParty/vkd3d")
+    include("${FO_VKD3D_DIR}/vkd3d.cmake")
+    AddStaticThirdPartyLibrary(vkd3d-shader
+        SOURCE_LIST FO_VKD3D_SHADER_SOURCE
+        APPEND_TO FO_BAKER_LIBS
+        INCLUDE_DIRS "${FO_VKD3D_DIR}/vkd3d/include")
+    TargetIncludeDirectories(vkd3d-shader PRIVATE
+        "${FO_VKD3D_DIR}"
+        "${FO_VKD3D_DIR}/vkd3d/include/private"
+        "${FO_VKD3D_DIR}/vkd3d/libs/vkd3d-shader"
+        "${FO_VKD3D_SPIRV_INCLUDE_DIR}")
+    TargetCompileDefinitions(vkd3d-shader
+        PUBLIC VKD3D_STATIC_LIBRARY
+        PRIVATE LIBVKD3D_SHADER_SOURCE VKD3D_DEBUG_ENV=VKD3D_SHADER_DEBUG
+        "$<$<PLATFORM_ID:Windows>:_WIN32_WINNT=0x0600>"
+        "$<$<PLATFORM_ID:Windows>:_CRT_SECURE_NO_WARNINGS>"
+        "$<$<PLATFORM_ID:Windows>:_USE_MATH_DEFINES>"
+        "$<$<NOT:$<PLATFORM_ID:Windows>>:_GNU_SOURCE>"
+        "$<$<PLATFORM_ID:Darwin,iOS>:_DARWIN_C_SOURCE>")
+    SetTargetProperty(vkd3d-shader C_STANDARD 99)
 endif()
 
 # small_vector

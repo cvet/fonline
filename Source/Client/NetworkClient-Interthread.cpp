@@ -65,15 +65,13 @@ private:
 
 auto NetworkClientConnection::CreateInterthreadConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<NetworkClientConnection_Interthread>(settings);
 }
 
 NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<ClientNetworkSettings> settings) :
     NetworkClientConnection(settings)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     uint16_t port = numeric_cast<uint16_t>(_settings->Network.ServerPort);
 
@@ -109,14 +107,12 @@ NetworkClientConnection_Interthread::NetworkClientConnection_Interthread(ptr<Cli
 
 NetworkClientConnection_Interthread::~NetworkClientConnection_Interthread()
 {
-    FO_STACK_TRACE_ENTRY();
-
     DisconnectImpl();
 }
 
 auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto state = _interthreadState;
 
@@ -132,7 +128,7 @@ auto NetworkClientConnection_Interthread::CheckStatusImpl(bool for_write) -> boo
 
 auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _interthreadSend(buf);
 
@@ -141,7 +137,7 @@ auto NetworkClientConnection_Interthread::SendDataImpl(const_span<uint8_t> buf) 
 
 auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto state = _interthreadState;
 
@@ -162,7 +158,7 @@ auto NetworkClientConnection_Interthread::ReceiveDataImpl(vector<uint8_t>& buf) 
 
 void NetworkClientConnection_Interthread::DisconnectImpl() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     InterthreadDataCallback interthread_send;
     auto state = _interthreadState;

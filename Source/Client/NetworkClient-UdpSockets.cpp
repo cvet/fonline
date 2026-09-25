@@ -74,8 +74,6 @@ private:
 
 auto NetworkClientConnection::CreateUdpSocketsConnection(ptr<ClientNetworkSettings> settings) -> unique_ptr<NetworkClientConnection>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return safe_alloc::make_unique<NetworkClientConnection_UdpSockets>(settings);
 }
 
@@ -83,7 +81,7 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
     NetworkClientConnection(settings),
     _channel(MakeOptions())
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!net_sockets::startup()) {
         throw NetworkClientException("Socket startup failed for UDP transport");
@@ -113,14 +111,12 @@ NetworkClientConnection_UdpSockets::NetworkClientConnection_UdpSockets(ptr<Clien
 
 NetworkClientConnection_UdpSockets::~NetworkClientConnection_UdpSockets()
 {
-    FO_STACK_TRACE_ENTRY();
-
     DisconnectImpl();
 }
 
 auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     nanotime now = nanotime::now();
 
@@ -157,7 +153,7 @@ auto NetworkClientConnection_UdpSockets::CheckStatusImpl(bool for_write) -> bool
 
 auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     PumpInput();
 
@@ -173,7 +169,7 @@ auto NetworkClientConnection_UdpSockets::SendDataImpl(const_span<uint8_t> buf) -
 
 auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     PumpInput();
 
@@ -193,7 +189,7 @@ auto NetworkClientConnection_UdpSockets::ReceiveDataImpl(vector<uint8_t>& buf) -
 
 void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (_socket.is_valid() && _channel.HasSession() && _socket.can_write()) {
         auto packet = _channel.MakeDisconnectPacket();
@@ -210,8 +206,6 @@ void NetworkClientConnection_UdpSockets::DisconnectImpl() noexcept
 
 auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOptions
 {
-    FO_STACK_TRACE_ENTRY();
-
     UdpTransportOptions options;
     options.MaxPayload = numeric_cast<size_t>(std::max(_settings->Network.UdpPacketSize, 256));
     options.MaxPendingBytes = std::max(numeric_cast<size_t>(std::max(_settings->Network.UdpWindowSize, 0)), options.MaxPayload);
@@ -223,8 +217,6 @@ auto NetworkClientConnection_UdpSockets::MakeOptions() const -> UdpTransportOpti
 
 void NetworkClientConnection_UdpSockets::PumpInput()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (_socket.can_read()) {
         string host;
         uint16_t port = 0;
@@ -270,8 +262,6 @@ void NetworkClientConnection_UdpSockets::PumpInput()
 
 void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t>>& packets)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& packet : packets) {
         if (packet.empty()) {
             continue;
@@ -291,8 +281,6 @@ void NetworkClientConnection_UdpSockets::SendPackets(const vector<vector<uint8_t
 
 void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry));
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {

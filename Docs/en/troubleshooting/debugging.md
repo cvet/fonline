@@ -236,7 +236,7 @@ The Engine captures a bounded native return-address array and optional pre-resol
 
 Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
 
-`FO_STACK_TRACE_ENTRY()` is not a manual thread-local call stack. Outside Tracy configurations it contributes no stack frame; under Tracy it expands to a profiling zone. Native call stacks come from platform capture at the moment `GetStackTrace()` runs.
+Native call stacks come from platform capture when `GetStackTrace()` runs. `FO_TRACE_ZONE(Category)` is a separate, category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
 
 ### AngelScript bridge
 

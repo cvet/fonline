@@ -57,8 +57,6 @@ namespace
             NetworkServerConnection(settings),
             _clientChannel {vector<crypto::key_bytes> {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")}}
         {
-            FO_STACK_TRACE_ENTRY();
-
             _host = "Test";
 
             vector<uint8_t> offer;
@@ -73,8 +71,6 @@ namespace
 
         void Receive(const_span<uint8_t> buf)
         {
-            FO_STACK_TRACE_ENTRY();
-
             vector<uint8_t> sealed;
 
             {
@@ -88,8 +84,6 @@ namespace
 
         void ResetSentPacketCount() noexcept
         {
-            FO_NO_STACK_TRACE_ENTRY();
-
             _sentPacketCount.store(0, std::memory_order_relaxed);
             _sentAddCritterCount.store(0, std::memory_order_relaxed);
             _sentRemoveCritterCount.store(0, std::memory_order_relaxed);
@@ -99,17 +93,10 @@ namespace
             _sentTrackedMessageCount.store(0, std::memory_order_relaxed);
         }
 
-        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _sentPacketCount.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetSentPacketCount() const noexcept -> size_t { return _sentPacketCount.load(std::memory_order_relaxed); }
 
         [[nodiscard]] auto GetSentMessageCount(NetMessage msg) const noexcept -> size_t
         {
-            FO_NO_STACK_TRACE_ENTRY();
-
             switch (msg) {
             case NetMessage::AddCritter:
                 return _sentAddCritterCount.load(std::memory_order_relaxed);
@@ -122,31 +109,14 @@ namespace
             }
         }
 
-        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
+        [[nodiscard]] auto GetSentTrackedMessageCount() const noexcept -> size_t { return _sentTrackedMessageCount.load(std::memory_order_relaxed); }
 
-            return _sentTrackedMessageCount.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t { return _sentInfoMessageCount.load(std::memory_order_relaxed); }
 
-        [[nodiscard]] auto GetSentInfoMessageCount() const noexcept -> size_t
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _sentInfoMessageCount.load(std::memory_order_relaxed);
-        }
-
-        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return _lastSentInfoMessage.load(std::memory_order_relaxed);
-        }
+        [[nodiscard]] auto GetLastSentInfoMessage() const noexcept -> EngineInfoMessage { return _lastSentInfoMessage.load(std::memory_order_relaxed); }
 
         [[nodiscard]] auto GetSentTrackedMessage(size_t index) const -> NetMessage
         {
-            FO_STACK_TRACE_ENTRY();
-
             FO_VERIFY_AND_THROW(index < 2, "Invalid tracked outgoing message index", index);
             return index == 0 ? _firstSentTrackedMessage.load(std::memory_order_relaxed) : _secondSentTrackedMessage.load(std::memory_order_relaxed);
         }
@@ -154,8 +124,6 @@ namespace
     protected:
         void DispatchImpl() override
         {
-            FO_NO_STACK_TRACE_ENTRY();
-
             // Held across the pull and the decode, so frames are opened in the order the server sealed them
             scoped_lock locker {_clientChannelLocker};
 
@@ -224,7 +192,7 @@ namespace
             }
         }
 
-        void DisconnectImpl() override { FO_NO_STACK_TRACE_ENTRY(); }
+        void DisconnectImpl() override { }
 
     private:
         std::atomic<size_t> _sentPacketCount {};
@@ -725,8 +693,6 @@ namespace EntityLifecycle
 
     static void SendStopCritterMove(ptr<TestNetworkConnection> connection, ptr<ServerEngine> server, ident_t map_id, ident_t cr_id, mpos client_hex, ipos16 client_hex_offset, mdir client_dir)
     {
-        FO_STACK_TRACE_ENTRY();
-
         NetOutBuffer packet {numeric_cast<size_t>(server->Settings->Network.NetBufferSize)};
         packet.StartMsg(NetMessage::SendStopCritterMove);
         packet.Write(map_id);

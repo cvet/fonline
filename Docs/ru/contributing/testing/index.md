@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"5fbb100b4d38bfaae76c76737b0af2ef4faeace7149ff32e55de46e9b7355120"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"c44a800aae7d65187e500465dff8f085c91206adfb3812c36f22b07d281f0e77"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -55,7 +55,8 @@ permalink: /Docs/ru/contributing/testing/
 или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
 поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
 `d3d11` (включая `CreateFile2` и `GetCurrentThreadStackLimits`), отсутствующие
-в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`)
+в Windows 7 библиотеки (`shcore.dll`, `combase.dll`, `d3d12.dll`, `dcomp.dll`,
+`d3dcompiler_47.dll`)
 и API-set contracts, кроме Universal CRT forwarders (`api-ms-win-crt-*`). Новый
 несовместимый экспорт добавляют в список одновременно с исправлением импорта.
 Статически связанные библиотеки, включая managed runtime, попадают в таблицу

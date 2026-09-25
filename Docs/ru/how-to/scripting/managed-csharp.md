@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"a04517ffb25dcc1108d5b29893770087a4bfb9a281aae6a7d3a962e7384a0512"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"eca9c6eddba8ac2c58c8154a650a16b0ca302110de98709ef15e118786c6fccb"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -256,7 +256,7 @@ Managed backend передаёт фиксированный native context, mana
 
 `InteropProbe` сравнивает runtime invoke, classic thunk и `UnmanagedCallersOnly` transports там, где runtime их предоставляет, затем измеряет production dispatch и его части synchronization, attachment и overrun reporting. Каждая серия проверяет delivery/arguments и сообщает GC handles, metadata lookups, managed objects, wrapper construction и — под Tracy — native allocations per call. Counters thread-local и выключены вне measured stretch. Latency служит evidence для сравнения на quiet host, а не shared-CI threshold; allocation и delivery counts остаются hard assertions.
 
-Когда включён `FO_TRACY`, backend устанавливает Mono profiler сразу после инициализации runtime и до выполнения любой entry assembly. Инструментация вызовов методов ограничена зарегистрированными images игровых assemblies и методами с metadata token; runtime plumbing и generated wrappers не попадают в call tree. JIT zones не фильтруются по image, потому что первое выполнение handler оплачивает компиляцию каждого достигнутого метода. Hook запрашивает `ENTER | LEAVE | EXCEPTION_LEAVE`, намеренно без `TAIL_CALL`: Mono может устранить self tail call без парного enter event, поэтому обработка такого уведомления как обычного leave закрыла бы зону caller. Exceptional или inlined leave закрывает per-thread stack зон до метода, названного Mono.
+Когда включён `FO_TRACE_ENABLED` и категория `Script`, backend устанавливает Mono profiler сразу после инициализации runtime и до выполнения любой entry assembly. Инструментация вызовов методов ограничена зарегистрированными images игровых assemblies и методами с metadata token; runtime plumbing и generated wrappers не попадают в call tree. JIT zones не фильтруются по image, потому что первое выполнение handler оплачивает компиляцию каждого достигнутого метода. Hook запрашивает `ENTER | LEAVE | EXCEPTION_LEAVE`, намеренно без `TAIL_CALL`: Mono может устранить self tail call без парного enter event, поэтому обработка такого уведомления как обычного leave закрыла бы зону caller. Exceptional или inlined leave закрывает per-thread stack зон до метода, названного Mono.
 
 Имена методов и source locations один раз разрешаются в process-wide table, общую для всех managed backend, а затем читаются под shared lock. В именах зон нет parameter lists и запятых, потому что Tracy CSV hotspot exporter не заключает это поле в кавычки. Callbacks Mono profiler являются `noexcept` C-ABI boundaries и не должны разворачивать стек через JIT-generated code. Как читать эти зоны под entry `Script execution overrun`, описано в [профилировании](../quality/profiling.md#зоны-managed-скриптов).
 

@@ -108,12 +108,7 @@ namespace
         void DisconnectImpl() noexcept override { _disconnectCount++; }
 
     private:
-        static auto SettingsPtr(ClientNetworkSettings& settings) noexcept -> ptr<ClientNetworkSettings>
-        {
-            FO_NO_STACK_TRACE_ENTRY();
-
-            return &settings;
-        }
+        static auto SettingsPtr(ClientNetworkSettings& settings) noexcept -> ptr<ClientNetworkSettings> { return &settings; }
 
         bool _throwOnCheck {};
         bool _throwOnSend {};

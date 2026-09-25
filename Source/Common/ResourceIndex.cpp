@@ -76,8 +76,6 @@ static_assert(RESOURCE_INDEX_MAGIC == (uint32_t {'F'} | uint32_t {'O'} << 8 | ui
 
 auto IsResourceIndexCurrent(string_view path, const vector<string>& pack_dirs, const vector<string>& pack_names) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ResourceIndexHeader header;
 
     if (!ReadResourceIndexHeader(path, header)) {
@@ -108,8 +106,6 @@ struct ResourceIndexEntryRecord
 
 static void BuildHeaderBytes(const ResourceIndexHeader& header, span<uint8_t> buf) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::fill(buf.begin(), buf.end(), uint8_t {0});
 
     span_write_uint32(buf, HEADER_OFFSET_MAGIC, RESOURCE_INDEX_MAGIC);
@@ -127,8 +123,6 @@ static void BuildHeaderBytes(const ResourceIndexHeader& header, span<uint8_t> bu
 
 static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourceIndexHeader& header) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (span_read_uint32(buf, HEADER_OFFSET_MAGIC) != RESOURCE_INDEX_MAGIC) {
         return false;
     }
@@ -157,8 +151,6 @@ static auto ParseHeaderBytes(const_span<uint8_t> buf, ResourceIndexHeader& heade
 
 auto ComputeResourceIndexPackListHash(const vector<ResourceIndexPack>& packs) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     uint64_t hash = RESOURCE_PACK_HASH_SEED;
 
     for (const auto& pack : packs) {
@@ -176,8 +168,6 @@ auto ComputeResourceIndexPackListHash(const vector<ResourceIndexPack>& packs) no
 
 auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     fs::disk_read_file file {path};
 
     if (!file) {
@@ -200,8 +190,6 @@ auto ReadResourceIndexHeader(string_view path, ResourceIndexHeader& header) noex
 
 auto GetResourceIndexPackNames(const vector<string>& pack_names) -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto first = pack_names.begin();
 
     for (auto it = pack_names.begin(); it != pack_names.end(); ++it) {
@@ -215,8 +203,6 @@ auto GetResourceIndexPackNames(const vector<string>& pack_names) -> vector<strin
 
 auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<string>& pack_names, vector<ResourceIndexPack>& packs, vector<string>& pack_paths) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     packs.clear();
     pack_paths.clear();
 
@@ -251,7 +237,7 @@ auto ResolveResourceIndexPacks(const vector<string>& pack_dirs, const vector<str
 
 void BuildResourceIndex(string_view path, const vector<string>& pack_paths, const vector<ResourceIndexPack>& packs, ResourcePackWriteSettings settings)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     FO_VERIFY_AND_THROW(pack_paths.size() == packs.size(), "Resource index pack paths and pack records disagree", pack_paths.size(), packs.size());
 
@@ -368,8 +354,6 @@ ResourceIndexSource::ResourceIndexSource(string_view path, const vector<string>&
     _fileName {path},
     _file {path}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!!_file, "Can't open resource index", _fileName);
 
     array<uint8_t, RESOURCE_INDEX_HEADER_SIZE> header_bytes = {};
@@ -387,7 +371,7 @@ ResourceIndexSource::ResourceIndexSource(string_view path, const vector<string>&
 
 void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     // Sized through the handle the bytes are read from, so a replacement in between cannot pair one file's bounds
     // with another's contents
@@ -515,8 +499,6 @@ void ResourceIndexSource::ParseIndex(const vector<string>& pack_dirs)
 
 auto ResourceIndexSource::FindEntry(string_view path) const -> nptr<const FileEntry>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _entryLookup.find(path);
 
     if (it == _entryLookup.end()) {
@@ -528,8 +510,6 @@ auto ResourceIndexSource::FindEntry(string_view path) const -> nptr<const FileEn
 
 auto ResourceIndexSource::ReadEntryData(const FileEntry& entry) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> stored(numeric_cast<size_t>(entry.StoredSize));
     const fs::disk_read_file& pack_file = entry.Source == 0 ? _packFiles[entry.PackIndex] : _patchFiles[entry.PackIndex];
     bool payload_read = pack_file.read_at(entry.DataOffset, stored);
@@ -547,15 +527,11 @@ auto ResourceIndexSource::ReadEntryData(const FileEntry& entry) const -> vector<
 
 auto ResourceIndexSource::IsFileExists(string_view path) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return !!FindEntry(path);
 }
 
 auto ResourceIndexSource::GetFileInfo(string_view path, size_t& size, uint64_t& write_time) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const FileEntry> entry = FindEntry(path);
 
     if (!entry) {
@@ -570,7 +546,7 @@ auto ResourceIndexSource::GetFileInfo(string_view path, size_t& size, uint64_t& 
 
 auto ResourceIndexSource::OpenFile(string_view path, size_t& size, uint64_t& write_time) const -> unique_del_nptr<const uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     nptr<const FileEntry> entry = FindEntry(path);
 
@@ -590,7 +566,7 @@ auto ResourceIndexSource::OpenFile(string_view path, size_t& size, uint64_t& wri
 
 auto ResourceIndexSource::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     vector<string_view> names;
     names.reserve(_entries.size());
@@ -604,8 +580,6 @@ auto ResourceIndexSource::GetFileNames(string_view dir, bool recursive, string_v
 
 auto ResourceIndexSource::GetIndexSnapshot() const -> optional<vector<IndexedFile>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<IndexedFile> snapshot;
     snapshot.reserve(_entries.size());
 

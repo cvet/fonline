@@ -80,8 +80,6 @@ namespace
 
     static auto MakeRecordingQuadEffectLoader() -> RenderEffectLoader
     {
-        FO_STACK_TRACE_ENTRY();
-
         return [](string_view name) -> string {
             if (name == "Effects/Test_Recording.fofx") {
                 return "[Effect]\nPasses = 1\n";
@@ -101,13 +99,10 @@ namespace
         RecordingQuadEffect() :
             RenderEffect(EffectUsage::QuadSprite, "Effects/Test_Recording.fofx", MakeRecordingQuadEffectLoader())
         {
-            FO_STACK_TRACE_ENTRY();
         }
 
         void DrawBuffer(ptr<RenderDrawBuffer> dbuf, size_t start_index, optional<size_t> indices_to_draw, nptr<const RenderTexture> custom_tex) override
         {
-            FO_STACK_TRACE_ENTRY();
-
             RecordedQuadDraw draw;
             draw.Vertices.assign(dbuf->Vertices.begin(), dbuf->Vertices.begin() + numeric_cast<ptrdiff_t>(dbuf->VertCount));
             draw.Indices.assign(dbuf->Indices.begin(), dbuf->Indices.begin() + numeric_cast<ptrdiff_t>(dbuf->IndCount));
@@ -145,8 +140,6 @@ namespace
 
     static void WriteClientTestPack(string_view directory, string_view name, const vector<pair<string, string>>& files)
     {
-        FO_STACK_TRACE_ENTRY();
-
         REQUIRE(fs::create_directories(directory));
         ResourcePackWriter writer {strex(directory).combine_path(strex("{}.fores", name)).str()};
 
@@ -1591,8 +1584,6 @@ namespace ClientEngineTest
     // offscreen effect is what makes the offscreen surface bindings usable at all
     static auto MakeBakedEffectResources(string_view effect_path) -> vector<pair<string, vector<uint8_t>>>
     {
-        FO_STACK_TRACE_ENTRY();
-
         constexpr string_view EFFECT_SOURCE = R"EFFECT(
 [Effect]
 
@@ -1641,8 +1632,6 @@ void main(void)
 #if FO_ENABLE_3D
     static void WriteRuntimeModelBoneHeader(data_writer& writer, string_view name, bool attached_mesh)
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write_string(name);
         writer.write<mat44>(mat44 {1.0f});
         writer.write<mat44>(mat44 {1.0f});
@@ -1651,8 +1640,6 @@ void main(void)
 
     static auto MakeRuntimeModelMesh(const function<void(data_writer&)>& write_root) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         vector<uint8_t> data;
         data_writer writer {data};
         WriteModelMeshHeader(writer);
@@ -1662,8 +1649,6 @@ void main(void)
 
     static auto MakeRuntimeModelMeshWithVertex(const Vertex3D& vertex, uint32_t skin_bones_count = 1) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return MakeRuntimeModelMesh([&](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
             array<Vertex3D, 1> vertices {vertex};
@@ -1691,8 +1676,6 @@ void main(void)
     // triangle, which lets a test place it far outside the bounds and tell a swept mesh from a skipped one
     static auto MakeRuntimeModelTriangleMesh(vec3 origin = vec3 {}) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         return MakeRuntimeModelMesh([origin](data_writer& writer) {
             WriteRuntimeModelBoneHeader(writer, "Root", true);
 
@@ -1726,8 +1709,6 @@ void main(void)
     // silhouette is genuinely skeleton-driven
     static auto MakeSkinnedRuntimeModelMesh() -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto root_bone = safe_alloc::make_unique<ModelMeshBoneData>();
         root_bone->Name = "Root";
         root_bone->TransformationMatrix = mat44 {1.0f};
@@ -1776,8 +1757,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionPrefix(data_writer& writer, string_view base_model = "Models/UnusedBase.fbx")
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write_bytes({MODEL_DESCRIPTION_MAGIC.data(), MODEL_DESCRIPTION_MAGIC.size()});
         writer.write<uint16_t>(MODEL_DESCRIPTION_SCHEMA_VERSION);
         writer.write<uint16_t>(MODEL_DESCRIPTION_SUPPORTED_FLAGS);
@@ -1794,8 +1773,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionLinkPrefix(data_writer& writer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         writer.write<int32_t>(0);
         writer.write<int32_t>(0);
         writer.write_string({});
@@ -1811,8 +1788,6 @@ void main(void)
 
     static void WriteRuntimeModelDescriptionLink(data_writer& writer)
     {
-        FO_STACK_TRACE_ENTRY();
-
         WriteRuntimeModelDescriptionLinkPrefix(writer);
         writer.write<uint32_t>(uint32_t {0});
         writer.write<uint32_t>(uint32_t {0});
@@ -1825,8 +1800,6 @@ void main(void)
     // name, carrying the bounds version, the twelve model/view bounds keys and one duration record
     static auto MakeUnitTestModelAnimationInfo(string_view model_path) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         string anim_info = strex(R"([{}]
 BoundsVersion = 2
 ModelBoundsMinX = -1
@@ -1863,8 +1836,6 @@ BoundsMaxZ = 1 1 1 1
     // source asset directly through the loader callback, so no source-file format has to be reproduced
     static auto MakeRuntimeModelDescription(string_view model_path, string_view mesh_path, const vector<uint8_t>& mesh_blob, string_view default_link_extra = {}, string_view attached_mesh_path = {}, nptr<const vector<uint8_t>> attached_mesh_blob = nullptr, bool use_two_bone_rig = false) -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         BakerTests::TestRig rig;
         // A one-line description leaves the layer machinery unreachable, so the caller's extra is inserted right
         // after the model line — where the description's own default link is authored

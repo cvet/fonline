@@ -51,8 +51,6 @@ static constexpr ucolor DUMMY_SPRITE_COLOR {255, 255, 255, 255};
 
 static auto MakeBuiltInDummyAtlasSprite(ptr<SpriteManager> spr_mngr, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto [atlas, atlas_allocation, pos] = spr_mngr->GetAtlasMngr()->FindAtlasPlace(atlas_type, DUMMY_SPRITE_SIZE);
     auto tex = atlas->GetTexture();
     const_span<ucolor> dummy_color {&DUMMY_SPRITE_COLOR, 1};
@@ -83,12 +81,11 @@ ResourceManager::ResourceManager(ptr<RenderSettings> settings, ptr<FileSystem> r
     _sprMngr {spr_mngr},
     _animNameResolver {anim_name_resolver}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ResourceManager::IndexFiles()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     auto any_spr = !_settings->Render.CritterStubSpriteName.empty() ? _sprMngr->LoadSprite(_settings->Render.CritterStubSpriteName, AtlasType::MapSprites, true) : shared_ptr<Sprite> {};
 
@@ -113,45 +110,33 @@ void ResourceManager::IndexFiles()
 
 auto ResourceManager::GetItemDefaultSpr() -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _itemHexDummyAnim;
 }
 
 auto ResourceManager::GetCritterDummyFrames() -> ptr<const SpriteSheet>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _critterDummyAnimFrames;
 }
 
 void ResourceManager::CleanupCritterFrames()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _critterFrames.clear();
 }
 
 static auto AnimMapId(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> hstring::hash_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     const hstring::hash_t parts[4] = {model_name.as_hash(), static_cast<hstring::hash_t>(state_anim), static_cast<hstring::hash_t>(action_anim), static_cast<hstring::hash_t>(1)};
     return hash_storage::default_hash(make_span(parts, sizeof(parts)));
 }
 
 static auto FalloutAnimMapId(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> hstring::hash_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     const hstring::hash_t parts[4] = {model_name.as_hash(), numeric_cast<hstring::hash_t>(state_anim), numeric_cast<hstring::hash_t>(action_anim), std::numeric_limits<hstring::hash_t>::max()};
     return hash_storage::default_hash(make_span(parts, sizeof(parts)));
 }
 
 auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir) -> nptr<const SpriteSheet>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Check already loaded
     auto id = AnimMapId(model_name, state_anim, action_anim);
 
@@ -305,7 +290,7 @@ auto ResourceManager::GetCritterAnimFrames(hstring model_name, CritterStateAnim 
 
 auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim) -> shared_ptr<SpriteSheet>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     // Convert from common to fallout specific
     int32_t f_state_anim = 0;
@@ -405,8 +390,6 @@ auto ResourceManager::LoadFalloutAnimFrames(hstring model_name, CritterStateAnim
 
 void ResourceManager::FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> stay_frm_base)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!stay_frm_base) {
         return;
     }
@@ -427,8 +410,6 @@ void ResourceManager::FixAnimFramesOffs(ptr<SpriteSheet> frames_base, nptr<const
 
 void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<const SpriteSheet> stay_frm_base)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!stay_frm_base) {
         return;
     }
@@ -453,8 +434,6 @@ void ResourceManager::FixAnimFramesOffsNext(ptr<SpriteSheet> frames_base, nptr<c
 
 auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t state_anim, uint32_t action_anim) -> nptr<const SpriteSheet>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #define LOADSPR_ADDOFFS(a1, a2) FixAnimFramesOffs(anim_loaded, LoadFalloutAnimSubFrames(model_name, a1, a2))
 #define LOADSPR_ADDOFFS_NEXT(a1, a2) FixAnimFramesOffsNext(anim_loaded, LoadFalloutAnimSubFrames(model_name, a1, a2))
 
@@ -593,8 +572,6 @@ auto ResourceManager::LoadFalloutAnimSubFrames(hstring model_name, uint32_t stat
 
 auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> ptr<const Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     string ext = strex(model_name).get_file_extension();
 
     if (ext != "fo3d") {
@@ -625,7 +602,7 @@ auto ResourceManager::GetCritterPreviewSpr(hstring model_name, CritterStateAnim 
 #if FO_ENABLE_3D
 auto ResourceManager::GetCritterPreviewModelSpr(hstring model_name, CritterStateAnim state_anim, CritterActionAnim action_anim, mdir dir, nptr<const int32_t> layers3d) -> nptr<const ModelSprite>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (auto it = _critterModels.find(model_name); it != _critterModels.end()) {
         auto& model_spr = it->second;

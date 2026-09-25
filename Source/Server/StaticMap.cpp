@@ -41,20 +41,15 @@ StaticMap::StaticMap(msize map_size, bool static_grid) :
     _mapSize {map_size},
     _hexField {CreateHexField(map_size, static_grid)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto StaticMap::GetSize() const noexcept -> msize
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _mapSize;
 }
 
 auto StaticMap::GetField(mpos hex) const noexcept -> const Field&
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // Reuse the guaranteed shared cell without invoking mutating GetCellForWriting. Runtime-map locks do
     // not serialize this cross-map static grid
     return _hexField->GetCellForReading(hex);
@@ -62,8 +57,6 @@ auto StaticMap::GetField(mpos hex) const noexcept -> const Field&
 
 auto StaticMap::GetStaticItem(ident_t static_item_id) const noexcept -> nptr<StaticItem>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (auto it = _staticItemsById.find(static_item_id); it != _staticItemsById.end()) {
         return it->second;
     }
@@ -73,50 +66,36 @@ auto StaticMap::GetStaticItem(ident_t static_item_id) const noexcept -> nptr<Sta
 
 auto StaticMap::HasStaticItem(ident_t static_item_id) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _staticItemsById.count(static_item_id) != 0;
 }
 
 auto StaticMap::GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _staticItems;
 }
 
 auto StaticMap::GetCritterBillets() const noexcept -> const_span<CritterBillet>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _critterBillets;
 }
 
 auto StaticMap::GetOwnedItemBillets() const noexcept -> const_span<OwnedItemBillet>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _ownedItemBillets;
 }
 
 auto StaticMap::GetHexItemBillets() const noexcept -> const_span<ItemBillet>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _hexItemBillets;
 }
 
 auto StaticMap::GetChildItemBillets() const noexcept -> const_span<ItemBillet>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return _childItemBillets;
 }
 
 void StaticMap::ForEachItemHex(ident_t static_item_id, const function<void(mpos)>& callback) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto it = _staticItemsById.find(static_item_id);
     FO_STRONG_ASSERT(it != _staticItemsById.end(), "Static item id is missing from the baked map", static_item_id);
 
@@ -125,8 +104,6 @@ void StaticMap::ForEachItemHex(ident_t static_item_id, const function<void(mpos)
 
 auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& removed_ids) const -> Field
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& shared_field = _hexField->GetCellForReading(hex);
     Field field;
 
@@ -145,15 +122,11 @@ auto StaticMap::BuildFieldWithout(mpos hex, const unordered_set<ident_t>& remove
 
 void StaticMap::ReserveCritters(size_t critter_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _critterBillets.reserve(critter_count);
 }
 
 void StaticMap::ReserveItems(size_t item_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The record count is the upper bound for each list, because one item lands in exactly one of them
     _ownedItemBillets.reserve(item_count);
     _hexItemBillets.reserve(item_count);
@@ -164,22 +137,16 @@ void StaticMap::ReserveItems(size_t item_count)
 
 void StaticMap::AddCritterBillet(ident_t critter_id, refcount_ptr<Critter> cr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _critterBillets.emplace_back(critter_id, std::move(cr));
 }
 
 void StaticMap::AddOwnedItemBillet(ident_t item_id, refcount_ptr<StaticItem> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _ownedItemBillets.emplace_back(item_id, std::move(item));
 }
 
 void StaticMap::AddStaticItem(ident_t item_id, ptr<StaticItem> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _staticItems.emplace_back(item);
     _staticItemsById.emplace(item_id, item);
 
@@ -191,22 +158,16 @@ void StaticMap::AddStaticItem(ident_t item_id, ptr<StaticItem> item)
 
 void StaticMap::AddHexItemBillet(ident_t item_id, ptr<StaticItem> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _hexItemBillets.emplace_back(item_id, item);
 }
 
 void StaticMap::AddChildItemBillet(ident_t item_id, ptr<StaticItem> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _childItemBillets.emplace_back(item_id, item);
 }
 
 void StaticMap::MarkScrollBlocked(mpos hex)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto field = _hexField->GetCellForWriting(hex);
 
     field->ScrollBlocked = true;
@@ -215,8 +176,6 @@ void StaticMap::MarkScrollBlocked(mpos hex)
 
 void StaticMap::ShrinkToFit()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _critterBillets.shrink_to_fit();
     _ownedItemBillets.shrink_to_fit();
     _hexItemBillets.shrink_to_fit();
@@ -226,8 +185,6 @@ void StaticMap::ShrinkToFit()
 
 auto StaticMap::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (static_grid) {
         return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
@@ -237,8 +194,6 @@ auto StaticMap::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<T
 
 void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (vec_exists(field->StaticItems, item)) {
         return;
     }
@@ -262,8 +217,6 @@ void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)
 
 void StaticMap::ForEachItemHex(ptr<const StaticItem> item, const function<void(mpos)>& callback) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     mpos hex = item->GetHex();
     callback(hex);
 

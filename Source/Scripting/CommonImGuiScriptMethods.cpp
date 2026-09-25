@@ -40,8 +40,6 @@ FO_BEGIN_NAMESPACE
 
 static auto PrepareInputBuffer(string_view text, uint32_t max_length) -> vector<char>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (text.size() > numeric_cast<size_t>(max_length)) {
         throw ScriptException("Text arg length must be less or equal to maxLength arg");
     }
@@ -59,50 +57,36 @@ static auto PrepareInputBuffer(string_view text, uint32_t max_length) -> vector<
 
 static auto ToImVec2(fpos32 pos) -> ImVec2
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {pos.x, pos.y};
 }
 
 static auto ToImVec2(fsize32 size) -> ImVec2
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {size.width, size.height};
 }
 
 static auto ToImVec2(isize32 size) -> ImVec2
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)};
 }
 
 static auto ToFPos32(const ImVec2& pos) -> fpos32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {pos.x, pos.y};
 }
 
 static auto ToFSize32(const ImVec2& size) -> fsize32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return {size.x, size.y};
 }
 
 static auto ToColorComp(float32_t value) -> uint8_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return numeric_cast<uint8_t>(std::clamp(iround<int32_t>(value * 255.0f), 0, 255));
 }
 
 static void ColorToFloat3(ucolor color, float32_t (&values)[3])
 {
-    FO_STACK_TRACE_ENTRY();
-
     values[0] = numeric_cast<float32_t>(color.comp.r) / 255.0f;
     values[1] = numeric_cast<float32_t>(color.comp.g) / 255.0f;
     values[2] = numeric_cast<float32_t>(color.comp.b) / 255.0f;
@@ -110,8 +94,6 @@ static void ColorToFloat3(ucolor color, float32_t (&values)[3])
 
 static void ColorToFloat4(ucolor color, float32_t (&values)[4])
 {
-    FO_STACK_TRACE_ENTRY();
-
     values[0] = numeric_cast<float32_t>(color.comp.r) / 255.0f;
     values[1] = numeric_cast<float32_t>(color.comp.g) / 255.0f;
     values[2] = numeric_cast<float32_t>(color.comp.b) / 255.0f;
@@ -120,15 +102,11 @@ static void ColorToFloat4(ucolor color, float32_t (&values)[4])
 
 static void StoreColor3(ucolor& color, const float32_t (&values)[3])
 {
-    FO_STACK_TRACE_ENTRY();
-
     color = ucolor(ToColorComp(values[0]), ToColorComp(values[1]), ToColorComp(values[2]), color.comp.a);
 }
 
 static void StoreColor4(ucolor& color, const float32_t (&values)[4])
 {
-    FO_STACK_TRACE_ENTRY();
-
     color = ucolor(ToColorComp(values[0]), ToColorComp(values[1]), ToColorComp(values[2]), ToColorComp(values[3]));
 }
 

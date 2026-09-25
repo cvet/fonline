@@ -69,8 +69,6 @@ static constexpr AngelScript::asPWORD AS_PREPROCESSOR_LNT_USER_DATA = 5;
 
 static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* param)
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const AngelScript::asSMessageInfo> message = msg;
     FO_VERIFY_AND_THROW(message, "AngelScript message info is null");
     string_view type = message->type == AngelScript::asMSGTYPE_WARNING ? "warning" : (message->type == AngelScript::asMSGTYPE_INFORMATION ? "info" : "error");
@@ -90,16 +88,12 @@ static void AngelScriptMessage(const AngelScript::asSMessageInfo* msg, void* par
 
 static void CleanupScriptFuncDesc(ptr<ScriptFuncDesc> func_desc) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto owned_func_desc = adopt_unique_ptr(func_desc);
     ignore_unused(owned_func_desc);
 }
 
 static void CleanupScriptFunction(AngelScript::asIScriptFunction* raw_func)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(raw_func != nullptr, "Script function to clean up is null");
     auto func = make_ptr(raw_func);
     auto func_desc = cast_from_void<ScriptFuncDesc*>(func->GetUserData());
@@ -112,8 +106,6 @@ static void CleanupScriptFunction(AngelScript::asIScriptFunction* raw_func)
 template<typename Allocator>
 static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const string& text)
 {
-    FO_STACK_TRACE_ENTRY();
-
     data.resize(text.size());
 
     if (text.empty()) {
@@ -125,8 +117,6 @@ static void CopyScriptTextToBuffer(std::vector<char, Allocator>& data, const str
 
 static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto lnt = cast_from_void<Preprocessor::LineNumberTranslator*>(engine->GetUserData(AS_PREPROCESSOR_LNT_USER_DATA));
     Preprocessor::DeleteLineNumberTranslator(lnt.get());
     engine->SetUserData(nullptr, AS_PREPROCESSOR_LNT_USER_DATA);
@@ -135,12 +125,11 @@ static void CleanupLineNumberTranslator(AngelScript::asIScriptEngine* engine) no
 AngelScriptBackend::AngelScriptBackend(ptr<const AngelScriptSettings> settings) :
     _settings {settings}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 AngelScriptBackend::~AngelScriptBackend()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (_debuggerEndpointServer) {
         _debuggerEndpointServer->Stop();
@@ -170,38 +159,30 @@ AngelScriptBackend::~AngelScriptBackend()
 
 auto AngelScriptBackend::InternUserString(string_view name) -> ptr<const string>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return &*_userStrings.emplace(name).first;
 }
 
 auto AngelScriptBackend::GetGameEngine() -> ptr<BaseEngine>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
     return _engine;
 }
 
 auto AngelScriptBackend::GetGameEngine() const -> ptr<const BaseEngine>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_engine, "Missing engine instance");
     return _engine;
 }
 
 auto AngelScriptBackend::GetEntityMngr() -> ptr<EntityManagerApi>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_entityMngr, "Missing entity manager");
     return _entityMngr;
 }
 
 void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     auto as_engine = make_nptr(AngelScript::asCreateScriptEngine(ANGELSCRIPT_VERSION));
     FO_VERIFY_AND_THROW(as_engine, "Missing AngelScript engine");
@@ -263,15 +244,11 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
 
 void AngelScriptBackend::SetMessageCallback(function<void(string_view)> message_callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _messageCallback = std::move(message_callback);
 }
 
 void AngelScriptBackend::SendMessage(string_view message) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_messageCallback) {
         _messageCallback(message);
     }
@@ -286,13 +263,10 @@ public:
     explicit BinaryStream(ptr<vector<AngelScript::asBYTE>> buf) :
         _binBuf {buf}
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     auto Write(const void* raw_source, AngelScript::asUINT size) -> int override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         auto source = make_nptr(raw_source);
 
         if (!source || size == 0) {
@@ -309,8 +283,6 @@ public:
 
     auto Read(void* raw_target, AngelScript::asUINT size) -> int override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         auto target = make_nptr(raw_target);
 
         if (!target || size == 0) {
@@ -336,7 +308,7 @@ private:
 
 void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FileCollection script_bin_files = [&]() -> FileCollection {
         switch (_meta->GetSide()) {
@@ -464,7 +436,7 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
 
 auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     FO_VERIFY_AND_THROW(_asEngine->GetModuleCount() == 0, "AngelScript engine must not contain modules before compiling scripts", _asEngine->GetModuleCount());
 
@@ -476,13 +448,10 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
             _rootScript {root},
             _scriptFiles {files}
         {
-            FO_STACK_TRACE_ENTRY();
         }
 
         auto LoadFile(const std::string& dir, const std::string& file_name, std::vector<char>& data, std::string& file_path) -> bool override
         {
-            FO_STACK_TRACE_ENTRY();
-
             if (_rootScript) {
                 CopyScriptTextToBuffer(data, *_rootScript);
                 _rootScript = nullptr;
@@ -521,12 +490,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
             return Preprocessor::FileLoader::LoadFile(dir, file_name, data, file_path);
         }
 
-        void FileLoaded() override
-        {
-            FO_STACK_TRACE_ENTRY();
-
-            _includeDeep--;
-        }
+        void FileLoaded() override { _includeDeep--; }
 
     private:
         nptr<const string> _rootScript {};
@@ -701,7 +665,7 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
 
 void AngelScriptBackend::BindRequiredStuff()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     BindAngelScriptRemoteCalls(_asEngine);
 
@@ -844,15 +808,11 @@ auto AngelScriptBackend::TryParseModuleFuncPriority(string_view raw_attribute, s
 
 void AngelScriptBackend::AddCleanupCallback(function<void()> callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _cleanupCallbacks.emplace_back(std::move(callback));
 }
 
 void AngelScriptBackend::AddPostCleanupCallback(function<void()> callback)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _postCleanupCallbacks.emplace_back(std::move(callback));
 }
 

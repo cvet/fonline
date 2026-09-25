@@ -37,16 +37,12 @@ FO_BEGIN_NAMESPACE
 
 NetBuffer::NetBuffer(size_t buf_len)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _defaultBufLen = buf_len;
     _bufData.resize(buf_len);
 }
 
 auto NetBuffer::GetData() noexcept -> const_span<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_bufEndPos == 0) {
         return {};
     }
@@ -57,8 +53,6 @@ auto NetBuffer::GetData() noexcept -> const_span<uint8_t>
 
 void NetBuffer::ResetBuf() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _bufEndPos = 0;
 
     if (_bufData.size() > _defaultBufLen) {
@@ -69,8 +63,6 @@ void NetBuffer::ResetBuf() noexcept
 
 void NetBuffer::GrowBuf(size_t len)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_bufEndPos + len <= _bufData.size()) {
         return;
     }
@@ -86,8 +78,6 @@ void NetBuffer::GrowBuf(size_t len)
 
 void NetOutBuffer::Push(nptr<const void> buf, size_t len)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (len == 0) {
         return;
     }
@@ -102,8 +92,6 @@ void NetOutBuffer::Push(nptr<const void> buf, size_t len)
 
 void NetOutBuffer::Push(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (buf.empty()) {
         return;
     }
@@ -116,8 +104,6 @@ void NetOutBuffer::Push(const_span<uint8_t> buf)
 
 void NetOutBuffer::DiscardWriteBuf(size_t len)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (len == 0) {
         return;
     }
@@ -140,8 +126,6 @@ void NetOutBuffer::DiscardWriteBuf(size_t len)
 
 void NetOutBuffer::WritePropsData(const vector<nptr<const uint8_t>>& props_data, const vector<uint32_t>& props_data_sizes)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(props_data.size() == props_data_sizes.size(), "Property payload pointer list and size list have different lengths", props_data.size(), props_data_sizes.size());
     FO_VERIFY_AND_THROW(props_data.size() <= 0xFFFF, "Property payload list is too large for uint16 network encoding", props_data.size(), 0xFFFF);
     Write<uint16_t>(numeric_cast<uint16_t>(props_data.size()));
@@ -155,8 +139,6 @@ void NetOutBuffer::WritePropsData(const vector<nptr<const uint8_t>>& props_data,
 
 void NetOutBuffer::StartMsg(NetMessage msg)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!_msgStarted, "Msg started is already set");
 
     _msgStarted = true;
@@ -173,8 +155,6 @@ void NetOutBuffer::StartMsg(NetMessage msg)
 
 void NetOutBuffer::EndMsg()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_msgStarted, "Network message stream is not started");
     FO_VERIFY_AND_THROW(_bufEndPos > _startedBufPos, "Network message ended without any payload after its start marker", _startedBufPos, _bufEndPos);
 
@@ -193,8 +173,6 @@ void NetOutBuffer::EndMsg()
 
 void NetOutBuffer::WriteHashedString(hstring value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto hash = value.as_hash();
     auto hash_bytes = make_ptr(&hash).reinterpret_as<uint8_t>();
     Push(hash_bytes, sizeof(hash));
@@ -202,8 +180,6 @@ void NetOutBuffer::WriteHashedString(hstring value)
 
 void NetInBuffer::ResetBuf() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     NetBuffer::ResetBuf();
 
     _bufReadPos = 0;
@@ -212,8 +188,6 @@ void NetInBuffer::ResetBuf() noexcept
 
 void NetInBuffer::AddData(const_span<uint8_t> buf)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (buf.empty()) {
         return;
     }
@@ -233,8 +207,6 @@ void NetInBuffer::AddData(const_span<uint8_t> buf)
 
 void NetInBuffer::SetEndPos(size_t pos)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (pos > _bufData.size() || (_msgEndPos != 0 && pos < _msgEndPos)) {
         throw NetBufferException("Invalid set end pos", pos, _bufData.size(), _bufEndPos);
     }
@@ -244,8 +216,6 @@ void NetInBuffer::SetEndPos(size_t pos)
 
 void NetInBuffer::Pop(nptr<void> buf, size_t len)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (len == 0) {
         return;
     }
@@ -266,8 +236,6 @@ void NetInBuffer::Pop(nptr<void> buf, size_t len)
 
 void NetInBuffer::ShrinkReadBuf()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FinishMessageRead();
 
     if (_bufReadPos > _bufEndPos) {
@@ -294,8 +262,6 @@ void NetInBuffer::ShrinkReadBuf()
 
 void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto data_count = Read<uint16_t>();
 
     // Each entry carries at least its uint32 size prefix, so the count can never exceed unread/4; reject before allocating
@@ -324,8 +290,6 @@ void NetInBuffer::ReadPropsData(vector<vector<uint8_t>>& props_data)
 
 auto NetInBuffer::ReadMsg() -> NetMessage
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_msgEndPos == 0, "Network message read started before the previous frame was completed", _bufReadPos, _msgEndPos, _bufEndPos);
 
     constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
@@ -365,8 +329,6 @@ auto NetInBuffer::ReadMsg() -> NetMessage
 
 auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto hash = Read<hstring::hash_t>();
 
     bool failed = false;
@@ -382,8 +344,6 @@ auto NetInBuffer::ReadHashedString(const hash_resolver& hashes) -> hstring
 
 auto NetInBuffer::NeedProcess() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FinishMessageRead();
 
     // Check signature
@@ -425,8 +385,6 @@ auto NetInBuffer::NeedProcess() -> bool
 
 void NetInBuffer::FinishMessageRead()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_msgEndPos == 0) {
         return;
     }

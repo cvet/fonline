@@ -320,6 +320,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-clientresources-95068886ad"></a>
 - [`symbol-setting-common-baking-clientresources-95068886ad`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-clientresources-95068886ad)
 
+<a id="symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7"></a>
+- [`symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-direct3dlevel9shaders-ebb014afc7)
+
 <a id="symbol-setting-common-baking-forcebaking-70ea452460"></a>
 - [`symbol-setting-common-baking-forcebaking-70ea452460`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-forcebaking-70ea452460)
 
@@ -597,12 +600,6 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-render-defaultparticledrawwidth-813ec60d03"></a>
 - [`symbol-setting-common-render-defaultparticledrawwidth-813ec60d03`](../../en/reference/script-api/settings.md#symbol-setting-common-render-defaultparticledrawwidth-813ec60d03)
-
-<a id="symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c"></a>
-- [`symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c`](../../en/reference/script-api/settings.md#symbol-setting-common-render-direct3dpixelshaderprofile-cecfcf832c)
-
-<a id="symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb"></a>
-- [`symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb`](../../en/reference/script-api/settings.md#symbol-setting-common-render-direct3dvertexshaderprofile-331f2b29bb)
 
 <a id="symbol-setting-common-render-drawwireframe-80fbe6122f"></a>
 - [`symbol-setting-common-render-drawwireframe-80fbe6122f`](../../en/reference/script-api/settings.md#symbol-setting-common-render-drawwireframe-80fbe6122f)

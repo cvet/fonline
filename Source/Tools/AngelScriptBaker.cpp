@@ -43,17 +43,15 @@ FO_BEGIN_NAMESPACE
 AngelScriptBaker::AngelScriptBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 AngelScriptBaker::~AngelScriptBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void AngelScriptBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!target_path.empty() && !strex(target_path).get_file_extension().starts_with("fos-")) {
         return;

@@ -18347,6 +18347,10 @@
           "source_sha256": "dc13e0a37be9983970e884a4a1e6734f64ea8329b275c48e048cb0ccc98607d0",
           "translation": "Каталог ресурсов клиента"
         },
+        "/symbols/@id=setting.common.Baking.Direct3DLevel9Shaders/description": {
+          "source_sha256": "c5f0bcdce449a6108e365ad6a097523424836f7fc952d408a832cef7b52b0d7b",
+          "translation": "Если true, эффекты Direct3D, кроме модельных, также содержат код для уровня 9.3, а сборка без 3D принимает устройства feature level 9.3; эффект, не укладывающийся в уровень 9.3, прерывает запекание"
+        },
         "/symbols/@id=setting.common.Baking.ForceBaking/description": {
           "source_sha256": "4db6ccbe94bccb8b5aaada22144eec3f24de082096ddf1fad3825ff7c38c1883",
           "translation": "Если true, принудительно запекаются все пакеты"
@@ -18670,14 +18674,6 @@
         "/symbols/@id=setting.common.Render.DefaultParticleDrawWidth/description": {
           "source_sha256": "d1a78073978f041d3ea9cbadf5f0bf4779bb3c378479df54fab14c5194ef0483",
           "translation": "Ширина отрисовки частиц по умолчанию"
-        },
-        "/symbols/@id=setting.common.Render.Direct3DPixelShaderProfile/description": {
-          "source_sha256": "d25f66102b6a292aa496df8581912e6d860e4717e38446f268c6c9b11d5c67d8",
-          "translation": "Профиль компиляции пиксельного шейдера Direct3D"
-        },
-        "/symbols/@id=setting.common.Render.Direct3DVertexShaderProfile/description": {
-          "source_sha256": "501f29a190a679aa233e9e59810b6e224ef0a7aa9fe3b462efdfaa7a058f80ad",
-          "translation": "Профиль компиляции вершинного шейдера Direct3D"
         },
         "/symbols/@id=setting.common.Render.DrawWireframe/description": {
           "source_sha256": "4545b322f9c1a37787116f41a99714c1d390e66998ff37550d27c0ab977546af",

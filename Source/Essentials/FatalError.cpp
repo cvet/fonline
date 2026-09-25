@@ -39,8 +39,6 @@ FO_BEGIN_NAMESPACE
 
 [[noreturn]] void fatal::report_and_exit(string_view message) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     logging::suspend_async_writing();
 
     logging::write_base("\nFATAL ERROR!\n");
@@ -57,8 +55,6 @@ FO_BEGIN_NAMESPACE
 
 [[noreturn]] void fatal::report_strong_assert_and_exit(string_view expression, string_view file, int32_t line) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     logging::suspend_async_writing();
 
     char line_buf[64] = {};

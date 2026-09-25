@@ -33,7 +33,7 @@ def process_start_time(tmp_path_factory):
     library = root / "probe.dll"
     probe.write_text(
         "#include <Windows.h>\n#include <cstdint>\n#include <optional>\n"
-        "using std::optional;\n#define FO_STACK_TRACE_ENTRY()\n#define FO_NO_STACK_TRACE_ENTRY()\n"
+        "using std::optional;\n#define FO_TRACE_ZONE(category)\n"
         "namespace winapi { auto get_running_process_start_time(uint32_t) noexcept -> optional<uint64_t>; }\n"
         + "\n".join(functions)
         + '\nextern "C" __declspec(dllexport) uint64_t probe(uint32_t pid) {\n'

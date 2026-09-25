@@ -38,22 +38,16 @@ FO_BEGIN_NAMESPACE
 hash_storage::hash_storage(hash_func func) :
     _hash_func {func}
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_hash_func, "Hash function is null");
 }
 
 auto hash_storage::default_hash(const_span<uint8_t> data) noexcept -> uint64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return hashing_ex::hash(data.data(), data.size());
 }
 
 auto hash_storage::check_hashed_string(string_view s) const noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (s.empty()) {
         return false;
     }
@@ -67,8 +61,6 @@ auto hash_storage::check_hashed_string(string_view s) const noexcept -> bool
 
 auto hash_storage::to_hashed_string(string_view s) -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     static_assert(std::same_as<hstring::hash_t, decltype(_hash_func({}))>);
 
     if (s.empty()) {
@@ -127,8 +119,6 @@ auto hash_storage::to_hashed_string(string_view s) -> hstring
 
 auto hash_storage::resolve_hash(hstring::hash_t h) const -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (h == 0) {
         return {};
     }
@@ -150,8 +140,6 @@ auto hash_storage::resolve_hash(hstring::hash_t h) const -> hstring
 
 auto hash_storage::resolve_hash(hstring::hash_t h, nptr<bool> failed) const noexcept -> hstring
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (h == 0) {
         return {};
     }
@@ -177,8 +165,6 @@ auto hash_storage::resolve_hash(hstring::hash_t h, nptr<bool> failed) const noex
 
 void hash_storage::set_resolve_hash_failure_handler(resolve_hash_failure_handler handler)
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_resolve_hash_failure_handler_locker};
 
     _resolve_hash_failure_handler = std::move(handler);
@@ -186,8 +172,6 @@ void hash_storage::set_resolve_hash_failure_handler(resolve_hash_failure_handler
 
 void hash_storage::handle_resolve_hash_failure(hstring::hash_t h) const noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     shared_lock locker {_resolve_hash_failure_handler_locker};
 
     if (!_resolve_hash_failure_handler) {

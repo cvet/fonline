@@ -43,13 +43,10 @@ ParticleSprite::ParticleSprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32
     _drawInScene {draw_in_scene},
     _particle {std::move(particle)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _prewarmPending = false;
 
     if (!_particle->Respawn(seed)) {
@@ -62,8 +59,6 @@ auto ParticleSprite::PlayWithSeed(int32_t seed) -> bool
 
 void ParticleSprite::SetDrawInScene(bool draw_in_scene)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_drawInScene == draw_in_scene) {
         return;
     }
@@ -77,8 +72,6 @@ void ParticleSprite::SetDrawInScene(bool draw_in_scene)
 
 auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(pos);
 
     return false;
@@ -86,8 +79,6 @@ auto ParticleSprite::IsHitTest(ipos32 pos) const -> bool
 
 void ParticleSprite::Prewarm()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (_drawInScene) {
         _prewarmPending = true;
     }
@@ -98,15 +89,11 @@ void ParticleSprite::Prewarm()
 
 void ParticleSprite::SetTime(float32_t normalized_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(normalized_time);
 }
 
 void ParticleSprite::SetDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _lookDirAngle = numeric_cast<float32_t>(dir.angle());
 
     if (!_drawInScene) {
@@ -116,8 +103,6 @@ void ParticleSprite::SetDir(mdir dir)
 
 void ParticleSprite::ApplyAtlasSetup() const
 {
-    FO_STACK_TRACE_ENTRY();
-
     ParticleSpriteFrame layout = _particle->ComputeSpriteFrame(*_factory->_settings);
     mat44 proj = _sprMngr->GetRender().CreateOrthoMatrix(0.0f, layout.ProjWidth, 0.0f, layout.ProjHeight, -10.0f, 10.0f);
 
@@ -126,8 +111,6 @@ void ParticleSprite::ApplyAtlasSetup() const
 
 void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(anim_name);
     ignore_unused(looped);
     ignore_unused(reversed);
@@ -139,13 +122,10 @@ void ParticleSprite::Play(hstring anim_name, bool looped, bool reversed)
 
 void ParticleSprite::Stop()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSprite::Update() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_prewarmPending) {
         _particle->Update();
     }
@@ -161,15 +141,11 @@ auto ParticleSprite::Update() -> bool
 
 void ParticleSprite::DrawToAtlas()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _factory->DrawParticleToAtlas(this);
 }
 
 void ParticleSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     const RenderSettings& settings = *_factory->_settings;
     mat44 scene_ortho = _sprMngr->GetRender().GetProjMatrix();
     mat44 cam_view = GeometryHelper::MakeMapCameraView(settings.Geometry.MapCameraAngle, 0.0f, fpos32 {0.0f, 0.0f}, 1.0f);
@@ -200,19 +176,16 @@ ParticleSpriteFactory::ParticleSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<Re
             return ParticleSceneBackgroundResult {.State = texture ? ParticleSceneBackgroundState::Available : ParticleSceneBackgroundState::Unavailable, .Texture = texture};
         }}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto ParticleSpriteFactory::GetExtensions() const -> vector<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _particleMngr.GetExtensions();
 }
 
 auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     optional<ParticleSystem> particle = _particleMngr.CreateParticle(path);
 
@@ -240,8 +213,6 @@ auto ParticleSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> sh
 
 auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto result = pair<nptr<RenderTexture>, frect32>();
 
     if (auto it = _loadedParticleTextures.find(path); it == _loadedParticleTextures.end()) {
@@ -267,8 +238,6 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
 
 void ParticleSpriteFactory::RetryFailedLoads()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto it = _loadedParticleTextures.begin(); it != _loadedParticleTextures.end();) {
         if (!it->second) {
             _sprMngr->ForgetFailedSprite(it->first.as_str());
@@ -282,15 +251,13 @@ void ParticleSpriteFactory::RetryFailedLoads()
 
 void ParticleSpriteFactory::InvalidateResource(hstring path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _loadedParticleTextures.erase(path);
     _particleMngr.InvalidateResource(path.as_str());
 }
 
 void ParticleSpriteFactory::DrawParticleToAtlas(ptr<ParticleSprite> particle_spr)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Particles);
 
     // Find place for render
     isize32 frame_size = particle_spr->GetSize();

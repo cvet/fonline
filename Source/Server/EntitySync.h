@@ -160,6 +160,9 @@ private:
         storage_type _entries {};
     };
 
+    // Called without `_mutex`: parks on a queued entry until it is granted or aborted, then dequeues it and
+    // returns the final state
+    auto WaitForGrant(list<WaitEntry>::iterator entry_it) -> int32_t;
     // Called under `_mutex`. Consecutive shared waiters are granted together but the run stops at the first
     // exclusive one, so readers batch without starving writers
     void GrantWaiters() noexcept FO_TSA_REQUIRES(_mutex);

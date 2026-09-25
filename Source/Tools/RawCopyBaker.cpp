@@ -39,17 +39,15 @@ FO_BEGIN_NAMESPACE
 RawCopyBaker::RawCopyBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 RawCopyBaker::~RawCopyBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void RawCopyBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     // Collect files
     vector<File> filtered_files;

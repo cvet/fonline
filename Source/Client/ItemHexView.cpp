@@ -43,13 +43,10 @@ ItemHexView::ItemHexView(ptr<MapView> map, ident_t id, ptr<const ProtoItem> prot
     ItemView(map->GetEngine(), id, proto, props),
     HexView(map)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ItemHexView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
-
     ItemView::OnDestroySelf();
 
     // Release atlas-backed sprites at logical destroy: a wrapper-retained entity must reach a memory-only final
@@ -60,8 +57,6 @@ void ItemHexView::OnDestroySelf()
 
 void ItemHexView::Init()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (GetIsTile()) {
         SetDrawEffect(GetIsRoofTile() ? _engine->EffectMngr.Effects.Roof : _engine->EffectMngr.Effects.Tile);
     }
@@ -78,8 +73,6 @@ void ItemHexView::Init()
 
 void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     HexView::SetupSprite(mspr);
 
     mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation) : GetElevation());
@@ -97,16 +90,12 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
 
 auto ItemHexView::GetAnim() const -> ptr<const Sprite>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(_anim, "Item has no animation sprite");
     return _anim;
 }
 
 void ItemHexView::Process()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsFading()) {
         ProcessFading();
     }
@@ -145,8 +134,6 @@ void ItemHexView::Process()
 
 void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto cur_hex = GetHex();
 
     if (cur_hex == hex) {
@@ -175,15 +162,11 @@ void ItemHexView::MoveToHex(mpos hex, float32_t speed)
 
 void ItemHexView::RefreshAlpha()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetDefaultAlpha(GetColorize() ? GetColorizeColor().comp.a : 0xFF);
 }
 
 void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animName = anim_name;
     _animLooped = looped;
     _animReversed = reversed;
@@ -197,8 +180,6 @@ void ItemHexView::PlayAnim(hstring anim_name, bool looped, bool reversed)
 
 void ItemHexView::StopAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animStopped = true;
 
     if (_anim) {
@@ -208,8 +189,6 @@ void ItemHexView::StopAnim()
 
 void ItemHexView::SetAnimTime(float32_t normalized_time)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animTime = normalized_time;
 
     if (_anim) {
@@ -219,8 +198,6 @@ void ItemHexView::SetAnimTime(float32_t normalized_time)
 
 void ItemHexView::SetAnimDir(mdir dir)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _animDir = dir;
 
     if (_anim) {
@@ -230,8 +207,6 @@ void ItemHexView::SetAnimDir(mdir dir)
 
 void ItemHexView::RefreshAnim()
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool is_anim_init = !_anim;
     auto pic_name = GetPicMap();
 
@@ -269,8 +244,6 @@ void ItemHexView::RefreshAnim()
 
 auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (GetDisableEgg() || GetDrawFlatten()) {
         return EggAppearenceType::None;
     }
@@ -293,8 +266,6 @@ auto ItemHexView::GetEggType() const noexcept -> EggAppearenceType
 
 void ItemHexView::RefreshOffs()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto offset = GetOffset();
     _sprOffset = ipos32 {offset.x, offset.y};
     _rootOffset = ipos32 {offset.x, offset.y};
@@ -307,8 +278,6 @@ void ItemHexView::RefreshOffs()
 
 void ItemHexView::SetMultihexEntries(vector<mpos> entries)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!entries.empty()) {
         if (!_multihexEntries) {
             _multihexEntries.emplace();

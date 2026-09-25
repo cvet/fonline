@@ -60,8 +60,6 @@ static auto RoundFrameDimension(uint64_t value, bool clamp_to_max, uint64_t max_
 
 auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<isize32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(min_x) || !std::isfinite(min_y) || !std::isfinite(max_x) || !std::isfinite(max_y) || min_x > max_x || min_y > max_y) {
         return std::nullopt;
     }
@@ -88,8 +86,6 @@ auto CalculateModelSpriteFrameSize(float32_t min_x, float32_t min_y, float32_t m
 
 auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float32_t max_x, float32_t max_y, ipos32 current_pivot, float32_t guard_padding, isize32 minimum_size) -> optional<ModelSpriteFramePlacement>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(guard_padding) || guard_padding < 0.0f || minimum_size.width <= 0 || minimum_size.height <= 0) {
         return std::nullopt;
     }
@@ -118,8 +114,6 @@ auto CalculateModelSpriteFramePlacement(float32_t min_x, float32_t min_y, float3
 
 auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpriteFramePlacement required) -> optional<ModelSpriteFramePlacement>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // An animation or attached effect may put the whole visible envelope on one side of the root, so the pivot is
     // a signed root-relative anchor and only the frame dimensions must be positive
     auto is_valid = [](const ModelSpriteFramePlacement& placement) noexcept { return placement.Size.width > 0 && placement.Size.height > 0; };
@@ -155,8 +149,6 @@ auto MergeModelSpriteFramePlacements(ModelSpriteFramePlacement current, ModelSpr
 
 auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<ModelBounds3D>& active_animation_bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, isize32 max_logical_frame) -> ModelBounds3D
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Names anchor to the stable idle silhouette so a raised weapon cannot lift them, except for a pose that sits
     // lower; tops are compared after the base transforms, since an imported model's raw Max.y is not a height
     if (!active_animation_bounds || !IsValidModelBounds(*active_animation_bounds) || !IsValidModelBounds(idle_bounds)) {
@@ -175,8 +167,6 @@ auto SelectModelViewBounds(const ModelBounds3D& idle_bounds, const optional<Mode
 
 auto ResolveModelSpriteMaxLogicalFrame(int32_t max_texture_width, int32_t max_texture_height, int32_t device_atlas_width, int32_t device_atlas_height) -> isize32
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The floor is applied last: one grid step must stay allocatable however small the setting or the device atlas is
     constexpr int32_t min_texture = MODEL_SPRITE_FRAME_SCALE * MODEL_SPRITE_FRAME_ALIGNMENT;
     int32_t texture_width = max_texture_width;
@@ -203,8 +193,6 @@ auto ResolveModelSpriteMaxLogicalFrame(int32_t max_texture_width, int32_t max_te
 
 auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32 max_logical_frame) -> ModelSpriteFramePlacement
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t width = std::min(placement.Size.width, max_logical_frame.width);
     int32_t height = std::min(placement.Size.height, max_logical_frame.height);
     width = std::max((width / MODEL_SPRITE_FRAME_ALIGNMENT) * MODEL_SPRITE_FRAME_ALIGNMENT, MODEL_SPRITE_FRAME_ALIGNMENT);
@@ -223,8 +211,6 @@ auto ClampModelSpriteFramePlacement(ModelSpriteFramePlacement placement, isize32
 
 auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_direction_transform, const mat44& pre_direction_transform, float32_t projection_factor, bool include_shadow, bool clamp_to_max_frame, isize32 max_logical_frame) -> optional<ModelSpriteLayout>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!std::isfinite(projection_factor) || projection_factor <= 0.0f || !IsFinite(post_direction_transform) || !IsFinite(pre_direction_transform) || !IsValidModelBounds(bounds)) {
         return std::nullopt;
     }
@@ -310,8 +296,6 @@ auto CalculateModelSpriteLayout(const ModelBounds3D& bounds, const mat44& post_d
 
 static auto IsFinite(const mat44& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<const float32_t> values = glm::value_ptr(value);
 
     for (size_t i = 0; i < 16; i++) {
@@ -325,8 +309,6 @@ static auto IsFinite(const mat44& value) -> bool
 
 static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float32_t value_180) -> optional<pair<float32_t, float32_t>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     float64_t center = (numeric_cast<float64_t>(value_0) + numeric_cast<float64_t>(value_180)) * 0.5;
     float64_t cosine = (numeric_cast<float64_t>(value_0) - numeric_cast<float64_t>(value_180)) * 0.5;
     float64_t sine = numeric_cast<float64_t>(value_90) - center;
@@ -343,8 +325,6 @@ static auto CalculateHarmonicRange(float32_t value_0, float32_t value_90, float3
 
 static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<float32_t, float32_t>& x_range, const pair<float32_t, float32_t>& y_range)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!bounds.Initialized) {
         bounds.MinX = x_range.first;
         bounds.MinY = y_range.first;
@@ -362,8 +342,6 @@ static void IncludeProjectedRange(ProjectedLayoutBounds& bounds, const pair<floa
 
 static auto IncludeProjectedCorner(const vec3& point, const mat44& post_direction_transform, float32_t projection_factor, bool include_shadow, const vec3& ground_pos, ProjectedLayoutBounds& body_bounds, ProjectedLayoutBounds& draw_bounds) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     array<vec3, 3> world_points;
     constexpr array<float32_t, 3> angles {0.0f, 90.0f, 180.0f};
 
@@ -418,8 +396,6 @@ static auto IncludeProjectedCorner(const vec3& point, const mat44& post_directio
 
 static auto RoundFrameDimension(uint64_t value, bool clamp_to_max, uint64_t max_value) -> optional<int32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr uint64_t alignment = MODEL_SPRITE_FRAME_ALIGNMENT;
     uint64_t cap = std::max(max_value, alignment);
 

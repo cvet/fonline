@@ -43,8 +43,6 @@ class TwoDimensionalGrid
 public:
     explicit TwoDimensionalGrid(TSize size) noexcept
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_RETURN(size.width >= 0, "Two-dimensional grid width is negative", size.width, size.height);
         FO_VERIFY_AND_RETURN(size.height >= 0, "Two-dimensional grid height is negative", size.width, size.height);
 
@@ -76,13 +74,10 @@ public:
     explicit DynamicTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
-        FO_STACK_TRACE_ENTRY();
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (!base::_size.is_valid_pos(pos)) {
             return _emptyCell;
         }
@@ -99,8 +94,6 @@ public:
 
     [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Sparse two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         auto it = _cells.find(pos);
@@ -115,8 +108,6 @@ public:
 
     void Resize(TSize size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
         FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 
@@ -152,16 +143,12 @@ public:
     explicit StaticTwoDimensionalGrid(TSize size) noexcept :
         base(size)
     {
-        FO_STACK_TRACE_ENTRY();
-
         size_t count = static_cast<size_t>(static_cast<int64_t>(base::_size.width) * base::_size.height);
         _preallocatedCells.resize(count);
     }
 
     [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         if (!base::_size.is_valid_pos(pos)) {
             return _emptyCell;
         }
@@ -178,8 +165,6 @@ public:
 
     [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
     {
-        FO_NO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Dense two-dimensional grid write position is outside the grid bounds", pos, base::_size);
 
         auto index = numeric_cast<size_t>(static_cast<int64_t>(pos.y) * base::_size.width + pos.x);
@@ -194,8 +179,6 @@ public:
 
     void Resize(TSize size) override
     {
-        FO_STACK_TRACE_ENTRY();
-
         FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
         FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
 

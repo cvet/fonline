@@ -68,16 +68,12 @@ static void SetFOServiceStatus(uint32_t state);
 
 static auto GetServiceServer() -> ptr<ServerEngine>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(Data->Server, "Server engine is not created");
     return Data->Server;
 }
 
 static void ServerEntry()
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         auto settings = make_ptr(&GetApp()->Settings);
         Data->Server = safe_alloc::make_refcounted<ServerEngine>(settings, GetServerResources(*settings));
@@ -97,7 +93,7 @@ static void ServerEntry()
 #if FO_WINDOWS
 static VOID WINAPI FOServiceStart(DWORD argc, LPTSTR* argv)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(App);
 
     try {
         size_t arg_count = numeric_cast<size_t>(argc);
@@ -167,8 +163,6 @@ int main(int argc, char** argv)
 [[maybe_unused]] static auto ServerServiceApp(CommandLineArgs args) -> int
 #endif
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if !FO_TESTING_APP
     ProgramArgs program_args {numeric_cast<int32_t>(argc), argv};
     CommandLineArgs args = program_args.GetArgs();

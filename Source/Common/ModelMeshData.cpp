@@ -58,8 +58,6 @@ struct ModelMeshBoneReadFrame
 
 void WriteModelMeshHeader(data_writer& writer)
 {
-    FO_STACK_TRACE_ENTRY();
-
     writer.write_bytes({MODEL_MESH_MAGIC.data(), MODEL_MESH_MAGIC.size()});
     writer.write<uint16_t>(MODEL_MESH_SCHEMA_VERSION);
     writer.write<uint16_t>(MODEL_MESH_SUPPORTED_FLAGS);
@@ -67,8 +65,6 @@ void WriteModelMeshHeader(data_writer& writer)
 
 void ReadModelMeshHeader(data_reader& reader, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
-
     data_reader source_reader = reader;
     const_span<uint8_t> header_data;
 
@@ -104,7 +100,7 @@ void ReadModelMeshHeader(data_reader& reader, string_view context)
 
 void ValidateModelMeshData(const ModelMeshData& data, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     if (!data.RootBone) {
         throw ModelMeshDataException("Baked model mesh has no root bone", context);
@@ -124,7 +120,7 @@ void ValidateModelMeshData(const ModelMeshData& data, string_view context)
 
 void WriteModelMeshData(data_writer& writer, const ModelMeshData& data, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ValidateModelMeshData(data, context);
     WriteModelMeshHeader(writer);
@@ -133,7 +129,7 @@ void WriteModelMeshData(data_writer& writer, const ModelMeshData& data, string_v
 
 auto ReadModelMeshData(data_reader& reader, string_view context) -> ModelMeshData
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     data_reader source_reader = reader;
     ModelMeshData data;
@@ -158,8 +154,6 @@ auto ReadModelMeshData(data_reader& reader, string_view context) -> ModelMeshDat
 
 static void ValidateModelMeshBone(const ModelMeshBoneData& bone, string_view context, uint32_t depth, uint32_t& joint_count, unordered_set<string>& bone_names, vector<pair<string, string>>& skin_bone_refs)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
         throw ModelMeshDataException("Baked model mesh hierarchy depth exceeds the safe limit", context, bone.Name, MODEL_MESH_MAX_HIERARCHY_DEPTH);
     }
@@ -194,7 +188,7 @@ static void ValidateModelMeshBone(const ModelMeshBoneData& bone, string_view con
 
 static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_view owner_bone, string_view context)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1};
 
@@ -261,8 +255,6 @@ static void ValidateModelMeshGeometry(const ModelMeshGeometryData& mesh, string_
 
 static void WriteModelMeshBone(data_writer& writer, const ModelMeshBoneData& bone)
 {
-    FO_STACK_TRACE_ENTRY();
-
     writer.write_string(bone.Name);
     writer.write<mat44>(bone.TransformationMatrix);
     writer.write<mat44>(bone.GlobalTransformationMatrix);
@@ -281,8 +273,6 @@ static void WriteModelMeshBone(data_writer& writer, const ModelMeshBoneData& bon
 
 static void WriteModelMeshGeometry(data_writer& writer, const ModelMeshGeometryData& mesh)
 {
-    FO_STACK_TRACE_ENTRY();
-
     writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Vertices.size()));
     writer.write_object_vector(mesh.Vertices);
     writer.write<uint32_t>(numeric_cast<uint32_t>(mesh.Indices.size()));
@@ -295,7 +285,7 @@ static void WriteModelMeshGeometry(data_writer& writer, const ModelMeshGeometryD
 
 static auto ReadModelMeshBone(data_reader& reader, string_view context, uint32_t& joint_count) -> unique_ptr<ModelMeshBoneData>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Model);
 
     pair<unique_ptr<ModelMeshBoneData>, uint32_t> root_record = ReadModelMeshBoneNode(reader, context, 0, joint_count);
     unique_ptr<ModelMeshBoneData> root_bone = std::move(root_record.first);
@@ -328,8 +318,6 @@ static auto ReadModelMeshBone(data_reader& reader, string_view context, uint32_t
 
 static auto ReadModelMeshBoneNode(data_reader& reader, string_view context, uint32_t depth, uint32_t& joint_count) -> pair<unique_ptr<ModelMeshBoneData>, uint32_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (depth >= MODEL_MESH_MAX_HIERARCHY_DEPTH) {
         throw ModelMeshDataException("Baked model mesh hierarchy depth exceeds the safe limit", context, MODEL_MESH_MAX_HIERARCHY_DEPTH);
     }
@@ -365,8 +353,6 @@ static auto ReadModelMeshBoneNode(data_reader& reader, string_view context, uint
 
 static auto ReadModelMeshGeometry(data_reader& reader, string_view owner_bone, string_view context) -> ModelMeshGeometryData
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelMeshGeometryData mesh;
     uint32_t vertices_count = reader.read<uint32_t>();
     constexpr uint64_t max_vertex_count = uint64_t {std::numeric_limits<ModelMeshIndexData>::max()} + uint64_t {1};
@@ -412,8 +398,6 @@ static auto ReadModelMeshGeometry(data_reader& reader, string_view owner_bone, s
 
 static void VerifyModelMeshCountFitsData(const data_reader& reader, size_t count, size_t min_element_size, string_view field, string_view context, string_view owner_bone)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(min_element_size != 0, "Model mesh minimum serialized element size must be non-zero", field);
 
     if (count > reader.get_unread_size() / min_element_size) {

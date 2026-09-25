@@ -69,15 +69,11 @@ static void AppendOggPage(vector<uint8_t>& output, const ogg_page& page);
 AudioBaker::AudioBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
-
     AddLoader(std::bind(&AudioBaker::LoadWav, this, std::placeholders::_1, std::placeholders::_2), {"wav"});
 }
 
 void AudioBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_extensions)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& ext : file_extensions) {
         _fileLoaders[ext] = loader;
     }
@@ -85,7 +81,7 @@ void AudioBaker::AddLoader(const LoadFunc& loader, const vector<string>& file_ex
 
 void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     float32_t quality = _context->Settings->Baking.AudioVorbisQuality;
     FO_VERIFY_AND_THROW(quality >= -0.1f && quality <= 1.0f, "Vorbis quality must stay within the encoder range -0.1..1.0", quality);
@@ -171,14 +167,12 @@ void AudioBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
 auto AudioBaker::IsBakeableExtension(string_view ext) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return ext == NATIVE_EXTENSION || _fileLoaders.contains(string(ext));
 }
 
 auto AudioBaker::BakeFile(const File& file) const -> BakedAudioInfo
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     string_view path = file.GetPath();
     string ext = strex(path).get_file_extension();
@@ -207,7 +201,7 @@ auto AudioBaker::BakeFile(const File& file) const -> BakedAudioInfo
 
 auto AudioBaker::LoadWav(string_view fname, FileReader reader) const -> PcmAudio
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     constexpr size_t riff_header_size = 12;
     constexpr size_t chunk_header_size = 8;
@@ -298,7 +292,7 @@ auto AudioBaker::LoadWav(string_view fname, FileReader reader) const -> PcmAudio
 
 auto AudioBaker::EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(pcm.Channels > 0, "Audio has no channels to encode", fname);
     FO_VERIFY_AND_THROW(pcm.SampleRate > 0, "Audio sample rate is invalid", fname, pcm.SampleRate);
@@ -399,7 +393,7 @@ auto AudioBaker::EncodeVorbis(string_view fname, const PcmAudio& pcm) const -> v
 
 static void VerifyVorbisStream(string_view fname, const_span<uint8_t> data)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     FO_VERIFY_AND_THROW(!data.empty(), "Ogg file is empty", fname);
 
@@ -473,8 +467,6 @@ static void VerifyVorbisStream(string_view fname, const_span<uint8_t> data)
 
 static auto ReadFourcc(FileReader& reader) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     std::array<uint8_t, 4> raw {};
     reader.ReadBytes(span<uint8_t> {raw.data(), raw.size()});
 
@@ -490,8 +482,6 @@ static auto ReadFourcc(FileReader& reader) -> string
 
 static auto DecodeWavSample(const_span<uint8_t> bytes, const WavFormat& format) -> int16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (format.Tag == WAVE_FORMAT_IEEE_FLOAT) {
         uint32_t raw = bytes[0] | (numeric_cast<uint32_t>(bytes[1]) << 8) | (numeric_cast<uint32_t>(bytes[2]) << 16) | (numeric_cast<uint32_t>(bytes[3]) << 24);
         float32_t value = std::clamp(std::bit_cast<float32_t>(raw), -1.0f, 1.0f);
@@ -514,8 +504,6 @@ static auto DecodeWavSample(const_span<uint8_t> bytes, const WavFormat& format) 
 
 static void AppendOggPage(vector<uint8_t>& output, const ogg_page& page)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     const_span<uint8_t> header = make_span(page.header, numeric_cast<size_t>(page.header_len));
     const_span<uint8_t> body = make_span(page.body, numeric_cast<size_t>(page.body_len));
     output.insert(output.end(), header.begin(), header.end());

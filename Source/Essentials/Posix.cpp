@@ -103,8 +103,6 @@ static std::atomic<posix::crash_signal_handler> installed_crash_signal_handler {
 // The kernel counters arrive as decimal text, and a field that is not a whole number is a field we misread
 static auto parse_counter(string_view text, uint64_t& value) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (text.empty()) {
         return false;
     }
@@ -118,8 +116,6 @@ static auto parse_counter(string_view text, uint64_t& value) noexcept -> bool
 
 auto posix::get_current_process_id() noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC || FO_ANDROID
     return static_cast<int32_t>(::getpid());
 #else
@@ -129,7 +125,7 @@ auto posix::get_current_process_id() noexcept -> int32_t
 
 auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     if (pid <= 0) {
         return std::nullopt;
@@ -180,7 +176,7 @@ auto posix::get_running_process_start_time(int32_t pid) noexcept -> optional<uin
 
 auto posix::get_home_dir() noexcept -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if !FO_WEB
     // The reentrant form: the shared one returns a pointer into storage another caller may replace
@@ -206,8 +202,6 @@ auto posix::get_home_dir() noexcept -> optional<string>
 
 auto posix::get_executable_path() noexcept -> optional<string>
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX
     char path[FILENAME_MAX];
     auto path_data = make_ptr(path);
@@ -239,8 +233,6 @@ auto posix::get_executable_path() noexcept -> optional<string>
 
 auto posix::fork_into_background() noexcept -> bool // NOLINT(clang-diagnostic-missing-noreturn)
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC
     pid_t pid = ::fork();
 
@@ -265,7 +257,7 @@ auto posix::fork_into_background() noexcept -> bool // NOLINT(clang-diagnostic-m
 
 auto posix::get_process_resident_size() noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_LINUX || FO_ANDROID
     // /proc/self/statm: size resident shared text lib data dt, in pages
@@ -310,7 +302,7 @@ auto posix::get_process_resident_size() noexcept -> size_t
 
 auto posix::get_process_private_size() noexcept -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_LINUX || FO_ANDROID
     auto file = make_nptr(std::fopen("/proc/self/status", "r"));
@@ -341,7 +333,7 @@ auto posix::get_process_private_size() noexcept -> size_t
 
 auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
 #if FO_LINUX || FO_ANDROID
     std::ifstream file {"/proc/self/stat"};
@@ -401,8 +393,6 @@ auto posix::get_process_cpu_time_ns() noexcept -> optional<uint64_t>
 
 auto posix::get_logical_core_count() noexcept -> uint32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC || FO_ANDROID
     long core_count = ::sysconf(_SC_NPROCESSORS_ONLN);
 
@@ -414,7 +404,7 @@ auto posix::get_logical_core_count() noexcept -> uint32_t
 
 auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     vector<posix::cpu_core_times> result;
 
@@ -520,8 +510,6 @@ auto posix::get_system_cpu_times() noexcept -> vector<posix::cpu_core_times>
 
 auto posix::fill_system_random(span<uint8_t> buf) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_MAC || FO_IOS || FO_ANDROID
     // Seeded and reseeded by the kernel, and unlike getentropy present on every Android level the engine supports
     if (!buf.empty()) {
@@ -560,8 +548,6 @@ static constexpr int32_t LARGE_FILE_OPEN_FLAG = 0;
 
 static auto seek_file(int32_t fd, int64_t offset, int32_t whence) noexcept -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_ANDROID
     return ::lseek64(fd, offset, whence);
 #else
@@ -571,8 +557,6 @@ static auto seek_file(int32_t fd, int64_t offset, int32_t whence) noexcept -> in
 
 static auto read_file_offset(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     // pread carries its own offset, so concurrent readers of one descriptor never fight over a shared cursor
 #if FO_ANDROID
     return ::pread64(fd, buffer.get(), size, static_cast<int64_t>(offset));
@@ -583,8 +567,6 @@ static auto read_file_offset(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, s
 
 static auto truncate_file_to(int32_t fd, uint64_t size) noexcept -> int32_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_ANDROID
     return ::ftruncate64(fd, static_cast<int64_t>(size));
 #else
@@ -595,7 +577,7 @@ static auto truncate_file_to(int32_t fd, uint64_t size) noexcept -> int32_t
 #if !FO_WEB
 auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     int32_t fd = ::open(path.c_str(), O_RDWR | O_CREAT | LARGE_FILE_OPEN_FLAG, 0666);
 
@@ -614,8 +596,6 @@ auto posix::open_exclusive_file(const string& path) noexcept -> int32_t
 
 void posix::close_exclusive_file(int32_t fd) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)::flock(fd, LOCK_UN);
     (void)::close(fd);
 }
@@ -623,50 +603,44 @@ void posix::close_exclusive_file(int32_t fd) noexcept
 
 auto posix::seek_file_end(int32_t fd) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return seek_file(fd, 0, SEEK_END);
 }
 
 auto posix::seek_file_begin(int32_t fd) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return seek_file(fd, 0, SEEK_SET) >= 0;
 }
 
 auto posix::read_file_chunk(int32_t fd, ptr<char> buffer, size_t size) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     return ::read(fd, buffer.get(), size);
 }
 
 auto posix::write_file_chunk(int32_t fd, ptr<const char> data, size_t size) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     return ::write(fd, data.get(), size);
 }
 
 auto posix::truncate_file(int32_t fd) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     return truncate_file_to(fd, 0) == 0;
 }
 
 auto posix::sync_file(int32_t fd) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(FileSystem);
 
     return ::fsync(fd) == 0;
 }
 
 auto posix::lock_directory(const string& path) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t fd = ::open(path.empty() ? "." : path.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
 
 #if !FO_WEB
@@ -681,8 +655,6 @@ auto posix::lock_directory(const string& path) noexcept -> int32_t
 
 auto posix::sync_directory(const string& path) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_WEB
     ignore_unused(path);
     return true;
@@ -701,15 +673,11 @@ auto posix::sync_directory(const string& path) noexcept -> bool
 
 auto posix::open_shared_read_file(const string& path) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return ::open(path.c_str(), O_RDONLY | O_CLOEXEC | LARGE_FILE_OPEN_FLAG);
 }
 
 auto posix::open_new_write_file(const string& path, bool append) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     int32_t fd = ::open(path.c_str(), O_WRONLY | O_CREAT | O_CLOEXEC | LARGE_FILE_OPEN_FLAG, 0666);
 
     if (fd < 0) {
@@ -733,36 +701,26 @@ auto posix::open_new_write_file(const string& path, bool append) noexcept -> int
 
 auto posix::resize_file(int32_t fd, uint64_t size) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return size <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()) && truncate_file_to(fd, size) == 0 && seek_file(fd, static_cast<int64_t>(size), SEEK_SET) >= 0;
 }
 
 void posix::close_file(int32_t fd) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     (void)::close(fd);
 }
 
 auto posix::get_file_size(int32_t fd) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return seek_file(fd, 0, SEEK_END);
 }
 
 auto posix::read_file_at(int32_t fd, uint64_t offset, ptr<uint8_t> buffer, size_t size) noexcept -> int64_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     return read_file_offset(fd, offset, buffer, size);
 }
 
 auto posix::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Reserving the blocks is best effort: a filesystem that cannot do it reports so, and the size still has
     // to be set, which is what the caller actually depends on
 #if FO_ANDROID
@@ -781,7 +739,7 @@ auto posix::preallocate_file(int32_t fd, uint64_t size) noexcept -> bool
 #if !FO_WEB
 auto posix::run_process_capturing_output(const string& command, const function<void(string_view)>& on_output) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto command_cstr = make_ptr(command.c_str());
     auto in = make_nptr(::popen(command_cstr.get(), "r"));
@@ -806,7 +764,7 @@ auto posix::run_process_capturing_output(const string& command, const function<v
 #if FO_LINUX || FO_MAC
 auto posix::load_library(const string& path) noexcept -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto path_cstr = make_ptr(path.c_str());
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL);
@@ -814,7 +772,7 @@ auto posix::load_library(const string& path) noexcept -> nptr<void>
 
 auto posix::load_pinned_library(const string& path) noexcept -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     auto path_cstr = make_ptr(path.c_str());
     return ::dlopen(path_cstr.get(), RTLD_LAZY | RTLD_LOCAL | RTLD_NODELETE);
@@ -822,15 +780,13 @@ auto posix::load_pinned_library(const string& path) noexcept -> nptr<void>
 
 void posix::free_library(nptr<void> module_handle) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Core);
 
     (void)::dlclose(module_handle.get());
 }
 
 auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto symbol_cstr = make_ptr(symbol_name.c_str());
     return ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, symbol_cstr.get());
 }
@@ -838,8 +794,6 @@ auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_na
 
 void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC
     installed_crash_signal_handler.store(handler);
 
@@ -875,8 +829,6 @@ void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
 
 void posix::install_crash_signal_stack() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
 #if FO_LINUX || FO_MAC
     // 2 MiB is well above what the crash handler (unwinding + symbol resolution) needs; the pages are
     // touched only during a crash, so the reservation stays lazily committed for a thread that never faults
@@ -910,8 +862,6 @@ void posix::install_crash_signal_stack() noexcept
 #if FO_LINUX || FO_MAC
 static void on_crash_signal(int32_t signum, siginfo_t* info, void* context)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (posix::crash_signal_handler handler = installed_crash_signal_handler.load()) {
         int32_t code = 0;
         nptr<const void> address;

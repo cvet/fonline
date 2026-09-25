@@ -59,7 +59,7 @@ constexpr int32_t SOCKET_ERROR_VALUE = static_cast<int32_t>(-1);
 
 static void close_socket(socket_t sock) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
 #if FO_WINDOWS
     ::closesocket(sock);
@@ -70,8 +70,6 @@ static void close_socket(socket_t sock) noexcept
 
 static auto make_socket_holder(socket_t sock) -> unique_del_ptr<socket_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto socket_holder = safe_alloc::make_unique<socket_t>(sock);
     return make_unique_del_ptr(socket_holder.release(), [](ptr<socket_t> p) {
         auto owned_socket = adopt_unique_ptr(p);
@@ -82,7 +80,7 @@ static auto make_socket_holder(socket_t sock) -> unique_del_ptr<socket_t>
 
 static auto wait_socket_ready(socket_t sock, bool check_read, bool check_write, timespan timeout) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     fd_set read_set {};
     fd_set write_set {};
@@ -122,7 +120,7 @@ static auto wait_socket_ready(socket_t sock, bool check_read, bool check_write, 
 
 auto net_sockets::startup() noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
 #if FO_WINDOWS
     WSADATA wsa {};
@@ -134,7 +132,7 @@ auto net_sockets::startup() noexcept -> bool
 
 auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (host.empty() || host == "0.0.0.0" || host == "*") {
         return numeric_cast<uint32_t>(htonl(INADDR_ANY));
@@ -173,8 +171,6 @@ auto net_sockets::resolve_ipv4(string_view host) noexcept -> optional<uint32_t>
 
 auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     uint32_t addr_host_order = numeric_cast<uint32_t>(ntohl(addr_net_order));
 
     return strex("{}.{}.{}.{}", //
@@ -187,15 +183,11 @@ auto net_sockets::ipv4_to_string(uint32_t addr_net_order) noexcept -> string
 
 auto net_sockets::host_to_net_u16(uint16_t value) noexcept -> uint16_t
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return htons(value);
 }
 
 auto net_sockets::last_recv_was_would_block() noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return ::WSAGetLastError() == WSAEWOULDBLOCK;
 #else
@@ -205,8 +197,6 @@ auto net_sockets::last_recv_was_would_block() noexcept -> bool
 
 auto net_sockets::error_text(const std::error_code& error) noexcept -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     string_view description;
 
 #if FO_WINDOWS
@@ -302,8 +292,6 @@ auto net_sockets::error_text(const std::error_code& error) noexcept -> string
 
 auto net_sockets::last_error_text() noexcept -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
 #if FO_WINDOWS
     return error_text(std::error_code {::WSAGetLastError(), std::system_category()});
 #else
@@ -314,12 +302,11 @@ auto net_sockets::last_error_text() noexcept -> string
 tcp_socket::tcp_socket(socket_t sock) noexcept :
     _sock {make_socket_holder(sock)}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     close();
 
@@ -355,7 +342,7 @@ auto tcp_socket::connect(string_view host, uint16_t port) noexcept -> bool
 
 auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     close();
 
@@ -419,8 +406,6 @@ auto tcp_socket::connect_async(string_view host, uint16_t port) noexcept -> bool
 
 auto tcp_socket::can_read(timespan timeout) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -430,8 +415,6 @@ auto tcp_socket::can_read(timespan timeout) const noexcept -> bool
 
 auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -441,8 +424,6 @@ auto tcp_socket::can_write(timespan timeout) const noexcept -> bool
 
 auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -455,8 +436,6 @@ auto tcp_socket::set_nodelay(bool enabled) noexcept -> bool
 
 auto tcp_socket::peek_socket_error() const noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return -1;
     }
@@ -479,7 +458,7 @@ auto tcp_socket::peek_socket_error() const noexcept -> int32_t
 
 auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!is_valid() || data.empty()) {
         return 0;
@@ -490,7 +469,7 @@ auto tcp_socket::send(const_span<uint8_t> data) noexcept -> int32_t
 
 auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!is_valid() || data.empty()) {
         return 0;
@@ -501,14 +480,12 @@ auto tcp_socket::receive(span<uint8_t> data) noexcept -> int32_t
 
 void tcp_socket::close() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sock.reset();
 }
 
 auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     close();
 
@@ -550,8 +527,6 @@ auto tcp_server::listen(string_view bind_host, uint16_t port, int32_t backlog) n
 
 auto tcp_server::can_accept(timespan timeout) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -561,7 +536,7 @@ auto tcp_server::can_accept(timespan timeout) const noexcept -> bool
 
 auto tcp_server::accept() noexcept -> tcp_socket
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!is_valid()) {
         return {};
@@ -586,14 +561,12 @@ auto tcp_server::accept() noexcept -> tcp_socket
 
 void tcp_server::close() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _listen_sock.reset();
 }
 
 auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     close();
 
@@ -644,8 +617,6 @@ auto udp_socket::bind(string_view bind_host, uint16_t port, bool reuse_addr) noe
 
 auto udp_socket::can_read(timespan timeout) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -655,8 +626,6 @@ auto udp_socket::can_read(timespan timeout) const noexcept -> bool
 
 auto udp_socket::can_write(timespan timeout) const noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -666,8 +635,6 @@ auto udp_socket::can_write(timespan timeout) const noexcept -> bool
 
 auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!is_valid()) {
         return false;
     }
@@ -683,7 +650,7 @@ auto udp_socket::set_broadcast(bool enabled) noexcept -> bool
 
 auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> data) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!is_valid() || data.empty()) {
         return 0;
@@ -707,7 +674,7 @@ auto udp_socket::send_to(string_view host, uint16_t port, const_span<uint8_t> da
 
 auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& out_port) noexcept -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     out_host.clear();
     out_port = 0;
@@ -738,8 +705,6 @@ auto udp_socket::receive_from(span<uint8_t> data, string& out_host, uint16_t& ou
 
 void udp_socket::close() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sock.reset();
 }
 

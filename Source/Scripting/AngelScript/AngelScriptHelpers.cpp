@@ -58,23 +58,17 @@ struct ScriptTypeInfoCache
 
 void SetScriptTypeFastCompare(ptr<AngelScript::asITypeInfo> type, ScriptFastCompareFunc func)
 {
-    FO_STACK_TRACE_ENTRY();
-
     type->SetUserData(std::bit_cast<void*>(func), AS_TYPE_FAST_COMPARE_USER_DATA);
 }
 
 auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> ScriptFastCompareFunc
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> user_data = type->GetUserData(AS_TYPE_FAST_COMPARE_USER_DATA);
     return user_data ? std::bit_cast<ScriptFastCompareFunc>(user_data.get()) : nullptr;
 }
 
 [[noreturn]] void ThrowScriptCoreException(string_view file, int32_t line, int32_t result)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     string_view file_name = strvex(file).extract_file_name().erase_file_extension();
     throw ScriptCoreException("AngelScript core call failed", file_name, line, result);
 }
@@ -82,15 +76,11 @@ auto GetScriptTypeFastCompare(ptr<const AngelScript::asITypeInfo> type) -> Scrip
 template<typename T>
 static auto ScriptEngineUserDataAs(ptr<AngelScript::asIScriptEngine> as_engine, AngelScript::asPWORD type = 0) noexcept -> nptr<T>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return cast_from_void<T*>(as_engine->GetUserData(type));
 }
 
 auto GetScriptBackend(ptr<BaseEngine> engine) -> ptr<AngelScriptBackend>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto backend = engine->GetBackend<AngelScriptBackend>(ScriptSystemBackend::ANGELSCRIPT_BACKEND_INDEX);
     FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend;
@@ -98,8 +88,6 @@ auto GetScriptBackend(ptr<BaseEngine> engine) -> ptr<AngelScriptBackend>
 
 auto GetScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<AngelScriptBackend>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
     FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend;
@@ -107,8 +95,6 @@ auto GetScriptBackend(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<AngelS
 
 auto GetEngineMetadata(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<const EngineMetadata>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
     FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     auto meta = backend->GetMetadata();
@@ -118,8 +104,6 @@ auto GetEngineMetadata(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<const
 
 auto GetGameEngine(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<BaseEngine>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto backend = ScriptEngineUserDataAs<AngelScriptBackend>(as_engine);
     FO_VERIFY_AND_THROW(backend, "Missing AngelScript backend");
     return backend->GetGameEngine();
@@ -127,8 +111,6 @@ auto GetGameEngine(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<BaseEngin
 
 void CheckScriptEntityNonNull(nptr<const Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!entity) {
         throw ScriptException("Access to null entity");
     }
@@ -136,8 +118,6 @@ void CheckScriptEntityNonNull(nptr<const Entity> entity)
 
 void CheckScriptEntityNonDestroyed(nptr<const Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (entity) {
         if (entity->IsDestroyed()) {
             throw ScriptException("Access to destroyed entity");
@@ -147,8 +127,6 @@ void CheckScriptEntityNonDestroyed(nptr<const Entity> entity)
 
 void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> entity)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (entity) {
         entity->ValidateAccess();
 
@@ -160,8 +138,6 @@ void CheckScriptEntityAccessAndNonDestroyed(nptr<const Entity> entity)
 
 auto MakeScriptTypeName(const BaseTypeDesc& type) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (type.Name == "int32") {
         return string("int");
     }
@@ -185,8 +161,6 @@ auto MakeScriptTypeName(const BaseTypeDesc& type) -> string
 
 auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type, "Missing type descriptor");
 
     string result;
@@ -237,8 +211,6 @@ auto MakeScriptTypeName(const ComplexTypeDesc& type) -> string
 
 auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(type, "Missing type descriptor");
 
     string result = MakeScriptTypeName(type);
@@ -275,8 +247,6 @@ auto MakeScriptArgName(const ComplexTypeDesc& type, bool nullable) -> string
 
 auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
     result.reserve(128);
 
@@ -302,8 +272,6 @@ auto MakeScriptArgsName(const_span<ArgDesc> args) -> string
 
 auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool nullable) -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (!type) {
         return "void";
     }
@@ -329,8 +297,6 @@ auto MakeScriptReturnName(const ComplexTypeDesc& type, bool pass_ownership, bool
 
 auto MakeScriptPropertyName(ptr<const Property> prop) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string result;
 
     if (prop->IsDict()) {
@@ -355,8 +321,6 @@ auto MakeScriptPropertyName(ptr<const Property> prop) -> string
 // Example: "dict<string, Critter@[]@>@" becomes "dict<string,array<Critter@>>"
 auto NormalizeScriptPropertyDecl(string_view decl) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     string fixed_decl = strex(decl).replace("[]@", "[]").str();
 
     while (true) {
@@ -409,16 +373,12 @@ auto NormalizeScriptPropertyDecl(string_view decl) -> string
 
 static void CleanupScriptTypeInfoCache(ptr<ScriptTypeInfoCache> cache) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto owned_cache = adopt_unique_ptr(cache);
     ignore_unused(owned_cache);
 }
 
 static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     ptr<AngelScript::asIScriptEngine> as_engine = engine;
     auto cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
 
@@ -431,8 +391,6 @@ static void CleanupTypeInfoCache(AngelScript::asIScriptEngine* engine) noexcept
 
 static auto GetTypeInfoCache(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr<ScriptTypeInfoCache>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto cache = ScriptEngineUserDataAs<ScriptTypeInfoCache>(as_engine, AS_TYPE_INFO_CACHE_USER_DATA);
 
     if (!cache) {
@@ -448,8 +406,6 @@ static auto GetTypeInfoCache(ptr<AngelScript::asIScriptEngine> as_engine) -> ptr
 
 static auto LookupCachedTypeInfo(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> ptr<AngelScript::asITypeInfo>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     string type_key {type};
     auto cache = GetTypeInfoCache(as_engine);
     std::scoped_lock lock {cache->Locker};
@@ -468,8 +424,6 @@ static auto LookupCachedTypeInfo(ptr<AngelScript::asIScriptEngine> as_engine, st
 
 static auto LookupCachedTypeInfoForProperty(ptr<AngelScript::asIScriptEngine> as_engine, ptr<const Property> prop) -> ptr<AngelScript::asITypeInfo>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto cache = GetTypeInfoCache(as_engine);
     std::scoped_lock lock {cache->Locker};
 
@@ -489,24 +443,18 @@ static auto LookupCachedTypeInfoForProperty(ptr<AngelScript::asIScriptEngine> as
 
 auto CreateScriptArray(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> refcount_ptr<ScriptArray>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto as_type_info = LookupCachedTypeInfo(as_engine, type);
     return ScriptArray::Create(as_type_info);
 }
 
 auto CreateScriptDict(ptr<AngelScript::asIScriptEngine> as_engine, string_view type) -> refcount_ptr<ScriptDict>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto as_type_info = LookupCachedTypeInfo(as_engine, type);
     return ScriptDict::Create(as_type_info);
 }
 
 auto CalcConstructAddrSpace(ptr<const Property> prop) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeProtoReference()) {
             return sizeof(Entity*);
@@ -546,8 +494,6 @@ auto CalcConstructAddrSpace(ptr<const Property> prop) -> size_t
 
 void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (prop->IsPlainData()) {
         if (prop->IsBaseTypeHash()) {
             cast_from_void<hstring*>(construct_addr.get())->~hstring();
@@ -580,8 +526,6 @@ void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
 
 static void CopyPropertyStructToScriptStruct(ptr<hash_resolver> hashes, const BaseTypeDesc& base_type, span<const uint8_t> raw_data, ptr<void> script_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
     FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
@@ -608,8 +552,6 @@ static void CopyPropertyStructToScriptStruct(ptr<hash_resolver> hashes, const Ba
 
 static void CopyScriptStructToPropertyData(const BaseTypeDesc& base_type, ptr<const void> script_data, span<uint8_t> raw_data)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsStruct, "Base type is not a struct");
     FO_VERIFY_AND_THROW(base_type.StructLayout, "Struct layout is missing");
     FO_VERIFY_AND_THROW(raw_data.size() == base_type.Size, "Raw property struct size does not match the value type size", base_type.Name, raw_data.size(), base_type.Size);
@@ -635,8 +577,6 @@ static void CopyScriptStructToPropertyData(const BaseTypeDesc& base_type, ptr<co
 
 void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_data, ptr<void> construct_addr, ptr<AngelScript::asIScriptEngine> as_engine)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto resolve_hash = [prop](const_span<uint8_t> hash_data) -> hstring {
         FO_VERIFY_AND_THROW(hash_data.size() == sizeof(hstring::hash_t), "Serialized hash payload size does not match hash storage size");
         hstring::hash_t hash = memory::read_unaligned<hstring::hash_t>(hash_data.data());
@@ -1098,8 +1038,6 @@ void ConvertPropsToScriptObject(ptr<const Property> prop, PropertyRawData& prop_
 
 auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> PropertyRawData
 {
-    FO_STACK_TRACE_ENTRY();
-
     PropertyRawData prop_data;
 
     auto resolve_proto_hash = [](nptr<const Entity> entity) -> hstring::hash_t {
@@ -1655,8 +1593,6 @@ auto ConvertScriptToPropsObject(ptr<const Property> prop, ptr<void> as_obj) -> P
 
 auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     switch (type_id) {
     case AngelScript::asTYPEID_VOID:
         return "void";
@@ -1767,8 +1703,6 @@ auto GetScriptObjectInfo(ptr<const void> script_obj, int32_t type_id) -> string
 
 auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, hash_resolver& hashes) -> hstring
 {
-    FO_STACK_TRACE_ENTRY();
-
     nptr<const char> ns = func->GetNamespace();
     nptr<const char> name = func->GetName();
     string_view ns_view = ns ? string_view {ns.get()} : string_view {};
@@ -1788,8 +1722,6 @@ auto GetScriptFuncName(ptr<const AngelScript::asIScriptFunction> func, hash_reso
 
 auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_namespaces) noexcept -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (allowed_namespaces.empty() || ns.empty()) {
         return false;
     }
@@ -1809,8 +1741,6 @@ auto IsScriptNamespaceAllowed(string_view ns, const vector<string>& allowed_name
 
 auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(enum_type.IsEnum, "Type is not an enum");
     FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType, "Enum underlying type is null");
     FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
@@ -1847,8 +1777,6 @@ auto ReadEnumValueAsInt32(ptr<const void> ptr, const BaseTypeDesc& enum_type) ->
 
 void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32_t value)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(enum_type.IsEnum, "Type is not an enum");
     FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType, "Enum underlying type is null");
     FO_VERIFY_AND_THROW(enum_type.EnumUnderlyingType->IsInt, "Enum underlying type is not integer");
@@ -1889,8 +1817,6 @@ void WriteEnumValueFromInt32(ptr<void> ptr, const BaseTypeDesc& enum_type, int32
 
 auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -1903,8 +1829,6 @@ auto CreateRefTypeScriptObjectFromRawData(const BaseTypeDesc& base_type, span<co
 
 auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<void> as_obj) -> vector<uint8_t>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(base_type.IsRefType, "Base type is not a reference type");
     FO_VERIFY_AND_THROW(base_type.RefType, "Reference type descriptor is null");
     FO_VERIFY_AND_THROW(base_type.RefType->FieldsRegistrar, "Reference type has no fields registrar");
@@ -1921,8 +1845,6 @@ auto ConvertRefTypeScriptObjectToRawData(const BaseTypeDesc& base_type, nptr<voi
 
 auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const uint8_t> raw_data) -> refcount_ptr<DynamicRefTypeInstance>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsBaseTypeRefType(), "Property base type is not a reference type");
 
     return CreateRefTypeScriptObjectFromRawData(prop->GetBaseType(), raw_data);
@@ -1930,8 +1852,6 @@ auto CreateRefTypeScriptObjectFromProperty(ptr<const Property> prop, span<const 
 
 auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> as_obj) -> PropertyRawData
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(prop->IsBaseTypeRefType(), "Property base type is not a reference type");
     auto raw_data = ConvertRefTypeScriptObjectToRawData(prop->GetBaseType(), as_obj);
 
@@ -1946,8 +1866,6 @@ auto ConvertRefTypeScriptObjectToProperty(ptr<const Property> prop, nptr<void> a
 
 auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> object = gen->GetObject();
     FO_STRONG_ASSERT(object, "Generic call object is null");
     return object;
@@ -1955,8 +1873,6 @@ auto GetGenericObject(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<vo
 
 auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> auxiliary = gen->GetAuxiliary();
     FO_STRONG_ASSERT(auxiliary, "Generic call auxiliary is null");
     return auxiliary;
@@ -1964,15 +1880,11 @@ auto GetGenericAuxiliary(ptr<AngelScript::asIScriptGeneric> gen) noexcept -> ptr
 
 auto GetGenericArgAddress(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> nptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return gen->GetArgAddress(arg_index);
 }
 
 auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_index) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> arg_address = gen->GetAddressOfArg(arg_index);
     FO_STRONG_ASSERT(arg_address, "Generic call argument address is null");
     return arg_address;
@@ -1980,53 +1892,39 @@ auto GetGenericAddressArg(ptr<AngelScript::asIScriptGeneric> gen, uint32_t arg_i
 
 void ReturnGenericEntity(ptr<AngelScript::asIScriptGeneric> gen, nptr<Entity> entity) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (gen->GetAddressOfReturnLocation()) Entity*(entity.get());
 }
 
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, ptr<ScriptArray> arr) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr.get());
 }
 
 void ReturnGenericScriptArray(ptr<AngelScript::asIScriptGeneric> gen, refcount_ptr<ScriptArray>&& arr) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     new (gen->GetAddressOfReturnLocation()) ScriptArray*(arr.release_ownership());
 }
 
 void SetScriptObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, ptr<void> slot)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t as_result = 0;
     FO_AS_VERIFY(ctx->SetObject(NativeDataProvider::ReadHandleSlot(slot).get()));
 }
 
 void SetScriptArgObjectFromHandleSlot(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index, ptr<void> slot)
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     int32_t as_result = 0;
     FO_AS_VERIFY(ctx->SetArgObject(arg_index, NativeDataProvider::ReadHandleSlot(slot).get()));
 }
 
 auto GetNullableHandleSlotAddress(ptr<nptr<void>> slot) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto slot_address = make_ptr(slot->get_pp()).reinterpret_as<void>();
     return slot_address;
 }
 
 auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg_index) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> arg_address = ctx->GetAddressOfArg(arg_index);
     FO_STRONG_ASSERT(arg_address, "Context argument address is null");
     return arg_address;
@@ -2034,8 +1932,6 @@ auto GetContextAddressOfArg(ptr<AngelScript::asIScriptContext> ctx, uint32_t arg
 
 auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noexcept -> ptr<void>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     nptr<void> return_value = ctx->GetAddressOfReturnValue();
     FO_STRONG_ASSERT(return_value, "Context return value address is null");
     return return_value;
@@ -2043,8 +1939,6 @@ auto GetContextAddressOfReturnValue(ptr<AngelScript::asIScriptContext> ctx) noex
 
 auto MakeAngelScriptFuncDescBorrow(ptr<ScriptFuncDesc> func_desc, refcount_ptr<AngelScript::asIScriptFunction> func_lifetime) -> unique_del_ptr<ScriptFuncDesc>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return make_unique_del_ptr(func_desc, [func_lifetime = std::move(func_lifetime)](ptr<ScriptFuncDesc> released_func_desc) noexcept { ignore_unused(released_func_desc, func_lifetime); });
 }
 

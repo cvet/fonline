@@ -46,8 +46,6 @@ FO_BEGIN_NAMESPACE
 #if FO_ANGELSCRIPT_SCRIPTING
 static void ExpectMetadataBakerError(string_view script, string_view message)
 {
-    FO_STACK_TRACE_ENTRY();
-
     BakerTests::TestRig local_rig;
     local_rig.AddSourceFile("Scripts/BrokenMetadata.fos", string(script));
 

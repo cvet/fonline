@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"f9ed0ece27bc8ad5759fb91ae1ce5a3798c9d8664ef2f9ea857e928879ef7b99"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"aaf7e3da5ec6927f165462eb072de6f1bb6380effbaab4faf34ce7353ba43f70"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -348,6 +348,13 @@ frame и вызвать rerender.
 `DrawSize` и `ViewSize` больше не входят в `.fo3d`; `ModelInfoBaker` отклоняет их. Incremental timestamp companion охватывает все inputs pack, включая animation FBX. Отчёт фиксирует model sections, bounds, durations, selected idle/fallback, cache/calculator counts и histogram maximum-axis extent. Individual descriptions проверяются до aggregate companion.
 
 Companion хранит effective `(state, action)` durations после `AnimSpeed` и one-step aliases. Любой pack может выбрать `ModelInfo`; ветвления по `PackName` нет. `EngineMetadata` регистрирует records и hashes при startup. Скрипт `Game.GetModelAnimDuration` возвращает `timespan` либо zero при отсутствии resource/model/tuple. Внутренний config format не должен разбираться кодом проекта.
+
+Direct3D использует запечённый `-dxbc`, полученный из HLSL SPIRV-Cross через
+vendored vkd3d-shader, а не компилирует HLSL в runtime. Опциональный
+`Baking.Direct3DLevel9Shaders` вызывает `Direct3DLevel9.cpp` и добавляет chunk
+`Aon9` уровня 9.3 только к non-model effects. Неподдерживаемые конструкции
+прерывают запекание. Renderer с 3D не использует устройство 9.3; уровни 9.1/9.2
+не поддерживаются. См. [формат эффектов](../../how-to/content/effect-format.md#выходы-запекания).
 
 ## Архитектура запекания 3D-моделей
 

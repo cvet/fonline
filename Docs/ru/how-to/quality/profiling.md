@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"09882fe95db7a3c533154795132e183b81ced3bcfe1d45d355235cd80b51bdab"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"c9409e4af4f48d4dfca7268211404b7c5d63abab39ee8230f2931d20a46c3d72"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -88,20 +88,31 @@ process. В client route не переносите его раньше readiness
 ## Что инструментирует движок
 
 Конфигурации профилирования подключают `TracyClient` к слою essentials движка
-и определяют `FO_TRACY=1`. В остальных конфигурациях задано `FO_TRACY=0`, и
-макросы профилирования движка исключаются при компиляции.
+и определяют `FO_TRACE_ENABLED`. В остальных конфигурациях зоны исключаются
+при компиляции. `FO_TRACE_CATEGORIES` выбирает категории в Tracy-сборке:
+пустое значение (по умолчанию) включает все категории зон, но не сигналы
+opt-in; `Render,Gui` оставляет только эти зоны, `+Memory` добавляет события
+выделения памяти, а `-Script` исключает зоны скриптов. Неизвестная категория
+прерывает конфигурацию. Выбор записывается в `TraceCategories.gen.h` как 0/1.
 
 | Сигнал | Текущее поведение движка |
 |---|---|
 | Идентификатор процесса | `ApplicationInit` передает Tracy значение `FO_NICE_NAME`. |
-| Native CPU zones | `FO_STACK_TRACE_ENTRY()` превращается в `ZoneScoped`, именованная форма — в `ZoneScopedN`. |
-| AngelScript CPU zones | Выполненные script-вызовы создают zones с исходными файлом, строкой и declaration. При продолжении suspended context восстанавливает стек script zones. |
+| Native CPU zones | `FO_TRACE_ZONE(Category)` и `FO_TRACE_ZONE_NAMED(Category, name)` создают цветные зоны лишь для выбранных категорий; это не native stack trace. |
+| Script CPU zones | Категория `Script` управляет generated bindings, вызовами AngelScript и зонами методов Mono. После suspension AngelScript восстанавливает стек зон. |
 | Frames | Видимый и headless-пути `Application::EndFrame()` создают `FrameMark`. |
 | Client plot | `ClientEngine::MainLoop()` публикует `Client FPS`. |
 | Server plot | Задача серверной статистики публикует `Server jobs per second`. |
-| Сообщения журнала | Записи журнала движка также передаются как сообщения Tracy. |
+| Сообщения журнала | Записи журнала передаются Tracy только при opt-in `Log`. |
 | Потоки | Имена потоков движка видны в Tracy и в помеченных строках журнала. |
-| Память | Выделения движка через учитывающий Tracy путь rpmalloc создают события allocation/free. |
+| Память | События allocator-а движка требуют opt-in `Memory`; обычные выделения C-библиотеки не учитываются. |
+
+Категории зон в `Source/Essentials/BasicCore.h`: `App`, `Engine`, `Entity`,
+`Map`, `Script`, `Network`, `Database`, `Threading`, `Render`, `Model`,
+`Particles`, `Gui`, `Audio`, `FileSystem`, `Core`, `Baking`, `Editor`.
+Frame marks, plots и имена потоков доступны в каждой Tracy-сборке.
+`FO_TRACE_CATEGORY_ENABLED(Category)` проверяет включение категории;
+non-Tracy-сборка всё равно проверяет имя категории.
 
 Текущая first-party интеграция не добавляет renderer GPU zones или Tracy lock
 wrappers. Поэтому CPU capture нельзя представлять как доказательство GPU timing
@@ -338,7 +349,7 @@ Client captures показывают plot `Client FPS`. Server captures пока
 
 ## Зоны managed-скриптов
 
-При `FO_TRACY` backend Managed C# использует Mono profiler, чтобы представить
+При включенной категории `Script` backend Managed C# использует Mono profiler, чтобы представить
 каждый инструментированный метод игрового скрипта как Tracy zone с source file
 и строкой объявления. Нативные зоны Engine вложены под ней, поэтому строка
 журнала `Script execution overrun: GameScripts.Audio.OnLoop` указывает entry,
@@ -370,13 +381,21 @@ JIT. Для измерения startup используйте `Profiling_Total`.
 Lifecycle profiler hook, image filter, исключение tail call и общий cache
 metadata методов описаны в [Managed C# Scripting](../scripting/managed-csharp.md#диагностика-и-debugging).
 
-## Добавление узкой инструментации
+## Размещение зон
 
-Сначала используйте существующие zones. Большинство native-функций движка уже
-вызывают `FO_STACK_TRACE_ENTRY()`, а AngelScript calls публикуются
-автоматически. Если широкой функции нужна стабильная semantic label,
-используйте `FO_STACK_TRACE_ENTRY_NAMED` в ее владеющем native scope. Прямые
-макросы `TracyPlot`, allocation и message ограждайте `#if FO_TRACY`.
+Сначала используйте существующие зоны. `FO_TRACE_ZONE(Category)` ставьте первым
+оператором выбранной нетривиальной функции `.cpp`: frame/tick orchestration,
+переменная нагрузка, блокировка или редкий дорогой путь.
+`FO_TRACE_ZONE_NAMED(Category, name)` подходит для generated bindings,
+подписки на события и осмысленного job lambda. Экспорт скрипта получает зону
+generated binding, а не дополнительную прямую зону. При необходимости отделяйте
+дешёвый общий путь от дорогого условного участка (ожидание entity lock,
+sprite flush). Не добавляйте зоны механически в accessors, простые forwarders,
+горячие поэлементные helpers, конструкторы/деструкторы, код профайлера,
+бесконечные циклы, заголовки, lambdas и тесты; зона в
+`EntityEventWrapper::FireSubscribed` — осознанное исключение для заголовка.
+Прямые макросы Tracy ограждайте `#if FO_TRACE_ENABLED`; `Memory` и `Log`
+включайте лишь когда нужен соответствующий сигнал.
 
 Инструментация должна:
 
@@ -455,7 +474,7 @@ context требуют capture, который выполняет, приост�
 Обновляйте эту страницу в том же изменении, когда:
 
 - меняются имена profiling configurations или их base configurations;
-- меняется wiring `FO_TRACY`, `TRACY_ENABLE` или `TRACY_ON_DEMAND`;
+- меняется wiring `FO_TRACE_ENABLED`, `FO_TRACE_CATEGORIES`, `TRACY_ENABLE` или `TRACY_ON_DEMAND`;
 - меняется версия Tracy или состав сокращенного vendored payload;
 - меняются frame marks, имена program/thread, logs, plots, allocation tracking
   или AngelScript zones;

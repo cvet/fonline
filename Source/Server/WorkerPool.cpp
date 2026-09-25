@@ -42,7 +42,7 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
     _shutdownFlag {shutdown_flag},
     _paused {start_paused}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     if (thread_count <= 0) {
         thread_count = std::max(1, numeric_cast<int32_t>(std::thread::hardware_concurrency()) - 1);
@@ -65,14 +65,12 @@ WorkerPool::WorkerPool(string_view name, int32_t thread_count, ptr<const std::at
 
 WorkerPool::~WorkerPool()
 {
-    FO_STACK_TRACE_ENTRY();
-
     StopWorkers();
 }
 
 void WorkerPool::StopWorkers() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     {
         scoped_lock locker {_mutex};
@@ -96,8 +94,6 @@ void WorkerPool::Submit(Job job)
 
 void WorkerPool::Submit(timespan delay, Job job)
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_mutex};
 
@@ -118,8 +114,6 @@ void WorkerPool::Submit(JobKey key, Job job)
 
 void WorkerPool::Submit(JobKey key, timespan delay, Job job)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key == ANONYMOUS_JOB) {
         Submit(delay, std::move(job));
         return;
@@ -152,8 +146,6 @@ void WorkerPool::Submit(JobKey key, timespan delay, Job job)
 
 auto WorkerPool::Wake(JobKey key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key == ANONYMOUS_JOB) {
         return false;
     }
@@ -202,8 +194,6 @@ auto WorkerPool::Wake(JobKey key) -> bool
 
 auto WorkerPool::Cancel(JobKey key) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key == ANONYMOUS_JOB) {
         return false;
     }
@@ -252,8 +242,6 @@ auto WorkerPool::Cancel(JobKey key) -> bool
 
 void WorkerPool::Clear()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_mutex};
 
     _jobs.clear();
@@ -271,7 +259,7 @@ void WorkerPool::Clear()
 
 void WorkerPool::WaitIdle() const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker {_mutex};
 
@@ -282,7 +270,7 @@ void WorkerPool::WaitIdle() const
 
 auto WorkerPool::WaitIdle(timespan timeout) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker {_mutex};
 
@@ -299,8 +287,6 @@ auto WorkerPool::WaitIdle(timespan timeout) const -> bool
 
 void WorkerPool::Resume()
 {
-    FO_STACK_TRACE_ENTRY();
-
     {
         scoped_lock locker {_mutex};
 
@@ -318,7 +304,7 @@ void WorkerPool::Resume()
 
 void WorkerPool::Pause()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Threading);
 
     unique_lock locker {_mutex};
 
@@ -331,8 +317,6 @@ void WorkerPool::Pause()
 
 void WorkerPool::FreezeSchedulingTime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_mutex};
 
     FO_VERIFY_AND_THROW(_paused && _activeWorkers == 0, "WorkerPool scheduling time can only freeze at a drained pause boundary", _paused, _activeWorkers);
@@ -344,8 +328,6 @@ void WorkerPool::FreezeSchedulingTime()
 
 void WorkerPool::ResumeSchedulingTime()
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_mutex};
 
     FO_VERIFY_AND_THROW(_paused && _activeWorkers == 0, "WorkerPool scheduling time can only resume at a drained pause boundary", _paused, _activeWorkers);
@@ -359,8 +341,6 @@ void WorkerPool::ResumeSchedulingTime()
 
 auto WorkerPool::GetPendingJobCount() const -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_mutex};
 
     return _jobs.size();
@@ -368,8 +348,6 @@ auto WorkerPool::GetPendingJobCount() const -> size_t
 
 auto WorkerPool::GetDiagnostics() const -> Diagnostics
 {
-    FO_STACK_TRACE_ENTRY();
-
     scoped_lock locker {_mutex};
 
     return Diagnostics {
@@ -388,8 +366,6 @@ auto WorkerPool::GetDiagnostics() const -> Diagnostics
 
 auto WorkerPool::IsKeyActive(JobKey key) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (key == ANONYMOUS_JOB) {
         return false;
     }
@@ -439,8 +415,6 @@ auto WorkerPool::GetSchedulingTime() const noexcept -> nanotime
 
 void WorkerPool::WorkerEntry(int32_t worker_index) noexcept
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     set_this_thread_name(strex("{}-{}", _name, worker_index));
 
     while (true) {

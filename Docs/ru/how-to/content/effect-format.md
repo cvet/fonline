@@ -5,7 +5,7 @@ locale: ru
 document_id: effect-format-guide
 permalink: /Docs/ru/how-to/content/effect-format.html
 ---
-<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"6c1d1e311816be8c4049c69ba79b24e3c7beab13bccbedca344196cfcbcacb01"} -->
+<!-- docs-translation: {"document_id":"effect-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/effect-format.md","source_sha256":"dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145"} -->
 # Формат эффектов и runtime шейдеров
 
 FOnline использует файлы `.fofx` для авторских GPU-эффектов. Один исходный файл
@@ -474,9 +474,16 @@ Game.ClearEffectScriptValues(effectType, effectSubtype);
 | `spv_sdl` | путь SDL_GPU Vulkan |
 | `glsl` | desktop OpenGL (`330`) |
 | `glsl_es` | OpenGL ES/WebGL (`300 es`) |
-| `hlsl` | Direct3D (Shader Model `4.0`) |
+| `hlsl` | Промежуточный HLSL Shader Model `4.0`, компилируемый при запекании |
+| `dxbc` | Bytecode Direct3D 11, собранный из HLSL через vendored vkd3d-shader |
 | `msl_mac` | SDL_GPU Metal на macOS |
 | `msl_ios` | SDL_GPU Metal на iOS |
+
+При `Baking.Direct3DLevel9Shaders = True` baker также помещает chunk `Aon9`
+для уровня 9.3 в эффекты, не относящиеся к моделям. Если shader не укладывается
+в этот профиль, запекание завершается ошибкой; эффекты 3D-моделей его не
+получают. Настройка по умолчанию выключена. Это opt-in для 2D-only Direct3D,
+а не поддержка 9.1/9.2.
 
 Схема имён:
 

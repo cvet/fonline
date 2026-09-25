@@ -41,8 +41,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 {
-    FO_STACK_TRACE_ENTRY();
-
     GlobalSettings settings(false);
     settings.ApplyDefaultSettings();
     settings.ApplyAutoSettings();
@@ -57,8 +55,6 @@ static auto MakeServerEntityLifetimeSettings() -> GlobalSettings
 
 static auto MakeServerEntityLifetimeResources() -> FileSystem
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
     auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ServerEntityLifetimeCompiler");
     compiler_source->AddFile("Metadata.fometa-server", metadata);
@@ -86,8 +82,6 @@ static auto MakeServerEntityLifetimeResources() -> FileSystem
 
 static auto WaitForServerEntityLifetimeStartup(ptr<ServerEngine> server) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     nanotime deadline = nanotime::now() + std::chrono::seconds {30};
 
     while (nanotime::now() < deadline) {
@@ -106,8 +100,6 @@ static auto WaitForServerEntityLifetimeStartup(ptr<ServerEngine> server) -> bool
 
 static auto MakeServerEntityLifetimeOwners(ptr<ServerEngine> server, ptr<StaticMap> static_map) -> vector<refcount_ptr<ServerEntity>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The caller quiesces the server after complete startup; registrar setup and hash interning cannot race it
     auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
     auto item_proto = server->GetProtoItem(server->Hashes.to_hashed_string("LifetimeItem"));

@@ -41,22 +41,16 @@ ItemView::ItemView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoItem> pr
     EntityWithProto(proto),
     ItemProperties(*GetInitRef())
 {
-    FO_STACK_TRACE_ENTRY();
-
     _name = strex("{}_{}", proto->GetName(), id);
 }
 
 ItemView::~ItemView()
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_CONTINUE(_innerItems.empty(), "Client item view has inner items during destruction", GetId(), _innerItems.size());
 }
 
 void ItemView::OnDestroySelf()
 {
-    FO_STACK_TRACE_ENTRY();
-
     SetOwnership(ItemOwnership::Nowhere);
     SetCritterId(ident_t {});
     SetCritterSlot(CritterItemSlot::Inventory);
@@ -70,7 +64,7 @@ void ItemView::OnDestroySelf()
 
 auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto proto = require_refcount_ptr(_proto.dyn_cast<const ProtoItem>());
 
@@ -83,7 +77,7 @@ auto ItemView::CreateRefClone() -> refcount_ptr<ItemView>
 
 auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, nptr<const Properties> props) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, props);
 
@@ -97,7 +91,7 @@ auto ItemView::AddMapperInnerItem(ident_t id, ptr<const ProtoItem> proto, const 
 
 auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, const any_t& stack_id, const vector<vector<uint8_t>>& props_data) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Entity);
 
     auto item = safe_alloc::make_refcounted<ItemView>(_engine, id, proto, nullptr);
 
@@ -109,8 +103,6 @@ auto ItemView::AddReceivedInnerItem(ident_t id, ptr<const ProtoItem> proto, cons
 
 auto ItemView::AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(!item->GetStatic(), "Item is static and cannot be attached here");
     FO_VERIFY_AND_THROW(item->GetOwnership() == ItemOwnership::ItemContainer, "Item is not owned by this container");
     FO_VERIFY_AND_THROW(item->GetContainerId() == GetId(), "Item belongs to a different container");
@@ -122,8 +114,6 @@ auto ItemView::AddRawInnerItem(ptr<ItemView> item) -> ptr<ItemView>
 
 void ItemView::DestroyInnerItem(ptr<ItemView> item)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto item_ref_holder = item.hold_ref();
     vec_remove_unique_value(_innerItems, item_ref_holder);
 

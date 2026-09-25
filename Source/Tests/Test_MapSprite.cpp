@@ -39,8 +39,6 @@ FO_BEGIN_NAMESPACE
 
 static auto AddTestSprite(MapSpriteList& list, DrawOrderType draw_order, mpos hex, int8_t sub_layer) -> ptr<MapSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return list.AddSprite(draw_order, hex, ipos32 {}, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, sub_layer);
 }
 
@@ -93,20 +91,29 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(drawn_second == ptr<const MapSprite>(second));
     }
 
-    SECTION("SubLayerOnlyBreaksTheTieOfOneLayerOnOneHex")
+    SECTION("LowerSubLayerDrawsFirstInOneScreenRow")
     {
-        // The extremes of the sub-layer never outrank the hex, the row or the layer: a critter on the cell still
-        // stands in front of any item there, and anything on a nearer row still paints over the farther one
-        uint64_t lowest_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, std::numeric_limits<int8_t>::min());
-        uint64_t highest_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, std::numeric_limits<int8_t>::max());
-        uint64_t critter_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, std::numeric_limits<int8_t>::min());
-        uint64_t lowest_nearer = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEARER_ROW, std::numeric_limits<int8_t>::min());
-        uint64_t next_hex = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, mpos {101, 100}, std::numeric_limits<int8_t>::min());
+        // Hex 102:99 shares the screen row of 100:100 and stands further left: a wall slice there used to draw after
+        // an item on 100:100 and cut off whatever of the item reached sideways over it
+        constexpr mpos ROW_NEIGHBOUR {102, 99};
+        uint64_t wall_on_neighbour = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, WALL_SUB_LAYER);
+        uint64_t item_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, SCENERY_SUB_LAYER);
+        uint64_t critter_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, SCENERY_SUB_LAYER);
+        uint64_t item_on_neighbour = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, SCENERY_SUB_LAYER);
 
-        CHECK(lowest_here < highest_here);
-        CHECK(highest_here < critter_here);
-        CHECK(critter_here < lowest_nearer);
-        CHECK(highest_here < next_hex);
+        CHECK(GeometryHelper::GetHexScreenRow(ROW_NEIGHBOUR) == GeometryHelper::GetHexScreenRow(WALL_CELL));
+        CHECK(wall_on_neighbour < item_here);
+        CHECK(item_here < critter_here);
+        CHECK(critter_here < item_on_neighbour);
+    }
+
+    SECTION("SubLayerNeverOutranksTheRow")
+    {
+        // Anything on a nearer row still paints over the farther one, whatever sub-layers the two carry
+        uint64_t highest_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, std::numeric_limits<int8_t>::max());
+        uint64_t lowest_nearer = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEARER_ROW, std::numeric_limits<int8_t>::min());
+
+        CHECK(highest_here < lowest_nearer);
     }
 
     SECTION("SubLayerAppliesToFlatLayersWithoutLeavingThem")

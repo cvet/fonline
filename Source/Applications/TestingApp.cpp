@@ -49,8 +49,6 @@ FO_USING_NAMESPACE();
 
 int32_t main(int32_t argc, char** argv)
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         IsTestingInProgress = true;
         InitAppForTesting();

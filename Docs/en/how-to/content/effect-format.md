@@ -461,9 +461,15 @@ For each pass and stage, EffectBaker emits:
 | `spv_sdl` | SDL_GPU Vulkan path |
 | `glsl` | OpenGL desktop (`330`) |
 | `glsl_es` | OpenGL ES/WebGL (`300 es`) |
-| `hlsl` | Direct3D (Shader Model `4.0`) |
+| `hlsl` | Intermediate HLSL Shader Model `4.0`, compiled at bake time |
+| `dxbc` | Direct3D 11 bytecode, compiled from HLSL by vendored vkd3d-shader |
 | `msl_mac` | SDL_GPU Metal on macOS |
 | `msl_ios` | SDL_GPU Metal on iOS |
+
+With `Baking.Direct3DLevel9Shaders = True`, the baker also embeds an `Aon9`
+level-9.3 bytecode chunk in non-model effects. A shader that exceeds that
+profile fails baking; 3D-model effects do not receive it. The default is off.
+This is an opt-in for 2D-only Direct3D builds, not support for 9.1/9.2.
 
 Naming is:
 

@@ -51,7 +51,7 @@ static auto IsFinite(const mat44& value) -> bool;
 ModelBoundsSampler::ModelBoundsSampler(const ModelMeshData& model_data, const vector<string>& disabled_meshes, ModelBoundsMeasurement measurement) :
     _measurement {measurement}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     try {
         FO_VERIFY_AND_THROW(model_data.RootBone, "Baked model has no root bone");
@@ -70,7 +70,7 @@ ModelBoundsSampler::ModelBoundsSampler(const ModelMeshData& model_data, const ve
 
 auto ModelBoundsSampler::CalculateStaticBounds() const -> optional<ModelBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     if (!_measurable) {
         return std::nullopt;
@@ -87,7 +87,7 @@ auto ModelBoundsSampler::CalculateStaticBounds() const -> optional<ModelBounds3D
 
 auto ModelBoundsSampler::CalculateAnimationBounds(const ModelAnimationSource& animation, bool reversed) const -> optional<ModelBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     try {
         if (!_measurable) {
@@ -134,8 +134,6 @@ auto ModelBoundsSampler::CalculateAnimationBounds(const ModelAnimationSource& an
 
 auto ModelBoundsSampler::GetBindPoseBoneTransform(string_view bone) const -> optional<mat44>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_hierarchyUsable) {
         return std::nullopt;
     }
@@ -151,7 +149,7 @@ auto ModelBoundsSampler::GetBindPoseBoneTransform(string_view bone) const -> opt
 
 auto ModelBoundsSampler::SampleBoneTransforms(const ModelAnimationSource& animation, bool reversed, string_view bone) const -> optional<vector<mat44>>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     try {
         if (!_hierarchyUsable) {
@@ -200,8 +198,6 @@ auto ModelBoundsSampler::SampleBoneTransforms(const ModelAnimationSource& animat
 
 auto CalculateRigidAttachmentBounds(const_span<mat44> bone_transforms, const ModelBounds3D& attachment_bounds, const mat44& attachment_transform) -> optional<ModelBounds3D>
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!IsValidModelBounds(attachment_bounds) || !IsFinite(attachment_transform)) {
         return std::nullopt;
     }
@@ -219,8 +215,6 @@ auto CalculateRigidAttachmentBounds(const_span<mat44> bone_transforms, const Mod
 
 void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size_t> parent)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t bone_index = _bones.size();
     Bone& target = _bones.emplace_back();
     target.Name = bone.Name;
@@ -270,8 +264,6 @@ void ModelBoundsSampler::AppendBone(const ModelMeshBoneData& bone, optional<size
 
 auto ModelBoundsSampler::BuildBoneIndex() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _boneIndex.reserve(_bones.size());
 
     for (size_t i = 0; i < _bones.size(); i++) {
@@ -285,8 +277,6 @@ auto ModelBoundsSampler::BuildBoneIndex() -> bool
 
 auto ModelBoundsSampler::BuildBindPoseTransforms() -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     _bindPoseTransforms.resize(_bones.size());
 
     for (size_t i = 0; i < _bones.size(); i++) {
@@ -309,8 +299,6 @@ auto ModelBoundsSampler::BuildBindPoseTransforms() -> bool
 
 auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_meshes) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr float64_t weight_sum_tolerance = 0.001;
     bool all_meshes_disabled = std::ranges::find(disabled_meshes, string {}) != disabled_meshes.end();
 
@@ -411,8 +399,6 @@ auto ModelBoundsSampler::BuildDrawableMeshes(const vector<string>& disabled_mesh
 // bone matrix. A blended vertex is a convex combination of its slots, hence inside the union of the boxes
 void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
 
     if (drawable_mesh.SkinBones.empty()) {
@@ -442,8 +428,6 @@ void ModelBoundsSampler::BuildMeshEnvelopes(DrawableMesh& drawable_mesh) const
 
 auto ModelBoundsSampler::BuildBoneOutputs(const ModelAnimationSource& animation) const -> optional<vector<nptr<const ModelAnimationJointSource>>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     unordered_map<string, size_t> output_index;
     output_index.reserve(animation.Joints.size());
 
@@ -466,8 +450,6 @@ auto ModelBoundsSampler::BuildBoneOutputs(const ModelAnimationSource& animation)
 
 auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation, const vector<nptr<const ModelAnimationJointSource>>& outputs, bool reversed) const -> optional<vector<float32_t>>
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr float64_t GRID_SAMPLES_PER_SECOND = 60.0;
 
     if (!std::isfinite(animation.Duration) || animation.Duration <= 0.0f) {
@@ -505,8 +487,6 @@ auto ModelBoundsSampler::BuildSampleTimes(const ModelAnimationSource& animation,
 
 auto ModelBoundsSampler::BuildCombinedTransforms(const vector<nptr<const ModelAnimationJointSource>>& outputs, float32_t time, float32_t duration, bool reversed, vector<mat44>& combined_transforms) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(outputs.size() == _bones.size(), "Animation output mapping size does not match model hierarchy");
     FO_VERIFY_AND_THROW(combined_transforms.size() == _bones.size(), "Combined transform buffer size does not match model hierarchy");
 
@@ -532,8 +512,6 @@ auto ModelBoundsSampler::BuildCombinedTransforms(const vector<nptr<const ModelAn
 
 auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_transforms, optional<ModelBounds3D>& bounds) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const DrawableMesh& drawable_mesh : _drawableMeshes) {
         const Mesh& mesh = *_bones[drawable_mesh.OwnerBone].AttachedMesh;
 
@@ -605,8 +583,6 @@ auto ModelBoundsSampler::IncludePosedGeometry(const vector<mat44>& combined_tran
 
 static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto validate_track = [](const auto& times, const auto& values) {
         if (times.size() != values.size()) {
             return false;
@@ -632,8 +608,6 @@ static auto ValidateJointTracks(const ModelAnimationJointSource& joint) -> bool
 
 static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t duration, bool reversed, vector<float32_t>& sample_times)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i < times.size(); i++) {
         float32_t sample_time = std::clamp(reversed ? duration - times[i] : times[i], 0.0f, duration);
         sample_times.emplace_back(sample_time);
@@ -654,8 +628,6 @@ static void AppendTrackSampleTimes(const vector<float32_t>& times, float32_t dur
 
 static auto SampleJointTransform(const ModelAnimationJointSource& joint, float32_t time, float32_t duration, bool reversed) -> mat44
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     vec3 scale = SampleVectorTrack(time, duration, reversed, joint.Scale);
     quaternion rotation = SampleRotationTrack(time, duration, reversed, joint.Rotation);
     vec3 translation = SampleVectorTrack(time, duration, reversed, joint.Translation);
@@ -664,8 +636,6 @@ static auto SampleJointTransform(const ModelAnimationJointSource& joint, float32
 
 static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationVec3Track& track) -> vec3
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (reversed) {
         float32_t reversed_time = duration - time;
         optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
@@ -700,8 +670,6 @@ static auto SampleVectorTrack(float32_t time, float32_t duration, bool reversed,
 
 static auto SampleRotationTrack(float32_t time, float32_t duration, bool reversed, const ModelAnimationQuaternionTrack& track) -> quaternion
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (reversed) {
         float32_t reversed_time = duration - time;
         optional<size_t> span = FindReversedKeySpan(track.Times, reversed_time);
@@ -730,8 +698,6 @@ static auto SampleRotationTrack(float32_t time, float32_t duration, bool reverse
 // Absent means the sample sits outside the authored span range and the caller clamps to an end key
 static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto upper = std::ranges::upper_bound(times, time);
 
     if (upper == times.begin() || upper == times.end()) {
@@ -744,8 +710,6 @@ static auto FindForwardKeySpan(const vector<float32_t>& times, float32_t time) -
 // The reversed pass reads a span by its end key, so it anchors on the first key at or after the sample
 static auto FindReversedKeySpan(const vector<float32_t>& times, float32_t time) -> optional<size_t>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     auto lower = std::ranges::lower_bound(times, time);
 
     if (lower == times.begin() || lower == times.end()) {
@@ -757,22 +721,16 @@ static auto FindReversedKeySpan(const vector<float32_t>& times, float32_t time) 
 
 static auto IsFinite(const vec3& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z);
 }
 
 static auto IsFinite(const quaternion& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     return std::isfinite(value.x) && std::isfinite(value.y) && std::isfinite(value.z) && std::isfinite(value.w);
 }
 
 static auto IsFinite(const mat44& value) -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ptr<const float32_t> values = glm::value_ptr(value);
 
     for (size_t i = 0; i < 16; i++) {

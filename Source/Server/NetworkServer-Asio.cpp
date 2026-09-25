@@ -44,8 +44,6 @@ FO_BEGIN_NAMESPACE
 
 auto GetAsioErrorText(const std::error_code& error) noexcept -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (error.category() == asio::error::get_system_category()) {
         return net_sockets::error_text(std::error_code {error.value(), std::system_category()});
     }
@@ -108,7 +106,7 @@ private:
 
 auto NetworkServer::StartAsioServer(ptr<ServerNetworkSettings> settings, NewConnectionCallback callback) -> unique_ptr<NetworkServer>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     logging::write("Listen TCP connections on port {}", settings->Network.ServerPort);
 
@@ -124,8 +122,6 @@ NetworkServerConnection_Asio::NetworkServerConnection_Asio(ptr<ServerNetworkSett
     NetworkServerConnection(settings),
     _socket {std::move(*socket)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code endpoint_error;
     auto endpoint = _socket.remote_endpoint(endpoint_error);
 
@@ -163,8 +159,6 @@ void NetworkServerConnection_Asio::LogSocketOperationError(string_view operation
 
 NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
 {
-    FO_STACK_TRACE_ENTRY();
-
     try {
         if (_socket.is_open()) {
             _socket.close();
@@ -177,14 +171,12 @@ NetworkServerConnection_Asio::~NetworkServerConnection_Asio()
 
 void NetworkServerConnection_Asio::StartAsyncRead()
 {
-    FO_STACK_TRACE_ENTRY();
-
     NextAsyncRead();
 }
 
 void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size_t bytes)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     if (!error) {
         FO_STRONG_ASSERT(bytes <= _inBufData.size(), "Received byte count exceeds the receive buffer size");
@@ -199,8 +191,6 @@ void NetworkServerConnection_Asio::AsyncReadComplete(std::error_code error, size
 
 void NetworkServerConnection_Asio::NextAsyncRead()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto read_handler = [lifetime = shared_from_this(), this](std::error_code error, size_t bytes) FO_DEFERRED {
         ignore_unused(lifetime);
         AsyncReadComplete(error, bytes);
@@ -211,8 +201,6 @@ void NetworkServerConnection_Asio::NextAsyncRead()
 
 void NetworkServerConnection_Asio::StartAsyncWrite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     bool expected = false;
 
     if (_writePending.compare_exchange_strong(expected, true)) {
@@ -222,8 +210,6 @@ void NetworkServerConnection_Asio::StartAsyncWrite()
 
 void NetworkServerConnection_Asio::AsyncWriteComplete(std::error_code error, size_t bytes)
 {
-    FO_STACK_TRACE_ENTRY();
-
     ignore_unused(bytes);
 
     if (!error) {
@@ -237,8 +223,6 @@ void NetworkServerConnection_Asio::AsyncWriteComplete(std::error_code error, siz
 
 void NetworkServerConnection_Asio::NextAsyncWrite()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto write_guard = scope_fail([this]() noexcept { _writePending = false; });
 
     _sendBuf = SendCallback();
@@ -260,15 +244,11 @@ void NetworkServerConnection_Asio::NextAsyncWrite()
 
 void NetworkServerConnection_Asio::DispatchImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     StartAsyncWrite();
 }
 
 void NetworkServerConnection_Asio::DisconnectImpl()
 {
-    FO_STACK_TRACE_ENTRY();
-
     std::error_code shutdown_error;
     _socket.shutdown(asio::ip::tcp::socket::shutdown_both, shutdown_error);
     LogSocketOperationError("shutdown", shutdown_error);
@@ -283,15 +263,13 @@ NetworkServer_Asio::NetworkServer_Asio(ptr<ServerNetworkSettings> settings, NewC
     _acceptor(_context, asio::ip::tcp::endpoint(asio::ip::tcp::v6(), numeric_cast<uint16_t>(settings->Network.ServerPort))),
     _connectionCallback {std::move(callback)}
 {
-    FO_STACK_TRACE_ENTRY();
-
     AcceptNext();
     _runThread = run_thread("Network-Asio", [this] { Run(); });
 }
 
 void NetworkServer_Asio::ShutdownImpl()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     _context.stop();
     _runThread.join();
@@ -299,8 +277,6 @@ void NetworkServer_Asio::ShutdownImpl()
 
 void NetworkServer_Asio::Run()
 {
-    FO_STACK_TRACE_ENTRY();
-
     while (true) {
         try {
             _context.run();
@@ -314,8 +290,6 @@ void NetworkServer_Asio::Run()
 
 void NetworkServer_Asio::AcceptNext()
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto socket = safe_alloc::make_unique<asio::ip::tcp::socket>(_context);
     auto socket_ptr = socket.as_ptr();
     _acceptor.async_accept(*socket_ptr, [this, socket = std::move(socket)](std::error_code error) mutable FO_DEFERRED { AcceptConnection(error, std::move(socket)); });
@@ -323,7 +297,7 @@ void NetworkServer_Asio::AcceptNext()
 
 void NetworkServer_Asio::AcceptConnection(std::error_code error, unique_ptr<asio::ip::tcp::socket> socket)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Network);
 
     auto rearm_accept = [this] {
         if (!_context.stopped()) {

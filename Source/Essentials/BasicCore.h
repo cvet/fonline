@@ -129,14 +129,61 @@
 #include <emscripten/html5.h>
 #endif
 
-// Tracy
-#if FO_TRACY
+// Profiling
+#if FO_TRACE_ENABLED
 #ifndef TRACY_ENABLE
 #error TRACY_ENABLE not defined
 #endif
 
 #include "tracy/Tracy.hpp"
 #include "tracy/TracyC.h"
+
+// FO_TRACE_CATEGORY_<Category> is 1 for each category FO_TRACE_CATEGORIES selects; only Tracy builds include it, so a new
+// selection rebuilds nothing else
+#include "TraceCategories.gen.h"
+#endif
+
+// Profiling zone categories: the build reads this list to validate FO_TRACE_CATEGORIES and generate TraceCategories.gen.h
+#define FO_TRACE_COLOR_App 0x8C8C8C
+#define FO_TRACE_COLOR_Engine 0xF3C300
+#define FO_TRACE_COLOR_Entity 0x3D7FD9
+#define FO_TRACE_COLOR_Map 0x2EA043
+#define FO_TRACE_COLOR_Script 0xA46FD6
+#define FO_TRACE_COLOR_Network 0xE0474C
+#define FO_TRACE_COLOR_Database 0xB3446C
+#define FO_TRACE_COLOR_Threading 0xF99379
+#define FO_TRACE_COLOR_Render 0xF38400
+#define FO_TRACE_COLOR_Model 0x8DB600
+#define FO_TRACE_COLOR_Particles 0xE68FAC
+#define FO_TRACE_COLOR_Gui 0x4FC3F7
+#define FO_TRACE_COLOR_Audio 0xC2B280
+#define FO_TRACE_COLOR_FileSystem 0x16A6B6
+#define FO_TRACE_COLOR_Core 0xD8D8D8
+#define FO_TRACE_COLOR_Baking 0xE25822
+#define FO_TRACE_COLOR_Editor 0xF6A600
+
+// Opt-in profiling categories: instrumentation that is not a zone and costs far more than one, compiled in only when
+// FO_TRACE_CATEGORIES names it; Memory reports every allocation and free, Log sends every log line as a message
+#define FO_TRACE_OPT_IN_Memory 1
+#define FO_TRACE_OPT_IN_Log 1
+
+// A zone takes its function name and compiles to nothing when its category is off; an unknown category fails to compile
+#if FO_TRACE_ENABLED
+#define FO_TRACE_ZONE(category) FO_TRACE_ZONE_SELECT(FO_TRACE_CATEGORY_##category, category)
+#define FO_TRACE_ZONE_NAMED(category, name) FO_TRACE_ZONE_NAMED_SELECT(FO_TRACE_CATEGORY_##category, category, name)
+#define FO_TRACE_CATEGORY_ENABLED(category) FO_TRACE_CATEGORY_##category
+#define FO_TRACE_ZONE_SELECT(enabled, category) FO_TRACE_ZONE_SELECT_INDIRECT(enabled, category)
+#define FO_TRACE_ZONE_SELECT_INDIRECT(enabled, category) FO_TRACE_ZONE_##enabled(category)
+#define FO_TRACE_ZONE_NAMED_SELECT(enabled, category, name) FO_TRACE_ZONE_NAMED_SELECT_INDIRECT(enabled, category, name)
+#define FO_TRACE_ZONE_NAMED_SELECT_INDIRECT(enabled, category, name) FO_TRACE_ZONE_NAMED_##enabled(category, name)
+#define FO_TRACE_ZONE_0(category)
+#define FO_TRACE_ZONE_NAMED_0(category, name)
+#define FO_TRACE_ZONE_1(category) ZoneScopedC(FO_TRACE_COLOR_##category)
+#define FO_TRACE_ZONE_NAMED_1(category, name) ZoneScopedNC(name, FO_TRACE_COLOR_##category)
+#else
+#define FO_TRACE_ZONE(category) static_assert(FO_TRACE_COLOR_##category != 0)
+#define FO_TRACE_ZONE_NAMED(category, name) static_assert(FO_TRACE_COLOR_##category != 0)
+#define FO_TRACE_CATEGORY_ENABLED(category) 0
 #endif
 
 // Compiler warnings disable helper

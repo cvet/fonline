@@ -279,8 +279,6 @@ TEST_CASE("TextureAtlasLayoutDumpOverlayDistinguishesQuadAndEmptyGeometry")
 // Representative runtime sprite corpus, shared by the always-on packing efficiency gate and the hidden benchmark
 static auto MakeAtlasCorpus() -> vector<isize32>
 {
-    FO_STACK_TRACE_ENTRY();
-
     vector<isize32> corpus;
     corpus.reserve(768);
     uint32_t random_state = 0x7A11A5u;
@@ -299,8 +297,6 @@ static auto MakeAtlasCorpus() -> vector<isize32>
 // Packs the corpus the way the runtime atlas filler does and returns the resulting atlas page count
 static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr isize32 atlas_size = {2048, 8192};
     vector<unique_ptr<TextureAtlasLayout>> layouts;
     vector<unique_del_nptr<TextureAtlasLayout::Allocation>> allocations;
@@ -359,8 +355,6 @@ static auto RunAtlasCorpus(const vector<isize32>& corpus, bool churn) -> size_t
 // cost scales with the per-page working set, so a setting can win on the corpus above and lose here
 static auto RunAtlasProductionChurn(size_t churn_allocations) -> size_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     constexpr isize32 atlas_size = {2048, 2048};
     constexpr size_t live_target = 1000;
 

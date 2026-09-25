@@ -41,17 +41,15 @@ auto GetClientSettings() -> unordered_set<string>;
 ConfigBaker::ConfigBaker(shared_ptr<BakingContext> ctx) :
     BaseBaker(std::move(ctx), NAME)
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 ConfigBaker::~ConfigBaker()
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 void ConfigBaker::BakeFiles(const FileCollection& files, string_view target_path) const
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Baking);
 
     ignore_unused(files);
 

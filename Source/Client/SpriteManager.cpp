@@ -48,13 +48,10 @@ Sprite::Sprite(ptr<SpriteManager> spr_mngr, isize32 size, ipos32 offset) :
     _size {size},
     _offset {offset}
 {
-    FO_STACK_TRACE_ENTRY();
 }
 
 auto Sprite::GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept -> ptr<RenderEffect>
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_drawEffect) {
         return _drawEffect;
     }
@@ -64,16 +61,12 @@ auto Sprite::GetDrawEffectOr(ptr<RenderEffect> default_effect) const noexcept ->
 
 auto Sprite::IsHitTest(ipos32 pos) const -> bool
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     ignore_unused(pos);
     return false;
 }
 
 void Sprite::StartUpdate()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
@@ -93,7 +86,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _flushDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _spriteEffectDrawBuf {window->GetRender()->CreateDrawBuffer(false)}
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     _flushVertCount = 4096;
     _dipQueue.reserve(1000);
@@ -132,8 +125,6 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
 
 auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(min_value <= max_value, "Sprite random integer range has an inverted min/max", min_value, max_value);
 
     return _randomGenerator.next_between(min_value, max_value);
@@ -141,22 +132,16 @@ auto SpriteManager::Random(int32_t min_value, int32_t max_value) -> int32_t
 
 void SpriteManager::UnsubscribeWindowEvents() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     _eventUnsubscriber.Unsubscribe();
 }
 
 auto SpriteManager::GetWindowSize() const -> isize32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _window->GetSize();
 }
 
 void SpriteManager::SetWindowSize(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (IsFullscreen() && !_window->IsVirtual()) {
         _pendingWindowedSize = size;
         return;
@@ -168,15 +153,11 @@ void SpriteManager::SetWindowSize(isize32 size)
 
 auto SpriteManager::GetScreenSize() const -> isize32
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _window->GetScreenSize();
 }
 
 void SpriteManager::SetScreenSize(isize32 size)
 {
-    FO_STACK_TRACE_ENTRY();
-
     isize32 current_screen_size = GetScreenSize();
     int32_t diff_w = size.width - current_screen_size.width;
     int32_t diff_h = size.height - current_screen_size.height;
@@ -198,8 +179,6 @@ void SpriteManager::SetScreenSize(isize32 size)
 
 void SpriteManager::ToggleFullscreen()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!IsFullscreen()) {
         _window->ToggleFullscreen(true);
     }
@@ -222,51 +201,37 @@ void SpriteManager::ToggleFullscreen()
 
 void SpriteManager::SetMousePosition(ipos32 pos)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _input->SetMousePosition(pos, _window);
 }
 
 auto SpriteManager::IsFullscreen() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _window->IsFullscreen();
 }
 
 auto SpriteManager::IsWindowFocused() const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return _window->IsFocused();
 }
 
 void SpriteManager::MinimizeWindow()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _window->Minimize();
 }
 
 void SpriteManager::BlinkWindow()
 {
-    FO_STACK_TRACE_ENTRY();
-
     _window->Blink();
 }
 
 void SpriteManager::SetAlwaysOnTop(bool enable)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _alwaysOnTop = enable;
     _window->AlwaysOnTop(enable);
 }
 
 void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (const auto& ext : factory->GetExtensions()) {
         _spriteFactoryMap.insert_or_assign(ext, factory);
     }
@@ -276,8 +241,6 @@ void SpriteManager::RegisterSpriteFactory(unique_ptr<SpriteFactory> factory)
 
 auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
         auto factory = _spriteFactories[i].as_ptr();
         SpriteFactory& factory_ref = *factory;
@@ -292,8 +255,6 @@ auto SpriteManager::GetSpriteFactory(std::type_index ti) -> nptr<SpriteFactory>
 
 auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto factory = GetSpriteFactory(typeid(DefaultSpriteFactory)).dyn_cast<DefaultSpriteFactory>();
     FO_VERIFY_AND_THROW(factory, "Default sprite factory is not registered", path);
     return factory->LoadSpriteAsQuad(path, atlas_type);
@@ -301,7 +262,7 @@ auto SpriteManager::LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shar
 
 void SpriteManager::BeginScene()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     _rtMngr.ClearStack();
     _scissorStack.clear();
@@ -337,7 +298,7 @@ void SpriteManager::BeginScene()
 
 void SpriteManager::EndScene()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     Flush();
 
@@ -360,8 +321,6 @@ void SpriteManager::EndScene()
 
 void SpriteManager::AbortScene() noexcept
 {
-    FO_STACK_TRACE_ENTRY();
-
     // Runs on the unwind path, so it hands the renderer back as it was found — dropped draws, released scissor and
     // render target — and reports rather than raises the one step that can fail on an already-gone render context
     _dipQueue.clear();
@@ -379,8 +338,6 @@ void SpriteManager::AbortScene() noexcept
 
 auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (source_size.width <= 0 || source_size.height <= 0 || target_size.width <= 0 || target_size.height <= 0) {
         return {};
     }
@@ -400,7 +357,7 @@ auto SpriteManager::MakeAspectFitRect(isize32 source_size, isize32 target_size) 
 
 void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, nptr<const frect32> region_from, nptr<const irect32> region_to, nptr<RenderEffect> custom_effect)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     Flush();
 
@@ -504,14 +461,12 @@ void SpriteManager::DrawTexture(ptr<const RenderTexture> tex, bool alpha_blend, 
 
 void SpriteManager::DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from, nptr<const irect32> region_to)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawTexture(rt->GetTexture(), alpha_blend, region_from, region_to, rt->GetCustomDrawEffect());
 }
 
 auto SpriteManager::AcquireSceneBackground() -> nptr<const RenderTexture>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     nptr<RenderTarget> current_rt = _rtMngr.GetCurrentRenderTarget();
 
@@ -544,8 +499,6 @@ auto SpriteManager::AcquireSceneBackground() -> nptr<const RenderTexture>
 
 void SpriteManager::PushScissor(irect32 rect)
 {
-    FO_STACK_TRACE_ENTRY();
-
     Flush();
 
     _scissorStack.emplace_back(rect);
@@ -555,8 +508,6 @@ void SpriteManager::PushScissor(irect32 rect)
 
 void SpriteManager::PopScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_scissorStack.empty()) {
         Flush();
 
@@ -568,8 +519,6 @@ void SpriteManager::PopScissor()
 
 void SpriteManager::RefreshScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_scissorStack.empty()) {
         _scissorRect = _scissorStack.front();
         int32_t right = _scissorRect.x + _scissorRect.width;
@@ -592,8 +541,6 @@ void SpriteManager::RefreshScissor()
 
 void SpriteManager::EnableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_scissorStack.empty()) {
         _render->EnableScissor(_scissorRect);
     }
@@ -601,8 +548,6 @@ void SpriteManager::EnableScissor()
 
 void SpriteManager::DisableScissor()
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (!_scissorStack.empty()) {
         _render->DisableScissor();
     }
@@ -610,14 +555,12 @@ void SpriteManager::DisableScissor()
 
 auto SpriteManager::LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
-
     return LoadSprite(_hashResolver->to_hashed_string(path), atlas_type, no_warn_if_not_exists);
 }
 
 auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists) -> shared_ptr<Sprite>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (!path) {
         return nullptr;
@@ -670,14 +613,12 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
 void SpriteManager::ForgetFailedSprite(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _nonFoundSprites.erase(_hashResolver->to_hashed_string(path));
 }
 
 void SpriteManager::InvalidateSpriteResource(string_view path)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     hstring hashed_path = _hashResolver->to_hashed_string(path);
     _nonFoundSprites.erase(hashed_path);
@@ -698,8 +639,6 @@ void SpriteManager::InvalidateSpriteResource(string_view path)
 
 void SpriteManager::RetryFailedSpriteLoads()
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (auto& sprite_factory : _spriteFactories) {
         sprite_factory->RetryFailedLoads();
     }
@@ -707,7 +646,7 @@ void SpriteManager::RetryFailedSpriteLoads()
 
 void SpriteManager::CleanupSpriteCache()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     for (size_t i = 0; i != _spriteFactories.size(); ++i) {
         _spriteFactories[i]->ClenupCache();
@@ -725,11 +664,17 @@ void SpriteManager::CleanupSpriteCache()
 
 void SpriteManager::Flush()
 {
-    FO_STACK_TRACE_ENTRY();
-
+    // Every render target switch flushes, and most find nothing queued, so only a real batch opens a zone
     if (_spritesDrawBuf->VertCount == 0) {
         return;
     }
+
+    FlushBatch();
+}
+
+void SpriteManager::FlushBatch()
+{
+    FO_TRACE_ZONE(Render);
 
     _spritesDrawBuf->Upload(EffectUsage::QuadSprite);
 
@@ -777,8 +722,6 @@ void SpriteManager::Flush()
 
 void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(index_count % 3 == 0, "Sprite wireframe source indices are not grouped by triangles", start_index, index_count);
     FO_VERIFY_AND_THROW(start_index <= _spritesDrawBuf->IndCount && index_count <= _spritesDrawBuf->IndCount - start_index, "Sprite wireframe source range is outside the index buffer", start_index, index_count, _spritesDrawBuf->IndCount);
 
@@ -812,7 +755,7 @@ void SpriteManager::QueueSpriteWireframe(size_t start_index, size_t index_count)
 
 void SpriteManager::DrawSpriteWireframe()
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (_spriteWireframeVertices.empty()) {
         return;
@@ -847,8 +790,6 @@ void SpriteManager::DrawSpriteWireframe()
 
 void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto effect = spr->GetDrawEffectOr(_effectMngr->Effects.Iface);
 
     color = ApplyColorBrightness(color);
@@ -876,15 +817,11 @@ void SpriteManager::DrawSprite(ptr<const Sprite> spr, ipos32 pos, ucolor color)
 
 void SpriteManager::DrawSpriteSize(ptr<const Sprite> spr, ipos32 pos, isize32 size, bool fit, bool center, ucolor color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     DrawSpriteSizeExt(spr, fpos32(pos), fsize32(size), fit, center, false, color);
 }
 
 void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32 size, bool fit, bool center, bool stretch, ucolor color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     float32_t xf = pos.x;
     float32_t yf = pos.y;
     float32_t wf = numeric_cast<float32_t>(spr->GetSize().width);
@@ -943,8 +880,6 @@ void SpriteManager::DrawSpriteSizeExt(ptr<const Sprite> spr, fpos32 pos, fsize32
 
 auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 uv1, fpos32 pos, fsize32 size, ucolor color) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     auto source_spr = spr;
 
     if (auto sheet = spr.dyn_cast<const SpriteSheet>()) {
@@ -981,8 +916,6 @@ auto SpriteManager::DrawSpriteRegion(ptr<const Sprite> spr, fpos32 uv0, fpos32 u
 
 void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32 size, isize32 spr_size, ucolor color)
 {
-    FO_STACK_TRACE_ENTRY();
-
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
 
@@ -1041,8 +974,6 @@ void SpriteManager::DrawSpritePattern(ptr<const Sprite> spr, ipos32 pos, isize32
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, ucolor color) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     points.emplace_back(PrimitivePoint {.PointPos = {r.x, r.y + r.height}, .PointColor = color});
     points.emplace_back(PrimitivePoint {.PointPos = {r.x, r.y}, .PointColor = color});
     points.emplace_back(PrimitivePoint {.PointPos = {r.x + r.width, r.y + r.height}, .PointColor = color});
@@ -1053,8 +984,6 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, irect32 r, uco
 
 void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpos32 rt, fpos32 lb, fpos32 rb, ucolor color) const
 {
-    FO_STACK_TRACE_ENTRY();
-
     points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(lb.x), iround<int32_t>(lb.y)}, .PointColor = color});
     points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(lt.x), iround<int32_t>(lt.y)}, .PointColor = color});
     points.emplace_back(PrimitivePoint {.PointPos = {iround<int32_t>(rb.x), iround<int32_t>(rb.y)}, .PointColor = color});
@@ -1065,23 +994,17 @@ void SpriteManager::PrepareSquare(vector<PrimitivePoint>& points, fpos32 lt, fpo
 
 void SpriteManager::InvalidateEgg(TransparentEggSlot slot)
 {
-    FO_STACK_TRACE_ENTRY();
-
     _eggSlots[static_cast<size_t>(slot)] = {};
 }
 
 void SpriteManager::InvalidateEgg()
 {
-    FO_STACK_TRACE_ENTRY();
-
     InvalidateEgg(TransparentEggSlot::Primary);
     InvalidateEgg(TransparentEggSlot::Secondary);
 }
 
 void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t slot_index = static_cast<size_t>(slot);
 
     if (!mspr) {
@@ -1113,8 +1036,6 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSpri
 
 void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius)
 {
-    FO_STACK_TRACE_ENTRY();
-
     size_t slot_index = static_cast<size_t>(slot);
     auto& egg = _eggSlots[slot_index];
 
@@ -1132,8 +1053,6 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsi
 
 auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     const auto& egg = _eggSlots[static_cast<size_t>(slot)];
 
     if (!egg.Valid) {
@@ -1181,7 +1100,7 @@ auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggApp
 
 void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, bool use_egg, DrawOrderType draw_oder_from, DrawOrderType draw_oder_to, ucolor color, ptr<RenderEffect> default_effect)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     for (auto& egg : _eggSlots) {
         egg.DrawOffset = {numeric_cast<float32_t>(draw_area.x), numeric_cast<float32_t>(draw_area.y)};
@@ -1387,8 +1306,6 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
 
 auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     if (pos.x < 0 || pos.y < 0) {
         return false;
     }
@@ -1398,8 +1315,6 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
 
 auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     for (size_t slot_index = 0; slot_index < EGG_SLOT_COUNT; slot_index++) {
         const auto& egg = _eggSlots[slot_index];
         auto slot = slot_index == 0 ? TransparentEggSlot::Primary : TransparentEggSlot::Secondary;
@@ -1430,7 +1345,7 @@ auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearen
 
 void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiveType prim, nptr<const irect32> draw_area, nptr<RenderEffect> custom_effect)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     if (points.empty()) {
         return;
@@ -1516,7 +1431,7 @@ void SpriteManager::DrawPoints(const_span<PrimitivePoint> points, RenderPrimitiv
 
 void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucolor color, ptr<RenderEffect> effect, int32_t padding)
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Render);
 
     FO_VERIFY_AND_THROW(padding >= 0, "Padding is negative");
     FO_VERIFY_AND_THROW(effect->GetUsage() == EffectUsage::QuadSprite, "Effect usage is not quad sprite");
@@ -1605,8 +1520,6 @@ void SpriteManager::DrawSpriteWithEffect(ptr<const Sprite> spr, ipos32 pos, ucol
 
 auto SpriteManager::ApplyColorBrightness(ucolor color) const -> ucolor
 {
-    FO_NO_STACK_TRACE_ENTRY();
-
     if (_settings->Render.Brightness != 0) {
         int32_t r = std::clamp(numeric_cast<int32_t>(color.comp.r) + _settings->Render.Brightness, 0, 255);
         int32_t g = std::clamp(numeric_cast<int32_t>(color.comp.g) + _settings->Render.Brightness, 0, 255);

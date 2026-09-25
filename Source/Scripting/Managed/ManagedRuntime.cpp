@@ -58,14 +58,12 @@ static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, c
 
 auto MakeManagedAssemblyResourceDir(string_view target_name) -> string
 {
-    FO_STACK_TRACE_ENTRY();
-
     return strex("Assemblies/Assemblies-{}", strex(target_name).lower()).str();
 }
 
 auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     vector<std::filesystem::path> candidates;
 
@@ -95,7 +93,7 @@ auto FindManagedRuntimeDirectory() -> optional<std::filesystem::path>
 
 auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cache_dir) -> optional<std::filesystem::path>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     vector<ManagedRuntimeResource> runtime_resources = CollectManagedRuntimeResources(resources);
 
@@ -173,15 +171,13 @@ auto RestoreManagedRuntimeResources(const FileSystem& resources, string_view cac
 
 static auto IsRuntimeLayoutPath(const std::filesystem::path& dir) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     // The engine helpers take the extended-length path, which a cache staged under a deep profile directory needs
     return fs::file_size(fs::path_to_string(dir / fs::make_path(MANAGED_RUNTIME_MANIFEST_FILE))).has_value() && fs::file_size(fs::path_to_string(dir / "lib" / "netcoreapp" / "System.Private.CoreLib.dll")).has_value();
 }
 
 static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vector<ManagedRuntimeResource>
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     vector<ManagedRuntimeResource> result;
     string resource_prefix = strex("{}/", MANAGED_RUNTIME_RESOURCE_DIR).str();
@@ -219,7 +215,7 @@ static auto CollectManagedRuntimeResources(const FileSystem& resources) -> vecto
 
 static auto MakeManagedRuntimeCacheKey(const vector<ManagedRuntimeResource>& runtime_resources) noexcept -> string
 {
-    FO_NO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     uint64_t hash = 1469598103934665603ull;
     auto add_byte = [&](uint8_t byte) noexcept {
@@ -246,14 +242,12 @@ static auto MakeManagedRuntimeCacheKey(const vector<ManagedRuntimeResource>& run
 
 static auto IsSameManagedRuntimeCacheFile(const std::filesystem::path& disk_path, const_span<uint8_t> data) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
-
     return fs::compare_file_content(fs::path_to_string(disk_path), data);
 }
 
 static auto IsSameManagedRuntimeCache(const std::filesystem::path& cache_root, const vector<ManagedRuntimeResource>& runtime_resources) -> bool
 {
-    FO_STACK_TRACE_ENTRY();
+    FO_TRACE_ZONE(Script);
 
     if (!IsRuntimeLayoutPath(cache_root)) {
         return false;

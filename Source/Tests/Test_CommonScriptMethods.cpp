@@ -1695,8 +1695,6 @@ namespace CommonMethods
 
     static auto MakeCommonMethodsMetadataBlob() -> vector<uint8_t>
     {
-        FO_STACK_TRACE_ENTRY();
-
         vector<vector<string_view>> value_types = {
             {"BoolSnapshot", "Value", "bool"},
             {"IntSnapshot", "Value", "int32"},
@@ -1797,8 +1795,6 @@ BoundsMaxZ = 3.5
 
     static void CheckHstringStringConvBinding(ptr<ServerEngine> server)
     {
-        FO_STACK_TRACE_ENTRY();
-
         auto backend = GetScriptBackend(server);
         auto context_mngr = backend->GetContextMngr();
         REQUIRE(context_mngr);

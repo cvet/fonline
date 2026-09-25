@@ -7,10 +7,16 @@ permalink: /Docs/ru/contributing/third-party/
 ---
 
 # Сопровождение ThirdParty
-<!-- docs-translation: {"document_id":"third-party-maintenance","locale":"ru","source_path":"Docs/en/contributing/third-party/index.md","source_sha256":"2ea8479c0b9f7cc61958f1f27b160a6929b303bc5e68dd61f73a9d937b8f2eaf"} -->
+<!-- docs-translation: {"document_id":"third-party-maintenance","locale":"ru","source_path":"Docs/en/contributing/third-party/index.md","source_sha256":"98088cac30033f30c2788fbaf1c245356590b2bd29ce4ad6ed77ad568f2e5bd7"} -->
 Этот документ определяет переиспользуемый процесс движка для вендорных зависимостей в `ThirdParty/`. Проектные комплектные библиотеки принадлежат подключающему проекту; их выбор, интеграция, доставка и сопровождение описаны в разделе [Проектные зависимости](../../how-to/native-extensions/project-dependencies.md), а точный реестр и релизные свидетельства должны храниться в самом проекте.
 
 ## Владение
+
+Engine-owned build glue и `FONLINE_PRUNED_FILES.md` располагаются прямо в
+`ThirdParty/<Library>/`; сохранённое upstream-дерево — отдельно в
+`ThirdParty/<Library>/<library>/`, если такова структура библиотеки. Интеграция
+`vkd3d` следует этому правилу. Не считайте build glue upstream-патчем и не
+перезаписывайте его при обновлении upstream.
 
 Каталоги `ThirdParty/<Library>/` являются вендорными деревьями исходников во владении движка. Их используют `BuildTools/cmake/stages/ThirdParty.cmake` и связанные вспомогательные команды CMake.
 

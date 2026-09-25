@@ -48,8 +48,6 @@ FO_BEGIN_NAMESPACE
 
 static auto MakeValidModelSourceAsset(string_view path, uint64_t write_time) -> ModelSourceAsset
 {
-    FO_STACK_TRACE_ENTRY();
-
     ModelSourceAsset result;
     result.FileName = path;
     result.WriteTime = write_time;
