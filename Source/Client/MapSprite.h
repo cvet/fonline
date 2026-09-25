@@ -125,6 +125,7 @@ public:
     [[nodiscard]] auto GetLightRight() const noexcept -> nptr<const ucolor> { return _lightRight; }
     [[nodiscard]] auto GetLightLeft() const noexcept -> nptr<const ucolor> { return _lightLeft; }
     [[nodiscard]] auto GetEggAppearence() const noexcept -> EggAppearenceType { return _eggAppearence; }
+    [[nodiscard]] auto IsEggStructure() const noexcept -> bool { return _eggStructure; }
     [[nodiscard]] auto GetColor() const noexcept -> ucolor { return _color; }
     [[nodiscard]] auto GetElevation() const noexcept -> int16_t { return _elevation; }
     [[nodiscard]] auto GetDrawEffect() const noexcept -> nptr<RenderEffect> { return _drawEffect ? *_drawEffect : nullptr; }
@@ -135,6 +136,7 @@ public:
 
     void Invalidate() noexcept;
     void SetEggAppearence(EggAppearenceType egg_appearence) noexcept;
+    void SetEggStructure(bool egg_structure) noexcept;
     void SetColor(ucolor color) noexcept;
     void SetAlpha(nptr<const uint8_t> alpha) noexcept;
     void SetFixedAlpha(uint8_t alpha) noexcept;
@@ -171,6 +173,8 @@ private:
     nptr<const ucolor> _lightRight {};
     nptr<const ucolor> _lightLeft {};
     EggAppearenceType _eggAppearence {};
+    // Wall pieces and roof tiles, the only sprites a TransparentEggTarget::Structure egg cuts
+    bool _eggStructure {};
     ucolor _color {};
     int16_t _elevation {};
     int16_t _angle {};

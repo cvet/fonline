@@ -300,7 +300,7 @@ public:
     void UpdateHexLightSources(mpos hex);
 
     void SetHiddenRoof(mpos hex);
-    void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext = false);
+    void SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext);
     void ClearTransparentEgg(TransparentEggSlot slot);
 
     auto AddMapSprite(ptr<const Sprite> spr, mpos hex, DrawOrderType draw_order, int8_t draw_order_sub_layer, ipos32 offset, nptr<const ipos32> poffset, nptr<const uint8_t> palpha, nptr<bool> callback) -> ptr<MapSprite>;
@@ -324,6 +324,7 @@ private:
         mpos Hex {};
         ipos32 HexOffset {};
         isize32 Size {};
+        TransparentEggTarget Target {};
         bool ApplySizeExt {};
         bool Valid {};
     };

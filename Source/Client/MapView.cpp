@@ -2406,7 +2406,7 @@ auto MapView::GetHexMapPos(mpos hex) const -> ipos32
     return {hex_offset.x, hex_offset.y};
 }
 
-void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext)
+void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext)
 {
     if (!_mapSize.is_valid_pos(hex)) {
         ClearTransparentEgg(slot);
@@ -2417,6 +2417,7 @@ void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_of
     egg.Hex = hex;
     egg.HexOffset = hex_offset;
     egg.Size = egg_size;
+    egg.Target = target;
     egg.ApplySizeExt = apply_size_ext;
     egg.Valid = true;
 
@@ -2450,7 +2451,7 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
     float32_t egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->Render.EggEllipseHeightExt) : 0.0f;
     float32_t radius_w = std::max((numeric_cast<float32_t>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
     float32_t radius_h = std::max((numeric_cast<float32_t>(egg.Size.height) + egg_height_ext) * 0.5f, 1.0f);
-    _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32_t>(center_x), numeric_cast<float32_t>(center_y)}, {radius_w, radius_h});
+    _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32_t>(center_x), numeric_cast<float32_t>(center_y)}, {radius_w, radius_h}, egg.Target);
 }
 
 void MapView::UpdateTransparentEggs()
@@ -3583,7 +3584,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
             return;
         }
 
-        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr->GetHex(), mspr->GetEggAppearence());
+        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr);
 
         if (potentially_egg ? sort_value <= best_egg_sort : sort_value <= best_sort) {
             return;

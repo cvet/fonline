@@ -65,6 +65,17 @@ enum class TransparentEggSlot : uint8_t
     Secondary = 1,
 };
 
+// Which of the sprites standing in front of an egg's hex the egg cuts
+///@ ExportEnum
+enum class TransparentEggTarget : uint8_t
+{
+    AnyOccluder = 0, // Every sprite whose egg appearance puts it in front of the egg hex
+    Structure = 1, // Only wall pieces and roof tiles, so props standing in front of a wall stay drawn
+};
+
+// Whether an egg of this target standing on egg_hex fades a sprite standing on hex
+auto IsCutByTransparentEgg(TransparentEggTarget target, mpos egg_hex, EggAppearenceType appearence, bool egg_structure, mpos hex) -> bool;
+
 class Sprite : public enable_shared_from_this<Sprite>
 {
 public:
@@ -196,7 +207,7 @@ public:
     [[nodiscard]] auto Random(int32_t min_value, int32_t max_value) -> int32_t;
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
-    [[nodiscard]] auto IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool;
+    [[nodiscard]] auto IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool;
     [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
     [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
@@ -240,8 +251,7 @@ public:
     void DrawRenderTarget(ptr<RenderTarget> rt, bool alpha_blend, nptr<const frect32> region_from = nullptr, nptr<const irect32> region_to = nullptr);
     void Flush();
 
-    void SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr);
-    void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius);
+    void SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius, TransparentEggTarget target);
     void InvalidateEgg(TransparentEggSlot slot);
     void InvalidateEgg();
 
@@ -252,11 +262,12 @@ private:
         mpos Hex {};
         fpos32 Center {};
         fsize32 Radius {};
+        TransparentEggTarget Target {};
         fpos32 DrawOffset {};
     };
 
     [[nodiscard]] auto ApplyColorBrightness(ucolor color) const -> ucolor;
-    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
+    [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool;
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
     void FlushBatch();

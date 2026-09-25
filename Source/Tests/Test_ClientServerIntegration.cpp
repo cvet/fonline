@@ -686,7 +686,7 @@ namespace ClientServerIntegrationClient
 
         CurMap.MoveScreenToHex(there, ipos16(0, 0), 20, true);
         CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
-        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8));
+        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8), TransparentEggTarget::Structure);
 
         // The global lookups resolve against the current map, so they only answer in a session
         if (Game.GetCritter(Chosen.Id) is null) return -9;

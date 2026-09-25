@@ -78,6 +78,7 @@ void ItemHexView::SetupSprite(ptr<MapSprite> mspr)
     mspr->SetElevation(GetIsTile() && GetIsRoofTile() ? numeric_cast<int16_t>(_engine->Settings->Geometry.MapRoofElevation) : GetElevation());
     mspr->SetColor(GetColorize() ? GetColorizeColor() : ucolor::clear);
     mspr->SetEggAppearence(GetEggType());
+    mspr->SetEggStructure(GetIsWall() || (GetIsTile() && GetIsRoofTile()));
 
     if (!GetNoLightInfluence()) {
         mspr->SetLight(GetCorner(), _map->GetLightData(), _map->GetSize());
