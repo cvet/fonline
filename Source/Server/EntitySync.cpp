@@ -1008,6 +1008,34 @@ void SyncContext::WidenEntities(const_span<ptr<ServerEntity>> extras)
     SyncEntities(request);
 }
 
+void SyncContext::YieldLocks()
+{
+    FO_TRACE_ZONE(Threading);
+
+    // Same cycle SyncEntities refuses: the singleton bucket must not be traded against per-property auto-locks
+    if (!_singletonLocks.empty()) {
+        throw EntitySyncException("Cannot yield sync cover while holding a singleton lock (e.g. Game.Lock()) - Unlock first");
+    }
+
+    unordered_map<ptr<EntityLock>, int32_t> reacquire_count;
+    unordered_map<ptr<EntityLock>, int32_t> reregister_count;
+    CollectHeldUnion(this, reacquire_count, reregister_count);
+
+    if (reacquire_count.empty() && reregister_count.empty()) {
+        return;
+    }
+
+    // Each release hands a lock to its queued waiter, and the fresh ticket of the re-take queues behind it, so the
+    // waiter finishes its work before this thread continues
+    ReacquireUnionOrderedFair(this, reacquire_count, reregister_count, true);
+
+    // An owner reparented while released keeps its old ancestor marks, so this context re-proves its cover the way a
+    // retained request does; outer contexts get theirs back exactly as the stage-2 escalation restores them
+    if (!_heldLocks.empty()) {
+        WidenEntities({});
+    }
+}
+
 auto SyncContext::TryRetainCoveredRequest(const_span<ptr<ServerEntity>> requested) -> bool
 {
     if (_heldLocks.empty()) {
@@ -1429,7 +1457,21 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
     // context and marked in another, which is why the two maps stay independent
     unordered_map<ptr<EntityLock>, int32_t> reacquire_count;
     unordered_map<ptr<EntityLock>, int32_t> reregister_count;
+    CollectHeldUnion(_previousContext, reacquire_count, reregister_count);
 
+    // The targets of THIS acquire each need one extra hold on top of whatever ancestors already hold
+    for (auto lock : locks) {
+        reacquire_count[lock] += 1;
+    }
+    for (auto lock : holds) {
+        reregister_count[lock] += 1;
+    }
+
+    ReacquireUnionOrderedFair(_previousContext, reacquire_count, reregister_count, false);
+}
+
+void SyncContext::CollectHeldUnion(nptr<SyncContext> first, unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, unordered_map<ptr<EntityLock>, int32_t>& reregister_count)
+{
     auto add_excl = [&reacquire_count](ptr<EntityLock> lock) {
         if (!reacquire_count.contains(lock)) {
             reacquire_count.emplace(lock, lock->GetExclusiveRecursionForCurrentThread());
@@ -1441,26 +1483,21 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         }
     };
 
-    for (auto ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
-        for (auto lock : ancestor->_heldLocks) {
+    for (auto context = first; context; context = context->_previousContext) {
+        for (auto lock : context->_heldLocks) {
             add_excl(lock);
         }
-        for (auto lock : ancestor->_singletonLocks) {
+        for (auto lock : context->_singletonLocks) {
             add_excl(lock);
         }
-        for (auto lock : ancestor->_heldDescendantHolds) {
+        for (auto lock : context->_heldDescendantHolds) {
             add_hold(lock);
         }
     }
+}
 
-    // The targets of THIS acquire each need one extra hold on top of whatever ancestors already hold
-    for (auto lock : locks) {
-        reacquire_count[lock] += 1;
-    }
-    for (auto lock : holds) {
-        reregister_count[lock] += 1;
-    }
-
+void SyncContext::ReacquireUnionOrderedFair(nptr<SyncContext> first, const unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, const unordered_map<ptr<EntityLock>, int32_t>& reregister_count, bool yield_between)
+{
     // Dropping the whole union to zero is what breaks a cross-hold cycle; exclusives go first because a mark
     // must outlive the descendant it represents, and no entity state is observed across the transition
     for (auto& [lock, count] : reacquire_count) {
@@ -1478,6 +1515,12 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         for (int32_t i = 0; i < held; i++) {
             lock_ref->UnregisterDescendantHold();
         }
+    }
+
+    // A release already handed each lock to its parked waiter; the slice also lets a thread still in its
+    // non-parking stage take one before this thread asks again
+    if (yield_between) {
+        std::this_thread::yield();
     }
 
     // Parking holds nothing, so no wait-for cycle passes through a parked thread and nobody camps an in-subtree
@@ -1504,9 +1547,9 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
         return !(a.first == b.first) ? a.first < b.first : a.second && !b.second;
     });
 
-    // A shutdown abort while parked would leave the union half-restored and ancestor contexts listing locks
-    // this thread no longer holds, so the recovery drops everything to a clean holds-nothing state
-    auto restore_on_abort = scope_fail([this, &reacquire_count, &reregister_count]() noexcept {
+    // A shutdown abort while parked would leave the union half-restored and the contexts listing locks this
+    // thread no longer holds, so the recovery drops everything to a clean holds-nothing state
+    auto restore_on_abort = scope_fail([first, &reacquire_count, &reregister_count]() noexcept {
         for (auto& [lock, count] : reacquire_count) {
             auto lock_ref = lock;
             int32_t held = lock_ref->GetExclusiveRecursionForCurrentThread();
@@ -1524,12 +1567,12 @@ void SyncContext::AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, con
             }
         }
 
-        for (auto ancestor = _previousContext; ancestor; ancestor = ancestor->_previousContext) {
-            ancestor->_heldLocks.clear();
-            ancestor->_heldLockOwners.clear();
-            ancestor->_heldDescendantHolds.clear();
-            ancestor->_heldDescendantHoldOwners.clear();
-            ancestor->_singletonLocks.clear();
+        for (auto context = first; context; context = context->_previousContext) {
+            context->_heldLocks.clear();
+            context->_heldLockOwners.clear();
+            context->_heldDescendantHolds.clear();
+            context->_heldDescendantHoldOwners.clear();
+            context->_singletonLocks.clear();
         }
     });
 

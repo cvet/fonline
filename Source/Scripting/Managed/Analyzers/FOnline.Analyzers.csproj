@@ -27,6 +27,7 @@
   <ItemGroup>
     <Compile Include="CoverVocabulary.cs" />
     <Compile Include="SyncCoverAnalyzer.cs" />
+    <Compile Include="SyncCoverAnalyzer.CoveredWidening.cs" />
   </ItemGroup>
   <ItemGroup>
     <!-- RS2008 requires every diagnostic id to be tracked; these double as the rule changelog. -->

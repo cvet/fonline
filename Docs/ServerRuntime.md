@@ -336,6 +336,13 @@ location and suppresses the speculative result. Keep this distinction when addin
 inner refusal must never be counted as an external failure. The per-call diagnostic helper is a stack/value object;
 success constructs no report objects, stack traces, shared counters or ambient asynchronous state.
 
+Retries have a channel of their own. A helper that finds its cover stale after acquiring it and is about to
+take it again publishes `Sync.OnRetry` (`Action<Sync.RetryInfo>`: `Operation`, `Reason`, the caller location and
+`HelperFile`/`HelperLine` of the retry site); unlike failures, a retry inside a nested helper is published too,
+since it is exactly what is measured. A retry loop outside `Sync` reports through `Sync.ReportRetry(reason)`, with
+its own location as both caller and site. With no subscriber nothing is allocated. How often each site fires
+separates retries a lock handoff resolves from ones that wait for another thread to reach a later frame.
+
 A diagnostic proves that this Sync call returned `false`. Its caller may return, retry or recover. It does not
 prove rollback, lost rewards, or the eventual outcome of a quest. Investigate the exact deployed source
 revision, the caller's preceding mutations and the code after the failed guard, then correlate entity IDs
@@ -456,6 +463,35 @@ asking job keeps, and would hand the entity back destroyed. A destroyed entity i
 `SyncContext::WidenEntities()` follows the same rule for the held set, keeping a held owner that is being
 destroyed and dropping only destroyed ones. Pinned by `ServerSyncWidenKeepsHeldEntityBeingDestroyed` and by the
 [managed Sync harness](#managed-synchronization-failure-diagnostics).
+
+### Yielding the cover in place
+
+A retry loop that re-reads a relation after acquiring (a critter that moved, a group or spectator set that changed)
+cannot make another thread progress by re-requesting what it already holds: a covered request is retained without
+a release, and a nested `Sync()` never gives away the outer job's cover, since only the stage-2 escalation drops
+that and it runs only when the thread's own request is contended. `SyncContext::YieldLocks()` is that escalation on
+demand. It releases every lock the thread holds to zero - the current context's and every outer context's cover,
+descendant marks and singleton buckets - which hands each lock with a parked waiter straight to that waiter, then
+re-takes the same union in address order with a fresh ticket, so it queues behind them and parks holding nothing.
+The recursion of each lock is restored exactly, and a shutdown abort leaves the whole chain holding nothing, as
+the escalation does. Afterwards the current context re-proves its cover through an empty widen, because an owner
+reparented while released keeps its old ancestor marks; outer contexts get theirs back exactly as the escalation
+restores them. State read before the call may have changed or been destroyed, so the caller re-reads it. With a
+singleton bucket held by the current context it throws, for the reason `SyncEntities` does, and with nothing held
+it does nothing.
+
+Scripts reach it as `Game.SyncYield()` (`FO_COVER_PRIMITIVE`) through the managed `Sync.Yield()`. The `Sync` helpers
+use it for a retry caused by a relation that **changed** - a critter that moved, a group, spectator or item set that
+differs from the one just read - because the thread that changed it holds or wants locks this thread holds, and the
+handoff lets it finish. A retry caused by an **unavailable** entity - a group member `GetCritter` no longer returns,
+a map id with no map, a component node a widen refuses - still ends the script entry with `ScriptTask.Delay(0)`
+and resumes on a later frame: such an entity is mid-destroy or mid-unload, and that operation may be the very one
+that fired the calling handler (`UnloadCritter` marks the critter destroying, fires `OnCritterUnload`, and only then
+drops it from its global group), so no wait inside the call can let it finish. Waiting in place there exhausted the
+retry budget in `following.global_leader_unload_locks_follower`. Pinned by
+`Source/Tests/Test_ServerEntityLifetime.cpp` -> `ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack`,
+where a waiter blocked on the outer job's map gets it only through the yield, and
+`ServerSyncYieldRefusesWhileTheSingletonIsHeld`; the managed split by `Source/Scripting/Managed/SyncTests`.
 
 ### Storage shape
 

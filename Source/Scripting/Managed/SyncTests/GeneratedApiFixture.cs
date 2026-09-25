@@ -98,6 +98,8 @@ public static class Game
         OnAcquire?.Invoke();
     }
     public static void SyncRelease() => Held.Clear();
+    public static int Yields { get; set; }
+    public static void SyncYield() => Yields++;
 }
 
 public static class ScriptTask
