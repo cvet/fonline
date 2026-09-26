@@ -107,6 +107,8 @@ line at host startup) forces the embedded path and skips the implicit bundled-DL
 `--ClientLibPath` still loads a DLL. Whichever module ends up running the game (loaded DLL or embedded
 host) drives a uniform two-stage updater UI:
 
+Before opening the new run's log, the host renames the existing `<client>.log` to `<client>.prev.log` under the writable root. A crash or hang in the previous run therefore remains available to diagnostics; if another process holds the old file open and the rename fails, the host records a warning and continues with the new log. The retained file is one previous run, not a log archive.
+
 ```text
 <client-host> (host)
     │
@@ -293,7 +295,7 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 Versioned by `FO_UPDATER_VERSION = 5` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
-requires the secure channel before any updater message; a pre-channel client cannot self-update.
+requires the secure channel before any updater message; a pre-channel client cannot self-update. It receives one frozen plaintext handshake answer with `updater_outdated` before disconnecting, so it tells the player to install the latest full client instead of reporting the server offline. No other updater traffic bypasses the secure channel.
 Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake

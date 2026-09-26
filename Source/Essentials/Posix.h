@@ -113,7 +113,11 @@ namespace posix
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle searches the default scope, which is how the engine reaches its own exports
     auto get_symbol_address(nptr<void> module_handle, const string& symbol_name) noexcept -> nptr<void>;
+    // The loader's text for the last failed dlopen or dlsym on this thread, empty when there is none
+    auto get_last_library_error() noexcept -> string;
 #endif
+
+    auto get_os_version() noexcept -> string;
 
     // The handler runs on the thread that raised the signal, on its crash stack, with the signal's ucontext_t as the
     // context; once it returns the signal takes its default action. Installed for the life of the process

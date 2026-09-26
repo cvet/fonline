@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 507fdcdabed2e56f68dda9aaa8d923ba76745dc461882da5e52a58bf10d79e8a
+Content SHA-256: 36a5df31360a96a07ae9e17de1710eacc6746225d594344288662a77b758d52a
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2550**
-- Symbols with source-backed descriptions: **2550**
+- Discovered symbols: **2552**
+- Symbols with source-backed descriptions: **2552**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2550**
+- Explicitly classified symbols: **2552**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -14893,7 +14893,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 26787095a58c18c8f831f9f80367a7e36566739257f771f89d38da2b03639370
+Content SHA-256: c6b191c3d7db7a8ed37b87ebbdcff3a4abcae66eae2f3491b3567f0564facd62
 
 ---
 layout: default
@@ -14951,6 +14951,8 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 Every connection, including an in-process interthread connection, carries an ordered stream of sealed frames before any `NetMessage::Handshake` or updater data. The engine implements `Noise_NK_25519_ChaChaPoly_BLAKE2b` (Noise revision 34): the client has no pre-login identity, while the server proves possession of a static X25519 secret whose public half the client pins. The one-round-trip handshake derives fresh per-direction session keys. Network observers and forged servers cannot read or inject gameplay or updater messages; a party controlling the client process can still extract its session keys and send through a genuine session, so server-side authority and inbound validation remain necessary.
 
 The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
+
+There is one bounded exception to the no-plaintext-session rule: the server recognizes the frozen first-message signature of a client predating the secure channel and sends only a fixed legacy handshake answer with `updater_outdated` (compressed when configured). That client then closes; no gameplay or updater exchange follows in plaintext. Other malformed input still takes the secure-channel rejection path. `Test_SecureChannel.cpp` pins the reply through hand-driven and real TCP/UDP connections.
 
 | Frame | Sender | Body |
 |---|---|---|
@@ -17323,7 +17325,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: bbc80143c0197bef021c9c4c1b70d929b3f9fed486177be6b96887d24fd756ca
+Content SHA-256: a76bc5c12ee24f8a6dae93dd218499ca2762fd7d706251cfc9bfe7f36466509d
 
 ---
 layout: default
@@ -17452,6 +17454,8 @@ Notable responsibilities:
 - prepare the app-level services used by clients, tools, and headless/test modes.
 
 Application initialization is intentionally shared by more than the graphical client. Server, mapper, editor, testing, and package flows may use different flags or window modes, but they should still go through the shared frontend setup where applicable.
+
+After initialization, the client records the OS/version, CPU count, memory, SDL video driver, display mode and window metrics once in its log; a browser build also records its user agent. Each renderer names its selected device and driver, while degraded capabilities are warnings. These diagnostics describe the environment, not a guarantee that a particular GPU or platform passed release acceptance.
 
 ## Application services
 
@@ -17857,6 +17861,8 @@ level 10.0. A 2D-only build may accept feature level 9.3 when effects were
 baked with `Baking.Direct3DLevel9Shaders`; 3D-enabled builds never create a
 9.3 device. That path limits atlases to 4096 pixels and uses point-list draws
 without an index buffer. Levels 9.1 and 9.2 are unsupported.
+
+The device request tries feature level 11.1 first. If the older Direct3D 11.0 runtime rejects that list with `E_INVALIDARG` (notably Windows 7 without its platform update), the engine retries the same hardware or WARP request without 11.1. Other device-creation failures retain their normal failure path. The log records the chosen feature level and, when available, the DXGI adapter, vendor/device IDs, user-mode driver version and dedicated video memory.
 
 Important behaviors:
 
@@ -18301,7 +18307,7 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: edfe22e1a7abfcc6a3d7346e736f4e8d3c2ef3d24bc73ddc80210efd6edbcd8e
+Content SHA-256: c1e66e2df9b1c6c424210a90272cf31461b7df240c916c0e701c6a15e1543f7f
 
 ---
 layout: default
@@ -18411,6 +18417,8 @@ DLL simply lands on the embedded fallback. Setting `Client.ForceEmbeddedRuntime`
 line at host startup) forces the embedded path and skips the implicit bundled-DLL load; an explicit
 `--ClientLibPath` still loads a DLL. Whichever module ends up running the game (loaded DLL or embedded
 host) drives a uniform two-stage updater UI:
+
+Before opening the new run's log, the host renames the existing `<client>.log` to `<client>.prev.log` under the writable root. A crash or hang in the previous run therefore remains available to diagnostics; if another process holds the old file open and the rename fails, the host records a warning and continues with the new log. The retained file is one previous run, not a log archive.
 
 ```text
 <client-host> (host)
@@ -18598,7 +18606,7 @@ A matching PDB (Windows-only, named `<live>.pdb`, e.g. `<runtime-name>.dll.pdb`)
 
 Versioned by `FO_UPDATER_VERSION = 5` ([Common/Common.h](../../../../Source/Common/Common.h)). Bump it when
 the wire format changes or an older updater/host lifecycle is unsafe to continue. This generation
-requires the secure channel before any updater message; a pre-channel client cannot self-update.
+requires the secure channel before any updater message; a pre-channel client cannot self-update. It receives one frozen plaintext handshake answer with `updater_outdated` before disconnecting, so it tells the player to install the latest full client instead of reporting the server offline. No other updater traffic bypasses the secure channel.
 Gameplay compatibility (`Settings.CompatibilityVersion`) is separate and changes with every build.
 
 ### Handshake
@@ -25069,7 +25077,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: aa1252b4a05ee2678c536ac8f423da039025375f0dfa8e95dc0ad2e960e34e8d
+Content SHA-256: 8d24fa44b257e0730344312bc255f56d978b615586e5bea6cdb14fddff63f8f8
 
 ---
 layout: default
@@ -25226,6 +25234,8 @@ zones; other builds validate category names but emit no zones. See the
 `BasicCore.h` enforces the selected OS macro (`FO_WINDOWS`, `FO_LINUX`, `FO_MAC`, `FO_ANDROID`, `FO_IOS`, or `FO_WEB`) and requires C++20. It also binds frequently used standard types into the engine namespace and declares core macros such as `FO_EXPORT_FUNC`, `FO_KEEP_DATA_SYMBOL`, and namespace helpers. Warning-suppression helpers also live here: `FO_DISABLE_WARNINGS_PUSH/POP` silence all warnings (for wrapping third-party header includes), while the per-compiler `FO_GCC_IGNORE_WARNINGS_PUSH/POP`, `FO_CLANG_IGNORE_WARNINGS_PUSH/POP`, and `FO_MSVC_IGNORE_WARNINGS_PUSH/POP` silence one named diagnostic and are active only on their matching compiler (so a single-toolchain false positive can be suppressed at one site without other toolchains rejecting an unknown `-W` name or warning number). Prefer fixing warnings at their root; reach for the per-compiler helpers only for documented compiler false positives.
 
 `Platform.h` / `.cpp` owns host-specific helpers that are deliberately small: informational logging, thread names, executable path lookup, per-user data directory lookup, process id formatting, fork support where available, process memory usage, CPU usage snapshots, and dynamic module loading. `Platform::GetUserDataBase()` prefers environment values and is shell/SDL-free: Windows uses `%LOCALAPPDATA%` (else `%APPDATA%`), macOS/iOS use `$HOME/Library/Application Support`, and Linux/Android/other use `$XDG_DATA_HOME` (else `$HOME/.local/share`). When no environment path exists, Windows falls back to `SHGetKnownFolderPath` and supported POSIX hosts to `getpwuid_r`; a host without either source returns no path. Higher layers append the application name and decide whether absence is fatal. `Platform::GetCpuUsageSnapshot()` returns cumulative per-core system counters plus the current process CPU time; callers compare two snapshots to compute percentages and keep any sampling/cache state outside the Platform layer. `Platform` stays above `ExceptionHandling` and uses the earlier `FO_BASIC_STRONG_ASSERT` for terminating host-API invariants rather than importing later exception macros. Platform-specific application/window/rendering behavior lives under `Source/Frontend/`, not here.
+
+`platform::get_last_module_error()` captures the Windows loader error text or POSIX `dlerror()` immediately after a failed load or symbol lookup. `platform::get_os_version()` uses `RtlGetVersion` on Windows and `uname` elsewhere for client diagnostics.
 
 `WinApi.*` and `Posix.*` own the operating-system calls behind the `winapi::`
 and `posix::` namespaces. Their public boundaries use engine strings, optionals,
@@ -26093,7 +26103,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 142d4986829d5052368ff97448567e40a84a71a12cb9e010fe626276d070ee95
+Content SHA-256: 48d5e74217246d913b7ded4cb3f75f2cd1feca2a74d981b18edfee21e4f6cc48
 
 ---
 title: Generated API Reference
@@ -26110,7 +26120,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 993 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 995 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
@@ -26121,25 +26131,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2550 |
-| Symbols with descriptions | 2550 |
+| Addressable symbols | 2552 |
+| Symbols with descriptions | 2552 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2550 |
+| Explicitly classified symbols | 2552 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2549 |
+| <code>experimental</code> | 2551 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2550 stable IDs with SHA-256 <code>7de1a660416be9758abe73b21c6ec2a8fe94af2f8326f67652a0bbc14c40ed3b</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2552 stable IDs with SHA-256 <code>e3efb8f346b6b8075ed67401086fcb3666017c8e2a109759454ee37769dabc0f</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

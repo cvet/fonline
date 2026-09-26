@@ -105,7 +105,7 @@ void NetworkClientConnection::Disconnect() noexcept
     }
 
     if (_isConnecting) {
-        logging::write("Can't connect to the server");
+        logging::write(logging::type::warning, "Can't connect to the server");
 
         _isConnecting = false;
     }

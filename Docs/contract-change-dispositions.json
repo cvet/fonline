@@ -7236,6 +7236,18 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current networking guide documents the arrival report.",
       "compatibility": "Do not mix clients and servers across compatibility marker 65; deploy matching binaries and resources together.",
       "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.54f9d705f250b68b",
+      "baseline_contract_sha256": "0b941accc8ab213c3dfdd39b0750560e3a53cd1bc32e7b7302e7d7281a0d9029",
+      "current_contract_sha256": "528d6b186b3841f66148548117536f8ef27ce0c414ffeeacf32da03fa5906793",
+      "classification": "breaking",
+      "rationale": "The revision-pinned experimental native API inventory adds Game.LogWarning and Game.LogError; existing symbol IDs and signatures are unchanged.",
+      "migration": "No released API migration exists. Embedding projects regenerate bindings and rebake when updating Engine.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current generated API documents both logging methods.",
+      "compatibility": "Generated bindings and baked resources must match the Engine revision.",
+      "owner": "native-api"
     }
   ]
 }

@@ -36,6 +36,22 @@
 
 FO_BEGIN_NAMESPACE
 
+// A client from before the secure channel opens its stream with the plaintext message signature 0x011E9422, little-endian
+static constexpr std::array<uint8_t, 4> PRE_CHANNEL_SIGNATURE {0x22, 0x94, 0x1E, 0x01};
+
+// No channel offer comes near 0x2200 bytes, so a current client's stream never even begins like the signature
+static_assert(1 + SecureChannel::MAX_OFFERED_KEYS * NoiseHandshakeNK::MESSAGE_OVERHEAD < 0x2200);
+
+// The handshake answer in the frozen layout such a client reads, telling it that its updater is outdated
+static constexpr std::array<uint8_t, 20> PRE_CHANNEL_REFUSAL {
+    0x22, 0x94, 0x1E, 0x01, // Signature
+    0x14, 0x00, 0x00, 0x00, // Message length
+    0x03, // NetMessage::HandshakeAnswer
+    0x01, 0x01, 0x00, // Compatibility, updater and metadata outdated
+    0x00, 0x00, 0x00, 0x00, // Empty metadata version
+    0x00, 0x00, 0x00, 0x00, // Zero encryption key
+};
+
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view
 {
     switch (reason) {
@@ -363,6 +379,20 @@ auto ServerConnection::AsyncSendData() -> vector<uint8_t>
     scoped_lock channel_locker {_channelLocker};
 
     vector<uint8_t> send_buf;
+
+    // The one plaintext a connection ever sends, and all that a client from before the channel receives
+    if (_preChannelRefusalPending) {
+        if (!_settings->Network.DisableZlibCompression) {
+            _compressor.compress(PRE_CHANNEL_REFUSAL, send_buf);
+        }
+        else {
+            send_buf.assign(PRE_CHANNEL_REFUSAL.begin(), PRE_CHANNEL_REFUSAL.end());
+        }
+
+        _preChannelRefusalPending = false;
+        return send_buf;
+    }
+
     _channel.TakeHandshakeOutput(send_buf);
 
     // Messages written before the client's channel stands wait in the buffer rather than leave in the clear
@@ -391,9 +421,21 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
     {
         scoped_lock locker {_inBufLocker};
 
+        // A client from before the channel writes its handshake at once, so its first read opens with the plaintext signature
+        if (!_inputStarted && buf.size() >= PRE_CHANNEL_SIGNATURE.size() && memory::compare(buf.data(), PRE_CHANNEL_SIGNATURE.data(), PRE_CHANNEL_SIGNATURE.size())) {
+            logging::write("Client {}:{} predates the secure channel and is told to install the latest client", _netConnection->GetHost(), _netConnection->GetPort());
+
+            // Not rejected: a disconnect would discard the answer unsent, and the client closes the connection on reading it
+            _preChannelClient = true;
+            _preChannelRefusalPending = true;
+            has_handshake_output = true;
+        }
+
+        _inputStarted = true;
+
         // Runs on the network thread, inside the same transport receive lock that Disconnect() takes,
         // so a rejection is only latched here and the owning worker job performs the disconnect
-        if (!buf.empty() && !IsInputRejected()) {
+        if (!buf.empty() && !IsInputRejected() && !_preChannelClient) {
             try {
                 {
                     scoped_lock channel_locker {_channelLocker};
@@ -416,7 +458,7 @@ void ServerConnection::AsyncReceiveData(const_span<uint8_t> buf)
         callback = _dataArrivedCallback;
     }
 
-    // The answer to the client's offer leaves at once instead of waiting for the next outgoing message
+    // The answer to the client's offer, or the refusal of a client from before the channel, leaves at once
     if (has_handshake_output) {
         StartAsyncSend();
     }

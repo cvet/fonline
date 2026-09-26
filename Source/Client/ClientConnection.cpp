@@ -106,15 +106,15 @@ void ClientConnection::Connect()
         }
     }
     catch (const ClientConnectionException& ex) {
-        logging::write("Connecting error: {}", ex.what());
+        logging::write(logging::type::warning, "Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetworkClientException& ex) {
-        logging::write("Connection error: {}", ex.what());
+        logging::write(logging::type::warning, "Connection error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (const NetBufferException& ex) {
-        logging::write("Connecting error: {}", ex.what());
+        logging::write(logging::type::warning, "Connecting error: {}", ex.what());
         _connectCallback(ConnectResult::Failed);
     }
     catch (...) {
@@ -129,26 +129,26 @@ void ClientConnection::Process()
         ProcessConnection();
     }
     catch (const ClientConnectionException& ex) {
-        logging::write("Connection error: {}", ex.what());
+        logging::write(logging::type::warning, "Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const NetworkClientException& ex) {
-        logging::write("Connection error: {}", ex.what());
+        logging::write(logging::type::warning, "Connection error: {}", ex.what());
 
         if (!TryFallbackToTcp()) {
             Disconnect();
         }
     }
     catch (const NetBufferException& ex) {
-        logging::write("Connection error: {}", ex.what());
+        logging::write(logging::type::warning, "Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const DecompressException& ex) {
-        logging::write("Connection error: {}", ex.what());
+        logging::write(logging::type::warning, "Connection error: {}", ex.what());
         Disconnect();
     }
     catch (const NoiseException& ex) {
-        logging::write("Secure channel error: {}", ex.what());
+        logging::write(logging::type::warning, "Secure channel error: {}", ex.what());
         Disconnect();
     }
     catch (...) {
@@ -208,7 +208,7 @@ void ClientConnection::ProcessConnection()
         nanotime silent_since = std::max(_pingTime, _lastReceiveTime);
 
         if (nanotime::now() - silent_since >= std::chrono::milliseconds {_settings->ClientNetwork.PingTimeout}) {
-            logging::write("Connection lost: the server has sent nothing for {} ms", (nanotime::now() - silent_since).to_ms<int32_t>());
+            logging::write(logging::type::warning, "Connection lost: the server has sent nothing for {} ms", (nanotime::now() - silent_since).to_ms<int32_t>());
             Disconnect();
             return;
         }
@@ -304,7 +304,7 @@ auto ClientConnection::TryFallbackToTcp() -> bool
         return false;
     }
 
-    logging::write("UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort);
+    logging::write(logging::type::warning, "UDP connect failed, fallback to TCP for server '{}:{}'", _settings->ClientNetwork.ServerHost, _settings->Network.ServerPort);
 
     _udpFallbackTried = true;
     _connectingHandled = false;

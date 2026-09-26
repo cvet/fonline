@@ -429,6 +429,11 @@ auto GetExeLogFileName() -> string
     return strex("{}.log", FO_DEV_NAME);
 }
 
+auto GetExePreviousLogFileName() -> string
+{
+    return strex("{}.prev.log", strex(GetExeLogFileName()).erase_file_extension());
+}
+
 #if FO_LINUX || FO_MAC
 // Written from a signal handler, where a lock-free store is the only async-signal-safe move; global
 // because a signal targets the process, not an engine instance

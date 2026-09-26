@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"bbc80143c0197bef021c9c4c1b70d929b3f9fed486177be6b96887d24fd756ca"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a76bc5c12ee24f8a6dae93dd218499ca2762fd7d706251cfc9bfe7f36466509d"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -150,6 +150,8 @@ wrapping flags. Этой границей и точным поведением �
 Эта инициализация намеренно общая не только для графического клиента. Server,
 Mapper, Editor, tests и package flows используют разные flags и window modes,
 но там, где это применимо, проходят через общий frontend setup.
+
+После инициализации клиент однократно записывает в журнал версию ОС, число ядер CPU, объём памяти, видеодрайвер SDL, режим дисплея и параметры окна; браузерная сборка также записывает user agent. Каждый renderer называет выбранное устройство и драйвер, а ухудшение возможностей помечает предупреждением. Эти сведения описывают окружение, но не заменяют приёмку GPU или платформы для релиза.
 
 ## Сервисы приложения
 
@@ -542,6 +544,8 @@ level 10.0. Сборка без 3D может принять level 9.3, если
 `Baking.Direct3DLevel9Shaders`; сборка с 3D никогда не создаёт 9.3 device.
 Для 9.3 размер atlas ограничен 4096 пикселями, point-list draws выполняются
 без index buffer. Levels 9.1 и 9.2 не поддерживаются.
+
+При создании устройства сначала запрашивается feature level 11.1. Если старый runtime Direct3D 11.0 отвергает весь список с `E_INVALIDARG` (в частности, Windows 7 без platform update), движок повторяет тот же запрос hardware или WARP без 11.1. Остальные ошибки остаются обычными ошибками создания устройства. Журнал содержит выбранный feature level и, если доступно, DXGI adapter, идентификаторы vendor/device, версию пользовательского драйвера и объём видеопамяти.
 
 - создаёт D3D device, swap chain и render-target resources;
 - не фиксирует refresh rate windowed swap chain, оставляя выбор desktop compositor;

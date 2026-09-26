@@ -197,6 +197,24 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
     logging::write("{}", text);
 }
 
+// Writes the supplied text as one warning-level Engine log message
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogWarning(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::warning, "{}", text);
+}
+
+// Writes the supplied text as one error-level Engine log message
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogError(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::error, "{}", text);
+}
+
 // Requests application shutdown and marks the eventual process result as success or failure according to the argument
 ///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RequestQuit(ptr<BaseEngine> engine, bool success = true)

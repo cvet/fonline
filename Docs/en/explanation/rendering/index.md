@@ -126,6 +126,8 @@ Notable responsibilities:
 
 Application initialization is intentionally shared by more than the graphical client. Server, mapper, editor, testing, and package flows may use different flags or window modes, but they should still go through the shared frontend setup where applicable.
 
+After initialization, the client records the OS/version, CPU count, memory, SDL video driver, display mode and window metrics once in its log; a browser build also records its user agent. Each renderer names its selected device and driver, while degraded capabilities are warnings. These diagnostics describe the environment, not a guarantee that a particular GPU or platform passed release acceptance.
+
 ## Application services
 
 `Source/Frontend/Application.h` defines the public frontend surface.
@@ -530,6 +532,8 @@ level 10.0. A 2D-only build may accept feature level 9.3 when effects were
 baked with `Baking.Direct3DLevel9Shaders`; 3D-enabled builds never create a
 9.3 device. That path limits atlases to 4096 pixels and uses point-list draws
 without an index buffer. Levels 9.1 and 9.2 are unsupported.
+
+The device request tries feature level 11.1 first. If the older Direct3D 11.0 runtime rejects that list with `E_INVALIDARG` (notably Windows 7 without its platform update), the engine retries the same hardware or WARP request without 11.1. Other device-creation failures retain their normal failure path. The log records the chosen feature level and, when available, the DXGI adapter, vendor/device IDs, user-mode driver version and dedicated video memory.
 
 Important behaviors:
 

@@ -39,6 +39,7 @@
 #if !FO_WINDOWS
 #include <fcntl.h>
 #include <pwd.h>
+#include <sys/utsname.h>
 #include <unistd.h>
 #endif
 
@@ -790,7 +791,28 @@ auto posix::get_symbol_address(nptr<void> module_handle, const string& symbol_na
     auto symbol_cstr = make_ptr(symbol_name.c_str());
     return ::dlsym(module_handle ? module_handle.get() : RTLD_DEFAULT, symbol_cstr.get());
 }
+
+auto posix::get_last_library_error() noexcept -> string
+{
+    auto error = make_nptr(::dlerror());
+    return error ? string(error.get()) : string();
+}
 #endif
+
+auto posix::get_os_version() noexcept -> string
+{
+#if !FO_WINDOWS
+    struct utsname info {};
+
+    if (::uname(&info) != 0) {
+        return "unknown";
+    }
+
+    return strex("{} {} {}", &info.sysname[0], &info.release[0], &info.machine[0]).str();
+#else
+    return "unknown";
+#endif
+}
 
 void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
 {

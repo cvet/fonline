@@ -232,6 +232,10 @@ EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
     Module['websocket']['url'] = secure != 0 ? 'wss://' : 'ws://';
 });
 
+EM_JS(void, WebGetUserAgentImpl, (char* buffer, int buffer_size), {
+    stringToUTF8(navigator.userAgent || '', Number(buffer), buffer_size);
+});
+
 EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {
     const title = UTF8ToString(Number(title_ptr));
     const text = UTF8ToString(Number(text_ptr));
@@ -551,6 +555,17 @@ namespace WebRelated
         WebSetWebSocketSchemeImpl(secure ? 1 : 0);
 #else
         ignore_unused(secure);
+#endif
+    }
+
+    auto GetUserAgent() -> string
+    {
+#if FO_WEB
+        char buffer[512] {};
+        WebGetUserAgentImpl(&buffer[0], numeric_cast<int32_t>(std::size(buffer)));
+        return string(&buffer[0]);
+#else
+        return {};
 #endif
     }
 

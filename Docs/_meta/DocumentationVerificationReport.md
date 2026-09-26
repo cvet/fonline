@@ -2,6 +2,22 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-26 - pre-channel refusal, client diagnostics, and Direct3D reconciliation
+
+Scope and source revisions:
+
+- Reconciled documentation head `733fc511692193dd2e1864fe2baab108effc4339` with Engine `origin/master` through `229681b75887a4b8ce8e0dca4d929f159d52fc2c` (four incoming commits). Inspected the frozen pre-channel reply and secure-channel tests, client host/renderer/platform diagnostics, Direct3D 11.1 retry, and the two new script logging exports.
+- Kept the four legacy overview pages as redirects. Their incoming reusable content is reflected in the canonical EN/RU networking, updater, rendering, and Essentials guides.
+
+Documentation and contract reconciliation:
+
+- Updated the native-codegen inventory pin from 2550 to 2552 for additive `Game.LogWarning` and `Game.LogError`, corrected their source descriptions, and restored the `Game.RequestQuit` description displaced by the upstream edit. Regenerated native API/reference/public-index, source inventory, complete Russian generated-description translations (4813/4813), locale status, snippets, search/routes, AI retrieval, and external-agent delivery. No separate public breaking-change history is introduced before the first Engine release.
+- The aggregate diff reports three API changes (two additive methods and the revision-pinned scope), with one internal scope disposition and zero missing decisions. The pre-channel answer is a limited refusal for clients that cannot authenticate the current channel, not a plaintext gameplay fallback. Environment and `*.prev.log` diagnostics do not substitute for visible platform acceptance.
+
+Validation and limits:
+
+- Contract diff passed with zero missing dispositions. The full documentation validator passed 408 Markdown entries; 56 focused tests passed on the first run, and the two stale inventory-count expectations passed on a focused rerun after being updated (31 subtests). Native unit/build validation is being run from the embedding project. Visible Windows 7 and real legacy-client acceptance remain separate from source and documentation checks.
+
 ## 2026-09-25 - PNG capture, numeric-list interop, and teardown-cover reconciliation
 
 Scope and source revisions:

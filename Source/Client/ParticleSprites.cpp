@@ -225,7 +225,7 @@ auto ParticleSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture
         }
         else {
             break_into_debugger();
-            logging::write("Texture '{}' not found", path);
+            logging::write(logging::type::warning, "Texture '{}' not found", path);
             _loadedParticleTextures[path] = nullptr;
         }
     }

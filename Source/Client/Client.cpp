@@ -72,7 +72,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
             index = safe_alloc::make_unique<ResourceIndexSource>(index_path, pack_dirs);
         }
         catch (const std::exception& ex) {
-            logging::write("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
+            logging::write(logging::type::warning, "Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
             (void)fs::remove_file(index_path);
         }
 
@@ -1575,7 +1575,7 @@ void ClientEngine::Net_OnChosenAddItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        logging::write("Chosen is not created on add item");
+        logging::write(logging::type::warning, "Chosen is not created on add item");
         break_into_debugger();
 
         // Skip rest data
@@ -1618,7 +1618,7 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        logging::write("Chosen is not created in remove item");
+        logging::write(logging::type::warning, "Chosen is not created in remove item");
         break_into_debugger();
         return;
     }

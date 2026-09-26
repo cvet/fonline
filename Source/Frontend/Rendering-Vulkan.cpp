@@ -2275,6 +2275,27 @@ void Vulkan_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     VkPhysicalDeviceProperties gpu_props {};
     vkGetPhysicalDeviceProperties(_ctx->PhysicalDevice, &gpu_props);
 
+    // Name the GPU and driver so a client log can explain a rendering problem
+    {
+        constexpr uint32_t nvidia_vendor_id = 0x10DE;
+        uint32_t driver = gpu_props.driverVersion;
+        string driver_decoded;
+
+        // NVIDIA packs its driver version as 10.8.8.6 bits instead of the Vulkan API version layout
+        if (gpu_props.vendorID == nvidia_vendor_id) {
+            driver_decoded = strex("{}.{}.{}.{}", driver >> 22, (driver >> 14) & 0xFF, (driver >> 6) & 0xFF, driver & 0x3F).str();
+        }
+        else {
+            driver_decoded = strex("{}.{}.{}", VK_API_VERSION_MAJOR(driver), VK_API_VERSION_MINOR(driver), VK_API_VERSION_PATCH(driver)).str();
+        }
+
+        string_view device_name = gpu_props.deviceName;
+        string_view device_type = gpu_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU ? "discrete" : gpu_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU ? "integrated" : gpu_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU ? "virtual" : gpu_props.deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU ? "cpu" : "other";
+        uint32_t api = gpu_props.apiVersion;
+
+        logging::write("Render device: {}, vendor 0x{:04X}, driver {} (0x{:08X}), device 0x{:04X}, type {}, api {}.{}.{}", device_name, gpu_props.vendorID, driver_decoded, driver, gpu_props.deviceID, device_type, VK_API_VERSION_MAJOR(api), VK_API_VERSION_MINOR(api), VK_API_VERSION_PATCH(api));
+    }
+
     // Cache immutable device properties once so the hot paths don't re-query them
     _ctx->MinUniformBufferOffsetAlignment = gpu_props.limits.minUniformBufferOffsetAlignment;
     vkGetPhysicalDeviceMemoryProperties(_ctx->PhysicalDevice, &_ctx->MemoryProperties);

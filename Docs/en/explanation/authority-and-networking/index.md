@@ -55,6 +55,8 @@ Every connection, including an in-process interthread connection, carries an ord
 
 The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
 
+There is one bounded exception to the no-plaintext-session rule: the server recognizes the frozen first-message signature of a client predating the secure channel and sends only a fixed legacy handshake answer with `updater_outdated` (compressed when configured). That client then closes; no gameplay or updater exchange follows in plaintext. Other malformed input still takes the secure-channel rejection path. `Test_SecureChannel.cpp` pins the reply through hand-driven and real TCP/UDP connections.
+
 | Frame | Sender | Body |
 |---|---|---|
 | Offer | Client | Count from 1 to `SecureChannel::MAX_OFFERED_KEYS` (4), then a first NK message for each pinned server key |

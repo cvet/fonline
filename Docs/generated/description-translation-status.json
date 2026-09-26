@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4811,
-    "current_count": 4811,
+    "entry_count": 4813,
+    "current_count": 4813,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2552,
-      "current_count": 2552,
+      "entry_count": 2554,
+      "current_count": 2554,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -8905,6 +8905,18 @@
           "locator": "/symbols/@id=script.method.common.Game.Log/description",
           "source": "Writes the supplied text as one Engine log message",
           "source_sha256": "d007f4620b8a9644ef1c7d995e6900a80db91390d7f72ec4a4d244ed32a3c183",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.LogError/description",
+          "source": "Writes the supplied text as one error-level Engine log message",
+          "source_sha256": "1029e4d2c7b9cc6d6fa2b9853246dbc0e40a9b18f615b2234071e2bac8b23eb6",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.LogWarning/description",
+          "source": "Writes the supplied text as one warning-level Engine log message",
+          "source_sha256": "8678c874479e9c880c54464cda7aef17bd6112bfda7826b39bf3231dff93a2de",
           "status": "current"
         },
         {

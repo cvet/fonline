@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"edfe22e1a7abfcc6a3d7346e736f4e8d3c2ef3d24bc73ddc80210efd6edbcd8e"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"c1e66e2df9b1c6c424210a90272cf31461b7df240c916c0e701c6a15e1543f7f"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -124,6 +124,8 @@ Mono/shim следуют native compatibility/restart rules, а class-library ch
 `Client.ForceEmbeddedRuntime`, переданная в командной строке до загрузки settings,
 пропускает неявную библиотеку; явный `--ClientLibPath` всё равно имеет приоритет.
 Какой бы модуль ни выполнял игру, он запускает единый двухстадийный updater UI:
+
+Перед открытием журнала нового запуска host переименовывает существующий `<client>.log` в `<client>.prev.log` внутри writable root. Поэтому журнал предыдущего сбоя или зависания остаётся доступен для диагностики. Если другой процесс удерживает старый файл и переименование не удаётся, host записывает предупреждение и продолжает работу. Сохраняется один предыдущий запуск, а не архив журналов.
 
 ```text
 <client-host> (host)
@@ -301,7 +303,7 @@ PDB другой сборки не должен уничтожить подхо�
 [Common.h](../../../../Source/Common/Common.h). Поколение меняется при изменении
 wire format или когда lifecycle старого updater/host больше нельзя безопасно
 продолжать. Эта генерация требует защищённый канал до любого сообщения updater;
-клиент без канала не может обновить себя через него. Игровая
+клиент без канала не может обновить себя через него. Он получает единственный открытый ответ рукопожатия старого формата с `updater_outdated` и сообщает игроку о необходимости установить актуальный полный клиент, а не о недоступности сервера. Другой трафик updater не обходит защищённый канал. Игровая
 `Settings.CompatibilityVersion` независима и обычно изменяется с каждой сборкой.
 
 ### Handshake

@@ -573,6 +573,20 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
 
     logging::write("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
 
+    // Name the GPU and driver so a client log can explain a rendering problem; SDL fills only what the backend reports
+    {
+        auto or_unknown = [](string_view value) -> string_view { return !value.empty() ? value : string_view("unknown"); };
+        SDL_PropertiesID device_props = SDL_GetGPUDeviceProperties(_ctx->Device.get());
+        string_view device_name = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_NAME_STRING, ""));
+        string_view driver_name = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, ""));
+        string_view driver_version = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, ""));
+        auto backend = make_nptr(SDL_GetGPUDeviceDriver(_ctx->Device.get()));
+        string driver_info = strex(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "")).normalize_line_endings().trim().replace("\n", "; ").str();
+        string info_pair = !driver_info.empty() ? strex(", info {}", driver_info).str() : string();
+
+        logging::write("Render device: {}, vendor {}, driver {}, backend {}{}", device_name, driver_name, driver_version, backend ? string_view(backend.get()) : string_view("unknown"), info_pair);
+    }
+
     // Shader format: prefer the SPIR-V flavor (Vulkan), fall back to MSL (Metal)
     SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
 
@@ -599,7 +613,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
             FO_VERIFY_AND_THROW(swapchain_params_ok, "SDL_SetGPUSwapchainParameters failed", SDL_GetError());
         }
         else {
-            logging::write("SDL_GPU immediate present mode is not supported, VSync stays enabled");
+            logging::write(logging::type::warning, "SDL_GPU immediate present mode is not supported, VSync stays enabled");
         }
     }
 

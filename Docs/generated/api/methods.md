@@ -1051,6 +1051,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-log-139feaf8dc"></a>
 - [`symbol-script-method-common-game-log-139feaf8dc`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-log-139feaf8dc)
 
+<a id="symbol-script-method-common-game-logerror-532e641c40"></a>
+- [`symbol-script-method-common-game-logerror-532e641c40`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-logerror-532e641c40)
+
+<a id="symbol-script-method-common-game-logwarning-39d9388825"></a>
+- [`symbol-script-method-common-game-logwarning-39d9388825`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-logwarning-39d9388825)
+
 <a id="symbol-script-method-common-game-macosbuild-c65e2c0e95"></a>
 - [`symbol-script-method-common-game-macosbuild-c65e2c0e95`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-macosbuild-c65e2c0e95)
 

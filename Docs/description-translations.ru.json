@@ -14247,6 +14247,14 @@
           "source_sha256": "d007f4620b8a9644ef1c7d995e6900a80db91390d7f72ec4a4d244ed32a3c183",
           "translation": "Записывает заданный текст как одно сообщение журнала Engine."
         },
+        "/symbols/@id=script.method.common.Game.LogError/description": {
+          "source_sha256": "1029e4d2c7b9cc6d6fa2b9853246dbc0e40a9b18f615b2234071e2bac8b23eb6",
+          "translation": "Записывает заданный текст как одно сообщение журнала Engine уровня ошибки."
+        },
+        "/symbols/@id=script.method.common.Game.LogWarning/description": {
+          "source_sha256": "8678c874479e9c880c54464cda7aef17bd6112bfda7826b39bf3231dff93a2de",
+          "translation": "Записывает заданный текст как одно сообщение журнала Engine уровня предупреждения."
+        },
         "/symbols/@id=script.method.common.Game.MacOsBuild/description": {
           "source_sha256": "035078f5d159423872f7211633c168ab9c0abf50bdef8b52bb6b338f7753109b",
           "translation": "Сообщает, предназначена ли эта сборка для macOS."
