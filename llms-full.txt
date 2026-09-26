@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 1b1f149588e3e708d53cd26b70d86af6ef56944eb876bbeca3279386f7baf5fd
+Content SHA-256: 507fdcdabed2e56f68dda9aaa8d923ba76745dc461882da5e52a58bf10d79e8a
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2546**
-- Symbols with source-backed descriptions: **2546**
+- Discovered symbols: **2550**
+- Symbols with source-backed descriptions: **2550**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2546**
+- Explicitly classified symbols: **2550**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -14310,7 +14310,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23
+Content SHA-256: 07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8
 
 ---
 layout: default
@@ -14436,7 +14436,7 @@ positions are forbidden identities. Reordering source records therefore keeps
 translations attached, while changing English text makes the owning entry
 stale immediately.
 
-`BuildTools/docs_description_translations.py` inventories 20 generated models,
+`BuildTools/docs_description_translations.py` inventories 19 generated models,
 rejects duplicate, unknown, stale, type-changing, and inline-code-changing
 records, and writes
 [description-translation-status.json](../../../generated/description-translation-status.json).
@@ -14444,7 +14444,7 @@ Generators apply the overlay to a deep copy of the model: canonical JSON and
 English Markdown remain unchanged, while Russian Markdown receives translated
 descriptions before its fixed labels and headings are localized.
 
-The catalog uses `complete`: all 4,918 reader-facing values in all 20 generated
+The catalog uses `complete`: all 4,811 reader-facing values in all 19 generated
 domains, including the native API, have current reviewed records. CI and local
 validation reject any missing, unknown, stale, type-changing, list-shape-changing,
 or inline-code-changing entry. When a generator exposes another reader-facing
@@ -14891,7 +14891,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 1564d454360361df2ff64097bc0b9776c76acd8608b8830beb46009a941d0089
+Content SHA-256: 26787095a58c18c8f831f9f80367a7e36566739257f771f89d38da2b03639370
 
 ---
 layout: default
@@ -15102,7 +15102,25 @@ The server runtime applies two independent limits to connections that have not l
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
 
-A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately.
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately. It is still pinged for latency measurement, but a late answer merely postpones the next ping. `NeedPing()` schedules both transports; `NeedsPingWatchdog()` selects the disconnect policy.
+
+The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
+
+### The client reports a movement it finished predicting
+
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+
+The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
+
+### Movement synchronization trace
+
+`Network.MoveSyncTrace` (off by default) logs movement synchronization on server and clients. Each event is one stable, machine-readable line:
+
+```text
+MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
+```
+
+The local monotonic `t` aligns processes on one machine. Across machines, `st` is shared but client time sync delivery makes latency estimates approximate. Client lines identify their chosen critter with `viewer`. Server events include `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, and `send`; client events include `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, and `out`. `finish_req` records its outcome (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, or `reconcile_failed`) and the reported position, remaining/allowed time, and measured round trip. Embedding projects may add scenario `mark` and scripted `input` events; the engine does not own their runners or interpretation. The trace is too verbose for production.
 
 ### Disconnect reasons
 
@@ -15307,7 +15325,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: aaf7e3da5ec6927f165462eb072de6f1bb6380effbaab4faf34ce7353ba43f70
+Content SHA-256: 68f5223514961a1ecd7a909c1af1a77a4d3408aba38afcf72302159053de4e58
 
 ---
 layout: default
@@ -15421,7 +15439,7 @@ Baking turns project resources and configuration into runtime-ready output. The 
 At runtime/source level, baking is owned by:
 
 - `Source/Applications/BakerApp.cpp` — executable app wrapper that constructs `MasterBaker` and calls `BakeAll()`.
-- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. On Linux a linker export map makes this the shared library's only public symbol, and a post-build symbol check enforces that ABI. All allocator and engine implementation symbols bind locally, so loading a release baker into a sanitizer host cannot interpose on host allocation or global runtime state.
+- `Source/Applications/BakerLib.cpp` — exported library entry point `FO_BakeResources()` for library-based baking flows. An unpackaged application normally pre-bakes resources on startup. `Baking.PrebakeOnStartup = False` skips that pass when a launcher has already baked the output for several processes. On Linux a linker export map makes this the shared library's only public symbol, and a post-build symbol check enforces that ABI. All allocator and engine implementation symbols bind locally, so loading a release baker into a sanitizer host cannot interpose on host allocation or global runtime state.
 - `Source/Tools/Baker.h` / `Source/Tools/Baker.cpp` — shared baking context, baker setup, data source, output writing, and `MasterBaker`.
 - `Source/Tools/BakingReport.h` / `Source/Tools/BakingReport.cpp` — report data contracts, thread-safe aggregation, JSON serialization, and report-path construction.
 
@@ -16750,7 +16768,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 4ced8eb72d3d2f0352dc7240c393af17061c94295ef128bb10414efee39c3e92
+Content SHA-256: 92b2f9aa5f6c5c94bec6669bcd25bc5b3cfcd17440fe59741545d081953e5a9d
 
 ---
 layout: default
@@ -17016,6 +17034,8 @@ Key operations:
 - sanity check: `ValidateRuntimeState()`.
 
 Movement is therefore a reusable time-based plan, not just a list of positions. Client prediction, server correction, and script-visible movement data should all preserve that distinction.
+
+`_offsetTime` tells an observer how far a plan has already progressed: server-to-client movement includes it, while a client's initial move request does not. The server therefore starts the player's plan one uplink transit later than the client. On ordinary completion, the client reports its arrival and the server reconciles along that same plan before processing the next ordered request; see [Networking](authority-and-networking/#the-client-reports-a-movement-it-finished-predicting).
 
 Server and client runtime processing keep `MovingContext` active regardless of `CritterCondition`. Game scripts own condition-based movement permissions, so a game can represent knockout falls, dead-body slides, or custom state movement while still relying on the same path, offset, and completion state machinery. Attached critters are still stopped by runtime processing because attachment is a transport/ownership relationship rather than a critter condition.
 
@@ -19498,7 +19518,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: db77b1d28946704712c74d306dc836c224b6beb206253718ab382c74c38886ee
+Content SHA-256: e8ecf93a2eeb8702ae49209e2e638cd3fd43920d41fea77d8e658ea643d7ec48
 
 ---
 layout: default
@@ -19926,6 +19946,14 @@ Do not duplicate the Common entity taxonomy here; [Entity Model](../entity-and-p
 Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization uses the same passability predicate as client movement: if rounding a sub-hex offset would cross into a blocked neighbor, it retains the reported logical hex and clamps the offset instead of snapping toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
+
+### An arrival the client predicted is reconciled before the request behind it
+
+`Process_MoveFinished()` handles `SendCritterMoveFinished` after a predicted plan ends. The server begins the plan one uplink transit after the client, so an action sent at arrival could otherwise be checked while the server critter is still moving. The ordered player-message loop reconciles the arrival along the authoritative path before reading the action behind it. The report identifies the plan by its end hex, and can advance only `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; an excessive or stale report is refused. This is completion of an existing move, so it does not fire `OnPlayerMoveCritter`. `Server.MoveBridgeReportHexes` sets the threshold for logging the async-fix bridge on new movement requests.
+
+### A teleport ends the plan it interrupts
+
+`MapManager::Transfer` stops active movement and lands the critter with zero hex offset. On receiving `CritterTeleport`, the client also stops its old plan and clears the offset before placing the critter; otherwise interpolation could walk it back onto the interrupted route.
 
 Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
 
@@ -23754,7 +23782,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 9bcf3e76cec108772603c32c9c915204eaba9fc8f1b0b93b8394e1aeef7384f2
+Content SHA-256: b228f11b21bd4998f76f4d22d842625e0fc2bd2f22240ce6bed1bc2421918da7
 
 ---
 title: Generated Map Format Reference
@@ -23778,7 +23806,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>d3ef986c77ea01146d499256d6035f2a7e1305dde20ac027c8330afadc749b46</code> |
+| Contract digest | <code>afd0f11724f13fbf0f0e4720f5005ba243dbc068ad36eca61616bebfd4eb8cbb</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -26061,7 +26089,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 6d1737973342757fd0a611e9813e5ef948a7ac0e0b9c87be4bad680685530165
+Content SHA-256: 142d4986829d5052368ff97448567e40a84a71a12cb9e010fe626276d070ee95
 
 ---
 title: Generated API Reference
@@ -26082,32 +26110,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 274 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 278 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2546 |
-| Symbols with descriptions | 2546 |
+| Addressable symbols | 2550 |
+| Symbols with descriptions | 2550 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2546 |
+| Explicitly classified symbols | 2550 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2545 |
+| <code>experimental</code> | 2549 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2546 stable IDs with SHA-256 <code>5db7b4b0807932289c7c9774004fee88a46609259ddbb3ddb32300b83a1eb4e6</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2550 stable IDs with SHA-256 <code>7de1a660416be9758abe73b21c6ec2a8fe94af2f8326f67652a0bbc14c40ed3b</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -28195,7 +28223,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 2340f66abc525456d9ffadb21d560734c3ff3e0c70b466ceacda7edf439d802d
+Content SHA-256: 795907272a66b68f4b0a0cafd594ac408090a277c8557a6debaef74099220922
 
 ---
 layout: default
@@ -28328,6 +28356,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_ServerMoveReconciliation.cpp`
 - `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_UpdaterBackend.cpp`
 

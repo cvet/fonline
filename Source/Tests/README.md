@@ -129,6 +129,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ServerEventContracts.cpp`
 - `Source/Tests/Test_ServerItems.cpp`
 - `Source/Tests/Test_ServerMapOperations.cpp`
+- `Source/Tests/Test_ServerMoveReconciliation.cpp`
 - `Source/Tests/Test_SecureChannel.cpp`
 - `Source/Tests/Test_UpdaterBackend.cpp`
 

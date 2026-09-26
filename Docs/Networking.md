@@ -41,6 +41,14 @@ Continue with [Client connection abstraction](en/explanation/authority-and-netwo
 
 Continue with [Server connection abstraction](en/explanation/authority-and-networking/index.md#server-connection-abstraction).
 
+### The client reports a movement it finished predicting
+
+Continue with [arrival reporting](en/explanation/authority-and-networking/index.md#the-client-reports-a-movement-it-finished-predicting).
+
+### Movement synchronization trace
+
+Continue with [movement trace](en/explanation/authority-and-networking/index.md#movement-synchronization-trace).
+
 ## Ordered UDP transport
 
 Continue with [Ordered UDP transport](en/explanation/authority-and-networking/index.md#ordered-udp-transport).

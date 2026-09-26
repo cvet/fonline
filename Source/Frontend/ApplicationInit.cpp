@@ -139,10 +139,16 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Project-side early init (before App frontend, after settings + exception/log callbacks)
     ApplicationInitHook(flags, settings);
 
-    // Prebake resources
+    // Prebake resources. Several processes launched from one checkout would each re-validate every pack for
+    // minutes, so a launcher that has just baked may start them on the existing output instead
     if (!settings.Common.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
-        logging::write("Prebake resources");
-        PrebakeResources(settings);
+        if (settings.Baking.PrebakeOnStartup) {
+            logging::write("Prebake resources");
+            PrebakeResources(settings);
+        }
+        else {
+            logging::write("Prebake skipped by Baking.PrebakeOnStartup, starting on the resources already baked");
+        }
     }
 
     // Application frontend initialization

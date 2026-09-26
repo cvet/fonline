@@ -18399,6 +18399,10 @@
           "source_sha256": "f6c416bd17d29f1a813c4eae79e270cccb6d9f9030937919e9fc15f3cb63f4fb",
           "translation": "Каталог runtime-бинарных файлов клиента для каждой платформы, предоставляемых updater-ом"
         },
+        "/symbols/@id=setting.common.Baking.PrebakeOnStartup/description": {
+          "source_sha256": "937bb52fe511828480b24b13c2bc63e438ecb5b466f2fa2fb4b96fca3e2d3d65",
+          "translation": "Если false, непакетированное приложение использует уже запечённые ресурсы вместо запуска baker; применяется при запуске нескольких процессов из одного только что запечённого checkout"
+        },
         "/symbols/@id=setting.common.Baking.PreciseModelBounds/description": {
           "source_sha256": "0597d7306b734f8b672d97b6c54eb57ede50655d340d26f4b46012f236d92c03",
           "translation": "Если true, границы модели измеряют каждую skinned-вершину; если false, per-bone envelope boxes значительно быстрее дают консервативное надмножество"
@@ -18614,6 +18618,10 @@
         "/symbols/@id=setting.common.Network.ForceMetadataVersion/description": {
           "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
           "translation": "Пользовательская версия метаданных для имитации клиента, запечённого отдельно от сервера"
+        },
+        "/symbols/@id=setting.common.Network.MoveSyncTrace/description": {
+          "source_sha256": "1fbb1cacbeea4ecd18183ee31942e31d8b782412b0d3569d936d72f270844e96",
+          "translation": "Если true, сервер и клиент записывают по одной строке MOVESYNC на событие синхронизации движения со стабильными полями key=value для внешнего анализа; слишком подробно для production"
         },
         "/symbols/@id=setting.common.Network.NetBufferSize/description": {
           "source_sha256": "e5fdec5ca91d617dad9724d85abc9bf82b0411d437d17be80d34efbe91f0c3d8",
@@ -19026,6 +19034,14 @@
         "/symbols/@id=setting.server.Server.MapInstanceStaticGrid/description": {
           "source_sha256": "a04590c27487098ce5b61f7843d6c54d93e4cbdf396af54edf3d9b794d17d980",
           "translation": "Если true, включена статическая сетка экземпляра карты"
+        },
+        "/symbols/@id=setting.server.Server.MoveBridgeReportHexes/description": {
+          "source_sha256": "739cabff521eafd8c2911bb72cb1602a2ecd294e3efecabf96de3fd345dd5171",
+          "translation": "Длина async-fix bridge в гексах, начиная с которой логируется расхождение движения клиента и сервера; 0 отключает отчёт"
+        },
+        "/symbols/@id=setting.server.Server.MoveFinishCatchUpMaxMs/description": {
+          "source_sha256": "3aebb593db4fcd6f4a38b183101dc0dc831f2246be3187869158710779bc99d7",
+          "translation": "Верхняя граница в миллисекундах для остатка движения, который можно ускорить по сообщению клиента о прибытии; фактический допуск также ограничен временем пути туда-обратно для соединения"
         },
         "/symbols/@id=setting.server.Server.MaxServerLogLines/description": {
           "source_sha256": "a389080c1c45f52a0298f241fb477dcaf08fa152398d39bdfd3753a40e52be8d",

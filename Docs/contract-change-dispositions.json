@@ -7212,6 +7212,30 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current client-runtime guide and generated API describe the supported overload.",
       "compatibility": "The removed overload is intentionally unavailable. Engine binaries, generated bindings, and embedding-project scripts must use the same revision.",
       "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.c00ed3f431916b93",
+      "baseline_contract_sha256": "89be3c33a3e4a2799b19a26ad70ba40746dd5137d2c29597f7f735084a164d3d",
+      "current_contract_sha256": "0b941accc8ab213c3dfdd39b0750560e3a53cd1bc32e7b7302e7d7281a0d9029",
+      "classification": "breaking",
+      "rationale": "The pre-release native API inventory adds four experimental runtime settings for prebaking and movement synchronization; existing symbol signatures are unchanged.",
+      "migration": "No released API migration exists. Revision-pinned embedding projects regenerate bindings and rebake when updating Engine.",
+      "release_note": "No separate breaking-change note before the first Engine release; current settings and movement guides document the supported behavior.",
+      "compatibility": "Generated bindings and baked resources must match the Engine revision.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.d5bcd34ea97793a5",
+      "baseline_contract_sha256": "89be3c33a3e4a2799b19a26ad70ba40746dd5137d2c29597f7f735084a164d3d",
+      "current_contract_sha256": "0b941accc8ab213c3dfdd39b0750560e3a53cd1bc32e7b7302e7d7281a0d9029",
+      "classification": "breaking",
+      "rationale": "The movement-arrival network message requires a coordinated client/server protocol revision, so the central compatibility marker moves from 64 to 65.",
+      "migration": "No released client protocol migration exists. Rebuild and deploy matching client and server binaries from one Engine revision.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current networking guide documents the arrival report.",
+      "compatibility": "Do not mix clients and servers across compatibility marker 65; deploy matching binaries and resources together.",
+      "owner": "networking"
     }
   ]
 }

@@ -341,6 +341,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-baking-platformbinaries-d9858a4503"></a>
 - [`symbol-setting-common-baking-platformbinaries-d9858a4503`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-platformbinaries-d9858a4503)
 
+<a id="symbol-setting-common-baking-prebakeonstartup-a9f2fb4be4"></a>
+- [`symbol-setting-common-baking-prebakeonstartup-a9f2fb4be4`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-prebakeonstartup-a9f2fb4be4)
+
 <a id="symbol-setting-common-baking-precisemodelbounds-b405e80260"></a>
 - [`symbol-setting-common-baking-precisemodelbounds-b405e80260`](../../en/reference/script-api/settings.md#symbol-setting-common-baking-precisemodelbounds-b405e80260)
 
@@ -530,6 +533,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-network-forcemetadataversion-10c9cd92bf"></a>
 - [`symbol-setting-common-network-forcemetadataversion-10c9cd92bf`](../../en/reference/script-api/settings.md#symbol-setting-common-network-forcemetadataversion-10c9cd92bf)
+
+<a id="symbol-setting-common-network-movesynctrace-5f9f85e5ca"></a>
+- [`symbol-setting-common-network-movesynctrace-5f9f85e5ca`](../../en/reference/script-api/settings.md#symbol-setting-common-network-movesynctrace-5f9f85e5ca)
 
 <a id="symbol-setting-common-network-netbuffersize-cc25ecc24e"></a>
 - [`symbol-setting-common-network-netbuffersize-cc25ecc24e`](../../en/reference/script-api/settings.md#symbol-setting-common-network-netbuffersize-cc25ecc24e)
@@ -898,6 +904,12 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-server-server-maxserverloglines-942b1f7897"></a>
 - [`symbol-setting-server-server-maxserverloglines-942b1f7897`](../../en/reference/script-api/settings.md#symbol-setting-server-server-maxserverloglines-942b1f7897)
+
+<a id="symbol-setting-server-server-movebridgereporthexes-2d8ec276c6"></a>
+- [`symbol-setting-server-server-movebridgereporthexes-2d8ec276c6`](../../en/reference/script-api/settings.md#symbol-setting-server-server-movebridgereporthexes-2d8ec276c6)
+
+<a id="symbol-setting-server-server-movefinishcatchupmaxms-fa0132e568"></a>
+- [`symbol-setting-server-server-movefinishcatchupmaxms-fa0132e568`](../../en/reference/script-api/settings.md#symbol-setting-server-server-movefinishcatchupmaxms-fa0132e568)
 
 <a id="symbol-setting-server-server-nostart-44b1aac416"></a>
 - [`symbol-setting-server-server-nostart-44b1aac416`](../../en/reference/script-api/settings.md#symbol-setting-server-server-nostart-44b1aac416)

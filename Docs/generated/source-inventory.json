@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 121,
+    "test_file_count": 122,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -184,6 +184,7 @@
       "Source/Tests/Test_ServerEventContracts.cpp",
       "Source/Tests/Test_ServerItems.cpp",
       "Source/Tests/Test_ServerMapOperations.cpp",
+      "Source/Tests/Test_ServerMoveReconciliation.cpp",
       "Source/Tests/Test_ServerScriptMethods.cpp",
       "Source/Tests/Test_Settings.cpp",
       "Source/Tests/Test_SettingsStorage.cpp",
@@ -206,7 +207,7 @@
     ]
   },
   "settings": {
-    "declaration_count": 274,
+    "declaration_count": 278,
     "source": "Source/Common/Settings.inc"
   }
 }

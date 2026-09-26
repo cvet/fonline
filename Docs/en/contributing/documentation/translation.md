@@ -122,7 +122,7 @@ positions are forbidden identities. Reordering source records therefore keeps
 translations attached, while changing English text makes the owning entry
 stale immediately.
 
-`BuildTools/docs_description_translations.py` inventories 20 generated models,
+`BuildTools/docs_description_translations.py` inventories 19 generated models,
 rejects duplicate, unknown, stale, type-changing, and inline-code-changing
 records, and writes
 [description-translation-status.json](../../../generated/description-translation-status.json).
@@ -130,7 +130,7 @@ Generators apply the overlay to a deep copy of the model: canonical JSON and
 English Markdown remain unchanged, while Russian Markdown receives translated
 descriptions before its fixed labels and headings are localized.
 
-The catalog uses `complete`: all 4,918 reader-facing values in all 20 generated
+The catalog uses `complete`: all 4,811 reader-facing values in all 19 generated
 domains, including the native API, have current reviewed records. CI and local
 validation reject any missing, unknown, stale, type-changing, list-shape-changing,
 or inline-code-changing entry. When a generator exposes another reader-facing

@@ -263,6 +263,8 @@ Key operations:
 
 Movement is therefore a reusable time-based plan, not just a list of positions. Client prediction, server correction, and script-visible movement data should all preserve that distinction.
 
+`_offsetTime` tells an observer how far a plan has already progressed: server-to-client movement includes it, while a client's initial move request does not. The server therefore starts the player's plan one uplink transit later than the client. On ordinary completion, the client reports its arrival and the server reconciles along that same plan before processing the next ordered request; see [Networking](authority-and-networking/#the-client-reports-a-movement-it-finished-predicting).
+
 Server and client runtime processing keep `MovingContext` active regardless of `CritterCondition`. Game scripts own condition-based movement permissions, so a game can represent knockout falls, dead-body slides, or custom state movement while still relying on the same path, offset, and completion state machinery. Attached critters are still stopped by runtime processing because attachment is a transport/ownership relationship rather than a critter condition.
 
 ## Map loading

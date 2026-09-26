@@ -219,6 +219,7 @@ auto ServerConnection::GetDiagnostics() const -> Diagnostics
     result.LastActivityTime = _activity.LastActivityTime;
     result.LastLoginProgressTime = _activity.LastLoginProgressTime;
     result.PingAnswerReceived = _activity.PingAnswerReceived;
+    result.RoundTrip = _activity.RoundTrip;
 
     if (_updateFileTransfer.PendingFileIndex) {
         result.PendingUpdateFileIndex = numeric_cast<int32_t>(*_updateFileTransfer.PendingFileIndex);
@@ -245,12 +246,22 @@ auto ServerConnection::IsLoginTimedOut(nanotime time) const noexcept -> bool
 
 auto ServerConnection::NeedPing(nanotime time) const noexcept -> bool
 {
-    return _netConnection->NeedsPingWatchdog() && _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
+    return _activity.HandshakeComplete && (!_activity.NextPingTime || time >= _activity.NextPingTime);
+}
+
+auto ServerConnection::NeedsPingWatchdog() const noexcept -> bool
+{
+    return _netConnection->NeedsPingWatchdog();
 }
 
 auto ServerConnection::HasPendingPing() const noexcept -> bool
 {
     return !_activity.PingAnswerReceived;
+}
+
+auto ServerConnection::GetRoundTrip() const noexcept -> timespan
+{
+    return _activity.RoundTrip;
 }
 
 auto ServerConnection::GetUpdateFileTransferIndex() const noexcept -> optional<size_t>
@@ -287,12 +298,28 @@ void ServerConnection::RegisterPingRequest(nanotime time) noexcept
 {
     _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = false;
+    _activity.PingRequestTime = time;
 }
 
 void ServerConnection::RegisterPingAnswer(nanotime time) noexcept
 {
     _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = true;
+
+    // A sample carries the client's frame time on top of the transport delay, so it is smoothed into an upper
+    // bound one late answer cannot move far; an unpaired answer is ignored outright
+    if (_activity.PingRequestTime && time > _activity.PingRequestTime) {
+        timespan sample = time - _activity.PingRequestTime;
+
+        if (_activity.RoundTrip) {
+            _activity.RoundTrip = timespan {(_activity.RoundTrip.nanoseconds() * 3 + sample.nanoseconds()) / 4};
+        }
+        else {
+            _activity.RoundTrip = sample;
+        }
+    }
+
+    _activity.PingRequestTime = {};
 }
 
 void ServerConnection::BeginUpdateFileTransfer(size_t file_index) noexcept

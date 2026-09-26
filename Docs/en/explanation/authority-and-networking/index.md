@@ -207,7 +207,25 @@ The server runtime applies two independent limits to connections that have not l
   legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
   answering pings.
 
-A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately.
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately. It is still pinged for latency measurement, but a late answer merely postpones the next ping. `NeedPing()` schedules both transports; `NeedsPingWatchdog()` selects the disconnect policy.
+
+The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
+
+### The client reports a movement it finished predicting
+
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+
+The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
+
+### Movement synchronization trace
+
+`Network.MoveSyncTrace` (off by default) logs movement synchronization on server and clients. Each event is one stable, machine-readable line:
+
+```text
+MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
+```
+
+The local monotonic `t` aligns processes on one machine. Across machines, `st` is shared but client time sync delivery makes latency estimates approximate. Client lines identify their chosen critter with `viewer`. Server events include `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, and `send`; client events include `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, and `out`. `finish_req` records its outcome (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, or `reconcile_failed`) and the reported position, remaining/allowed time, and measured round trip. Embedding projects may add scenario `mark` and scripted `input` events; the engine does not own their runners or interpretation. The trace is too verbose for production.
 
 ### Disconnect reasons
 

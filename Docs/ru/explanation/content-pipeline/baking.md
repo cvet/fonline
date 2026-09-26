@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"aaf7e3da5ec6927f165462eb072de6f1bb6380effbaab4faf34ce7353ba43f70"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"68f5223514961a1ecd7a909c1af1a77a4d3408aba38afcf72302159053de4e58"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -110,7 +110,7 @@ Bake выдаёт loose outputs для каждого target. Затем packagi
 На уровне приложений и исходников владельцы разделены так:
 
 - `BakerApp.cpp` является оболочкой executable: создаёт `MasterBaker` и вызывает `BakeAll()`;
-- `BakerLib.cpp` экспортирует `FO_BakeResources()` для library-based сценариев. В Linux export map оставляет единственным публичным символом именно этот вход, а post-build проверка закрепляет ABI. Символы allocator-а и реализации Engine связываются локально, поэтому release baker, загруженный sanitizer-host-ом, не перехватывает allocation или глобальное runtime-состояние host-а;
+- `BakerLib.cpp` экспортирует `FO_BakeResources()` для library-based сценариев. Непакетированное приложение обычно запекает ресурсы при запуске. `Baking.PrebakeOnStartup = False` пропускает этот проход, если launcher уже запёк выходные файлы для нескольких процессов. В Linux export map оставляет единственным публичным символом именно этот вход, а post-build проверка закрепляет ABI. Символы allocator-а и реализации Engine связываются локально, поэтому release baker, загруженный sanitizer-host-ом, не перехватывает allocation или глобальное runtime-состояние host-а;
 - `Baker.h/.cpp` владеют общим контекстом, созданием baker-ов, data source, записью результатов и `MasterBaker`;
 - `BakingReport.h/.cpp` владеют DTO отчёта, потокобезопасной агрегацией, JSON-сериализацией и построением пути отчёта.
 

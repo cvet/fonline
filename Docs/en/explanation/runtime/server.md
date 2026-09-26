@@ -425,6 +425,14 @@ Client movement requests enter through `Process_Move()`, `Process_StopMove()`, a
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
 
+### An arrival the client predicted is reconciled before the request behind it
+
+`Process_MoveFinished()` handles `SendCritterMoveFinished` after a predicted plan ends. The server begins the plan one uplink transit after the client, so an action sent at arrival could otherwise be checked while the server critter is still moving. The ordered player-message loop reconciles the arrival along the authoritative path before reading the action behind it. The report identifies the plan by its end hex, and can advance only `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; an excessive or stale report is refused. This is completion of an existing move, so it does not fire `OnPlayerMoveCritter`. `Server.MoveBridgeReportHexes` sets the threshold for logging the async-fix bridge on new movement requests.
+
+### A teleport ends the plan it interrupts
+
+`MapManager::Transfer` stops active movement and lands the critter with zero hex offset. On receiving `CritterTeleport`, the client also stops its old plan and clears the offset before placing the critter; otherwise interpolation could walk it back onto the interrupted route.
+
 Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
 
 Runtime movement is independent of `CritterCondition`: alive, knockout, dead, and any future condition use the same `MovingContext` processing. Game scripts own gameplay-level movement permissions and must stop or reject movement when a creature state should forbid it. Attached critters still stop their active `MovingContext` because attachment is a transport/ownership relationship rather than a condition.

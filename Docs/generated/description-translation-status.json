@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4807,
-    "current_count": 4807,
+    "entry_count": 4811,
+    "current_count": 4811,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2548,
-      "current_count": 2548,
+      "entry_count": 2552,
+      "current_count": 2552,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -15136,6 +15136,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.common.Baking.PrebakeOnStartup/description",
+          "source": "If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout",
+          "source_sha256": "937bb52fe511828480b24b13c2bc63e438ecb5b466f2fa2fb4b96fca3e2d3d65",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.common.Baking.PreciseModelBounds/description",
           "source": "If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster",
           "source_sha256": "0597d7306b734f8b672d97b6c54eb57ede50655d340d26f4b46012f236d92c03",
@@ -15457,6 +15463,12 @@
           "locator": "/symbols/@id=setting.common.Network.ForceMetadataVersion/description",
           "source": "Custom metadata version, for simulating a client baked apart from the server",
           "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.MoveSyncTrace/description",
+          "source": "If true, server and client write one MOVESYNC log line per movement synchronization event, as stable key=value fields for offline analysis; too verbose for production",
+          "source_sha256": "1fbb1cacbeea4ecd18183ee31942e31d8b782412b0d3569d936d72f270844e96",
           "status": "current"
         },
         {
@@ -16081,6 +16093,18 @@
           "locator": "/symbols/@id=setting.server.Server.MaxServerLogLines/description",
           "source": "Maximum server log lines in UI",
           "source_sha256": "a389080c1c45f52a0298f241fb477dcaf08fa152398d39bdfd3753a40e52be8d",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.Server.MoveBridgeReportHexes/description",
+          "source": "Async-fix bridge length in hexes from which the client/server movement divergence is logged; 0 disables the report",
+          "source_sha256": "739cabff521eafd8c2911bb72cb1602a2ecd294e3efecabf96de3fd345dd5171",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.server.Server.MoveFinishCatchUpMaxMs/description",
+          "source": "Upper bound in milliseconds on the movement remainder a client-reported arrival may fast-forward; the effective allowance is also capped by the connection round trip",
+          "source_sha256": "3aebb593db4fcd6f4a38b183101dc0dc831f2246be3187869158710779bc99d7",
           "status": "current"
         },
         {

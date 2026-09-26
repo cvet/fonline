@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"bc7e1036eb863a02825bc08b0915ae4b0c3e77062726d7e0a7034a14810c9d23"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
@@ -140,7 +140,7 @@ python BuildTools/docs_localization.py --check --enforce-complete
 перестановка записей исходника сохраняет привязку переводов, а изменение
 английского текста немедленно делает владеющую запись устаревшей.
 
-`BuildTools/docs_description_translations.py` инвентаризирует 20 генерируемых
+`BuildTools/docs_description_translations.py` инвентаризирует 19 генерируемых
 моделей, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или
 inline-code записи и создаёт
 [description-translation-status.json](../../../generated/description-translation-status.json).
@@ -148,8 +148,8 @@ inline-code записи и создаёт
 английский Markdown не меняются, а русский Markdown получает переведённые
 описания до локализации фиксированных подписей и заголовков.
 
-Каталог использует режим `complete`: все 4 918 обращённых к читателю значений
-во всех 20 генерируемых доменах, включая native API, имеют актуальные
+Каталог использует режим `complete`: все 4 811 обращённых к читателю значений
+во всех 19 генерируемых доменах, включая native API, имеют актуальные
 проверенные записи. CI и локальная проверка отклоняют отсутствующие,
 неизвестные, устаревшие, меняющие тип, форму списка или inline-code записи.
 Если генератор начинает выводить новое обращённое к читателю значение,

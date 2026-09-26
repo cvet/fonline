@@ -53,6 +53,14 @@ Continue with [Map, location, item, and critter entities](en/explanation/runtime
 
 Continue with [Movement and authoritative state](en/explanation/runtime/server.md#movement-and-authoritative-state).
 
+### An arrival the client predicted is reconciled before the request behind it
+
+Continue with [arrival reconciliation](en/explanation/runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
+
+### A teleport ends the plan it interrupts
+
+Continue with [teleport and movement](en/explanation/runtime/server.md#a-teleport-ends-the-plan-it-interrupts).
+
 ## Client update backend
 
 Continue with [Client update backend](en/explanation/runtime/server.md#client-update-backend).
