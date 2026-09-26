@@ -326,7 +326,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
     {
         // A baked effect runs on feature level 10.0; level 9.3 only when its container also carries the level 9 code,
         // which model effects never do: level 9 does not support 3D, so a build with 3D models stays at 10.0
-        constexpr D3D_FEATURE_LEVEL feature_levels[] = {
+        static constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
@@ -349,7 +349,8 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             device_flags |= D3D11_CREATE_DEVICE_DEBUG;
         }
 
-        // The Direct3D 11.0 runtime (Windows 7 without the platform update) rejects a list naming 11.1 instead of skipping it
+        // The Direct3D 11.0 runtime (Windows 7 without the platform update) rejects a list naming 11.1 instead of skipping it;
+        // the list is static because MSVC 14.44 refuses the address of a local constexpr array element in a lambda (C2101)
         static_assert(feature_levels[0] == D3D_FEATURE_LEVEL_11_1);
         auto create_device = [&](D3D_DRIVER_TYPE driver_type) -> HRESULT {
             HRESULT d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
