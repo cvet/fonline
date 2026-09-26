@@ -229,7 +229,7 @@ auto SparkParticleRuntimeBackend::Create(string_view path) -> unique_nptr<Partic
         }
 
         if (base_system && !SetupSparkSystemRenderers(path, base_system, this)) {
-            logging::write("SPARK particle '{}' has a missing render effect or texture", path);
+            logging::write(logging::type::warning, "SPARK particle '{}' has a missing render effect or texture", path);
             base_system = SPK::Ref<SPK::System>();
         }
 

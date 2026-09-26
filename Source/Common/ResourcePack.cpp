@@ -703,7 +703,7 @@ static auto IsEncodedResourceIntact(const_span<uint8_t> stored, const ResourcePa
         return true;
     }
     catch (const std::exception& ex) {
-        logging::write("Resource pack: stored payload of {} does not decode to its content, {}", entry.Path, ex.what());
+        logging::write(logging::type::warning, "Resource pack: stored payload of {} does not decode to its content, {}", entry.Path, ex.what());
         return false;
     }
 }
@@ -870,7 +870,7 @@ ResourcePatchWriter::ResourcePatchWriter(string_view base_path, string_view patc
                 verified.emplace(key);
             }
             catch (const std::exception& ex) {
-                logging::write("Resource patch: repairing damaged local content {}, {}", entry.Path, ex.what());
+                logging::write(logging::type::warning, "Resource patch: repairing damaged local content {}, {}", entry.Path, ex.what());
                 available.erase(found);
                 found = available.end();
             }
@@ -1015,7 +1015,7 @@ ResourcePairVerifier::ResourcePairVerifier(string_view base_path, string_view pa
 {
     // A base whose header does not read is no pair at all, and the content check that follows already sends it to a download
     if (!ReadResourcePackHeader(_baseFile, _baseHeader)) {
-        logging::write("Resource pack: base {} has no readable header", base_path);
+        logging::write(logging::type::warning, "Resource pack: base {} has no readable header", base_path);
         _baseIntact = false;
         _finished = true;
         return;
@@ -1039,7 +1039,7 @@ ResourcePairVerifier::ResourcePairVerifier(string_view base_path, string_view pa
             }
         }
         catch (const std::exception& ex) {
-            logging::write("Resource pack: base {} does not mount, {}", base_path, ex.what());
+            logging::write(logging::type::warning, "Resource pack: base {} does not mount, {}", base_path, ex.what());
             _baseIntact = false;
             _finished = true;
             return;
@@ -1085,7 +1085,7 @@ void ResourcePairVerifier::StepBase(uint64_t& byte_budget)
         size_t chunk = numeric_cast<size_t>(std::min<uint64_t>(file_size - _baseOffset, SLICE_SIZE));
 
         if (!_baseFile.read_at(_baseOffset, span<uint8_t> {_slice.data(), chunk})) {
-            logging::write("Resource pack: can't read base {} at {}", _basePath, _baseOffset);
+            logging::write(logging::type::warning, "Resource pack: can't read base {} at {}", _basePath, _baseOffset);
             _baseIntact = false;
             _baseRemaining = false;
             return;
@@ -1106,7 +1106,7 @@ void ResourcePairVerifier::StepBase(uint64_t& byte_budget)
         _baseIntact = _baseHash == _baseHeader.PackHash;
 
         if (!_baseIntact) {
-            logging::write("Resource pack: base {} no longer matches the hash its header carries", _basePath);
+            logging::write(logging::type::warning, "Resource pack: base {} no longer matches the hash its header carries", _basePath);
         }
     }
 }
@@ -1119,7 +1119,7 @@ void ResourcePairVerifier::StepPatch(uint64_t& byte_budget)
         _checkedBytes += entry.StoredSize;
 
         if (!_patchFile.read_at(entry.DataOffset, stored) || !IsEncodedResourceIntact(stored, entry)) {
-            logging::write("Resource pack: committed payload {} of {} is damaged", entry.Path, _patchPath);
+            logging::write(logging::type::warning, "Resource pack: committed payload {} of {} is damaged", entry.Path, _patchPath);
             _patchIntact = false;
             return;
         }

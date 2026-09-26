@@ -82,6 +82,8 @@ Notable responsibilities:
 - optionally locate and call baking support through `FO_BakeResources` when resource baking is needed by the current app flow;
 - prepare the app-level services used by clients, tools, and headless/test modes.
 
+Once the renderer is up, `Application` writes where the application runs, once, so a log from someone else's machine explains itself: `System:` (OS name and version from `platform::get_os_version()`, logical CPU cores, RAM, SDL video driver), `Browser:` with the user agent on web, and `Display:` (display mode, refresh rate, content scale, window size and mode; a missing display mode is a warning). Each renderer adds one `Render device:` line from its own `Init` in its own terms: the DXGI adapter, vendor, device, user-mode driver version and dedicated memory for Direct3D; `GL_RENDERER`/`GL_VENDOR`/`GL_VERSION`/GLSL for OpenGL; the physical device, vendor, decoded driver version, type and API version for Vulkan; the SDL_GPU device name, driver and backend properties. A renderer that degrades (a fallback format, a missing extension, a feature turned off) logs it as a warning, not as info.
+
 Application initialization is intentionally shared by more than the graphical client. Server, mapper, editor, testing, and package flows may use different flags or window modes, but they should still go through the shared frontend setup where applicable.
 
 ## Application services

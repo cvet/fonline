@@ -233,7 +233,7 @@ auto ModelManager::GetHierarchy(string_view name) -> nptr<ModelHierarchy>
     auto root_bone = LoadModel(name);
 
     if (!root_bone) {
-        logging::write("Unable to load model hierarchy file '{}'", name);
+        logging::write(logging::type::warning, "Unable to load model hierarchy file '{}'", name);
         return nullptr;
     }
 

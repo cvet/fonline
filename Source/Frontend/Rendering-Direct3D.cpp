@@ -374,10 +374,52 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
             }
 
-            logging::write("Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+            logging::write(logging::type::warning, "Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
         }
         else {
             logging::write("Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+        }
+
+        // Name the adapter and its driver so a client log can explain a rendering problem
+        {
+            string adapter_name = "unknown";
+            string vendor_id = "unknown";
+            string driver_version = "unknown";
+            string device_id = "unknown";
+            string video_memory = "unknown";
+
+            nptr<IDXGIDevice> dxgi_device {};
+            HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
+
+            if (SUCCEEDED(d3d_query_dxgi_device) && dxgi_device) {
+                auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+                nptr<IDXGIAdapter> adapter {};
+                HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+                if (SUCCEEDED(d3d_get_adapter) && adapter) {
+                    auto adapter_holder = MakeComObjectHolder(adapter);
+                    DXGI_ADAPTER_DESC adapter_desc {};
+                    HRESULT d3d_get_adapter_desc = adapter->GetDesc(&adapter_desc);
+
+                    if (SUCCEEDED(d3d_get_adapter_desc)) {
+                        adapter_name = strex().parse_wide_char(make_ptr(adapter_desc.Description)).str();
+                        vendor_id = strex("0x{:04X}", adapter_desc.VendorId).str();
+                        device_id = strex("0x{:04X}", adapter_desc.DeviceId).str();
+                        video_memory = strex("{} MB", adapter_desc.DedicatedVideoMemory / (1024 * 1024)).str();
+                    }
+
+                    // DXGI answers the user-mode driver version through this query, packed as four 16-bit parts
+                    LARGE_INTEGER umd_version {};
+                    HRESULT d3d_get_umd_version = adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd_version);
+
+                    if (SUCCEEDED(d3d_get_umd_version)) {
+                        uint64_t umd_parts = std::bit_cast<uint64_t>(umd_version.QuadPart);
+                        driver_version = strex("{}.{}.{}.{}", umd_parts >> 48, (umd_parts >> 32) & 0xFFFF, (umd_parts >> 16) & 0xFFFF, umd_parts & 0xFFFF).str();
+                    }
+                }
+            }
+
+            logging::write("Render device: {}, vendor {}, driver {}, device {}, video memory {}", adapter_name, vendor_id, driver_version, device_id, video_memory);
         }
 
         if (SUCCEEDED(_ctx->D3DDeviceContext->QueryInterface(IID_PPV_ARGS(_ctx->D3DDeviceContext1.get_pp())))) {
@@ -385,7 +427,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             _ctx->D3DDeviceContext = _ctx->D3DDeviceContext1;
         }
         else {
-            logging::write("Direct3D ID3D11DeviceContext1 not found");
+            logging::write(logging::type::warning, "Direct3D ID3D11DeviceContext1 not found");
         }
     }
 
@@ -439,15 +481,15 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                             throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
                         }
                         else {
-                            logging::write("Direct3D swap chain created with one buffer count");
+                            logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                         }
                     }
                     else {
-                        logging::write("Direct3D swap chain created with non-flip swap effect");
+                        logging::write(logging::type::warning, "Direct3D swap chain created with non-flip swap effect");
                     }
                 }
                 else {
-                    logging::write("Direct3D swap chain created with flip sequential swap effect");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with flip sequential swap effect");
                 }
             }
         }
@@ -465,7 +507,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                     throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
                 }
                 else {
-                    logging::write("Direct3D swap chain created with one buffer count");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                 }
             }
         }

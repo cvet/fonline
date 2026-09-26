@@ -182,6 +182,22 @@ FO_SCRIPT_API void Common_Game_Log(ptr<BaseEngine> engine, string_view text)
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogWarning(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::warning, "{}", text);
+}
+
+///@ ExportMethod
+FO_SCRIPT_API void Common_Game_LogError(ptr<BaseEngine> engine, string_view text)
+{
+    ignore_unused(engine);
+
+    logging::write(logging::type::error, "{}", text);
+}
+
+///@ ExportMethod
 FO_SCRIPT_API void Common_Game_RequestQuit(ptr<BaseEngine> engine, bool success = true)
 {
     ignore_unused(engine);

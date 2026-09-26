@@ -250,7 +250,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
 
         if (r != TH_DUPFRAME) {
             if (r != 0) {
-                logging::write("Frame does not contain encoded video data, error {}", r);
+                logging::write(logging::type::warning, "Frame does not contain encoded video data, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -259,7 +259,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
             r = th_decode_ycbcr_out(_impl->DecoderContext.get(), _impl->ColorBuffer);
 
             if (r != 0) {
-                logging::write("th_decode_ycbcr_out() failed, error {}", r);
+                logging::write(logging::type::warning, "th_decode_ycbcr_out() failed, error {}", r);
                 Stop();
                 return _impl->RenderedTextureData;
             }
@@ -298,7 +298,7 @@ auto VideoClip::RenderFrame() -> const vector<ucolor>&
         dj = 1;
         break;
     default:
-        logging::write("Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
+        logging::write(logging::type::warning, "Wrong pixel format {}", _impl->VideoInfo.Value.pixel_fmt);
         Stop();
         return _impl->RenderedTextureData;
     }

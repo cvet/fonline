@@ -153,7 +153,12 @@ host code.
 
 Startup/runtime handoff diagnostics go to the normal `<host>.log` through the regular `logging::write` path.
 The host brings up engine global data (`global_data::create()` in `main`) and opens that log fresh up front
-(`logging::to_file(GetExeLogFileName(), false)`) — the host runs first, so it truncates. It then keeps its handle
+(`logging::to_file(GetExeLogFileName(), false)`) — the host runs first, so it starts the file. The previous
+launch's log is not truncated but renamed beside it first (`GetExePreviousLogFileName()`, `<exe>.prev.log`,
+replacing the one before), because a crash or a hang is diagnosed from the log the next launch would
+otherwise erase; a project can read it back at start. When the rename fails (another process holds the previous
+file open) the new log opens anyway and its first line is a warning that the previous log could not be kept. It then
+keeps its handle
 open across the loaded-DLL call instead of closing before the handoff: `logging::to_file` opens the file without
 an exclusive lock (the platform default —
 MSVC `std::ofstream` is deny-none, POSIX has no mandatory open lock), and every log write seeks to end of

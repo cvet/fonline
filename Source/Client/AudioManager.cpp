@@ -314,26 +314,26 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     int32_t error = ov_open_callbacks(make_nptr(file_context.get()).void_cast(), ogg_stream.get(), nullptr, 0, callbacks);
 
     if (error != 0) {
-        logging::write("Open OGG file '{}' fail, error:", fname);
+        logging::write(logging::type::warning, "Open OGG file '{}' fail, error:", fname);
 
         switch (error) {
         case OV_EREAD:
-            logging::write("A read from media returned an error");
+            logging::write(logging::type::warning, "A read from media returned an error");
             break;
         case OV_ENOTVORBIS:
-            logging::write("Bitstream does not contain any Vorbis data");
+            logging::write(logging::type::warning, "Bitstream does not contain any Vorbis data");
             break;
         case OV_EVERSION:
-            logging::write("Vorbis version mismatch");
+            logging::write(logging::type::warning, "Vorbis version mismatch");
             break;
         case OV_EBADHEADER:
-            logging::write("Invalid Vorbis bitstream header");
+            logging::write(logging::type::warning, "Invalid Vorbis bitstream header");
             break;
         case OV_EFAULT:
-            logging::write("Internal logic fault; indicates a bug or heap/stack corruption");
+            logging::write(logging::type::warning, "Internal logic fault; indicates a bug or heap/stack corruption");
             break;
         default:
-            logging::write("Unknown error code {}", error);
+            logging::write(logging::type::warning, "Unknown error code {}", error);
             break;
         }
 
@@ -375,7 +375,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     }
 
     if (result < 0) {
-        logging::write("Decode of sound '{}' failed, error code {}", fname, result);
+        logging::write(logging::type::warning, "Decode of sound '{}' failed, error code {}", fname, result);
         break_into_debugger();
         return 0;
     }
@@ -388,7 +388,7 @@ auto AudioManager::Load(string_view fname, bool is_music, timespan repeat_time, 
     }
 
     if (!ConvertData(sound)) {
-        logging::write("Conversion of sound '{}' to the mixing format failed", fname);
+        logging::write(logging::type::warning, "Conversion of sound '{}' to the mixing format failed", fname);
         break_into_debugger();
         return 0;
     }

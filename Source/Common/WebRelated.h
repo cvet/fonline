@@ -54,6 +54,7 @@ namespace WebRelated
     void StartMainLoop(void (*entry)(void*), void* data) noexcept;
     void StopMainLoop() noexcept;
     void SetWebSocketScheme(bool secure) noexcept;
+    auto GetUserAgent() -> string;
     void ShowError(string_view title, string_view text);
 }
 

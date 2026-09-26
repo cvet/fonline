@@ -471,13 +471,23 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     _ctx->OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
 #endif
 
+    // Name the GPU and driver so a client log can explain a rendering problem
+    {
+        auto gl_info = [](GLenum name) -> string_view {
+            auto chars = GetOpenGlString(name);
+            return chars ? string_view(chars.get()) : string_view("unknown");
+        };
+
+        logging::write("Render device: {}, vendor {}, driver {}, GLSL {}", gl_info(GL_RENDERER), gl_info(GL_VENDOR), gl_info(GL_VERSION), gl_info(GL_SHADING_LANGUAGE_VERSION));
+    }
+
     // Check OpenGL extensions
     size_t extension_errors = 0;
 
     auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
-            logging::write("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            logging::write(logging::type::warning, "OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
             }
@@ -564,7 +574,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
 
     if (max_uniform_components < 1024) {
-        logging::write("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
+        logging::write(logging::type::warning, "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
 

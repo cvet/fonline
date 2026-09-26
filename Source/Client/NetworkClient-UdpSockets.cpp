@@ -284,7 +284,7 @@ void NetworkClientConnection_UdpSockets::ServiceConnect(nanotime now)
     uint32_t connect_timeout_ms = numeric_cast<uint32_t>(std::max(_settings->Network.UdpConnectTimeout, _settings->Network.UdpConnectRetry));
 
     if (_connectStartTime != nanotime::zero && now - _connectStartTime >= std::chrono::milliseconds {connect_timeout_ms}) {
-        logging::write("UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
+        logging::write(logging::type::warning, "UDP connect timeout to server '{}:{}'", _requestHost, _remotePort);
         Disconnect();
         return;
     }

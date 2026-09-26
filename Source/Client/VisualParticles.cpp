@@ -133,7 +133,7 @@ auto ParticleManager::CreateParticle(string_view name) -> optional<ParticleSyste
     auto backend = _impl->FindBackend(ext);
 
     if (!backend) {
-        logging::write("Particle resource '{}' has an unsupported extension", name);
+        logging::write(logging::type::warning, "Particle resource '{}' has an unsupported extension", name);
         return {};
     }
 

@@ -86,6 +86,19 @@ static auto resolve_kernel_entry(const char* func_name) noexcept -> FARPROC
     return ::GetProcAddress(hmodule, proc_name.get());
 }
 
+static auto resolve_ntdll_entry(const char* func_name) noexcept -> FARPROC
+{
+    auto module_name = make_ptr("ntdll.dll");
+    HMODULE hmodule = ::GetModuleHandleA(module_name.get());
+
+    if (hmodule == nullptr) {
+        return nullptr;
+    }
+
+    auto proc_name = make_ptr(func_name);
+    return ::GetProcAddress(hmodule, proc_name.get());
+}
+
 static auto to_module_handle(nptr<void> module_handle) noexcept -> HMODULE
 {
     if (!module_handle) {
@@ -386,6 +399,32 @@ auto winapi::get_proc_address(nptr<void> module_handle, const string& func_name)
     }
 
     return reinterpret_cast<void*>(proc);
+}
+
+auto winapi::get_last_error_text() noexcept -> string
+{
+    DWORD error = ::GetLastError();
+    constexpr DWORD buffer_chars = 512;
+    wchar_t buffer[buffer_chars] {};
+    DWORD length = ::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error, 0, &buffer[0], buffer_chars, nullptr);
+    string message = length != 0 ? strex().parse_wide_char(make_ptr(&buffer[0])).trim().str() : string();
+
+    return strex("error {} {}", error, message).trim().str();
+}
+
+auto winapi::get_os_version() noexcept -> string
+{
+    // GetVersionEx reports the version an unmanifested process is shimmed to, ntdll reports the real one
+    using rtl_get_version_fn = LONG(WINAPI*)(OSVERSIONINFOW*);
+    rtl_get_version_fn entry = reinterpret_cast<rtl_get_version_fn>(resolve_ntdll_entry("RtlGetVersion")); // NOLINT(clang-diagnostic-cast-function-type-strict)
+    OSVERSIONINFOW info {};
+    info.dwOSVersionInfoSize = sizeof(info);
+
+    if (entry == nullptr || entry(&info) != 0) {
+        return "Windows (version unknown)";
+    }
+
+    return strex("Windows {}.{}.{}", info.dwMajorVersion, info.dwMinorVersion, info.dwBuildNumber).str();
 }
 
 auto winapi::open_exclusive_file(const string& path) noexcept -> int32_t

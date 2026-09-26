@@ -115,11 +115,16 @@ namespace platform
     auto load_pinned_module(const string& module_name) noexcept -> nptr<void>;
     void unload_module(nptr<void> module_handle) noexcept;
     auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> void*;
+    // The loader's reason for the last failed load_module or get_func_addr on this thread, read right after it
+    auto get_last_module_error() noexcept -> string;
     template<typename T>
     auto get_func_addr(nptr<void> module_handle, const string& func_name) noexcept -> T
     {
         return reinterpret_cast<T>(get_func_addr(module_handle, func_name));
     }
+
+    // Operating system name and version, for diagnostics
+    auto get_os_version() noexcept -> string;
 }
 
 FO_END_NAMESPACE
