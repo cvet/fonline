@@ -912,8 +912,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "5568b1fee31b72962eef25bbacfeab223d261d6c5b93efd687d41047a92ef186",
-      "byte_size": 26381
+      "content_sha256": "7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9",
+      "byte_size": 26697
     },
     {
       "id": "buildtools-readme",
@@ -12636,8 +12636,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "c4ee3eadfb336729a3bd9266666e74ff3ff08a0ac6565d9b47f6984985eacdd6",
-      "byte_size": 32220
+      "content_sha256": "794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661",
+      "byte_size": 32850
     },
     {
       "id": "particle-authoring-tools",
@@ -14086,8 +14086,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "d0e14b25dc8e626923c5f3aca7c67b9e7dedb454f2494e7edf79d4a805f9b69a",
-      "byte_size": 2102386
+      "content_sha256": "885e17be2068abf5f808b9c639c94f6ae901d3d33616de1aa06d7d695465478a",
+      "byte_size": 2103332
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14240,7 +14240,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "86c70763ec547a18710a1045056297708b05371087d9736ad80856c2a856bd7c",
+      "content_sha256": "301015b22991168e93dc775e55ecf914e19e5fb4bdb2b89f0afe5d0edea4fd7c",
       "byte_size": 266828
     },
     {
@@ -14268,7 +14268,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "1621a2ec8aa81a2c61b9c1262311a80d4d4825703ce389284e01d40010406d2d",
+      "content_sha256": "a288def9d1d608ebbce9725ff3fc89376c996bc55192c4301725893db5a70f0a",
       "byte_size": 105169
     },
     {
@@ -14289,15 +14289,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "16fee00031b0cbc02674924bc420af7a67f62c33b03bb5ed578930fa7abdfc95",
-      "byte_size": 1249224
+      "content_sha256": "c50e424aa64ffe5048bf0547a883726397913aefa5593c6e5df8d4f80888dcff",
+      "byte_size": 1249580
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "aae5838d57eaaac216a8924013848361c27eb48e257dac23f22fc1c5fcdd8bff",
-      "byte_size": 1767506
+      "content_sha256": "7b4f97431f95ab30244f4adcac5f01c34cd0a8c650d7f4ae87ca1b54c877bb8c",
+      "byte_size": 1767986
     }
   ]
 }

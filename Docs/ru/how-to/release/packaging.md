@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"c4ee3eadfb336729a3bd9266666e74ff3ff08a0ac6565d9b47f6984985eacdd6"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -286,6 +286,8 @@ emitted artifact.
 проверяется на замкнутый tab loop по правилам обоих linkers. При `wixl`
 path controls остаются доступны мышью и через просмотр папок, хотя не входят
 в его tab loop. Реальный installer проверяйте на каждом поддерживаемом host.
+
+Диалог выбора каталога должен выполняться после `CostFinalize`, когда Windows Installer уже вычислил путь `INSTALLDIR`. Иначе `wixl` может поставить диалог, ограниченный только `Before="ProgressDlg"`, перед costing из-за изменчивого порядка обхода зависимостей; `msiexec` тогда прерывает установку с internal error 2343 из-за пустого пути. Генератор закрепляет диалог `After="CostFinalize"` для WiX и `wixl`. [Руководство MSI creator](../../../../BuildTools/msicreator/readme.md) и регрессионные тесты описывают проверку порядка у обоих компоновщиков. Успешная линковка MSI не заменяет видимую проверку установки на поддерживаемом host.
 
 ### Linux client или server
 

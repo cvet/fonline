@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"5568b1fee31b72962eef25bbacfeab223d261d6c5b93efd687d41047a92ef186"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -311,6 +311,8 @@ Installer service; ошибки authoring, linker, обычной ICE и fallbac
 `msitools`; `common-packages` включает `php-cli` в общий runner contract.
 Installer values читаются из
 конфига встраивающего проекта, поэтому packager остаётся game-agnostic:
+
+Сгенерированный диалог выбора каталога выполняется после `CostFinalize`; привязка только перед `ProgressDlg` может заставить `wixl` показать его при ещё пустом `INSTALLDIR` (ошибка MSI 2343). Переиспользуемый контракт порядка и проверки на поддерживаемых hosts описаны в [упаковке и выпуске](../../how-to/release/packaging.md).
 
 - product/manufacturer/comments name берётся из `Common.GameName` с fallback к
   package nice name;

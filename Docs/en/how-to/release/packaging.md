@@ -212,6 +212,8 @@ closed tab loop under both linker rules. On `wixl`, path controls remain
 editable with the mouse and through the folder browser even though they are
 outside its tab loop. Validate an actual installer on each supported host.
 
+The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](../../../../BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
+
 ### Linux client or server
 
 - `Raw`, `Zip`, `Tar`, and `TarGz` are available output forms.

@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "c4ee3eadfb336729a3bd9266666e74ff3ff08a0ac6565d9b47f6984985eacdd6",
-      "source_bytes": 32220,
+      "source_sha256": "794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661",
+      "source_bytes": 32850,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "5568b1fee31b72962eef25bbacfeab223d261d6c5b93efd687d41047a92ef186",
-      "source_bytes": 26381,
+      "source_sha256": "7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9",
+      "source_bytes": 26697,
       "status": "current"
     },
     {
