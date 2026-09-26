@@ -739,6 +739,7 @@ Current count: **118** `Test_*.cpp` suites.
 - `Source/Tests/Test_ClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
 - `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_WorkScheduler.cpp`
 - `Source/Tests/Test_DataBase.cpp`
 - `Source/Tests/Test_EntitySync.cpp`
 - `Source/Tests/Test_FogOfWar.cpp`
@@ -818,9 +819,23 @@ truncation, count/length bombs, ordering, metadata mismatches, and bindings.
 runtime pose: unaligned/owned loading, body blending, movement replacement,
 reverse and nearest sampling, stable storage, canonical resolution, and numeric
 limits. `Test_ModelAnimationPoseProcedural.cpp` covers bounded procedural pre-rotations
-and exact world-matrix overrides; `Test_ModelAnimationRuntime.cpp` covers the
+and exact world-matrix overrides, plus the claim client multithreading rests on:
+separate poses over one shared rig, evaluated across real `WorkScheduler`
+workers, produce world matrices bit-identical to the serial evaluation.
+`Test_ModelAnimationRuntime.cpp` covers the
 validated direct-model rest path, canonical contributed-joint lookup, and
 cross-model joint-link resolution without physical bones.
+`Test_WorkScheduler.cpp` is the client multithreading gate: the serial path starting nothing, every batch item running exactly
+once, repeated batches never crossing over, the chunk minimum and the parallel
+threshold, an item exception reaching the owner with the scheduler still usable,
+nested submission refused, shutdown with workers, two schedulers side by side,
+the worker-count rule swept over every core count and its limits range-checked,
+a client engine that starts no workers with `Client.Multithreading` off and
+exactly the count the rule gives the host with it on, a lowered
+`Client.MultithreadingMaxWorkers` reaching that count, and runs a frame in both modes, and a real frame over recording sprites proving
+the two-phase update boundary holds in parallel mode and is skipped entirely in
+serial mode. See
+[ClientMultithreading.md](ClientMultithreading.md).
 `Test_ModelBaker.cpp` covers source-backed model-info generation,
 dependency-mtime invalidation, exact animation-geometry exceptions, `Base`,
 reverse, case-insensitive lookup, and clip deduplication. `Test_ModelAnimation.cpp`

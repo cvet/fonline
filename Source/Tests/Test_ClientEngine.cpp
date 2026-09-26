@@ -2808,6 +2808,133 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 #endif
 
 #if FO_ANGELSCRIPT_SCRIPTING
+TEST_CASE("ModelPosePhasesMatchTheSinglePassPose")
+{
+    // The parallel client poses a model in three phases so a worker can take the middle one. The phases are only
+    // usable if running them apart - and interleaved with another model, as a batch does - lands on the same pose
+    constexpr string_view MESH_PATH = "Models/PosePhases.fbx";
+    constexpr string_view MODEL_PATH = "Models/PosePhases.fo3d";
+
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+
+    auto model_mngr = factory->GetModelMngr();
+
+    auto make_model = [&model_mngr, MODEL_PATH]() {
+        auto model = model_mngr->CreateModel(MODEL_PATH);
+        REQUIRE(static_cast<bool>(model));
+
+        model->StartMeshGeneration();
+        model->PrepareFrameLayout();
+        model->SetupFrame(isize32 {128, 128}, ipos32 {64, 96});
+        model->SetDir(mdir {2}, false);
+
+        array<int32_t, MODEL_LAYERS_COUNT> layers {};
+        ignore_unused(model->PlayAnim(static_cast<CritterStateAnim>(1), static_cast<CritterActionAnim>(1), layers.data(), 0.0f, ModelAnimFlags::None));
+
+        return model.take_not_null();
+    };
+
+    struct PoseResult
+    {
+        optional<ModelSpriteBounds> Bounds {};
+        irect32 DrawRect {};
+        irect32 ViewRect {};
+        optional<ipos32> RootBonePos {};
+    };
+
+    hstring root_bone = client->Hashes.to_hashed_string("Root");
+    auto read_pose = [&root_bone](ptr<ModelInstance> model) {
+        return PoseResult {
+            .Bounds = model->GetSpriteBounds(),
+            .DrawRect = model->GetDrawRect(),
+            .ViewRect = model->GetViewRect(),
+            .RootBonePos = model->GetBonePos(root_bone),
+        };
+    };
+
+    auto same_pose = [](const PoseResult& lhs, const PoseResult& rhs) {
+        if (lhs.Bounds.has_value() != rhs.Bounds.has_value()) {
+            return false;
+        }
+        if (lhs.Bounds && (lhs.Bounds->Rect != rhs.Bounds->Rect || lhs.Bounds->RequiredFrameSize != rhs.Bounds->RequiredFrameSize || lhs.Bounds->Pivot != rhs.Bounds->Pivot)) {
+            return false;
+        }
+
+        return lhs.DrawRect == rhs.DrawRect && lhs.ViewRect == rhs.ViewRect && lhs.RootBonePos == rhs.RootBonePos;
+    };
+
+    SECTION("SplitPhasesInterleavedWithAnotherModelPoseTheSameWay")
+    {
+        auto reference = make_model();
+        auto first = make_model();
+        auto second = make_model();
+
+        for (int32_t frame = 0; frame < 3; frame++) {
+            reference->PoseSpriteFrame(true);
+
+            // Exactly the shape the frame batch has: both models prepared, both evaluated, both finalized
+            first->PrepareSpriteFramePose(true);
+            second->PrepareSpriteFramePose(true);
+            first->EvaluateFramePose();
+            second->EvaluateFramePose();
+            first->FinalizeFramePose();
+            second->FinalizeFramePose();
+
+            PoseResult expected = read_pose(reference);
+
+            CHECK(same_pose(read_pose(first), expected));
+            CHECK(same_pose(read_pose(second), expected));
+        }
+    }
+
+    SECTION("EvaluationRunThroughTheWorkSchedulerPosesTheSameWay")
+    {
+        // The evaluation phase is the only client work a batch spreads today, so it is proven here against the same
+        // serial reference, running on real worker threads rather than on a stand-in
+        WorkScheduler scheduler {"test-model-pose", 3};
+        constexpr size_t model_count = 16;
+        vector<unique_ptr<ModelInstance>> models;
+        auto reference = make_model();
+
+        for (size_t i = 0; i < model_count; i++) {
+            models.emplace_back(make_model());
+        }
+
+        for (int32_t frame = 0; frame < 3; frame++) {
+            reference->PoseSpriteFrame(true);
+
+            for (auto& model : models) {
+                model->PrepareSpriteFramePose(true);
+            }
+
+            scheduler.RunBatch("ModelPose", models.size(), 1, [&models](size_t index) { models[index]->EvaluateFramePose(); });
+
+            for (auto& model : models) {
+                model->FinalizeFramePose();
+            }
+
+            PoseResult expected = read_pose(reference);
+
+            for (auto& model : models) {
+                CHECK(same_pose(read_pose(model.as_ptr()), expected));
+            }
+        }
+
+        CHECK(scheduler.GetDiagnostics().ParallelBatches == 3);
+    }
+}
+
 TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary

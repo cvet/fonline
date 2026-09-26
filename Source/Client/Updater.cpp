@@ -74,6 +74,7 @@ static auto UpdaterResultToString(UpdaterResult result) noexcept -> string_view;
 static void ReportUpdaterFailure(UpdaterResult result, string_view target_name) noexcept;
 static auto IsResumablePackPrefix(string_view temp_path, const ResourcePackHeader& advertised) -> bool;
 
+// The updater screen draws before any client exists, so its sprite manager gets no work scheduler and stays serial
 Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _settings {settings},
     _conn(settings),
@@ -81,7 +82,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
     _binaryDir {GetClientBinaryDir(settings->Common.UserWritablePath)},
     _gameTime(settings),
     _effectMngr(settings, make_ptr(&_resources), window->GetRender()),
-    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage)),
+    _sprMngr(settings, window, make_ptr(&_resources), make_ptr(&_gameTime), make_ptr(&_effectMngr), make_ptr(&_hashStorage), nullptr),
     _fontMngr(make_ptr(&_sprMngr))
 {
     FO_TRACE_ZONE(Engine);

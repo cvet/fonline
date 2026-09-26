@@ -72,6 +72,8 @@ public:
     void SetDir(mdir dir) override;
     void Play(hstring anim_name, bool looped, bool reversed) override;
     void Stop() override;
+    auto PrepareUpdate() -> bool override;
+    void RunPreparedUpdate() override;
     auto Update() -> bool override;
     void SetSize(isize32 size);
     void DrawToAtlas();
@@ -103,6 +105,10 @@ private:
     isize32 _frameSize {};
     irect32 _cropRect {};
     optional<isize32> _requestedFrameSize {};
+    bool _frameUpdatePrepared {};
+    bool _frameAtlasDrawPending {};
+    bool _frameCpuPosePrepared {};
+    isize32 _preparedRenderFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
 };
@@ -126,6 +132,7 @@ public:
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    auto SettleModelFrame(ptr<ModelSprite> model_spr) -> isize32;
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;

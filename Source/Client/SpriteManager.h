@@ -43,6 +43,7 @@
 #include "Settings.h"
 #include "TextureAtlas.h"
 #include "VisualParticles.h"
+#include "WorkScheduler.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -96,6 +97,8 @@ public:
     virtual void PlayDefault() { Play({}, true, false); }
     virtual void Play(hstring anim_name, bool looped, bool reversed) { ignore_unused(anim_name, looped, reversed); }
     virtual void Stop() { }
+    virtual auto PrepareUpdate() -> bool { return false; }
+    virtual void RunPreparedUpdate() { }
     virtual auto Update() -> bool { return false; }
     virtual void DrawInScene(fpos32 scene_pos, float32_t depth) const { ignore_unused(scene_pos, depth); }
 
@@ -164,7 +167,7 @@ public:
     static constexpr size_t EGG_SLOT_COUNT = 2;
 
     SpriteManager() = delete;
-    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes);
+    SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler);
     SpriteManager(const SpriteManager&) = delete;
     SpriteManager(SpriteManager&&) noexcept = delete;
     auto operator=(const SpriteManager&) = delete;
@@ -173,12 +176,9 @@ public:
 
     [[nodiscard]] auto ToHashedString(string_view str) -> hstring { return _hashResolver->to_hashed_string(str); }
     [[nodiscard]] auto GetResources() noexcept -> ptr<FileSystem> { return _resources; }
+    [[nodiscard]] auto GetWorkScheduler() noexcept -> nptr<WorkScheduler> { return _workScheduler; }
     [[nodiscard]] auto GetRtMngr() const noexcept -> const RenderTargetManager& { return _rtMngr; }
     [[nodiscard]] auto GetRtMngr() noexcept -> RenderTargetManager& { return _rtMngr; }
-    // Copied on demand and at most once per direct-draw replay, so a frame with nothing refracting never pays
-    // for it
-    [[nodiscard]] auto AcquireSceneBackground() -> nptr<const RenderTexture>;
-
     [[nodiscard]] auto GetMainRenderTarget() noexcept -> nptr<RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetMainRenderTarget() const noexcept -> nptr<const RenderTarget> { return _rtMain; }
     [[nodiscard]] auto GetAtlasMngr() noexcept -> ptr<TextureAtlasManager> { return &_atlasMngr; }
@@ -197,9 +197,10 @@ public:
     [[nodiscard]] auto CheckHitTest(int32_t value) const -> bool { return value > _settings->Render.SpriteHitValue; }
     [[nodiscard]] auto SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bool;
     [[nodiscard]] auto IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool;
-    [[nodiscard]] auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
-    [[nodiscard]] auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
+
+    auto LoadSprite(string_view path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
+    auto LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_if_not_exists = false) -> shared_ptr<Sprite>;
+    auto LoadSpriteAsQuad(hstring path, AtlasType atlas_type) -> shared_ptr<AtlasSprite>;
 
     void SetWindowSize(isize32 size);
     void SetScreenSize(isize32 size);
@@ -217,6 +218,7 @@ public:
     void RetryFailedSpriteLoads();
     void CleanupSpriteCache();
     void UnsubscribeWindowEvents() noexcept;
+    auto AcquireSceneBackground() -> nptr<const RenderTexture>;
 
     void PushScissor(irect32 rect);
     void PopScissor();
@@ -259,6 +261,8 @@ private:
     [[nodiscard]] auto CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool;
     [[nodiscard]] auto MakeAspectFitRect(isize32 source_size, isize32 target_size) const -> irect32;
 
+    void UpdateSprites();
+    void PrepareSpriteCpuUpdates();
     void FlushBatch();
     void RefreshScissor();
     void EnableScissor();
@@ -276,6 +280,7 @@ private:
     ptr<IAppInput> _input;
     ptr<EffectManager> _effectMngr;
     ptr<hash_resolver> _hashResolver;
+    nptr<WorkScheduler> _workScheduler;
     random_generator _randomGenerator {};
 
     vector<unique_ptr<SpriteFactory>> _spriteFactories {};
@@ -283,6 +288,10 @@ private:
     unordered_set<hstring> _nonFoundSprites {};
     unordered_map<pair<hstring, AtlasType>, shared_ptr<Sprite>> _copyableSpriteCache {};
     unordered_map<ptr<const Sprite>, weak_ptr<Sprite>> _updateSprites {};
+    // Rebuilt every BeginScene and kept alive for the whole update, so a sprite that Update starts updating cannot
+    // rehash the set being walked, and so the prepared CPU work has a stable index space for a batch
+    vector<shared_ptr<Sprite>> _liveUpdateSprites {};
+    vector<ptr<Sprite>> _preparedUpdateSprites {};
 
     nptr<RenderTarget> _rtMain {};
     nptr<RenderTarget> _rtSceneBackground {};

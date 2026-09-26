@@ -70,7 +70,7 @@ void Sprite::StartUpdate()
     _sprMngr->_updateSprites.emplace(make_ptr(this), weak_from_this());
 }
 
-SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes) :
+SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> window, ptr<FileSystem> resources, ptr<GameTimer> game_time, ptr<EffectManager> effect_mngr, ptr<hash_resolver> hashes, nptr<WorkScheduler> work_scheduler) :
     _settings {settings},
     _window {window},
     _resources {resources},
@@ -81,6 +81,7 @@ SpriteManager::SpriteManager(ptr<RenderSettings> settings, ptr<IAppWindow> windo
     _input {window->GetInput()},
     _effectMngr {effect_mngr},
     _hashResolver {hashes},
+    _workScheduler {work_scheduler},
     _spritesDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _primitiveDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
     _flushDrawBuf {window->GetRender()->CreateDrawBuffer(false)},
@@ -286,14 +287,68 @@ void SpriteManager::BeginScene()
         _spriteFactories[i]->Update();
     }
 
+    UpdateSprites();
+}
+
+void SpriteManager::UpdateSprites()
+{
+    FO_TRACE_ZONE(Render);
+
+    // The live set is materialized first because an Update may start updating another sprite, and inserting into the
+    // map being walked would rehash it under the iterator. It also gives the prepared CPU work a stable index space
+    _liveUpdateSprites.clear();
+
     for (auto it = _updateSprites.begin(); it != _updateSprites.end();) {
-        if (auto spr = it->second.lock(); spr && spr->Update()) {
+        if (auto spr = it->second.lock()) {
+            _liveUpdateSprites.emplace_back(std::move(spr));
             ++it;
         }
         else {
             it = _updateSprites.erase(it);
         }
     }
+
+    // A serial client never enters the two-phase path: with no worker the split would only move effects and
+    // callbacks relative to the other sprites of the frame while buying nothing
+    if (_workScheduler && _workScheduler->IsParallel()) {
+        PrepareSpriteCpuUpdates();
+    }
+
+    for (auto& spr : _liveUpdateSprites) {
+        if (!spr->Update()) {
+            _updateSprites.erase(make_ptr(spr.get()));
+        }
+    }
+
+    _liveUpdateSprites.clear();
+}
+
+void SpriteManager::PrepareSpriteCpuUpdates()
+{
+    FO_TRACE_ZONE(Render);
+
+    _preparedUpdateSprites.clear();
+
+    for (auto& spr : _liveUpdateSprites) {
+        if (spr->PrepareUpdate()) {
+            _preparedUpdateSprites.emplace_back(spr.get());
+        }
+    }
+
+    ptr<WorkScheduler> work_scheduler = _workScheduler;
+
+    // The one place this stage chooses between the two ways of running the same kernel. A frame with too few
+    // prepared sprites runs them right here instead, because the batch would cost more than it spreads
+    if (work_scheduler->ShouldRunParallel(_preparedUpdateSprites.size(), numeric_cast<size_t>(std::max(_settings->Render.ParallelSpriteUpdateMinCount, 1)))) {
+        work_scheduler->RunBatch("SpriteCpuUpdate", _preparedUpdateSprites.size(), 1, [this](size_t index) { _preparedUpdateSprites[index]->RunPreparedUpdate(); });
+    }
+    else {
+        for (ptr<Sprite> spr : _preparedUpdateSprites) {
+            spr->RunPreparedUpdate();
+        }
+    }
+
+    _preparedUpdateSprites.clear();
 }
 
 void SpriteManager::EndScene()
@@ -329,6 +384,10 @@ void SpriteManager::AbortScene() noexcept
     _spritesDrawBuf->IndCount = 0;
     _scissorStack.clear();
     _rtMngr.ClearStack();
+
+    // An abandoned update leaves its working set behind, and those entries hold a sprite alive until the next frame
+    _preparedUpdateSprites.clear();
+    _liveUpdateSprites.clear();
 
     safe_call([this] {
         _render->DisableScissor();
