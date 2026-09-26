@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9deaf1cfe579b5f1f163daa6a364358c0179ed4ad680c879dd039995237723c3"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5e0a20f3f97452a789580c2e7845d14aeeafcaccb1ec725b95e345c2a214e6c0"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -159,6 +159,10 @@ cycles разрастаться экспоненциально. Analyzer self-te
 
 `FOSYNC010` запрещает отбрасывать boolean результат acquisition, включая отдельный вызов или присваивание `_`: отказ должен влиять на control flow. `FOSYNC011` требует, чтобы helper `Sync`, меняющий удерживаемый cover напрямую либо через другой effectful helper, объявил собственный `[CoverEffect]`. Analyzer считает эти findings ошибками сборки, а не advisory warnings; предложенные redundancy diagnostics `FOSYNC012`–`FOSYNC014` были отозваны.
 
+`FOSYNC015` отвергает пустое расширение `[CoversOnlyArguments]`: аргументы `[ProvidesCover]` уже покрыты, cover не освобождён, поздний `Sync.Snapshot` не требует собственной блокировки. Лишняя приостановка может нарушить синхронный handler. Подробности — в [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+
+При изменении связи `Sync.Yield()` передаёт все блокировки через `Game.SyncYield()`; связь нужно перечитать. Недоступная сущность требует `ScriptTask.Delay(0)` до следующего кадра для удаления. `Sync.OnRetry` и `Sync.ReportRetry(reason)` сообщают о попытках, не отказах.
+
 Attributes являются доказательством, а не операцией блокировки. Entry point отмечает entity, которую Engine уже синхронизировал. Обычный helper получает нужный cover или распространяет `[RequiresCover]` на caller.
 
 Собственный dispatcher может пометить свой marker attribute как `EntryPointMarker`, чтобы analyzer считал handlers entry points. `FOSYNC009` требует актуального cover после `await`: lock прежней переменной `map = cr.GetMap()` не доказывает заново cover `cr`; нужен текущий прямой alias, целая покрытая collection либо явная связь `PassesCover`/`RestoreCallerCover`. Отозванные правила избыточности `FOSYNC012`–`FOSYNC014` не входят в действующий контракт. Неуспешные приобретения `Sync` доступны подписчикам `Sync.OnFailure` как неизменяемые snapshots caller, причины, entities и stack; результат helper остаётся `false`. Без подписчиков snapshot не создаётся.
@@ -271,6 +275,8 @@ Managed backend передаёт фиксированный native context, mana
 Оба script backend хранят не более 32 разных имён overrun entry на каждый Engine, считают повторы и независимо сохраняют максимальные execution и lock-wait times. `TakeScriptOverruns()` забирает буфер. Клиент забирает его перед `OnLoop` и отправляет `OnScriptOverrun(entry, execution, lockWait, count)` вне lock буфера; server и mapper не публикуют event в своих циклах. Overrun из subscriber попадёт в следующую отправку. Прежние suppression по threshold и debugger сохраняются.
 
 `InteropProbe` сравнивает runtime invoke, classic thunk и `UnmanagedCallersOnly` transports там, где runtime их предоставляет, затем измеряет production dispatch и его части synchronization, attachment и overrun reporting. Каждая серия проверяет delivery/arguments и сообщает GC handles, metadata lookups, managed objects, wrapper construction и — под Tracy — native allocations per call. Counters thread-local и выключены вне measured stretch. Latency служит evidence для сравнения на quiet host, а не shared-CI threshold; allocation и delivery counts остаются hard assertions.
+
+Оба `UnmanagedCallersOnly` entry создаются вместе; их одноразовая стоимость сохраняется в отчёте, даже если сначала их создал benchmark.
 
 Когда включён `FO_TRACE_ENABLED` и категория `Script`, backend устанавливает Mono profiler сразу после инициализации runtime и до выполнения любой entry assembly. Инструментация вызовов методов ограничена зарегистрированными images игровых assemblies и методами с metadata token; runtime plumbing и generated wrappers не попадают в call tree. JIT zones не фильтруются по image, потому что первое выполнение handler оплачивает компиляцию каждого достигнутого метода. Hook запрашивает `ENTER | LEAVE | EXCEPTION_LEAVE`, намеренно без `TAIL_CALL`: Mono может устранить self tail call без парного enter event, поэтому обработка такого уведомления как обычного leave закрыла бы зону caller. Exceptional или inlined leave закрывает per-thread stack зон до метода, названного Mono.
 

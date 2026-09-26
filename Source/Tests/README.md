@@ -101,6 +101,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_TextPack.cpp`
 - `Source/Tests/Test_Timer.cpp`
+- `Source/Tests/Test_TransparentEgg.cpp`
 - `Source/Tests/Test_TwoDimensionalGrid.cpp`
 
 ### Networking and server/client integration

@@ -160,6 +160,11 @@ void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence) noexcept
     _eggAppearence = egg_appearence;
 }
 
+void MapSprite::SetEggStructure(bool egg_structure) noexcept
+{
+    _eggStructure = egg_structure;
+}
+
 void MapSprite::SetColor(ucolor color) noexcept
 {
     _color = color;
@@ -314,6 +319,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightRight = nullptr;
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
+    mspr->_eggStructure = false;
     mspr->_color = ucolor::clear;
     mspr->_elevation = 0;
     mspr->_angle = 0;

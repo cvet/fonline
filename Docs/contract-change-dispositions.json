@@ -7188,6 +7188,30 @@
       "release_note": "Record compatibility marker 62 and updater generation 3 with the no-self-update boundary for older clients.",
       "compatibility": "Older clients cannot authenticate a channel or interpret the new handshake and cannot mix with current servers. Baked metadata and server/client binaries must be deployed atomically.",
       "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.28cb8095b130e855",
+      "baseline_contract_sha256": "228953b2ba8fd5d5ac9e6b130004b8d3f34ac6c6dc988edfbb2df6e037a87aa7",
+      "current_contract_sha256": "89be3c33a3e4a2799b19a26ad70ba40746dd5137d2c29597f7f735084a164d3d",
+      "classification": "breaking",
+      "rationale": "The revision-pinned experimental native API inventory now includes transparent-egg targeting, pathfinding controls, and synchronization yield. The Engine has not had its first release, so this records the reviewed source pin without asserting a released compatibility promise.",
+      "migration": "No released API migration exists. Embedding projects pin one Engine revision, regenerate bindings, and rebake resources when updating.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current generated API and owning guides document the supported surface.",
+      "compatibility": "Do not mix generated bindings or baked resources across Engine revisions; no cross-revision API compatibility is promised before release.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.483756fb69443e23",
+      "baseline_contract_sha256": "228953b2ba8fd5d5ac9e6b130004b8d3f34ac6c6dc988edfbb2df6e037a87aa7",
+      "current_contract_sha256": "89be3c33a3e4a2799b19a26ad70ba40746dd5137d2c29597f7f735084a164d3d",
+      "classification": "breaking",
+      "rationale": "The experimental explicit-rectangle Map.SetTransparentEgg overload was replaced by the overload with a TransparentEggTarget argument. The pre-release Engine keeps only its current API shape.",
+      "migration": "No released API migration exists. Revision-pinned embedding projects update the call to pass the intended target and regenerate bindings together with Engine.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current client-runtime guide and generated API describe the supported overload.",
+      "compatibility": "The removed overload is intentionally unavailable. Engine binaries, generated bindings, and embedding-project scripts must use the same revision.",
+      "owner": "native-api"
     }
   ]
 }

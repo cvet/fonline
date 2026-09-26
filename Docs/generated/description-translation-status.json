@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4801,
-    "current_count": 4801,
+    "entry_count": 4807,
+    "current_count": 4807,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2542,
-      "current_count": 2542,
+      "entry_count": 2548,
+      "current_count": 2548,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -5818,6 +5818,18 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.enum-value.TransparentEggTarget.AnyOccluder/description",
+          "source": "Cut every sprite whose egg appearance places it before the egg.",
+          "source_sha256": "e133c3e12ab5a2fe4bb7d7b6409e39805e27a398b7832c3ae326fa2ef42e0305",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum-value.TransparentEggTarget.Structure/description",
+          "source": "Cut walls and roofs only, leaving foreground props drawn.",
+          "source_sha256": "54bb2a9e98bc5e808dbb92a132a54535e8babea3bf68759e8064e1eb375463c8",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.enum.CornerType/description",
           "source": "Wall-corner orientation used by map geometry and corner-aware rendering",
           "source_sha256": "b0ec3314f249c7bb40c4ff120e1f4a544ce71423f6304f21f83ba606c2078dd9",
@@ -6157,6 +6169,12 @@
           "locator": "/symbols/@id=script.enum.TransparentEggSlot/description",
           "source": "Selects one of the two simultaneous transparency-egg masks supported by sprite rendering",
           "source_sha256": "1dec574463a2a00f21f9317afc1c4bd7510af6ac381df1a4d5605ad9b64e07ee",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.enum.TransparentEggTarget/description",
+          "source": "Which of the sprites standing in front of an egg's hex the egg cuts",
+          "source_sha256": "aa857e431f9b1f11a606f90fbed70a8acf6d24f1c95c1df10b5557f9f05ade67",
           "status": "current"
         },
         {
@@ -8584,7 +8602,7 @@
           "status": "current"
         },
         {
-          "locator": "/symbols/@id=script.method.client.Map.SetTransparentEgg%2342ae7bf3afec7411/description",
+          "locator": "/symbols/@id=script.method.client.Map.SetTransparentEgg%23b6b974b26dd5da96/description",
           "source": "Configures a transparent-egg slot around an explicit hex-relative rectangle without attaching it to a critter",
           "source_sha256": "adec292a242911f9f3018a4e3b730030552254205ff96316f12673ab981647c5",
           "status": "current"
@@ -11164,6 +11182,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.server.Critter.MoveToHex%23b27a6e0f0f8ceddb/description",
+          "source": "A request whose route would be longer than maxPathLength steps is refused as HexTooFar, and the refusal costs\nno more than a search of that depth; 0 keeps Geometry.MaxPathFindLength",
+          "source_sha256": "f2761726fa24a92e8ada74ad7963685ea02696358832120e00525a40f9ad2268",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.server.Critter.RefreshView/description",
           "source": "SyncScope: requires self + current map when mapped; recomputes visible critters/items",
           "source_sha256": "2e98ceeb6e5a4a92a93de2943bc31165d55682c9e86ae69f3f74ce73c10632ca",
@@ -12145,6 +12169,12 @@
           "locator": "/symbols/@id=script.method.server.Game.SyncWiden/description",
           "source": "Widens the current synchronization cover in place to include the supplied live entities",
           "source_sha256": "1e2beb0e7732b1638916b5062dd91fe9c8ea298571889d8ef9e47d8fe60eb347",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.server.Game.SyncYield/description",
+          "source": "Hands the current thread's whole entity cover to waiting workers and reacquires it before returning; a held Game singleton forbids this call",
+          "source_sha256": "f31bb65558883f694b6f69fd24087698de3b2702245ec8c00c4bb2f4e25dfc83",
           "status": "current"
         },
         {
@@ -15253,6 +15283,12 @@
           "locator": "/symbols/@id=setting.common.Geometry.MaxPathFindLength/description",
           "source": "Maximum pathfinding length",
           "source_sha256": "0af7be618ba6559feb5a36e61c808a64a73e2fc66f69e78e1a44e9e6c264fcf2",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Geometry.PathFindEnclosureProbe/description",
+          "source": "Hexes a path search may flood back from its target to prove it walled off, 0 to disable",
+          "source_sha256": "24045423e05f77bed9277f02454a15d54b29650e1b46334ad39593b547414256",
           "status": "current"
         },
         {

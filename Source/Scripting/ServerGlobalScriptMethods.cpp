@@ -1675,6 +1675,14 @@ FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncRelease(ptr<ServerEngine> 
     ctx->Release();
 }
 
+// Hands the current thread's whole entity cover to waiting workers and reacquires it before returning; a held Game singleton forbids this call
+///@ ExportMethod Async
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncYield(ptr<ServerEngine> server)
+{
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->YieldLocks();
+}
+
 // SyncScope: returns current held cover; does not change cover
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)

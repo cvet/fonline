@@ -297,7 +297,7 @@ namespace MapperMergeTest
         map.GetCritterAtScreenPos(ipos(0, 0), 0);
         map.GetEntityAtScreenPos(ipos(0, 0));
 
-        map.SetTransparentEgg(TransparentEggSlot::Primary, mpos(5, 5), ipos(0, 0), isize(10, 10));
+        map.SetTransparentEgg(TransparentEggSlot::Primary, mpos(5, 5), ipos(0, 0), isize(10, 10), TransparentEggTarget::AnyOccluder);
         map.ClearTransparentEgg(TransparentEggSlot::Primary);
 
         // Hex classification and fog

@@ -18,7 +18,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 // AngelScript only. The contract lives on the parameter, so it survives refactoring, is visible in an IDE
 // while typing, and is checked by the same compiler pass that already gates code style.
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
+public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 {
     private const string Category = "Synchronization";
 
@@ -108,7 +108,7 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         get;
     } = ImmutableArray.Create(NonEntityTargetRule, UndischargedCoverRule, EntryPointCoverRule, CoverProbeRule,
                               RawSyncPrimitiveRule, CoverLostToAwaitRule, DiscardedAcquisitionAnswerRule,
-                              UndeclaredCoverEffectRule);
+                              UndeclaredCoverEffectRule, CoveredWideningRule);
 
     public override void Initialize(AnalysisContext context)
     {
@@ -142,6 +142,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
                 compilationStart.RegisterSyntaxNodeAction(nodeContext =>
                                                               AnalyzeSyncHelperDeclaration(nodeContext, model),
                                                           SyntaxKind.MethodDeclaration);
+
+                RegisterCoveredWidening(compilationStart, model);
             });
     }
 
@@ -955,6 +957,8 @@ public sealed class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         public bool IsEntryPoint(IMethodSymbol method) => Vocabulary.IsEntryPoint(method);
+
+        public CoverVocabulary Declarations => Vocabulary;
 
         public INamedTypeSymbol? SyncType => Vocabulary.SyncType;
 

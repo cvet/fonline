@@ -194,6 +194,8 @@ Every frame writes frame-time properties while holding the `Game` entity lock ex
 
 Managed `Sync` acquisition/restoration helpers publish an externally returned `false` to `Sync.OnFailure` (`Action<Sync.FailureInfo>`). No subscriber means no snapshot, entity-context read, or stack capture. With subscribers, each receives the same immutable operation, caller file/member/line, terminal reason/helper location, entity IDs and lifecycle snapshots, proto IDs, and managed stack. Subscriptions are synchronous and unsampled; an observer must not acquire cover, mutate gameplay state, or use `async void`. Its exception is reported and counted without suppressing other observers or changing the helper's `false`. Successful calls, recovered internal retries, probes, and best-effort cleanup are silent; native acquisition exceptions still propagate. This event proves a particular call refused cover, not that a gameplay transaction failed or rolled back. Validate with `dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj` and the embedding project's subscriber route.
 
+`Sync.OnRetry` records reason and caller/retry sites, including nested helpers. External loops use `Sync.ReportRetry(reason)`. No subscriber means no allocation; frequency distinguishes handoffs from later-frame waits.
+
 CPU percentages come from `Platform::GetCpuUsageSnapshot()`: `ServerEngine` samples it about once per second and diffs consecutive snapshots. System load is the busy fraction of the whole machine (and per core); process load is this process's share normalized to one machine's worth of capacity, while `Performance details` also shows the un-normalized "process core load" (which can exceed 100% on multiple cores, like `top`).
 
 The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read only on `_mainWorker` itself (`GetHealthInfo()`) and by the visible server app's `DrawGui`, which reads them behind `Lock()` (serialized against the main worker by the sync point). Because nothing reads them from another thread, the fields are plain (no atomics needed).
@@ -281,6 +283,8 @@ Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and 
 Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
 
 Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
+
+`SyncContext::YieldLocks()` hands all thread locks, including outer cover, to waiters and reacquires them in address order with recursion restored. Re-prove cover and re-read relations. A held `Game` singleton forbids it. Scripts use `Game.SyncYield()` via `Sync.Yield()`; unavailable entities defer via `ScriptTask.Delay(0)` so teardown can finish.
 
 ### An entity being destroyed
 

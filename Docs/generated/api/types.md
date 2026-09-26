@@ -2747,6 +2747,19 @@ Continue with the [canonical reference](../../en/reference/script-api/types.md).
 <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a>
 - [`symbol-script-enum-value-transparenteggslot-secondary-2be87e7211`](../../en/reference/script-api/types.md#symbol-script-enum-value-transparenteggslot-secondary-2be87e7211)
 
+<a id="symbol-script-enum-transparenteggtarget-980d792f08"></a>
+- [`symbol-script-enum-transparenteggtarget-980d792f08`](../../en/reference/script-api/types.md#symbol-script-enum-transparenteggtarget-980d792f08)
+
+### <code>TransparentEggTarget</code>
+
+Continue with the [canonical reference](../../en/reference/script-api/types.md).
+
+<a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a>
+- [`symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6`](../../en/reference/script-api/types.md#symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6)
+
+<a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a>
+- [`symbol-script-enum-value-transparenteggtarget-structure-fa4786d402`](../../en/reference/script-api/types.md#symbol-script-enum-value-transparenteggtarget-structure-fa4786d402)
+
 ## Value Types
 
 Continue with the [canonical reference](../../en/reference/script-api/types.md).

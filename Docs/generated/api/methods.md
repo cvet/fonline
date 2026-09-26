@@ -894,8 +894,8 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-map-setscrollcheck-b9984e9c42"></a>
 - [`symbol-script-method-client-map-setscrollcheck-b9984e9c42`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-setscrollcheck-b9984e9c42)
 
-<a id="symbol-script-method-client-map-settransparentegg-42ae7bf3afec7411-534e006fe5"></a>
-- [`symbol-script-method-client-map-settransparentegg-42ae7bf3afec7411-534e006fe5`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-settransparentegg-42ae7bf3afec7411-534e006fe5)
+<a id="symbol-script-method-client-map-settransparentegg-b6b974b26dd5da96-612794ef02"></a>
+- [`symbol-script-method-client-map-settransparentegg-b6b974b26dd5da96-612794ef02`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-settransparentegg-b6b974b26dd5da96-612794ef02)
 
 <a id="symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244"></a>
 - [`symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244`](../../en/reference/script-api/methods.md#symbol-script-method-client-map-settransparentegg-d4f73ea0d2898f79-41e0f52244)
@@ -2209,6 +2209,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-critter-movetohex-877a3be2a55ba41a-db78ca56ec"></a>
 - [`symbol-script-method-server-critter-movetohex-877a3be2a55ba41a-db78ca56ec`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-movetohex-877a3be2a55ba41a-db78ca56ec)
 
+<a id="symbol-script-method-server-critter-movetohex-b27a6e0f0f8ceddb-b3810d59e5"></a>
+- [`symbol-script-method-server-critter-movetohex-b27a6e0f0f8ceddb-b3810d59e5`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-movetohex-b27a6e0f0f8ceddb-b3810d59e5)
+
 <a id="symbol-script-method-server-critter-refreshview-0272116fa9"></a>
 - [`symbol-script-method-server-critter-refreshview-0272116fa9`](../../en/reference/script-api/methods.md#symbol-script-method-server-critter-refreshview-0272116fa9)
 
@@ -2714,6 +2717,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-game-syncwiden-27498323eb"></a>
 - [`symbol-script-method-server-game-syncwiden-27498323eb`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-syncwiden-27498323eb)
+
+<a id="symbol-script-method-server-game-syncyield-b627c4bd18"></a>
+- [`symbol-script-method-server-game-syncyield-b627c4bd18`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-syncyield-b627c4bd18)
 
 <a id="symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af"></a>
 - [`symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af`](../../en/reference/script-api/methods.md#symbol-script-method-server-game-systemcall-5f9bd54717eb40b8-a4e00783af)

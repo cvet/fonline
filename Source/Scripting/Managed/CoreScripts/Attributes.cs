@@ -318,6 +318,13 @@ public sealed class CoverEffectAttribute : Attribute
     public CoverEffectKind Effect { get; }
 }
 
+// On a Sync helper whose [ProvidesCover] parameters state everything it covers: a call whose every argument already
+// has that cover acquires nothing, which FOSYNC015 reports
+[AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
+public sealed class CoversOnlyArgumentsAttribute : Attribute
+{
+}
+
 // The raw synchronization surface, declared by the export itself. Script code reaches for none of these
 // directly: the primitive replaces the held set without the atomic multi-root acquisition and the migration
 // re-proof the Sync helpers add, the probe answers what was true a moment ago, and the singleton bucket lock

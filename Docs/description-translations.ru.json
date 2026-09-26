@@ -12187,6 +12187,14 @@
           "source_sha256": "c04a361f637a9005c9f2c945ba446ee93a86c8f0e0366ef0062577fde948a005",
           "translation": "Вторая независимая маска прозрачности вокруг игрока, проверяемая для спрайтов карты."
         },
+        "/symbols/@id=script.enum-value.TransparentEggTarget.AnyOccluder/description": {
+          "source_sha256": "e133c3e12ab5a2fe4bb7d7b6409e39805e27a398b7832c3ae326fa2ef42e0305",
+          "translation": "Скрывать каждый спрайт, который находится перед гексом маски по правилу прозрачности."
+        },
+        "/symbols/@id=script.enum-value.TransparentEggTarget.Structure/description": {
+          "source_sha256": "54bb2a9e98bc5e808dbb92a132a54535e8babea3bf68759e8064e1eb375463c8",
+          "translation": "Скрывать только стены и крыши, сохраняя передние предметы обстановки."
+        },
         "/symbols/@id=script.enum.CornerType/description": {
           "source_sha256": "b0ec3314f249c7bb40c4ff120e1f4a544ce71423f6304f21f83ba606c2078dd9",
           "translation": "Ориентация угла стены, используемая геометрией карты и отрисовкой с учётом углов."
@@ -12414,6 +12422,10 @@
         "/symbols/@id=script.enum.TransparentEggSlot/description": {
           "source_sha256": "1dec574463a2a00f21f9317afc1c4bd7510af6ac381df1a4d5605ad9b64e07ee",
           "translation": "Выбирает одну из двух одновременно поддерживаемых отрисовкой масок прозрачности вокруг игрока."
+        },
+        "/symbols/@id=script.enum.TransparentEggTarget/description": {
+          "source_sha256": "aa857e431f9b1f11a606f90fbed70a8acf6d24f1c95c1df10b5557f9f05ade67",
+          "translation": "Определяет, какие спрайты перед гексом прозрачной маски она скрывает."
         },
         "/symbols/@id=script.event.client.Game.OnConnected/description": {
           "source_sha256": "fcb8084160528ca0654bfb15bda099693707790d364d3389b6405e6606be786a",
@@ -14031,7 +14043,7 @@
           "source_sha256": "df9cb6085f19e1df598072f00ba6b7a78fa5c23df97cc83fb591c380f6b435f5",
           "translation": "Включает или отключает проверку прокрутки в представлении карты."
         },
-        "/symbols/@id=script.method.client.Map.SetTransparentEgg%2342ae7bf3afec7411/description": {
+        "/symbols/@id=script.method.client.Map.SetTransparentEgg%23b6b974b26dd5da96/description": {
           "source_sha256": "adec292a242911f9f3018a4e3b730030552254205ff96316f12673ab981647c5",
           "translation": "Настраивает слот эллиптической маски прозрачности вокруг явно заданного прямоугольника относительно гекса, не привязывая его к криттеру."
         },
@@ -15751,6 +15763,10 @@
           "source_sha256": "39d2aca067c8c98e2d98b8e5d32f383eba69c257e6a551cff40bd32431fef03f",
           "translation": "SyncScope: требует self и текущую карту; начинает движение и возвращает новый контекст движения."
         },
+        "/symbols/@id=script.method.server.Critter.MoveToHex%23b27a6e0f0f8ceddb/description": {
+          "source_sha256": "f2761726fa24a92e8ada74ad7963685ea02696358832120e00525a40f9ad2268",
+          "translation": "Если маршрут длиннее maxPathLength, запрос отклоняется с HexTooFar без поиска за пределами этой глубины; 0 использует Geometry.MaxPathFindLength."
+        },
         "/symbols/@id=script.method.server.Critter.RefreshView/description": {
           "source_sha256": "2e98ceeb6e5a4a92a93de2943bc31165d55682c9e86ae69f3f74ce73c10632ca",
           "translation": "SyncScope: требует self и текущую карту для размещенной сущности; пересчитывает видимых криттеров и предметы."
@@ -16406,6 +16422,10 @@
         "/symbols/@id=script.method.server.Game.SyncWiden/description": {
           "source_sha256": "1e2beb0e7732b1638916b5062dd91fe9c8ea298571889d8ef9e47d8fe60eb347",
           "translation": "Расширяет текущее покрытие синхронизации на месте, добавляя указанные активные сущности."
+        },
+        "/symbols/@id=script.method.server.Game.SyncYield/description": {
+          "source_sha256": "f31bb65558883f694b6f69fd24087698de3b2702245ec8c00c4bb2f4e25dfc83",
+          "translation": "Передаёт ожидающим потокам весь cover сущностей текущего потока и вновь захватывает его до возврата; вызов запрещён при удержании singleton-блокировки Game."
         },
         "/symbols/@id=script.method.server.Game.SystemCall%235f9bd54717eb40b8/description": {
           "source_sha256": "a75ede9a8335aad4b5a1c74111ea7dc850cbcbf93941e13796791111831fdfe3",
@@ -18478,6 +18498,10 @@
         "/symbols/@id=setting.common.Geometry.MaxPathFindLength/description": {
           "source_sha256": "0af7be618ba6559feb5a36e61c808a64a73e2fc66f69e78e1a44e9e6c264fcf2",
           "translation": "Максимальная длина pathfinding"
+        },
+        "/symbols/@id=setting.common.Geometry.PathFindEnclosureProbe/description": {
+          "source_sha256": "24045423e05f77bed9277f02454a15d54b29650e1b46334ad39593b547414256",
+          "translation": "Число гексов для обратной проверки замкнутости цели поиска пути; 0 отключает проверку."
         },
         "/symbols/@id=setting.common.ManagedScript.AdditionalFiles/description": {
           "source_sha256": "3fe5c2fff1bcb263d74bfcbbe11e12183864029b760da9600dd4e0fe260927fc",

@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 6929c6af36d684d3afd1683a00a6284b60c93df0126b08ae1bf59b6fdec7e603
+Content SHA-256: 1b1f149588e3e708d53cd26b70d86af6ef56944eb876bbeca3279386f7baf5fd
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2540**
-- Symbols with source-backed descriptions: **2540**
+- Discovered symbols: **2546**
+- Symbols with source-backed descriptions: **2546**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2540**
+- Explicitly classified symbols: **2546**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -3562,7 +3562,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 9deaf1cfe579b5f1f163daa6a364358c0179ed4ad680c879dd039995237723c3
+Content SHA-256: 5e0a20f3f97452a789580c2e7845d14aeeafcaccb1ec725b95e345c2a214e6c0
 
 ---
 layout: default
@@ -3725,6 +3725,10 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 
+`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+
+For changed relations, `Sync.Yield()` hands off thread locks via `Game.SyncYield()`; re-read afterward. Unavailable entities defer to the next frame for teardown. `Sync.OnRetry` and `Sync.ReportRetry(reason)` report attempts, not failures.
+
 Attributes state a proof; they do not lock anything. Entry points annotate the entity the Engine already synchronized. Ordinary helpers either acquire the required cover or propagate `[RequiresCover]` to their callers.
 
 Custom dispatchers can declare their marker attribute with `EntryPointMarker`, so the analyzer treats their handlers as entry points. `FOSYNC009` requires a current cover after `await`: locking an earlier `map = cr.GetMap()` does not re-prove `cr`; use the current direct alias, a whole covered collection, or an explicit `PassesCover`/`RestoreCallerCover` relationship. The withdrawn redundancy rules `FOSYNC012`–`FOSYNC014` are not part of the active contract. Failed `Sync` acquisitions may be observed through `Sync.OnFailure`; subscribers receive immutable caller, reason, entity, and stack snapshots without changing the helper's `false` result. With no subscribers, the diagnostic snapshot is not allocated.
@@ -3836,6 +3840,8 @@ The managed backend reports fixed native context plus managed exception text and
 Both script backends retain at most 32 distinct overrun entry names per Engine, counting repeats while preserving independent maximum execution and lock-wait times. `TakeScriptOverruns()` drains that buffer. The client drains before `OnLoop` and dispatches `OnScriptOverrun(entry, execution, lockWait, count)` outside the buffer lock; server and mapper do not publish the event in their loops. An overrun caused by a subscriber waits for the next drain. The usual threshold/debugger suppression still applies.
 
 `InteropProbe` compares runtime invoke, classic thunk, and `UnmanagedCallersOnly` transports where the runtime supplies them, then measures production dispatch and its synchronization, attachment, and overrun-report components. Each series verifies delivery and arguments and reports GC handles, metadata lookups, managed objects, wrapper construction, and—under Tracy—native allocations per call. Counters are thread-local and disabled outside a measured stretch. Latency is evidence for a quiet-host comparison, not a shared-CI threshold; allocation and delivery counts are hard assertions.
+
+Both `UnmanagedCallersOnly` entries initialize together; the probe reports their cost after a benchmark.
 
 When `FO_TRACE_ENABLED` and the `Script` category are enabled, the backend installs a Mono profiler immediately after runtime initialization and before any entry assembly executes. Method-call instrumentation is restricted to registered game assembly images and methods with metadata tokens; runtime plumbing and generated wrappers stay out of the call tree. JIT zones are not image-filtered because a handler's first invocation pays for every method it reaches. The hook requests `ENTER | LEAVE | EXCEPTION_LEAVE`, deliberately not `TAIL_CALL`: Mono can eliminate a self tail call without a matching enter event, so treating that notification as an ordinary leave would close the caller's zone. An exceptional or inlined leave closes the per-thread zone stack down to the method Mono names.
 
@@ -10967,7 +10973,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 64a2ed7f73f2cf5dd88fd2aff9c8a584a77aac761330e2fb7507668fd162cd8c
+Content SHA-256: d57c2f6807643efc01ff4cf1ec28a47b0b841367f2155d42824dddd6b010afbc
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11031,7 +11037,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [Docs/en/troubleshooting/debugging.md](Docs/en/troubleshooting/debugging.md) - native, AngelScript, and Managed C# debugging, mixed stacks, crash diagnostics, and validation boundaries.
 - [Docs/en/contributing/coding-contracts/nullability.md](Docs/en/contributing/coding-contracts/nullability.md) - `T?` script / `ptr<T>`·`nptr<T>` native boundary contract.
 - [Docs/en/how-to/scripting/lifecycle-and-concurrency.md](Docs/en/how-to/scripting/lifecycle-and-concurrency.md) - script module init, callback ownership, `[[Async]]`/`Yield`, server entity covers, mutable-state ownership, and teardown.
-- [Docs/en/how-to/scripting/managed-csharp.md](Docs/en/how-to/scripting/managed-csharp.md) - Managed C# configuration, generated projects and assemblies, attributes, async scheduling, synchronization-cover analyzers, runtime isolation, packaging, platforms, diagnostics, migration, and validation.
+- [Docs/en/how-to/scripting/managed-csharp.md](Docs/en/how-to/scripting/managed-csharp.md) - Managed C# configuration, generated projects and assemblies, attributes, async scheduling, synchronization-cover analyzers including FOSYNC015, runtime isolation, packaging, platforms, diagnostics, migration, and validation.
 - [Docs/en/reference/scripting/remote-calls.md](Docs/en/reference/scripting/remote-calls.md) - remote-call declaration, direction, handler, authority, baked catalog, and validation contract.
 - [Native Extensions](Docs/en/how-to/native-extensions.md) - project-native C++ roles, hooks, script exports, lifecycle, compatibility boundary, and validation.
 - [Project-Local Dependencies](Docs/en/how-to/native-extensions/project-dependencies.md) - project-local library/SDK ownership, role-scoped linking, platform/package delivery, updates, and validation.
@@ -13041,7 +13047,7 @@ Documentation describes the current branch until the engine has meaningful relea
 ===== BEGIN DOCUMENT adr-manifest-backed-ai-documentation-delivery =====
 Source: Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
-Content SHA-256: 0fb099368f5a0607f8385b530b47a210e4c853efdae921fef4aeaddbc282e702
+Content SHA-256: 8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00
 
 ---
 layout: default
@@ -13084,7 +13090,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
-4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB (2,097,152 bytes). It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
+4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 64 KiB (2,162,688 bytes). After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.
@@ -16744,7 +16750,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 22356556f108388af852d016e775b1870e89c58be75919161c18c531e6117252
+Content SHA-256: 4ced8eb72d3d2f0352dc7240c393af17061c94295ef128bb10414efee39c3e92
 
 ---
 layout: default
@@ -16872,6 +16878,7 @@ Important `FindPathInput` fields:
 - `CheckTarget` — optional exact-goal predicate for multi-target searches. When set, it replaces
   the single `ToHex` / `Cut` goal check; the first goal reached by BFS is returned in `NewToHex`.
 - `CheckHex` — callback returning block/defer status.
+- `EnclosureProbeLimit` — reverse-flood budget; `0` disables it. `MapManager`/`MapView` use `Geometry.PathFindEnclosureProbe` (default `1024`).
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
 
@@ -16880,6 +16887,10 @@ so a server caller can find the nearest reachable exact target with one BFS inst
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
+
+For one target, the probe floods back from its `Cut` radius over non-`Blocked` hexes. A closed region short of the start means `NoWay`; budget exhaustion resumes forward search. `FindPathToAny()` is not probed. Early success pays no probe cost.
+
+`MapManager::FindPath(max_length)` uses `Geometry.MaxPathFindLength` for `0`, caps positives, and rejects negatives. Server `Critter.MoveToHex(..., maxPathLength, ...)` returns `HexTooFar` beyond the bound. Use it to avoid purposeless detours.
 
 Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
 
@@ -18922,7 +18933,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 675570e1a70669afad99f3439c96fd099e6c5b69d35bdfa043d327ed14d4e71f
+Content SHA-256: 7cbc30a476fa39481f0d44d39e77a200468804a2d097131c17a74e16370b3d11
 
 ---
 layout: default
@@ -19255,6 +19266,8 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
+`MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).
+
 Map light source intensity is authored as a percentage magnitude (`0..100`, with negative values keeping the same magnitude but opting into constant/personal capacity semantics). `MapView` clamps the current animated percentage, converts it to an internal raw falloff scale (`0..10000`), and then scales light-map RGB to the engine light range (`0..200`) and primitive alpha to `0..255` through the source's day-light capacity percentage. `SetDayColors()` must invalidate applied light fans when either the day color or the light-capacity percentage changes, because both feed cached per-hex lighting.
 
 `GetHexOffset(from, to)` equals `GetHexPos(to) - GetHexPos(from)`, so `RebuildMapOffset()` moves every light vertex by the same pixel delta when the view origin scrolls. `MapView` translates cached `_lightPoints` by that delta instead of rebuilding every fan. Hiding the last visible hex of a light still forces a primitive rebuild to remove leftover triangles, while lights entering the view reapply their fans and rebuild normally. `Test_Geometry.cpp` pins the uniform-translation identity.
@@ -19485,7 +19498,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: 0d5b21483339804543aeb52a0c47ba0540c135c277d72c1ed125e007b0e2fa8d
+Content SHA-256: db77b1d28946704712c74d306dc836c224b6beb206253718ab382c74c38886ee
 
 ---
 layout: default
@@ -19683,6 +19696,8 @@ Every frame writes frame-time properties while holding the `Game` entity lock ex
 
 Managed `Sync` acquisition/restoration helpers publish an externally returned `false` to `Sync.OnFailure` (`Action<Sync.FailureInfo>`). No subscriber means no snapshot, entity-context read, or stack capture. With subscribers, each receives the same immutable operation, caller file/member/line, terminal reason/helper location, entity IDs and lifecycle snapshots, proto IDs, and managed stack. Subscriptions are synchronous and unsampled; an observer must not acquire cover, mutate gameplay state, or use `async void`. Its exception is reported and counted without suppressing other observers or changing the helper's `false`. Successful calls, recovered internal retries, probes, and best-effort cleanup are silent; native acquisition exceptions still propagate. This event proves a particular call refused cover, not that a gameplay transaction failed or rolled back. Validate with `dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj` and the embedding project's subscriber route.
 
+`Sync.OnRetry` records reason and caller/retry sites, including nested helpers. External loops use `Sync.ReportRetry(reason)`. No subscriber means no allocation; frequency distinguishes handoffs from later-frame waits.
+
 CPU percentages come from `Platform::GetCpuUsageSnapshot()`: `ServerEngine` samples it about once per second and diffs consecutive snapshots. System load is the busy fraction of the whole machine (and per core); process load is this process's share normalized to one machine's worth of capacity, while `Performance details` also shows the un-normalized "process core load" (which can exceed 100% on multiple cores, like `top`).
 
 The stat fields are updated on `_mainWorker` (inside `SyncPointJob`) and read only on `_mainWorker` itself (`GetHealthInfo()`) and by the visible server app's `DrawGui`, which reads them behind `Lock()` (serialized against the main worker by the sync point). Because nothing reads them from another thread, the fields are plain (no atomics needed).
@@ -19770,6 +19785,8 @@ Waiters are FIFO. A per-waiter atomic state distinguishes waiting, granted, and 
 Each active `SyncContext` accumulates only the time its thread is parked in the atomic wait inside `EntityLock::Acquire`, `AcquireShared`, or `RegisterDescendantHold`. The duration is also added to every outer context in the synchronous call chain, because an outer script's wall time includes a nested script callback's wait. Queue insertion, uncontended acquisition, lock bookkeeping, and ordinary native/script execution are not counted as lock wait. `ServerEngine::RunScriptContext()` returns that accumulated duration to the scripting backend so diagnostics can separate contention from execution cost.
 
 Holder counts use an inline linear vector because millions of entity locks usually have only a few concurrent holders and must allocate nothing while idle. Per-sync cover and held-lock lists use `small_vector` sized to measured common paths; owner collections remain `vector` where incomplete `ServerEntity` types prevent inline storage.
+
+`SyncContext::YieldLocks()` hands all thread locks, including outer cover, to waiters and reacquires them in address order with recursion restored. Re-prove cover and re-read relations. A held `Game` singleton forbids it. Scripts use `Game.SyncYield()` via `Sync.Yield()`; unavailable entities defer via `ScriptTask.Delay(0)` so teardown can finish.
 
 ### An entity being destroyed
 
@@ -26044,7 +26061,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: fb5f2d89191fae01881f0870e87c79c88c0942adb0d940f92aaead73967dad62
+Content SHA-256: 6d1737973342757fd0a611e9813e5ef948a7ac0e0b9c87be4bad680685530165
 
 ---
 title: Generated API Reference
@@ -26061,36 +26078,36 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 991 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 993 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
-| [Script types](types.md) | 994 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 273 | Read-only engine settings grouped by domain. |
+| [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
+| [Engine settings](settings.md) | 274 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2540 |
-| Symbols with descriptions | 2540 |
+| Addressable symbols | 2546 |
+| Symbols with descriptions | 2546 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2540 |
+| Explicitly classified symbols | 2546 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2539 |
+| <code>experimental</code> | 2545 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2540 stable IDs with SHA-256 <code>d9768911b69e081b35e89990e4192eebb9891665cc6ce0f73f3d12518b9ec141</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2546 stable IDs with SHA-256 <code>5db7b4b0807932289c7c9774004fee88a46609259ddbb3ddb32300b83a1eb4e6</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -28178,7 +28195,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 5ac0990e679614899f51d36342dabf37e563cc02f5bc124bc97cfe3a3276b18f
+Content SHA-256: 2340f66abc525456d9ffadb21d560734c3ff3e0c70b466ceacda7edf439d802d
 
 ---
 layout: default
@@ -28283,6 +28300,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_ProtoManager.cpp`
 - `Source/Tests/Test_TextPack.cpp`
 - `Source/Tests/Test_Timer.cpp`
+- `Source/Tests/Test_TransparentEgg.cpp`
 - `Source/Tests/Test_TwoDimensionalGrid.cpp`
 
 ### Networking and server/client integration

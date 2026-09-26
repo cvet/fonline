@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/runtime/server.html
 ---
 
 # Серверная среда выполнения
-<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"0d5b21483339804543aeb52a0c47ba0540c135c277d72c1ed125e007b0e2fa8d"} -->
+<!-- docs-translation: {"document_id":"server-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/server.md","source_sha256":"db77b1d28946704712c74d306dc836c224b6beb206253718ab382c74c38886ee"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение серверной среды выполнения из `Source/Server/`; игровые правила, содержимое мира, конкретный баланс, задания и политика развёртывания отдельного проекта остаются в документации подключающего проекта.
 
 ## Назначение
@@ -195,6 +195,8 @@ TODO: после стабилизации многопоточной логик�
 
 Managed helpers приобретения/восстановления `Sync` публикуют наружный результат `false` через `Sync.OnFailure` (`Action<Sync.FailureInfo>`). Без подписчиков нет snapshot, чтения контекста entities или stack capture. При наличии подписчиков каждый получает один и тот же immutable набор operation, caller file/member/line, terminal reason/location helper, IDs и lifecycle entities, proto IDs и managed stack. Подписки synchronous и unsampled; observer не должен получать cover, менять gameplay state или использовать `async void`. Его exception регистрируется и учитывается, но не прерывает других observers и не меняет `false` helper. Success, восстановленные внутренние retries, probes и best-effort cleanup не сообщаются; native acquisition exceptions по-прежнему распространяются. Event доказывает отказ конкретного вызова, а не неуспех или rollback gameplay transaction. Проверка: `dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj` и subscriber route подключающего проекта.
 
+`Sync.OnRetry` записывает operation, причину и места caller/retry, включая вложенные helpers. Внешние циклы используют `Sync.ReportRetry(reason)`. Без подписчика нет выделения памяти; частота по месту отличает передачу блокировки от ожидания кадра.
+
 Проценты CPU получаются из `Platform::GetCpuUsageSnapshot()`: примерно раз в секунду `ServerEngine` вычисляет разность двух последовательных снимков. Системная загрузка — доля занятого времени всей машины и каждого ядра; загрузка процесса — доля этого процесса, нормализованная на полную ёмкость машины. `Performance details` дополнительно показывает ненормализованную загрузку процессом ядер, которая, как в `top`, может превышать 100% на многоядерной системе.
 
 Поля статистики обновляются на `_mainWorker` внутри `SyncPointJob` и читаются только самим `_mainWorker` в `GetHealthInfo()` и методом `DrawGui` видимого серверного приложения, который читает их за `Lock()`, то есть последовательно относительно главного рабочего потока через точку синхронизации. Другие потоки их не читают, поэтому поля обычные и не требуют атомарности.
@@ -284,6 +286,8 @@ Waiters обслуживаются FIFO. Atomic state каждого waiter ра
 Каждый активный `SyncContext` накапливает только то время, которое его поток простоял в атомарном ожидании внутри `EntityLock::Acquire`, `AcquireShared` или `RegisterDescendantHold`. Эта длительность добавляется и каждому внешнему контексту синхронной цепочки вызовов, потому что wall time внешнего скрипта включает ожидание вложенного скриптового callback. Постановка в очередь, неоспоренный захват, учёт блокировок и обычное native/скриптовое исполнение в lock wait не попадают. `ServerEngine::RunScriptContext()` возвращает накопленную длительность в scripting backend, чтобы диагностика отделяла contention от стоимости исполнения.
 
 Holder counts хранятся в inline linear vector: миллионы entity locks обычно имеют лишь несколько concurrent holders и не должны выделять память в idle состоянии. Списки cover/held locks одного sync используют `small_vector` с вместимостью по измеренным common paths; owner collections остаются `vector`, когда incomplete `ServerEntity` не позволяет inline storage.
+
+`SyncContext::YieldLocks()` передаёт ожидающим все блокировки потока, включая внешний cover и descendant holds; вновь захватывает их по адресам с прежней рекурсией. Текущий контекст заново доказывает cover; связи нужно перечитать. Singleton-блокировка `Game` запрещает вызов. Скрипты используют `Game.SyncYield()` через `Sync.Yield()`. Недоступная сущность вместо этого ждёт следующего кадра через `ScriptTask.Delay(0)`, иначе handler может задержать удаление. Оба пути покрыты native и managed Sync tests.
 
 ### Сущность во время уничтожения
 

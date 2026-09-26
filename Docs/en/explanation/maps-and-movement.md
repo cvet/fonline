@@ -124,6 +124,7 @@ Important `FindPathInput` fields:
 - `CheckTarget` — optional exact-goal predicate for multi-target searches. When set, it replaces
   the single `ToHex` / `Cut` goal check; the first goal reached by BFS is returned in `NewToHex`.
 - `CheckHex` — callback returning block/defer status.
+- `EnclosureProbeLimit` — reverse-flood budget; `0` disables it. `MapManager`/`MapView` use `Geometry.PathFindEnclosureProbe` (default `1024`).
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
 
@@ -132,6 +133,10 @@ so a server caller can find the nearest reachable exact target with one BFS inst
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
+
+For one target, the probe floods back from its `Cut` radius over non-`Blocked` hexes. A closed region short of the start means `NoWay`; budget exhaustion resumes forward search. `FindPathToAny()` is not probed. Early success pays no probe cost.
+
+`MapManager::FindPath(max_length)` uses `Geometry.MaxPathFindLength` for `0`, caps positives, and rejects negatives. Server `Critter.MoveToHex(..., maxPathLength, ...)` returns `HexTooFar` beyond the bound. Use it to avoid purposeless detours.
 
 Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
 

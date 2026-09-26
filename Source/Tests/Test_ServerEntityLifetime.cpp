@@ -357,6 +357,119 @@ TEST_CASE("ServerSyncWidenKeepsHeldEntityBeingDestroyed", "[server][sync]")
     CHECK(ctx.GetHeldEntities().size() == 1);
 }
 
+TEST_CASE("ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack", "[server][sync]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {2, 2}, false};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    refcount_nptr<Map> map;
+    refcount_nptr<Critter> holder;
+    refcount_nptr<Critter> neighbour;
+
+    REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto critter_proto = server->GetProtoCritter(server->Hashes.to_hashed_string("LifetimeCritter"));
+        auto map_proto = server->GetProtoMap(server->Hashes.to_hashed_string("LifetimeMap"));
+        REQUIRE(critter_proto);
+        REQUIRE(map_proto);
+        map = safe_alloc::make_refcounted<Map>(server, ident_t {1}, map_proto, nullptr, &static_map);
+        holder = safe_alloc::make_refcounted<Critter>(server, ident_t {2}, critter_proto);
+        holder->SetParent(map);
+        neighbour = safe_alloc::make_refcounted<Critter>(server, ident_t {3}, critter_proto);
+        neighbour->SetParent(map);
+    }));
+
+    auto map_lock = map->GetEntityLock();
+    auto neighbour_lock = neighbour->GetEntityLock();
+    REQUIRE(static_cast<bool>(map_lock));
+    REQUIRE(static_cast<bool>(neighbour_lock));
+
+    // The outer context stands for the job's own cover, which a nested Sync cannot give away
+    SyncContext outer;
+    outer.Activate();
+    auto deactivate_outer = scope_exit([&outer]() noexcept {
+        outer.Release();
+        outer.Deactivate();
+    });
+
+    vector<ptr<ServerEntity>> job_cover {holder, map};
+    outer.SyncEntities(job_cover);
+
+    SyncContext nested;
+    nested.Activate();
+    auto deactivate_nested = scope_exit([&nested]() noexcept {
+        nested.Release();
+        nested.Deactivate();
+    });
+
+    vector<ptr<ServerEntity>> nested_cover {neighbour};
+    nested.SyncEntities(nested_cover);
+
+    int32_t map_recursion = map_lock->GetExclusiveRecursionForCurrentThread();
+    REQUIRE(map_recursion > 0);
+    REQUIRE(neighbour_lock->IsLockedByCurrentThread());
+
+    std::atomic_bool waiter_took_map {false};
+
+    std::thread waiter([&]() {
+        SyncContext waiter_ctx;
+        waiter_ctx.Activate();
+        vector<ptr<ServerEntity>> wanted {map};
+        waiter_ctx.SyncEntities(wanted);
+        waiter_took_map.store(true);
+        waiter_ctx.Release();
+        waiter_ctx.Deactivate();
+    });
+    auto join_waiter = scope_exit([&outer, &nested, &waiter]() noexcept {
+        nested.Release();
+        outer.Release();
+        waiter.join();
+    });
+
+    while (map_lock->WaiterCount() == 0) {
+        coarse_sleep(std::chrono::milliseconds {1});
+    }
+
+    // A re-sync of the same cover keeps the map (the widen test pins that); the yield alone hands it on
+    nested.YieldLocks();
+
+    CHECK(waiter_took_map.load());
+    CHECK(map_lock->GetExclusiveRecursionForCurrentThread() == map_recursion);
+    CHECK(holder->GetEntityLock()->IsLockedByCurrentThread());
+    CHECK(neighbour_lock->IsLockedByCurrentThread());
+    CHECK(outer.GetHeldEntities().size() == 2);
+    CHECK(nested.GetHeldEntities().size() == 1);
+
+    waiter.join();
+    join_waiter.release();
+}
+
+TEST_CASE("ServerSyncYieldRefusesWhileTheSingletonIsHeld", "[server][sync]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    SyncContext ctx;
+    ctx.Activate();
+    auto deactivate = scope_exit([&ctx]() noexcept {
+        ctx.Release();
+        ctx.Deactivate();
+    });
+
+    // Nothing held is nothing to hand on
+    CHECK_NOTHROW(ctx.YieldLocks());
+
+    ctx.LockSingleton(server->GetEntityLock());
+    CHECK_THROWS_AS(ctx.YieldLocks(), EntitySyncException);
+    CHECK(server->GetEntityLock()->IsLockedByCurrentThread());
+}
+
 TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();

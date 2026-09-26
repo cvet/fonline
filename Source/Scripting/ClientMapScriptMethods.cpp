@@ -77,6 +77,8 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
     int8_t draw_order_sub_layer = mapSpr->DrawOrderSubLayer;
     CornerType corner = mapSpr->Corner;
     bool disable_egg = mapSpr->DisableEgg;
+    bool egg_structure = false;
+    bool is_roof = false;
 
     if (mapSpr->ProtoId) {
         auto proto = engine->GetProtoItem(mapSpr->ProtoId);
@@ -88,6 +90,8 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         draw_order_sub_layer = proto->GetDrawOrderSubLayer();
         corner = proto->GetCorner();
         disable_egg = proto->GetDisableEgg();
+        is_roof = proto->GetIsTile() && proto->GetIsRoofTile();
+        egg_structure = proto->GetIsWall() || is_roof;
     }
 
     auto mspr = self->AddMapSprite(anim, mapSpr->Hex, draw_order, draw_order_sub_layer, //
@@ -126,6 +130,12 @@ FO_SCRIPT_API void Client_Map_DrawMapSprite(ptr<MapView> self, ptr<MapSpriteHold
         }
 
         mspr->SetEggAppearence(egg_appearence);
+    }
+
+    mspr->SetEggStructure(egg_structure);
+
+    if (is_roof) {
+        mspr->SetEggAppearence(EggAppearenceType::Always);
     }
 
     if (color != ucolor::clear) {
@@ -812,9 +822,9 @@ FO_SCRIPT_API bool Client_Map_GetHexAtScreenPos(ptr<MapView> self, ipos32 pos, m
 
 // Configures a transparent-egg slot around an explicit hex-relative rectangle without attaching it to a critter
 ///@ ExportMethod
-FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, mpos hex, ipos32 hexOffset, isize32 eggSize)
+FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEggSlot slot, mpos hex, ipos32 hexOffset, isize32 eggSize, TransparentEggTarget target)
 {
-    self->SetTransparentEgg(slot, hex, hexOffset, eggSize, false);
+    self->SetTransparentEgg(slot, hex, hexOffset, eggSize, target, false);
 }
 
 // Configures a transparent-egg slot around an on-map critter's current sprite bounds, or clears the slot when the critter is absent, foreign, or not drawable
@@ -839,7 +849,8 @@ FO_SCRIPT_API void Client_Map_SetTransparentEgg(ptr<MapView> self, TransparentEg
     ipos32 hex_pos = self->GetHexMapPos(cr_hex->GetHex());
     ipos32 hex_center = {hex_pos.x + GameSettings::MAP_HEX_WIDTH / 2, hex_pos.y + GameSettings::MAP_HEX_HEIGHT / 2};
     ipos32 center_offset = {rect.x + rect.width / 2 - hex_center.x, rect.y + rect.height / 2 - hex_center.y};
-    self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), true);
+    // The critter itself has to show through every occluder, props included
+    self->SetTransparentEgg(slot, cr_hex->GetHex(), center_offset, rect.size(), TransparentEggTarget::AnyOccluder, true);
 }
 
 // Clears the selected transparent-egg slot from this map view

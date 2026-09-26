@@ -23,7 +23,9 @@ internal static class Program
         await CheckCase("holder and mapped-group failures have distinct reasons", DomainReasons);
         await CheckCase("native exceptions keep their existing path", NativeException);
         await CheckCase("caller data is preserved without presentation formatting", RawCallerData);
-        await CheckCase("exhausted retries retain the caller across asynchronous yields", ExhaustedRetries);
+        await CheckCase("an unresolved entity defers the retry to a later frame", ExhaustedRetries);
+        await CheckCase("a changed relation waits in the engine and never suspends", ChangedRelationWaitsInEngine);
+        await CheckCase("every retry is published with its site, including nested ones", RetriesArePublished);
         await CheckCase("repeated failures are counted without sampling", RepeatedFailures);
         await CheckCase("no subscribers preserve false results without collecting reports", NoSubscribers);
         await CheckCase("independent subscribers receive reports and can unsubscribe", MultipleSubscribers);
@@ -38,6 +40,7 @@ internal static class Program
         Reports.Clear();
         Game.Held.Clear();
         Game.OnAcquire = null;
+        Game.Yields = 0;
         ScriptTask.OnDelay = null;
         Native.Exceptions.Clear();
         Sync.OnFailure += Reports.Add;
@@ -256,17 +259,72 @@ internal static class Program
 
     private static async Task ExhaustedRetries()
     {
-        int yields = 0;
+        int frameYields = 0;
         ScriptTask.OnDelay = async () =>
         {
-            yields++;
+            frameYields++;
             await Task.Yield();
         };
+        // A map id with no map is a critter mid-load or mid-unload, which may be the caller's own operation
         Critter cr = new() { MapIdOverride = new ident(7) };
         Check(!await Sync.LockCrittersInitialInfoGraphs(new List<Entity>(), new List<Critter> { cr }),
               "Unstable graph unexpectedly accepted");
-        Check(yields > 1, "Retry path never suspended");
+        Check(frameYields > 1, "Unresolved placement never deferred to a later frame");
+        Check(Game.Yields == 0, "Unresolved placement waited in the engine, where its own caller cannot finish");
         ReadSingle("retry_exhausted");
+    }
+
+    private static async Task ChangedRelationWaitsInEngine()
+    {
+        int frameYields = 0;
+        ScriptTask.OnDelay = async () =>
+        {
+            frameYields++;
+            await Task.Yield();
+        };
+        Critter cr = new();
+        Item first = new() { Holder = cr, Ownership = ItemOwnership.CritterInventory };
+        Item second = new() { Holder = cr, Ownership = ItemOwnership.CritterInventory };
+        int reads = 0;
+        cr.OnGetItems =
+            _ => ++reads == 1 ? new List<Item> { first } : new List<Item> { first, second };
+
+        Task<bool> attempt = Sync.WidenCritterItemsForDestroy(cr, new hstring("Knife"));
+        Check(attempt.IsCompleted, "A changed relation suspended instead of waiting in the engine");
+        Check(await attempt, "A settled relation was not accepted");
+        Check(Game.Yields == 1 && frameYields == 0, "A changed relation did not wait in the engine exactly once");
+        Check(Game.Held.Contains(second), "The retry did not cover the current item set");
+        Check(Reports.Count == 0, "A recovered retry counted as a failure");
+    }
+
+    private static async Task RetriesArePublished()
+    {
+        List<Sync.RetryInfo> retries = new();
+        Sync.OnRetry += retries.Add;
+
+        try {
+            Critter cr = new() { MapIdOverride = new ident(7) };
+            Check(!await Sync.LockCrittersInitialInfoGraphs(new List<Entity>(), new List<Critter> { cr }),
+                  "Unstable graph unexpectedly accepted");
+            Check(retries.Count > 1 && Game.Yields == 0, "Deferred retries were not published");
+            Check(retries.TrueForAll(retry => retry.Reason == "placement_unresolved"), "Wrong retry reason");
+            Check(retries.TrueForAll(retry => retry.CallerMember == nameof(RetriesArePublished)),
+                  "Retry lost its caller");
+            Check(retries.TrueForAll(retry => retry.HelperLine > 0 &&
+                                              retry.HelperFile.EndsWith("Sync.cs", StringComparison.Ordinal)),
+                  "Retry lost its site");
+
+            retries.Clear();
+            Sync.ReportRetry("loop_changed");
+            Check(retries.Count == 1 && retries[0].Reason == "loop_changed" &&
+                      retries[0].CallerMember == nameof(RetriesArePublished) && retries[0].HelperLine > 0,
+                  "An outside retry loop was not published at its own site");
+        }
+        finally {
+            Sync.OnRetry -= retries.Add;
+        }
+
+        Reports.Clear();
     }
 
     private static async Task RepeatedFailures()

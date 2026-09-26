@@ -567,6 +567,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextPack.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TextureAtlas.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_TransparentEgg.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Threading.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_Timer.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_TimeRelated.cpp"

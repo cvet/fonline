@@ -26,6 +26,7 @@ internal sealed class CoverVocabulary
     public const string AcquiresCoverAttributeFullName = "FOnline.AcquiresCoverAttribute";
     public const string PassesCoverAttributeFullName = "FOnline.PassesCoverAttribute";
     public const string CoverEffectAttributeFullName = "FOnline.CoverEffectAttribute";
+    public const string CoversOnlyArgumentsAttributeFullName = "FOnline.CoversOnlyArgumentsAttribute";
 
     // The cover primitives are engine-owned, so they are matched by their symbol's full metadata name.
     // Matching a bare type name would let any project class called `Sync` silently discharge an
@@ -76,6 +77,7 @@ internal sealed class CoverVocabulary
         AcquiresCoverAttribute = compilation.GetTypeByMetadataName(AcquiresCoverAttributeFullName);
         PassesCoverAttribute = compilation.GetTypeByMetadataName(PassesCoverAttributeFullName);
         CoverEffectAttribute = compilation.GetTypeByMetadataName(CoverEffectAttributeFullName);
+        CoversOnlyArgumentsAttribute = compilation.GetTypeByMetadataName(CoversOnlyArgumentsAttributeFullName);
         CoverPrimitiveAttribute = compilation.GetTypeByMetadataName(CoverPrimitiveAttributeFullName);
         CoverProbeAttribute = compilation.GetTypeByMetadataName(CoverProbeAttributeFullName);
         SingletonLockAttribute = compilation.GetTypeByMetadataName(SingletonLockAttributeFullName);
@@ -118,6 +120,8 @@ internal sealed class CoverVocabulary
     public INamedTypeSymbol? PassesCoverAttribute { get; }
 
     public INamedTypeSymbol? CoverEffectAttribute { get; }
+
+    public INamedTypeSymbol? CoversOnlyArgumentsAttribute { get; }
 
     public INamedTypeSymbol? CoverPrimitiveAttribute { get; }
 
@@ -233,6 +237,14 @@ internal sealed class CoverVocabulary
         return null;
     }
 
+    // A Sync helper whose [ProvidesCover] parameters are everything it covers, which is what lets FOSYNC015 compare
+    // the call against the cover its arguments already have
+    public bool CoversOnlyArguments(IMethodSymbol method)
+    {
+        return CoversOnlyArgumentsAttribute != null &&
+               HasAttribute(method.OriginalDefinition.GetAttributes(), CoversOnlyArgumentsAttribute);
+    }
+
     // The raw surface, as the export declares itself
     public bool IsCoverPrimitive(IMethodSymbol method)
     {
@@ -309,8 +321,23 @@ internal sealed class CoverVocabulary
     // The CoverReach flags an annotation declares, or null when the annotation is absent
     public int? DeclaredReach(ImmutableArray<AttributeData> attributes)
     {
+        return ReachOf(attributes, ProvidesCoverAttribute);
+    }
+
+    // The same for the [RequiresCover] half: the reach the caller is obliged to hold
+    public int? RequiredReach(ImmutableArray<AttributeData> attributes)
+    {
+        return ReachOf(attributes, RequiresCoverAttribute);
+    }
+
+    private static int? ReachOf(ImmutableArray<AttributeData> attributes, INamedTypeSymbol? annotation)
+    {
+        if (annotation == null) {
+            return null;
+        }
+
         foreach (AttributeData attribute in attributes) {
-            if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, ProvidesCoverAttribute)) {
+            if (!SymbolEqualityComparer.Default.Equals(attribute.AttributeClass, annotation)) {
                 continue;
             }
 

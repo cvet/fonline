@@ -58,6 +58,10 @@ Continue with the [canonical English explanation](en/explanation/rendering/#appa
 
 Continue with the [canonical English explanation](en/explanation/rendering/#headless-and-stub-modes).
 
+### Frame pacing
+
+Continue with the [canonical English explanation](en/explanation/rendering/#frame-pacing).
+
 ## Rendering abstraction
 
 Continue with the [canonical English explanation](en/explanation/rendering/#rendering-abstraction).
