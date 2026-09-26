@@ -280,6 +280,7 @@ public static class InteropProbe
     private static long Sink;
     private static IntPtr UcoEntry;
     private static IntPtr UcoMixedEntry;
+    private static double UcoEntriesCreationUs;
     private static string? UcoFault;
     private static int UcoFaultCount;
     private static int MixedMatches;
@@ -319,8 +320,8 @@ public static class InteropProbe
         Invariant.Verify(iterations > 0 && batches > 0, "Probe needs a positive iteration and batch count");
         Registrations[1] = ProbeHandler;
 
-        if (mode == CallbackMode.UnmanagedCallersOnly && UcoEntry == IntPtr.Zero) {
-            UcoEntry = ResolveUcoEntry();
+        if (mode == CallbackMode.UnmanagedCallersOnly) {
+            EnsureUcoEntries();
         }
 
         double[] batchNs = new double[batches];
@@ -370,19 +371,13 @@ public static class InteropProbe
         // A thunk and an unmanaged-callers-only entry are native code the runtime compiles; an interpreter-only
         // runtime (the browser) has none to hand out, and production calls in through the runtime invoke there too
         if (RuntimeFeature.IsDynamicCodeCompiled) {
-            // Creating an unmanaged-callers-only entry compiles its wrapper, which no later call pays again
-            if (UcoEntry == IntPtr.Zero) {
-                long started = Stopwatch.GetTimestamp();
-                UcoEntry = ResolveUcoEntry(nameof(AdaptProbeUco));
-                UcoMixedEntry = ResolveUcoEntry(nameof(AdaptProbeMixedUco));
-                double elapsedUs = (Stopwatch.GetTimestamp() - started) * 1_000_000.0 / Stopwatch.Frequency;
-                checks.Add(
-                    new TransportCheck(CallbackMode.UnmanagedCallersOnly,
-                                       "entry creation",
-                                       UcoEntry != IntPtr.Zero && UcoMixedEntry != IntPtr.Zero,
-                                       elapsedUs.ToString("F1", CultureInfo.InvariantCulture) + " us for 2 entries"));
-            }
-
+            // Reported whoever created the entries: a benchmark that ran first has already paid for them
+            EnsureUcoEntries();
+            checks.Add(new TransportCheck(CallbackMode.UnmanagedCallersOnly,
+                                          "entry creation",
+                                          UcoEntry != IntPtr.Zero && UcoMixedEntry != IntPtr.Zero,
+                                          UcoEntriesCreationUs.ToString("F1", CultureInfo.InvariantCulture) +
+                                              " us for 2 entries"));
             transports.Add(CallbackMode.Thunk);
             transports.Add(CallbackMode.UnmanagedCallersOnly);
         }
@@ -503,9 +498,23 @@ public static class InteropProbe
         }
     }
 
+    // Both entries are created together, so a probe that needs only the plain one cannot leave the mixed one unset.
+    // Creating one compiles its wrapper, which no later call pays again
+    private static void EnsureUcoEntries()
+    {
+        if (UcoEntry != IntPtr.Zero) {
+            return;
+        }
+
+        long started = Stopwatch.GetTimestamp();
+        UcoEntry = ResolveUcoEntry(nameof(AdaptProbeUco));
+        UcoMixedEntry = ResolveUcoEntry(nameof(AdaptProbeMixedUco));
+        UcoEntriesCreationUs = (Stopwatch.GetTimestamp() - started) * 1_000_000.0 / Stopwatch.Frequency;
+    }
+
     // RuntimeMethodHandle.GetFunctionPointer hands out the native-callable wrapper of an UnmanagedCallersOnly
     // method, which needs neither an unsafe context nor a private runtime export
-    private static IntPtr ResolveUcoEntry(string methodName = nameof(AdaptProbeUco))
+    private static IntPtr ResolveUcoEntry(string methodName)
     {
         MethodInfo? method = typeof(InteropProbe).GetMethod(methodName, BindingFlags.Static | BindingFlags.NonPublic);
         Invariant.Verify(method != null, "Probe unmanaged entry must exist", methodName);
