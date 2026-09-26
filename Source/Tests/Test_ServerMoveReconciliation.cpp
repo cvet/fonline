@@ -41,8 +41,8 @@
 
 FO_BEGIN_NAMESPACE
 
-// An arrival report settles the server position before the action behind it is read. The rig is script-free: the
-// only player fixture (Test_EntityLifecycle.cpp) compiles with AngelScript, which this project never enables
+// An arrival report settles the server position before the action behind it is read. The rig runs no script; an
+// AngelScript build still needs one bytecode file to start, so it gets an empty one
 namespace
 {
     class MoveReconciliationConnection final : public NetworkServerConnection
@@ -177,6 +177,9 @@ namespace
 
         auto runtime_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MoveReconciliationRuntime");
         runtime_source->AddFile("Metadata.fometa-server", metadata_blob);
+#if FO_ANGELSCRIPT_SCRIPTING
+        runtime_source->AddFile("MoveReconciliation.fos-bin-server", BakerTests::CompileInlineScripts(&proto_engine, "MoveReconciliationScripts", {{"Scripts/MoveReconciliation.fos", "void MoveReconciliationFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
+#endif
         runtime_source->AddFile("MoveCritter.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestCritter"));
         runtime_source->AddFile("MoveLocation.fopro-bin-server", BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation"));
         runtime_source->AddFile("TestMap.fopro-bin-server", MakeMapProtoBlob(proto_engine, map_type, "TestMap", msize {200, 200}));
