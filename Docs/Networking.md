@@ -64,7 +64,9 @@ through a genuine session; server authority and the inbound hardening below rema
 The channel wraps the ordered byte stream every transport already provides (TCP, ordered UDP, WebSocket and the
 in-process interthread one), so the engine has one path for all of them, and WebSocket clients are pinned to the
 server key independently of the Web PKI that WSS uses underneath. The channel handshake runs before `NetMessage::Handshake`, so nothing travels in the
-clear — updater traffic included. Order in the stack:
+clear — updater traffic included. The one exception is a fixed refusal that carries nothing but "your updater is
+outdated", sent to a client from before the channel (see [Connection integration](#connection-integration)). Order in
+the stack:
 
 - server to client: `NetOutBuffer` messages → zlib stream → sealed frames → transport;
 - client to server: `NetOutBuffer` messages (not compressed) → sealed frames → transport.
@@ -124,6 +126,21 @@ buffer and leaves sealed afterwards. A channel failure is latched the same way a
 (`IsInputRejected()`), because it is detected inside the transport receive lock a disconnect would take again; the
 owning worker pass then disconnects with `DisconnectReason::ProtocolError`. A failed channel is logged as a warning, not
 reported as an exception: a stranger, a scanner or a client pinned to another key produces exactly that.
+
+A client built before the channel existed is the one peer `ServerConnection` answers without it. Such a client
+writes its plaintext handshake message at once, so the first read of its connection opens with the message signature
+`0x011E9422` (little-endian), and no channel offer can begin like that: the largest offer is under 200 bytes, so its
+16-bit size header always starts with a zero byte. On that first read the connection sends, once and in the clear, a
+fixed `NetMessage::HandshakeAnswer` in that client's frozen layout (`compatibility_outdated`, `updater_outdated`,
+`metadata_outdated` as bytes `1 1 0`, an empty metadata version, a zero encryption key), zlib-compressed unless
+`Network.DisableZlibCompression` is set, and logs `Client H:P predates the secure channel and is told to install the
+latest client`. The client's updater then shows the updater-mismatch message and closes the connection itself. The
+server ignores what it sends meanwhile and neither rejects nor disconnects it, since dropping the connection at once
+would discard the answer before an ordered-UDP or TCP transport delivered it; a peer that never closes it falls to the
+usual inactivity timeout. A signature that arrives split across reads, or later in the stream, is refused by the
+channel like any other stranger. The answer's bytes are written out as a constant rather than built by `NetOutBuffer`,
+which is free to change while shipped clients are not; `Test_SecureChannel.cpp` pins them by reading the reply the
+way such a client did, over a hand-driven connection and over real TCP and UDP.
 
 The ordered UDP transport's own header (sequence, acknowledgement, session) stays outside the channel. Forging it can
 disturb delivery, which an on-path attacker can do anyway, but cannot inject content: every payload byte still has to

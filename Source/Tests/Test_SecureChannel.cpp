@@ -704,6 +704,241 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
     CHECK_FALSE(in_buf.Read<bool>());
 }
 
+namespace
+{
+    // The protocol before the secure channel is frozen in shipped clients, so these helpers spell it out byte by byte
+    // instead of borrowing NetBuffer, which is free to change
+    constexpr uint32_t PRE_CHANNEL_SIGNATURE = 0x011E9422;
+
+    void AppendLittleEndian(vector<uint8_t>& out, uint32_t value)
+    {
+        for (size_t i = 0; i < sizeof(value); i++) {
+            out.emplace_back(numeric_cast<uint8_t>((value >> (i * 8)) & 0xFF));
+        }
+    }
+
+    // What such a client sent first: its handshake message, in the clear
+    auto MakePreChannelHandshake() -> vector<uint8_t>
+    {
+        vector<uint8_t> body;
+
+        auto append_string = [&body](string_view value) {
+            AppendLittleEndian(body, numeric_cast<uint32_t>(value.size()));
+            body.insert(body.end(), value.begin(), value.end());
+        };
+
+        body.emplace_back(uint8_t {1}); // NetMessage::Handshake
+        append_string("4fdb3c2a6d929a23");
+        append_string("");
+        AppendLittleEndian(body, 2);
+        append_string("Windows-win64");
+        AppendLittleEndian(body, 0x5A3C1E77);
+
+        vector<uint8_t> message;
+        AppendLittleEndian(message, PRE_CHANNEL_SIGNATURE);
+        AppendLittleEndian(message, numeric_cast<uint32_t>(sizeof(uint32_t) * 2 + body.size()));
+        message.insert(message.end(), body.begin(), body.end());
+        return message;
+    }
+
+    struct PreChannelAnswer
+    {
+        bool CompatibilityOutdated {};
+        bool UpdaterOutdated {};
+        bool MetadataOutdated {};
+        string MetadataVersion {};
+    };
+
+    // Reads the reply as such a client did: a zlib stream unless compression is off, holding one handshake answer
+    // that must be consumed exactly
+    auto ReadPreChannelAnswer(const_span<uint8_t> wire, bool compressed) -> PreChannelAnswer
+    {
+        vector<uint8_t> message;
+
+        if (compressed) {
+            stream_decompressor decompressor;
+            decompressor.decompress(wire, message);
+        }
+        else {
+            message.assign(wire.begin(), wire.end());
+        }
+
+        size_t pos = 0;
+
+        auto read_u32 = [&]() -> uint32_t {
+            REQUIRE(pos + sizeof(uint32_t) <= message.size());
+            uint32_t value = 0;
+
+            for (size_t i = 0; i < sizeof(uint32_t); i++) {
+                value |= numeric_cast<uint32_t>(message[pos + i]) << (i * 8);
+            }
+
+            pos += sizeof(uint32_t);
+            return value;
+        };
+        auto read_bool = [&]() -> bool {
+            REQUIRE(pos < message.size());
+            uint8_t value = message[pos++];
+            REQUIRE(value <= 1);
+            return value != 0;
+        };
+
+        CHECK(read_u32() == PRE_CHANNEL_SIGNATURE);
+        CHECK(read_u32() == message.size());
+        REQUIRE(pos < message.size());
+        CHECK(message[pos++] == 3); // NetMessage::HandshakeAnswer
+
+        PreChannelAnswer answer;
+        answer.CompatibilityOutdated = read_bool();
+        answer.UpdaterOutdated = read_bool();
+        answer.MetadataOutdated = read_bool();
+
+        uint32_t version_size = read_u32();
+        REQUIRE(pos + version_size <= message.size());
+        answer.MetadataVersion.assign(reinterpret_cast<const char*>(message.data() + pos), version_size);
+        pos += version_size;
+
+        (void)read_u32(); // Encryption key
+        CHECK(pos == message.size());
+        return answer;
+    }
+}
+
+TEST_CASE("SecureChannelServerTellsAClientFromBeforeTheChannelToUpdate")
+{
+    bool compressed = GENERATE(true, false);
+    CAPTURE(compressed);
+
+    auto settings = MakeTestSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, !compressed);
+
+    SecureChannelIdentity identity {crypto::generate_secret_key()};
+    auto net_connection = safe_alloc::make_shared<ProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
+    vector<uint8_t> handshake = MakePreChannelHandshake();
+
+    net_connection->Receive(handshake);
+
+    // The updater of such a client checks this flag first, then shows its install-the-latest-client message
+    PreChannelAnswer answer = ReadPreChannelAnswer(net_connection->SendCallback(), compressed);
+
+    CHECK(answer.UpdaterOutdated);
+    CHECK(answer.CompatibilityOutdated);
+    CHECK_FALSE(answer.MetadataOutdated);
+    CHECK(answer.MetadataVersion.empty());
+    CHECK_FALSE(connection->IsInputRejected());
+
+    // It closes the connection itself once refused, and whatever it sends meanwhile is neither read nor answered
+    net_connection->Receive(handshake);
+
+    CHECK(net_connection->SendCallback().empty());
+    CHECK_FALSE(connection->IsInputRejected());
+    CHECK(connection->ReadBuf()->GetBufferedUnreadSize() == 0);
+}
+
+TEST_CASE("SecureChannelServerRejectsAStreamThatOnlyBeginsLikeAClientFromBeforeTheChannel")
+{
+    auto settings = MakeTestSettings();
+    SecureChannelIdentity identity {crypto::generate_secret_key()};
+    auto net_connection = safe_alloc::make_shared<ProbeConnection>(&settings);
+    auto connection = safe_alloc::make_unique<ServerConnection>(&settings, net_connection, identity);
+    vector<uint8_t> handshake = MakePreChannelHandshake();
+
+    SECTION("a signature with one byte changed")
+    {
+        handshake[3] = uint8_t {0x02};
+        net_connection->Receive(handshake);
+    }
+
+    // Only the first read of a connection can carry it
+    SECTION("the signature after other bytes")
+    {
+        net_connection->Receive(vector<uint8_t> {0x00});
+        net_connection->Receive(handshake);
+    }
+
+    CHECK(connection->IsInputRejected());
+    CHECK(net_connection->SendCallback().empty());
+}
+
+namespace
+{
+    // The transports carry the bytes they carried before the channel, so a bare one plays such a client end to end
+    void RunPreChannelClientAgainstServer(ChannelTestTransport transport)
+    {
+        REQUIRE(net_sockets::startup());
+
+        auto server_settings = MakeTestSettings();
+        auto client_settings = MakeTestSettings();
+        ChannelTestServer test_server {server_settings};
+        uint16_t port = 0;
+        unique_ptr<NetworkServer> server = StartChannelTestServer(transport, server_settings, test_server, port);
+
+        auto shutdown_server = scope_exit([&]() noexcept {
+            safe_call([&] { test_server.Clear(); });
+            safe_call([&server] { server->Shutdown(); });
+        });
+
+        BakerTests::OverrideSetting(client_settings.ClientNetwork.ServerHost, string {"127.0.0.1"});
+        BakerTests::OverrideSetting(client_settings.Network.ServerPort, port);
+
+        unique_ptr<NetworkClientConnection> client = transport == ChannelTestTransport::Udp ? NetworkClientConnection::CreateUdpSocketsConnection(&client_settings) : NetworkClientConnection::CreateSocketsConnection(&client_settings);
+        vector<uint8_t> handshake = MakePreChannelHandshake();
+        size_t sent_size = 0;
+        vector<uint8_t> wire;
+        int32_t quiet_passes = 0;
+
+        // The refusal is one short write, so a few quiet passes after its first bytes mean it has all arrived
+        for (int32_t i = 0; i < 1000 && quiet_passes < 20; i++) {
+            if (client->IsConnecting()) {
+                (void)client->CheckStatus(true);
+            }
+            else if (client->IsConnected()) {
+                if (sent_size < handshake.size() && client->CheckStatus(true)) {
+                    sent_size += client->SendData(const_span<uint8_t> {handshake}.subspan(sent_size));
+                }
+
+                if (client->CheckStatus(false)) {
+                    const_span<uint8_t> data = client->ReceiveData();
+                    wire.insert(wire.end(), data.begin(), data.end());
+                    quiet_passes = 0;
+                }
+                else if (!wire.empty()) {
+                    quiet_passes++;
+                }
+            }
+
+            coarse_sleep(std::chrono::milliseconds {5});
+        }
+
+        REQUIRE(sent_size == handshake.size());
+        REQUIRE_FALSE(wire.empty());
+
+        PreChannelAnswer answer = ReadPreChannelAnswer(wire, true);
+
+        CHECK(answer.UpdaterOutdated);
+        CHECK(client->IsConnected());
+
+        auto connection = test_server.GetConnection();
+        REQUIRE(connection);
+        CHECK_FALSE(connection->IsInputRejected());
+
+        client->Disconnect();
+    }
+}
+
+#if FO_HAVE_ASIO
+TEST_CASE("SecureChannelTcpServerTellsAClientFromBeforeTheChannelToUpdate")
+{
+    RunPreChannelClientAgainstServer(ChannelTestTransport::Tcp);
+}
+#endif
+
+TEST_CASE("SecureChannelUdpServerTellsAClientFromBeforeTheChannelToUpdate")
+{
+    RunPreChannelClientAgainstServer(ChannelTestTransport::Udp);
+}
+
 #if FO_HAVE_WEB_SOCKETS
 TEST_CASE("SecureChannelRunsOverWebSockets")
 {

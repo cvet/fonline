@@ -203,6 +203,9 @@ private:
     mutex _channelLocker {};
     SecureChannel _channel FO_TSA_GUARDED_BY(_channelLocker);
     vector<uint8_t> _channelPlaintext {};
+    bool _inputStarted {};
+    bool _preChannelClient {};
+    std::atomic_bool _preChannelRefusalPending {};
     ActivityState _activity {};
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
