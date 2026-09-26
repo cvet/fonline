@@ -349,14 +349,26 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             device_flags |= D3D11_CREATE_DEVICE_DEBUG;
         }
 
-        auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+        // The Direct3D 11.0 runtime (Windows 7 without the platform update) rejects a list naming 11.1 instead of skipping it
+        static_assert(feature_levels[0] == D3D_FEATURE_LEVEL_11_1);
+        auto create_device = [&](D3D_DRIVER_TYPE driver_type) -> HRESULT {
+            HRESULT d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+
+            if (d3d_create_device == E_INVALIDARG) {
+                d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, &feature_levels[1], feature_levels_count - 1, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            }
+
+            return d3d_create_device;
+        };
+
+        auto d3d_hardware_create_device = create_device(D3D_DRIVER_TYPE_HARDWARE);
 
         if (FAILED(d3d_hardware_create_device)) {
             if (!settings.Render.AllowSoftwareRenderer) {
                 throw AppInitException("Direct3D hardware device creation failed", d3d_hardware_create_device);
             }
 
-            auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            auto d3d_warp_create_device = create_device(D3D_DRIVER_TYPE_WARP);
 
             if (FAILED(d3d_warp_create_device)) {
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
