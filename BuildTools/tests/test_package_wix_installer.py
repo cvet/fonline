@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
+import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -174,7 +176,7 @@ def test_make_wix_installer_builds_config_and_xml(tmp_path: Path, monkeypatch: p
     assert 'Type="PathEdit"' in wxs and 'Property="INSTALLDIR"' in wxs
     assert 'Dialog Id="FOnlineBrowseDlg"' in wxs
     assert 'Type="DirectoryList"' in wxs
-    assert 'Show Dialog="FOnlineInstallDirDlg" Before="ProgressDlg"' in wxs
+    assert 'Show Dialog="FOnlineInstallDirDlg" After="CostFinalize"' in wxs
     assert 'Name="InstallLocation"' in wxs and 'Value="[INSTALLDIR]"' in wxs
     assert 'ForceCreateOnInstall="yes" ForceDeleteOnUninstall="yes"' in wxs
     assert 'Action="createAndRemoveOnUninstall"' not in wxs
@@ -284,7 +286,9 @@ def test_make_wix_installer_uses_distinct_legacy_x86_artifact_names(tmp_path: Pa
     assert 'Directory Id="ProgramFilesFolder"' not in wxs
 
 
-def _make_createmsi_generator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> createmsi.PackageGenerator:
+def _make_createmsi_generator(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, **extra: object,
+) -> createmsi.PackageGenerator:
     config_path = tmp_path / "sample.json"
     config_path.write_text(json.dumps({
         "product_name": "Sample",
@@ -299,6 +303,7 @@ def _make_createmsi_generator(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         "major_upgrade": {"AllowSameVersionUpgrades": "yes"},
         "arch": 64,
         "parts": [],
+        **extra,
     }), encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(createmsi.platform, "system", lambda: "Windows")
@@ -346,6 +351,146 @@ def test_createmsi_dialog_tab_order_forms_one_loop_through_first_control(
             walk.append(nexts[walk[-1]])
         assert nexts[walk[-1]] == first, (dialog.get("Id"), walk)
         assert set(walk) == {c for c, n in nexts.items() if n is not None}, (dialog.get("Id"), walk)
+
+
+# Standard InstallUISequence numbers of the actions both linkers add for these packages
+UI_SEQUENCE_DEFAULTS = {
+    "FindRelatedProducts": 25, "AppSearch": 50, "LaunchConditions": 100, "ValidateProductID": 700,
+    "CostInitialize": 800, "FileCost": 900, "CostFinalize": 1000, "MigrateFeatureStates": 1200, "ExecuteAction": 1300,
+}
+# wixl msi-default.vala also numbers ProgressDlg itself; WixUI ProgressDlg.wxs shows it Before="ExecuteAction"
+WIXL_NAMED_SEQUENCES = {**UI_SEQUENCE_DEFAULTS, "ProgressDlg": 1299}
+WIXUI_PROGRESS_SHOW = ("ProgressDlg", {"Before": "ExecuteAction"})
+
+
+def _ui_sequence_entries(main_xml: str) -> list[tuple[str, dict[str, str]]]:
+    entries = []
+    for sequence in ET.parse(main_xml).getroot().iter(WIX_NAMESPACE + "InstallUISequence"):
+        for action in sequence:
+            name = action.get("Dialog") if action.tag == WIX_NAMESPACE + "Show" else action.get("Action")
+            entries.append((name, {k: v for k, v in action.attrib.items() if k in ("Before", "After", "Sequence")}))
+    return entries + [WIXUI_PROGRESS_SHOW]
+
+
+def _wix_ui_sequence(entries: list[tuple[str, dict[str, str]]]) -> dict[str, int]:
+    sequence = dict(UI_SEQUENCE_DEFAULTS)
+    pending = list(entries)
+    while pending:
+        resolved = [(name, attrs) for name, attrs in pending
+                    if "Sequence" in attrs or attrs.get("After") in sequence or attrs.get("Before") in sequence]
+        assert resolved, pending
+        for name, attrs in resolved:
+            if "Sequence" in attrs:
+                sequence[name] = int(attrs["Sequence"])
+            elif "After" in attrs:
+                sequence[name] = sequence[attrs["After"]] + 1
+            else:
+                sequence[name] = sequence[attrs["Before"]] - 1
+            pending.remove((name, attrs))
+    return sequence
+
+
+def _wixl_ui_sequence(entries: list[tuple[str, dict[str, str]]], reverse_dependencies: bool) -> dict[str, int]:
+    # msi.vala MsiTableSequence.add_sorted_actions: dependencies sit in a pointer-hashed table, so the order a node's
+    # dependencies are visited in differs between runs of the same build; both orders are modelled
+    unset = -999
+    sequence: dict[str, int] = {}
+    depends: dict[str, list[str]] = {}
+    depended: set[str] = set()
+
+    def action(name: str) -> str:
+        if name not in sequence:
+            sequence[name] = WIXL_NAMED_SEQUENCES.get(name, unset)
+            depends[name] = []
+        return name
+
+    def add_dependency(node: str, dependency: str) -> None:
+        if dependency not in depends[node]:
+            depends[node].append(dependency)
+        depended.add(dependency)
+
+    for name, attrs in entries:
+        action(name)
+        if "Sequence" in attrs:
+            sequence[name] = int(attrs["Sequence"])
+        if "After" in attrs:
+            add_dependency(name, action(attrs["After"]))
+        if "Before" in attrs:
+            add_dependency(action(attrs["Before"]), name)
+
+    for name in UI_SEQUENCE_DEFAULTS:
+        action(name)
+
+    def sorted_actions() -> list[str]:
+        def dependency_max(name: str) -> int:
+            return max((sequence[d] for d in depends[name]), default=-1)
+        return sorted(sequence, key=lambda name: (sequence[name], dependency_max(name)))
+
+    numbered = [name for name in sorted_actions() if sequence[name] != unset]
+    for previous, current in zip(numbered, numbered[1:]):
+        add_dependency(current, previous)
+
+    ordered: list[str] = []
+    visited: set[str] = set()
+
+    def visit(name: str) -> None:
+        if name in visited:
+            return
+        visited.add(name)
+        for dependency in reversed(depends[name]) if reverse_dependencies else depends[name]:
+            visit(dependency)
+        ordered.append(name)
+
+    for name in sorted_actions():
+        if name not in depended:
+            visit(name)
+
+    last = 0
+    for name in ordered:
+        if sequence[name] == unset:
+            sequence[name] = last + 1
+        last = sequence[name]
+    return sequence
+
+
+@pytest.mark.parametrize("toolchain", ["wix", "wixl", "wixl-reversed"])
+def test_createmsi_install_dir_dialog_runs_after_costing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, toolchain: str,
+) -> None:
+    generator = _make_createmsi_generator(tmp_path, monkeypatch, install_location_registry={
+        "root": "HKCU", "key": "Software\\Sample", "name": "InstallLocation", "win64": "yes",
+    })
+    entries = _ui_sequence_entries(generator.main_xml)
+    if toolchain == "wix":
+        sequence = _wix_ui_sequence(entries)
+    else:
+        sequence = _wixl_ui_sequence(entries, reverse_dependencies=toolchain == "wixl-reversed")
+
+    # CostFinalize resolves INSTALLDIR from the remembered location; the dialog before it has an empty path (error 2343)
+    assert sequence["AppSearch"] < sequence["SetInstallDirFromPreviousInstall"] < sequence["CostFinalize"], sequence
+    assert sequence["CostFinalize"] < sequence["FOnlineInstallDirDlg"] < sequence["ProgressDlg"], sequence
+    assert sequence["ProgressDlg"] < sequence["ExecuteAction"], sequence
+
+
+def test_wixl_links_install_dir_dialog_after_costing_every_time(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    if shutil.which("wixl") is None or shutil.which("msiinfo") is None:
+        pytest.skip("wixl and msiinfo (msitools) are needed to link and read a real MSI")
+
+    (tmp_path / "payload").mkdir()
+    (tmp_path / "payload" / "Sample.exe").write_text("exe", encoding="utf-8")
+    generator = _make_createmsi_generator(tmp_path, monkeypatch, parts=[
+        {"id": "MainProgram", "title": "Sample", "description": "Sample", "staged_dir": "payload"},
+    ], install_location_registry={"root": "HKCU", "key": "Software\\Sample", "name": "InstallLocation"})
+    monkeypatch.setattr(createmsi.platform, "system", lambda: "Linux")
+    generator.generate_files()
+
+    # The misplaced order depended on hash order inside one wixl run, so a single link proves little
+    for _ in range(5):
+        generator.build_package()
+        table = subprocess.run(["msiinfo", "export", generator.final_output, "InstallUISequence"],
+                               check=True, capture_output=True, text=True).stdout.splitlines()[3:]
+        sequence = {row.split("\t")[0]: int(row.split("\t")[2]) for row in table if row}
+        assert sequence["CostFinalize"] < sequence["FOnlineInstallDirDlg"] < sequence["ProgressDlg"], sequence
 
 
 def test_createmsi_streaming_capture_tees_merged_output(capsys: pytest.CaptureFixture[str]) -> None:
