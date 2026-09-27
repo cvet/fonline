@@ -120,10 +120,9 @@ Important `FindPathInput` fields:
 - `FromHex` / `ToHex` — requested route endpoints.
 - `ToHexOffset` — the target's real sub-hex offset within `ToHex` (the continuous target position is `ToHex` center + `ToHexOffset`). Used only by the `FreeMovement` end-offset computation.
 - `MapSize` — bounds for all checks.
-- `MaxLength` — maximum BFS depth, normally derived from engine settings. It bounds the search depth
-  only: the visited grid is sized by `min(MaxLength + 1, max(map width, map height))` per axis,
-  because the search never steps off the map and never travels further than the depth limit. Raising
-  the setting therefore costs nothing on maps smaller than the new limit. A server caller may ask for
+- `MaxLength` — the longest route allowed, in steps, normally derived from engine settings: a route of
+  exactly `MaxLength` steps is found, a longer one is refused as `TooFar`. It bounds the route, not the
+  memory: search state is allocated only for the hexes the search touches. A server caller may ask for
   less per request (see [Path length limit per request](#path-length-limit-per-request)).
 - `EnclosureProbeLimit` — hex budget of the enclosure probe (see
   [Walled-off targets](#walled-off-targets)); `0` disables it.
@@ -131,22 +130,50 @@ Important `FindPathInput` fields:
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
 - `CheckTarget` — optional exact-goal predicate for multi-target searches. When set, it replaces
-  the single `ToHex` / `Cut` goal check; the first goal reached by BFS is returned in `NewToHex`.
+  the single `ToHex` / `Cut` goal check; the nearest reachable goal is returned in `NewToHex`.
 - `CheckHex` — callback returning block/defer status.
 
 `FindPathOutput` returns a result, direction steps, control steps, the (possibly cut-adjusted) `NewToHex`, and `EndHexOffset` (concrete `ipos16`, zero when FreeMovement is off).
 
 `MapManager::FindPathToAny()` builds an indexed target set and supplies it through `CheckTarget`,
-so a server caller can find the nearest reachable exact target with one BFS instead of launching a
+so a server caller can find the nearest reachable exact target with one search instead of launching a
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
 
+### Search
+
+`FindPath()` is an A* search. A hex is ranked by its route cost from the start plus its hex distance to
+the goal less `Cut` — a lower bound of the steps still needed, and zero for a `CheckTarget` search, which
+therefore spreads evenly and returns the nearest goal. A step costs one; a `DeferGag` hex costs ten more,
+so a detour up to ten steps longer is preferred to passing a gag; a `DeferCritter` hex costs more than
+any route without one, so critters are walked through only when no route without them is left, and the
+route through the fewest of them wins. The search does not turn to critters while the length limit has cut
+off part of its region — a way round might lie beyond the limit — and answers `TooFar` instead.
+
+The length limit is applied up front: a goal further than `MaxLength` in a straight line is refused as
+`TooFar` without asking `CheckHex`, and a hex whose route plus distance to the goal exceeds `MaxLength` is
+never entered. A search that ends without a route answers `TooFar` when the limit cut anything off and
+`NoWay` when the reachable region closed within it. Search state lives in 16×16 blocks allocated on first
+touch, so a search pays for the hexes it touches, not for the map size or for `MaxLength`; a single-hex
+search asks `CheckHex` once per hex.
+
+The route does not depend on the order the search reached hexes in. Once the cheapest goal is known the
+search keeps going until every hex as cheap is settled, then traces back from the goal over hexes whose
+cost leads exactly to the next one, preferring at every step the hex nearest the straight line back to the
+start: of all the cheapest routes, the straightest. When several goals within `Cut` are equally cheap, the
+one nearest the straight line from `FromHex` to `ToHex` is taken. The open list is a ring of cost buckets
+taken in push order, so the same request finds the same route on every platform.
+
+A multihex footprint is checked per entry side (`CheckHexWithMultihex()` looks at the front arc for the
+direction of the step), so a hex refused from one side can still be entered from another; the single-hex
+answers underneath are asked once each.
+
 ### Walled-off targets
 
-A search toward a target the start cannot reach learns that only by flooding everything the start can
-reach, up to `MaxLength` steps — on a large open map a few hundred thousand hexes for one refusal. When a
-single-target search (`CheckTarget` unset) has enqueued more than `EnclosureProbeLimit` hexes without
+A search toward a target the start cannot reach learns that only by searching everything the start can
+reach within the length limit — on a large open map tens of thousands of hexes for one refusal. When a
+single-target search (`CheckTarget` unset) has reached more than `EnclosureProbeLimit` hexes without
 finding the goal, it floods backwards once from the goal (every hex within `Cut` of `ToHex`) over the same
 `CheckHex` answers, within the same budget. Every hex that is not `Blocked` counts as passable there —
 deferred gags and critters included, multihex footprints ignored — so the backward region is a superset of
@@ -159,18 +186,21 @@ the probe. `MapManager::FindPath()` and `MapView::FindPath()` take the budget fr
 ### Path length limit per request
 
 `MapManager::FindPath()` takes a trailing `max_length`: `0` keeps `Geometry.MaxPathFindLength`, a positive
-value lowers the depth for this request only (a value above the setting is clamped to it), and a negative
+value lowers the limit for this request only (a value above the setting is clamped to it), and a negative
 one throws. The server script surface exposes it as the `Critter.MoveToHex(hex, cut, endHexOffset,
 maxPathLength, speed, gagCallback)` overload: a route longer than the limit is refused as `HexTooFar`, and
-the refusal costs no more than a search of that depth. It is for movement whose purpose would be lost on a
+the refusal costs no more than a search within that limit. It is for movement whose purpose would be lost on a
 long detour — an idle stroll gains nothing from walking around half the map — so the caller that knows the
 purpose sets the bound instead of every search paying for the global maximum.
 
-Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both BFS expansion and path reconstruction on the same geometry rules.
+Backtracking must enumerate `GameSettings::MAP_DIR_COUNT` through `GeometryHelper::MoveHexByDirUnsafe()` instead of hard-coding the six hex-neighbor offsets. Hexagonal builds compile six directions, while square builds compile eight; using the shared direction helpers keeps both search expansion and route reconstruction on the same geometry rules.
 
 ### FreeMovement end offset
 
-When `FreeMovement` is set, the route is still cut to whole hexes by the BFS, but the final
+When `FreeMovement` is set, the route is straightened: a straight line between two route hexes replaces
+the steps between them when every hex along it can be entered from the side the line enters it — any
+`CheckHex` answer but `Blocked`, a multihex footprint checked from that side — whether or not the search
+reached that hex. The route is still cut to whole hexes by the search, but the final
 standing position is refined to a sub-hex point instead of snapping to `NewToHex` center.
 `PathFinding::EvaluateFreeMovementEndOffset()` computes `EndHexOffset` (relative to `NewToHex`
 center) so the continuous end position sits exactly at the cut gap
@@ -208,8 +238,8 @@ authority stop at the same continuous point and there is no protocol change.
 
 - `Passable` — hex can be used.
 - `Blocked` — permanent blocker.
-- `DeferGag` — blocked by a gag item; route through only after distance gap.
-- `DeferCritter` — blocked by a critter; route through as last resort.
+- `DeferGag` — blocked by a gag item; passable at the cost of ten extra steps.
+- `DeferCritter` — blocked by a critter; passable only when no route without critters is left (see [Search](#search)).
 
 For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
 
@@ -324,7 +354,7 @@ Relevant tests include:
 
 - Coordinate/value-type changes: `Source/Common/Geometry.*` and generated metadata docs.
 - Line tracing: `Source/Common/LineTracer.*` and `Source/Common/PathFinding.*`.
-- BFS/path blocking behavior: `Source/Common/PathFinding.*` plus caller-provided blocker callbacks.
+- Path search and blocking behavior: `Source/Common/PathFinding.*` plus caller-provided blocker callbacks.
 - Movement interpolation/state: `Source/Common/Movement.*`.
 - Map file parsing: `Source/Common/MapLoader.*`.
 - Map resource baking: `Source/Tools/MapBaker.*` and [BakingPipeline.md](BakingPipeline.md).
