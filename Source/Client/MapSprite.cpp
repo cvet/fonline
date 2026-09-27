@@ -270,11 +270,11 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
 
 auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
-    // Bit layout: [group 8][primary 24][sub-layer 8][secondary 16][layer 8]; each standing row draws corpses first,
-    // then its walls and other sprites by sub-layer, so side-overlapping wall slices cannot cover those sprites
+    // Bit layout: [group 8][primary 24][sub-layer 8][secondary 16][layer 8]; a standing row is one ground depth, so
+    // its walls (lowest sub-layer) go first and no slice of the row paints over an item that only overlaps it sideways
     uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
     bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
-    uint64_t primary = standing ? static_cast<uint64_t>(GeometryHelper::GetHexScreenRow(hex)) * 2 + (draw_order == DrawOrderType::DeadCritter ? 0 : 1) : hex.y;
+    uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
     uint64_t secondary = hex.x;
     uint64_t layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
     uint64_t sub = numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min());

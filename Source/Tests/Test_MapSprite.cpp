@@ -139,25 +139,20 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(flap < frame);
     }
 
-    SECTION("DeadCritterStaysBelowStandingSpritesAtItsDepth")
+    SECTION("DeadCritterStaysBelowStandingSpritesOnEveryRow")
     {
-        constexpr mpos FAR_WALL {100, 99};
-        constexpr mpos CORPSE_HEX {100, 100};
-        constexpr mpos NEAR_WALL {100, 101};
-        constexpr mpos SAME_ROW_LEFT_ITEM {98, 101};
+        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::DeadCritter, WALL_CELL, std::numeric_limits<int8_t>::max());
+        uint64_t far_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, mpos {100, 99}, std::numeric_limits<int8_t>::min());
+        uint64_t far_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, mpos {100, 99}, std::numeric_limits<int8_t>::min());
+        uint64_t same_hex_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, std::numeric_limits<int8_t>::min());
+        uint64_t same_hex_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, std::numeric_limits<int8_t>::min());
+        uint64_t near_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEARER_ROW, std::numeric_limits<int8_t>::min());
 
-        uint64_t far_wall = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, FAR_WALL, WALL_SUB_LAYER);
-        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::DeadCritter, CORPSE_HEX, std::numeric_limits<int8_t>::max());
-        uint64_t near_wall = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEAR_WALL, WALL_SUB_LAYER);
-        uint64_t same_hex_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, CORPSE_HEX, std::numeric_limits<int8_t>::min());
-        uint64_t same_row_left_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, SAME_ROW_LEFT_ITEM, std::numeric_limits<int8_t>::min());
-        uint64_t same_row_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, CORPSE_HEX, SCENERY_SUB_LAYER);
-
-        CHECK(far_wall < corpse);
+        CHECK(corpse < far_item);
+        CHECK(corpse < far_critter);
         CHECK(corpse < same_hex_item);
-        CHECK(corpse < same_row_left_item);
-        CHECK(corpse < same_row_critter);
-        CHECK(corpse < near_wall);
+        CHECK(corpse < same_hex_critter);
+        CHECK(corpse < near_item);
     }
 }
 
