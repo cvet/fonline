@@ -9386,3 +9386,41 @@ Disposition:
 - The pin moves with no reusable-contract movement behind it. Publish the Engine
   documentation branch before the embedding project branch, as always, so the
   root gitlink never points at an unavailable commit.
+
+## 2026-09-27 - A* path search reconciliation
+
+Scope and source revisions:
+
+- Reconciled the published `docs` branch from `3061670ed64ee88e25eed2d853dc88a3e49fc889`
+  with `origin/master` through `d73d7426034a8d89daa9523eef73ff5505e01f06`.
+  The incoming commit replaces breadth-first path search with A*, changes
+  `MaxLength` from search depth to route-step bound, introduces weighted gag and
+  critter choices, deterministic straightest backtracking, side-aware multihex
+  entry, and straightening of free movement segments.
+- The upstream edit targeted `Docs/MapsMovementGeometry.md`, which this branch
+  retains only as a legacy route. The conflict was resolved by keeping that
+  route and transferring the behavior to the canonical English and Russian
+  `explanation/maps-and-movement.md` pages; neither locale still describes BFS.
+
+Contract and generated-surface disposition:
+
+- The 17-domain aggregate contract diff against the starting branch reports
+  zero generated-model changes and requires no API disposition. The public
+  contract shape remains unchanged; the path search semantics are documented
+  as current behavior, without a pre-release migration history.
+- Refreshed translation parity, snippet provenance, site search and routes,
+  retrieval evaluation, and the AI-delivery bundle from their owning tools.
+
+Validation:
+
+- `LF_UnitTests "PathFinding::*" --reporter compact` passed five cases and
+  15,605 assertions after rebuilding `LF_UnitTests` on this Engine revision.
+- Translation parity checks 192 current pairs; snippets check 306 normative,
+  159 evidence, and 180 external parser cases. AI retrieval passes 67 checks
+  across 28 tasks. `docs_validate.py` passes 408 Markdown entries.
+- The initial 545-test documentation run found three stale fixed-count
+  expectations already out of line with generated models (4813 description
+  entries, 2552 API IDs, 465 snippets). The corrected owning test modules
+  pass 4, 7, and 6 tests respectively; the entire 545-test suite has not been
+  repeated after those corrections. Local checks do not certify remote CI,
+  browser rendering, or visible in-game movement.
