@@ -62,11 +62,11 @@ enum class DrawOrderType : uint8_t
     Light = 10,
     AfterLight = 11,
     // Flat sprites post-light
-    DeadCritter = 13,
     FlatItemAfterLight = 16,
     FlatEnd = 18,
     // Normal sprites
     NormalBegin = 19,
+    DeadCritter = 20,
     Item = 22,
     Critter = 25,
     Particles = 28,

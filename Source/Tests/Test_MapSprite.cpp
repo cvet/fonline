@@ -125,6 +125,40 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(flat_low < flat_high);
         CHECK(flat_high < standing);
     }
+
+    SECTION("OpenDoorStaysBehindItsSameRowFrame")
+    {
+        // The hamlet doorway has its flap at 192:157 and its right frame at 193:157. Both share screen row 253;
+        // the flap must paint before the frame even though its hex X is lower and its sprite may be created later.
+        constexpr mpos DOOR_HEX {192, 157};
+        constexpr mpos FRAME_HEX {193, 157};
+        REQUIRE(GeometryHelper::GetHexScreenRow(DOOR_HEX) == GeometryHelper::GetHexScreenRow(FRAME_HEX));
+
+        uint64_t flap = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, DOOR_HEX, -2);
+        uint64_t frame = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, FRAME_HEX, WALL_SUB_LAYER);
+        CHECK(flap < frame);
+    }
+
+    SECTION("DeadCritterStaysBelowStandingSpritesAtItsDepth")
+    {
+        constexpr mpos FAR_WALL {100, 99};
+        constexpr mpos CORPSE_HEX {100, 100};
+        constexpr mpos NEAR_WALL {100, 101};
+        constexpr mpos SAME_ROW_LEFT_ITEM {98, 101};
+
+        uint64_t far_wall = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, FAR_WALL, WALL_SUB_LAYER);
+        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::DeadCritter, CORPSE_HEX, std::numeric_limits<int8_t>::max());
+        uint64_t near_wall = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEAR_WALL, WALL_SUB_LAYER);
+        uint64_t same_hex_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, CORPSE_HEX, std::numeric_limits<int8_t>::min());
+        uint64_t same_row_left_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, SAME_ROW_LEFT_ITEM, std::numeric_limits<int8_t>::min());
+        uint64_t same_row_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, CORPSE_HEX, SCENERY_SUB_LAYER);
+
+        CHECK(far_wall < corpse);
+        CHECK(corpse < same_hex_item);
+        CHECK(corpse < same_row_left_item);
+        CHECK(corpse < same_row_critter);
+        CHECK(corpse < near_wall);
+    }
 }
 
 FO_END_NAMESPACE
