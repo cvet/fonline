@@ -158,6 +158,21 @@ Four implementations below the modules in the `Essentials.h` order keep their ow
 
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
+#### Temporary compatibility
+
+`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` marks code that exists only for older builds or data — the refusal of a
+client from before the secure channel is the first ([Networking.md](Networking.md#connection-integration)). It
+expands to a `static_assert` that checks the date's shape, so it compiles to nothing and stands at namespace, class and
+block scope; `[TemporaryCompat("Id", "YYYY-MM-DD")]` in `Source/Scripting/Managed/CoreScripts/Attributes.cs` is its
+managed twin. Every place of one compatibility — the code, the members it adds, its tests — repeats the same id and
+date, the last day the code may exist. `BuildTools/temporary_compat.py` checks them: from the day after the date it fails
+and lists every place of that id, and it refuses places of one id that disagree on the date, a date more than a year
+ahead and a marker written any other way. Without arguments it reads the engine `Source/` tree, which is what the
+engine's own `validate` workflow runs; an embedding project runs the same script over its own directories as well
+(`python3 Engine/BuildTools/temporary_compat.py Engine/Source <project dirs>`), so project code uses the same markers.
+The check is a CI step rather than a compile error on purpose: a build of an old release must not start failing on a
+calendar day. When it fires, the code goes, or the date moves in a reviewed change because the reason still holds.
+
 ### Diagnostics and failure handling
 
 `BaseLogging.*` and `Logging.*` provide the logging foundation. `logging::write_message()` collapses immediate duplicates by `logging::type` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `logging::to_file()` opens the log file without an exclusive lock (the platform default: MSVC `std::ofstream` opens deny-none, POSIX has no mandatory open lock) so two engine modules in one process — e.g. a runtime host EXE and the runtime DLL it loads, each with its own copy of the engine global data — can both hold the same file open at once, and every write seeks to end of file first (`write_sync`) so neither handle overwrites content the other appended; the `append` parameter still selects truncate (default) vs append for the initial open. `logging::write`/`logging::write_base` degrade safely when their global data is not yet created (falling back to the base log, then to `std::cout`), and an application opens the file as its second statement: the writable root it belongs in is resolved from the command line and the installer marker alone (`ResolveWritableRoot`, Frontend), so nothing has to be read from disk first and no line has to be buffered or moved afterwards. `logging::get_file_path()` answers with the file currently open, which is how a crash reporter attaches the log the run is actually writing.

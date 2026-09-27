@@ -269,7 +269,9 @@ in each compilation's preprocessing context, so projects do not need a utility m
 runtime contract or adapts it to the engine. This includes script attributes and initialization, native internal
 calls, remote-call and registered-function dispatch, invoke/exception accounting, synchronization and async
 suspension, entity-holder mechanics, enum metadata parity, always-on invariant helpers, `hstring` hashing, and
-generated engine value-type adapters.
+generated engine value-type adapters. Among the attributes is `[TemporaryCompat("Id", "YYYY-MM-DD")]`, the managed
+twin of the native `FO_TEMPORARY_COMPAT` marker for code kept only for older builds or data
+([Essentials.md](Essentials.md#temporary-compatibility)).
 
 Higher-level facilities such as GUI widgets and input state, color/math/time helpers, sprite composition, line
 tracing, serialization, tweening, reflection conveniences, and generic AngelScript-compatibility collection or

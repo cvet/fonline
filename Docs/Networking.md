@@ -140,7 +140,9 @@ would discard the answer before an ordered-UDP or TCP transport delivered it; a 
 usual inactivity timeout. A signature that arrives split across reads, or later in the stream, is refused by the
 channel like any other stranger. The answer's bytes are written out as a constant rather than built by `NetOutBuffer`,
 which is free to change while shipped clients are not; `Test_SecureChannel.cpp` pins them by reading the reply the
-way such a client did, over a hand-driven connection and over real TCP and UDP.
+way such a client did, over a hand-driven connection and over real TCP and UDP. All of it is marked
+`FO_TEMPORARY_COMPAT(PreChannelClient, ...)` and is deleted once its date passes, when such clients are expected to be
+gone ([Essentials.md](Essentials.md#temporary-compatibility)).
 
 The ordered UDP transport's own header (sequence, acknowledgement, session) stays outside the channel. Forging it can
 disturb delivery, which an on-path attacker can do anyway, but cannot inject content: every payload byte still has to
