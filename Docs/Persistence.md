@@ -24,7 +24,7 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
 
-`GetMany(collection, ids)` reads several records of one collection with one `GetRecords()` call to the backend and returns documents aligned with the requested ids: an empty document for a missing record, the same document for a repeated id. Each document follows the `Get()` contract — the stored record with its still-pending commit operations laid over it — and a record whose commit lands while the batch is being read is read again on its own, the rest of the batch is not. `Get()` is `GetMany()` of one id, so both reads share one code path.
+`GetMany(collection, ids)` reads several records of one collection with one `GetRecords()` call to the backend and returns documents aligned with the requested ids: an empty document for a missing record, the same document for a repeated id. Each document follows the `Get()` contract — the stored record with its still-pending commit operations laid over it — and a record whose commit lands while the batch is being read is read again on its own, the rest of the batch is not. "Lands" is the moment the operation leaves the pending queue, after the backend write: until then a read lays it over the record, so a commit the committer took before the read began still sends the read back to the backend if it completes before the read looks at the queue. `Get()` is `GetMany()` of one id, so both reads share one code path.
 
 ## Collections and keys
 

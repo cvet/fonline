@@ -129,7 +129,7 @@ TEST_CASE("MapSpriteListDrawOrder")
     SECTION("OpenDoorStaysBehindItsSameRowFrame")
     {
         // The hamlet doorway has its flap at 192:157 and its right frame at 193:157. Both share screen row 253;
-        // the flap must paint before the frame even though its hex X is lower and its sprite may be created later.
+        // the flap must paint before the frame even though its hex X is lower and its sprite may be created later
         constexpr mpos DOOR_HEX {192, 157};
         constexpr mpos FRAME_HEX {193, 157};
         REQUIRE(GeometryHelper::GetHexScreenRow(DOOR_HEX) == GeometryHelper::GetHexScreenRow(FRAME_HEX));
