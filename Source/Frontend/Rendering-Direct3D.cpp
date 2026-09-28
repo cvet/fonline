@@ -434,11 +434,33 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
     // Swap chain
     {
-        nptr<IDXGIFactory> factory {};
-        auto d3d_create_factory = ::CreateDXGIFactory(IID_PPV_ARGS(factory.get_pp()));
+        // The swap chain comes from the factory that created the device, as DXGI documents: on DXGI 1.1 (Windows 7 without
+        // the platform update) a separate CreateDXGIFactory factory answers CreateSwapChain with DXGI_ERROR_INVALID_CALL
+        nptr<IDXGIDevice> dxgi_device {};
+        HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
 
-        if (FAILED(d3d_create_factory)) {
-            throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
+        if (FAILED(d3d_query_dxgi_device)) {
+            throw AppInitException("Direct3D device QueryInterface IDXGIDevice failed", d3d_query_dxgi_device);
+        }
+
+        FO_VERIFY_AND_THROW(dxgi_device, "DXGI device is null");
+        auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+
+        nptr<IDXGIAdapter> adapter {};
+        HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+        if (FAILED(d3d_get_adapter)) {
+            throw AppInitException("DXGI device GetAdapter failed", d3d_get_adapter);
+        }
+
+        FO_VERIFY_AND_THROW(adapter, "DXGI adapter is null");
+        auto adapter_holder = MakeComObjectHolder(adapter);
+
+        nptr<IDXGIFactory> factory {};
+        HRESULT d3d_get_factory = adapter->GetParent(IID_PPV_ARGS(factory.get_pp()));
+
+        if (FAILED(d3d_get_factory)) {
+            throw AppInitException("DXGI adapter GetParent IDXGIFactory failed", d3d_get_factory);
         }
 
         FO_VERIFY_AND_THROW(factory, "DXGI factory is null");
@@ -514,12 +536,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
         }
 
         // Disable Alt+Enter
-        nptr<IDXGIFactory> swap_chain_factory {};
-        if (SUCCEEDED(_ctx->SwapChain->GetParent(IID_PPV_ARGS(swap_chain_factory.get_pp())))) {
-            FO_VERIFY_AND_THROW(swap_chain_factory, "Swap chain factory is null");
-            auto swap_chain_factory_holder = MakeComObjectHolder(swap_chain_factory);
-            swap_chain_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
-        }
+        (void)factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
     }
 
     // Samplers

@@ -486,6 +486,12 @@ Important behaviors:
   available: the WARP software rasterizer draws every frame on the CPU, so standing in for a missing GPU
   produces a client that runs and cannot be played. `Render.AllowSoftwareRenderer` (default off) permits that
   substitution for diagnostic or headless-machine use, and the log then names the device as `Warp`;
+- creates the swap chain through the DXGI factory that created the device (`IDXGIDevice` → `GetAdapter` →
+  `GetParent`), never through a separate `CreateDXGIFactory` one: `D3D11CreateDevice` takes its default adapter
+  from a DXGI 1.1 factory, DXGI documents that 1.0 and 1.1 factories must not be mixed, and DXGI 1.1 (Windows 7
+  without the platform update) enforces it — `CreateSwapChain` on a DXGI 1.0 factory answers
+  `DXGI_ERROR_INVALID_CALL` — while DXGI 1.2 and later accept the mix, so no newer Windows shows the difference;
+  Alt+Enter is disabled on that same factory;
 - leaves the refresh rate unspecified for the windowed swap chain so DXGI follows the desktop compositor instead of requiring one hard-coded display mode;
 - creates textures, staging textures, draw buffers, constant buffers, and effects;
 - creates vertex/pixel shaders from the `-dxbc` Shader Model 4.0 bytecode the effect baker compiles with vkd3d-shader, so the client carries no shader compiler and does not depend on the one the operating system provides (a Wine builtin that predates vkd3d-shader rejects every `cbuffer`, and Windows 7 ships no `d3dcompiler_47` without an update); the device is created at feature level 10.0 or higher — the request names 11.1 first, and because the Direct3D 11.0 runtime (Windows 7 without the platform update) does not skip a level it does not know but rejects the whole list with `E_INVALIDARG`, that one answer is retried once with the same list minus 11.1 — and down to 9.3 when `Baking.Direct3DLevel9Shaders` has the baker add level 9.3 code to the containers and the build has no 3D models, since level 9 does not support 3D (a 9.3 device caps the atlas at 4096 and draws point lists without the index buffer);
