@@ -1126,7 +1126,6 @@ void DataBaseImpl::CommitNextChange() noexcept
         }
 
         op = _pendingCommitOperations.front();
-        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
     }
 
     if (!_backendFailed) {
@@ -1207,6 +1206,8 @@ void DataBaseImpl::CommitNextChange() noexcept
     try {
         scoped_lock state_locker {_stateLocker};
 
+        // The change stops being laid over reads here, so a reader that fetched the record before the write reads it again
+        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
         _pendingCommitOperations.pop_front();
     }
     catch (const std::exception& ex) {

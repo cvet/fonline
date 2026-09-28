@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"a76bc5c12ee24f8a6dae93dd218499ca2762fd7d706251cfc9bfe7f36466509d"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"b7a2205640608c5ed38a63573eca7cb8f688c685f9a8451d14eaee648e2891f9"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -892,7 +892,7 @@ depth attachment (UI, light, final screen flush) state является no-op.
 - Depth/sort anchor — **logical root**, не bitmap bottom-center. Item proto `Offset` одновременно позиционирует visual bitmap и хранится как `_rootOffset`; depth proxy вычитает его в `GetMapRootOffset()` и `scene_pos_y`, чтобы tree anchors на trunk. Critter root offset равен нулю.
 - Только standing `Item`/`Critter` работают с depth. Floor tiles, roofs и flat overlays painter-only/depth-inert. `MapSprite` учитывает `Elevation`; `HexOffset` и runtime/tweak offsets проецируются по ground plane и меняют screen/depth непрерывно. Viewport-only `field.Offset` в world depth не входит; intrinsic `Sprite::Offset` определяет logical ground root.
 - Floor/flat layers сохраняют atlas XY/UV и используют no-depth effects. Tiles/roofs выбирают `Effects.Tile`/`Effects.Roof`, flat items — `Effects.Flat` по `GetDrawFlatten()`. Для script `MapSpriteHolder` default effect назначает `MapView` по draw-order segment: tile/pre-light, flat/after-light, roof или generic.
-- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Dead critters сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order.
+- Item draw order определяется `GetDrawFlatten()`, не `IsScenery`/`IsWall`: upright → `Item`, static flat → `FlatItemPreLight`, dynamic flat → `FlatItemAfterLight`. Старые Scenery/Item пары слоёв объединены; одинаковый hex tie-break-ится add order (`_globalPos`). Dead critters сохраняют `Effects.Critter` и depth write, но standing sprites их не test-ят и покрывают по draw order. Плоский труп остаётся ниже стоящих предметов и персонажей даже при различии экранных рядов. Створка двери и рама в одном ряду упорядочиваются сначала по sub-layer, затем по X; оба случая закреплены в `Test_MapSprite.cpp` и всё ещё требуют визуальной проверки сцены.
 - Flat/background layers рисуются до standing sprites с `DepthWrite=False`, `DepthFunc=Always`; им не нужны ground projection или layer bias. Standing sprites получают per-vertex `PosZ` через `ProjectMapYToVerticalDepth`, без draw-order bias.
 - Единственный оставшийся layer-bias применяется direct-draw particles/models в конце sprite pass: один шаг из half-pixel budget `MAP_LAYER_DEPTH_BIAS / (DrawOrderType::Last + 1)`, ниже threshold subpixel snapping.
 - `Core` и `Embedded` `2D_Default.fofx` обязаны проецировать `InPosition.xyz`; flatten Z уничтожит scene depth. `2D_Default` и `2D_WithoutEgg` discard final alpha `<= 1/255`, чтобы transparent texels не писали invisible depth.

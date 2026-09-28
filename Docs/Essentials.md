@@ -30,6 +30,10 @@ Continue with the [canonical English reference](en/reference/native/essentials.m
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).
 
+#### Temporary compatibility
+
+Continue with [temporary compatibility](en/reference/native/essentials.md#temporary-compatibility).
+
 ### Diagnostics and failure handling
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).

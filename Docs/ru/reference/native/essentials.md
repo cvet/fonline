@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"8d24fa44b257e0730344312bc255f56d978b615586e5bea6cdb14fddff63f8f8"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -169,6 +169,12 @@ test Essentials не обходит contract-change gate.
 Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Единый registry Windows build platforms владеет архитектурой CMake, toolset и канонической packaging-архитектурой обычных вариантов, `-clang` и `-win7`. Пара Win7 фиксирует MSVC 14.44, а `FO_BINARY_OUTPUT_POSTFIX` остаётся независимым от платформы. В package DSL конкретная запись `BINARY` может выбрать собственный postfix, например `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, не затрагивая соседние binaries. Проверки совместимости находятся вне application targets.
 
 `platform::process_identity` объединяет PID и время запуска процесса. Один ID может быть использован повторно, поэтому диагностика клиентской сессии сверяет оба поля. В Windows liveness проверяется zero-timeout polling process handle, а не кодом выхода `259` (`STILL_ACTIVE`), который может сохраняться у завершённого процесса при удержании handle другим процессом. `BuildTools/tests/test_process_identity.py` проверяет живой и завершённый retained-handle случаи при наличии `clang++`.
+
+#### Временная совместимость
+
+`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` из `BasicCore.h` помечает необходимый код, распознающий старые сборки или данные, в том числе путь отказа. Его `static_assert` проверяет форму даты и допустим в namespace, классе или блоке; сама сборка по календарю не перестаёт работать. Для managed-кода есть `[TemporaryCompat("Id", "YYYY-MM-DD")]` из `CoreScripts/Attributes.cs`. Во всех связанных реализациях, полях и тестах повторяются один идентификатор и одна дата — последний день действия.
+
+`BuildTools/temporary_compat.py` по умолчанию сканирует Engine `Source/`, отвергает неверно записанные маркеры, несовпадающие даты и срок более 366 дней; со следующего после истечения дня проверка падает с перечнем всех мест. Workflow проверки движка запускает тесты и сканер. Подключающий проект может передать свои каталоги исходников вместе с `Engine/Source`. Маркер не заменяет обоснования сохранённой совместимости. По истечении срока код удаляют либо дату переносят отдельным проверенным изменением, если причина ещё сохраняется. Срок проверяется в CI, а не во время компиляции, чтобы старую сборку можно было воспроизвести.
 
 ### Диагностика и обработка сбоев
 

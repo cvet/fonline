@@ -68,6 +68,22 @@ public sealed class ReplacesMethodAttribute : Attribute
     public string Name { get; }
 }
 
+// Marks code kept only for older builds or data, to be deleted after the date (YYYY-MM-DD); the id ties together
+// every place of one such compatibility, native FO_TEMPORARY_COMPAT included; BuildTools/temporary_compat.py checks it
+[AttributeUsage(AttributeTargets.All, AllowMultiple = true, Inherited = false)]
+public sealed class TemporaryCompatAttribute : Attribute
+{
+    public TemporaryCompatAttribute(string id, string until)
+    {
+        Id = id;
+        Until = until;
+    }
+
+    public string Id { get; }
+
+    public string Until { get; }
+}
+
 // Keeps the patch point weaver away from a method, for a hot one whose cost a profile has shown; a bug in it is then
 // fixed by patching its callers
 [AttributeUsage(AttributeTargets.Method)]

@@ -259,6 +259,8 @@ different wrapper for the same entity.
 
 The Engine-owned script-side library now lives under `Source/Scripting/Managed/CoreScripts/` and contains the managed native bridge, attributes, initialization, invocation, remote-call, synchronization, async, verification, item-holder, enum, and value-type helpers required by the backend. It is infrastructure, not game policy.
 
+Its `[TemporaryCompat("Id", "YYYY-MM-DD")]` attribute marks managed old-build or old-data handling under the same [dated removal gate](../../reference/native/essentials.md#temporary-compatibility) as native `FO_TEMPORARY_COMPAT`.
+
 The former Engine-owned AngelScript high-level library was removed. An embedding project that uses AngelScript owns its `.fos` helpers, GUI implementation, module order, and gameplay modules. Do not copy project GUI or gameplay contracts back into reusable Engine documentation.
 
 ## Build and baking flow

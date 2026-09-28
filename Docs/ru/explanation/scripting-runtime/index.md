@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"962440b0ecc448e2d212d0a24aee81d8eb76a0278eda7a6f576aa400bcb82b84"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -239,6 +239,8 @@ wrapper той же entity.
 ## Владение core scripts
 
 Принадлежащая Engine script-side library теперь находится в `Source/Scripting/Managed/CoreScripts/` и содержит managed native bridge, attributes, initialization, invocation, remote-call, synchronization, async, verification, item-holder, enum и value-type helpers, необходимые backend. Это инфраструктура, а не игровая политика.
+
+Её атрибут `[TemporaryCompat("Id", "YYYY-MM-DD")]` помечает managed-код для старых сборок или данных и подчиняется тому же [сроку удаления](../../reference/native/essentials.md#временная-совместимость), что и native `FO_TEMPORARY_COMPAT`.
 
 Прежняя высокоуровневая AngelScript library движка удалена. Подключающий проект с AngelScript сам владеет `.fos` helpers, реализацией GUI, порядком модулей и gameplay-модулями. Не переносите проектные GUI/gameplay-контракты обратно в переиспользуемую документацию Engine.
 

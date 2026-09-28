@@ -706,6 +706,8 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
 
 namespace
 {
+    FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31");
+
     // The protocol before the secure channel is frozen in shipped clients, so these helpers spell it out byte by byte
     // instead of borrowing NetBuffer, which is free to change
     constexpr uint32_t PRE_CHANNEL_SIGNATURE = 0x011E9422;

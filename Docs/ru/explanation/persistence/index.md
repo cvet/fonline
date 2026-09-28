@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"89c780854daf52c6093640e8fcb18eadb7b93e89a4a3e4ae049439aaccb34ba3"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"39c9b7133f56cbe92f902452509c6ea7d4d5d36e34b601175b13350931c115c5"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -32,7 +32,7 @@ permalink: /Docs/ru/explanation/persistence/
 
 `ConnectToDataBase()` создаёт фасад из настроек, данных подключения, схем коллекций и panic callback.
 
-`GetMany(collection, ids)` читает несколько записей одной коллекции одним backend-вызовом `GetRecords()` и возвращает документы в порядке запрошенных ids: отсутствующей записи соответствует пустой документ, повторному id — тот же результат. Каждый документ следует контракту `Get()` с наложенными pending commit operations; отдельно перечитывается только запись, commit которой завершился во время batch read. Сам `Get()` использует тот же путь для одного id.
+`GetMany(collection, ids)` читает несколько записей одной коллекции одним backend-вызовом `GetRecords()` и возвращает документы в порядке запрошенных ids: отсутствующей записи соответствует пустой документ, повторному id — тот же результат. Каждый документ следует контракту `Get()` с наложенными pending commit operations; отдельно перечитывается только запись, commit которой завершился во время batch read. Наложение прекращается после записи в backend и удаления операции из очереди. Если это произошло после чтения старого значения из backend, но до проверки очереди, соответствующая запись читается повторно; остальные не затрагиваются. Сам `Get()` использует тот же путь для одного id.
 
 ## Коллекции и ключи
 

@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"72d98f095f0e34a26c9582beac06cdf29e98cc47ac582ecb106e6adacd37b81e"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"3af5c2d153c002af5dce73e3f2028576cc5c2dc4f45a21bb686b4ee8a41cdf86"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -729,6 +729,18 @@ major version 20. Затем BuildTools восстанавливает nullable 
 forms AngelScript, которые clang-format разбирает как C++. Полный контракт и
 граница встраивающего проекта описаны в
 [руководстве по стилю AngelScript и рефакторингу](../Docs/ru/how-to/scripting/style-and-refactoring.md).
+
+## Срок временной совместимости
+
+Код, распознающий старые сборки или данные, помечается `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` в native-части либо `[TemporaryCompat("Id", "YYYY-MM-DD")]` в managed-части; см. [временную совместимость](../Docs/ru/reference/native/essentials.md#временная-совместимость). `temporary_compat.py` сообщает все места с данным идентификатором и падает после истечения срока:
+
+```bash
+python3 BuildTools/temporary_compat.py                                        # the engine Source tree
+python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
+python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+```
+
+`--today YYYY-MM-DD` фиксирует дату для проверки. Сценарию достаточно стандартной библиотеки Python; его тесты находятся в `tests/test_temporary_compat.py`, а workflow `validate` запускает и тесты, и саму проверку.
 
 ## Документация pipeline
 

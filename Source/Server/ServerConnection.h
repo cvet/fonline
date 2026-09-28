@@ -214,6 +214,7 @@ private:
     mutex _channelLocker {};
     SecureChannel _channel FO_TSA_GUARDED_BY(_channelLocker);
     vector<uint8_t> _channelPlaintext {};
+    FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31");
     bool _inputStarted {};
     bool _preChannelClient {};
     std::atomic_bool _preChannelRefusalPending {};

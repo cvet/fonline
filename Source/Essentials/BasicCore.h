@@ -186,6 +186,10 @@
 #define FO_TRACE_CATEGORY_ENABLED(category) 0
 #endif
 
+// Marks code kept only for older builds or data, to be deleted after the date; the id ties together every place of one
+// such compatibility, and BuildTools/temporary_compat.py fails once the date has passed
+#define FO_TEMPORARY_COMPAT(id, until) static_assert(sizeof(until) == sizeof("YYYY-MM-DD"), "FO_TEMPORARY_COMPAT takes its date as YYYY-MM-DD")
+
 // Compiler warnings disable helper
 #if defined(__clang__) && defined(_MSC_VER)
 #define FO_DISABLE_WARNINGS_PUSH() __pragma(warning(push, 0)) _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Weverything\"")

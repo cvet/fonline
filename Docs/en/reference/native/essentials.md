@@ -170,6 +170,12 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 `platform::process_identity` pairs PID with process start time. An ID alone can be reused, so client-session diagnostics match both values. On Windows the liveness check polls the process handle with zero timeout rather than reading exit code `259` (`STILL_ACTIVE`), which a terminated process can retain while another process holds its handle. `BuildTools/tests/test_process_identity.py` covers live and terminated retained-handle cases when `clang++` is available.
 
+#### Temporary compatibility
+
+`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` in `BasicCore.h` marks necessary code that recognizes older builds or data, including a refusal path. Its `static_assert` checks the date's shape and can stand at namespace, class, or block scope; it does not make the build expire. Managed code uses `[TemporaryCompat("Id", "YYYY-MM-DD")]` from `CoreScripts/Attributes.cs`. Repeat the same identifier and last-valid date on every related implementation, member, and test.
+
+`BuildTools/temporary_compat.py` scans Engine `Source/` by default, rejects malformed or inconsistent markers and dates more than 366 days ahead, and fails from the day after expiration with all marked locations. The Engine validation workflow runs its tests and scan. An embedding project can pass its own source directories alongside `Engine/Source`; the marker never substitutes for a reviewed reason to retain old-format handling. At expiry, remove the code or move the date in a reviewed change if the reason remains. Keeping expiry in CI rather than the macro leaves old release builds reproducible.
+
 ### Diagnostics and failure handling
 
 `BaseLogging.*` and `Logging.*` provide the logging foundation. `WriteLogMessage()` collapses immediate duplicates by `LogType` and message text: repeated copies are skipped, then the next different log line first emits a summary such as `...and 25 more same messages`. `LogToFile()` opens the file without an exclusive lock, and every `WriteSync` seeks to the end, so separately linked Engine modules in one process can append safely. `WriteLog`/`WriteBaseLog` degrade to the base log and then `std::cout` before full global data exists.

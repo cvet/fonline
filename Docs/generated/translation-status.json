@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "72d98f095f0e34a26c9582beac06cdf29e98cc47ac582ecb106e6adacd37b81e",
-      "source_bytes": 49222,
+      "source_sha256": "3af5c2d153c002af5dce73e3f2028576cc5c2dc4f45a21bb686b4ee8a41cdf86",
+      "source_bytes": 50118,
       "status": "current"
     },
     {
@@ -313,8 +313,8 @@
       "english_path": "Docs/en/explanation/authority-and-networking/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/authority-and-networking/index.md",
-      "source_sha256": "c6b191c3d7db7a8ed37b87ebbdcff3a4abcae66eae2f3491b3567f0564facd62",
-      "source_bytes": 34900,
+      "source_sha256": "1d3477e68b69cab00f51c58d9e0207c9e2cf59832663c0448a006994b9b6026b",
+      "source_bytes": 35136,
       "status": "current"
     },
     {
@@ -365,8 +365,8 @@
       "english_path": "Docs/en/explanation/persistence/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/persistence/index.md",
-      "source_sha256": "89c780854daf52c6093640e8fcb18eadb7b93e89a4a3e4ae049439aaccb34ba3",
-      "source_bytes": 13287,
+      "source_sha256": "39c9b7133f56cbe92f902452509c6ea7d4d5d36e34b601175b13350931c115c5",
+      "source_bytes": 13533,
       "status": "current"
     },
     {
@@ -378,8 +378,8 @@
       "english_path": "Docs/en/explanation/rendering/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/rendering/index.md",
-      "source_sha256": "a76bc5c12ee24f8a6dae93dd218499ca2762fd7d706251cfc9bfe7f36466509d",
-      "source_bytes": 105939,
+      "source_sha256": "b7a2205640608c5ed38a63573eca7cb8f688c685f9a8451d14eaee648e2891f9",
+      "source_bytes": 106231,
       "status": "current"
     },
     {
@@ -430,8 +430,8 @@
       "english_path": "Docs/en/explanation/scripting-runtime/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/scripting-runtime/index.md",
-      "source_sha256": "962440b0ecc448e2d212d0a24aee81d8eb76a0278eda7a6f576aa400bcb82b84",
-      "source_bytes": 33646,
+      "source_sha256": "6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc",
+      "source_bytes": 33877,
       "status": "current"
     },
     {
@@ -1730,8 +1730,8 @@
       "english_path": "Docs/en/reference/native/essentials.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native/essentials.md",
-      "source_sha256": "8d24fa44b257e0730344312bc255f56d978b615586e5bea6cdb14fddff63f8f8",
-      "source_bytes": 38763,
+      "source_sha256": "f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808",
+      "source_bytes": 39864,
       "status": "current"
     },
     {

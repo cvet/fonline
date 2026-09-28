@@ -1734,8 +1734,8 @@
             "engine-upgrade-guide",
             "generated-api-metadata",
             "generated-content-workflow",
-            "baking-pipeline",
-            "native-essentials"
+            "native-essentials",
+            "baking-pipeline"
           ]
         }
       ],

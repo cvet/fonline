@@ -125,6 +125,35 @@ TEST_CASE("MapSpriteListDrawOrder")
         CHECK(flat_low < flat_high);
         CHECK(flat_high < standing);
     }
+
+    SECTION("OpenDoorStaysBehindItsSameRowFrame")
+    {
+        // The hamlet doorway has its flap at 192:157 and its right frame at 193:157. Both share screen row 253;
+        // the flap must paint before the frame even though its hex X is lower and its sprite may be created later
+        constexpr mpos DOOR_HEX {192, 157};
+        constexpr mpos FRAME_HEX {193, 157};
+        REQUIRE(GeometryHelper::GetHexScreenRow(DOOR_HEX) == GeometryHelper::GetHexScreenRow(FRAME_HEX));
+
+        uint64_t flap = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, DOOR_HEX, -2);
+        uint64_t frame = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, FRAME_HEX, WALL_SUB_LAYER);
+        CHECK(flap < frame);
+    }
+
+    SECTION("DeadCritterStaysBelowStandingSpritesOnEveryRow")
+    {
+        uint64_t corpse = MapSpriteList::MakeDrawOrderPos(DrawOrderType::DeadCritter, WALL_CELL, std::numeric_limits<int8_t>::max());
+        uint64_t far_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, mpos {100, 99}, std::numeric_limits<int8_t>::min());
+        uint64_t far_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, mpos {100, 99}, std::numeric_limits<int8_t>::min());
+        uint64_t same_hex_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, std::numeric_limits<int8_t>::min());
+        uint64_t same_hex_critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, std::numeric_limits<int8_t>::min());
+        uint64_t near_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, NEARER_ROW, std::numeric_limits<int8_t>::min());
+
+        CHECK(corpse < far_item);
+        CHECK(corpse < far_critter);
+        CHECK(corpse < same_hex_item);
+        CHECK(corpse < same_hex_critter);
+        CHECK(corpse < near_item);
+    }
 }
 
 FO_END_NAMESPACE

@@ -580,6 +580,21 @@ key that clients pin; `public` prints it again later. The script needs nothing b
 
 `buildtools.py format-source` formats the Engine `Source/` tree, including `.fos`, with clang-format. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. BuildTools then repairs AngelScript nullable and named-argument forms that clang-format parses as C++. The complete contract and embedding-project boundary are in [AngelScript Style and Refactoring](../Docs/en/how-to/scripting/style-and-refactoring.md).
 
+## Temporary compatibility dates
+
+Code kept only for older builds or data carries `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or
+`[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed), see [temporary compatibility](../Docs/en/reference/native/essentials.md#temporary-compatibility).
+`temporary_compat.py` fails once a date has passed and lists every place of that id:
+
+```bash
+python3 BuildTools/temporary_compat.py                                        # the engine Source tree
+python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
+python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+```
+
+`--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are
+`tests/test_temporary_compat.py`, and the `validate` workflow runs both.
+
 ## Pipeline documentation
 
 For the maintained staged CMake pipeline guide, see [BuildTools Pipeline](../Docs/en/reference/cmake-and-buildtools/pipeline.md).

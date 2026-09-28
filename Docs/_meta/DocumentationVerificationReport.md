@@ -9424,3 +9424,46 @@ Validation:
   pass 4, 7, and 6 tests respectively; the entire 545-test suite has not been
   repeated after those corrections. Local checks do not certify remote CI,
   browser rendering, or visible in-game movement.
+
+## 2026-09-28 - persistence, compatibility marker and draw-order reconciliation
+
+Scope and source revisions:
+
+- Reconciled the published `docs` branch from
+  `b95275559c47b34f04c766340e1487ba472bd706` with `origin/master`
+  `aca8173bd09ecc96cb34ca128eb2c9e81dd77f88` (merge base
+  `d73d7426034a8d89daa9523eef73ff5505e01f06`). Five incoming commits
+  cover dated temporary-compatibility markers, the database read/commit race,
+  and dead-critter/door-frame draw-order tests. No new Engine setting or native
+  script export was added.
+- Incoming prose on old `Docs/*.md` paths was reconciled into the canonical
+  English/Russian Essentials, networking, persistence, scripting-runtime, and
+  rendering pages. The old paths remain route pointers. The Engine validation
+  workflow retains the documentation job and gains the upstream
+  `temporary-compat` job. `BuildTools/README` and its Russian pair describe
+  the new scanner without depending on one embedding project's settings.
+
+Contract and generated-surface disposition:
+
+- `docs_api.py --check` reports 2552 classified symbols and no stale API
+  model. The aggregate contract diff against the starting branch reports zero
+  changes across 17 domains, so no public API disposition is required.
+- Refreshed translation parity, snippets, site search/routes, retrieval
+  evaluation, and AI delivery from their owning generators. The new Bash
+  example raises the checked snippet corpus to 466 snippets, of which 307 are
+  normative and 181 require external parsing.
+
+Validation:
+
+- `BuildTools/tests/test_temporary_compat.py`: 9 tests passed; the live
+  scanner reports 3 markers in one compatibility with zero errors.
+- Fresh `LF_UnitTests` build completed without compiler warnings. The
+  `DataBase*,MapSprite*,SecureChannel*` filter passed 61 test cases and 583
+  assertions; intentionally injected database-write failures and rejected
+  handshake inputs appear in its logs, with process exit 0.
+- 65 focused documentation tests passed after updating the new snippet count.
+  `docs_validate.py` passed 408 Markdown entries; translation parity passed
+  192/192 current pairs, snippets passed 307/307 normative and 181 external
+  parser checks, site data passed 396 public routes, AI retrieval passed 67/67
+  checks, and AI delivery is current. Local checks do not certify remote CI,
+  browser rendering, or visible sprite acceptance.

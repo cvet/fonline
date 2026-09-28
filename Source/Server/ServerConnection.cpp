@@ -36,6 +36,8 @@
 
 FO_BEGIN_NAMESPACE
 
+FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31");
+
 // A client from before the secure channel opens its stream with the plaintext message signature 0x011E9422, little-endian
 static constexpr std::array<uint8_t, 4> PRE_CHANNEL_SIGNATURE {0x22, 0x94, 0x1E, 0x01};
 

@@ -34,6 +34,17 @@ jobs:
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: python3 BuildTools/buildtools.py format-source
     - run: git diff --exit-code
+  temporary-compat:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
+    name: Check temporary compatibility dates
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - run: python3 BuildTools/tests/test_temporary_compat.py
+    - run: python3 BuildTools/temporary_compat.py
   documentation:
     name: Validate documentation
     runs-on: ubuntu-24.04

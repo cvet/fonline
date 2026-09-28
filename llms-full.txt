@@ -3232,7 +3232,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 962440b0ecc448e2d212d0a24aee81d8eb76a0278eda7a6f576aa400bcb82b84
+Content SHA-256: 6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc
 
 ---
 layout: default
@@ -3494,6 +3494,8 @@ different wrapper for the same entity.
 ## Core script ownership
 
 The Engine-owned script-side library now lives under `Source/Scripting/Managed/CoreScripts/` and contains the managed native bridge, attributes, initialization, invocation, remote-call, synchronization, async, verification, item-holder, enum, and value-type helpers required by the backend. It is infrastructure, not game policy.
+
+Its `[TemporaryCompat("Id", "YYYY-MM-DD")]` attribute marks managed old-build or old-data handling under the same [dated removal gate](../../reference/native/essentials.md#temporary-compatibility) as native `FO_TEMPORARY_COMPAT`.
 
 The former Engine-owned AngelScript high-level library was removed. An embedding project that uses AngelScript owns its `.fos` helpers, GUI implementation, module order, and gameplay modules. Do not copy project GUI or gameplay contracts back into reusable Engine documentation.
 
@@ -10975,7 +10977,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: d57c2f6807643efc01ff4cf1ec28a47b0b841367f2155d42824dddd6b010afbc
+Content SHA-256: e2010dab6d047112b763f17df08a0a1d80cc41fbd7ec87367d780cc23500260e
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11141,7 +11143,8 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 - **Script callers own the complete native entity cover.** Before an ordinary server `FO_SCRIPT_API` call, AngelScript must acquire every existing entity the native call graph can read or mutate, including transitive map/location, holder, controlled-critter, and group dependencies. A native path reachable from that call may validate the prepared package with `ValidateEntityAccess()` and may call `EnsureEntitySynced()` freely and repeatedly to retain the own lock of an entity already covered by the current context. Both operations are idempotent no-ops once their condition is satisfied, so loops, repeated same-target calls, `catch` handlers, and recursion carry no call-count restriction. Each actual `EnsureEntitySynced()` acquisition never releases/reacquires the caller cover and never parks on a lock: it only ADDS the target's own lock plus the intermediate ancestor marks, as one all-or-nothing state-mutex transaction. Because the covering ancestor is held exclusively, any block it meets is a foreign thread mid-flight through its own non-blocking pass (releasing marks by lock address rather than hierarchy, or rolling back an ascending-address try-prefix), which clears in microseconds — so the acquisition is MANDATORY and retries the whole batch with bounded back-off until it lands, retaining nothing across the back-off. It throws only when the target is not actually covered or the covered-cover invariant is corrupt, never for ordinary transient contention, and a failure leaves the caller cover intact. It cannot repair an omitted unrelated existing dependency. Fresh parentless entities are captured only by the private trusted registration boundary before publication; that boundary never authorizes discovery or acquisition of pre-existing dependencies. Native code must not call `SyncEntity()` / `SyncEntities()` or otherwise obtain missing existing cover on the script's behalf. The explicit synchronization primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`, and `Game.Unlock` are the exceptions because changing synchronization state is their script-visible purpose. The whole contract is opt-out: with the `Server.SingleThreadedLogic` setting the engine runs its logic on one worker, the cover model is bypassed, and scripts need no synchronization at all (see [Docs/ServerRuntime.md](Docs/ServerRuntime.md)).
 - **Fix the source, never mask.** When a lower layer returns a wrong result, swallows an error, or silently coerces bad input into "looks fine", fix it at the source (throw / validate / propagate) instead of papering over it from the caller with pre-checks, try/catch that fabricates a "good" value, default substitutes, or other workarounds. If you find yourself adding a guard that compensates for a bug elsewhere, stop and fix the bug instead.
-- **No legacy compatibility in the reusable engine.** When an engine API, configuration key, data format, or internal contract is replaced, remove the old surface completely. Do not retain deprecated aliases, fallback parsing, detection of removed keys, migration shims, compatibility branches, tests, or documentation for the removed contract. Compatibility-version markers may reject incompatible builds or data, but must not implement the old behavior. Migration of database-persisted game data belongs to the embedding project and must not leak into Engine.
+- **No permanent legacy compatibility in the reusable engine.** When an engine API, configuration key, data format, or internal contract is replaced, remove the old surface completely. Do not retain deprecated aliases, fallback parsing, or migration shims. A narrow refusal of an older build or transitional bridge needs a documented reason and a dated removal marker below; migration of database-persisted game data belongs to the embedding project.
+- **Code that knows an old format carries its removal date.** Mark every necessary old-build refusal or transition point, tests included, with `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or `[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed). One id and date cover all places of one compatibility. `BuildTools/temporary_compat.py` fails after the date and is run by the Engine validation workflow; embedding projects can pass their own source directories too. See [temporary compatibility](Docs/en/reference/native/essentials.md#temporary-compatibility).
 - **Keep engine invariants stable under exceptions.** An exception thrown partway through a multi-step engine mutation (entity create/register/destroy/invalidate, cross-entity links) must never leave a half-mutated, restart-only state. Engine allocation terminates on OOM (`safe_alloc`/`safe_allocator`), so `bad_alloc` is not a recoverable error and never a reason to build a rollback. A post-mutation invariant that "can only be false if the world is already corrupt" is a `FO_STRONG_ASSERT` (always-on, deterministic exit), not a swallowable `FO_VERIFY_AND_THROW`. Entity create/destroy is throw-as-signal, not transactional rollback (events may legitimately destroy or relocate the entity; the function throws but the entity is left in a valid state) — pinned by `Source/Tests/Test_EntityLifecycle.cpp` and `Test_ServerMapOperations.cpp`, so do not add a blanket create-time rollback. Full rules: [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md).
 - **No singletons. No hidden global / static state for engine-semantic data.** State with *per-engine semantics* (lock sets, entity registries, ticket allocators tied to one engine's wait queues, mutable runtime caches that could be mixed across engines) lives on an owning instance reachable through the engine object graph — typically `ServerEngine` (managers), `ServerEntity` (per-entity locks, properties, parent), or `BaseEngine` (`ScriptSystem`, settings). Do not introduce file-scope mutable statics, `static` data members on engine classes, function-local statics that cache cross-call state, or unnamed-namespace mutable variables. Multiple engine instances may coexist in one process (embedding projects run parallel test suites this way), so hidden globals silently share state across engines, hide cross-test pollution, and turn lifetime-ordering bugs into timing windows.
 - **`static thread_local` is OK *only* when threads are partitioned by engine ownership** and the slot can never observe values from a foreign engine on the same thread. The current example is `SyncContext* CurrentContext` in `Source/Server/EntitySync.cpp`: every thread that touches it belongs to exactly one engine, so the thread-local slot is implicitly per-engine. The same logic permits a `static std::atomic` whose value has no per-engine semantics (e.g. a monotonic ticket counter only ever compared inside one lock's wait queue). When in doubt, prefer instance ownership — but do not pay a mutex-plus-map lookup just to satisfy the rule when a `thread_local T*` is already correctly isolated.
@@ -14893,7 +14896,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: c6b191c3d7db7a8ed37b87ebbdcff3a4abcae66eae2f3491b3567f0564facd62
+Content SHA-256: 1d3477e68b69cab00f51c58d9e0207c9e2cf59832663c0448a006994b9b6026b
 
 ---
 layout: default
@@ -14952,7 +14955,7 @@ Every connection, including an in-process interthread connection, carries an ord
 
 The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
 
-There is one bounded exception to the no-plaintext-session rule: the server recognizes the frozen first-message signature of a client predating the secure channel and sends only a fixed legacy handshake answer with `updater_outdated` (compressed when configured). That client then closes; no gameplay or updater exchange follows in plaintext. Other malformed input still takes the secure-channel rejection path. `Test_SecureChannel.cpp` pins the reply through hand-driven and real TCP/UDP connections.
+There is one bounded exception to the no-plaintext-session rule: the server recognizes the frozen first-message signature of a client predating the secure channel and sends only a fixed legacy handshake answer with `updater_outdated` (compressed when configured). That client then closes; no gameplay or updater exchange follows in plaintext. Other malformed input still takes the secure-channel rejection path. This refusal is marked `FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31")` at its implementation, state, and tests, and follows the [temporary-compatibility removal gate](../../reference/native/essentials.md#temporary-compatibility). `Test_SecureChannel.cpp` pins the reply through hand-driven and real TCP/UDP connections.
 
 | Frame | Sender | Body |
 |---|---|---|
@@ -17130,7 +17133,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT persistence =====
 Source: Docs/en/explanation/persistence/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/persistence/
-Content SHA-256: 89c780854daf52c6093640e8fcb18eadb7b93e89a4a3e4ae049439aaccb34ba3
+Content SHA-256: 39c9b7133f56cbe92f902452509c6ea7d4d5d36e34b601175b13350931c115c5
 
 ---
 layout: default
@@ -17166,7 +17169,7 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 `ConnectToDataBase()` constructs the facade from settings, connection info, collection schemas, and a panic callback.
 
-`GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. `Get()` itself uses the same path for one id.
+`GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. A commit stops being overlaid when its backend write completes and it leaves the pending queue. If that occurs after a read fetched the old record but before it checked the queue, the affected record is fetched again; unaffected records are not. `Get()` itself uses the same path for one id.
 
 ## Collections and keys
 
@@ -17350,7 +17353,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: a76bc5c12ee24f8a6dae93dd218499ca2762fd7d706251cfc9bfe7f36466509d
+Content SHA-256: b7a2205640608c5ed38a63573eca7cb8f688c685f9a8451d14eaee648e2891f9
 
 ---
 layout: default
@@ -18113,6 +18116,10 @@ The map render target (`MapView::_rtMap`) is created `with_depth`, giving the wo
   precedes X: lower-sub-layer walls are drawn before overlapping items or
   critters anywhere in that row. Nearer rows still win; equal sub-layer uses
   X, then layer, with insertion order breaking an otherwise equal key.
+- A flattened dead critter stays in the lower draw-order group than upright
+  items and critters even when their screen row differs. Same-row door flaps
+  and frames still follow sub-layer before X. `Test_MapSprite.cpp` pins both
+  cases; visual acceptance must still check the actual scene.
 - Roof tiles (`IsRoofTile`) are ordinary floor tiles given a fixed positive `Elevation` (`Geometry.MapRoofElevation`): the projection raises their screen position onto the building's wall tops (the engine still auto-hides the roof group whose `RoofNum` the camera is inside). A roof is just a tile lifted in screen Y — the flat tile/roof sub-hex XY anchor now lives on the `BaseTile` prototype's `Offset`, not on the former per-side `Geometry.MapTileOffs*`/`MapRoofOffs*` settings (removed); the roof-particle and mapper tile-preview paths read the same `Elevation` instead of the old 2D roof offset. The **roof draw-order range (`Roof..Last`) is rendered as a separate trailing pass** (`MapView::DrawSpritesWithFog` splits at `below_roof = Roof-1` and draws `[Roof..Last]` last, via `DrawFoggedSpriteRange`): everything below it — including the direct-draw 3D models / in-scene particles each sprite pass replays at its end — is drawn first. Like floor tiles, roofs do not touch the depth buffer (`Effects.Roof` → `2D_NoDepth.fofx`, `DepthWrite = False` + `DepthFunc = Always`): being drawn last and never depth-tested, the roof layer always paints on top of the building regardless of the scene depth buffer, and being depth-write-free it never clips anything drawn after it.
 - Particle effects (`Particles_*.fofx`) declare `DepthFunc = LessEqual` + `DepthWrite = False`: tested against scene depth so they are occluded by closer geometry, without occluding each other. The colour variants (`Particles_Color*.fofx`) additionally declare `DepthVariants = True`, because a particle runtime whose format stores depth-test/depth-write per emitter node selects the matching variant per draw. All colour and distortion `*Atlas` fragments discard final alpha at or below `1/255`, so a node that opts into depth writing cannot turn transparent or filter-fringe atlas texels into invisible occluders. They also read `ParticleSamplingBuf`, whose `.x` snaps the sampled coordinate to the texel centre: filtering is a per-atlas property here (`Render.AtlasLinearFiltration` applies to every atlas) but a per-node one in particle formats, and a bilinear fetch at a texel centre returns exactly that texel, so a node can get true point sampling from a linearly filtered atlas without a second atlas. The `*Atlas` variants additionally read `SpriteBorderBuf` and address the whole coordinate inside that atlas sub-rectangle, tiling or clamping as `ParticleSamplingBuf.y` says: neither a hardware wrap mode nor hardware clamping can serve a shared atlas, because both would reach into neighbouring entries. A runtime whose format supplies raw per-node coordinates therefore draws through the `*Atlas` variants exclusively; the non-atlas variants are for SPARK, which supplies final atlas coordinates and explicitly binds the neutral sampling buffer before every draw.
 - Model effects (`3D_*.fofx`) use `DepthFunc = LessEqual` + `DepthWrite = True`: direct-to-scene models write real mesh depth into `_rtMap`, so particles and later direct geometry can test against the model surface instead of the old model atlas quad.
@@ -25102,7 +25109,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 8d24fa44b257e0730344312bc255f56d978b615586e5bea6cdb14fddff63f8f8
+Content SHA-256: f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808
 
 ---
 layout: default
@@ -25275,6 +25282,12 @@ wrappers themselves rather than ordinary consumers.
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
 `platform::process_identity` pairs PID with process start time. An ID alone can be reused, so client-session diagnostics match both values. On Windows the liveness check polls the process handle with zero timeout rather than reading exit code `259` (`STILL_ACTIVE`), which a terminated process can retain while another process holds its handle. `BuildTools/tests/test_process_identity.py` covers live and terminated retained-handle cases when `clang++` is available.
+
+#### Temporary compatibility
+
+`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` in `BasicCore.h` marks necessary code that recognizes older builds or data, including a refusal path. Its `static_assert` checks the date's shape and can stand at namespace, class, or block scope; it does not make the build expire. Managed code uses `[TemporaryCompat("Id", "YYYY-MM-DD")]` from `CoreScripts/Attributes.cs`. Repeat the same identifier and last-valid date on every related implementation, member, and test.
+
+`BuildTools/temporary_compat.py` scans Engine `Source/` by default, rejects malformed or inconsistent markers and dates more than 366 days ahead, and fails from the day after expiration with all marked locations. The Engine validation workflow runs its tests and scan. An embedding project can pass its own source directories alongside `Engine/Source`; the marker never substitutes for a reviewed reason to retain old-format handling. At expiry, remove the code or move the date in a reviewed change if the reason remains. Keeping expiry in CI rather than the macro leaves old release builds reproducible.
 
 ### Diagnostics and failure handling
 
