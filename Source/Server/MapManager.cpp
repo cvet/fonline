@@ -838,6 +838,28 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     return PathFinding::FindPath(settings);
 }
 
+auto MapManager::FindReachableHexes(ptr<const Map> map, mpos from_hex, const_span<mpos> target_hexes, function<bool(ptr<const Item>)> gag_callback) const -> vector<mpos>
+{
+    ValidateEntityAccess(map);
+
+    FindReachableInput settings;
+    settings.FromHex = from_hex;
+    settings.MapSize = map->GetSize();
+    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.TargetHexes = target_hexes;
+
+    // A critter or a gag the callback lets through makes a route dearer, never impossible, so only blockers are asked
+    settings.CheckHex = [&](mpos hex) -> HexBlockResult {
+        if (map->IsHexMovable(hex) || map->CheckGagItem(hex, gag_callback)) {
+            return HexBlockResult::Passable;
+        }
+
+        return HexBlockResult::Blocked;
+    };
+
+    return PathFinding::FindReachable(settings);
+}
+
 void MapManager::TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius)
 {
     Transfer(cr, map, hex, dir, safe_radius, {});

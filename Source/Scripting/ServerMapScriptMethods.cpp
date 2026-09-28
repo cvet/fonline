@@ -968,6 +968,27 @@ FO_SCRIPT_API bool Server_Map_FindPathToAny(ptr<Map> self, ptr<Critter> cr, read
 }
 
 ///@ ExportMethod
+FO_SCRIPT_API vector<mpos> Server_Map_FindReachableHexes(ptr<Map> self, mpos fromHex, readonly_vector<mpos> targetHexes, ScriptFunc<bool, ptr<Item>> gagCallback)
+{
+    if (!self->GetSize().is_valid_pos(fromHex)) {
+        throw ScriptException("Invalid from hex arg");
+    }
+    for (mpos candidateHex : targetHexes) {
+        if (!self->GetSize().is_valid_pos(candidateHex)) {
+            throw ScriptException("Invalid target hex arg");
+        }
+    }
+
+    function<bool(ptr<const Item>)> gag_callback;
+
+    if (gagCallback) {
+        gag_callback = [gag_cb = safe_alloc::make_shared<ScriptFunc<bool, ptr<Item>>>(std::move(gagCallback))](ptr<const Item> gag) mutable { return gag_cb->Call(make_ptr(const_cast<Item*>(std::addressof(*gag)))) && gag_cb->GetResult(); };
+    }
+
+    return self->GetEngine()->MapMngr.FindReachableHexes(self, fromHex, targetHexes, std::move(gag_callback));
+}
+
+///@ ExportMethod
 FO_SCRIPT_API FO_PROVIDES_COVER ptr<Critter> Server_Map_AddCritter(ptr<Map> self, hstring protoId, mpos hex, mdir dir)
 {
     if (self->IsDestroying()) {

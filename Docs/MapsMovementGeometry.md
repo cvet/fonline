@@ -106,10 +106,12 @@ Safe helpers check `msize` bounds; unsafe helpers are for internal algorithms th
 
 - `FindPathInput`
 - `FindPathOutput`
+- `FindReachableInput`
 - `TraceLineInput`
 - `TraceLineOutput`
 - `PathFinding::CheckHexWithMultihex()`
 - `PathFinding::FindPath()`
+- `PathFinding::FindReachable()`
 - `PathFinding::EvaluateFreeMovementEndOffset()`
 - `PathFinding::TraceLine()`
 
@@ -140,6 +142,24 @@ so a server caller can find the nearest reachable exact target with one search i
 full path search for every candidate. The server script `Map.FindPathToAny(...)` overloads expose
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
+
+### Reachable targets
+
+A caller that has to judge many candidate hexes — which of them a mover could walk to at all — must not
+ask one search per candidate: every candidate the start cannot reach costs a search of everything the start
+can reach, and when the candidates sit in a closed region larger than the enclosure probe budget (see
+[Walled-off targets](#walled-off-targets)) nothing makes those refusals cheap. `PathFinding::FindReachable()`
+answers the whole set with one breadth-first flood from `FindReachableInput::FromHex` over every hex whose
+`CheckHex` answer is not `Blocked` — deferred gags and critters make a route dearer, never impossible —
+no further than `MaxLength` steps, and returns the `TargetHexes` it reached in the order given. It asks
+`CheckHex` once per hex and stops as soon as every target is reached. Where hexes are only passable or
+blocked, a target is reachable exactly when a single-hex `FindPath()` to it with the same limit finds a
+route; the flood counts steps, so a route through critters is reachable even when the search, which turns to
+critters last, would answer `TooFar`. There is no multihex footprint.
+`MapManager::FindReachableHexes()` supplies the map's blockers and the gag callback with
+`Geometry.MaxPathFindLength` as the limit, and the server script `Map.FindReachableHexes(fromHex,
+targetHexes, gagCallback)` exposes it; an out-of-map start or target throws, an empty target list answers
+an empty one.
 
 ### Search
 
