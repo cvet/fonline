@@ -657,6 +657,7 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
         throw ResourcesOutdatedException("Updater outdated");
     }
     else {
+        _connectionRequest = false;
         OnConnectingFailed.Fire();
     }
 }

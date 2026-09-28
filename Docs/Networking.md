@@ -233,6 +233,11 @@ This is a serialized contract change: `NetMessage::HashList` (server→client) a
 
 ## Client connection abstraction
 
+`ClientEngine::Connect()` requests one connection attempt. A transport failure clears that request before
+`OnConnectingFailed` fires; the next frame does not connect again unless the embedding client calls `Connect()`
+again, including from the failure callback. A successful connection retains the request until its normal
+disconnect path clears it. UDP-to-TCP fallback inside `ClientConnection` belongs to the same attempt.
+
 `Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
 
 Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `stream_decompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
