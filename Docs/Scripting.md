@@ -561,6 +561,8 @@ Script exceptions are reported with their script frames placed into the native s
 
 A CLR exception caught entirely inside project C# does not cross an invocation boundary, so it cannot increment the managed exception counters automatically. A test harness that deliberately catches such an exception can call `ScriptExceptions.RecordCaught(exception)` before acknowledging it; the helper increments both managed exception counters without logging an already handled failure. Do not use it to suppress an unhandled or unrelated exception.
 
+The managed exception counters are `ScriptExceptions.GlobalCount`, every fault the backend recorded, and a counting scope opened with `using ScriptExceptions.Scope scope = ScriptExceptions.OpenScope();`, whose `Count` holds the synchronous faults recorded on the logical flow that opened it. The scope lives in an `AsyncLocal`, so it follows the flow through every `await`, whichever thread the continuation resumes on, and never sees a fault of another flow; nested scopes each count the fault. A deferred Task fault completes on a foreign thread and reaches only the global count. A harness measures one callback by opening a scope around it - a per-thread counter read before and after an `await` compares two different threads' counts and charges the fault to whichever callback ran there.
+
 ### The analysis profile of the generated script project
 
 The generated script project always sets `Nullable=enable`, `TreatWarningsAsErrors=true` and
