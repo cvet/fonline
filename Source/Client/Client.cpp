@@ -261,6 +261,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemPicMap));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemOffsetCoords));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::DrawOrderSubLayer_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemDrawOrderSubLayer));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
     }
@@ -2569,6 +2570,16 @@ void ClientEngine::OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property>
         item->RefreshOffs();
         auto map = item->GetMap();
         map->MeasureMapBorders(item);
+    }
+}
+
+void ClientEngine::OnSetItemDrawOrderSubLayer(ptr<Entity> entity, ptr<const Property> prop)
+{
+    ignore_unused(prop);
+
+    // The sub-layer is part of the sort key fixed when a sprite is added, so the item's sprites are added again
+    if (auto item = entity.dyn_cast<ItemHexView>()) {
+        item->GetMap()->RefreshItem(item);
     }
 }
 
