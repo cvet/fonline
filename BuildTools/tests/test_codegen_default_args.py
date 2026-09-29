@@ -22,7 +22,7 @@ def test_internal_config_capacity_is_fixed_by_engine(tmp_path: Path, monkeypatch
 
     [declaration] = output.files[str(tmp_path / "InternalConfig.gen.inc")]
     assert f"char INTERNAL_CONFIG[{_codegen.INTERNAL_CONFIG_CAPACITY}]" in declaration
-    assert _codegen.INTERNAL_CONFIG_CAPACITY == 10000
+    assert _codegen.INTERNAL_CONFIG_CAPACITY == 20000
     assert "-internalcfg" not in _codegen.create_parser()._option_string_actions
 
 

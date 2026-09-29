@@ -22,7 +22,7 @@ TagContext: TypeAlias = bool | int | str | list[str] | None
 EXPORT_TARGETS = ('Server', 'Client', 'Mapper', 'Common')
 REGISTRATION_TARGETS = ('Server', 'Client', 'Mapper')
 CLIENT_ENTITY_TARGETS = ('Client', 'Mapper')
-INTERNAL_CONFIG_CAPACITY = 10000
+INTERNAL_CONFIG_CAPACITY = 20000
 
 
 @dataclass(slots=True)
