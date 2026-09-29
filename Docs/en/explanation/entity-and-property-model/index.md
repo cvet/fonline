@@ -132,6 +132,8 @@ Property flags are load-bearing:
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](../../../Nullability.md).
 
+Stored-name migration rules resolve renamed properties and `RefType` fields before duplicate detection; two input names that resolve to the same field are an error. A removed name needs no migration rule when loading a database document. The document/value reader skips an unknown top-level property or a removed field inside a stored `RefType` value, including nested `RefType` values and arrays. Database documents retain old top-level keys because the server saves them key by key, but a `RefType` value is saved as a whole and its next save omits the removed field. This tolerance is for historical persisted data, not authored content: `ApplyFromText()` still rejects unknown properties and `RefType` fields. A rename or a reused name may still need an explicit migration rule and a save-compatibility test; deletion tolerance does not reinterpret an old value as a new field.
+
 ## Base properties and overlays
 
 A `Properties` instance can have base properties. This is used heavily by prototype-derived runtime entities:

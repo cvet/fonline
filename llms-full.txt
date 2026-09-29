@@ -16515,7 +16515,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: 41137c9eb3420d880f80218a4e5f90d4c7e17f29dde38667cf62e226f329da7a
+Content SHA-256: fe5b96b8dd777d58adf6efba10b9dc158351f99cc16470ecaea8679dc5b1f82f
 
 ---
 layout: default
@@ -16650,6 +16650,8 @@ Property flags are load-bearing:
 - `Min` and `Max` declare the inclusive clamp range for a numeric scalar or plain numeric array.
 
 When changing property metadata, update runtime docs and script/nullability docs together if the change affects script-visible signatures. See [Nullability.md](../../../Nullability.md).
+
+Stored-name migration rules resolve renamed properties and `RefType` fields before duplicate detection; two input names that resolve to the same field are an error. A removed name needs no migration rule when loading a database document. The document/value reader skips an unknown top-level property or a removed field inside a stored `RefType` value, including nested `RefType` values and arrays. Database documents retain old top-level keys because the server saves them key by key, but a `RefType` value is saved as a whole and its next save omits the removed field. This tolerance is for historical persisted data, not authored content: `ApplyFromText()` still rejects unknown properties and `RefType` fields. A rename or a reused name may still need an explicit migration rule and a save-compatibility test; deletion tolerance does not reinterpret an old value as a new field.
 
 ## Base properties and overlays
 

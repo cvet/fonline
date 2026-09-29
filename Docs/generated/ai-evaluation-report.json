@@ -851,10 +851,10 @@
           "passed": true,
           "top_document_ids": [
             "prototype-format-guide",
+            "entity-model",
             "generated-api-metadata",
             "baking-pipeline",
-            "generated-prototype-format-validation",
-            "generated-prototype-format-index"
+            "generated-prototype-format-validation"
           ]
         },
         {

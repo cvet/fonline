@@ -9483,3 +9483,44 @@ Validation:
   parser checks, site data passed 396 public routes, AI retrieval passed 67/67
   checks, and AI delivery is current. Local checks do not certify remote CI,
   browser rendering, or visible sprite acceptance.
+
+## 2026-09-29 - persisted RefType deletion and Mapper preview reconciliation
+
+Scope and source revisions:
+
+- Reconciled the published `docs` branch from
+  `6d555f2d68efab0e86351a5ab12f945eb9592e04` with `origin/master`
+  `bf4d76342e0cad1bb71973e1478e744ca74b22d0` (merge base
+  `4d82291d5ab6b0ded85cf28e781f08528cb9b456`). Three incoming commits
+  change `PropertiesSerializer::LoadRefTypeFromValue`, its native regressions,
+  and old-route prose about saved fields and a Last Frontier map preview.
+- The value/document reader now skips a removed persisted `RefType` field,
+  including nested fields, while authored property text remains strict. The
+  behavior and its save-boundary distinction are described in the canonical
+  English and Russian entity-model pages. The incoming project-specific
+  preview-coordinate explanation belongs in Last Frontier's Map Authoring and
+  Checkpoints guides, not the Engine `Docs/MapperTools.md` legacy pointer.
+
+Contract and generated-surface disposition:
+
+- `docs_prototype_format.py --check` remains current; the property-text
+  grammar is unchanged. The aggregate contract diff against the starting
+  branch reports zero changes across 17 domains, with no required disposition.
+  Source inventory was regenerated and remains unchanged; snippets,
+  translation status, search, routes, AI evaluation, and delivery were refreshed
+  from their owning generators after the paired prose change.
+
+Validation:
+
+- `docs_validate.py` passed 408 Markdown entries; 70 focused documentation
+  tests and 12 subtests passed. Localization passed 192/192 current pairs,
+  snippets 307/307 normative with 181 external-parser checks, site data 396
+  public routes, AI retrieval 67/67, and AI delivery/source inventory/public
+  API/prototype-format checks are current.
+- Fresh `LF_UnitTests` build succeeded. The focused
+  `PropertiesLoadFromDocumentSkipsDeletedRefTypeFields`,
+  `PropertiesSerializerRejectsInvalidRefTypeShapes`, and
+  `PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields` filter passed 17
+  assertions in 3 cases; the logged rejection of unknown authored text is an
+  expected assertion path. Local work does not certify remote CI, published
+  Pages, or an embedding project's save migration and gameplay acceptance.
