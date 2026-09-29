@@ -311,7 +311,7 @@ The checkpoint UI ([Checkpoints.md](../../Docs/Checkpoints.md)) needs a static p
 ### Fixed-type format
 
 `Resources/MapPreview/MapEntrances/MapEntrancePreviews.foinfo` is generated as `MapEntrancePreview` fixed-type data. `$Name` is the map pid, and the generator stores the matching reference in the matching source map as `MapEntrancePreview = <MapName>`, so UI code reads it from `Game.GetProtoMap(mapPid).MapEntrancePreview`. `ImageWidth` / `ImageHeight` are the actual final PNG dimensions after crop and resize (variable aspect ratio per map); `RenderZoomPpm` is the effective zoom scaled by 1,000,000.
-If a map has several `MapEntry` items with the same name, the tool writes one entry name and averages the hex/button coordinates; `EntryHexCounts` records how many authored markers fed each entry.
+If a map has several `MapEntry` items with the same name, the tool writes one entry name and takes the hex/button coordinates from the first of them in map order, because a transfer by entry name lands on that item; `EntryHexCounts` records how many authored markers carry the name. Averaging the markers put the button where no entry is when they stand apart, such as two landings at the opposite ends of one road.
 
 ```
 [MapEntrancePreview]
