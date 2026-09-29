@@ -4532,9 +4532,11 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
 
-    AnyData::Dict invalid_unknown_field;
-    invalid_unknown_field.Emplace("Unknown", AnyData::Value {int64_t {1}});
-    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(invalid_unknown_field)}, hashes, resolver));
+    // A stored value may carry a field deleted since it was saved, so the value path drops it instead of failing
+    AnyData::Dict deleted_field;
+    deleted_field.Emplace("Unknown", AnyData::Value {int64_t {1}});
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(deleted_field)}, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializer::SavePropertyToValue(&props, snapshot_prop, hashes, resolver).AsDict().Contains("Unknown"));
 
     AnyData::Dict invalid_anchor;
     AnyData::Array short_anchor;
