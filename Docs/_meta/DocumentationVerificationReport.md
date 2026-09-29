@@ -2,6 +2,22 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-29 - database key listing over pending writes
+
+Scope and source revisions:
+
+- Reconciled documentation head `96562cd64213f271761216924443195addf39247` with Engine `origin/master` through `f7c8b1ecf5b718e057a0d5439f9aa3c189e2aa24` (one incoming commit, based on `bf4d76342e0cad1bb71973e1478e744ca74b22d0`). Inspected `DataBaseImpl::GetAllDocumentIds`, its state/commit tracking, and both new database tests.
+- Kept `Docs/Persistence.md` a legacy route pointer; moved the incoming reusable explanation to the canonical English and reviewed Russian persistence pages.
+
+Documentation and contract reconciliation:
+
+- Documented that `GetAllIds(collection)` and its typed variants overlay queued inserts/deletes over backend keys in queue order, and retry a backend listing if a key-changing commit for that collection completes during the listing. This matches the pending-write view of `Get()`; updates do not change the key set.
+- Refreshed snippets and localization metadata after the canonical-page edits; site/search/routes and AI delivery are regenerated from their owning tools. This is a behavioral correction to existing methods, not a new public API symbol or a separate pre-release breaking-change history.
+
+Validation and limits:
+
+- The diagram and screenshot source checks passed. Snippets passed 307 normative, 159 evidence, and 181 external-parser checks; all 192 translation pairs are current. The full documentation validator passed 408 Markdown entries, and 42 focused generator tests plus 12 subtests passed. `LF_UnitTests` built; the two new cases passed, and the wider database filter passed 4,985 assertions in 57 test cases. Embedding-project integration remains in the active project sync plan; these checks do not establish production database behavior.
+
 ## 2026-09-29 - path reachability, draw order, packaged config, and managed diagnostics
 
 Scope and source revisions:

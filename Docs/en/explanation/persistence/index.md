@@ -34,6 +34,8 @@ Do not put live credentials, production connection strings, or host-specific rec
 
 `GetMany(collection, ids)` reads several records of one collection through one backend `GetRecords()` request and returns documents aligned with the requested ids: a missing record produces an empty document and a repeated id repeats the same result. Each document follows the `Get()` contract, with pending commit operations overlaid; only a record committed during the batch read is fetched again. A commit stops being overlaid when its backend write completes and it leaves the pending queue. If that occurs after a read fetched the old record but before it checked the queue, the affected record is fetched again; unaffected records are not. `Get()` itself uses the same path for one id.
 
+`GetAllIds(collection)` and its typed `GetAllIntIds()` / `GetAllStringIds()` variants enumerate backend keys with pending inserts and deletes overlaid in queue order, matching what `Get()` can read. A pending delete removes a listed key; a pending insert adds it. If an insert or delete for that collection commits while backend keys are being listed, the listing is retried. Updates do not change the key set. `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` and `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` cover the overlay and concurrent commit.
+
 ## Collections and keys
 
 The database layer stores `AnyData::Document` values in named collections.

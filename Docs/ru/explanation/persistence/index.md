@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"39c9b7133f56cbe92f902452509c6ea7d4d5d36e34b601175b13350931c115c5"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"863e10c06da05c2ff1f23f966df65dbaf8bc3bb9c4a7a4d86d2c1a2c65a1db86"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -33,6 +33,8 @@ permalink: /Docs/ru/explanation/persistence/
 `ConnectToDataBase()` создаёт фасад из настроек, данных подключения, схем коллекций и panic callback.
 
 `GetMany(collection, ids)` читает несколько записей одной коллекции одним backend-вызовом `GetRecords()` и возвращает документы в порядке запрошенных ids: отсутствующей записи соответствует пустой документ, повторному id — тот же результат. Каждый документ следует контракту `Get()` с наложенными pending commit operations; отдельно перечитывается только запись, commit которой завершился во время batch read. Наложение прекращается после записи в backend и удаления операции из очереди. Если это произошло после чтения старого значения из backend, но до проверки очереди, соответствующая запись читается повторно; остальные не затрагиваются. Сам `Get()` использует тот же путь для одного id.
+
+`GetAllIds(collection)` и типизированные варианты `GetAllIntIds()` / `GetAllStringIds()` перечисляют ключи backend с наложенными в порядке очереди ожидающими insert и delete, в согласии с тем, что может прочитать `Get()`. Ожидающий delete убирает ключ из списка, ожидающий insert добавляет. Если insert или delete этой коллекции завершается во время перечисления ключей backend, перечисление повторяется. Update не меняет набор ключей. Тесты `DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes` и `DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing` проверяют наложение и параллельный commit.
 
 ## Коллекции и ключи
 
