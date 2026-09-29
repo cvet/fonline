@@ -169,6 +169,7 @@ public:
     [[nodiscard]] auto GetCollectionKeyType(hstring collection_name) const -> DataBaseKeyType;
     [[nodiscard]] virtual auto GetStringKeyEscaping() const noexcept -> DataBaseStringKeyEscaping = 0;
     [[nodiscard]] virtual auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> = 0;
+    [[nodiscard]] auto GetAllDocumentIds(hstring collection_name) const -> vector<DataBaseKey>;
     [[nodiscard]] auto GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document;
     [[nodiscard]] auto GetDocuments(hstring collection_name, const vector<DataBaseKey>& ids) const -> vector<AnyData::Document>;
 
@@ -243,6 +244,7 @@ private:
     std::condition_variable_any _snapshotDoneSignal {};
     deque<shared_ptr<CommitOperationData>> _pendingCommitOperations FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable unordered_set<pair<hstring, DataBaseKey>> _docReadRetryMarkers FO_TSA_GUARDED_BY(_stateLocker) {};
+    unordered_map<hstring, uint64_t> _committedKeyChanges FO_TSA_GUARDED_BY(_stateLocker) {};
     mutable std::atomic_bool _backendFailed {};
     std::atomic_bool _panicStarted {};
     nanotime _panicRequestedTime {};

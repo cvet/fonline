@@ -98,16 +98,28 @@ namespace
 
         auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
         {
-            scoped_lock locker {_collectionsLocker};
-
-            if (_collections.count(collection_name) == 0) {
-                return {};
-            }
-
             vector<DataBaseKey> ids;
 
-            for (const auto& id : _collections.at(collection_name) | std::views::keys) {
-                ids.emplace_back(id);
+            {
+                scoped_lock locker {_collectionsLocker};
+
+                if (_collections.count(collection_name) != 0) {
+                    for (const auto& id : _collections.at(collection_name) | std::views::keys) {
+                        ids.emplace_back(id);
+                    }
+                }
+            }
+
+            function<void()> callback;
+
+            {
+                scoped_lock locker {_callbackLocker};
+                callback = std::move(_onGetAllRecordIds);
+                _onGetAllRecordIds = {};
+            }
+
+            if (callback) {
+                callback();
             }
 
             return ids;
@@ -146,6 +158,13 @@ namespace
         {
             scoped_lock locker {_callbackLocker};
             _onGetRecord = std::move(callback);
+        }
+
+        // Runs once, after a key listing has been taken and before it is returned
+        void SetOnGetAllRecordIds(function<void()> callback)
+        {
+            scoped_lock locker {_callbackLocker};
+            _onGetAllRecordIds = std::move(callback);
         }
 
         void SetStrictRecordSemantics(bool enabled = true)
@@ -451,6 +470,7 @@ namespace
         mutable DataBase::Collections _collections FO_TSA_GUARDED_BY(_collectionsLocker) {};
         mutable unordered_map<DataBaseKey, size_t> _recordReadCount FO_TSA_GUARDED_BY(_readStatsLocker) {};
         mutable function<void()> _onGetRecord FO_TSA_GUARDED_BY(_callbackLocker) {};
+        mutable function<void()> _onGetAllRecordIds FO_TSA_GUARDED_BY(_callbackLocker) {};
         mutable bool _blockedReadEnabled FO_TSA_GUARDED_BY(_blockedReadLocker) {};
         mutable bool _blockedReadEntered FO_TSA_GUARDED_BY(_blockedReadLocker) {};
         mutable DataBaseKey _blockedReadId FO_TSA_GUARDED_BY(_blockedReadLocker) {ident_t {}};
@@ -1519,6 +1539,50 @@ TEST_CASE("DataBaseSupportsStringKeys")
     db.WaitCommitChanges();
 
     CHECK(db.SnapshotRecord(collection, record_id).Empty());
+}
+
+TEST_CASE("DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    // Nothing is committed yet: the listing must already show the insert and hide the delete
+    db.PrimeRecord(collection, ident_t {1}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {2}, MakeDoc({{"value", 2}}));
+    db.Insert(collection, ident_t {3}, MakeDoc({{"value", 3}}));
+    db.Delete(collection, ident_t {1});
+    db.Insert(collection, ident_t {4}, MakeDoc({{"value", 4}}));
+    db.Delete(collection, ident_t {4});
+
+    auto pending_ids = db.GetAllDocumentIds(collection);
+    CHECK(pending_ids == vector<DataBaseKey> {DataBaseKey {ident_t {2}}, DataBaseKey {ident_t {3}}});
+
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    auto committed_ids = db.GetAllDocumentIds(collection);
+    std::ranges::sort(committed_ids);
+    CHECK(committed_ids == pending_ids);
+}
+
+TEST_CASE("DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    // The insert is committed and leaves the queue after the backend was listed but before the listing is checked
+    db.Insert(collection, ident_t {5}, MakeDoc({{"value", 5}}));
+    db.SetOnGetAllRecordIds([&db] {
+        db.StartCommitChanges();
+        db.WaitCommitChanges();
+    });
+
+    auto ids = db.GetAllDocumentIds(collection);
+    CHECK(ids == vector<DataBaseKey> {DataBaseKey {ident_t {5}}});
 }
 
 TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
