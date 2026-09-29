@@ -161,6 +161,8 @@ A `MigrationRule Property <Type> <Old> <New>` retires `<Old>` for good. It is co
 
 Stored-name migrations resolve aliases before duplicate detection, and a property may be named only once. The one exception is a database document: the server writes documents key by key and never deletes a key, so once a migrated property is saved the document holds both its obsolete key and its current one. There the key under the current name wins and the obsolete key is ignored; this is sound only because a retired name is never reused, which makes the obsolete key the older write. Two obsolete names of one property with no current key are still ambiguous and fail the load. RefType values and property text are written whole, so an input naming a field twice under old and current names is malformed and fails. RefType layouts require stored fields; registering a `Virtual` field fails before publishing the layout.
 
+Deleting a property or a RefType field needs no rule. A name that resolves to nothing in a database document — a document key, or a field inside a RefType value stored in the document, at any nesting depth — is skipped. The deleted key stays in the document, since keys are never removed, while a RefType value is written whole, so its next save drops the field. A database document is the engine's own record of what an older build wrote, so a deleted field there is history, not an error: failing on it would refuse to load every entity that ever stored the field. Property text is authored, so an unknown property or RefType field in it still fails the load.
+
 ## Base properties and overlays
 
 A `Properties` instance can have base properties. This is used heavily by prototype-derived runtime entities:
