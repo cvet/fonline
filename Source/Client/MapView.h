@@ -367,6 +367,7 @@ private:
     void PrepareFogToDraw();
     void DrawSpritesWithFog(const irect32& draw_area);
     void DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order);
+    auto GetMapCompositeRect(const irect32& draw_area) const -> irect32;
 
     void UpdateTransparentEgg(TransparentEggSlot slot);
     void UpdateTransparentEggs();
