@@ -49,7 +49,9 @@ For an unpackaged application, settings are applied in this order:
 6. platform/build auto-settings.
 
 Packaged applications use the generated internal config in place of the external
-`.fomain`. Its patch area is fixed by the Engine at 10000 bytes. Game-setting
+`.fomain`. Its patch area is fixed by the Engine at 20000 bytes. A packaged
+build has no sub-config table and rejects `-ApplySubConfig` instead of silently
+ignoring it; select the sub-config when constructing the package. Game-setting
 root values also travel in metadata; the internal config carries only selected
 sub-config deltas for them, including explicit false or empty overrides. The
 command line still applies after local config. Later layers override earlier

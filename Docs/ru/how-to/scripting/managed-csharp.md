@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"5e0a20f3f97452a789580c2e7845d14aeeafcaccb1ec725b95e345c2a214e6c0"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9584309d60b50358afeb6f78c450e1e944eb8ccf9fe5c066fe20e97d8aab5189"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -270,7 +270,7 @@ Web использует Mono interpreter и Engine JavaScript glue планир
 
 Исключение C++ не должно проходить сквозь кадр internal call Mono: иначе обходятся managed `catch`/`finally`, а после продолжения с `await` может остаться активной вложенная запись скрипта. Поэтому `RegisterInternalCalls` принимает только указатели на `noexcept` функции. Потенциально ошибочная операция сохраняет native failure через `CaptureNativeError`, возвращает его в `CoreScripts/Native.cs` и выбрасывает `NativeCallException` уже после возврата в managed-код. Ошибку можно поймать в C# в том числе после `await`; действительно неошибающиеся вызовы остаются `noexcept` и при нарушении контракта детерминированно завершают процесс.
 
-Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. Факт создания assemblies не доказывает startup или callback dispatch. Для qualification client/device/browser, где нельзя запустить native test suite, задайте `ManagedScript.InteropProbeOnStart = True`: startup логирует строку `INTEROP-TRANSPORT` для каждого условия и финальный summary.
+Managed backend передаёт фиксированный native context, managed exception text и stack information в общий script error path. `ScriptExceptions.GlobalCount` считает ошибки всего процесса; тестовый harness может вызвать `ScriptExceptions.OpenScope()` и прочитать `Count` закрытого scope для ошибок своего логического async-потока, включая продолжения на другом OS thread. Вложенные scope учитывают ошибку также в родительских. Отложенные ошибки Task при наблюдении учитываются глобально, но не как синхронные ошибки scope. Факт создания assemblies не доказывает startup или callback dispatch. Для qualification client/device/browser, где нельзя запустить native test suite, задайте `ManagedScript.InteropProbeOnStart = True`: startup логирует строку `INTEROP-TRANSPORT` для каждого условия и финальный summary.
 
 Оба script backend хранят не более 32 разных имён overrun entry на каждый Engine, считают повторы и независимо сохраняют максимальные execution и lock-wait times. `TakeScriptOverruns()` забирает буфер. Клиент забирает его перед `OnLoop` и отправляет `OnScriptOverrun(entry, execution, lockWait, count)` вне lock буфера; server и mapper не публикуют event в своих циклах. Overrun из subscriber попадёт в следующую отправку. Прежние suppression по threshold и debugger сохраняются.
 

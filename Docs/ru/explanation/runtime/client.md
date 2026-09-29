@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"7cbc30a476fa39481f0d44d39e77a200468804a2d097131c17a74e16370b3d11"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"62a08ad91f832efd79137bc9bbf72a358ea2c9095b301d7704de24f88124fb75"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -133,6 +133,10 @@ permalink: /Docs/ru/explanation/runtime/client.html
 - `AddMessageHandler(NetMessage, MessageCallback)` связывает protocol messages с handlers `ClientEngine::Net_On...`.
 
 Семантическими handlers владеет `ClientEngine`. Среди них `Net_OnInitData`, `Net_OnAddCritter`, `Net_OnRemoveCritter`, `Net_OnProperty`, `Net_OnLoadMap`, `Net_OnSomeItems`, `Net_OnRemoteCall`, `Net_OnAddCustomEntity` и `Net_OnRemoveCustomEntity`.
+
+При обычной ошибке подключения `Net_OnConnect()` снимает ожидающий запрос до
+вызова `OnConnectingFailed`. Главный цикл не повторяет попытку каждый кадр:
+скрипт или действие пользователя должны снова явно вызвать `Game.Connect()`.
 
 Формат протокола описан в [сети и авторитетности](../authority-and-networking/). Проверка client/server handshake находится в `Source/Tests/Test_ClientServerIntegration.cpp`, прежде всего в `ClientAndServerHandshakeOverInterthreadTransport`.
 

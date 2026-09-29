@@ -130,7 +130,7 @@ in the binary config itself. `Baking.BootstrapGameSettings` lists exactly those
 exceptions: `ConfigBaker` writes each listed setting in full for every baked
 sub-config instead of reducing it to a delta. Every name must resolve to a
 declared game setting or baking fails. Keep this list narrow so the fixed
-10000-byte internal-config patch remains bootstrap data rather than a second
+20000-byte internal-config patch remains bootstrap data rather than a second
 copy of the metadata baseline.
 
 `GlobalSettings::Save()` still emits only settings present in `_appliedSettings`,

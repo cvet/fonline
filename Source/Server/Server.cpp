@@ -4365,6 +4365,12 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     size_t max_hex_updates = moving->GetSteps().size() + 1;
 
     for (size_t i = 0; i < max_hex_updates; i++) {
+        // A step moves the critter out of the hex field and back in; neither side may be half-destroyed, or the add
+        // throws after the remove and leaves a critter on the map but outside its field, which destruction cannot finish
+        if (cr->IsDestroying() || map->IsDestroying()) {
+            return;
+        }
+
         auto old_hex = cr->GetHex();
 
         moving->UpdateCurrentTimeToNextHex(current_time, old_hex);

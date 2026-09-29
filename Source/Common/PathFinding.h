@@ -86,6 +86,15 @@ struct FindPathOutput
     ipos16 EndHexOffset {}; // FreeMovement sub-hex stop offset relative to NewToHex center; zero when FreeMovement is off or the real target coincides with NewToHex center
 };
 
+struct FindReachableInput
+{
+    mpos FromHex {};
+    msize MapSize {};
+    int32_t MaxLength {}; // Longest route allowed, in steps (from engine Settings.Geometry.MaxPathFindLength)
+    const_span<mpos> TargetHexes {}; // Hexes to answer for; the flood stops once every one of them is reached
+    function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
+};
+
 struct TraceLineInput
 {
     mpos StartHex {};
@@ -115,6 +124,10 @@ namespace PathFinding
 
     // Core pathfinding algorithm (A* with deferred routing through gags/critters)
     auto FindPath(const FindPathInput& input) -> FindPathOutput;
+
+    // Single-hex flood from FromHex over every hex CheckHex does not block, at most MaxLength steps out.
+    // Return the target hexes it reaches, in the order given
+    auto FindReachable(const FindReachableInput& input) -> vector<mpos>;
 
     // Compute the half-hex-clamped FreeMovement endpoint relative to the target's real offset.
     // Return nullopt for an undefined stop direction so callers preserve the mover's offset

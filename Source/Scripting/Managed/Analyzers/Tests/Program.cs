@@ -10,11 +10,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 // Self-tests for the managed script analyzers. Each case compiles a snippet against a minimal stand-in for
 // the pieces of the script surface the analyzer reasons about, runs the analyzer over it, and compares the
-// reported diagnostic ids against the expectation.
+// reported diagnostic ids against the expectation
 internal static class Program
 {
     // The analyzer resolves the attributes, FOnline.Entity and the engine-owned FOnline.Sync by metadata
-    // name, so a small stand-in keeps the tests independent of the real CoreScripts build.
+    // name, so a small stand-in keeps the tests independent of the real CoreScripts build
     private const string Preamble = @"
 namespace FOnline
 {
@@ -45,7 +45,7 @@ namespace FOnline
     public sealed class EventAttribute : System.Attribute { }
 
     // The baker puts this on the base and overrides it on the generated prototype/static classes; the analyzer
-    // reads the override rather than a list of type names.
+    // reads the override rather than a list of type names
     public class Entity
     {
         public virtual bool IsAlwaysCovered { get { return false; } }
@@ -133,7 +133,7 @@ namespace FOnline
     public class Location : Entity { }
 
     // Item methods are declared once on the shared base and inherited by both, which is what makes the
-    // static side worth modelling explicitly.
+    // static side worth modelling explicitly
     [System.AttributeUsage(System.AttributeTargets.Method)]
     public sealed class PreservesCoverAttribute : System.Attribute
     {
@@ -169,7 +169,7 @@ namespace FOnline
     }
 
     // Stands in for the engine exports that hand back a covered set, such as Map.GetCrittersInRadius: the
-    // acquisition covered the map, and the map's cover reaches the critters on it.
+    // acquisition covered the map, and the map's cover reaches the critters on it
     public static class Roster
     {
         [return: ProvidesCover]
@@ -238,7 +238,7 @@ namespace FOnline
         [SingletonLock]
         public static void Unlock() { }
 
-        // The rest of the surface, which shares the type but takes entities as ordinary arguments.
+        // The rest of the surface, which shares the type but takes entities as ordinary arguments
         public static bool CallStaticItemFunction(Critter? cr, StaticItem staticItem, Item? usedItem, string param) { return true; }
     }
 
@@ -254,7 +254,7 @@ namespace LastFrontier
 {
     using FOnline;
 
-    // A same-named project type must NOT be able to discharge an engine cover obligation.
+    // A same-named project type must NOT be able to discharge an engine cover obligation
     public static class Sync2
     {
         public static bool Lock(Entity entity) { return true; }
@@ -986,7 +986,7 @@ namespace LastFrontier
     }
 }");
 
-        // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back.
+        // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back
         Check(failures,
               "a value used after an await with no re-proof is reported",
               @"
@@ -1432,7 +1432,7 @@ namespace LastFrontier
 }",
               "FOSYNC009");
 
-        // Source order is not execution order; these two are what the position-only version got wrong.
+        // Source order is not execution order; these two are what the position-only version got wrong
         Check(failures, "an await in a sibling branch does not reach the other branch", @"
 namespace LastFrontier
 {
@@ -1513,7 +1513,7 @@ namespace LastFrontier
     }
 }");
 
-        // A covered collection covers what is taken out of it -- the acquisition reached the elements too.
+        // A covered collection covers what is taken out of it -- the acquisition reached the elements too
         Check(failures, "an element read by index carries the collection cover", @"
 namespace LastFrontier
 {
@@ -1617,7 +1617,7 @@ namespace LastFrontier
 }");
 
         // The reason the exemption belongs to the value and not to the type system: a prototype derives
-        // from the concrete entity, so excluding it from "entity" would drop the contract on the upcast.
+        // from the concrete entity, so excluding it from "entity" would drop the contract on the upcast
         Check(failures, "a prototype satisfies the obligation on its own", @"
 namespace LastFrontier
 {
@@ -1676,7 +1676,7 @@ namespace LastFrontier
 }",
               "FOSYNC002");
 
-        // Exempting the receiver must not exempt the call.
+        // Exempting the receiver must not exempt the call
         Check(failures,
               "an argument is still checked on a static-data receiver",
               @"
@@ -1690,7 +1690,7 @@ namespace LastFrontier
 }",
               "FOSYNC002");
 
-        // Game carries the whole script surface, so the rule must be scoped to the acquisition methods.
+        // Game carries the whole script surface, so the rule must be scoped to the acquisition methods
         Check(failures, "static map data as an ordinary Game argument is not an acquisition", @"
 namespace LastFrontier
 {
@@ -1894,7 +1894,7 @@ namespace LastFrontier
     // What an acquisition must DENOTE to re-prove a value, and the relations that widen that answer.
     //
     // The distinction these pin is the one the rule was silently getting wrong: an acquisition of a parent
-    // read BEFORE the await mentions the child and denotes something the child may have left.
+    // read BEFORE the await mentions the child and denotes something the child may have left
     private static void CheckDenotation(List<string> failures)
     {
         const string Head = @"
@@ -2718,7 +2718,7 @@ namespace LastFrontier
                                      references,
                                      new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        // A snippet that does not compile would make a diagnostic expectation meaningless.
+        // A snippet that does not compile would make a diagnostic expectation meaningless
         ImmutableArray<Diagnostic> compileErrors =
             compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToImmutableArray();
 

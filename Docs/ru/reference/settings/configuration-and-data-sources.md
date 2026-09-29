@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"45341c72a95e979bea4b5183713fec1714e05e5c524d362886b56fe09f1f8376"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"8beafdb5c68576a4e622ed2f8fa712eabff8a341704024a0b7c0defc086d8edf"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -117,7 +117,7 @@ path, поэтому обязан находиться в самом binary conf
 sub-config, не сокращая его до delta. Каждое имя обязано разрешаться в
 объявленный game setting, иначе baking завершается ошибкой. Список должен
 оставаться узким, чтобы фиксированная internal-config patch area размером
-10000 bytes содержала bootstrap data, а не вторую копию metadata baseline.
+20000 bytes содержала bootstrap data, а не вторую копию metadata baseline.
 
 `GlobalSettings::Save()` по-прежнему выводит только settings из
 `_appliedSettings`, который заполняется keys применённых configs и baking-mode

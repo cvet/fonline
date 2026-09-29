@@ -133,6 +133,14 @@ full path search for every candidate. The server script `Map.FindPathToAny(...)`
 the same operation for a raw start hex or a critter and return both the selected target and route
 length through output arguments.
 
+For a set of targets that each needs a reachability answer rather than one chosen route,
+`PathFinding::FindReachable()` performs one breadth-first flood from `FromHex` and stops when
+all targets are found or `MaxLength` steps are exhausted. `Map.FindReachableHexes(fromHex,
+targetHexes, gagCallback)` exposes it on the server: it returns the reachable targets in input
+order, including repeated targets, and rejects out-of-bounds inputs. It checks only map
+blockers (and optional gag passability), not occupied critter hexes or actor-specific
+multihex clearance; use `FindPathToAny()` when route choice or movement costs matter.
+
 ### A* search and route choice
 
 `FindPath()` uses A*: route cost so far plus the hex distance still needed to

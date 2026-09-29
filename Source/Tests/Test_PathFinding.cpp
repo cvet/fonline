@@ -1260,6 +1260,138 @@ TEST_CASE("PathFinding::AStar")
     }
 }
 
+TEST_CASE("PathFinding::FindReachable")
+{
+    auto blocked_at = [](const vector<uint8_t>& blocked, mpos hex) -> bool { return blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)] != 0; };
+
+    auto make_input = [](mpos from, msize map_size, int32_t max_length, const vector<mpos>& targets, function<HexBlockResult(mpos)> check) -> FindReachableInput {
+        FindReachableInput input;
+        input.FromHex = from;
+        input.MapSize = map_size;
+        input.MaxLength = max_length;
+        input.TargetHexes = targets;
+        input.CheckHex = std::move(check);
+        return input;
+    };
+
+    SECTION("RandomMapsAnswerEveryTargetLikeASingleTargetSearch")
+    {
+        // The flood replaces one search per target, so every answer must be the one that search gives, the length limit
+        // included; the breadth-first reference covers targets the limit cuts off
+        random_generator rnd {28092026};
+        size_t reachable_total = 0;
+        size_t unreachable_total = 0;
+
+        for (int32_t round = 0; round < 150; round++) {
+            vector<uint8_t> blocked = MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(10, 45));
+            auto check = [&blocked, &blocked_at](mpos hex) -> HexBlockResult { return blocked_at(blocked, hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+            auto can_enter = [&blocked, &blocked_at](mpos hex, mdir /*dir*/) -> bool { return !blocked_at(blocked, hex); };
+            mpos from = RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1));
+            int32_t max_length = rnd.next_between(0, 1) == 0 ? 1000 : rnd.next_between(3, 20);
+            vector<mpos> targets;
+
+            for (int32_t i = 0; i < 40; i++) {
+                targets.emplace_back(RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1)));
+            }
+
+            vector<mpos> reachable = PathFinding::FindReachable(make_input(from, RANDOM_MAP_SIZE, max_length, targets, check));
+            vector<int32_t> steps = MeasureSteps(RANDOM_MAP_SIZE, from, can_enter);
+            vector<mpos> expected;
+
+            for (mpos target : targets) {
+                int32_t target_steps = steps[numeric_cast<size_t>(target.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(target.x)];
+                bool expect_reached = target_steps >= 0 && target_steps <= max_length;
+
+                FindPathInput single = MakeClearSettings(from, target);
+                single.MapSize = RANDOM_MAP_SIZE;
+                single.MaxLength = max_length;
+                single.CheckHex = check;
+                auto single_output = PathFinding::FindPath(single);
+                bool single_reached = single_output.Result == FindPathOutput::ResultType::Ok || single_output.Result == FindPathOutput::ResultType::AlreadyHere;
+
+                INFO("round " << round << " from " << from.x << "," << from.y << " target " << target.x << "," << target.y << " limit " << max_length);
+                CHECK(single_reached == expect_reached);
+
+                if (expect_reached) {
+                    expected.emplace_back(target);
+                    reachable_total++;
+                }
+                else {
+                    unreachable_total++;
+                }
+            }
+
+            INFO("round " << round);
+            CHECK(reachable == expected);
+        }
+
+        CHECK(reachable_total > 500);
+        CHECK(unreachable_total > 500);
+    }
+
+    SECTION("DeferredHexesArePassable")
+    {
+        // A gag the caller lets through and a critter make a route dearer, never impossible
+        vector<mpos> targets {POCKET_CENTER};
+        auto ring_of = [](HexBlockResult ring_result) -> function<HexBlockResult(mpos)> { return [ring_result](mpos hex) -> HexBlockResult { return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? ring_result : HexBlockResult::Passable; }; };
+
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::DeferGag))) == targets);
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::DeferCritter))) == targets);
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::Blocked))).empty());
+    }
+
+    SECTION("WalledOffTargetsCostOneFlood")
+    {
+        // Every target inside a closed pocket is refused by the same single flood of the start side, which asks the
+        // map about each hex once however many neighbours reach it
+        vector<mpos> targets;
+
+        for (int32_t i = 0; i < GeometryHelper::HexesInRadius(1); i++) {
+            mpos hex = POCKET_CENTER;
+            REQUIRE(GeometryHelper::MoveHexAroundAway(hex, i, WIDE_MAP_SIZE));
+            targets.emplace_back(hex);
+        }
+
+        int32_t calls = 0;
+        unordered_set<mpos> asked;
+        auto check = [&calls, &asked](mpos hex) -> HexBlockResult {
+            calls++;
+            asked.emplace(hex);
+            return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+        vector<mpos> reachable = PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, check));
+
+        CHECK(reachable.empty());
+        CHECK(calls == numeric_cast<int32_t>(asked.size()));
+        CHECK(calls < numeric_cast<int32_t>(WIDE_MAP_SIZE.width) * numeric_cast<int32_t>(WIDE_MAP_SIZE.height));
+    }
+
+    SECTION("FloodStopsOnceEveryTargetIsReached")
+    {
+        int32_t calls = 0;
+        vector<mpos> targets {mpos {52, 60}, mpos {48, 60}};
+        auto check = [&calls](mpos /*hex*/) -> HexBlockResult {
+            calls++;
+            return HexBlockResult::Passable;
+        };
+        vector<mpos> reachable = PathFinding::FindReachable(make_input(mpos {50, 60}, WIDE_MAP_SIZE, 1000, targets, check));
+
+        CHECK(reachable == targets);
+        CHECK(calls < GeometryHelper::HexesInRadius(4));
+    }
+
+    SECTION("StartAndInvalidHexes")
+    {
+        vector<mpos> targets {mpos {5, 5}, mpos {6, 5}};
+        auto open = [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; };
+
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 0, targets, open)) == vector<mpos> {mpos {5, 5}});
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 1, targets, open)) == targets);
+        CHECK(PathFinding::FindReachable(make_input(mpos {50, 50}, TEST_MAP_SIZE, 100, targets, open)).empty());
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 100, {}, open)).empty());
+    }
+}
+
 TEST_CASE("PathFinding::FreeMovementEndOffset")
 {
     // Projected distance between two map-pixel points (same metric as MovingContext segments)

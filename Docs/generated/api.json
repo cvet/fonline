@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2552,
-      "inventory_sha256": "e3efb8f346b6b8075ed67401086fcb3666017c8e2a109759454ee37769dabc0f",
+      "symbol_count": 2553,
+      "inventory_sha256": "265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2552,
+    "symbol_count": 2553,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 58,
       "enum-value": 773,
       "event": 122,
-      "method": 995,
+      "method": 996,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2551,
+      "experimental": 2552,
       "internal": 1
     },
     "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2552,
+    "explicit_contract_symbol_count": 2553,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2551,
+      "experimental": 2552,
       "internal": 1
     },
-    "described_symbol_count": 2552,
+    "described_symbol_count": 2553,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -21061,7 +21061,7 @@
       ],
       "receiver": "ItemProperty",
       "signature": "ItemProperty.DrawOrderSubLayer = 46",
-      "description": "Fine ordering inside the item's primary draw-order layer",
+      "description": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -84297,7 +84297,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1137
+        "line": 1159
       },
       "contract": {
         "explicit": true,
@@ -84365,7 +84365,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1089
+        "line": 1111
       },
       "contract": {
         "explicit": true,
@@ -84433,7 +84433,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1032
+        "line": 1054
       },
       "contract": {
         "explicit": true,
@@ -84494,7 +84494,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1047
+        "line": 1069
       },
       "contract": {
         "explicit": true,
@@ -84555,7 +84555,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1062
+        "line": 1084
       },
       "contract": {
         "explicit": true,
@@ -84623,7 +84623,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1110
+        "line": 1132
       },
       "contract": {
         "explicit": true,
@@ -84921,7 +84921,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1232
+        "line": 1254
       },
       "contract": {
         "explicit": true,
@@ -84975,7 +84975,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1212
+        "line": 1234
       },
       "contract": {
         "explicit": true,
@@ -85029,7 +85029,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1225
+        "line": 1247
       },
       "contract": {
         "explicit": true,
@@ -85204,6 +85204,67 @@
           "type": "mpos&",
           "nullable": false,
           "by_reference": true,
+          "default": null
+        },
+        {
+          "name": "gagCallback",
+          "type": "callback(bool,Item)",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        }
+      ]
+    },
+    {
+      "id": "script.method.server.Map.FindReachableHexes",
+      "family_id": "script.method.server.Map.FindReachableHexes",
+      "kind": "method",
+      "name": "FindReachableHexes",
+      "runtime_sides": [
+        "server"
+      ],
+      "receiver": "Map",
+      "signature": "mpos[] Map.FindReachableHexes(mpos fromHex, mpos[] targetHexes, callback(bool,Item) gagCallback)",
+      "description": "Answers which target hexes are reachable from the start within the configured path-length limit",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/ServerMapScriptMethods.cpp",
+        "line": 1032
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "scope:native-codegen",
+        "source": {
+          "path": "Source/Common/Common.h",
+          "line": 47
+        },
+        "notes": ""
+      },
+      "declared_target": "server",
+      "receivers": [
+        "Map"
+      ],
+      "return": {
+        "type": "mpos[]",
+        "nullable": false
+      },
+      "arguments": [
+        {
+          "name": "fromHex",
+          "type": "mpos",
+          "nullable": false,
+          "by_reference": false,
+          "default": null
+        },
+        {
+          "name": "targetHexes",
+          "type": "mpos[]",
+          "nullable": false,
+          "by_reference": false,
           "default": null
         },
         {
@@ -88033,7 +88094,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1165
+        "line": 1187
       },
       "contract": {
         "explicit": true,
@@ -88080,7 +88141,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1190
+        "line": 1212
       },
       "contract": {
         "explicit": true,
@@ -88127,7 +88188,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1158
+        "line": 1180
       },
       "contract": {
         "explicit": true,
@@ -88174,7 +88235,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1176
+        "line": 1198
       },
       "contract": {
         "explicit": true,
@@ -88228,7 +88289,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1201
+        "line": 1223
       },
       "contract": {
         "explicit": true,
@@ -88275,7 +88336,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1267
+        "line": 1289
       },
       "contract": {
         "explicit": true,
@@ -88329,7 +88390,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1279
+        "line": 1301
       },
       "contract": {
         "explicit": true,
@@ -88390,7 +88451,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1260
+        "line": 1282
       },
       "contract": {
         "explicit": true,
@@ -88617,7 +88678,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1246
+        "line": 1268
       },
       "contract": {
         "explicit": true,
@@ -88664,7 +88725,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerMapScriptMethods.cpp",
-        "line": 1297
+        "line": 1319
       },
       "contract": {
         "explicit": true,
@@ -91787,8 +91848,10 @@
       ],
       "receiver": "Item",
       "signature": "int8 Item.DrawOrderSubLayer",
-      "description": "Fine ordering inside the item's primary draw-order layer",
+      "description": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
       "flags": [
+        "Mutable",
+        "PublicSync",
         "Persistent",
         "CoreProperty"
       ],
@@ -91812,7 +91875,7 @@
       "access": "common",
       "type": "int8",
       "nullable": false,
-      "mutability": "read-only",
+      "mutability": "mutable",
       "persistent": true
     },
     {

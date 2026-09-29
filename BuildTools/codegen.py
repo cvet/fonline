@@ -36,7 +36,7 @@ ENGINE_HOOK_NAMES = (
 )
 IMGUI_HEADER_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ThirdParty', 'imgui', 'imgui.h'))
 APPLICATION_SOURCE_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Source', 'Frontend', 'Application.cpp'))
-INTERNAL_CONFIG_CAPACITY = 10000
+INTERNAL_CONFIG_CAPACITY = 20000
 
 
 @dataclass(slots=True)

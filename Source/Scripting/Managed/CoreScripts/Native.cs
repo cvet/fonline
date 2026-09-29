@@ -11,7 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 
 // Invoked by the engine when a virtual property with a managed setter is written; the setter may
-// mutate value, and the engine stores the result. Registered via Game.AddPropertySetter.
+// mutate value, and the engine stores the result. Registered via Game.AddPropertySetter
 public delegate void PropertySetter<TEntity, TValue>(TEntity entity, ref TValue value);
 public delegate void PropertySetterWithProperty<TEntity, TProperty, TValue>(TEntity entity, TProperty property,
                                                                             ref TValue value);
@@ -210,7 +210,7 @@ internal static class Native
 
             if (task != null) {
                 if (hasExplicitResult) {
-                    // Native event dispatch cannot advance the subscriber chain until it knows whether to stop.
+                    // Native event dispatch cannot advance the subscriber chain until it knows whether to stop
                     context.Wait(task);
                     object? taskResult = task.GetType().GetProperty("Result")?.GetValue(task);
 
@@ -269,7 +269,7 @@ internal static class Native
 
             // Task-returning script functions are registered as native void callbacks. Waiting here would
             // block the script pump that must fire ScriptTask.Delay's completion event, so let the callback
-            // continue asynchronously and retain deferred exception accounting.
+            // continue asynchronously and retain deferred exception accounting
             if (task.IsCompleted) {
                 task.GetAwaiter().GetResult();
             }
@@ -825,7 +825,7 @@ internal static class Native
 
     // Custom-entity proto lookup (mirrors AngelScript Game_GetProtoCustomEntity / Game_CheckProtoCustomEntity):
     // returns the proto entity pointer for `typeName`/`protoIdHash` (IntPtr.Zero if unknown), or whether it
-    // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities.
+    // exists. Backs the baker-generated Game.GetProto<X> / CheckProto<X> wrappers for custom HasProtos entities
     internal static IntPtr GetProtoEntity(string typeName, IntPtr protoId)
     {
         string ? error;
@@ -875,7 +875,7 @@ internal static class Native
                                                           out string? error);
 
     // Entity-holder accessors (managed equivalent of AngelScript CustomEntity_Add/HasAny/GetOne/GetAll),
-    // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries.
+    // backing generated Add<X>/Has<X>s/Get<X>/Get<X>s methods for metadata EntityHolder entries
     internal static IntPtr CreateInnerEntity(IntPtr holderPtr, int entryId, IntPtr protoId)
     {
         string ? error;
@@ -1051,7 +1051,7 @@ internal static class Native
 
     // Generic property accessors by index (mirror AngelScript Entity_GetValueAsInt/SetValueAsInt and
     // Entity_GetValueAsAny/SetValueAsAny); back the generated Entity.GetAs*/SetAs* wrappers.
-    // propIndex is the property enum's member value.
+    // propIndex is the property enum's member value
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal static int GetEntityValueAsInt(IntPtr entityPtr, int propIndex)
     {
@@ -1374,7 +1374,7 @@ internal static class Native
 
     // Outcome of a managed -> script invocation. Mirrors INVOKE_STATUS_* in ManagedScriptBackend.cpp.
     // Kept distinct because a single bool made "no such function" and "the call failed" the same answer,
-    // and callers legitimately assert the former as a missing bridge.
+    // and callers legitimately assert the former as a missing bridge
     internal const int ScriptInvokeStatusFailed = -1;
     internal const int ScriptInvokeStatusNoCandidate = 0;
     internal const int ScriptInvokeStatusCompleted = 1;
@@ -1392,7 +1392,7 @@ internal static class Native
                                                              out string? error);
 
     // A failed invocation is an error at the callee, not a missing entry: surface it instead of letting the
-    // caller mistake it for one. The engine has already logged the underlying exception with its stack.
+    // caller mistake it for one. The engine has already logged the underlying exception with its stack
     internal static bool InvokeScriptFunc(string funcName, object?[] args)
     {
         int status = InvokeScriptFuncStatus(funcName, args);
@@ -1406,7 +1406,7 @@ internal static class Native
 
     // Registers a managed global script function into the engine's cross-backend function map under a named
     // marker attribute, so a consumer that resolves funcs by attribute (ScriptSystem::FindFunc) can invoke it.
-    // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature.
+    // paramTypeNames/returnTypeName are engine base-type names; the engine builds the matching signature
     internal static void RegisterGlobalScriptFunc(string fullName, string attributeName, string[] paramTypeNames,
                                                   string returnTypeName, Delegate handler)
     {
@@ -1450,7 +1450,7 @@ internal static class Native
 
     // Diagnostic/test: serializes the boxed args and dispatches them through the engine's real inbound
     // remote-call path in-process (no network peer), invoking the registered handler for the named inbound
-    // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side.
+    // "cs" remote call. Used to exercise the managed serialize -> deserialize -> dispatch glue on one side
     internal static void LoopbackRemoteCall(object? caller, string name, object?[] args)
     {
         ThrowNativeError(LoopbackRemoteCallInternal(BoundBackend, caller, name, args));

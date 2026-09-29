@@ -134,6 +134,10 @@ Important responsibilities:
 
 `ClientEngine` owns the semantic handlers. Examples include `Net_OnInitData`, `Net_OnAddCritter`, `Net_OnRemoveCritter`, `Net_OnProperty`, `Net_OnLoadMap`, `Net_OnSomeItems`, `Net_OnRemoteCall`, `Net_OnAddCustomEntity`, and `Net_OnRemoveCustomEntity`.
 
+On an ordinary failed connection attempt, `Net_OnConnect()` clears the pending
+request before firing `OnConnectingFailed`. The main loop does not retry every
+frame; a script or user action must request another `Game.Connect()` explicitly.
+
 For protocol format details, use [Networking](../authority-and-networking/). For client/server handshake validation, see `Source/Tests/Test_ClientServerIntegration.cpp`, especially `ClientAndServerHandshakeOverInterthreadTransport`.
 
 Client-side script continuations scheduled through `ScheduleDelayedCallback()` are processed once per main-loop pass from a snapshot of callbacks already due at the start of that pass. A callback that schedules another zero-delay callback, including `Yield(0)`, resumes on the next pass instead of re-entering immediately. This prevents script wait loops from starving the next network/input tick.

@@ -3957,8 +3957,8 @@
           "translation": "Рисует повторные спрайты предмета на явно заданных гексах MultihexMesh."
         },
         "/properties/@id=map-format.property.Item.DrawOrderSubLayer/description": {
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
-          "translation": "Точная сортировка внутри основного слоя порядка отрисовки предмета."
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
+          "translation": "Точный порядок внутри основного слоя отрисовки предмета; изменение синхронизируется во время игры."
         },
         "/properties/@id=map-format.property.Item.Elevation/description": {
           "source_sha256": "1a2a1b15c27eca391a5e41748dc34b495971a1be9dd6d1f4bf7c1cb3a34cd53b",
@@ -5274,8 +5274,8 @@
           "translation": "Рисует повторные спрайты предмета на явно заданных гексах MultihexMesh."
         },
         "/properties/@id=prototype-format.property.Item.DrawOrderSubLayer/description": {
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
-          "translation": "Точная сортировка внутри основного слоя порядка отрисовки предмета."
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
+          "translation": "Точный порядок внутри основного слоя отрисовки предмета; изменение синхронизируется во время игры."
         },
         "/properties/@id=prototype-format.property.Item.Elevation/description": {
           "source_sha256": "1a2a1b15c27eca391a5e41748dc34b495971a1be9dd6d1f4bf7c1cb3a34cd53b",
@@ -11552,8 +11552,8 @@
           "translation": "У предмета нет владельца в виде карты, криттера или предмета-контейнера."
         },
         "/symbols/@id=script.enum-value.ItemProperty.DrawOrderSubLayer/description": {
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
-          "translation": "Точный порядок внутри основного слоя отрисовки предмета"
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
+          "translation": "Точный порядок внутри основного слоя отрисовки предмета; изменение синхронизируется во время игры"
         },
         "/symbols/@id=script.enum-value.ItemProperty.None/description": {
           "source_sha256": "12947acaacda01841188bed6f9d9c21864529bc16b0f5984bab37ba39e056544",
@@ -16591,6 +16591,10 @@
           "source_sha256": "cb862a100b14a95320ba4e880f398d5875c06b95337b1efb4867000b873229f2",
           "translation": "SyncScope: требует self; поиск пути читает блокировки карты и необязательные предметы callback-фильтра."
         },
+        "/symbols/@id=script.method.server.Map.FindReachableHexes/description": {
+          "source_sha256": "0b0db970ebc95869d95fcc034ed9b018c72cb0c8977ab74164ba95b30658df4d",
+          "translation": "Определяет, какие целевые гексы достижимы от начального в пределах заданной максимальной длины пути."
+        },
         "/symbols/@id=script.method.server.Map.GetCritter%23beaf90ce99481bb9/description": {
           "source_sha256": "530a7eddf2a40ebf64d5bcf8127ef64d8a2a2091bc0728391aa7363c23f0585e",
           "translation": "SyncScope: требует self; возвращенный криттер входит в покрытие self, пока сохраняется покрытие карты."
@@ -17152,8 +17156,8 @@
           "translation": "Рисует повторные спрайты предмета на явно заданных гексах MultihexMesh."
         },
         "/symbols/@id=script.property.Item.DrawOrderSubLayer/description": {
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
-          "translation": "Точный порядок внутри основного слоя отрисовки предмета."
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
+          "translation": "Точный порядок внутри основного слоя отрисовки предмета; изменение синхронизируется во время игры."
         },
         "/symbols/@id=script.property.Item.Elevation/description": {
           "source_sha256": "1a2a1b15c27eca391a5e41748dc34b495971a1be9dd6d1f4bf7c1cb3a34cd53b",

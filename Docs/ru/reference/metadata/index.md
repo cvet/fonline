@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"965fa47d762187bfe24a7dc9e01537ccb140850779816a9484b2c953058ca1e0"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"b9be8ba2ab758154b5960750b2e37912773155010bbf1fb92016011b564ad21e"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -218,7 +218,7 @@ Generated files являются build artifacts. Документируйте �
 Стадия создаёт обычный и принудительный command target генерации кода и добавляет `CodeGeneration` в `FO_GEN_DEPENDENCIES`.
 
 `InternalConfig.gen.inc` резервирует фиксированную движком patch area размером
-10000 bytes. Подключаемый проект не может менять её размер; перед записью
+20000 bytes. Подключаемый проект не может менять её размер; перед записью
 bootstrap config `package.py` определяет точную ёмкость по markers в generated
 binary.
 
@@ -287,7 +287,7 @@ Generated `summary` сообщает число symbols по kind и stability, 
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2492 InventorySha256=8f70fbf7882f6b81ca6141efc8e3e0240eb97b0e8a9b36fe6be530345846f4ab
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2553 InventorySha256=265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```

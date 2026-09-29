@@ -7248,6 +7248,30 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current generated API documents both logging methods.",
       "compatibility": "Generated bindings and baked resources must match the Engine revision.",
       "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.5209e38dbcbb2efb",
+      "baseline_contract_sha256": "528d6b186b3841f66148548117536f8ef27ce0c414ffeeacf32da03fa5906793",
+      "current_contract_sha256": "3793cfff44caa5db761f882c757781e638ebd081072b5a456dc1bb69a1efcda4",
+      "classification": "breaking",
+      "rationale": "The revision-pinned experimental API inventory adds Map.FindReachableHexes; existing symbol IDs and signatures remain unchanged.",
+      "migration": "No released API migration exists. Embedding projects regenerate bindings and rebake when updating Engine.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current maps and movement guide documents the reachability operation.",
+      "compatibility": "Generated bindings and baked resources must match the Engine revision.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.394349076421acba",
+      "baseline_contract_sha256": "528d6b186b3841f66148548117536f8ef27ce0c414ffeeacf32da03fa5906793",
+      "current_contract_sha256": "3793cfff44caa5db761f882c757781e638ebd081072b5a456dc1bb69a1efcda4",
+      "classification": "breaking",
+      "rationale": "Item.DrawOrderSubLayer becomes mutable and publicly synchronized so live map-item sort order reaches clients and refreshes their sprites.",
+      "migration": "No stored property rename or value conversion is needed. Rebake both client and server metadata from one revision and review authored layer values.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current rendering guide and generated property reference document this behavior.",
+      "compatibility": "Deploy matching Engine binaries and client/server resources; never mix metadata from separate bakes.",
+      "owner": "rendering"
     }
   ]
 }

@@ -97,7 +97,7 @@ public sealed class NoPatchPointAttribute : Attribute
 // registration phase (InitializeEarly, right after the engine attribute funcs), NOT at [ModuleInit]
 // time: registration must also happen inside bake-time validation engines, which load the compiled
 // assembly to restore the script subsystem for reflection (ScriptSystem::FindFunc) but never run
-// game module initialization.
+// game module initialization
 [AttributeUsage(AttributeTargets.Method)]
 public sealed class ScriptFuncRegistrarAttribute : Attribute
 {
@@ -107,7 +107,7 @@ public sealed class ScriptFuncRegistrarAttribute : Attribute
 // (AngelScriptAttributes.cpp). They tag methods (or classes) for the managed runtime/baker to wire up —
 // time events, property getters/setters, remote calls, item triggers, etc. They are markers (no arguments);
 // AttributeTargets.All keeps them permissive across the targets they decorate. Markers for project-specific
-// extensions live in the embedding project, not here.
+// extensions live in the embedding project, not here
 [EntryPointMarker]
 [AttributeUsage(AttributeTargets.All)]
 public sealed class TimeEventAttribute : Attribute
@@ -195,19 +195,19 @@ public sealed class AnimCallbackAttribute : Attribute
 // `.map` (critter), `.holder` (item) and `.location` (map), but those are the same relation at
 // different levels: the engine's own sync hierarchy parent (ServerEntity::_parent, which the lock
 // machinery walks). Naming it `Map` would be wrong the moment the annotated entity is an item, whose
-// parent may be a critter, a map or a containing item.
+// parent may be a critter, a map or a containing item
 [Flags]
 public enum CoverReach
 {
     None = 0,
 
-    // The immediate parent in the sync hierarchy: a critter's map, an item's holder, a map's location.
+    // The immediate parent in the sync hierarchy: a critter's map, an item's holder, a map's location
     Parent = 1 << 0,
 
-    // The whole parent chain, not just one step -- the legacy `cr.map.location` shape.
+    // The whole parent chain, not just one step -- the legacy `cr.map.location` shape
     Ancestors = 1 << 1,
 
-    // Not a navigation step but a closure: everything the entity's destruction would cascade through.
+    // Not a navigation step but a closure: everything the entity's destruction would cascade through
     DestroyGraph = 1 << 2,
 
     // There is deliberately NO ControlledCritter / OwningPlayer member. Critter and Player are linked
@@ -220,7 +220,7 @@ public enum CoverReach
     // "EXACTLY the requested entities plus each one's sync-widen partner, and NOTHING else"
     // (Server/EntitySync.cpp). Holding a map covers the critters beneath it, but holding a critter does
     // not reach up to its map -- sibling-to-parent escalation and parent-cover reduction were both
-    // removed deliberately.
+    // removed deliberately
 }
 
 // Declares that the CALLER must already hold synchronization cover for this entity when it calls the
@@ -245,7 +245,7 @@ public enum CoverReach
 // On a METHOD it names the receiver instead of a parameter: `cr.SendGlobalMapGroupInfo()` needs `cr`
 // covered, and the receiver is not in the parameter list. That is the dominant shape among the engine's
 // own exports -- 44 of the 74 native cover contracts are exactly "the receiver" -- so it is the form
-// codegen emits for a server entity export by default.
+// codegen emits for a server entity export by default
 [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.Method, AllowMultiple = false)]
 public sealed class RequiresCoverAttribute : Attribute
 {
@@ -261,7 +261,7 @@ public sealed class RequiresCoverAttribute : Attribute
 // caller may pass that value to a [RequiresCover] position without acquiring anything else. Fixture and
 // resolution helpers that lock what they hand back are the common case; without this half every such
 // helper's callers read as violations. Distinct from [SyncCover]: that one is a request to the
-// dispatcher before a context starts, this one is a statement about what a call returns.
+// dispatcher before a context starts, this one is a statement about what a call returns
 [AttributeUsage(AttributeTargets.Parameter | AttributeTargets.ReturnValue, AllowMultiple = false)]
 public sealed class ProvidesCoverAttribute : Attribute
 {
@@ -376,7 +376,7 @@ public sealed class PassesCoverAttribute : Attribute
 // lost cover it still holds.
 //
 // It says nothing about lifetime: the entity may have been destroyed while the callee ran, so a caller
-// that keeps using it still owes the ordinary liveness check.
+// that keeps using it still owes the ordinary liveness check
 [AttributeUsage(AttributeTargets.Method, AllowMultiple = false)]
 public sealed class PreservesCoverAttribute : Attribute
 {

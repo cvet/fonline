@@ -481,7 +481,7 @@ Client `.fores` bases are written from sorted normalized paths with no serialize
 
 Packaging may delegate deterministic resource-archive reuse to the project-owned helper named by `FO_RESOURCE_ARCHIVE_CACHE_HELPER`. The helper receives `restore`, `store`, and `release` operations under a content-and-compression key; a miss or explicitly unavailable optional cache falls back to local creation. A restored `.fores` still passes payload validation, so caching cannot weaken updater integrity checks.
 
-The internal config patch area has a fixed Engine-owned capacity of 10000 bytes;
+The internal config patch area has a fixed Engine-owned capacity of 20000 bytes;
 embedding projects cannot resize it. `package.py` discovers the reserved size
 from the generated binary markers before writing bootstrap config data.
 

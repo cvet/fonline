@@ -98,13 +98,40 @@ TEST_CASE("MapSpriteListDrawOrder")
         constexpr mpos ROW_NEIGHBOUR {102, 99};
         uint64_t wall_on_neighbour = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, WALL_SUB_LAYER);
         uint64_t item_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, WALL_CELL, SCENERY_SUB_LAYER);
-        uint64_t critter_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, SCENERY_SUB_LAYER);
         uint64_t item_on_neighbour = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, ROW_NEIGHBOUR, SCENERY_SUB_LAYER);
 
         CHECK(GeometryHelper::GetHexScreenRow(ROW_NEIGHBOUR) == GeometryHelper::GetHexScreenRow(WALL_CELL));
         CHECK(wall_on_neighbour < item_here);
-        CHECK(item_here < critter_here);
-        CHECK(critter_here < item_on_neighbour);
+        CHECK(item_here < item_on_neighbour);
+    }
+
+    SECTION("CritterStandsInFrontOfEveryItemOfItsRow")
+    {
+        // A critter on an item's row stands at the item's front edge or beside it, so a wide item anchored on the larger X
+        // (screen left) must not draw later and paint over the critter's body while its feet stand in front of the item
+        constexpr mpos ROW_NEIGHBOUR {102, 99};
+
+        CHECK(GeometryHelper::GetHexScreenRow(ROW_NEIGHBOUR) == GeometryHelper::GetHexScreenRow(WALL_CELL));
+
+        for (mpos critter_hex : {WALL_CELL, ROW_NEIGHBOUR}) {
+            uint64_t critter = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, critter_hex, SCENERY_SUB_LAYER);
+
+            for (mpos item_hex : {WALL_CELL, ROW_NEIGHBOUR}) {
+                uint64_t lowest_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, item_hex, std::numeric_limits<int8_t>::min());
+                uint64_t highest_item = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Item, item_hex, std::numeric_limits<int8_t>::max());
+                uint64_t particles = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Particles, item_hex, SCENERY_SUB_LAYER);
+
+                CHECK(lowest_item < critter);
+                CHECK(highest_item < critter);
+                CHECK(critter < particles);
+            }
+        }
+
+        // Critters of one row keep their sideways order among themselves
+        uint64_t critter_here = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, WALL_CELL, SCENERY_SUB_LAYER);
+        uint64_t critter_on_neighbour = MapSpriteList::MakeDrawOrderPos(DrawOrderType::Critter, ROW_NEIGHBOUR, SCENERY_SUB_LAYER);
+
+        CHECK(critter_here < critter_on_neighbour);
     }
 
     SECTION("SubLayerNeverOutranksTheRow")

@@ -217,7 +217,7 @@ Important command arguments include:
 
 The stage creates normal and forced code-generation command targets and appends `CodeGeneration` to `FO_GEN_DEPENDENCIES`.
 
-`InternalConfig.gen.inc` reserves a fixed Engine-owned 10000-byte patch area. The
+`InternalConfig.gen.inc` reserves a fixed Engine-owned 20000-byte patch area. The
 embedding project cannot resize it; `package.py` discovers that exact capacity
 from the generated binary markers before writing the bootstrap config.
 
@@ -286,7 +286,7 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 
 ```cpp
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2492 InventorySha256=8f70fbf7882f6b81ca6141efc8e3e0240eb97b0e8a9b36fe6be530345846f4ab
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2553 InventorySha256=265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8
 ///@ ApiContract script.method.common.Game.LoadData experimental Since=0.4.0 Example=Docs/Examples/LoadData.md
 ///@ ApiContract script.method.common.Game.OldCall deprecated DeprecatedSince=0.5.0 Replacement=script.method.common.Game.NewCall Removal=1.0.0
 ```

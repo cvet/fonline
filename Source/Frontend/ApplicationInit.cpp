@@ -287,6 +287,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         }
     }
     else {
+        // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
+        // honoured; refusing it keeps a launch from silently running with settings the caller did not get
+        for (size_t i = 0; i < args.size(); i++) {
+            string_view arg_view = strex(args.Get(i)).trim().strv();
+
+            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
+                throw AppInitException("Sub configs are not available in a packaged build", i + 1 < args.size() ? args.Get(i + 1) : string_view {});
+            }
+        }
+
         settings.ApplyInternalConfig();
     }
 

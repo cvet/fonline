@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 // remote-call handlers, mirroring how AngelScript wires inbound remote calls (RegisterAngelScriptRemoteCalls).
 // Runs once during Initializator.InitializeEarly; the engine keeps only the handlers whose name is inbound on this side
 // (subsystem "cs" in the remote-call metadata), so reflecting a method that is outbound on this side (the
-// opposite peer's caller) is harmless. Remote calls always return void, so handlers are Action<...> delegates.
+// opposite peer's caller) is harmless. Remote calls always return void, so handlers are Action<...> delegates
 internal static class RemoteCallScriptFuncs
 {
     internal static void RegisterRemoteCalls()
@@ -41,7 +41,7 @@ internal static class RemoteCallScriptFuncs
         }
 
         // Remote calls do not return wire values. Task handlers must release the inbound network pump as
-        // soon as they suspend; waiting here deadlocks handlers whose continuation needs a later client tick.
+        // soon as they suspend; waiting here deadlocks handlers whose continuation needs a later client tick
         Delegate handler;
 
         if (method.ReturnType == typeof(void)) {

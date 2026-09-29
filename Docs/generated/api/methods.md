@@ -2865,6 +2865,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-map-findpathtoany-d989184e940c3179-c6400073d0"></a>
 - [`symbol-script-method-server-map-findpathtoany-d989184e940c3179-c6400073d0`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-findpathtoany-d989184e940c3179-c6400073d0)
 
+<a id="symbol-script-method-server-map-findreachablehexes-314885e176"></a>
+- [`symbol-script-method-server-map-findreachablehexes-314885e176`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-findreachablehexes-314885e176)
+
 <a id="symbol-script-method-server-map-getcritter-beaf90ce99481bb9-129bd324f3"></a>
 - [`symbol-script-method-server-map-getcritter-beaf90ce99481bb9-129bd324f3`](../../en/reference/script-api/methods.md#symbol-script-method-server-map-getcritter-beaf90ce99481bb9-129bd324f3)
 

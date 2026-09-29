@@ -382,6 +382,87 @@ auto PathFinding::FindPath(const FindPathInput& input) -> FindPathOutput
     return output;
 }
 
+auto PathFinding::FindReachable(const FindReachableInput& input) -> vector<mpos>
+{
+    FO_TRACE_ZONE(Map);
+
+    msize map_size = input.MapSize;
+    vector<mpos> reachable;
+
+    if (!map_size.is_valid_pos(input.FromHex)) {
+        return reachable;
+    }
+
+    unordered_set<mpos> targets_left;
+    targets_left.reserve(input.TargetHexes.size());
+
+    for (mpos target_hex : input.TargetHexes) {
+        if (map_size.is_valid_pos(target_hex)) {
+            targets_left.emplace(target_hex);
+        }
+    }
+
+    PathSearchGrid grid {map_size};
+    vector<mpos> flood;
+    flood.emplace_back(input.FromHex);
+    grid.GetCell(input.FromHex).Reached = true;
+    targets_left.erase(input.FromHex);
+
+    // Hexes are expanded in the order they were reached, so each is reached by its fewest steps
+    for (size_t i = 0; i < flood.size() && !targets_left.empty(); i++) {
+        mpos hex = flood[i];
+        int32_t steps = grid.GetCell(hex).Steps;
+
+        if (steps >= input.MaxLength) {
+            continue;
+        }
+
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            ipos32 raw_next_hex = ipos32 {hex.x, hex.y};
+            GeometryHelper::MoveHexByDirUnsafe(raw_next_hex, hdir(dir_value));
+
+            if (!map_size.is_valid_pos(raw_next_hex)) {
+                continue;
+            }
+
+            mpos next_hex = map_size.from_raw_pos(raw_next_hex);
+            PathSearchCell& next_cell = grid.GetCell(next_hex);
+
+            if (next_cell.Reached) {
+                continue;
+            }
+
+            // A blocked hex is refused to every neighbour, so the map is asked about it once
+            if (next_cell.Answer == 0) {
+                next_cell.Answer = numeric_cast<uint8_t>(static_cast<int8_t>(input.CheckHex(next_hex)) + 2);
+            }
+
+            if (static_cast<HexBlockResult>(next_cell.Answer - 2) == HexBlockResult::Blocked) {
+                continue;
+            }
+
+            next_cell.Reached = true;
+            next_cell.Steps = steps + 1;
+            flood.emplace_back(next_hex);
+            targets_left.erase(next_hex);
+        }
+    }
+
+    for (mpos target_hex : input.TargetHexes) {
+        if (!map_size.is_valid_pos(target_hex)) {
+            continue;
+        }
+
+        nptr<const PathSearchCell> cell = grid.FindCell(target_hex);
+
+        if (cell && cell->Reached) {
+            reachable.emplace_back(target_hex);
+        }
+    }
+
+    return reachable;
+}
+
 auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 {
     FO_TRACE_ZONE(Map);

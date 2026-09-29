@@ -415,8 +415,45 @@ internal static class Program
             Console.WriteLine("FAIL awaited invocation: " + ex.Message);
         }
 
-        Console.WriteLine($"{cases.Length + 1 - failures}/{cases.Length + 1} passed");
+        try {
+            Check(await ExceptionScopeFollowsItsFlow(), "An exception scope lost or borrowed a fault across threads");
+            Console.WriteLine("PASS exception scope follows its logical flow");
+        }
+        catch (Exception ex) {
+            failures++;
+            Console.WriteLine("FAIL exception scope follows its logical flow: " + ex.Message);
+        }
+
+        Console.WriteLine($"{cases.Length + 2 - failures}/{cases.Length + 2} passed");
         return failures == 0 ? 0 : 1;
+    }
+
+    // A fault recorded by another flow must not reach a scope, and the scope's own faults must follow it wherever an
+    // await resumes the flow; a nested scope sees only what happened while it was open
+    private static async Task<bool> ExceptionScopeFollowsItsFlow()
+    {
+        using ScriptExceptions.Scope outer = ScriptExceptions.OpenScope();
+        var foreign = new System.Threading.Thread(
+            () => ScriptExceptions.RecordCaught(new InvalidOperationException("foreign flow")));
+
+        using (System.Threading.ExecutionContext.SuppressFlow())
+        {
+            foreign.Start();
+        }
+
+        foreign.Join();
+        await Task.Yield();
+        ScriptExceptions.RecordCaught(new InvalidOperationException("own flow"));
+        int innerCount;
+
+        using (ScriptExceptions.Scope inner = ScriptExceptions.OpenScope())
+        {
+            await Task.Delay(1);
+            ScriptExceptions.RecordCaught(new InvalidOperationException("nested flow"));
+            innerCount = inner.Count;
+        }
+
+        return innerCount == 1 && outer.Count == 2;
     }
 
     private static void Check(bool condition, string message)

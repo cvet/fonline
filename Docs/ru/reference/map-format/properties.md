@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-properties","locale":"ru","source_path":"Docs/en/reference/map-format/properties.md","source_sha256":"af65f2725aea35e283032051d4b354485fc27b686baf82a522600e57c0f40904"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-properties","locale":"ru","source_path":"Docs/en/reference/map-format/properties.md","source_sha256":"9992fff06c67866d7e11d6691029f63b643add6605ab5a9f122e4b573da58555"} -->
 
 # Свойства размещений карты
 
@@ -108,7 +108,7 @@ generated: true
 | <a id="entry-map-format-property-item-drawflatten-19e4bc608a"></a><code>DrawFlatten</code> | <code>bool</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L266) |
 | <a id="entry-map-format-property-item-drawmultihexlines-a5c1da7179"></a><code>DrawMultihexLines</code> | <code>bool</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L181) |
 | <a id="entry-map-format-property-item-drawmultihexmesh-0d21d19dbe"></a><code>DrawMultihexMesh</code> | <code>bool</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L184) |
-| <a id="entry-map-format-property-item-drawordersublayer-4265fda1d4"></a><code>DrawOrderSubLayer</code> | <code>int8</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L269) |
+| <a id="entry-map-format-property-item-drawordersublayer-4265fda1d4"></a><code>DrawOrderSubLayer</code> | <code>int8</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L269) |
 | <a id="entry-map-format-property-item-elevation-014687bbb5"></a><code>Elevation</code> | <code>int16</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Mutable</code>, <code>PublicSync</code>, <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L132) |
 | <a id="entry-map-format-property-item-explicitlypersistent-15f1a746b2"></a><code>ExplicitlyPersistent</code> | <code>bool</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code>, <code>SharedProperty</code> | [Source/Common/Entity.h](https://github.com/cvet/fonline/blob/master/Source/Common/Entity.h#L92) |
 | <a id="entry-map-format-property-item-hex-c4d6fd7ef9"></a><code>Hex</code> | <code>mpos</code> | да | <code>server</code>, <code>client</code>, <code>mapper</code> | <code>Persistent</code>, <code>CoreProperty</code> | [Source/Common/EntityProperties.h](https://github.com/cvet/fonline/blob/master/Source/Common/EntityProperties.h#L129) |

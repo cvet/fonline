@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4813,
-    "current_count": 4813,
+    "entry_count": 4814,
+    "current_count": 4814,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2554,
-      "current_count": 2554,
+      "entry_count": 2555,
+      "current_count": 2555,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -4396,8 +4396,8 @@
         },
         {
           "locator": "/symbols/@id=script.enum-value.ItemProperty.DrawOrderSubLayer/description",
-          "source": "Fine ordering inside the item's primary draw-order layer",
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
+          "source": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
           "status": "current"
         },
         {
@@ -12424,6 +12424,12 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=script.method.server.Map.FindReachableHexes/description",
+          "source": "Answers which target hexes are reachable from the start within the configured path-length limit",
+          "source_sha256": "0b0db970ebc95869d95fcc034ed9b018c72cb0c8977ab74164ba95b30658df4d",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=script.method.server.Map.GetCritter%23beaf90ce99481bb9/description",
           "source": "SyncScope: requires self; returned critter is covered by self while the map cover remains",
           "source_sha256": "530a7eddf2a40ebf64d5bcf8127ef64d8a2a2091bc0728391aa7363c23f0585e",
@@ -13265,8 +13271,8 @@
         },
         {
           "locator": "/symbols/@id=script.property.Item.DrawOrderSubLayer/description",
-          "source": "Fine ordering inside the item's primary draw-order layer",
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
+          "source": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
           "status": "current"
         },
         {
@@ -21918,8 +21924,8 @@
         },
         {
           "locator": "/properties/@id=map-format.property.Item.DrawOrderSubLayer/description",
-          "source": "Fine ordering inside the item's primary draw-order layer",
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
+          "source": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
           "status": "current"
         },
         {
@@ -26719,8 +26725,8 @@
         },
         {
           "locator": "/properties/@id=prototype-format.property.Item.DrawOrderSubLayer/description",
-          "source": "Fine ordering inside the item's primary draw-order layer",
-          "source_sha256": "09fffcb8a2abf5b5017932af896fc9de4a70d9191712336f545ab9a85e307551",
+          "source": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
+          "source_sha256": "55fb2bfaa60af95d8078bb9e8e7479fcf877e7408b86da776626d6946d46a736",
           "status": "current"
         },
         {

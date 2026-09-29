@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"2e1316c8137c8e9dea1ef2c7d8e8c67547d12a5618d6995bb0d0802366468eb6"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"35098b15063ce35ad3615b9f7d04a08d42bf81898cbf0a2e4a98000c08fb7314"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -60,7 +60,9 @@ SetOption(FO_NICE_NAME "My Game")
 6. platform/build auto-settings.
 
 В packaged applications внешний `.fomain` заменяется generated internal
-config с фиксированной движком patch area размером 10000 bytes. Root-значения
+config с фиксированной движком patch area размером 20000 bytes. У packaged
+build нет таблицы sub-config: `-ApplySubConfig` отвергается, а нужный вариант
+следует выбрать при сборке пакета. Root-значения
 game settings также передаются в metadata, а internal config содержит только
 deltas выбранного sub-config, включая явные false или empty overrides. Command
 line всё равно применяется после local config. Более поздние слои

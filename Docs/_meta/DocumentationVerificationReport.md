@@ -2,6 +2,22 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-29 - path reachability, draw order, packaged config, and managed diagnostics
+
+Scope and source revisions:
+
+- Reconciled Engine documentation head `099cae81d5b1636c2ac40e85c17e7692bad0704a` with eight incoming commits through `4d82291d5ab6b0ded85cf28e781f08528cb9b456` (merge base `aca8173bd09ecc96cb34ca128eb2c9e81dd77f88`). Read the changed pathfinding, server map API and tests, sprite ordering and synchronization tests, Direct3D initialization, client connection state, packaged startup, managed exception accounting, code generation and their legacy-documentation edits.
+- Kept legacy overview routes as pointers. The incoming facts were reconciled in canonical EN/RU pages for maps and movement, rendering, client runtime/updater, project configuration, metadata, managed scripting, and settings.
+
+Documentation and contract reconciliation:
+
+- Described `Map.FindReachableHexes` as a bounded multi-target flood rather than an actor route, the synchronized and mutable `Item.DrawOrderSubLayer` plus item sprite refresh, layer-before-sub-layer screen-row ordering, device-owned DXGI swap-chain factory, explicit retry after a failed connection, packaged-build rejection of `-ApplySubConfig`, logical-flow exception scopes, and the Engine-owned 20000-byte internal-config area.
+- Restored the displaced `Map.AddCritter` source description and gave the new map method its own description. Native API inventory is 2553 symbols; Russian generated-description coverage is 4814/4814. Regenerated native API, prototype-format and map-format models/references, public index, source inventory, locale status, snippets, site/search/routes, AI evaluation and delivery. The seventeen-domain contract diff against the old documentation head reports six changes (four API, one prototype-format, one map-format) and two reviewed dispositions, with none missing. No separate public breaking-change history is introduced before the first Engine release.
+
+Validation and limits:
+
+- Native/API generators, descriptions, localization, site, AI delivery, and the contract-diff gate passed. Focused documentation tests first found only two fixed inventory-count expectations; the complete selected 81-test rerun passed, and the full documentation validator passed 408 Markdown entries. The `LF_UnitTests` build succeeded; focused native pathfinding, sprite-order and config cases passed 21,727 assertions. Managed CoreScripts passed 34/34 self-tests and analyzer self-tests passed. Project bake/integration checks are tracked in the active project sync plan; source and docs checks do not establish visible Windows 7, gameplay, or production acceptance.
+
 ## 2026-09-26 - pre-channel refusal, client diagnostics, and Direct3D reconciliation
 
 Scope and source revisions:

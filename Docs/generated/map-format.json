@@ -1913,14 +1913,16 @@
       "skipped_sides": [],
       "authorable": true,
       "excluded_reason": null,
-      "mutability": "read-only",
+      "mutability": "mutable",
       "persistent": true,
       "flags": [
+        "Mutable",
+        "PublicSync",
         "Persistent",
         "CoreProperty"
       ],
       "stability": "internal",
-      "description": "Fine ordering inside the item's primary draw-order layer",
+      "description": "Fine ordering inside the item's primary draw-order layer; synchronized when changed at runtime",
       "source": {
         "path": "Source/Common/EntityProperties.h",
         "line": 269
@@ -3561,5 +3563,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "afd0f11724f13fbf0f0e4720f5005ba243dbc068ad36eca61616bebfd4eb8cbb"
+  "contract_digest": "78fa6bc9772d2f2ac4ad9c435e388b7deee51232b35c99a3ca34b3af588a1e4e"
 }

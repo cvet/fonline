@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"c1e66e2df9b1c6c424210a90272cf31461b7df240c916c0e701c6a15e1543f7f"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"d8506856b4f6171d0d4b195c005860f97f5c1ab766fb734d64413b27ad0276ea"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -528,7 +528,7 @@ Packaging может передать reuse детерминированных r
 получает операции `restore`, `store` и `release` с ключом содержимого и
 compression и минимального выигрыша; miss или явно недоступный optional cache переходят к локальному созданию. Восстановленный `.fores` всё равно проходит полную проверку payload, поэтому caching не ослабляет проверку updater.
 
-Internal config patch area имеет фиксированную движком ёмкость 10000 bytes;
+Internal config patch area имеет фиксированную движком ёмкость 20000 bytes;
 подключаемые проекты не могут менять её размер. Перед записью bootstrap config
 `package.py` читает реальный reserved marker из binary.
 
