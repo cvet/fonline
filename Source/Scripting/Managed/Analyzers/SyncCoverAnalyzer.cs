@@ -16,7 +16,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 //
 // This replaces the `// SyncScope:` comment convention and the external dataflow audit that read
 // AngelScript only. The contract lives on the parameter, so it survives refactoring, is visible in an IDE
-// while typing, and is checked by the same compiler pass that already gates code style.
+// while typing, and is checked by the same compiler pass that already gates code style
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 {
@@ -70,7 +70,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
             "the two throws, and only the scope, a ref struct, makes holding it across an await a compile error.");
 
     // FOSYNC006 (singleton lock left held) and FOSYNC007 (singleton lock held across an await) are retired: the
-    // GameLock scope releases on every path, and the compiler rejects a ref struct local that survives an await.
+    // GameLock scope releases on every path, and the compiler rejects a ref struct local that survives an await
 
     internal static readonly DiagnosticDescriptor CoverLostToAwaitRule = new DiagnosticDescriptor(
         id: "FOSYNC009", title: "Cover for a value is not re-proved after an await",
@@ -210,7 +210,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
     // The two rules the retired sync-flow audit owned that need no dataflow at all: they are about which
     // surface a call reaches for, not about what it proves. Both are scoped by the *symbol's* containing
-    // type, so a project class called Sync or Game cannot silently satisfy or trip them.
+    // type, so a project class called Sync or Game cannot silently satisfy or trip them
     private static void AnalyzeSyncSurfaceUse(SyntaxNodeAnalysisContext context, CoverModel model)
     {
         var invocation = (InvocationExpressionSyntax)context.Node;
@@ -222,7 +222,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         INamedTypeSymbol? callerType = (context.ContainingSymbol as IMethodSymbol)?.ContainingType;
 
-        // Inside Sync itself both are the implementation, not a smell.
+        // Inside Sync itself both are the implementation, not a smell
         if (model.SyncType != null && SymbolEqualityComparer.Default.Equals(callerType, model.SyncType)) {
             return;
         }
@@ -308,7 +308,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         // dispatcher's cover across an await) is exactly where the class this rule names lives.
         //
         // It reports only where the ordinary discharge is satisfied, so a value with no cover at all is
-        // FOSYNC002's to report and is not said twice.
+        // FOSYNC002's to report and is not said twice
         ReportCoverLostToAwait(context,
                                model,
                                body,
@@ -320,14 +320,14 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
                                semantics,
                                cancellationToken);
 
-        // A caller that re-declares the obligation passes it on; that is a discharge here.
+        // A caller that re-declares the obligation passes it on; that is a discharge here
         if (caller != null && caller.Parameters.Any(model.HasRequiresCover)) {
             return;
         }
 
         // The cover primitives are the mechanism, not a consumer of it: `Sync` walks the hierarchy to
         // decide what to acquire, so demanding that it already hold cover for what it is about to acquire
-        // is circular. Nothing else is exempt.
+        // is circular. Nothing else is exempt
         if (caller != null && model.SyncType != null &&
             SymbolEqualityComparer.Default.Equals(caller.ContainingType, model.SyncType)) {
             return;
@@ -342,7 +342,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             // Baked map data and prototypes are covered by being what they are, so the obligation is met
             // the moment it is stated. Only the receiver is exempt here: the call's own arguments are
-            // checked below either way.
+            // checked below either way
             if (!model.IsAlwaysCovered(semantics.GetTypeInfo(receiver, cancellationToken).Type) &&
                 !model.ComesFromProvidedCover(receiver, semantics, cancellationToken) &&
                 !model.CoveredByEarlierCall(body, receiver, semantics, cancellationToken)) {
@@ -364,18 +364,18 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
             }
 
             // A parameter typed as the mutable half accepts the always-covered half too, since both derive
-            // from the same base. Such a value satisfies the obligation on its own.
+            // from the same base. Such a value satisfies the obligation on its own
             if (argument != null && model.IsAlwaysCovered(semantics.GetTypeInfo(argument, cancellationToken).Type)) {
                 continue;
             }
 
-            // An argument handed over by a [ProvidesCover] source arrives already covered.
+            // An argument handed over by a [ProvidesCover] source arrives already covered
             if (argument != null && model.ComesFromProvidedCover(argument, semantics, cancellationToken)) {
                 continue;
             }
 
             // Cover can also be established mid-flight by handing the value to a [ProvidesCover]
-            // parameter of some earlier call -- Sync.Widen* is not the only way to acquire it.
+            // parameter of some earlier call -- Sync.Widen* is not the only way to acquire it
             if (argument != null && model.CoveredByEarlierCall(body, argument, semantics, cancellationToken)) {
                 continue;
             }
@@ -388,7 +388,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
     }
 
-    // The gate in front of the per-value check: only values whose obligation is otherwise discharged.
+    // The gate in front of the per-value check: only values whose obligation is otherwise discharged
     private static void ReportCoverLostToAwait(SyntaxNodeAnalysisContext context, CoverModel model, SyntaxNode body,
                                                InvocationExpressionSyntax invocation, IMethodSymbol callee,
                                                List<IParameterSymbol> demanding, bool demandsReceiver,
@@ -396,7 +396,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
                                                CancellationToken cancellationToken)
     {
         // Inside Sync itself these calls are the mechanism, not a consumer of it -- the same exemption the
-        // ordinary discharge makes below, and it has to be repeated here because this check runs first.
+        // ordinary discharge makes below, and it has to be repeated here because this check runs first
         if (caller != null && model.SyncType != null &&
             SymbolEqualityComparer.Default.Equals(caller.ContainingType, model.SyncType)) {
             return;
@@ -448,7 +448,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // This reuses the FOSYNC002 annotation rather than inventing a second notion of "needs cover": the
     // obligation is whatever [RequiresCover] already says, and the only question added here is whether the
     // cover survived to this point. Position in source order, not a control flow graph -- see the rule's
-    // documentation for what that costs.
+    // documentation for what that costs
     private static void ReportIfCoverLostToAwait(SyntaxNodeAnalysisContext context, CoverModel model, SyntaxNode body,
                                                  InvocationExpressionSyntax invocation, ExpressionSyntax value,
                                                  IMethodSymbol? caller, SemanticModel semantics,
@@ -461,7 +461,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         ISymbol? tracked = semantics.GetSymbolInfo(value, cancellationToken).Symbol;
 
         // Only a plain named value can be followed. Anything derived on the spot (a call, an element, a
-        // member chain) is re-read here anyway, so an await before it says nothing about it.
+        // member chain) is re-read here anyway, so an await before it says nothing about it
         if (tracked is not IParameterSymbol && tracked is not ILocalSymbol) {
             return;
         }
@@ -475,7 +475,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
                 continue;
             }
 
-            // A preserving callee hands the cover back, so awaiting it releases nothing.
+            // A preserving callee hands the cover back, so awaiting it releases nothing
             if (semantics.GetSymbolInfo(candidate.Expression, cancellationToken).Symbol is IMethodSymbol awaited &&
                 model.PreservesCover(awaited)) {
                 continue;
@@ -504,7 +504,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
         // A value the await itself produced, or one declared after it, is fresh: the await says nothing
         // about cover it never held. This is the bulk of the shape -- `Location? loc = await Find(...)`
-        // followed by work on `loc`.
+        // followed by work on `loc`
         if (DeclaredAtOrAfter(tracked, lastAwait.SpanStart, cancellationToken)) {
             return;
         }
@@ -516,7 +516,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         // The re-proof may be the await itself (`await Sync.Widen(... value ...)`), which starts at or after
-        // the await's own start, so the window opens there rather than after it.
+        // the await's own start, so the window opens there rather than after it
         if (ReProvesCover(body,
                           lastAwait.SpanStart,
                           callSite,
@@ -541,7 +541,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // text, but only one of them runs, and an await in the branch that was not taken released nothing. So
     // the await counts only if it can be lifted to a statement that sits in the same block as the use and
     // starts earlier -- which keeps `if (!await Sync.X()) return;` followed by the use, and drops the
-    // sibling-branch pairing that reads identical in the text.
+    // sibling-branch pairing that reads identical in the text
     private static bool PrecedesOnSomePath(SyntaxNode awaited, SyntaxNode use)
     {
         StatementSyntax? useStatement = StatementInBlock(use);
@@ -562,7 +562,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // Whether execution can actually get from the await to the use. The common shape that cannot is a guard
     // branch: `if (bad) { await Report(...); return; }` followed by the real work. Source order puts the
     // await first and PrecedesOnSomePath lifts it to the enclosing if, but nothing flows out of a block
-    // whose end is unreachable -- so ask the compiler rather than pattern-match the shape.
+    // whose end is unreachable -- so ask the compiler rather than pattern-match the shape
     private static bool ReachesFrom(SyntaxNode awaited, SyntaxNode use, SemanticModel semantics)
     {
         StatementSyntax? useStatement = StatementInBlock(use);
@@ -615,7 +615,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
             SyntaxNode declaration = reference.GetSyntax(cancellationToken);
 
             // The declarator of `T x = await ...` starts before the await and ends after it, so the end is
-            // what says whether the await produced this value.
+            // what says whether the await produced this value
             if (declaration is VariableDeclaratorSyntax declarator && declarator.Span.End >= position) {
                 return true;
             }
@@ -697,7 +697,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
             bool acquisition = model.Acquires(symbol);
 
             // An acquisition is not the only way back: a helper that takes the value on a providing parameter
-            // acquires it just as well, and the codebase routes most multi-root acquisitions through one.
+            // acquires it just as well, and the codebase routes most multi-root acquisitions through one
             if (!acquisition && !symbol.Parameters.Any(model.ProvidesCover)) {
                 continue;
             }
@@ -723,7 +723,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // `List<Entity> cover = Sync.Snapshot();` early, `await Sync.Restore(cover)` after the re-entrant work: the
     // restore re-establishes exactly what was held at the snapshot, so a value covered then is covered again.
     // The snapshot has to predate the await that took the cover away, or it captured a set the value had already
-    // dropped out of.
+    // dropped out of
     private static bool RestoresSnapshotTakenWhileCovered(SyntaxNode body, int windowStart, int windowEnd,
                                                           int coverHeldUntil, ISymbol tracked, CoverModel model,
                                                           SemanticModel semantics, CancellationToken cancellationToken)
@@ -769,7 +769,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // parameter arrives covered. Declaring that is what lets the obligation flow onward: an entry point
     // carrying [RequiresCover] discharges FOSYNC002 for everything it calls with that argument, by the
     // ordinary propagation rule. Only the first entity parameter is checked -- the rest are whatever the
-    // handler itself decides to acquire.
+    // handler itself decides to acquire
     private static void AnalyzeEntryPointDeclaration(SyntaxNodeAnalysisContext context, CoverModel model)
     {
         var declaration = (MethodDeclarationSyntax)context.Node;
@@ -790,7 +790,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             // An always-covered parameter is not what the dispatcher synchronized -- it needed no
             // synchronizing. The walk-trigger handler takes the static item first and the critter second,
-            // and the critter is the subject. Declaring it on the static half would state nothing.
+            // and the critter is the subject. Declaring it on the static half would state nothing
             if (model.IsAlwaysCovered(parameter.Type)) {
                 continue;
             }
@@ -854,7 +854,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     // v1 is body-scoped, not path-sensitive: any cover acquisition anywhere in the enclosing body
     // discharges the obligation. That direction is deliberate -- it under-reports rather than blocking a
     // build on a branch the analyzer cannot yet follow. Path sensitivity wants a ControlFlowGraph walk,
-    // not a wider syntax scan.
+    // not a wider syntax scan
     private static bool AcquiresCover(SyntaxNode body, SemanticModel semantics, CoverModel model,
                                       CancellationToken cancellationToken)
     {
@@ -876,7 +876,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     }
 
     // The whole parameter declaration, not just its identifier: it is what a reader wants highlighted, and
-    // it is where an inserted attribute has to go -- `[RequiresCover] Critter cr`, never `Critter [..] cr`.
+    // it is where an inserted attribute has to go -- `[RequiresCover] Critter cr`, never `Critter [..] cr`
     private static Location DeclarationLocation(IParameterSymbol parameter, IMethodSymbol method,
                                                 CancellationToken cancellationToken)
     {
@@ -936,7 +936,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
     {
         // The contract vocabulary this model reads declarations through. Everything below it is the part
         // that is NOT a declaration: approximations computed from a callee's body, which the redundancy rules
-        // deliberately do not consume as proof.
+        // deliberately do not consume as proof
         private readonly CoverVocabulary Vocabulary;
         private readonly ConcurrentDictionary<IMethodSymbol, bool> PreservingCache =
             new ConcurrentDictionary<IMethodSymbol, bool>(SymbolEqualityComparer.Default);
@@ -997,7 +997,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         // where the method cannot return past it without having run it, and not undone by anything the body
         // awaits afterwards. A conditional acquisition proves nothing -- a helper that widens only for a
         // transport and returns true on every other path gives no guarantee at all -- so the shape is limited
-        // to a top-level acquisition and the guard form (`if (!await Sync...) { return; }`) that means the same.
+        // to a top-level acquisition and the guard form (`if (!await Sync...) { return; }`) that means the same
         public bool ProvidesCover(IParameterSymbol parameter)
         {
             return Vocabulary.HasProvidesCover(parameter) || ProvidesCoverByBody(parameter, new Recursion());
@@ -1357,7 +1357,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         }
 
         // Does awaiting this call give the caller back the cover it had? Declared with [PreservesCover], or
-        // proved here from the callee's own body.
+        // proved here from the callee's own body
         public bool PreservesCover(IMethodSymbol method)
         {
             if (Vocabulary.HasPreservesCover(method)) {
@@ -1375,7 +1375,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         // then restores the caller's snapshot, and anything compiled elsewhere.
         //
         // Conservative in one direction only: an await this cannot resolve, or a body outside this compilation,
-        // answers "does not preserve", which reports rather than hides.
+        // answers "does not preserve", which reports rather than hides
         private bool PreservesCoverByBody(IMethodSymbol method, Recursion recursion)
         {
             IMethodSymbol definition = method.OriginalDefinition;
@@ -1614,7 +1614,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
 
             // An entity taken out of a covered collection is covered: the annotation is on the collection
             // because that is what the acquisition covered -- `map.GetCrittersInRadius(...)` returns
-            // critters the map's own cover reaches. Both ways of taking one out count.
+            // critters the map's own cover reaches. Both ways of taking one out count
             if (expression is ElementAccessExpressionSyntax element) {
                 return ProvidedReach(element.Expression, semantics, cancellationToken);
             }
@@ -1624,7 +1624,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
                        HandedOverReach(expression, symbol, semantics, cancellationToken);
             }
 
-            // The usual shape is a local initialized from such a call, then passed on.
+            // The usual shape is a local initialized from such a call, then passed on
             if (symbol is not ILocalSymbol local) {
                 return null;
             }
@@ -1718,7 +1718,7 @@ public sealed partial class SyncCoverAnalyzer : DiagnosticAnalyzer
         // Some earlier call in this body handed the same value to a [ProvidesCover] parameter, which is
         // how a helper establishes cover for something it does not return. Body-scoped like the rest of
         // the discharge rule, so it under-reports rather than blocking a build on control flow the
-        // analyzer cannot yet follow.
+        // analyzer cannot yet follow
         public bool CoveredByEarlierCall(SyntaxNode body, ExpressionSyntax expression, SemanticModel semantics,
                                          CancellationToken cancellationToken)
         {
