@@ -491,6 +491,7 @@ namespace
                 }
                 else if (msg == NetMessage::Ping) {
                     (void)in_buf->Read<bool>();
+                    (void)in_buf->Read<int64_t>();
                 }
                 else {
                     FAIL("Unexpected client message");
@@ -553,6 +554,7 @@ namespace
                 if (connect_result == ClientConnection::ConnectResult::Success && !server_pinged) {
                     auto out_buf = connection->WriteMsg(NetMessage::Ping);
                     out_buf->Write(false);
+                    out_buf->Write(nanotime::now().milliseconds());
                     server_pinged = true;
                 }
             }
@@ -676,6 +678,7 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
     {
         auto out_buf = connection->WriteMsg(NetMessage::Ping);
         out_buf->Write(false);
+        out_buf->Write(int64_t {1234});
     }
 
     CHECK(net_connection->SendCallback().empty());
@@ -702,6 +705,7 @@ TEST_CASE("SecureChannelServerSendsNothingInTheClear")
     REQUIRE(in_buf.NeedProcess());
     CHECK(in_buf.ReadMsg() == NetMessage::Ping);
     CHECK_FALSE(in_buf.Read<bool>());
+    CHECK(in_buf.Read<int64_t>() == 1234);
 }
 
 namespace
@@ -1004,6 +1008,7 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
             NetOutBuffer out_buf {64};
             out_buf.StartMsg(NetMessage::Ping);
             out_buf.Write(true);
+            out_buf.Write(nanotime::now().milliseconds());
             out_buf.EndMsg();
 
             vector<uint8_t> sealed;
@@ -1048,6 +1053,7 @@ TEST_CASE("SecureChannelRunsOverWebSockets")
             if (in_buf->NeedProcess()) {
                 REQUIRE(in_buf->ReadMsg() == NetMessage::Ping);
                 CHECK(in_buf->Read<bool>());
+                (void)in_buf->Read<int64_t>();
                 in_buf->ShrinkReadBuf();
                 ping_received = true;
             }

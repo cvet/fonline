@@ -158,7 +158,8 @@ ServerConnection::ServerConnection(ptr<ServerNetworkSettings> settings, shared_p
     _netConnection {std::move(net_connection)},
     _inBuf(_settings->Network.NetBufferSize),
     _outBuf(_settings->Network.NetBufferSize),
-    _channel {channel_identity}
+    _channel {channel_identity},
+    _uplinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}}
 {
     auto send = [this]() FO_DEFERRED -> vector<uint8_t> { return AsyncSendData(); };
     auto receive = [this](const_span<uint8_t> buf) FO_DEFERRED { AsyncReceiveData(buf); };
@@ -317,6 +318,11 @@ void ServerConnection::RegisterPingRequest(nanotime time) noexcept
     _activity.NextPingTime = time + std::chrono::milliseconds {_settings->ServerNetwork.ClientPingTime};
     _activity.PingAnswerReceived = false;
     _activity.PingRequestTime = time;
+}
+
+auto ServerConnection::RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan
+{
+    return _uplinkDelay.AddSample(sender_ms, receive_time);
 }
 
 void ServerConnection::RegisterPingAnswer(nanotime time) noexcept

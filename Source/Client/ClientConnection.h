@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkClient.h"
 #include "SecureChannel.h"
@@ -84,6 +85,8 @@ public:
     void Process();
     void Disconnect();
     void FlushPendingData();
+    // A server message stamped with the server's clock: how much later than the link usually takes it arrived
+    auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
 
     ptr<NetInBuffer> InBuf {&_netIn};
     ptr<NetOutBuffer> OutBuf {&_netOut};
@@ -129,6 +132,7 @@ private:
     optional<nanotime> _artificalOutboundLagTime {};
     random_generator _randomGenerator {};
     int32_t _ping {};
+    LinkDelayEstimator _downlinkDelay;
     nanotime _pingTime {};
     nanotime _pingCallTime {};
     nanotime _lastReceiveTime {};

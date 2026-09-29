@@ -90,6 +90,7 @@ public:
     void Send_LoginSuccess();
     void Send_Moving(ptr<const Critter> from_cr);
     void Send_MovingSpeed(ptr<const Critter> from_cr);
+    void Send_MovingLease(ptr<const Critter> from_cr);
     void Send_Dir(ptr<const Critter> from_cr);
     void Send_AddCritter(ptr<const Critter> cr);
     void Send_RemoveCritter(ptr<const Critter> cr);

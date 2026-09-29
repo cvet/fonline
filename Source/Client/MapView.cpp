@@ -3838,36 +3838,12 @@ bool MapView::CutPath(nptr<CritterHexView> cr, mpos start_hex, mpos& target_hex,
     return !!FindPath(cr, start_hex, target_hex, cut);
 }
 
-bool MapView::TraceMoveWay(mpos& start_hex, ipos16& hex_offset, vector<mdir>& dir_steps, mdir dir, int32_t multihex) const
+auto MapView::TraceMoveWay(TraceDirectionInput input) const -> TraceDirectionOutput
 {
-    FO_TRACE_ZONE(Map);
+    input.MapSize = _mapSize;
+    input.CheckHex = [this](mpos hex) { return _hexField->GetCellForReading(hex).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable; };
 
-    hex_offset = {};
-
-    constexpr int32_t some_big_path_len = 30;
-    LineTracer tracer(start_hex, numeric_cast<float32_t>(dir.angle()), some_big_path_len, _mapSize);
-    mpos next_hex = start_hex;
-
-    for (int32_t i = 0; i < some_big_path_len; i++) {
-        auto next_dir = tracer.GetNextHex(next_hex);
-
-        if (!next_dir.has_value()) {
-            break;
-        }
-
-        auto result = PathFinding::CheckHexWithMultihex(next_hex, next_dir.value(), multihex, _mapSize, [this](mpos h) { //
-            return _hexField->GetCellForReading(h).MoveBlocked ? HexBlockResult::Blocked : HexBlockResult::Passable;
-        });
-
-        if (result == HexBlockResult::Passable) {
-            dir_steps.emplace_back(next_dir.value());
-        }
-        else {
-            break;
-        }
-    }
-
-    return !dir_steps.empty();
+    return PathFinding::TraceDirection(input);
 }
 
 void MapView::TraceBullet(mpos start_hex, mpos target_hex, int32_t dist, float32_t angle, nptr<vector<ptr<CritterHexView>>> critters, CritterFindType find_type, nptr<mpos> pre_block_hex, nptr<mpos> block_hex, nptr<vector<mpos>> hex_steps, bool check_shoot_blocks)
