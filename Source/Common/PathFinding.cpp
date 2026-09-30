@@ -64,9 +64,8 @@ struct PathSearchNode
     mpos Hex {};
 };
 
-// Open list of a search whose estimate never falls below the one taken last: estimates within a ring of buckets are
-// taken in push order and one beyond it waits in a heap until the ring reaches it, so a request pops the same way
-// everywhere
+// Open list of a search whose estimate never falls below the one taken last: estimates within a ring of buckets pop in push
+// order and a farther one waits in a heap until the ring reaches it, so a request pops the same way everywhere
 class PathOpenList
 {
 public:
@@ -108,9 +107,8 @@ private:
     vector<PathSearchCell> _cells {};
 };
 
-// A* over the hexes CheckHex lets the mover enter. A step costs one, a gag GAG_DETOUR_STEPS more and a critter
-// CritterDetour more; a route ends on a critter only when every goal holds one, and no route may run longer than
-// MaxLength steps
+// A* over the hexes CheckHex lets the mover enter. A step costs one, a gag GAG_DETOUR_STEPS more and a critter CritterDetour
+// more; a route ends on a critter only when every goal holds one, and no route may run longer than MaxLength steps
 class PathSearch
 {
 public:
