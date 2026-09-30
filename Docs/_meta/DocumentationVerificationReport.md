@@ -2,6 +2,20 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-01 - pathfinding comment-only revision
+
+Scope and source revisions:
+
+- Reconciled Engine documentation head `dfb27521a20addf44e1bc33cbbbda269578d6779` with `origin/master` through `ba2a13ff736cae204372aafc4e2490aeb0bfb717` (one incoming commit after `eee7245bc828b9b8597a551a4bd36d33b36cc8f6`). The complete incoming diff changes only two comments on `PathOpenList` and `PathSearch` in `Source/Common/PathFinding.cpp`, shortening them without changing executable code, tests, settings, or exported declarations.
+
+Documentation and contract reconciliation:
+
+- The existing English and Russian maps/movement documentation still describes the same deterministic bucket ordering, gag/critter detour cost, occupied-goal behavior, and route length limit. No owning prose or generated contract model needs a revision for the comment-only change. The generated delta is empty: the source inventory and AI delivery checks remain current.
+
+Validation and limits:
+
+- `git diff --cached --check`, `docs_inventory.py --check` (996 export methods, 122 test files, 279 settings), `docs_ai_delivery.py --check` (396 public documents), and `docs_validate.py` (408 Markdown entries) passed. Runtime pathfinding tests were not rerun for this comment-only commit; prior test evidence is not presented as a test of this merge or of Last Frontier integration.
+
 ## 2026-09-30 - bounded critter detours and occupied path goals
 
 Scope and source revisions:
