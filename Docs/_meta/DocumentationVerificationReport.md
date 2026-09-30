@@ -16,7 +16,7 @@ Documentation and contract reconciliation:
 
 Validation and limits:
 
-- The full documentation validator passed 408 Markdown entries. AI evaluation passed 28 tasks and 67 retrieval checks at 100%. The screenshot catalog's source hash was refreshed for the changed `Settings.inc`; image binaries and listed visual recapture triggers did not change. `LF_UnitTests` built and the `PathFinding::*` filter passed 21,798 assertions in six cases. A selected documentation-generator test run initially found one stale expected experimental-symbol count; that expectation was corrected and its final rerun is in progress. Last Frontier's game AI limit, full bake and gameplay tests are separate integration checks.
+- The full documentation validator passed 408 Markdown entries. AI evaluation passed 28 tasks and 67 retrieval checks at 100%. The screenshot catalog's source hash was refreshed for the changed `Settings.inc`; image binaries and listed visual recapture triggers did not change. `LF_UnitTests` built and the `PathFinding::*` filter passed 21,798 assertions in six cases. A selected documentation-generator run passed 96 tests and 33 subtests apart from two stale inventory-count expectations; after updating those expectations, both failed cases passed on a focused rerun (2 tests, 31 subtests). The initial wider run is not counted as a clean full pass. Last Frontier's game AI limit, full bake and gameplay tests are separate integration checks.
 
 ## 2026-09-30 - allocator, light composition, managed cover, and refused movement
 
