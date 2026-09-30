@@ -57,6 +57,7 @@ struct FindPathInput
     msize MapSize {};
     int32_t MaxLength {}; // Longest route allowed, in steps (from engine Settings.Geometry.MaxPathFindLength)
     int32_t EnclosureProbeLimit {}; // Forward hexes after which the target side is flooded back within the same budget; 0 = never
+    int32_t CritterDetour {}; // A living critter on the route costs as much as a detour this many steps long
     int32_t Cut {}; // Stop the search when within this distance of target; 0 = must reach exact target
     int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check per step
     bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset

@@ -128,6 +128,8 @@ Important `FindPathInput` fields:
   less per request (see [Path length limit per request](#path-length-limit-per-request)).
 - `EnclosureProbeLimit` — hex budget of the enclosure probe (see
   [Walled-off targets](#walled-off-targets)); `0` disables it.
+- `CritterDetour` — steps of detour a route trades for walking through one living critter (see
+  [Search](#search)).
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -154,8 +156,8 @@ answers the whole set with one breadth-first flood from `FindReachableInput::Fro
 no further than `MaxLength` steps, and returns the `TargetHexes` it reached in the order given. It asks
 `CheckHex` once per hex and stops as soon as every target is reached. Where hexes are only passable or
 blocked, a target is reachable exactly when a single-hex `FindPath()` to it with the same limit finds a
-route; the flood counts steps, so a route through critters is reachable even when the search, which turns to
-critters last, would answer `TooFar`. There is no multihex footprint.
+route; the flood counts steps, so a route through critters is reachable even when the search, which charges
+each critter a detour, would find it longer than the limit. There is no multihex footprint.
 `MapManager::FindReachableHexes()` supplies the map's blockers and the gag callback with
 `Geometry.MaxPathFindLength` as the limit, and the server script `Map.FindReachableHexes(fromHex,
 targetHexes, gagCallback)` exposes it; an out-of-map start or target throws, an empty target list answers
@@ -166,10 +168,23 @@ an empty one.
 `FindPath()` is an A* search. A hex is ranked by its route cost from the start plus its hex distance to
 the goal less `Cut` — a lower bound of the steps still needed, and zero for a `CheckTarget` search, which
 therefore spreads evenly and returns the nearest goal. A step costs one; a `DeferGag` hex costs ten more,
-so a detour up to ten steps longer is preferred to passing a gag; a `DeferCritter` hex costs more than
-any route without one, so critters are walked through only when no route without them is left, and the
-route through the fewest of them wins. The search does not turn to critters while the length limit has cut
-off part of its region — a way round might lie beyond the limit — and answers `TooFar` instead.
+so a detour up to ten steps longer is preferred to passing a gag; a `DeferCritter` hex costs
+`CritterDetour` more, so critters are walked round while the way round is no more than that many steps
+longer and walked through when it is — somebody standing in a doorway is passed, not circled by the whole
+building. `MapManager::FindPath()` and `MapView::FindPath()` take the detour from
+`Geometry.PathFindCritterDetour`.
+
+A route does not stop on a critter while it has anywhere else to stop. A goal hex (within `Cut` of `ToHex`)
+that holds a critter is not a goal — the route may pass through it at a critter's price and ends beside the
+crowd — unless no goal hex is `Passable` or `DeferGag`: then every hex the route could end on is taken, and it
+ends on the nearest of them, as a mover has to when the one hex in front of a door is occupied. The search
+learns which case it is in before its first step, from the goal hexes themselves (the first free one ends
+the check). A multi-target search (`CheckTarget` set) has no goal disk and takes its targets as they are.
+
+Critters used to be a last resort costing more than any route without them. A target ringed by critters — a
+melee crowd around a player — then sent the search through every hex it could reach free of critters, tens
+of thousands on a large map, before it would consider one, and the length limit usually cut that off with
+`TooFar`: a wall of critters could not be crossed at all while the limit hid part of this side.
 
 The length limit is applied up front: a goal further than `MaxLength` in a straight line is refused as
 `TooFar` without asking `CheckHex`, and a hex whose route plus distance to the goal exceeds `MaxLength` is
@@ -259,7 +274,7 @@ authority stop at the same continuous point and there is no protocol change.
 - `Passable` — hex can be used.
 - `Blocked` — permanent blocker.
 - `DeferGag` — blocked by a gag item; passable at the cost of ten extra steps.
-- `DeferCritter` — blocked by a critter; passable only when no route without critters is left (see [Search](#search)).
+- `DeferCritter` — blocked by a critter; passable at the price of `CritterDetour` extra steps, and a goal only when no goal is free (see [Search](#search)).
 
 For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
 

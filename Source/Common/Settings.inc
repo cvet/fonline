@@ -189,6 +189,7 @@ SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for nam
 SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
 SETTING(int32_t, Geometry, PathFindEnclosureProbe, 1024); // Hexes a path search may flood back from its target to prove it walled off, 0 to disable
+SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for walking through one living critter
 SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common

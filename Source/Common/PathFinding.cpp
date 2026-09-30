@@ -37,9 +37,8 @@ FO_BEGIN_NAMESPACE
 
 // A gag costs as much as a detour this many steps long, so a short way around is preferred to it
 static constexpr int32_t GAG_DETOUR_STEPS = 10;
-// Critters walked through count above every step, so any route with fewer of them is cheaper
-static constexpr int64_t CRITTER_COST = int64_t {1} << 32;
-// A step raises an estimate by its cost and by at most one hex of distance, so every push lands within the ring
+// A plain or gag step raises an estimate by its cost and by at most one hex of distance, so its push lands within the
+// ring; a critter dearer than that waits in the heap
 static constexpr int32_t OPEN_BUCKETS = 16;
 static constexpr int32_t SEARCH_BLOCK_SHIFT = 4;
 static constexpr int32_t SEARCH_BLOCK_SIDE = 1 << SEARCH_BLOCK_SHIFT;
@@ -50,7 +49,7 @@ static_assert(1 + GAG_DETOUR_STEPS + 1 < OPEN_BUCKETS);
 // One hex of a search, zeroed when its block is first touched
 struct PathSearchCell
 {
-    int64_t Cost {}; // Route cost from the start: steps and gag detours in the low half, critters in the high half
+    int64_t Cost {}; // Route cost from the start: steps plus the detours charged for gags and critters
     int32_t Steps {};
     uint8_t Answer {}; // CheckHex answer plus two, zero until asked
     bool Reached {};
@@ -65,8 +64,9 @@ struct PathSearchNode
     mpos Hex {};
 };
 
-// Open list of a search whose estimate never falls below the one taken last: one critter tier sits in a ring of
-// buckets taken in push order, and only a costlier tier waits in a heap, so a request pops the same way everywhere
+// Open list of a search whose estimate never falls below the one taken last: estimates within a ring of buckets are
+// taken in push order and one beyond it waits in a heap until the ring reaches it, so a request pops the same way
+// everywhere
 class PathOpenList
 {
 public:
@@ -108,8 +108,9 @@ private:
     vector<PathSearchCell> _cells {};
 };
 
-// A* over the hexes CheckHex lets the mover enter. A step costs one, a gag GAG_DETOUR_STEPS more, a critter more
-// than any route without one, and no route may run longer than MaxLength steps
+// A* over the hexes CheckHex lets the mover enter. A step costs one, a gag GAG_DETOUR_STEPS more and a critter
+// CritterDetour more; a route ends on a critter only when every goal holds one, and no route may run longer than
+// MaxLength steps
 class PathSearch
 {
 public:
@@ -123,8 +124,10 @@ public:
 
 private:
     auto GetDeviation(mpos hex) const -> int32_t;
+    auto IsGoal(mpos hex) -> bool;
     auto CheckEntry(mpos hex, mdir dir) -> HexBlockResult;
     auto CheckHexOnce(mpos hex) -> HexBlockResult;
+    auto DoesEveryGoalHoldCritter() -> bool;
     auto IsTargetWalledOff() -> bool;
     auto VisitProbeHex(mpos hex, vector<mpos>& region) -> bool;
     void Expand(mpos hex, int64_t cost, int32_t steps);
@@ -137,12 +140,13 @@ private:
     ipos32 _line {};
     size_t _reached {};
     bool _cutByLength {};
+    bool _critterGoalAllowed {};
     mpos _goal {};
 };
 
 static auto IsPathGoal(const FindPathInput& input, mpos hex) -> bool;
 static auto GetStepsToGoal(const FindPathInput& input, mpos hex) -> int32_t;
-static auto GetEntryCost(HexBlockResult block) -> int64_t;
+static auto GetEntryCost(const FindPathInput& input, HexBlockResult block) -> int64_t;
 static auto GetPlanePos(mpos hex) -> ipos32;
 static auto GetBucket(int64_t estimate) -> size_t;
 static auto IsNodeAfter(const PathSearchNode& a, const PathSearchNode& b) -> bool;
@@ -559,13 +563,16 @@ PathSearch::PathSearch(const FindPathInput& input) :
 
 auto PathSearch::Run() -> FindPathOutput::ResultType
 {
+    // A route stops in a crowd only when the goal ring holds nothing else, which its own few hexes tell before the
+    // first step; a multi-target search has no ring to look at and takes its targets as they are
+    _critterGoalAllowed = _input->CheckTarget || DoesEveryGoalHoldCritter();
+
     PathSearchCell& start = _grid.GetCell(_input->FromHex);
     start.Reached = true;
     _reached = 1;
     _open.Push(GetStepsToGoal(*_input, _input->FromHex), _input->FromHex);
 
     bool enclosure_probed = _input->CheckTarget || _input->EnclosureProbeLimit <= 0;
-    int64_t critters_allowed = 0;
     bool goal_found = false;
     int64_t goal_cost = 0;
     int32_t goal_deviation = 0;
@@ -581,26 +588,15 @@ auto PathSearch::Run() -> FindPathOutput::ResultType
 
         // Past the cheapest goal the search still settles every hex as cheap, so the route traced back chooses
         // among all the cheapest routes and not only among the ones reached first
-        if (goal_found) {
-            if (node.Estimate > goal_cost) {
-                break;
-            }
-        }
-        else if (cell.Cost / CRITTER_COST > critters_allowed) {
-            // Walking through one more critter is the last resort, and it is not taken while the length limit has
-            // cut off a route that might have gone around
-            if (_cutByLength) {
-                return FindPathOutput::ResultType::TooFar;
-            }
-
-            critters_allowed = cell.Cost / CRITTER_COST;
+        if (goal_found && node.Estimate > goal_cost) {
+            break;
         }
 
         cell.Closed = true;
         int64_t cost = cell.Cost;
         int32_t steps = cell.Steps;
 
-        if (IsPathGoal(*_input, node.Hex)) {
+        if (IsGoal(node.Hex)) {
             // Of the cheapest goals, the one nearest the straight line to the target
             int32_t deviation = GetDeviation(node.Hex);
 
@@ -670,7 +666,7 @@ auto PathSearch::Backtrack(vector<mdir>& raw_steps) -> bool
             int64_t step_cost = step_cell->Cost;
             HexBlockResult block = CheckEntry(cur_hex, dir);
 
-            if (block == HexBlockResult::Blocked || step_cost + GetEntryCost(block) != cur_cost) {
+            if (block == HexBlockResult::Blocked || step_cost + GetEntryCost(*_input, block) != cur_cost) {
                 continue;
             }
 
@@ -712,6 +708,17 @@ auto PathSearch::GetDeviation(mpos hex) const -> int32_t
     int32_t dy = hex_pos.y - _lineStart.y;
 
     return std::abs(dx * _line.y - dy * _line.x);
+}
+
+// A goal that holds a critter is walked through like any critter unless no goal is free of one: a route stops beside
+// a crowd, and in it only when nothing else within Cut can be stood on
+auto PathSearch::IsGoal(mpos hex) -> bool
+{
+    if (!IsPathGoal(*_input, hex)) {
+        return false;
+    }
+
+    return _critterGoalAllowed || CheckHexOnce(hex) != HexBlockResult::DeferCritter;
 }
 
 auto PathSearch::CheckEntry(mpos hex, mdir dir) -> HexBlockResult
@@ -761,7 +768,7 @@ void PathSearch::Expand(mpos hex, int64_t cost, int32_t steps)
             continue;
         }
 
-        int64_t next_cost = cost + GetEntryCost(block);
+        int64_t next_cost = cost + GetEntryCost(*_input, block);
         PathSearchCell& next_cell = _grid.GetCell(next_index);
 
         if (next_cell.Reached && next_cell.Cost <= next_cost) {
@@ -784,6 +791,36 @@ void PathSearch::Expand(mpos hex, int64_t cost, int32_t steps)
         next_cell.Steps = steps + 1;
         _open.Push(next_cost + remaining, next_hex);
     }
+}
+
+// True when no goal can be stood on without a critter there: each is blocked or holds one, and at least one holds
+// one. A goal free of critters, or a gag the mover may open, ends the check at the first such hex
+auto PathSearch::DoesEveryGoalHoldCritter() -> bool
+{
+    if (_input->Cut < 0) {
+        return false;
+    }
+
+    int32_t goal_hexes = GeometryHelper::HexesInRadius(_input->Cut);
+    bool critter_found = false;
+
+    for (int32_t i = 0; i < goal_hexes; i++) {
+        mpos goal_hex = _input->ToHex;
+
+        if (!GeometryHelper::MoveHexAroundAway(goal_hex, i, _input->MapSize)) {
+            continue;
+        }
+
+        HexBlockResult block = CheckHexOnce(goal_hex);
+
+        if (block == HexBlockResult::Passable || block == HexBlockResult::DeferGag) {
+            return false;
+        }
+
+        critter_found = critter_found || block == HexBlockResult::DeferCritter;
+    }
+
+    return critter_found;
 }
 
 // Floods back from the goal within the probe budget over every hex the search could ever enter, deferred gags
@@ -956,13 +993,13 @@ static auto GetStepsToGoal(const FindPathInput& input, mpos hex) -> int32_t
     return std::max(GeometryHelper::GetDistance(hex, input.ToHex) - input.Cut, 0);
 }
 
-static auto GetEntryCost(HexBlockResult block) -> int64_t
+static auto GetEntryCost(const FindPathInput& input, HexBlockResult block) -> int64_t
 {
     switch (block) {
     case HexBlockResult::DeferGag:
         return 1 + GAG_DETOUR_STEPS;
     case HexBlockResult::DeferCritter:
-        return 1 + CRITTER_COST;
+        return int64_t {1} + std::max(input.CritterDetour, 0);
     default:
         return 1;
     }
