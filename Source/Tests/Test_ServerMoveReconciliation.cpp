@@ -41,6 +41,9 @@
 
 FO_BEGIN_NAMESPACE
 
+// Move requests go through the export scripts call, because that is where a refused request decides what observers hear
+ptr<MovingContext> Server_Critter_MoveToHex(ptr<Critter> self, mpos hex, int32_t cut, int32_t speed, ScriptFunc<bool, ptr<Critter>, ptr<Item>> gagCallabck);
+
 // An arrival report settles the server position before the action behind it is read. The rig runs no script; an
 // AngelScript build still needs one bytecode file to start, so it gets an empty one
 namespace
@@ -79,6 +82,20 @@ namespace
             ReceiveCallback(sealed);
         }
 
+        [[nodiscard]] auto CountReceivedMovement(NetMessage message, ident_t cr_id) -> size_t
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            return numeric_cast<size_t>(std::ranges::count(_receivedMovement, std::pair {message, cr_id}));
+        }
+
+        void ClearReceivedMovement()
+        {
+            scoped_lock locker {_clientChannelLocker};
+
+            _receivedMovement.clear();
+        }
+
     protected:
         void DispatchImpl() override
         {
@@ -88,6 +105,7 @@ namespace
 
             if (!encoded_data.empty()) {
                 _clientChannel.Receive(encoded_data, _plainData);
+                RecordMovementMessages();
                 _plainData.clear();
             }
         }
@@ -95,9 +113,51 @@ namespace
         void DisconnectImpl() override { }
 
     private:
+        // The compressed stream is continuous, so every packet is unpacked in order even when nothing in it is recorded
+        void RecordMovementMessages()
+        {
+            if (_plainData.empty()) {
+                return;
+            }
+
+            const_span<uint8_t> data = _plainData;
+
+            if (!_settings->Network.DisableZlibCompression) {
+                _decompressor.decompress(_plainData, _unpackedData);
+                data = _unpackedData;
+            }
+
+            constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+            size_t offset = 0;
+
+            while (offset < data.size()) {
+                FO_VERIFY_AND_THROW(data.size() - offset >= header_size, "Truncated outgoing network message header", data.size(), offset);
+
+                uint32_t message_size {};
+                NetMessage message {};
+                memory::copy(&message_size, data.data() + offset + sizeof(uint32_t), sizeof(message_size));
+                memory::copy(&message, data.data() + offset + sizeof(uint32_t) + sizeof(message_size), sizeof(message));
+
+                FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= data.size() - offset, "Invalid outgoing network message size", message_size, data.size(), offset);
+
+                if (message == NetMessage::CritterMove || message == NetMessage::CritterPos) {
+                    FO_VERIFY_AND_THROW(message_size >= header_size + sizeof(ident_t), "Truncated outgoing movement message", message_size);
+
+                    ident_t cr_id {};
+                    memory::copy(&cr_id, data.data() + offset + header_size, sizeof(cr_id));
+                    _receivedMovement.emplace_back(message, cr_id);
+                }
+
+                offset += message_size;
+            }
+        }
+
         mutex _clientChannelLocker {};
         SecureChannel _clientChannel;
         vector<uint8_t> _plainData {};
+        stream_decompressor _decompressor {};
+        vector<uint8_t> _unpackedData {};
+        vector<pair<NetMessage, ident_t>> _receivedMovement {};
     };
 
     auto MakeSettings() -> GlobalSettings
@@ -497,6 +557,81 @@ TEST_CASE("ServerCritterMovePositionReconciliation")
         server->SwitchPlayerCritter(player, nullptr);
         cr->UnmarkIsForPlayer();
         server->CrMngr.DestroyCritter(cr);
+        server->MapMngr.DestroyLocation(loc);
+    }
+
+    SECTION("RefusedMoveRequestStopsTheCritterForItsObservers")
+    {
+        auto test_connection = safe_alloc::make_shared<MoveReconciliationConnection>(server->Settings);
+        auto player = CreateLoggedPlayer(server, test_connection, "RefusedMoveObserver");
+
+        auto loc = server->MapMngr.CreateLocation(fn("TestLocation"), vector<hstring> {fn("TestMap")});
+        auto map = loc->GetMapByIndex(0);
+        REQUIRE(static_cast<bool>(map));
+
+        auto observer = server->CreateCritter(fn("TestCritter"), true);
+        observer->SetLookDistance(40);
+        server->MapMngr.TransferToMap(observer, map, mpos {20, 20}, mdir {}, std::nullopt);
+        server->SwitchPlayerCritter(player, observer);
+        REQUIRE(player->GetControlledCritter() == observer.get());
+
+        auto mover = server->CreateCritter(fn("TestCritter"), false);
+        mpos mover_hex {24, 20};
+        mpos far_hex {44, 20};
+        server->MapMngr.TransferToMap(mover, map, mover_hex, mdir {}, std::nullopt);
+        REQUIRE(observer->IsSeeCritter(mover->GetId()));
+
+        auto ctx = server->RequireCurrentSyncContext();
+        small_vector<ptr<ServerEntity>, 5> sync_entities {player, observer, mover, map, loc};
+        ctx->SyncEntities(sync_entities);
+
+        auto request_move = [&mover](mpos hex, int32_t speed) { return refcount_ptr<MovingContext>::from_adopted_ref(Server_Critter_MoveToHex(mover, hex, 0, speed, {}).get()); };
+
+        // The server keeps the critter where it is, so the observer must be told to stop playing the route it last
+        // received; left alone, its client walks the critter to the end of that route and leaves it there
+        auto refuse_mid_route = [&](mpos hex, int32_t speed, MovingState refusal) {
+            auto route = request_move(far_hex, 1);
+            REQUIRE(mover->IsMoving());
+
+            test_connection->Dispatch();
+            test_connection->ClearReceivedMovement();
+
+            auto refused = request_move(hex, speed);
+            test_connection->Dispatch();
+
+            CHECK(refused->IsCompleted());
+            CHECK(refused->GetCompleteReason() == refusal);
+            CHECK(route->GetCompleteReason() == MovingState::Stopped);
+            CHECK_FALSE(mover->IsMoving());
+            CHECK(mover->GetHex() == mover_hex);
+            CHECK(test_connection->CountReceivedMovement(NetMessage::CritterPos, mover->GetId()) == 1);
+            CHECK(test_connection->CountReceivedMovement(NetMessage::CritterMove, mover->GetId()) == 0);
+        };
+
+        refuse_mid_route(mover_hex, 1, MovingState::Success);
+        refuse_mid_route(far_hex, 0, MovingState::CantMove);
+
+        // A request that finds a route replaces the one in progress with a single CritterMove, not a stop and a start
+        auto route = request_move(far_hex, 1);
+        REQUIRE(mover->IsMoving());
+
+        test_connection->Dispatch();
+        test_connection->ClearReceivedMovement();
+
+        auto retarget = request_move(mpos {24, 40}, 1);
+        test_connection->Dispatch();
+
+        CHECK_FALSE(retarget->IsCompleted());
+        CHECK(route->GetCompleteReason() == MovingState::Stopped);
+        CHECK(mover->IsMoving());
+        CHECK(test_connection->CountReceivedMovement(NetMessage::CritterMove, mover->GetId()) == 1);
+        CHECK(test_connection->CountReceivedMovement(NetMessage::CritterPos, mover->GetId()) == 0);
+
+        server->StopCritterMoving(mover);
+        server->SwitchPlayerCritter(player, nullptr);
+        observer->UnmarkIsForPlayer();
+        server->CrMngr.DestroyCritter(mover);
+        server->CrMngr.DestroyCritter(observer);
         server->MapMngr.DestroyLocation(loc);
     }
 }
