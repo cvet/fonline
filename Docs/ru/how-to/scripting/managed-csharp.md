@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"9584309d60b50358afeb6f78c450e1e944eb8ccf9fe5c066fe20e97d8aab5189"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -138,6 +138,8 @@ Synchronous native-result callbacks и module initialization использую�
 ## Серверная синхронизация сущностей
 
 Контракт server cover не зависит от backend: script caller должен покрыть все существующие сущности, которые native call graph может читать или изменять. `await` завершает прежний cover; перед повторным использованием заново найдите или проверьте сохранённую сущность и снова получите cover.
+
+Нативный bridge проверяет managed entity receiver до вызова экспортированного instance method или события через оба ABI; подписка на событие также проверяет target. Поэтому uncovered receiver сообщает ошибку cover на границе скрипта, а не доходит до `noexcept` accessor свойства с завершением процесса. Проверка не приобретает cover: caller по-прежнему должен выполнить объявленные требования.
 
 Managed scripts объявляют и доказывают этот контракт через:
 

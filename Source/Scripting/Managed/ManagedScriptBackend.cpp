@@ -702,6 +702,7 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
 
 // Entity resolution and inner-entry helpers
 static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>;
 static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::hash_t;
 static void ValidateManagedInnerEntity(ptr<const Entity> entity);
@@ -3331,6 +3332,7 @@ static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* 
 
     nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
     FO_VERIFY_AND_THROW(entity, "Managed event target is destroyed", entry.Owner, entry.Name);
+    entity->ValidateAccess();
 
     // A handler holds one subscription per entity event, whichever wrapper of the entity it arrives through
     if (FindManagedEventSubscription(backend, entity, entry.Name, handler).has_value()) {
@@ -3470,7 +3472,7 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
     auto backend = ResolveBoundBackend(backend_ptr);
     FO_VERIFY_AND_THROW(entry.Desc && entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
 
-    auto entity = ResolveEntity(backend, entity_ptr);
+    auto entity = ResolveCoveredEntity(backend, entity_ptr);
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
     if (args_count != entry.Event->Args.size()) {
@@ -3581,7 +3583,7 @@ static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* en
         FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar event frame size mismatch", entry.Owner, entry.Name, frame_size, entry.FrameSize);
         FO_VERIFY_AND_THROW(entry.Args.size() == entry.Event->Args.size(), "Managed event ABI slot count mismatch", entry.Owner, entry.Name);
 
-        auto entity = ResolveEntity(backend, entity_ptr);
+        auto entity = ResolveCoveredEntity(backend, entity_ptr);
         Entity* self_entity = entity.get_no_const();
         size_t first_event_arg = entry.IsGlobal ? 0 : 1;
         size_t call_args_count = entry.Args.size() + first_event_arg;
@@ -4061,7 +4063,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     string_view owner_type_name = entry.Owner;
     string_view method_name_str = entry.Method ? string_view {entry.Method->Name} : string_view {};
     bool is_ref_type_method = entry.IsRefType;
-    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
     uint32_t args_handle = args != nullptr ? NewManagedGcHandle(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
@@ -4256,7 +4258,7 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
 
         bool is_ref_type_method = entry.IsRefType;
         bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
-        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
         Entity* self_entity = entity.get_no_const();
         void* self_ref = entity_ptr;
         size_t first_method_arg = is_ref_type_factory ? 0 : 1;
@@ -7295,6 +7297,15 @@ static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -
         throw ScriptSystemException("Managed entity target is destroyed", entity->GetName());
     }
 
+    return entity;
+}
+
+// The receiver of an exported method or event is checked for cover before the native body runs: a body that reads a
+// property reaches a noexcept accessor, where the same check terminates the process instead of throwing
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>
+{
+    ptr<Entity> entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
     return entity;
 }
 

@@ -3234,7 +3234,7 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc
+Content SHA-256: 0959ed1e4851cec7ee7941f6af383b0306ff3e17620dbbe54ab7362875074d3e
 
 ---
 layout: default
@@ -3446,6 +3446,8 @@ Each exported function is marked with `///@ ExportMethod` and normally starts wi
 
 For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
 
+Managed C# dispatch likewise validates the entity receiver's access before either method ABI or event ABI enters native code. Event subscription validates its target as well. This makes an uncovered server receiver fail at the script boundary, before a `noexcept` property accessor could terminate the process; it does not acquire cover for the caller. See [Managed C# server synchronization](../../how-to/scripting/managed-csharp.md#server-entity-synchronization).
+
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
 
 AngelScript stores a `bool` value in one byte of a four-byte VM stack slot, whose upper bytes may retain earlier data. The patched native-call marshalling paths for x64 GCC, x64 MSVC, and ARM64 zero the destination argument slot and copy only the value type's in-memory bytes. Native callees may therefore rely on an incoming `bool` register being normalized to `0` or `1`; `AngelScriptNativeCallNormalizesBoolArgument` in `Source/Tests/Test_AngelScriptAlignment.cpp` pins this ABI boundary.
@@ -3568,7 +3570,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 9584309d60b50358afeb6f78c450e1e944eb8ccf9fe5c066fe20e97d8aab5189
+Content SHA-256: b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f
 
 ---
 layout: default
@@ -3710,6 +3712,8 @@ Synchronous native-result callbacks and module initialization use a private cont
 ## Server entity synchronization
 
 The server cover contract is backend-neutral: script callers must cover every existing entity the native call graph can read or mutate. An `await` ends the old cover; re-resolve or revalidate retained entities and reacquire cover before reuse.
+
+The native bridge validates a managed entity receiver before invoking an exported instance method or firing an event through either ABI; event subscription validates its target too. An uncovered receiver therefore reports a script-boundary cover fault instead of reaching a `noexcept` property accessor that would terminate the process. This validation does not acquire cover: callers still need to satisfy the declared requirements.
 
 Managed scripts declare and prove this contract with:
 
@@ -17367,7 +17371,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 4600888954ffa797f2e21400465ead298bcfe2fe2bb602132622055a4a81391f
+Content SHA-256: 43bb179d96766781c8b723661ac50b8263ea42f8c6ad9643c78b6b8f191a2600
 
 ---
 layout: default
@@ -18008,6 +18012,8 @@ acceptance claim is driver-specific.
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
+
+The light target is composited only over the current chunk's drawn area, expanded by render-target padding and a one-eighth-chunk margin for shake and refractive sampling. `MapView::GetMapCompositeRect` supplies that bound to both ordinary `FlushLight` and the custom fog-slot path. In a zoomed-in view this avoids flushing the entire oversized light target while retaining the edge pixels the effects may read.
 
 `Gui::CheckHit` caches its boolean result for the current `Game.FrameTime` and query position because cursor drawing, zoom, and movement can ask for the same point in one frame while `FindHit` walks every screen tree. GUI activation, geometry, ordering, scroll, crop, transparent-hit image, and hittability changes invalidate the cache. Resolution and language refresh invalidate through `_RefreshPositionRecursive`; setters that receive an unchanged value return without invalidating. The internal `_Move` helper deliberately does not invalidate by itself because `Draw` uses a temporary `_Move` pair every frame, so direct callers that change persistent layout invalidate explicitly.
 
@@ -19581,7 +19587,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: e8ecf93a2eeb8702ae49209e2e638cd3fd43920d41fea77d8e658ea643d7ec48
+Content SHA-256: ad1fd7d8bc2892efc6eccc3180cb3da1e0e4ac4db66fd453c424e0f5e85b6a77
 
 ---
 layout: default
@@ -20017,6 +20023,10 @@ Client movement requests enter through `Process_Move()`, `Process_StopMove()`, a
 ### A teleport ends the plan it interrupts
 
 `MapManager::Transfer` stops active movement and lands the critter with zero hex offset. On receiving `CritterTeleport`, the client also stops its old plan and clears the offset before placing the critter; otherwise interpolation could walk it back onto the interrupted route.
+
+### A refused move request ends the route it interrupts
+
+When `Critter.MoveToHex` replaces an active route, a successful new path produces one `CritterMove` without an intermediate stop. If the new request is refused (including zero speed, an already reached goal, or a pathfinding failure), the old route still ends through `StopCritterMoving`: observers receive `CritterPos` and `OnCritterStopMoving` fires. Merely stopping the server-side context left clients animating the previous route. `ServerCritterMovePositionReconciliation` checks both outcomes.
 
 Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
 
@@ -25130,7 +25140,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808
+Content SHA-256: 1e7f3a2f7cd71263149502520f5c4d3f96ee1c628e4819a68597242b3395141b
 
 ---
 layout: default
@@ -25344,7 +25354,7 @@ Engine code allocates through one of two surfaces, and nothing else:
 
 The raw tier exists because third-party allocator hooks are C-shaped: they demand `realloc`, or an untyped byte block, or both, which a C++ allocator cannot express. It carries the same out-of-memory policy as `SafeAllocator` — report, drain the backup pool, retry, then exit deterministically — so wiring a library through it does not silently opt that library out of the contract. A zero-size request is passed through rather than treated as failure.
 
-The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` block operations are unrelated to allocation and remain public.
+The underlying `rpmalloc` primitives are deliberately **not** exported from `MemorySystem.h`. They return null on failure and would be a second, equally reachable entry point that skips the contract; they live as file-local statics in `MemorySystem.cpp`. The vendored allocator propagates both an on-demand commit failure in a reserved span and a failed recommit of a decommitted free page as null. It recommits that page before publishing it as available; on failure it returns the page to the free list, so the backup-pool retry cannot hand out reserve-only memory. `Test_MemorySystem.cpp` injects both failures. Bad-allocation reports are serialized across threads; if stack-trace generation itself cannot allocate, the nested report writes its header without recursing. Backup chunks released by another thread return to their original thread heap and do not guarantee retry headroom for every thread. Mono's lock-free allocator is outside this contract and can abort on OOM. The `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` block operations are unrelated to allocation and remain public.
 
 The vendored rpmalloc keeps its upstream 256 MiB spans on 64-bit targets. On
 32-bit targets one span is reduced to `LARGE_PAGE_SIZE` (16 MiB). Older Windows
@@ -26941,7 +26951,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 5448dfa4ec49d80cd2b93ba87a8804bf13a7ae0fb0e35fc4703c6812aa94aacc
+Content SHA-256: 6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba
 
 ---
 layout: default
@@ -27041,6 +27051,8 @@ The current contract was re-derived from:
 `Source/Tests` validates stack and exception primitives. It does not currently exercise a real TCP/UDP AngelScript attach session. Project static checks and launch profiles prove integration shape, not the live protocol end to end.
 
 ## Fast route selection
+
+For a runtime-facing script failure, debugger route selection starts with the owning frame: native C++ needs matching native symbols, AngelScript execution needs its script adapter, and Managed C# failures need the managed diagnostics and assemblies. Use a focused test when the boundary is reproducible without live stepping.
 
 | Symptom family | Start with | Proof boundary |
 |---|---|---|

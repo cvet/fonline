@@ -53,6 +53,7 @@ struct memory_system_data
     memory::bad_alloc_callback callback {};
     unique_arr_ptr<unique_arr_ptr<uint8_t>> backup_memory_chunks {};
     std::atomic_size_t backup_memory_chunks_count {};
+    std::atomic<std::thread::id> reporting_thread {};
 };
 FO_GLOBAL_DATA(memory_system_data, memory_system);
 
@@ -489,6 +490,27 @@ void memory::report_bad_alloc(string_view message, string_view type_str, size_t 
 {
     break_into_debugger();
 
+    // Reports are serialized so threads failing together do not interleave their lines, and a report that fails an
+    // allocation of its own writes its header without a second stack trace instead of recursing into one
+    bool serialized = memory_system.is_created();
+    bool nested = false;
+
+    if (serialized) {
+        std::thread::id this_thread = std::this_thread::get_id();
+        std::thread::id expected {};
+
+        while (!memory_system->reporting_thread.compare_exchange_weak(expected, this_thread)) {
+            if (expected == this_thread) {
+                nested = true;
+                serialized = false;
+                break;
+            }
+
+            expected = {};
+            std::this_thread::yield();
+        }
+    }
+
     char itoa_buf[64] = {};
 
     logging::write_base("\nBAD ALLOC!\n\n");
@@ -503,9 +525,14 @@ void memory::report_bad_alloc(string_view message, string_view type_str, size_t 
     logging::write_base("Size: ");
     logging::write_base(itoa(static_cast<int64_t>(size), itoa_buf, 10));
     logging::write_base("\n\n");
-    logging::safe_write_stack_trace(stack_trace::get());
 
-    if (memory_system.is_created() && memory_system->callback) {
+    if (!nested) {
+        logging::safe_write_stack_trace(stack_trace::get());
+    }
+    if (serialized) {
+        memory_system->reporting_thread.store({});
+    }
+    if (!nested && memory_system.is_created() && memory_system->callback) {
         memory_system->callback();
     }
 }

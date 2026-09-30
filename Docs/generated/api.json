@@ -72766,7 +72766,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 919
+        "line": 922
       },
       "contract": {
         "explicit": true,
@@ -72867,7 +72867,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 908
+        "line": 911
       },
       "contract": {
         "explicit": true,
@@ -72914,7 +72914,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 971
+        "line": 974
       },
       "contract": {
         "explicit": true,
@@ -72953,7 +72953,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 959
+        "line": 962
       },
       "contract": {
         "explicit": true,
@@ -73031,7 +73031,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 982
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -73687,7 +73687,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 894
+        "line": 897
       },
       "contract": {
         "explicit": true,
@@ -73804,7 +73804,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 990
+        "line": 993
       },
       "contract": {
         "explicit": true,
@@ -74275,7 +74275,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 866
+        "line": 869
       },
       "contract": {
         "explicit": true,
@@ -74345,7 +74345,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 875
+        "line": 878
       },
       "contract": {
         "explicit": true,
@@ -74422,7 +74422,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 885
+        "line": 888
       },
       "contract": {
         "explicit": true,
@@ -74543,7 +74543,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 997
+        "line": 1000
       },
       "contract": {
         "explicit": true,
@@ -74891,7 +74891,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/ServerCritterScriptMethods.cpp",
-        "line": 901
+        "line": 904
       },
       "contract": {
         "explicit": true,

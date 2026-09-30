@@ -139,6 +139,8 @@ Synchronous native-result callbacks and module initialization use a private cont
 
 The server cover contract is backend-neutral: script callers must cover every existing entity the native call graph can read or mutate. An `await` ends the old cover; re-resolve or revalidate retained entities and reacquire cover before reuse.
 
+The native bridge validates a managed entity receiver before invoking an exported instance method or firing an event through either ABI; event subscription validates its target too. An uncovered receiver therefore reports a script-boundary cover fault instead of reaching a `noexcept` property accessor that would terminate the process. This validation does not acquire cover: callers still need to satisfy the declared requirements.
+
 Managed scripts declare and prove this contract with:
 
 - `[RequiresCover]` on a parameter or method receiver;

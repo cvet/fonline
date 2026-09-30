@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"4600888954ffa797f2e21400465ead298bcfe2fe2bb602132622055a4a81391f"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"43bb179d96766781c8b723661ac50b8263ea42f8c6ad9643c78b6b8f191a2600"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -659,6 +659,8 @@ hit testing и offscreen composition.
 render targets карты, освещения и indoor mask как логический размер экрана,
 умноженный на этот коэффициент. Движок ограничивает размер пределом текстуры
 renderer; вид, превышающий получившийся target, разбивается на несколько chunks.
+
+Light target накладывается только на нарисованную область текущего chunk, расширенную на padding render target и запас в одну восьмую chunk для тряски и refractive sampling. `MapView::GetMapCompositeRect` задаёт эту границу и для обычного `FlushLight`, и для custom fog-slot path. При приближении карты это избавляет от композиции всего увеличенного light target, сохраняя краевые pixels, которые могут читать эффекты.
 
 `Gui::CheckHit` кеширует boolean result для текущих `Game.FrameTime` и query
 position, поскольку cursor drawing, zoom и movement могут проверять одну точку

@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"1e7f3a2f7cd71263149502520f5c4d3f96ee1c628e4819a68597242b3395141b"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -214,7 +214,7 @@ script provider в `StackTrace.h`, расположенный до `FunctionObje
 
 Raw-уровень нужен из-за C-образных allocator hooks third-party библиотек: они требуют `realloc`, нетипизированный блок байтов или оба варианта, что невозможно выразить C++ allocator. Он сохраняет ту же политику нехватки памяти, что и `SafeAllocator`: сообщить об ошибке, освободить резервный пул, повторить попытку и детерминированно завершить процесс. Поэтому подключение библиотеки через этот путь не выводит её из общего контракта. Запрос нулевого размера передаётся нижнему allocator, а не трактуется как ошибка.
 
-Примитивы `rpmalloc` намеренно не экспортируются из `MemorySystem.h`. Они возвращают null при сбое и создали бы вторую доступную точку входа, обходящую контракт, поэтому остаются file-local statics в `MemorySystem.cpp`. Операции над блоками `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` не выделяют память и остаются публичными.
+Примитивы `rpmalloc` намеренно не экспортируются из `MemorySystem.h`. Они возвращают null при сбое и создали бы вторую доступную точку входа, обходящую контракт, поэтому остаются file-local statics в `MemorySystem.cpp`. Vendored allocator возвращает null и при on-demand commit зарезервированного span, и при неудачном recommit ранее decommitted свободной страницы. Страница recommit-ится до публикации как доступная; при отказе она возвращается в free list, поэтому повторная попытка после освобождения резервного пула не выдаст reserve-only память. `Test_MemorySystem.cpp` инъецирует оба сбоя. Отчёты о нехватке памяти сериализуются между потоками; если построение stack trace само не может выделить память, вложенный отчёт пишет только заголовок без рекурсии. Освобождённые другим потоком резервные chunks возвращаются в исходный thread heap и не гарантируют память каждому потоку. Lock-free allocator Mono находится вне этого контракта и может вызвать abort при OOM. Операции над блоками `MemCopy` / `MemMove` / `MemFill` / `MemCompare` / `MemReadUnaligned` / `MemWriteUnaligned` не выделяют память и остаются публичными.
 
 Vendored rpmalloc сохраняет upstream spans размером 256 MiB на 64-bit targets.
 На 32-bit targets один span уменьшен до `LARGE_PAGE_SIZE` (16 MiB). Старые

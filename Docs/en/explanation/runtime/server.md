@@ -433,6 +433,10 @@ Client movement requests enter through `Process_Move()`, `Process_StopMove()`, a
 
 `MapManager::Transfer` stops active movement and lands the critter with zero hex offset. On receiving `CritterTeleport`, the client also stops its old plan and clears the offset before placing the critter; otherwise interpolation could walk it back onto the interrupted route.
 
+### A refused move request ends the route it interrupts
+
+When `Critter.MoveToHex` replaces an active route, a successful new path produces one `CritterMove` without an intermediate stop. If the new request is refused (including zero speed, an already reached goal, or a pathfinding failure), the old route still ends through `StopCritterMoving`: observers receive `CritterPos` and `OnCritterStopMoving` fires. Merely stopping the server-side context left clients animating the previous route. `ServerCritterMovePositionReconciliation` checks both outcomes.
+
 Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
 
 Runtime movement is independent of `CritterCondition`: alive, knockout, dead, and any future condition use the same `MovingContext` processing. Game scripts own gameplay-level movement permissions and must stop or reject movement when a creature state should forbid it. Attached critters still stop their active `MovingContext` because attachment is a transport/ownership relationship rather than a condition.

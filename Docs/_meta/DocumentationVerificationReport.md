@@ -2,6 +2,22 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-30 - allocator, light composition, managed cover, and refused movement
+
+Scope and source revisions:
+
+- Reconciled documentation head `e3846ee98e84c7bd5c59ed69c327cb2966ff9bec` with Engine `origin/master` through `e8c8da0a9b6c19243b804d94e0aa468b8e1e6758` (three incoming commits, merge base `f7c8b1ecf5b718e057a0d5439f9aa3c189e2aa24`). Inspected allocator, client map composition, managed dispatch, movement exports, and the new memory/movement tests. No listed screenshot or diagram provenance changed.
+- Kept the four legacy overview pages as route pointers and moved their incoming behavior into the canonical English and reviewed Russian pages for Essentials, rendering, scripting and server movement.
+
+Documentation and contract reconciliation:
+
+- Documented pre-publication recommit and serialized bad-allocation reporting, chunk-bounded light composition, receiver cover checks across managed method/event ABIs and subscriptions, and observer notification when a move request interrupts an active route but is refused. These are changes to existing behavior, not a separate pre-release breaking-change ledger.
+- Regenerated the native API model and EN/RU reference source lines, snippets, translation status, search indexes, AI evaluation and delivery. The seventeen-domain contract diff against the old documentation head reports zero public model changes and no required dispositions. A stale test inventory expectation was corrected from 4813 to the current 4814 translated descriptions.
+
+Validation and limits:
+
+- The full documentation validator passed 408 Markdown entries; AI evaluation passed 28 tasks and 67 retrieval checks at 100%. `LF_UnitTests` built, and the `MemorySystem` and `ServerCritterMovePositionReconciliation` filters passed 51 and 78 assertions respectively, with a clean server stop. The focused localization/site/AI tests passed 22 cases and the corrected quality-foundations test passed four cases. The broader documentation test discovery exposed the stale 4813 assertion and was stopped after its focused fix rather than counted as a clean full pass. Project bake and live client acceptance remain separate integration checks.
+
 ## 2026-09-29 - database key listing over pending writes
 
 Scope and source revisions:

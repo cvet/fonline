@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0959ed1e4851cec7ee7941f6af383b0306ff3e17620dbbe54ab7362875074d3e"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -190,6 +190,8 @@ Events и remote calls являются разными понятиями. Event
 Каждая экспортируемая функция помечена `///@ ExportMethod` и обычно начинается с префикса стороны и типа, например `Server_Map_`, `Client_Game_`, `Common_ImGui_` или `Mapper_Game_`. Codegen преобразует объявления в видимые скриптам descriptors и backend call wrappers. Завершающие C++-параметры по умолчанию сохраняются в метаданных и восстанавливаются в регистрационных объявлениях AngelScript; значения C++ value types вроде `fpos32 {}` нормализуются в script expressions вроде `fpos()`. Предпочитайте один экспортируемый метод с default arguments нескольким перегрузкам, которые только добавляют необязательные аргументы. Карта файлов и обязанностей приведена в [карте методов скриптового API](../../reference/script-api/method-ownership.md).
 
 Для instance methods сущности dispatch AngelScript проверяет receiver до входа в тело нативного метода. `Entity_MethodCall` вызывает `CheckScriptEntityAccessAndNonDestroyed`, который проверяет серверный synchronization cover и destroyed state сущности `self`. Не добавляйте entry-only `ValidateEntityAccess(self)` и не повторяйте проверку receiver перед обычным чтением. Далее в теле проверяйте сущности только на реальных границах доступа или assert, например при event dispatch либо продолжении после re-entry. Если покрытая сущность должна сохранить собственный lock при detach или reparent, используйте сохраняющий cover и идемпотентный `EnsureEntitySynced(...)`: он сохраняет уже имеющийся caller cover, никогда не освобождает и не паркуется на нём и не может получить пропущенную dependency.
+
+Dispatch Managed C# также проверяет доступ к entity receiver до входа в нативный код через обе ABI методов и событий. Подписка на событие проверяет и свою целевую сущность. Поэтому uncovered server receiver сообщает ошибку на границе скрипта, прежде чем `noexcept` accessor свойства мог бы завершить процесс; cover за вызывающего не приобретается. См. [серверную синхронизацию Managed C#](../../how-to/scripting/managed-csharp.md#серверная-синхронизация-сущностей).
 
 При добавлении метода размещайте его на стороне, владеющей изменяемым состоянием. Например, авторитетное создание предмета относится к серверным методам, а sprite/UI helpers — к клиентским или общим frontend methods.
 

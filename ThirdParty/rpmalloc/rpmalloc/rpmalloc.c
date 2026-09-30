@@ -705,6 +705,21 @@ test_fail_span_commit(void) {
 	}
 	return 0;
 }
+
+//! (FOnline Patch) Failure injection for the recommit of a decommitted free page
+static atomic_int global_test_page_recommit_failures;
+
+static int
+test_fail_page_recommit(void) {
+	int failures = atomic_load_explicit(&global_test_page_recommit_failures, memory_order_relaxed);
+	while (failures > 0) {
+		int remaining = failures - 1;
+		if (atomic_compare_exchange_weak_explicit(&global_test_page_recommit_failures, &failures, remaining,
+		                                          memory_order_relaxed, memory_order_relaxed))
+			return 1;
+	}
+	return 0;
+}
 #endif
 
 //! Memory interface
@@ -1306,6 +1321,10 @@ static inline int
 page_commit_memory_pages(page_t* page) {
 	if (!page->is_decommitted)
 		return 0;
+#if defined(RPMALLOC_ENABLE_TESTS)
+	if (test_fail_page_recommit())
+		return 1;
+#endif
 	size_t commit_prefix = (size_t)1 << page->commit_prefix_shift;
 	void* extra_page = pointer_offset(page, commit_prefix);
 	size_t extra_page_size = page_get_size(page) - commit_prefix;
@@ -2064,6 +2083,13 @@ heap_page_free_decommit(heap_t* heap, uint32_t page_type, uint32_t page_retain_c
 
 static inline int
 heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page) {
+	/* (FOnline Patch) Recommit before the page is published: a page left on page_available after a failed
+	   recommit hands out blocks in reserve-only memory, and the first write to one of them faults */
+	if (page->is_decommitted != 0) {
+		page->heap = heap;
+		if (page_commit_memory_pages(page) != 0)
+			return 1;
+	}
 	page->size_class = size_class;
 	page->block_size = global_size_class[size_class].block_size;
 	page->block_count = global_size_class[size_class].block_count;
@@ -2083,8 +2109,6 @@ heap_make_free_page_available(heap_t* heap, uint32_t size_class, page_t* page) {
 	if (head)
 		head->prev = page;
 	heap->page_available[size_class] = page;
-	if (page->is_decommitted != 0)
-		return page_commit_memory_pages(page);
 	return 0;
 }
 
@@ -2199,8 +2223,12 @@ heap_get_page_generic(heap_t* heap, uint32_t size_class) {
 			rpmalloc_assert(heap->page_free_commit_count[page_type] > 0, "Free committed page count out of sync");
 			--heap->page_free_commit_count[page_type];
 		}
-		if (heap_make_free_page_available(heap, size_class, page) != 0)
+		if (heap_make_free_page_available(heap, size_class, page) != 0) {
+			/* (FOnline Patch) A page whose recommit failed goes back to the free list, still decommitted */
+			page->next = heap->page_free[page_type];
+			heap->page_free[page_type] = page;
 			return 0;
+		}
 		return page;
 	}
 	rpmalloc_assert(heap->page_free_commit_count[page_type] == 0, "Free committed page count out of sync");
@@ -2714,6 +2742,17 @@ rpmalloc_test_set_span_commit_failures(int failures) {
 extern int
 rpmalloc_test_get_span_commit_failures(void) {
 	return atomic_load_explicit(&global_test_span_commit_failures, memory_order_relaxed);
+}
+
+//! (FOnline Patch)
+extern void
+rpmalloc_test_set_page_recommit_failures(int failures) {
+	atomic_store_explicit(&global_test_page_recommit_failures, failures, memory_order_relaxed);
+}
+
+extern int
+rpmalloc_test_get_page_recommit_failures(void) {
+	return atomic_load_explicit(&global_test_page_recommit_failures, memory_order_relaxed);
 }
 
 //! (FOnline Patch)

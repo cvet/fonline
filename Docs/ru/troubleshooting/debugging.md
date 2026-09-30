@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"5448dfa4ec49d80cd2b93ba87a8804bf13a7ae0fb0e35fc4703c6812aa94aacc"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -96,6 +96,8 @@ Engine отвечает за:
 `Source/Tests` проверяет примитивы стека и исключений. Сейчас он не выполняет реальную TCP/UDP-сессию подключения AngelScript. Статические проверки и launch-профили проекта доказывают форму интеграции, но не живой протокол end to end.
 
 ## Быстрый выбор маршрута
+
+При сбое на границе script runtime выбор debugger route начинается с определения владеющего frame: native C++ требует совпадающих native symbols, выполнение AngelScript — своего script adapter, а сбой Managed C# — managed diagnostics и assemblies. Если граница воспроизводится без live stepping, используйте focused test.
 
 | Семейство симптомов | С чего начать | Граница доказательства |
 |---|---|---|

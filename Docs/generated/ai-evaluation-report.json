@@ -17,9 +17,9 @@
     "query_count": 67,
     "pass_count": 67,
     "success_rate": 1.0,
-    "top_1_rate": 0.850746,
+    "top_1_rate": 0.865672,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.91791,
+    "mean_reciprocal_rank": 0.927861,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 28,
@@ -478,10 +478,10 @@
           "passed": true,
           "top_document_ids": [
             "script-lifecycle-concurrency",
+            "managed-csharp-scripting",
             "scripting-runtime",
             "nullability",
-            "testing",
-            "baking-pipeline"
+            "testing"
           ]
         }
       ],
@@ -1462,13 +1462,13 @@
             "debugging"
           ],
           "max_rank": 3,
-          "rank": 3,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "profiling",
-            "generated-api-metadata",
             "debugging",
             "managed-csharp-scripting",
+            "profiling",
+            "generated-api-metadata",
             "android-debugging"
           ]
         }
@@ -1733,8 +1733,8 @@
           "top_document_ids": [
             "engine-upgrade-guide",
             "generated-api-metadata",
-            "generated-content-workflow",
             "native-essentials",
+            "generated-content-workflow",
             "baking-pipeline"
           ]
         }

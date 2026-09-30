@@ -97,6 +97,8 @@ The current contract was re-derived from:
 
 ## Fast route selection
 
+For a runtime-facing script failure, debugger route selection starts with the owning frame: native C++ needs matching native symbols, AngelScript execution needs its script adapter, and Managed C# failures need the managed diagnostics and assemblies. Use a focused test when the boundary is reproducible without live stepping.
+
 | Symptom family | Start with | Proof boundary |
 |---|---|---|
 | Native assertion, C++ exception, signal, SEH failure, or lifecycle invariant | Matching native symbols, original log, then the smallest native target under a debugger | Focused `Source/Tests/Test_*.cpp` case when the boundary is reusable. |

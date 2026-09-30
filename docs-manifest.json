@@ -1216,8 +1216,8 @@
         "BuildTools/tests/test_docs_debugging.py",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "5448dfa4ec49d80cd2b93ba87a8804bf13a7ae0fb0e35fc4703c6812aa94aacc",
-      "byte_size": 50464
+      "content_sha256": "6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba",
+      "byte_size": 50792
     },
     {
       "id": "documentation-home",
@@ -1909,8 +1909,8 @@
         "Source/Common/Settings.inc",
         "BuildTools/cmake/stages/Init.cmake"
       ],
-      "content_sha256": "4600888954ffa797f2e21400465ead298bcfe2fe2bb602132622055a4a81391f",
-      "byte_size": 106602
+      "content_sha256": "43bb179d96766781c8b723661ac50b8263ea42f8c6ad9643c78b6b8f191a2600",
+      "byte_size": 107015
     },
     {
       "id": "gameplay-testing",
@@ -2333,8 +2333,8 @@
         "Docs/generated/api.json",
         "BuildTools/docs_reference.py"
       ],
-      "content_sha256": "06aefae0cda2d6c3fb91e1fc7978f0724c5122662f503a43c17adcfc35785463",
-      "byte_size": 709863
+      "content_sha256": "4b0119466b7d52bf62227a9f781c1e2dbdac052549a8e553c803a5474f7767a2",
+      "byte_size": 709865
     },
     {
       "id": "generated-api-migrations",
@@ -12057,8 +12057,8 @@
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "BuildTools/tests/test_docs_managed_csharp.py"
       ],
-      "content_sha256": "9584309d60b50358afeb6f78c450e1e944eb8ccf9fe5c066fe20e97d8aab5189",
-      "byte_size": 51315
+      "content_sha256": "b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f",
+      "byte_size": 51750
     },
     {
       "id": "map-format-guide",
@@ -12439,8 +12439,8 @@
         "Source/Tests/Test_CommonHelpers.cpp",
         "Source/Tests/Test_WorkThread.cpp"
       ],
-      "content_sha256": "f9f468ee6bf036a6acb35cc0bad113e95a0290f1b3846651b97d2421a298e808",
-      "byte_size": 39864
+      "content_sha256": "1e7f3a2f7cd71263149502520f5c4d3f96ee1c628e4819a68597242b3395141b",
+      "byte_size": 40589
     },
     {
       "id": "native-extension-sample-readme",
@@ -13483,8 +13483,8 @@
         "BuildTools/cmake/stages/ScriptsAndBaking.cmake",
         "BuildTools/managed_runtime_payload.py"
       ],
-      "content_sha256": "6822d0ae40c4b43f3e212665522739e3863c34bf4783004b84402cfe526a68cc",
-      "byte_size": 33877
+      "content_sha256": "0959ed1e4851cec7ee7941f6af383b0306ff3e17620dbbe54ab7362875074d3e",
+      "byte_size": 34344
     },
     {
       "id": "security-and-secrets",
@@ -13555,8 +13555,8 @@
         "Source/Server",
         "Source/Tests"
       ],
-      "content_sha256": "e8ecf93a2eeb8702ae49209e2e638cd3fd43920d41fea77d8e658ea643d7ec48",
-      "byte_size": 70247
+      "content_sha256": "ad1fd7d8bc2892efc6eccc3180cb3da1e0e4ac4db66fd453c424e0f5e85b6a77",
+      "byte_size": 70805
     },
     {
       "id": "smart-pointers",
@@ -14086,8 +14086,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "7cef3eadd6b60e2bcbc3ba5e3d9398ebe09ef6a1ce4cab47d0f92e67bd8ce141",
-      "byte_size": 2112919
+      "content_sha256": "39074c60165f3f50a12f5b70fde388998413a84232c7d186132b847591f6f793",
+      "byte_size": 2115845
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14100,15 +14100,15 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "655328d3e2e58ad3115005832aeccf64dac7d662d2e33de9e1beb773b32ba9f7",
-      "byte_size": 113146
+      "content_sha256": "622f085ff7420c10b407f08f5995431b10f45a27828e81cfc0021cadb48cd556",
+      "byte_size": 113156
     },
     {
       "id": "api_model",
       "path": "Docs/generated/api.json",
       "canonical_url": "https://fonline.ru/Docs/generated/api.json",
-      "content_sha256": "6405d58422103e3ce461b46042d04cc451c76adf4a4267084b2760279d3a0645",
-      "byte_size": 3111857
+      "content_sha256": "e071dc155f724e1fd9a8bc54969db1b63fad5ae401a288c6e1e13f2387dd569d",
+      "byte_size": 3111858
     },
     {
       "id": "audio_reference",
@@ -14240,7 +14240,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "bcd1d20af1d087016d6f8df8775638c2ce1278d193fa9a435165ad8f32d27720",
+      "content_sha256": "e94dbf1d0ebb08384af56404df5e3040a6c55abee14d31b80f5ff8a2e35af3ec",
       "byte_size": 267384
     },
     {
@@ -14268,7 +14268,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "0d193b84386adb5db5aa84c4b2300bff4e9cc176128523983e96171d74cbd90f",
+      "content_sha256": "1ff628bba9714730e38524b563902fd7acde749bb548e8207f0d9f9e6ff4c7be",
       "byte_size": 105169
     },
     {
@@ -14289,15 +14289,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "eee9ac7d19d5d2873441abd93fc3ac07867cdab550cf6454b49aab5e08f6959d",
-      "byte_size": 1253484
+      "content_sha256": "6fb988a5ccc627e5c46525735fe2c1f24074774382e2a2421cee5c1e84e01ee5",
+      "byte_size": 1254200
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "09318f671a4f093dfe2d5d50a7ea11f877069ca87db94d6ea498e94385f45f60",
-      "byte_size": 1774488
+      "content_sha256": "8ce36e5fbe905a3740ba977e4caadfb449cad41d8b8ea52eba63d71f3998d0fb",
+      "byte_size": 1775915
     }
   ]
 }
