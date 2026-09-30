@@ -18515,6 +18515,10 @@
           "source_sha256": "0af7be618ba6559feb5a36e61c808a64a73e2fc66f69e78e1a44e9e6c264fcf2",
           "translation": "Максимальная длина pathfinding"
         },
+        "/symbols/@id=setting.common.Geometry.PathFindCritterDetour/description": {
+          "source_sha256": "7200452f94f033226946fc44667272fb2bdb485a2022d1e35520d3cb820d1843",
+          "translation": "Число шагов обхода, которыми поиск пути оценивает проход через одного живого криттера."
+        },
         "/symbols/@id=setting.common.Geometry.PathFindEnclosureProbe/description": {
           "source_sha256": "24045423e05f77bed9277f02454a15d54b29650e1b46334ad39593b547414256",
           "translation": "Число гексов для обратной проверки замкнутости цели поиска пути; 0 отключает проверку."

@@ -768,6 +768,7 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     settings.MapSize = map->GetSize();
     settings.MaxLength = max_length != 0 ? std::min(max_length, _engine->Settings->Geometry.MaxPathFindLength) : _engine->Settings->Geometry.MaxPathFindLength;
     settings.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Cut = cut;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
@@ -816,6 +817,7 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     settings.FromHexOffset = from_cr ? from_cr->GetHexOffset() : ipos16 {};
     settings.MapSize = map_size;
     settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
     settings.CheckTarget = [&target_hex_set](mpos hex) { return target_hex_set.contains(hex); };

@@ -433,6 +433,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-common-geometry-maxpathfindlength-a08551c618"></a>
 - [`symbol-setting-common-geometry-maxpathfindlength-a08551c618`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-maxpathfindlength-a08551c618)
 
+<a id="symbol-setting-common-geometry-pathfindcritterdetour-3a1ca0e4ee"></a>
+- [`symbol-setting-common-geometry-pathfindcritterdetour-3a1ca0e4ee`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-pathfindcritterdetour-3a1ca0e4ee)
+
 <a id="symbol-setting-common-geometry-pathfindenclosureprobe-89f0695acc"></a>
 - [`symbol-setting-common-geometry-pathfindenclosureprobe-89f0695acc`](../../en/reference/script-api/settings.md#symbol-setting-common-geometry-pathfindenclosureprobe-89f0695acc)
 

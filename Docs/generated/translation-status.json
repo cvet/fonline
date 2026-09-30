@@ -352,8 +352,8 @@
       "english_path": "Docs/en/explanation/maps-and-movement.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/maps-and-movement.md",
-      "source_sha256": "7dc757eaa498d967e62213821447ab9ba75a31f7914822766937a18b8f388bf9",
-      "source_bytes": 25574,
+      "source_sha256": "7e723cce461b59f8e9fb42ea8d75a0c6cdfd7814100e33b512c476d98759ed20",
+      "source_bytes": 26427,
       "status": "current"
     },
     {
@@ -1990,7 +1990,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "8fb3580db81cab2753e5e1e08ca29cce30ca8755c61366c5b65bc58000ec7a2f",
+      "source_sha256": "74bf4ef1b8d4f001449af3e25b5cc285355af1fd44b42d04f166e2f9e57b6e98",
       "source_bytes": 7369,
       "status": "current"
     },
@@ -2042,7 +2042,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "7a6c1d32e8a9c7b06e1ef3caff243a35dd2e728f78358ed0503e52d776554d4b",
+      "source_sha256": "ff43010c5cd13f8d9c5653b9eaa43afd66d276f73e09a2703aea28e1ec4e326f",
       "source_bytes": 3410,
       "status": "current"
     },
@@ -2107,8 +2107,8 @@
       "english_path": "Docs/en/reference/script-api/settings.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/settings.md",
-      "source_sha256": "67c395f0ebbd8da4b126096e4d8638013c40e000619ee46f5033ba8bd7957b75",
-      "source_bytes": 170171,
+      "source_sha256": "b577daaa48c866626edfb64633eb41abac1a6eb2bf1c3910416ac1b2284e204c",
+      "source_bytes": 170790,
       "status": "current"
     },
     {

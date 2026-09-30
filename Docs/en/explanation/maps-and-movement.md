@@ -117,6 +117,8 @@ Important `FindPathInput` fields:
 - `MaxLength` — longest permitted route in steps, normally derived from engine
   settings. A route of exactly this length is allowed; search state is allocated
   in 16×16 blocks only for touched hexes, not in proportion to the limit.
+- `CritterDetour` — extra route cost for entering a hex occupied by a living critter.
+  `MapManager` and `MapView` use `Geometry.PathFindCritterDetour` (default `12`).
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -146,10 +148,20 @@ multihex clearance; use `FindPathToAny()` when route choice or movement costs ma
 `FindPath()` uses A*: route cost so far plus the hex distance still needed to
 reach the target's `Cut` radius. For `CheckTarget`, the remaining-distance
 estimate is zero, so the search spreads evenly toward the nearest reachable
-goal. Each step costs one; `DeferGag` adds ten, and `DeferCritter` is costlier
-than any route without a critter. Thus a short detour avoids a gag and a route
-through critters is the last resort. If the length limit cuts off alternatives,
-the search reports `TooFar` rather than prematurely choosing a critter route.
+goal. Each step costs one; `DeferGag` adds ten, and `DeferCritter` adds
+`CritterDetour` (clamped to zero if negative). A shorter way around a critter is
+preferred, but a critter standing in a doorway may be crossed instead of routing
+around the whole building. This replaces the former rule that charged more than
+any critter-free route: a ring of critters no longer makes the search exhaust a
+large free region before considering a route through them.
+
+For a single `ToHex`/`Cut` goal, the search checks the goal disk before its first
+step. A hex occupied by a critter may be crossed at its detour cost but is not a
+stopping point while any goal hex is `Passable` or `DeferGag`. If every goal is
+blocked or occupied and at least one is occupied, the route may stop on an
+occupied goal. A `CheckTarget` multi-target search has no goal disk and accepts
+its selected target as given. Gameplay that must never end on another critter
+must enforce that rule at its own movement request boundary.
 
 A goal farther than `MaxLength` even by straight-line distance returns
 `TooFar` without asking `CheckHex`. Other hexes whose route length plus
@@ -214,7 +226,7 @@ authority stop at the same continuous point and there is no protocol change.
 - `Passable` — hex can be used.
 - `Blocked` — permanent blocker.
 - `DeferGag` — gag item, passable at the cost of ten extra steps.
-- `DeferCritter` — critter, used only after routes without critters are exhausted within the length bound.
+- `DeferCritter` — critter, passable for `CritterDetour` extra cost; a stopping point only if no goal hex is free.
 
 For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
 

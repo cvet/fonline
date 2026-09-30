@@ -2,6 +2,18 @@
   "schema_version": 2,
   "entries": [
     {
+      "domain": "api",
+      "change_id": "api-change.model-scope.aa7672d0a0e4f82a",
+      "baseline_contract_sha256": "3793cfff44caa5db761f882c757781e638ebd081072b5a456dc1bb69a1efcda4",
+      "current_contract_sha256": "a493925dc4d252b5cba67d93f8c2788aa42522ee08454951d42cbd8840101384",
+      "classification": "breaking",
+      "rationale": "The native-codegen scope inventory hash changes solely because the experimental Geometry.PathFindCritterDetour setting was added. No existing script symbol or signature was removed or changed; the scope-hash change is conservatively classified by the contract tool.",
+      "migration": "No script API migration is needed. Direct native FindPathInput callers should set CritterDetour explicitly for their intended route policy; MapManager and MapView supply the engine setting.",
+      "release_note": "The current movement guide documents the bounded critter detour and occupied-goal behavior; include the route-choice change in the eventual pre-release engine notes.",
+      "compatibility": "Engine and embedding-project binaries must be rebuilt together for the added FindPathInput field. There is no persisted-data or network-format change. Existing authored configuration may omit the new setting and use its default of 12.",
+      "owner": "content-data"
+    },
+    {
       "domain": "prototype-format",
       "change_id": "prototype-format-change.model-scope.42394937fdd3ea3f",
       "baseline_contract_sha256": "83415c2d759650c4a30c71126dd4e785a8aa5abf58117b26938da13a3c8a216f",

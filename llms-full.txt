@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 8fb3580db81cab2753e5e1e08ca29cce30ca8755c61366c5b65bc58000ec7a2f
+Content SHA-256: 74bf4ef1b8d4f001449af3e25b5cc285355af1fd44b42d04f166e2f9e57b6e98
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2553**
-- Symbols with source-backed descriptions: **2553**
+- Discovered symbols: **2554**
+- Symbols with source-backed descriptions: **2554**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2553**
+- Explicitly classified symbols: **2554**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -16783,7 +16783,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 7dc757eaa498d967e62213821447ab9ba75a31f7914822766937a18b8f388bf9
+Content SHA-256: 7e723cce461b59f8e9fb42ea8d75a0c6cdfd7814100e33b512c476d98759ed20
 
 ---
 layout: default
@@ -16904,6 +16904,8 @@ Important `FindPathInput` fields:
 - `MaxLength` — longest permitted route in steps, normally derived from engine
   settings. A route of exactly this length is allowed; search state is allocated
   in 16×16 blocks only for touched hexes, not in proportion to the limit.
+- `CritterDetour` — extra route cost for entering a hex occupied by a living critter.
+  `MapManager` and `MapView` use `Geometry.PathFindCritterDetour` (default `12`).
 - `Cut` — stop when route is within this distance of target; `0` requires exact target.
 - `Multihex` — radius for multihex actors.
 - `FreeMovement` — enables the line-tracer optimization for control steps and the continuous sub-hex end offset (see below).
@@ -16933,10 +16935,20 @@ multihex clearance; use `FindPathToAny()` when route choice or movement costs ma
 `FindPath()` uses A*: route cost so far plus the hex distance still needed to
 reach the target's `Cut` radius. For `CheckTarget`, the remaining-distance
 estimate is zero, so the search spreads evenly toward the nearest reachable
-goal. Each step costs one; `DeferGag` adds ten, and `DeferCritter` is costlier
-than any route without a critter. Thus a short detour avoids a gag and a route
-through critters is the last resort. If the length limit cuts off alternatives,
-the search reports `TooFar` rather than prematurely choosing a critter route.
+goal. Each step costs one; `DeferGag` adds ten, and `DeferCritter` adds
+`CritterDetour` (clamped to zero if negative). A shorter way around a critter is
+preferred, but a critter standing in a doorway may be crossed instead of routing
+around the whole building. This replaces the former rule that charged more than
+any critter-free route: a ring of critters no longer makes the search exhaust a
+large free region before considering a route through them.
+
+For a single `ToHex`/`Cut` goal, the search checks the goal disk before its first
+step. A hex occupied by a critter may be crossed at its detour cost but is not a
+stopping point while any goal hex is `Passable` or `DeferGag`. If every goal is
+blocked or occupied and at least one is occupied, the route may stop on an
+occupied goal. A `CheckTarget` multi-target search has no goal disk and accepts
+its selected target as given. Gameplay that must never end on another critter
+must enforce that rule at its own movement request boundary.
 
 A goal farther than `MaxLength` even by straight-line distance returns
 `TooFar` without asking `CheckHex`. Other hexes whose route length plus
@@ -17001,7 +17013,7 @@ authority stop at the same continuous point and there is no protocol change.
 - `Passable` — hex can be used.
 - `Blocked` — permanent blocker.
 - `DeferGag` — gag item, passable at the cost of ten extra steps.
-- `DeferCritter` — critter, used only after routes without critters are exhausted within the length bound.
+- `DeferCritter` — critter, passable for `CritterDetour` extra cost; a stopping point only if no goal hex is free.
 
 For multihex actors, `CheckHexWithMultihex()` checks the directional front arc and returns the worst blocker result across checked hexes.
 
@@ -26172,7 +26184,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 7a6c1d32e8a9c7b06e1ef3caff243a35dd2e728f78358ed0503e52d776554d4b
+Content SHA-256: ff43010c5cd13f8d9c5653b9eaa43afd66d276f73e09a2703aea28e1ec4e326f
 
 ---
 title: Generated API Reference
@@ -26193,32 +26205,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 278 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 279 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2553 |
-| Symbols with descriptions | 2553 |
+| Addressable symbols | 2554 |
+| Symbols with descriptions | 2554 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
 | Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2553 |
+| Explicitly classified symbols | 2554 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2552 |
+| <code>experimental</code> | 2553 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2553 stable IDs with SHA-256 <code>265eb2dfe10277fc3af401f37ede15db41b99f254375059e22838a78f33edcd8</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2554 stable IDs with SHA-256 <code>86de8cfbdf1cc0d902e5eb46abe0bb0dc3a2dc18bd7246cc1841e245ddc920fb</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

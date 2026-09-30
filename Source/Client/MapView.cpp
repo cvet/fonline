@@ -3786,6 +3786,7 @@ auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& targe
     input.MapSize = _mapSize;
     input.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
     input.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
+    input.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     input.Cut = cut < 0 ? 0 : cut;
     input.Multihex = multihex;
     input.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;

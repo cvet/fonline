@@ -2,6 +2,22 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-09-30 - bounded critter detours and occupied path goals
+
+Scope and source revisions:
+
+- Reconciled Engine docs head `9ef78270e8fbe95315795e1c620a0f2183029487` with `origin/master` through `eee7245bc828b9b8597a551a4bd36d33b36cc8f6` (one incoming commit). Inspected `PathFinding.cpp/.h`, client and server caller settings, the new `Geometry.PathFindCritterDetour` declaration and focused pathfinding tests.
+- Kept `Docs/MapsMovementGeometry.md` as a durable route pointer; reconciled the incoming explanation in canonical English and Russian movement pages. The embedding project's melee-slot limit remains project-owned.
+
+Documentation and contract reconciliation:
+
+- Documented per-critter route cost and the occupied-goal exception. `Geometry.PathFindCritterDetour` defaults to 12; a direct `FindPathInput` caller supplies its own `CritterDetour`. Regenerated the source inventory, native API model, EN/RU setting reference, public index, description translations (4815/4815), locale status, snippets, site/search/routes, AI evaluation and delivery.
+- Updated the native-codegen scope count and hash for the one additive experimental setting. The seventeen-domain contract diff against the previous Engine docs head reports two API changes (the new setting and scope hash), one reviewed conservative scope disposition, and zero missing dispositions. This is not a separate pre-release breaking-change ledger or a claim that an existing script symbol was removed.
+
+Validation and limits:
+
+- The full documentation validator passed 408 Markdown entries. AI evaluation passed 28 tasks and 67 retrieval checks at 100%. The screenshot catalog's source hash was refreshed for the changed `Settings.inc`; image binaries and listed visual recapture triggers did not change. `LF_UnitTests` built and the `PathFinding::*` filter passed 21,798 assertions in six cases. A selected documentation-generator test run initially found one stale expected experimental-symbol count; that expectation was corrected and its final rerun is in progress. Last Frontier's game AI limit, full bake and gameplay tests are separate integration checks.
+
 ## 2026-09-30 - allocator, light composition, managed cover, and refused movement
 
 Scope and source revisions:

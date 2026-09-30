@@ -44,6 +44,8 @@ namespace
     constexpr mpos POCKET_CENTER {60, 60};
     constexpr mpos FAR_START {10, 10};
     constexpr msize RANDOM_MAP_SIZE {32, 32};
+    // The detour a living critter on the route costs, the value the game ships with
+    constexpr int32_t TEST_CRITTER_DETOUR = 12;
 
     // Helper: create settings for a clear map (no obstacles)
     static auto MakeClearSettings(mpos from, mpos to, int32_t cut = 0) -> FindPathInput
@@ -53,6 +55,7 @@ namespace
         settings.ToHex = to;
         settings.MapSize = TEST_MAP_SIZE;
         settings.MaxLength = 200;
+        settings.CritterDetour = TEST_CRITTER_DETOUR;
         settings.Cut = cut;
         settings.FreeMovement = false;
         settings.Multihex = 0;
@@ -1216,13 +1219,40 @@ TEST_CASE("PathFinding::AStar")
         CHECK(crosses_gag(55));
     }
 
-    SECTION("RouteThroughFewerCrittersWins")
+    SECTION("CritterIsCrossedOnlyWhenTheDetourCostsMore")
     {
-        // Column 15 is all critters and column 16 has them above row 20: the straight way crosses two, a way through
-        // the lower rows crosses one and wins however much longer it is
+        // A critter costs CritterDetour extra steps as a gag costs its ten: a gap in a line of critters three rows off
+        // the straight way is walked round, one twenty-five rows off costs more than the critter and the line is crossed
+        auto crosses_critter = [](int16_t gap_y) -> bool {
+            auto settings = MakeClearSettings(mpos {25, 30}, mpos {35, 30});
+            settings.MapSize = msize {60, 60};
+            settings.CheckHex = [gap_y](mpos hex) -> HexBlockResult { return hex.x == 30 && hex.y != gap_y ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+            auto output = PathFinding::FindPath(settings);
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+            mpos cur = settings.FromHex;
+            bool crossed = false;
+
+            for (mdir dir : output.Steps) {
+                GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+                crossed = crossed || (cur.x == 30 && cur.y != gap_y);
+            }
+
+            CHECK(cur == settings.ToHex);
+            return crossed;
+        };
+
+        CHECK_FALSE(crosses_critter(33));
+        CHECK(crosses_critter(55));
+    }
+
+    SECTION("RouteThroughFewerCrittersWinsOverAShortDetour")
+    {
+        // Column 15 is all critters and column 16 has them above row 9: the straight way crosses two, a way through
+        // the lower rows crosses one for a couple of extra steps and wins
         auto settings = MakeClearSettings(mpos {10, 5}, mpos {22, 5});
         settings.MapSize = msize {40, 40};
-        auto is_critter = [](mpos hex) -> bool { return hex.x == 15 || (hex.x == 16 && hex.y < 20); };
+        auto is_critter = [](mpos hex) -> bool { return hex.x == 15 || (hex.x == 16 && hex.y < 9); };
         settings.CheckHex = [is_critter](mpos hex) -> HexBlockResult { return is_critter(hex) ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
         auto output = PathFinding::FindPath(settings);
 
@@ -1240,23 +1270,123 @@ TEST_CASE("PathFinding::AStar")
         CHECK(critters == 1);
     }
 
-    SECTION("CritterIsWalkedThroughOnlyAfterEverythingElseWithinReach")
+    SECTION("LengthLimitDoesNotHoldBackACritterCrossing")
     {
-        // A wall of critters splits the map. While the length limit still cuts off part of this side, there may be a
-        // way round beyond it, so the search refuses; with a limit that lets it see the whole side, it walks through
-        auto make_settings = [](int32_t max_length) -> FindPathInput {
-            auto settings = MakeClearSettings(mpos {95, 100}, mpos {105, 100});
-            settings.MapSize = msize {200, 200};
-            settings.MaxLength = max_length;
-            settings.CheckHex = [](mpos hex) -> HexBlockResult { return hex.x == 100 ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
-            return settings;
-        };
+        // A wall of critters splits the map and the length limit cuts off part of this side. A critter is a price, not a
+        // last resort, so the route crosses the wall instead of refusing for a way round the limit might hide
+        auto settings = MakeClearSettings(mpos {95, 100}, mpos {105, 100});
+        settings.MapSize = msize {200, 200};
+        settings.MaxLength = 60;
+        settings.CheckHex = [](mpos hex) -> HexBlockResult { return hex.x == 100 ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+        auto output = PathFinding::FindPath(settings);
 
-        CHECK(PathFinding::FindPath(make_settings(60)).Result == FindPathOutput::ResultType::TooFar);
-
-        auto output = PathFinding::FindPath(make_settings(1000));
-        CHECK(output.Result == FindPathOutput::ResultType::Ok);
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
         CHECK(output.NewToHex == mpos {105, 100});
+        CHECK(output.Steps.size() == 10);
+    }
+
+    SECTION("TargetRingedByCrittersIsReachedWithoutFloodingTheMap")
+    {
+        // A melee crowd: every hex within Cut of the target holds a critter, so a route may end in one. The search
+        // heads for the nearest of them at the price of one critter instead of settling the whole map within the limit
+        mpos target {300, 300};
+        mpos from {290, 300};
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(from, target, 1);
+        settings.MapSize = msize {600, 600};
+        settings.MaxLength = 500;
+        settings.CheckHex = [&calls, target](mpos hex) -> HexBlockResult {
+            calls++;
+            return GeometryHelper::GetDistance(hex, target) <= 1 ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(GeometryHelper::GetDistance(output.NewToHex, target) <= 1);
+        CHECK(output.Steps.size() == numeric_cast<size_t>(GeometryHelper::GetDistance(from, target) - 1));
+        CHECK(calls < 2000);
+    }
+
+    SECTION("OccupiedExactTargetIsReachedWithoutFloodingTheMap")
+    {
+        // The same for an exact target a critter stands on, as in front of a door somebody blocks: one step, not a
+        // flood of everything within reach
+        mpos target {301, 300};
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(mpos {300, 300}, target);
+        settings.MapSize = msize {600, 600};
+        settings.MaxLength = 500;
+        settings.CheckHex = [&calls, target](mpos hex) -> HexBlockResult {
+            calls++;
+            return hex == target ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == target);
+        CHECK(output.Steps.size() == 1);
+        CHECK(calls < 500);
+    }
+
+    SECTION("CrowdIsNotAGoalWhileAnyGoalIsFree")
+    {
+        // One hex of the ring is free, on the far side, and walled off from outside, so the only way in is through the
+        // crowd. Stopping in the crowd would be cheaper, yet a route ends on a critter only when no goal is free
+        mpos target = POCKET_CENTER;
+        mpos from {50, 60};
+        mpos free_hex = target;
+        (void)GeometryHelper::MoveHexByDir(free_hex, GeometryHelper::GetHexDir(from, target), WIDE_MAP_SIZE);
+        auto is_critter = [target, free_hex](mpos hex) -> bool { return hex != free_hex && GeometryHelper::GetDistance(hex, target) <= 1; };
+        auto settings = MakeClearSettings(from, target, 1);
+        settings.MapSize = WIDE_MAP_SIZE;
+        settings.CheckHex = [target, free_hex, is_critter](mpos hex) -> HexBlockResult {
+            if (is_critter(hex)) {
+                return HexBlockResult::DeferCritter;
+            }
+
+            return GeometryHelper::GetDistance(hex, free_hex) == 1 && GeometryHelper::GetDistance(hex, target) > 1 ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == free_hex);
+
+        mpos cur = settings.FromHex;
+        int32_t critters = 0;
+
+        for (mdir dir : output.Steps) {
+            GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+            critters += is_critter(cur) ? 1 : 0;
+        }
+
+        CHECK(cur == free_hex);
+        CHECK(critters == 1);
+    }
+
+    SECTION("CrittersOnTheWayAreChargedWhenEveryGoalHoldsOne")
+    {
+        // Every goal holds a critter, so the route ends in one, and the critters on the way still cost their detour: a
+        // line of them open three rows off the straight way is walked round, not crossed
+        mpos target {30, 20};
+        auto is_critter = [target](mpos hex) -> bool { return GeometryHelper::GetDistance(hex, target) <= 1 || (hex.x == 20 && hex.y != 23); };
+        auto settings = MakeClearSettings(mpos {10, 20}, target, 1);
+        settings.MapSize = msize {60, 60};
+        settings.CheckHex = [is_critter](mpos hex) -> HexBlockResult { return is_critter(hex) ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+        mpos cur = settings.FromHex;
+        int32_t critters = 0;
+
+        for (mdir dir : output.Steps) {
+            GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+            critters += is_critter(cur) ? 1 : 0;
+        }
+
+        CHECK(cur == output.NewToHex);
+        CHECK(GeometryHelper::GetDistance(cur, target) <= 1);
+        CHECK(critters == 1);
     }
 }
 
