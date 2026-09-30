@@ -160,6 +160,69 @@ TEST_CASE("MemorySystem")
         CHECK(block_count < 256);
     }
 
+    SECTION("RpmallocKeepsAFailedRecommitPageOffTheAvailableList")
+    {
+        constexpr size_t block_size = 2 * 1024 * 1024;
+        bool pristine_heap_initialized = false;
+        bool failure_consumed = false;
+        bool failed_allocation_was_null = false;
+        bool retried_block_writable = false;
+
+        std::thread worker {[&] {
+            pristine_heap_initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+            if (!pristine_heap_initialized) {
+                return;
+            }
+
+            {
+                // Freed large pages beyond the few the heap keeps committed return to its free list decommitted
+                array<void*, 28> blocks {};
+
+                for (size_t i = 0; i < blocks.size(); i++) {
+                    blocks[i] = rpmalloc(block_size);
+                }
+                for (size_t i = 0; i < blocks.size(); i++) {
+                    rpfree(blocks[i]);
+                }
+
+                array<void*, 16> reused {};
+                size_t reused_count = 0;
+                rpmalloc_test_set_page_recommit_failures(1);
+
+                while (reused_count < reused.size() && rpmalloc_test_get_page_recommit_failures() != 0) {
+                    reused[reused_count++] = rpmalloc(block_size);
+                }
+
+                failure_consumed = rpmalloc_test_get_page_recommit_failures() == 0;
+                rpmalloc_test_set_page_recommit_failures(0);
+                failed_allocation_was_null = reused_count != 0 && reused[reused_count - 1] == nullptr;
+
+                // The page whose recommit failed must not hand out a block in reserve-only memory
+                void* retried = rpmalloc(block_size);
+
+                if (retried != nullptr) {
+                    memory::fill(retried, 0x5A, block_size);
+                    retried_block_writable = true;
+                    rpfree(retried);
+                }
+                for (size_t i = 0; i < reused_count; i++) {
+                    rpfree(reused[i]);
+                }
+            }
+
+            rpmalloc_thread_finalize();
+        }};
+        worker.join();
+
+        REQUIRE(pristine_heap_initialized);
+
+        if (failure_consumed) {
+            CHECK(failed_allocation_was_null);
+        }
+
+        CHECK(retried_block_writable);
+    }
+
     SECTION("SafeAllocRetriesAPropagatedCommitFailure")
     {
         memory::init_backup_chunks();

@@ -327,6 +327,14 @@ rpmalloc_test_set_span_commit_failures(int failures);
 RPMALLOC_EXPORT int
 rpmalloc_test_get_span_commit_failures(void);
 
+//! (FOnline Patch) Force recommit failures of decommitted free pages in allocator contract tests
+RPMALLOC_EXPORT void
+rpmalloc_test_set_page_recommit_failures(int failures);
+
+//! (FOnline Patch) Return the number of unconsumed injected recommit failures
+RPMALLOC_EXPORT int
+rpmalloc_test_get_page_recommit_failures(void);
+
 //! (FOnline Patch) Attach a pristine heap to an allocator-uninitialized calling thread
 //! so allocator-path tests do not depend on free pages retained by earlier tests
 RPMALLOC_EXPORT int
