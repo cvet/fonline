@@ -646,7 +646,8 @@ assuming empty means zero bytes. With content present, map creation runs the
 content generator instead of skipping it.
 
 The client-side `.fomap-bin-client` blob is a different, shorter layout (header,
-hash table and static items only).
+hash table and static items only). Its hash table holds the strings of the server blob
+too, so a map-instance value of a critter resolves on the client.
 
 A per-map static item removal is only observable end to end when the *same* static
 item id appears in both blobs: the server needs it in `StaticItemsById` to remove

@@ -291,15 +291,25 @@ void MapBaker::BakeFiles(const FileCollection& files, string_view target_path) c
 
         // Client side
         {
+            // Synced script data can contain any authored map value: carry server strings without exposing server objects
+            set<string> client_hash_strings;
+
+            for (const auto& hstr : client_str_hashes) {
+                client_hash_strings.emplace(hstr.as_str());
+            }
+            for (const auto& hstr : str_hashes) {
+                client_hash_strings.emplace(hstr.as_str());
+            }
+
             vector<uint8_t> map_data;
             data_writer final_writer {map_data};
 
             final_writer.write<uint32_t>(BAKED_MAP_FILE_MAGIC);
             final_writer.write<uint32_t>(BAKED_MAP_FILE_VERSION);
-            final_writer.write<uint32_t>(numeric_cast<uint32_t>(client_str_hashes.size()));
+            final_writer.write<uint32_t>(numeric_cast<uint32_t>(client_hash_strings.size()));
 
-            for (const auto& hstr : client_str_hashes) {
-                final_writer.write_string(hstr);
+            for (const auto& str : client_hash_strings) {
+                final_writer.write_string(str);
             }
 
             final_writer.write<uint32_t>(map_client_item_count);
