@@ -139,10 +139,16 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     // Project-side early init (before App frontend, after settings + exception/log callbacks)
     ApplicationInitHook(flags, settings);
 
-    // Prebake resources
+    // Prebake resources. Several processes launched from one checkout would each re-validate every pack for
+    // minutes, so a launcher that has just baked may start them on the existing output instead
     if (!settings.Common.Packaged && is_enum_set(flags, AppInitFlags::PrebakeResources)) {
-        logging::write("Prebake resources");
-        PrebakeResources(settings);
+        if (settings.Baking.PrebakeOnStartup) {
+            logging::write("Prebake resources");
+            PrebakeResources(settings);
+        }
+        else {
+            logging::write("Prebake skipped by Baking.PrebakeOnStartup, starting on the resources already baked");
+        }
     }
 
     // Application frontend initialization
@@ -281,6 +287,16 @@ auto LoadAppSettings(CommandLineArgs args) -> GlobalSettings
         }
     }
     else {
+        // A packaged build carries one resolved config and no sub-config table, so a requested sub config cannot be
+        // honoured; refusing it keeps a launch from silently running with settings the caller did not get
+        for (size_t i = 0; i < args.size(); i++) {
+            string_view arg_view = strex(args.Get(i)).trim().strv();
+
+            if (arg_view == "-ApplySubConfig" || arg_view == "--ApplySubConfig") {
+                throw AppInitException("Sub configs are not available in a packaged build", i + 1 < args.size() ? args.Get(i + 1) : string_view {});
+            }
+        }
+
         settings.ApplyInternalConfig();
     }
 
@@ -421,6 +437,11 @@ auto GetExeLogFileName() -> string
     }
 
     return strex("{}.log", FO_DEV_NAME);
+}
+
+auto GetExePreviousLogFileName() -> string
+{
+    return strex("{}.prev.log", strex(GetExeLogFileName()).erase_file_extension());
 }
 
 #if FO_LINUX || FO_MAC

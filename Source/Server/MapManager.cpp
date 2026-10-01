@@ -739,9 +739,10 @@ auto MapManager::TracePath(ptr<const Map> map, mpos start_hex, mpos target_hex, 
     return output;
 }
 
-auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback) const -> FindPathOutput
+auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos from_hex, mpos to_hex, int32_t multihex, int32_t cut, ipos16 to_hex_offset, function<bool(ptr<const Item>)> gag_callback, int32_t max_length) const -> FindPathOutput
 {
     ValidateEntityAccess(map);
+    FO_VERIFY_AND_THROW(max_length >= 0, "Path search length limit must not be negative", max_length);
 
     // Pre-validate target hex (terrain/items only; critters are always passable)
     if (cut == 0) {
@@ -765,7 +766,9 @@ auto MapManager::FindPath(ptr<const Map> map, nptr<const Critter> from_cr, mpos 
     settings.ToHex = to_hex;
     settings.ToHexOffset = to_hex_offset;
     settings.MapSize = map->GetSize();
-    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.MaxLength = max_length != 0 ? std::min(max_length, _engine->Settings->Geometry.MaxPathFindLength) : _engine->Settings->Geometry.MaxPathFindLength;
+    settings.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Cut = cut;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
@@ -814,6 +817,7 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     settings.FromHexOffset = from_cr ? from_cr->GetHexOffset() : ipos16 {};
     settings.MapSize = map_size;
     settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     settings.Multihex = multihex;
     settings.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;
     settings.CheckTarget = [&target_hex_set](mpos hex) { return target_hex_set.contains(hex); };
@@ -834,6 +838,28 @@ auto MapManager::FindPathToAny(ptr<const Map> map, nptr<const Critter> from_cr, 
     };
 
     return PathFinding::FindPath(settings);
+}
+
+auto MapManager::FindReachableHexes(ptr<const Map> map, mpos from_hex, const_span<mpos> target_hexes, function<bool(ptr<const Item>)> gag_callback) const -> vector<mpos>
+{
+    ValidateEntityAccess(map);
+
+    FindReachableInput settings;
+    settings.FromHex = from_hex;
+    settings.MapSize = map->GetSize();
+    settings.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    settings.TargetHexes = target_hexes;
+
+    // A critter or a gag the callback lets through makes a route dearer, never impossible, so only blockers are asked
+    settings.CheckHex = [&](mpos hex) -> HexBlockResult {
+        if (map->IsHexMovable(hex) || map->CheckGagItem(hex, gag_callback)) {
+            return HexBlockResult::Passable;
+        }
+
+        return HexBlockResult::Blocked;
+    };
+
+    return PathFinding::FindReachable(settings);
 }
 
 void MapManager::TransferToMap(ptr<Critter> cr, ptr<Map> map, mpos hex, mdir dir, optional<int32_t> safe_radius)
@@ -876,6 +902,9 @@ void MapManager::Transfer(ptr<Critter> cr, nptr<Map> map, mpos hex, mdir dir, op
     }
 
     cr->StopMoving();
+
+    // A transfer places the critter on a hex; the sub-hex offset an interrupted step left belongs to the old position
+    cr->SetHexOffset({});
 
     if (cr->GetIsAttached()) {
         cr->DetachFromCritter();

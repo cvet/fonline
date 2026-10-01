@@ -8,15 +8,21 @@ using System.Threading.Tasks;
 // through the engine and counted, so a harness can prove that a run stayed clean
 public static class ScriptExceptions
 {
+    private static readonly AsyncLocal<Scope?> CurrentScope = new AsyncLocal<Scope?>();
     private static int RecordedGlobally;
-
-    [ThreadStatic]
-    private static int RecordedInContext;
 
     public static int GlobalCount => RecordedGlobally;
 
-    // Synchronous faults only: a deferred Task fault completes on a foreign thread and counts globally
-    public static int ContextCount => RecordedInContext;
+    // Opens a counting scope on the current logical flow. A synchronous fault recorded anywhere in that flow while
+    // the scope is open counts into it, on whichever thread an await resumes the flow, and a fault of any other flow
+    // never does - a per-thread counter charged a test's fault to whichever callback next ran on that thread. A
+    // deferred Task fault completes on a foreign thread and counts only globally
+    public static Scope OpenScope()
+    {
+        Scope scope = new Scope(CurrentScope.Value);
+        CurrentScope.Value = scope;
+        return scope;
+    }
 
     // A script-owned dispatch boundary -- a loop that runs independent content callbacks and must survive one of
     // them failing -- stops the fault there and reports it exactly as an engine dispatch boundary would
@@ -68,7 +74,11 @@ public static class ScriptExceptions
 
     internal static void Record(Exception ex, bool log)
     {
-        RecordedInContext++;
+        // Nested scopes all see the fault: an outer harness keeps its own total while an inner one measures a part
+        for (Scope? scope = CurrentScope.Value; scope != null; scope = scope.Parent) {
+            scope.Increment();
+        }
+
         RecordGlobal(ex, log);
     }
 
@@ -78,6 +88,33 @@ public static class ScriptExceptions
 
         if (log) {
             Native.ReportException(ex);
+        }
+    }
+
+    // The faults one logical flow recorded since the scope was opened. Disposing closes it for the rest of the flow
+    public sealed class Scope : IDisposable
+    {
+        private int RecordedCount;
+
+        internal Scope(Scope? parent)
+        {
+            Parent = parent;
+        }
+
+        public int Count => Volatile.Read(ref RecordedCount);
+
+        internal Scope? Parent { get; }
+
+        internal void Increment()
+        {
+            Interlocked.Increment(ref RecordedCount);
+        }
+
+        public void Dispose()
+        {
+            if (CurrentScope.Value == this) {
+                CurrentScope.Value = Parent;
+            }
         }
     }
 }

@@ -1226,8 +1226,9 @@ static auto LoadRefTypeFromValue(string_view owner_name, const BaseTypeDesc& bas
     for (auto&& [field_name, field_value] : dict) {
         auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
+        // A stored value keeps the fields it was saved with, so a field deleted since then is dropped like a deleted property
         if (!field_prop) {
-            throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
+            continue;
         }
 
         if (!seen_fields.emplace(field_prop.as_ptr()).second) {

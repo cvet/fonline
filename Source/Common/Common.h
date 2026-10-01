@@ -43,7 +43,7 @@
 FO_BEGIN_NAMESPACE
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 63
+///@ MigrationRule Version 0 0 65
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -483,6 +483,7 @@ enum class NetMessage : uint8_t
     InfoMessage = 32,
     SendCritterDir = 41,
     CritterDir = 42,
+    SendCritterMoveFinished = 44,
     SendCritterMove = 45,
     SendStopCritterMove = 46,
     CritterMove = 47,

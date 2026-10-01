@@ -74,7 +74,7 @@ auto GetClientResources(const ClientSettings& settings) -> FileSystem
             index = safe_alloc::make_unique<ResourceIndexSource>(index_path, pack_dirs);
         }
         catch (const std::exception& ex) {
-            logging::write("Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
+            logging::write(logging::type::warning, "Client resources: discarding invalid merged index {}, {}", index_path, ex.what());
             (void)fs::remove_file(index_path);
         }
 
@@ -264,6 +264,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::LightColor_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemSomeLight));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::PicMap_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemPicMap));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Offset_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemOffsetCoords));
+        set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::DrawOrderSubLayer_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemDrawOrderSubLayer));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::HideSprite_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemHideSprite));
         set_callback(GetPropertyRegistrar(ItemProperties::ENTITY_TYPE_NAME), ItemView::Elevation_RegIndex, wrap_post_setter(&ClientEngine::OnSetItemElevation));
     }
@@ -663,6 +664,7 @@ void ClientEngine::Net_OnConnect(ClientConnection::ConnectResult result)
         throw ResourcesOutdatedException("Updater outdated");
     }
     else {
+        _connectionRequest = false;
         OnConnectingFailed.Fire();
     }
 }
@@ -756,6 +758,13 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
     }
     _conn.OutBuf->Write(moving->GetEndHexOffset());
     _conn.OutBuf->EndMsg();
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos start_hex = moving->GetStartHex();
+        mpos end_hex = moving->GetEndHex();
+
+        TraceMoveSync("move_send", strex("cr={} start={},{} end={},{} steps={} speed={} whole_ms={}", cr->GetId(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, moving->GetSteps().size(), moving->GetSpeed(), iround<int32_t>(moving->GetWholeTime())).strv());
+    }
 }
 
 void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
@@ -771,6 +780,35 @@ void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
     _conn.OutBuf->Write(cr->GetHexOffset());
     _conn.OutBuf->Write(cr->GetDir());
     _conn.OutBuf->EndMsg();
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos hex = cr->GetHex();
+        ipos16 hex_offset = cr->GetHexOffset();
+
+        TraceMoveSync("stop_send", strex("cr={} hex={},{} offset={},{}", cr->GetId(), hex.x, hex.y, hex_offset.x, hex_offset.y).strv());
+    }
+}
+
+void ClientEngine::Net_SendMoveFinished(ptr<CritterHexView> cr, mpos end_hex)
+{
+    FO_VERIFY_AND_THROW(_curMap, "No current map");
+    auto map = GetCurMap();
+    FO_VERIFY_AND_THROW(map, "Map is null");
+
+    _conn.OutBuf->StartMsg(NetMessage::SendCritterMoveFinished);
+    _conn.OutBuf->Write(map->GetId());
+    _conn.OutBuf->Write(cr->GetId());
+    _conn.OutBuf->Write(end_hex);
+    _conn.OutBuf->Write(cr->GetHex());
+    _conn.OutBuf->Write(cr->GetHexOffset());
+    _conn.OutBuf->Write(cr->GetDir());
+    _conn.OutBuf->EndMsg();
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos hex = cr->GetHex();
+
+        TraceMoveSync("finish_send", strex("cr={} end={},{} hex={},{}", cr->GetId(), end_hex.x, end_hex.y, hex.x, hex.y).strv());
+    }
 }
 
 void ClientEngine::Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity)
@@ -1027,6 +1065,13 @@ void ClientEngine::Net_OnAddCritter()
         _chosen = cr;
     }
 
+    // Traced after the chosen is assigned, so a client re-entering its own critter on login names itself as the viewer
+    if (hex_cr && Settings->Network.MoveSyncTrace) {
+        mpos cur_hex = hex_cr->GetHex();
+
+        TraceMoveSync("in", strex("cr={} own={} hex={},{} moving={}", cr_id, is_chosen ? 1 : 0, cur_hex.x, cur_hex.y, is_moving ? 1 : 0).strv());
+    }
+
     if (hex_cr) {
         FO_VERIFY_AND_THROW(_curMap, "No current map");
         auto map = GetCurMap();
@@ -1070,6 +1115,12 @@ void ClientEngine::Net_OnRemoveCritter()
         if (!cr) {
             break_into_debugger();
             return;
+        }
+
+        if (Settings->Network.MoveSyncTrace) {
+            mpos hex = cr->GetHex();
+
+            TraceMoveSync("out", strex("cr={} own={} hex={},{}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y).strv());
         }
 
         cr->Finish();
@@ -1216,7 +1267,16 @@ void ClientEngine::Net_OnCritterMoveSpeed()
         return;
     }
 
+    uint16_t old_speed = moving->GetSpeed();
+    float32_t old_elapsed = moving->GetElapsedTime();
+
     moving->ChangeSpeed(speed, GameTime.GetFrameTime());
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos hex = cr->GetHex();
+
+        TraceMoveSync("speed_recv", strex("cr={} own={} old_speed={} speed={} hex={},{} elapsed_ms={} rebased_ms={} whole_ms={}", cr_id, cr->GetIsChosen() ? 1 : 0, old_speed, speed, hex.x, hex.y, iround<int32_t>(old_elapsed), iround<int32_t>(moving->GetElapsedTime()), iround<int32_t>(moving->GetWholeTime())).strv());
+    }
 
     cr->RefreshView();
 }
@@ -1364,7 +1424,20 @@ void ClientEngine::Net_OnCritterTeleport()
         return;
     }
 
+    if (Settings->Network.MoveSyncTrace) {
+        mpos prev_hex = cr->GetHex();
+
+        TraceMoveSync("teleport_recv", strex("cr={} own={} hex={},{} prev_hex={},{} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, to_hex.x, to_hex.y, prev_hex.x, prev_hex.y, cr->IsMoving() ? 1 : 0).strv());
+    }
+
+    // The server stops a critter before teleporting it, so a plan still playing here would walk it back onto the old path
+    cr->StopMoving();
     map->MoveCritter(cr, to_hex, false);
+
+    if (cr->GetHexOffset() != ipos16 {}) {
+        cr->SetHexOffset({});
+        cr->RefreshOffs();
+    }
 
     if (cr->GetIsChosen()) {
         map->ScrollToHex(cr->GetHex(), cr->GetHexOffset(), 100, false);
@@ -1393,6 +1466,20 @@ void ClientEngine::Net_OnCritterPos()
 
     if (!cr) {
         return;
+    }
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos prev_hex = cr->GetHex();
+        ipos16 prev_hex_offset = cr->GetHexOffset();
+
+        // The hex jump alone overstates a correction a sub-hex offset re-splits invisibly, so the drawn distance travels too
+        ipos32 prev_pos = GeometryHelper::GetHexPos(prev_hex);
+        ipos32 new_pos = GeometryHelper::GetHexPos(hex);
+        float32_t err_x = numeric_cast<float32_t>((new_pos.x + hex_offset.x) - (prev_pos.x + prev_hex_offset.x));
+        float32_t err_y = numeric_cast<float32_t>((new_pos.y + hex_offset.y) - (prev_pos.y + prev_hex_offset.y));
+        int32_t err_px = iround<int32_t>(std::sqrt(err_x * err_x + err_y * err_y));
+
+        TraceMoveSync("pos_recv", strex("cr={} own={} hex={},{} prev_hex={},{} jump={} err_px={} was_moving={}", cr_id, cr->GetIsChosen() ? 1 : 0, hex.x, hex.y, prev_hex.x, prev_hex.y, GeometryHelper::GetDistance(prev_hex, hex), err_px, cr->IsMoving() ? 1 : 0).strv());
     }
 
     cr->StopMoving();
@@ -1496,7 +1583,7 @@ void ClientEngine::Net_OnChosenAddItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        logging::write("Chosen is not created on add item");
+        logging::write(logging::type::warning, "Chosen is not created on add item");
         break_into_debugger();
 
         // Skip rest data
@@ -1539,7 +1626,7 @@ void ClientEngine::Net_OnChosenRemoveItem()
     auto chosen = GetChosen();
 
     if (!chosen) {
-        logging::write("Chosen is not created in remove item");
+        logging::write(logging::type::warning, "Chosen is not created in remove item");
         break_into_debugger();
         return;
     }
@@ -2087,6 +2174,8 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     auto map = GetCurMap();
     FO_VERIFY_AND_THROW(map, "Map is null");
 
+    mpos prev_hex = cr->GetHex();
+
     cr->StopMoving();
 
     ipos16 start_hex_offset = cr->GetHexOffset();
@@ -2100,6 +2189,12 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
+
+    if (Settings->Network.MoveSyncTrace) {
+        mpos end_hex = moving->GetEndHex();
+
+        TraceMoveSync("move_recv", strex("cr={} own={} start={},{} end={},{} prev_hex={},{} offset_ms={} whole_ms={}", cr->GetId(), cr->GetIsChosen() ? 1 : 0, start_hex.x, start_hex.y, end_hex.x, end_hex.y, prev_hex.x, prev_hex.y, offset_time, whole_time).strv());
+    }
 }
 
 auto ClientEngine::GetEntity(ident_t id) -> refcount_nptr<ClientEntity>
@@ -2484,6 +2579,16 @@ void ClientEngine::OnSetItemOffsetCoords(ptr<Entity> entity, ptr<const Property>
     }
 }
 
+void ClientEngine::OnSetItemDrawOrderSubLayer(ptr<Entity> entity, ptr<const Property> prop)
+{
+    ignore_unused(prop);
+
+    // The sub-layer is part of the sort key fixed when a sprite is added, so the item's sprites are added again
+    if (auto item = entity.dyn_cast<ItemHexView>()) {
+        item->GetMap()->RefreshItem(item);
+    }
+}
+
 void ClientEngine::OnSetItemHideSprite(ptr<Entity> entity, ptr<const Property> prop)
 {
     ignore_unused(prop);
@@ -2764,6 +2869,31 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         cr->RefreshView();
         Net_SendStopMove(cr);
     }
+}
+
+void ClientEngine::CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex)
+{
+    nptr<CritterHexView> chosen = GetMapChosen();
+    nptr<CritterHexView> reporting_cr = cr;
+
+    // Only the critter this client predicts may report an arrival. Every other critter on the map is played
+    // out from the server's own plan, so its completion carries no information the server does not have
+    if (!IsConnected() || chosen != reporting_cr) {
+        return;
+    }
+
+    Net_SendMoveFinished(cr, end_hex);
+}
+
+void ClientEngine::TraceMoveSync(string_view event, string_view details)
+{
+    ident_t viewer {};
+
+    if (auto chosen = GetMapChosen()) {
+        viewer = chosen->GetId();
+    }
+
+    WriteMoveSyncTrace("cl", event, GameTime.GetSynchronizedTime(), strex("viewer={} {}", viewer, details).strv());
 }
 
 void ClientEngine::CritterLookTo(ptr<CritterHexView> cr, mdir dir)

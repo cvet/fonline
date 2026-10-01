@@ -95,7 +95,7 @@ FO_EXPORT_FUNC auto FO_QueryClientRuntimeExports(uint32_t host_abi_version, Clie
     logging::write("Client runtime DLL: export query from host ABI {}, runtime ABI {}, exports pointer {}, build {}, compatibility {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null", FO_BUILD_HASH, FO_COMPATIBILITY_VERSION);
 
     if (!IsSupportedClientRuntimeAbi(host_abi_version) || raw_exports == nullptr) {
-        logging::write("Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
+        logging::write(logging::type::warning, "Client runtime DLL: export query rejected, host ABI {}, runtime ABI {}, exports pointer {}", host_abi_version, FO_CLIENT_RUNTIME_HOST_ABI_VERSION, raw_exports ? "set" : "null");
         return false;
     }
 
@@ -130,7 +130,7 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
     string_view teardown_set = !previous->TeardownSet.empty() ? string_view {previous->TeardownSet} : string_view {"none"};
 
     if (previous->StillRunning) {
-        logging::write("Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+        logging::write(logging::type::warning, "Client runtime DLL: previous client process {} is still running, stage {}, teardown {}, build {}, started {}", previous->Pid, previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
             ClientSessionException ex("Previous client process is still running", previous->StageName, teardown_set, previous->Pid, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
@@ -138,7 +138,7 @@ static void ReportPreviousUncleanSession(string_view marker_path) noexcept
         });
     }
     else {
-        logging::write("Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
+        logging::write(logging::type::warning, "Client runtime DLL: previous session did not exit cleanly, stage {}, teardown {}, build {}, started {}", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt);
 
         safe_call([&] {
             ClientSessionException ex("Previous client session did not exit cleanly", previous->StageName, teardown_set, previous->BuildHash, previous->StartedAt, FO_BUILD_HASH);
@@ -298,7 +298,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         GetApp()->RequestQuit();
                         return;
                     default:
-                        logging::write("Client runtime DLL: updater failed");
+                        logging::write(logging::type::warning, "Client runtime DLL: updater failed");
                         ShowUpdaterFailure(result);
                         GetApp()->RequestQuit();
                         return;

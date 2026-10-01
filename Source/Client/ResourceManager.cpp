@@ -63,8 +63,6 @@ static auto MakeBuiltInDummyAtlasSprite(ptr<SpriteManager> spr_mngr, AtlasType a
     tex->UpdateTextureRegion({pos.x - 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
     tex->UpdateTextureRegion({pos.x + 1, pos.y - 1}, {1, 3}, {vertical_border, 3});
 
-    atlas->GetRenderTarget()->ClearLastPixelPicks();
-
     frect32 atlas_rect;
     atlas_rect.x = numeric_cast<float32_t>(pos.x) / numeric_cast<float32_t>(atlas->GetSize().width);
     atlas_rect.y = numeric_cast<float32_t>(pos.y) / numeric_cast<float32_t>(atlas->GetSize().height);

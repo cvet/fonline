@@ -145,8 +145,17 @@ FO_BEGIN_NAMESPACE
     X(glVertexAttribPointer, PFNGLVERTEXATTRIBPOINTERPROC); \
     X(glViewport, PFNGLVIEWPORTPROC)
 
+// Loaded like the required ones, but a context without them only loses the non-blocking texture readback
+#define FO_GL_OPTIONAL_FUNCTIONS(X) \
+    X(glClientWaitSync, PFNGLCLIENTWAITSYNCPROC); \
+    X(glDeleteSync, PFNGLDELETESYNCPROC); \
+    X(glFenceSync, PFNGLFENCESYNCPROC); \
+    X(glMapBufferRange, PFNGLMAPBUFFERRANGEPROC); \
+    X(glUnmapBuffer, PFNGLUNMAPBUFFERPROC)
+
 #define FO_GL_FUNCTION_DEF(name, type) static type name = nullptr
 FO_GL_FUNCTIONS(FO_GL_FUNCTION_DEF);
+FO_GL_OPTIONAL_FUNCTIONS(FO_GL_FUNCTION_DEF);
 #undef FO_GL_FUNCTION_DEF
 
 template<typename T>
@@ -160,6 +169,7 @@ static void LoadOpenGLFunctions() noexcept
 {
 #define FO_GL_FUNCTION_LOAD(name, type) name = LoadOpenGlFunction<type>(#name)
     FO_GL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
+    FO_GL_OPTIONAL_FUNCTIONS(FO_GL_FUNCTION_LOAD);
 #undef FO_GL_FUNCTION_LOAD
 }
 #endif
@@ -252,6 +262,7 @@ struct OpenGL_Renderer::Context
     bool OGL_framebuffer_object_ext {};
     bool OGL_vertex_array_object {};
     bool OGL_uniform_buffer_object {};
+    bool OGL_async_readback {};
     // ReSharper restore CppInconsistentNaming
 };
 
@@ -271,8 +282,9 @@ public:
     }
     ~OpenGL_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     GLuint FramebufObj {};
@@ -282,6 +294,31 @@ public:
 private:
     ptr<OpenGL_Renderer::Context> _ctx;
 };
+
+#if !FO_WEB
+// The read lands in a pixel buffer behind a fence, and the buffer is mapped only once the fence has signaled
+class OpenGL_TextureReadback final : public RenderTextureReadback
+{
+public:
+    OpenGL_TextureReadback(ptr<OpenGL_Renderer::Context> ctx, GLuint pixel_buf, GLsync fence, isize32 size);
+    OpenGL_TextureReadback(const OpenGL_TextureReadback&) = delete;
+    OpenGL_TextureReadback(OpenGL_TextureReadback&&) noexcept = delete;
+    auto operator=(const OpenGL_TextureReadback&) = delete;
+    auto operator=(OpenGL_TextureReadback&&) noexcept = delete;
+    ~OpenGL_TextureReadback() override;
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    void ReleaseObjects() noexcept;
+
+    ptr<OpenGL_Renderer::Context> _ctx;
+    GLuint _pixelBuf;
+    GLsync _fence;
+    isize32 _size;
+    bool _flushed {};
+};
+#endif
 
 class OpenGL_DrawBuffer final : public RenderDrawBuffer
 {
@@ -459,6 +496,11 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     _ctx->OGL_vertex_array_object = at_least(3, 0) || has_extension("GL_ARB_vertex_array_object");
 #endif
     _ctx->OGL_uniform_buffer_object = at_least(3, 1) || has_extension("GL_ARB_uniform_buffer_object");
+    bool has_sync = at_least(3, 2) || has_extension("GL_ARB_sync");
+    bool has_pixel_buffer = at_least(2, 1) || has_extension("GL_ARB_pixel_buffer_object");
+    bool has_map_range = at_least(3, 0) || has_extension("GL_ARB_map_buffer_range");
+    bool has_readback_entries = glClientWaitSync != nullptr && glDeleteSync != nullptr && glFenceSync != nullptr && glMapBufferRange != nullptr && glUnmapBuffer != nullptr;
+    _ctx->OGL_async_readback = has_sync && has_pixel_buffer && has_map_range && has_readback_entries;
 #endif
 
     // OpenGL ES extensions
@@ -469,7 +511,19 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     _ctx->OGL_framebuffer_object_ext = false;
     _ctx->OGL_vertex_array_object = true; // No in es 2 / webgl 1
     _ctx->OGL_uniform_buffer_object = true; // No in es 2 / webgl 1
+    // WebGL exposes fences, but a pixel buffer cannot be mapped there, so the browser keeps the blocking read
+    _ctx->OGL_async_readback = !FO_WEB;
 #endif
+
+    // Name the GPU and driver so a client log can explain a rendering problem
+    {
+        auto gl_info = [](GLenum name) -> string_view {
+            auto chars = GetOpenGlString(name);
+            return chars ? string_view(chars.get()) : string_view("unknown");
+        };
+
+        logging::write("Render device: {}, vendor {}, driver {}, GLSL {}", gl_info(GL_RENDERER), gl_info(GL_VENDOR), gl_info(GL_VERSION), gl_info(GL_SHADING_LANGUAGE_VERSION));
+    }
 
     // Check OpenGL extensions
     size_t extension_errors = 0;
@@ -477,7 +531,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     auto check_extension = [&extension_errors](string_view ext_name, bool has_ext, bool critical) {
         if (!has_ext) {
             string msg = critical ? "Critical" : "Not critical";
-            logging::write("OpenGL extension '{}' not supported. {}", ext_name, msg);
+            logging::write(logging::type::warning, "OpenGL extension '{}' not supported. {}", ext_name, msg);
             if (critical) {
                 extension_errors++;
             }
@@ -488,6 +542,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     check_extension("vertex_buffer_object", GL_HAS_CTX(vertex_buffer_object, _ctx.get()), true);
     check_extension("uniform_buffer_object", GL_HAS_CTX(uniform_buffer_object, _ctx.get()), true);
     check_extension("vertex_array_object", GL_HAS_CTX(vertex_array_object, _ctx.get()), false);
+    check_extension("async_readback", GL_HAS_CTX(async_readback, _ctx.get()), false);
     check_extension("framebuffer_object", GL_HAS_CTX(framebuffer_object, _ctx.get()), false);
     if (!GL_HAS_CTX(framebuffer_object, _ctx.get())) {
         check_extension("framebuffer_object_ext", GL_HAS_CTX(framebuffer_object_ext, _ctx.get()), true);
@@ -564,7 +619,7 @@ void OpenGL_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
     GL(glGetIntegerv(GL_MAX_VERTEX_UNIFORM_COMPONENTS, &max_uniform_components));
 
     if (max_uniform_components < 1024) {
-        logging::write("Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
+        logging::write(logging::type::warning, "Warning! GL_MAX_VERTEX_UNIFORM_COMPONENTS is {}", max_uniform_components);
     }
 #endif
 
@@ -625,6 +680,7 @@ OpenGL_Renderer::~OpenGL_Renderer()
     _ctx->OGL_framebuffer_object_ext = false;
     _ctx->OGL_vertex_array_object = false;
     _ctx->OGL_uniform_buffer_object = false;
+    _ctx->OGL_async_readback = false;
 
     _ctx.reset();
 }
@@ -1070,25 +1126,6 @@ OpenGL_Texture::~OpenGL_Texture()
     }
 }
 
-auto OpenGL_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_TRACE_ZONE(Render);
-
-    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested OpenGL texture pixel is outside texture bounds", pos, Size);
-
-    ucolor result;
-
-    int32_t prev_fbo = 0;
-    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
-
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
-    GL(glReadPixels(pos.x, pos.y, 1, 1, GL_RGBA, GL_UNSIGNED_BYTE, &result));
-
-    GL(glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo));
-
-    return result;
-}
-
 auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
     FO_TRACE_ZONE(Render);
@@ -1113,6 +1150,109 @@ auto OpenGL_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
 
     return result;
 }
+
+auto OpenGL_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+#if FO_WEB
+    return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+
+#else
+    // Without fences and mappable pixel buffers there is no way to read without waiting, so such a context reads now
+    if (!_ctx->OGL_async_readback) {
+        return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
+    }
+
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+
+    GLuint pixel_buf = 0;
+    GL(glGenBuffers(1, &pixel_buf));
+    auto delete_pixel_buf = scope_fail([&pixel_buf]() noexcept { glDeleteBuffers(1, &pixel_buf); });
+
+    GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, pixel_buf));
+    auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });
+    GL(glBufferData(GL_PIXEL_PACK_BUFFER, numeric_cast<GLsizeiptr>(size.square() * sizeof(ucolor)), nullptr, GL_STREAM_READ));
+
+    GLint prev_fbo;
+    GL(glGetIntegerv(GL_FRAMEBUFFER_BINDING, &prev_fbo));
+    GLuint prev_fbo_id = numeric_cast<GLuint>(prev_fbo);
+    GL(glBindFramebuffer(GL_FRAMEBUFFER, FramebufObj));
+    auto restore_fbo = scope_exit([prev_fbo_id]() noexcept { glBindFramebuffer(GL_FRAMEBUFFER, prev_fbo_id); });
+
+    // With a pack buffer bound the last argument is an offset into it, and the call returns before the pixels exist
+    GL(glReadPixels(pos.x, pos.y, size.width, size.height, GL_RGBA, GL_UNSIGNED_BYTE, nullptr));
+
+    GLsync fence = glFenceSync(GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+    FO_VERIFY_AND_THROW(fence != nullptr, "OpenGL glFenceSync failed for a texture readback", pos, size);
+    auto delete_fence = scope_fail([fence]() noexcept { glDeleteSync(fence); });
+
+    return safe_alloc::make_unique<OpenGL_TextureReadback>(_ctx, pixel_buf, fence, size);
+#endif
+}
+
+#if !FO_WEB
+OpenGL_TextureReadback::OpenGL_TextureReadback(ptr<OpenGL_Renderer::Context> ctx, GLuint pixel_buf, GLsync fence, isize32 size) :
+    _ctx {ctx},
+    _pixelBuf {pixel_buf},
+    _fence {fence},
+    _size {size}
+{
+}
+
+OpenGL_TextureReadback::~OpenGL_TextureReadback()
+{
+    ReleaseObjects();
+}
+
+auto OpenGL_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_pixelBuf != 0, "OpenGL texture readback pixels were already taken");
+
+    // The first poll also flushes, so a fence still sitting in the command queue is sure to be reached
+    GLenum wait_result = glClientWaitSync(_fence, _flushed ? 0 : GL_SYNC_FLUSH_COMMANDS_BIT, 0);
+    _flushed = true;
+
+    if (wait_result == GL_TIMEOUT_EXPIRED) {
+        return std::nullopt;
+    }
+
+    FO_VERIFY_AND_THROW(wait_result == GL_ALREADY_SIGNALED || wait_result == GL_CONDITION_SATISFIED, "OpenGL glClientWaitSync failed for a texture readback", wait_result);
+
+    size_t data_size = _size.square() * sizeof(ucolor);
+    vector<ucolor> pixels;
+    pixels.resize(_size.square());
+
+    GL(glBindBuffer(GL_PIXEL_PACK_BUFFER, _pixelBuf));
+    auto unbind_pixel_buf = scope_exit([]() noexcept { glBindBuffer(GL_PIXEL_PACK_BUFFER, 0); });
+
+    auto mapped = make_nptr(glMapBufferRange(GL_PIXEL_PACK_BUFFER, 0, numeric_cast<GLsizeiptr>(data_size), GL_MAP_READ_BIT));
+    FO_VERIFY_AND_THROW(mapped, "OpenGL glMapBufferRange failed for a texture readback", _size);
+    memory::copy(pixels.data(), mapped, data_size);
+    GL(glUnmapBuffer(GL_PIXEL_PACK_BUFFER));
+
+    ReleaseObjects();
+
+    return pixels;
+}
+
+void OpenGL_TextureReadback::ReleaseObjects() noexcept
+{
+    if (_fence != nullptr) {
+        glDeleteSync(_fence);
+        _fence = nullptr;
+    }
+    if (_pixelBuf != 0) {
+        glDeleteBuffers(1, &_pixelBuf);
+        _pixelBuf = 0;
+    }
+}
+#endif
 
 void OpenGL_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)
 {

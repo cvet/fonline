@@ -40,6 +40,12 @@ FO_BEGIN_NAMESPACE
 namespace
 {
     constexpr msize TEST_MAP_SIZE {20, 20};
+    constexpr msize WIDE_MAP_SIZE {120, 120};
+    constexpr mpos POCKET_CENTER {60, 60};
+    constexpr mpos FAR_START {10, 10};
+    constexpr msize RANDOM_MAP_SIZE {32, 32};
+    // The detour a living critter on the route costs, the value the game ships with
+    constexpr int32_t TEST_CRITTER_DETOUR = 12;
 
     // Helper: create settings for a clear map (no obstacles)
     static auto MakeClearSettings(mpos from, mpos to, int32_t cut = 0) -> FindPathInput
@@ -49,6 +55,7 @@ namespace
         settings.ToHex = to;
         settings.MapSize = TEST_MAP_SIZE;
         settings.MaxLength = 200;
+        settings.CritterDetour = TEST_CRITTER_DETOUR;
         settings.Cut = cut;
         settings.FreeMovement = false;
         settings.Multihex = 0;
@@ -62,6 +69,123 @@ namespace
         FindPathInput settings = MakeClearSettings(from, to, cut);
         settings.CheckHex = [is_blocked = std::move(is_blocked)](mpos hex) -> HexBlockResult { return is_blocked(hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
         return settings;
+    }
+
+    // Reference answer: steps from the start to every hex over a plain breadth-first flood, where a hex is reached
+    // by the first step allowed into it. A hex refused from one side stays open to the others
+    static auto MeasureSteps(msize map_size, mpos from, const function<bool(mpos, mdir)>& can_enter) -> vector<int32_t>
+    {
+        vector<int32_t> steps(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height), -1);
+        auto at = [&steps, map_size](mpos hex) -> int32_t& { return steps[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(map_size.width) + numeric_cast<size_t>(hex.x)]; };
+        vector<mpos> queue;
+        queue.emplace_back(from);
+        at(from) = 0;
+
+        for (size_t i = 0; i < queue.size(); i++) {
+            mpos cur = queue[i];
+
+            for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+                ipos32 raw {cur.x, cur.y};
+                GeometryHelper::MoveHexByDirUnsafe(raw, hdir(dir_value));
+
+                if (!map_size.is_valid_pos(raw)) {
+                    continue;
+                }
+
+                mpos next = map_size.from_raw_pos(raw);
+
+                if (at(next) >= 0 || !can_enter(next, hdir(dir_value))) {
+                    continue;
+                }
+
+                at(next) = at(cur) + 1;
+                queue.emplace_back(next);
+            }
+        }
+
+        return steps;
+    }
+
+    // Reference route: of all the shortest routes, the one that keeps nearest the straight line back to the start
+    static auto MakeStraightestRoute(msize map_size, mpos from, mpos goal, const vector<int32_t>& steps, const function<bool(mpos, mdir)>& can_enter) -> vector<mdir>
+    {
+        auto at = [&steps, map_size](mpos hex) -> int32_t { return steps[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(map_size.width) + numeric_cast<size_t>(hex.x)]; };
+        vector<mdir> route(numeric_cast<size_t>(at(goal)));
+        float32_t base_angle = GeometryHelper::GetDirAngle(goal, from);
+        mpos cur = goal;
+
+        for (int32_t index = at(goal); index > 0; index--) {
+            bool found = false;
+            float32_t best_diff = 0.0f;
+            mdir best_dir;
+            mpos best_hex;
+
+            for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+                mdir dir = hdir(dir_value);
+                ipos32 raw {cur.x, cur.y};
+                GeometryHelper::MoveHexByDirUnsafe(raw, dir.reverse());
+
+                if (!map_size.is_valid_pos(raw)) {
+                    continue;
+                }
+
+                mpos prev = map_size.from_raw_pos(raw);
+
+                if (at(prev) != index - 1 || !can_enter(cur, dir)) {
+                    continue;
+                }
+
+                float32_t diff = GeometryHelper::GetDirAngleDiff(base_angle, GeometryHelper::GetDirAngle(prev, from));
+
+                if (!found || diff < best_diff) {
+                    found = true;
+                    best_diff = diff;
+                    best_dir = dir;
+                    best_hex = prev;
+                }
+            }
+
+            REQUIRE(found);
+            route[numeric_cast<size_t>(index - 1)] = best_dir;
+            cur = best_hex;
+        }
+
+        return route;
+    }
+
+    // Follows the steps and answers where they end, or nullopt when a step leaves the map or enters a refused hex
+    static auto WalkRoute(msize map_size, mpos from, const vector<mdir>& route, const function<bool(mpos, mdir)>& can_enter) -> optional<mpos>
+    {
+        mpos cur = from;
+
+        for (mdir dir : route) {
+            ipos32 raw {cur.x, cur.y};
+            GeometryHelper::MoveHexByDirUnsafe(raw, dir);
+
+            if (!map_size.is_valid_pos(raw)) {
+                return std::nullopt;
+            }
+
+            cur = map_size.from_raw_pos(raw);
+
+            if (!can_enter(cur, dir)) {
+                return std::nullopt;
+            }
+        }
+
+        return cur;
+    }
+
+    // A random map of scattered blocked hexes with the given density in percent
+    static auto MakeRandomBlocks(random_generator& rnd, msize map_size, int32_t density) -> vector<uint8_t>
+    {
+        vector<uint8_t> blocked(numeric_cast<size_t>(map_size.width) * numeric_cast<size_t>(map_size.height), 0);
+
+        for (auto& cell : blocked) {
+            cell = rnd.next_between(0, 99) < density ? 1 : 0;
+        }
+
+        return blocked;
     }
 }
 
@@ -734,6 +858,670 @@ TEST_CASE("PathFinding::FindPath")
     }
 }
 
+TEST_CASE("PathFinding::EnclosureProbe")
+{
+    // Every CheckHex call is counted, because the probe exists to make a hopeless search cheap, not to change its answer
+    auto make_settings = [](mpos from, mpos to, int32_t probe_limit, int32_t& calls, function<HexBlockResult(mpos)> check) -> FindPathInput {
+        FindPathInput settings;
+        settings.FromHex = from;
+        settings.ToHex = to;
+        settings.MapSize = WIDE_MAP_SIZE;
+        settings.MaxLength = 1000;
+        settings.EnclosureProbeLimit = probe_limit;
+        settings.CheckHex = [&calls, check = std::move(check)](mpos hex) -> HexBlockResult {
+            calls++;
+            return check(hex);
+        };
+        return settings;
+    };
+
+    auto ring_of = [](HexBlockResult ring_result) -> function<HexBlockResult(mpos)> { return [ring_result](mpos hex) -> HexBlockResult { return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? ring_result : HexBlockResult::Passable; }; };
+
+    SECTION("WalledOffTargetIsRefusedWithoutFloodingTheMap")
+    {
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, probed_calls, ring_of(HexBlockResult::Blocked)));
+        int32_t flooded_calls = 0;
+        auto flooded = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 0, flooded_calls, ring_of(HexBlockResult::Blocked)));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(flooded.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(probed_calls < 1000);
+        CHECK(flooded_calls > 10000);
+    }
+
+    SECTION("CutGoalInsideTheWallsIsRefusedToo")
+    {
+        int32_t calls = 0;
+        auto settings = make_settings(FAR_START, POCKET_CENTER, 64, calls, ring_of(HexBlockResult::Blocked));
+        settings.Cut = 1;
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(calls < 1000);
+    }
+
+    SECTION("NegativeCutIsProbedAsTheExactGoal")
+    {
+        int32_t calls = 0;
+        auto settings = make_settings(FAR_START, POCKET_CENTER, 64, calls, ring_of(HexBlockResult::Blocked));
+        settings.Cut = -1;
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(calls < 1000);
+    }
+
+    SECTION("DeferredRingStaysPassable")
+    {
+        int32_t gag_calls = 0;
+        auto gag_output = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, gag_calls, ring_of(HexBlockResult::DeferGag)));
+        int32_t critter_calls = 0;
+        auto critter_output = PathFinding::FindPath(make_settings(FAR_START, POCKET_CENTER, 64, critter_calls, ring_of(HexBlockResult::DeferCritter)));
+
+        CHECK(gag_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(gag_output.NewToHex == POCKET_CENTER);
+        CHECK(critter_output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(critter_output.NewToHex == POCKET_CENTER);
+    }
+
+    SECTION("ReachableRouteIsTheSameWithAndWithoutTheProbe")
+    {
+        auto wall = [](mpos hex) -> HexBlockResult { return hex.x == 40 && hex.y >= 5 && hex.y <= 110 ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {20, 60}, mpos {70, 60}, 64, probed_calls, wall));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {20, 60}, mpos {70, 60}, 0, plain_calls, wall));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::Ok);
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed.NewToHex == plain.NewToHex);
+        CHECK(probed.Steps == plain.Steps);
+    }
+
+    SECTION("ShortSearchNeverRunsTheProbe")
+    {
+        // A route found within the budget is answered before the probe could start, so it costs nothing extra
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {50, 60}, mpos {53, 60}, 1024, probed_calls, ring_of(HexBlockResult::Passable)));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {50, 60}, mpos {53, 60}, 0, plain_calls, ring_of(HexBlockResult::Passable)));
+
+        CHECK(probed.Result == FindPathOutput::ResultType::Ok);
+        CHECK(probed_calls == plain_calls);
+    }
+
+    SECTION("RegionLargerThanTheBudgetFallsBackToTheFullSearch")
+    {
+        auto split = [](mpos hex) -> HexBlockResult { return hex.x == 60 ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+        int32_t probed_calls = 0;
+        auto probed = PathFinding::FindPath(make_settings(mpos {30, 60}, mpos {90, 60}, 64, probed_calls, split));
+        int32_t plain_calls = 0;
+        auto plain = PathFinding::FindPath(make_settings(mpos {30, 60}, mpos {90, 60}, 0, plain_calls, split));
+
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed.Result == FindPathOutput::ResultType::NoWay);
+        CHECK(probed_calls > plain_calls);
+    }
+
+    SECTION("MultiTargetSearchIsNotProbed")
+    {
+        int32_t probed_calls = 0;
+        auto probed_settings = make_settings(FAR_START, mpos {}, 64, probed_calls, ring_of(HexBlockResult::Blocked));
+        probed_settings.CheckTarget = [](mpos hex) { return hex == POCKET_CENTER; };
+        auto probed = PathFinding::FindPath(probed_settings);
+        int32_t plain_calls = 0;
+        auto plain_settings = make_settings(FAR_START, mpos {}, 0, plain_calls, ring_of(HexBlockResult::Blocked));
+        plain_settings.CheckTarget = [](mpos hex) { return hex == POCKET_CENTER; };
+        auto plain = PathFinding::FindPath(plain_settings);
+
+        CHECK(probed.Result == plain.Result);
+        CHECK(probed_calls == plain_calls);
+    }
+}
+
+TEST_CASE("PathFinding::AStar")
+{
+    auto blocked_at = [](const vector<uint8_t>& blocked, mpos hex) -> bool { return blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)] != 0; };
+
+    auto pick_open = [&blocked_at](random_generator& rnd, const vector<uint8_t>& blocked) -> mpos {
+        while (true) {
+            mpos hex = RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1));
+
+            if (!blocked_at(blocked, hex)) {
+                return hex;
+            }
+        }
+    };
+
+    auto nearest_goal = [](const vector<int32_t>& steps, mpos to, int32_t cut) -> int32_t {
+        int32_t best = -1;
+
+        for (int16_t y = 0; y < RANDOM_MAP_SIZE.height; y++) {
+            for (int16_t x = 0; x < RANDOM_MAP_SIZE.width; x++) {
+                int32_t hex_steps = steps[numeric_cast<size_t>(y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(x)];
+
+                if (hex_steps >= 0 && GeometryHelper::CheckDist(mpos {x, y}, to, cut) && (best < 0 || hex_steps < best)) {
+                    best = hex_steps;
+                }
+            }
+        }
+
+        return best;
+    };
+
+    SECTION("RandomMapsGetTheShortestAndStraightestRoute")
+    {
+        // The reference is the breadth-first answer the search replaced: the same length, and of the shortest routes
+        // the one nearest the straight line back to the start
+        random_generator rnd {26092026};
+        size_t routes = 0;
+
+        for (int32_t round = 0; round < 400; round++) {
+            vector<uint8_t> blocked = MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(5, 40));
+            auto can_enter = [&blocked, &blocked_at](mpos hex, mdir /*dir*/) -> bool { return !blocked_at(blocked, hex); };
+            mpos from = pick_open(rnd, blocked);
+            mpos to = pick_open(rnd, blocked);
+            int32_t cut = rnd.next_between(0, 2);
+
+            FindPathInput input = MakeBlockedSettings(from, to, [&blocked, &blocked_at](mpos hex) -> bool { return blocked_at(blocked, hex); }, cut);
+            input.MapSize = RANDOM_MAP_SIZE;
+            input.MaxLength = 1000;
+            auto output = PathFinding::FindPath(input);
+
+            vector<int32_t> steps = MeasureSteps(RANDOM_MAP_SIZE, from, can_enter);
+            int32_t best = nearest_goal(steps, to, cut);
+
+            INFO("round " << round << " from " << from.x << "," << from.y << " to " << to.x << "," << to.y << " cut " << cut);
+
+            if (GeometryHelper::CheckDist(from, to, cut)) {
+                CHECK(output.Result == FindPathOutput::ResultType::AlreadyHere);
+                continue;
+            }
+            if (best < 0) {
+                CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+                continue;
+            }
+
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+            CHECK(output.Steps.size() == numeric_cast<size_t>(best));
+            CHECK(WalkRoute(RANDOM_MAP_SIZE, from, output.Steps, can_enter) == optional<mpos> {output.NewToHex});
+            CHECK(GeometryHelper::CheckDist(output.NewToHex, to, cut));
+            CHECK(output.Steps == MakeStraightestRoute(RANDOM_MAP_SIZE, from, output.NewToHex, steps, can_enter));
+
+            input.FreeMovement = true;
+            auto free_output = PathFinding::FindPath(input);
+
+            REQUIRE(free_output.Result == FindPathOutput::ResultType::Ok);
+            CHECK(free_output.NewToHex == output.NewToHex);
+            CHECK(free_output.Steps.size() == numeric_cast<size_t>(best));
+            CHECK(WalkRoute(RANDOM_MAP_SIZE, from, free_output.Steps, can_enter) == optional<mpos> {free_output.NewToHex});
+            routes++;
+        }
+
+        CHECK(routes > 200);
+    }
+
+    SECTION("RandomMultihexMapsGetTheShortestRoute")
+    {
+        // A footprint refused from one side may still fit from another, so every side is tried before a hex is given up
+        random_generator rnd {19091991};
+        size_t routes = 0;
+
+        for (int32_t round = 0; round < 300; round++) {
+            vector<uint8_t> blocked = MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(2, 10));
+            function<HexBlockResult(mpos)> check = [&blocked, &blocked_at](mpos hex) -> HexBlockResult { return blocked_at(blocked, hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+            auto can_enter = [&check](mpos hex, mdir dir) -> bool { return PathFinding::CheckHexWithMultihex(hex, dir, 1, RANDOM_MAP_SIZE, check) != HexBlockResult::Blocked; };
+            mpos from = pick_open(rnd, blocked);
+            mpos to = pick_open(rnd, blocked);
+
+            FindPathInput input = MakeClearSettings(from, to);
+            input.MapSize = RANDOM_MAP_SIZE;
+            input.MaxLength = 1000;
+            input.Multihex = 1;
+            input.CheckHex = [&check](mpos hex) -> HexBlockResult { return check(hex); };
+            auto output = PathFinding::FindPath(input);
+
+            vector<int32_t> steps = MeasureSteps(RANDOM_MAP_SIZE, from, can_enter);
+            int32_t best = nearest_goal(steps, to, 0);
+
+            INFO("round " << round << " from " << from.x << "," << from.y << " to " << to.x << "," << to.y);
+
+            if (from == to) {
+                continue;
+            }
+            if (best < 0) {
+                CHECK(output.Result == FindPathOutput::ResultType::NoWay);
+                continue;
+            }
+
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+            CHECK(output.Steps.size() == numeric_cast<size_t>(best));
+            CHECK(WalkRoute(RANDOM_MAP_SIZE, from, output.Steps, can_enter) == optional<mpos> {to});
+            CHECK(output.Steps == MakeStraightestRoute(RANDOM_MAP_SIZE, from, to, steps, can_enter));
+            routes++;
+        }
+
+        CHECK(routes > 100);
+    }
+
+    SECTION("LengthLimitCountsRouteSteps")
+    {
+        // The limit is the longest route allowed, step for step: a route of exactly that length is found, one step
+        // longer is refused as too far
+        random_generator rnd {777};
+        size_t checked = 0;
+
+        for (int32_t round = 0; round < 200; round++) {
+            vector<uint8_t> blocked = MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(10, 35));
+            auto can_enter = [&blocked, &blocked_at](mpos hex, mdir /*dir*/) -> bool { return !blocked_at(blocked, hex); };
+            mpos from = pick_open(rnd, blocked);
+            mpos to = pick_open(rnd, blocked);
+            int32_t best = nearest_goal(MeasureSteps(RANDOM_MAP_SIZE, from, can_enter), to, 0);
+
+            if (best < 2) {
+                continue;
+            }
+
+            FindPathInput input = MakeBlockedSettings(from, to, [&blocked, &blocked_at](mpos hex) -> bool { return blocked_at(blocked, hex); });
+            input.MapSize = RANDOM_MAP_SIZE;
+            input.MaxLength = best;
+            auto exact = PathFinding::FindPath(input);
+            input.MaxLength = best - 1;
+            auto short_by_one = PathFinding::FindPath(input);
+
+            INFO("round " << round << " best " << best);
+            CHECK(exact.Result == FindPathOutput::ResultType::Ok);
+            CHECK(exact.Steps.size() == numeric_cast<size_t>(best));
+            CHECK(short_by_one.Result == FindPathOutput::ResultType::TooFar);
+            checked++;
+        }
+
+        CHECK(checked > 100);
+    }
+
+    SECTION("TargetBeyondTheLimitIsRefusedWithoutAskingTheMap")
+    {
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(mpos {10, 10}, mpos {150, 150});
+        settings.MapSize = msize {200, 200};
+        settings.MaxLength = 50;
+        settings.CheckHex = [&calls](mpos /*hex*/) -> HexBlockResult {
+            calls++;
+            return HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        CHECK(output.Result == FindPathOutput::ResultType::TooFar);
+        CHECK(calls == 0);
+    }
+
+    SECTION("OpenFieldSearchStaysNearTheLine")
+    {
+        // The search heads for the goal instead of flooding everything within reach, which would ask about every hex
+        // nearer than the goal
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(mpos {50, 150}, mpos {250, 150});
+        settings.MapSize = msize {300, 300};
+        settings.MaxLength = 500;
+        settings.CheckHex = [&calls](mpos /*hex*/) -> HexBlockResult {
+            calls++;
+            return HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        int32_t distance = GeometryHelper::GetDistance(mpos {50, 150}, mpos {250, 150});
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.Steps.size() == numeric_cast<size_t>(distance));
+        CHECK(calls * 5 < GeometryHelper::HexesInRadius(distance));
+    }
+
+    SECTION("CheapestGoalNearestTheLineIsChosen")
+    {
+        // Every hex two away from the target on the near side is as cheap to reach; the one straight ahead is taken
+        auto output = PathFinding::FindPath(MakeClearSettings(mpos {5, 5}, mpos {12, 5}, 2));
+
+        CHECK(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == mpos {10, 5});
+    }
+
+    SECTION("GagIsCrossedOnlyWhenTheDetourCostsMore")
+    {
+        mpos gag_hex {30, 30};
+
+        auto crosses_gag = [gag_hex](int16_t gap_y) -> bool {
+            auto settings = MakeClearSettings(mpos {25, 30}, mpos {35, 30});
+            settings.MapSize = msize {60, 60};
+            settings.CheckHex = [gap_y, gag_hex](mpos hex) -> HexBlockResult {
+                if (hex == gag_hex) {
+                    return HexBlockResult::DeferGag;
+                }
+
+                return hex.x == 30 && hex.y != gap_y ? HexBlockResult::Blocked : HexBlockResult::Passable;
+            };
+            auto output = PathFinding::FindPath(settings);
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+            mpos cur = settings.FromHex;
+            bool crossed = false;
+
+            for (mdir dir : output.Steps) {
+                GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+                crossed = crossed || cur == gag_hex;
+            }
+
+            CHECK(cur == settings.ToHex);
+            return crossed;
+        };
+
+        CHECK_FALSE(crosses_gag(33));
+        CHECK(crosses_gag(55));
+    }
+
+    SECTION("CritterIsCrossedOnlyWhenTheDetourCostsMore")
+    {
+        // A critter costs CritterDetour extra steps as a gag costs its ten: a gap in a line of critters three rows off
+        // the straight way is walked round, one twenty-five rows off costs more than the critter and the line is crossed
+        auto crosses_critter = [](int16_t gap_y) -> bool {
+            auto settings = MakeClearSettings(mpos {25, 30}, mpos {35, 30});
+            settings.MapSize = msize {60, 60};
+            settings.CheckHex = [gap_y](mpos hex) -> HexBlockResult { return hex.x == 30 && hex.y != gap_y ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+            auto output = PathFinding::FindPath(settings);
+            REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+            mpos cur = settings.FromHex;
+            bool crossed = false;
+
+            for (mdir dir : output.Steps) {
+                GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+                crossed = crossed || (cur.x == 30 && cur.y != gap_y);
+            }
+
+            CHECK(cur == settings.ToHex);
+            return crossed;
+        };
+
+        CHECK_FALSE(crosses_critter(33));
+        CHECK(crosses_critter(55));
+    }
+
+    SECTION("RouteThroughFewerCrittersWinsOverAShortDetour")
+    {
+        // Column 15 is all critters and column 16 has them above row 9: the straight way crosses two, a way through
+        // the lower rows crosses one for a couple of extra steps and wins
+        auto settings = MakeClearSettings(mpos {10, 5}, mpos {22, 5});
+        settings.MapSize = msize {40, 40};
+        auto is_critter = [](mpos hex) -> bool { return hex.x == 15 || (hex.x == 16 && hex.y < 9); };
+        settings.CheckHex = [is_critter](mpos hex) -> HexBlockResult { return is_critter(hex) ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+        mpos cur = settings.FromHex;
+        int32_t critters = 0;
+
+        for (mdir dir : output.Steps) {
+            GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+            critters += is_critter(cur) ? 1 : 0;
+        }
+
+        CHECK(cur == settings.ToHex);
+        CHECK(critters == 1);
+    }
+
+    SECTION("LengthLimitDoesNotHoldBackACritterCrossing")
+    {
+        // A wall of critters splits the map and the length limit cuts off part of this side. A critter is a price, not a
+        // last resort, so the route crosses the wall instead of refusing for a way round the limit might hide
+        auto settings = MakeClearSettings(mpos {95, 100}, mpos {105, 100});
+        settings.MapSize = msize {200, 200};
+        settings.MaxLength = 60;
+        settings.CheckHex = [](mpos hex) -> HexBlockResult { return hex.x == 100 ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == mpos {105, 100});
+        CHECK(output.Steps.size() == 10);
+    }
+
+    SECTION("TargetRingedByCrittersIsReachedWithoutFloodingTheMap")
+    {
+        // A melee crowd: every hex within Cut of the target holds a critter, so a route may end in one. The search
+        // heads for the nearest of them at the price of one critter instead of settling the whole map within the limit
+        mpos target {300, 300};
+        mpos from {290, 300};
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(from, target, 1);
+        settings.MapSize = msize {600, 600};
+        settings.MaxLength = 500;
+        settings.CheckHex = [&calls, target](mpos hex) -> HexBlockResult {
+            calls++;
+            return GeometryHelper::GetDistance(hex, target) <= 1 ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(GeometryHelper::GetDistance(output.NewToHex, target) <= 1);
+        CHECK(output.Steps.size() == numeric_cast<size_t>(GeometryHelper::GetDistance(from, target) - 1));
+        CHECK(calls < 2000);
+    }
+
+    SECTION("OccupiedExactTargetIsReachedWithoutFloodingTheMap")
+    {
+        // The same for an exact target a critter stands on, as in front of a door somebody blocks: one step, not a
+        // flood of everything within reach
+        mpos target {301, 300};
+        int32_t calls = 0;
+        auto settings = MakeClearSettings(mpos {300, 300}, target);
+        settings.MapSize = msize {600, 600};
+        settings.MaxLength = 500;
+        settings.CheckHex = [&calls, target](mpos hex) -> HexBlockResult {
+            calls++;
+            return hex == target ? HexBlockResult::DeferCritter : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == target);
+        CHECK(output.Steps.size() == 1);
+        CHECK(calls < 500);
+    }
+
+    SECTION("CrowdIsNotAGoalWhileAnyGoalIsFree")
+    {
+        // One hex of the ring is free, on the far side, and walled off from outside, so the only way in is through the
+        // crowd. Stopping in the crowd would be cheaper, yet a route ends on a critter only when no goal is free
+        mpos target = POCKET_CENTER;
+        mpos from {50, 60};
+        mpos free_hex = target;
+        (void)GeometryHelper::MoveHexByDir(free_hex, GeometryHelper::GetHexDir(from, target), WIDE_MAP_SIZE);
+        auto is_critter = [target, free_hex](mpos hex) -> bool { return hex != free_hex && GeometryHelper::GetDistance(hex, target) <= 1; };
+        auto settings = MakeClearSettings(from, target, 1);
+        settings.MapSize = WIDE_MAP_SIZE;
+        settings.CheckHex = [target, free_hex, is_critter](mpos hex) -> HexBlockResult {
+            if (is_critter(hex)) {
+                return HexBlockResult::DeferCritter;
+            }
+
+            return GeometryHelper::GetDistance(hex, free_hex) == 1 && GeometryHelper::GetDistance(hex, target) > 1 ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+        CHECK(output.NewToHex == free_hex);
+
+        mpos cur = settings.FromHex;
+        int32_t critters = 0;
+
+        for (mdir dir : output.Steps) {
+            GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+            critters += is_critter(cur) ? 1 : 0;
+        }
+
+        CHECK(cur == free_hex);
+        CHECK(critters == 1);
+    }
+
+    SECTION("CrittersOnTheWayAreChargedWhenEveryGoalHoldsOne")
+    {
+        // Every goal holds a critter, so the route ends in one, and the critters on the way still cost their detour: a
+        // line of them open three rows off the straight way is walked round, not crossed
+        mpos target {30, 20};
+        auto is_critter = [target](mpos hex) -> bool { return GeometryHelper::GetDistance(hex, target) <= 1 || (hex.x == 20 && hex.y != 23); };
+        auto settings = MakeClearSettings(mpos {10, 20}, target, 1);
+        settings.MapSize = msize {60, 60};
+        settings.CheckHex = [is_critter](mpos hex) -> HexBlockResult { return is_critter(hex) ? HexBlockResult::DeferCritter : HexBlockResult::Passable; };
+        auto output = PathFinding::FindPath(settings);
+
+        REQUIRE(output.Result == FindPathOutput::ResultType::Ok);
+
+        mpos cur = settings.FromHex;
+        int32_t critters = 0;
+
+        for (mdir dir : output.Steps) {
+            GeometryHelper::MoveHexByDir(cur, dir, settings.MapSize);
+            critters += is_critter(cur) ? 1 : 0;
+        }
+
+        CHECK(cur == output.NewToHex);
+        CHECK(GeometryHelper::GetDistance(cur, target) <= 1);
+        CHECK(critters == 1);
+    }
+}
+
+TEST_CASE("PathFinding::FindReachable")
+{
+    auto blocked_at = [](const vector<uint8_t>& blocked, mpos hex) -> bool { return blocked[numeric_cast<size_t>(hex.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(hex.x)] != 0; };
+
+    auto make_input = [](mpos from, msize map_size, int32_t max_length, const vector<mpos>& targets, function<HexBlockResult(mpos)> check) -> FindReachableInput {
+        FindReachableInput input;
+        input.FromHex = from;
+        input.MapSize = map_size;
+        input.MaxLength = max_length;
+        input.TargetHexes = targets;
+        input.CheckHex = std::move(check);
+        return input;
+    };
+
+    SECTION("RandomMapsAnswerEveryTargetLikeASingleTargetSearch")
+    {
+        // The flood replaces one search per target, so every answer must be the one that search gives, the length limit
+        // included; the breadth-first reference covers targets the limit cuts off
+        random_generator rnd {28092026};
+        size_t reachable_total = 0;
+        size_t unreachable_total = 0;
+
+        for (int32_t round = 0; round < 150; round++) {
+            vector<uint8_t> blocked = MakeRandomBlocks(rnd, RANDOM_MAP_SIZE, rnd.next_between(10, 45));
+            auto check = [&blocked, &blocked_at](mpos hex) -> HexBlockResult { return blocked_at(blocked, hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+            auto can_enter = [&blocked, &blocked_at](mpos hex, mdir /*dir*/) -> bool { return !blocked_at(blocked, hex); };
+            mpos from = RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1));
+            int32_t max_length = rnd.next_between(0, 1) == 0 ? 1000 : rnd.next_between(3, 20);
+            vector<mpos> targets;
+
+            for (int32_t i = 0; i < 40; i++) {
+                targets.emplace_back(RANDOM_MAP_SIZE.from_raw_pos(rnd.next_between(0, RANDOM_MAP_SIZE.width - 1), rnd.next_between(0, RANDOM_MAP_SIZE.height - 1)));
+            }
+
+            vector<mpos> reachable = PathFinding::FindReachable(make_input(from, RANDOM_MAP_SIZE, max_length, targets, check));
+            vector<int32_t> steps = MeasureSteps(RANDOM_MAP_SIZE, from, can_enter);
+            vector<mpos> expected;
+
+            for (mpos target : targets) {
+                int32_t target_steps = steps[numeric_cast<size_t>(target.y) * numeric_cast<size_t>(RANDOM_MAP_SIZE.width) + numeric_cast<size_t>(target.x)];
+                bool expect_reached = target_steps >= 0 && target_steps <= max_length;
+
+                FindPathInput single = MakeClearSettings(from, target);
+                single.MapSize = RANDOM_MAP_SIZE;
+                single.MaxLength = max_length;
+                single.CheckHex = check;
+                auto single_output = PathFinding::FindPath(single);
+                bool single_reached = single_output.Result == FindPathOutput::ResultType::Ok || single_output.Result == FindPathOutput::ResultType::AlreadyHere;
+
+                INFO("round " << round << " from " << from.x << "," << from.y << " target " << target.x << "," << target.y << " limit " << max_length);
+                CHECK(single_reached == expect_reached);
+
+                if (expect_reached) {
+                    expected.emplace_back(target);
+                    reachable_total++;
+                }
+                else {
+                    unreachable_total++;
+                }
+            }
+
+            INFO("round " << round);
+            CHECK(reachable == expected);
+        }
+
+        CHECK(reachable_total > 500);
+        CHECK(unreachable_total > 500);
+    }
+
+    SECTION("DeferredHexesArePassable")
+    {
+        // A gag the caller lets through and a critter make a route dearer, never impossible
+        vector<mpos> targets {POCKET_CENTER};
+        auto ring_of = [](HexBlockResult ring_result) -> function<HexBlockResult(mpos)> { return [ring_result](mpos hex) -> HexBlockResult { return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? ring_result : HexBlockResult::Passable; }; };
+
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::DeferGag))) == targets);
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::DeferCritter))) == targets);
+        CHECK(PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, ring_of(HexBlockResult::Blocked))).empty());
+    }
+
+    SECTION("WalledOffTargetsCostOneFlood")
+    {
+        // Every target inside a closed pocket is refused by the same single flood of the start side, which asks the
+        // map about each hex once however many neighbours reach it
+        vector<mpos> targets;
+
+        for (int32_t i = 0; i < GeometryHelper::HexesInRadius(1); i++) {
+            mpos hex = POCKET_CENTER;
+            REQUIRE(GeometryHelper::MoveHexAroundAway(hex, i, WIDE_MAP_SIZE));
+            targets.emplace_back(hex);
+        }
+
+        int32_t calls = 0;
+        unordered_set<mpos> asked;
+        auto check = [&calls, &asked](mpos hex) -> HexBlockResult {
+            calls++;
+            asked.emplace(hex);
+            return GeometryHelper::GetDistance(hex, POCKET_CENTER) == 2 ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+        vector<mpos> reachable = PathFinding::FindReachable(make_input(FAR_START, WIDE_MAP_SIZE, 1000, targets, check));
+
+        CHECK(reachable.empty());
+        CHECK(calls == numeric_cast<int32_t>(asked.size()));
+        CHECK(calls < numeric_cast<int32_t>(WIDE_MAP_SIZE.width) * numeric_cast<int32_t>(WIDE_MAP_SIZE.height));
+    }
+
+    SECTION("FloodStopsOnceEveryTargetIsReached")
+    {
+        int32_t calls = 0;
+        vector<mpos> targets {mpos {52, 60}, mpos {48, 60}};
+        auto check = [&calls](mpos /*hex*/) -> HexBlockResult {
+            calls++;
+            return HexBlockResult::Passable;
+        };
+        vector<mpos> reachable = PathFinding::FindReachable(make_input(mpos {50, 60}, WIDE_MAP_SIZE, 1000, targets, check));
+
+        CHECK(reachable == targets);
+        CHECK(calls < GeometryHelper::HexesInRadius(4));
+    }
+
+    SECTION("StartAndInvalidHexes")
+    {
+        vector<mpos> targets {mpos {5, 5}, mpos {6, 5}};
+        auto open = [](mpos /*hex*/) -> HexBlockResult { return HexBlockResult::Passable; };
+
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 0, targets, open)) == vector<mpos> {mpos {5, 5}});
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 1, targets, open)) == targets);
+        CHECK(PathFinding::FindReachable(make_input(mpos {50, 50}, TEST_MAP_SIZE, 100, targets, open)).empty());
+        CHECK(PathFinding::FindReachable(make_input(mpos {5, 5}, TEST_MAP_SIZE, 100, {}, open)).empty());
+    }
+}
+
 TEST_CASE("PathFinding::FreeMovementEndOffset")
 {
     // Projected distance between two map-pixel points (same metric as MovingContext segments)
@@ -815,7 +1603,7 @@ TEST_CASE("PathFinding::FreeMovementEndOffset")
     SECTION("OffsetTargetPreservesCutDistance")
     {
         auto settings = MakeClearSettings(mpos {5, 5}, mpos {12, 5}, 2);
-        settings.ToHexOffset = ipos16 {9, 5};
+        settings.ToHexOffset = ipos16 {-9, 5};
         settings.FreeMovement = true;
         auto output = PathFinding::FindPath(settings);
 
@@ -1102,6 +1890,253 @@ TEST_CASE("PathFinding::TraceLine")
             CHECK(output_angled.Block != blocker);
         }
     }
+}
+
+// Hidden: what one search costs on a settlement-sized map, per kind of request, with every answer folded into a
+// fingerprint so two builds can be compared on the same requests. A measurement, so it runs only by name
+TEST_CASE("PathFindingCost", "[.]")
+{
+    constexpr int16_t SIDE = 600;
+    constexpr msize MAP_SIZE {SIDE, SIDE};
+    constexpr int32_t REPEATS = 3;
+
+    vector<uint8_t> blocked(numeric_cast<size_t>(SIDE) * numeric_cast<size_t>(SIDE), 0);
+    random_generator rnd {20260926};
+    int64_t check_calls = 0;
+
+    auto cell = [&blocked](int32_t x, int32_t y) -> uint8_t& { return blocked[numeric_cast<size_t>(y) * numeric_cast<size_t>(SIDE) + numeric_cast<size_t>(x)]; };
+    auto is_blocked = [&cell](mpos hex) -> bool { return cell(hex.x, hex.y) != 0; };
+
+    auto draw_outline = [&cell](int32_t x0, int32_t y0, int32_t w, int32_t h) {
+        for (int32_t x = x0; x < x0 + w; x++) {
+            cell(x, y0) = 1;
+            cell(x, y0 + h - 1) = 1;
+        }
+        for (int32_t y = y0; y < y0 + h; y++) {
+            cell(x0, y) = 1;
+            cell(x0 + w - 1, y) = 1;
+        }
+    };
+
+    // Scattered rocks, then houses with one or two doorways two hexes wide, then boxes nobody can enter
+    for (int32_t i = 0; i < SIDE * SIDE / 33; i++) {
+        cell(rnd.next_between(0, SIDE - 1), rnd.next_between(0, SIDE - 1)) = 1;
+    }
+
+    for (int32_t i = 0; i < 900; i++) {
+        int32_t w = rnd.next_between(6, 18);
+        int32_t h = rnd.next_between(6, 18);
+        int32_t x0 = rnd.next_between(1, SIDE - w - 1);
+        int32_t y0 = rnd.next_between(1, SIDE - h - 1);
+        draw_outline(x0, y0, w, h);
+
+        int32_t doors = rnd.next_between(1, 2);
+
+        for (int32_t door = 0; door < doors; door++) {
+            int32_t side = rnd.next_between(0, 3);
+
+            if (side < 2) {
+                int32_t x = rnd.next_between(x0 + 1, x0 + w - 3);
+                int32_t y = side == 0 ? y0 : y0 + h - 1;
+                cell(x, y) = 0;
+                cell(x + 1, y) = 0;
+            }
+            else {
+                int32_t y = rnd.next_between(y0 + 1, y0 + h - 3);
+                int32_t x = side == 2 ? x0 : x0 + w - 1;
+                cell(x, y) = 0;
+                cell(x, y + 1) = 0;
+            }
+        }
+    }
+
+    vector<mpos> sealed_centers;
+
+    for (int32_t i = 0; i < 16; i++) {
+        int32_t x0 = 20 + (i % 4) * 150;
+        int32_t y0 = 20 + (i / 4) * 150;
+
+        for (int32_t y = y0; y < y0 + 11; y++) {
+            for (int32_t x = x0; x < x0 + 11; x++) {
+                cell(x, y) = 0;
+            }
+        }
+
+        draw_outline(x0, y0, 11, 11);
+        sealed_centers.emplace_back(MAP_SIZE.from_raw_pos(x0 + 5, y0 + 5));
+    }
+
+    auto pick_open = [&]() -> mpos {
+        while (true) {
+            mpos hex = MAP_SIZE.from_raw_pos(rnd.next_between(0, SIDE - 1), rnd.next_between(0, SIDE - 1));
+
+            if (!is_blocked(hex)) {
+                return hex;
+            }
+        }
+    };
+
+    auto pick_open_near = [&](mpos from, int32_t min_dist, int32_t max_dist) -> mpos {
+        while (true) {
+            int32_t x = from.x + rnd.next_between(-max_dist, max_dist);
+            int32_t y = from.y + rnd.next_between(-max_dist, max_dist);
+
+            if (!MAP_SIZE.is_valid_pos(x, y)) {
+                continue;
+            }
+
+            mpos hex = MAP_SIZE.from_raw_pos(x, y);
+            int32_t dist = GeometryHelper::GetDistance(from, hex);
+
+            if (dist >= min_dist && dist <= max_dist && !is_blocked(hex)) {
+                return hex;
+            }
+        }
+    };
+
+    auto make_request = [&](mpos from, mpos to) -> FindPathInput {
+        FindPathInput input;
+        input.FromHex = from;
+        input.ToHex = to;
+        input.MapSize = MAP_SIZE;
+        input.MaxLength = 500;
+        input.EnclosureProbeLimit = 1024;
+        input.FreeMovement = true;
+        input.CheckHex = [&check_calls, &is_blocked](mpos hex) -> HexBlockResult {
+            check_calls++;
+            return is_blocked(hex) ? HexBlockResult::Blocked : HexBlockResult::Passable;
+        };
+        return input;
+    };
+
+    struct Scenario
+    {
+        string Name;
+        vector<FindPathInput> Requests;
+    };
+
+    vector<Scenario> scenarios;
+    scenarios.emplace_back(Scenario {.Name = "near 3-15", .Requests = {}});
+    scenarios.emplace_back(Scenario {.Name = "near 3-15, hex steps", .Requests = {}});
+
+    for (int32_t i = 0; i < 400; i++) {
+        mpos from = pick_open();
+        mpos to = pick_open_near(from, 3, 15);
+        scenarios[0].Requests.emplace_back(make_request(from, to));
+        FindPathInput hex_steps_request = make_request(from, to);
+        hex_steps_request.FreeMovement = false;
+        scenarios[1].Requests.emplace_back(std::move(hex_steps_request));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "medium 20-60", .Requests = {}});
+
+    for (int32_t i = 0; i < 150; i++) {
+        mpos from = pick_open();
+        scenarios.back().Requests.emplace_back(make_request(from, pick_open_near(from, 20, 60)));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "long 100-300", .Requests = {}});
+
+    for (int32_t i = 0; i < 40; i++) {
+        mpos from = pick_open();
+        scenarios.back().Requests.emplace_back(make_request(from, pick_open_near(from, 100, 300)));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "beyond the limit", .Requests = {}});
+
+    for (int32_t i = 0; i < 20; i++) {
+        mpos from = pick_open_near(MAP_SIZE.from_raw_pos(25, 25), 0, 20);
+        scenarios.back().Requests.emplace_back(make_request(from, pick_open_near(MAP_SIZE.from_raw_pos(575, 575), 0, 20)));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "sealed target, probed", .Requests = {}});
+
+    for (mpos center : sealed_centers) {
+        scenarios.back().Requests.emplace_back(make_request(pick_open_near(center, 30, 80), center));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "sealed target, not probed", .Requests = {}});
+
+    for (size_t i = 0; i < 4; i++) {
+        FindPathInput request = make_request(pick_open_near(sealed_centers[i], 30, 80), sealed_centers[i]);
+        request.EnclosureProbeLimit = 0;
+        scenarios.back().Requests.emplace_back(std::move(request));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "near 3-15, multihex 1", .Requests = {}});
+
+    for (int32_t i = 0; i < 100; i++) {
+        mpos from = pick_open();
+        FindPathInput request = make_request(from, pick_open_near(from, 3, 15));
+        request.Multihex = 1;
+        scenarios.back().Requests.emplace_back(std::move(request));
+    }
+
+    scenarios.emplace_back(Scenario {.Name = "nearest of six 5-20", .Requests = {}});
+
+    for (int32_t i = 0; i < 100; i++) {
+        mpos from = pick_open();
+        mpos center = pick_open_near(from, 5, 20);
+        vector<mpos> targets;
+
+        for (int32_t dir_value = 0; dir_value < GameSettings::MAP_DIR_COUNT; dir_value++) {
+            ipos32 raw_hex {center.x, center.y};
+            GeometryHelper::MoveHexByDirUnsafe(raw_hex, hdir(dir_value));
+
+            if (MAP_SIZE.is_valid_pos(raw_hex)) {
+                targets.emplace_back(MAP_SIZE.from_raw_pos(raw_hex));
+            }
+        }
+
+        FindPathInput request = make_request(from, mpos {});
+        request.CheckTarget = [targets](mpos hex) -> bool { return std::ranges::find(targets, hex) != targets.end(); };
+        scenarios.back().Requests.emplace_back(std::move(request));
+    }
+
+    auto elapsed_ms = [](auto started) { return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count(); };
+    string report;
+
+    for (const auto& scenario : scenarios) {
+        size_t ok = 0;
+        size_t too_far = 0;
+        size_t no_way = 0;
+        size_t other = 0;
+        size_t steps = 0;
+        uint64_t route_hash = 14695981039346656037ull;
+        double best_ms = 0.0;
+        check_calls = 0;
+
+        for (int32_t rep = 0; rep < REPEATS; rep++) {
+            auto started = std::chrono::steady_clock::now();
+
+            for (const auto& request : scenario.Requests) {
+                auto output = PathFinding::FindPath(request);
+
+                if (rep != 0) {
+                    continue;
+                }
+
+                ok += output.Result == FindPathOutput::ResultType::Ok ? 1 : 0;
+                too_far += output.Result == FindPathOutput::ResultType::TooFar ? 1 : 0;
+                no_way += output.Result == FindPathOutput::ResultType::NoWay ? 1 : 0;
+                other += output.Result != FindPathOutput::ResultType::Ok && output.Result != FindPathOutput::ResultType::TooFar && output.Result != FindPathOutput::ResultType::NoWay ? 1 : 0;
+                steps += output.Steps.size();
+                route_hash = (route_hash ^ numeric_cast<uint64_t>(static_cast<uint8_t>(output.Result))) * 1099511628211ull;
+
+                for (mdir step : output.Steps) {
+                    route_hash = (route_hash ^ numeric_cast<uint64_t>(step.hex().value())) * 1099511628211ull;
+                }
+            }
+
+            double ms = elapsed_ms(started);
+            best_ms = rep == 0 ? ms : std::min(best_ms, ms);
+        }
+
+        double requests = numeric_cast<double>(scenario.Requests.size());
+        report += strex("{:<28} {:>4} requests  {:>9.3f} ms each  {:>9.0f} CheckHex each  ok {} too far {} no way {} other {}  steps {}  route hash {:016x}\n", scenario.Name, scenario.Requests.size(), best_ms / requests, numeric_cast<double>(check_calls) / (requests * REPEATS), ok, too_far, no_way, other, steps, route_hash).str();
+    }
+
+    WARN(report);
 }
 
 FO_END_NAMESPACE

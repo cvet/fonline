@@ -94,6 +94,7 @@ private:
         optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
     };
 
+    void RefreshHitMask() const;
     void SetupFrame(isize32 frame_size);
     auto PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop;
     void CommitFrameCrop(PreparedFrameCrop&& prepared_crop);
@@ -111,6 +112,14 @@ private:
     isize32 _preparedRenderFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
+
+    // A hit test reads a mask of the drawn picture that arrives without waiting for the GPU. Picking is a query,
+    // so the cache it keeps is mutable
+    mutable vector<bool> _hitMask {};
+    mutable isize32 _hitMaskSize {};
+    mutable unique_nptr<RenderTextureReadback> _hitReadback {};
+    mutable isize32 _hitReadbackSize {};
+    mutable bool _hitMaskStale {true};
 };
 
 class ModelSpriteFactory : public SpriteFactory

@@ -46,6 +46,7 @@ FO_BEGIN_NAMESPACE
 static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode);
 static auto MakeInputKeyMap() -> unordered_map<SDL_Keycode, KeyCode>;
 static auto MakeMouseButtonMap() -> unordered_map<int32_t, MouseButton>;
+static void LogSystemEnvironment(nptr<SDL_Window> sdl_window, const AppScreenState& screen_state);
 
 struct Application::Context
 {
@@ -293,6 +294,35 @@ static void UpdateMonitorSettings(GlobalSettings& settings, ptr<const SDL_Displa
     *const_cast<std::remove_cvref_t<decltype(settings.View.MonitorHeight)>*>(&settings.View.MonitorHeight) = display_mode->h;
 }
 
+// What a log needs to explain a report from someone else's machine: the renderer adds its own device line
+static void LogSystemEnvironment(nptr<SDL_Window> sdl_window, const AppScreenState& screen_state)
+{
+    string os_version = platform::get_os_version();
+    int32_t cpu_cores = SDL_GetNumLogicalCPUCores();
+    int32_t ram_mb = SDL_GetSystemRAM();
+    auto video_driver = make_nptr(SDL_GetCurrentVideoDriver());
+    logging::write("System: {}, {} logical CPU cores, {} MB RAM, video driver {}", os_version, cpu_cores, ram_mb, video_driver ? string_view(video_driver.get()) : string_view("none"));
+
+    if constexpr (FO_WEB) {
+        logging::write("Browser: {}", WebRelated::GetUserAgent());
+    }
+
+    if (!sdl_window) {
+        return;
+    }
+
+    SDL_DisplayID display_id = SDL_GetDisplayForWindow(sdl_window.get());
+    nptr<const SDL_DisplayMode> display_mode = display_id != 0 ? SDL_GetCurrentDisplayMode(display_id) : nullptr;
+    float32_t content_scale = display_id != 0 ? SDL_GetDisplayContentScale(display_id) : 0.0f;
+
+    if (display_mode) {
+        logging::write("Display: {}x{} @ {} Hz, content scale {}, window {}x{} {}", display_mode->w, display_mode->h, display_mode->refresh_rate, content_scale, screen_state.Size.width, screen_state.Size.height, screen_state.Fullscreen ? "fullscreen" : "windowed");
+    }
+    else {
+        logging::write(logging::type::warning, "Display: mode unavailable ({}), window {}x{} {}", SDL_GetError(), screen_state.Size.width, screen_state.Size.height, screen_state.Fullscreen ? "fullscreen" : "windowed");
+    }
+}
+
 // Routed through the safe_alloc raw tier rather than the bare Mem* primitives so SDL gets the same
 // out-of-memory handling as ImGui, AngelScript, zlib and ozz instead of silently receiving null
 static auto SdlMemMalloc(size_t size) noexcept -> void*
@@ -354,7 +384,7 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     }
 
     if (!Settings.Input.DisableGamepad && SDL_WasInit(SDL_INIT_GAMEPAD) == 0 && !SDL_InitSubSystem(SDL_INIT_GAMEPAD)) {
-        logging::write("SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
+        logging::write(logging::type::warning, "SDL_InitSubSystem SDL_INIT_GAMEPAD failed: {}", SDL_GetError());
     }
 
     if (!Settings.Input.DisableGamepad) {
@@ -411,15 +441,15 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
                     _ctx->AudioStream = std::move(audio_stream);
                 }
                 else {
-                    logging::write("SDL resume audio device failed, error {}", SDL_GetError());
+                    logging::write(logging::type::warning, "SDL resume audio device failed, error {}", SDL_GetError());
                 }
             }
             else {
-                logging::write("SDL open audio device stream failed, error {}", SDL_GetError());
+                logging::write(logging::type::warning, "SDL open audio device stream failed, error {}", SDL_GetError());
             }
         }
         else {
-            logging::write("SDL init audio subsystem failed, error {}", SDL_GetError());
+            logging::write(logging::type::warning, "SDL init audio subsystem failed, error {}", SDL_GetError());
         }
     }
 
@@ -580,6 +610,8 @@ Application::Application(GlobalSettings&& settings, AppInitFlags flags) :
     if (_ctx->ActiveRendererType != RenderType::Null && MainWindow.IsFullscreen()) {
         SyncMainWindowBackbufferSize();
     }
+
+    LogSystemEnvironment(_ctx->ActiveRendererType != RenderType::Null ? MainWindow._windowHandle.reinterpret_as<SDL_Window>() : nullptr, ScreenState);
 
     if (is_enum_set(flags, AppInitFlags::ClientMode) && Settings.Render.AlwaysOnTop) {
         MainWindow.AlwaysOnTop(true);

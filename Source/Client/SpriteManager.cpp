@@ -637,7 +637,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
     if (ext.empty()) {
         break_into_debugger();
-        logging::write("Extension not found, file '{}'", path);
+        logging::write(logging::type::warning, "Extension not found, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -646,7 +646,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
 
     if (it == _spriteFactoryMap.end()) {
         break_into_debugger();
-        logging::write("Unknown extension, file '{}'", path);
+        logging::write(logging::type::warning, "Unknown extension, file '{}'", path);
         _nonFoundSprites.emplace(path);
         return nullptr;
     }
@@ -656,7 +656,7 @@ auto SpriteManager::LoadSprite(hstring path, AtlasType atlas_type, bool no_warn_
     if (!spr) {
         if (!no_warn_if_not_exists) {
             break_into_debugger();
-            logging::write("Sprite not found: '{}'", path);
+            logging::write(logging::type::warning, "Sprite not found: '{}'", path);
         }
 
         _nonFoundSprites.emplace(path);
@@ -1062,38 +1062,7 @@ void SpriteManager::InvalidateEgg()
     InvalidateEgg(TransparentEggSlot::Secondary);
 }
 
-void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, nptr<const MapSprite> mspr)
-{
-    size_t slot_index = static_cast<size_t>(slot);
-
-    if (!mspr) {
-        InvalidateEgg(slot);
-        return;
-    }
-
-    irect32 rect = mspr->GetViewRect();
-
-    if (rect.width <= 0 || rect.height <= 0) {
-        InvalidateEgg(slot);
-        _eggSlots[slot_index].Hex = hex;
-        return;
-    }
-
-    float32_t rect_width = std::max(numeric_cast<float32_t>(rect.width), 1.0f);
-    float32_t rect_height = std::max(numeric_cast<float32_t>(rect.height), 1.0f);
-    auto& egg = _eggSlots[slot_index];
-    float32_t egg_width = std::max(rect_width + numeric_cast<float32_t>(_settings->Render.EggEllipseWidthExt), 1.0f);
-    float32_t egg_height = std::max(rect_height + numeric_cast<float32_t>(_settings->Render.EggEllipseHeightExt), 1.0f);
-
-    egg.Center.x = numeric_cast<float32_t>(rect.x) + rect_width * 0.5f;
-    egg.Center.y = numeric_cast<float32_t>(rect.y) + rect_height * 0.5f;
-    egg.Radius.width = egg_width * 0.5f;
-    egg.Radius.height = egg_height * 0.5f;
-    egg.Hex = hex;
-    egg.Valid = true;
-}
-
-void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius)
+void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsize32 radius, TransparentEggTarget target)
 {
     size_t slot_index = static_cast<size_t>(slot);
     auto& egg = _eggSlots[slot_index];
@@ -1107,10 +1076,11 @@ void SpriteManager::SetEgg(TransparentEggSlot slot, mpos hex, fpos32 center, fsi
     egg.Center = center;
     egg.Radius = radius;
     egg.Hex = hex;
+    egg.Target = target;
     egg.Valid = true;
 }
 
-auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggAppearenceType appearence) const -> bool
+auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, ptr<const MapSprite> mspr) const -> bool
 {
     const auto& egg = _eggSlots[static_cast<size_t>(slot)];
 
@@ -1118,38 +1088,32 @@ auto SpriteManager::CheckEggAppearence(TransparentEggSlot slot, mpos hex, EggApp
         return false;
     }
 
+    return IsCutByTransparentEgg(egg.Target, egg.Hex, mspr->GetEggAppearence(), mspr->IsEggStructure(), mspr->GetHex());
+}
+
+auto IsCutByTransparentEgg(TransparentEggTarget target, mpos egg_hex, EggAppearenceType appearence, bool egg_structure, mpos hex) -> bool
+{
     if (appearence == EggAppearenceType::None) {
+        return false;
+    }
+    if (target == TransparentEggTarget::Structure && !egg_structure) {
         return false;
     }
     if (appearence == EggAppearenceType::Always) {
         return true;
     }
 
-    if (egg.Hex.y == hex.y && (hex.x % 2) != 0 && (egg.Hex.x % 2) == 0) {
-        hex.y--;
-    }
-
+    // Each comparison asks on which side of a hex-axis line the sprite stands, so every piece of one run shares the
+    // answer and a piece on the egg's own line counts as in front
     switch (appearence) {
     case EggAppearenceType::ByX:
-        if (hex.x >= egg.Hex.x) {
-            return true;
-        }
-        break;
+        return hex.x >= egg_hex.x;
     case EggAppearenceType::ByY:
-        if (hex.y >= egg.Hex.y) {
-            return true;
-        }
-        break;
+        return hex.y >= egg_hex.y;
     case EggAppearenceType::ByXAndY:
-        if (hex.x >= egg.Hex.x || hex.y >= egg.Hex.y) {
-            return true;
-        }
-        break;
+        return hex.x >= egg_hex.x || hex.y >= egg_hex.y;
     case EggAppearenceType::ByXOrY:
-        if (hex.x >= egg.Hex.x && hex.y >= egg.Hex.y) {
-            return true;
-        }
-        break;
+        return hex.x >= egg_hex.x && hex.y >= egg_hex.y;
     default:
         break;
     }
@@ -1322,8 +1286,8 @@ void SpriteManager::DrawSprites(MapSpriteList& mspr_list, irect32 draw_area, boo
         }
 
         // Setup eggs
-        bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr->GetHex(), mspr->GetEggAppearence());
-        bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr->GetHex(), mspr->GetEggAppearence());
+        bool use_first_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Primary, mspr);
+        bool use_second_egg = use_egg && CheckEggAppearence(TransparentEggSlot::Secondary, mspr);
 
         if (use_first_egg || use_second_egg) {
             for (size_t j = start_vpos; j < _spritesDrawBuf->VertCount; j++) {
@@ -1372,7 +1336,7 @@ auto SpriteManager::SpriteHitTest(ptr<const Sprite> spr, ipos32 pos) const -> bo
     return spr->IsHitTest(pos);
 }
 
-auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearence) const -> bool
+auto SpriteManager::IsEggTransp(ipos32 pos, ptr<const MapSprite> mspr) const -> bool
 {
     for (size_t slot_index = 0; slot_index < EGG_SLOT_COUNT; slot_index++) {
         const auto& egg = _eggSlots[slot_index];
@@ -1381,7 +1345,7 @@ auto SpriteManager::IsEggTransp(ipos32 pos, mpos hex, EggAppearenceType appearen
         if (!egg.Valid) {
             continue;
         }
-        if (!CheckEggAppearence(slot, hex, appearence)) {
+        if (!CheckEggAppearence(slot, mspr)) {
             continue;
         }
         if (egg.Radius.width <= 0.0f || egg.Radius.height <= 0.0f) {

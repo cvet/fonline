@@ -193,6 +193,9 @@ public:
     void StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator);
     void StopCritterMoving(ptr<Critter> cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed);
+    // Writes one server-side MOVESYNC line. Call sites test Network.MoveSyncTrace first, so a disabled trace
+    // formats nothing on the movement hot path
+    void TraceMoveSync(string_view event, string_view details);
 
     ///@ ExportEvent
     FO_ENTITY_EVENT(OnInit);
@@ -339,6 +342,7 @@ private:
     void Process_UnresolvedHash(ptr<ServerConnection> connection);
     void Process_Move(ptr<Player> player);
     void Process_StopMove(ptr<Player> player);
+    void Process_MoveFinished(ptr<Player> player);
     void Process_Dir(ptr<Player> player);
     void Process_Property(ptr<Player> player);
     void Process_RemoteCall(ptr<Player> player);
@@ -362,8 +366,8 @@ private:
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
     void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
-    auto ReconcileCritterStopPosition(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
-    auto MoveCritterAlongStopCorrectionPath(ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
+    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
     auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
     void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);
 

@@ -58,8 +58,9 @@ public:
     auto operator=(Direct3D_Texture&&) noexcept -> Direct3D_Texture& = delete;
     ~Direct3D_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     nptr<ID3D11Texture2D> TexHandle {};
@@ -70,6 +71,20 @@ public:
 
 private:
     ptr<Direct3D_Renderer::Context> _ctx;
+};
+
+// The copy sits in its own staging texture, which the device context maps without waiting once the GPU has written it
+class Direct3D_TextureReadback final : public RenderTextureReadback
+{
+public:
+    Direct3D_TextureReadback(ptr<Direct3D_Renderer::Context> ctx, unique_del_ptr<ID3D11Texture2D> staging_tex, isize32 size);
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    ptr<Direct3D_Renderer::Context> _ctx;
+    unique_del_nptr<ID3D11Texture2D> _stagingTex;
+    isize32 _size;
 };
 
 class Direct3D_DrawBuffer final : public RenderDrawBuffer
@@ -158,7 +173,6 @@ struct Direct3D_Renderer::Context
     nptr<ID3D11DepthStencilView> CurDepthStencil {};
     nptr<ID3D11SamplerState> PointSampler {};
     nptr<ID3D11SamplerState> LinearSampler {};
-    nptr<ID3D11Texture2D> OnePixStagingTex {};
     unique_nptr<RenderTexture> DummyTexture {};
     mat44 ProjMatrix {};
     float32_t OrthoNear {ORTHO_DEPTH_DEFAULT_NEAR};
@@ -209,6 +223,9 @@ static auto MakeComObjectHolder(nptr<T> object) noexcept -> unique_del_ptr<T>
     ptr<T> checked_object = object;
     return MakeComObjectHolder(checked_object);
 }
+
+static auto CopyTextureRegionToStaging(ptr<Direct3D_Renderer::Context> ctx, nptr<ID3D11Texture2D> tex_handle, isize32 tex_size, ipos32 pos, isize32 size) -> unique_del_ptr<ID3D11Texture2D>;
+static auto ReadStagingTexturePixels(ptr<Direct3D_Renderer::Context> ctx, ptr<ID3D11Texture2D> staging_tex, isize32 size, bool no_wait) -> optional<vector<ucolor>>;
 
 Direct3D_Renderer::Direct3D_Renderer() = default;
 
@@ -326,7 +343,7 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
     {
         // A baked effect runs on feature level 10.0; level 9.3 only when its container also carries the level 9 code,
         // which model effects never do: level 9 does not support 3D, so a build with 3D models stays at 10.0
-        constexpr D3D_FEATURE_LEVEL feature_levels[] = {
+        static constexpr D3D_FEATURE_LEVEL feature_levels[] = {
             D3D_FEATURE_LEVEL_11_1,
             D3D_FEATURE_LEVEL_11_0,
             D3D_FEATURE_LEVEL_10_1,
@@ -349,23 +366,78 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             device_flags |= D3D11_CREATE_DEVICE_DEBUG;
         }
 
-        auto d3d_hardware_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+        // The Direct3D 11.0 runtime (Windows 7 without the platform update) rejects a list naming 11.1 instead of skipping it;
+        // the list is static because MSVC 14.44 refuses the address of a local constexpr array element in a lambda (C2101)
+        static_assert(feature_levels[0] == D3D_FEATURE_LEVEL_11_1);
+        auto create_device = [&](D3D_DRIVER_TYPE driver_type) -> HRESULT {
+            HRESULT d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+
+            if (d3d_create_device == E_INVALIDARG) {
+                d3d_create_device = ::D3D11CreateDevice(nullptr, driver_type, nullptr, device_flags, &feature_levels[1], feature_levels_count - 1, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            }
+
+            return d3d_create_device;
+        };
+
+        auto d3d_hardware_create_device = create_device(D3D_DRIVER_TYPE_HARDWARE);
 
         if (FAILED(d3d_hardware_create_device)) {
             if (!settings.Render.AllowSoftwareRenderer) {
                 throw AppInitException("Direct3D hardware device creation failed", d3d_hardware_create_device);
             }
 
-            auto d3d_warp_create_device = ::D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_WARP, nullptr, device_flags, feature_levels, feature_levels_count, D3D11_SDK_VERSION, _ctx->D3DDevice.get_pp(), &_ctx->FeatureLevel, _ctx->D3DDeviceContext.get_pp());
+            auto d3d_warp_create_device = create_device(D3D_DRIVER_TYPE_WARP);
 
             if (FAILED(d3d_warp_create_device)) {
                 throw AppInitException("D3D11CreateDevice failed (Hardware and Warp)", d3d_hardware_create_device, d3d_warp_create_device);
             }
 
-            logging::write("Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+            logging::write(logging::type::warning, "Warp Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
         }
         else {
             logging::write("Direct3D device created with feature level {}", feature_levels_str.at(_ctx->FeatureLevel));
+        }
+
+        // Name the adapter and its driver so a client log can explain a rendering problem
+        {
+            string adapter_name = "unknown";
+            string vendor_id = "unknown";
+            string driver_version = "unknown";
+            string device_id = "unknown";
+            string video_memory = "unknown";
+
+            nptr<IDXGIDevice> dxgi_device {};
+            HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
+
+            if (SUCCEEDED(d3d_query_dxgi_device) && dxgi_device) {
+                auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+                nptr<IDXGIAdapter> adapter {};
+                HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+                if (SUCCEEDED(d3d_get_adapter) && adapter) {
+                    auto adapter_holder = MakeComObjectHolder(adapter);
+                    DXGI_ADAPTER_DESC adapter_desc {};
+                    HRESULT d3d_get_adapter_desc = adapter->GetDesc(&adapter_desc);
+
+                    if (SUCCEEDED(d3d_get_adapter_desc)) {
+                        adapter_name = strex().parse_wide_char(make_ptr(adapter_desc.Description)).str();
+                        vendor_id = strex("0x{:04X}", adapter_desc.VendorId).str();
+                        device_id = strex("0x{:04X}", adapter_desc.DeviceId).str();
+                        video_memory = strex("{} MB", adapter_desc.DedicatedVideoMemory / (1024 * 1024)).str();
+                    }
+
+                    // DXGI answers the user-mode driver version through this query, packed as four 16-bit parts
+                    LARGE_INTEGER umd_version {};
+                    HRESULT d3d_get_umd_version = adapter->CheckInterfaceSupport(__uuidof(IDXGIDevice), &umd_version);
+
+                    if (SUCCEEDED(d3d_get_umd_version)) {
+                        uint64_t umd_parts = std::bit_cast<uint64_t>(umd_version.QuadPart);
+                        driver_version = strex("{}.{}.{}.{}", umd_parts >> 48, (umd_parts >> 32) & 0xFFFF, (umd_parts >> 16) & 0xFFFF, umd_parts & 0xFFFF).str();
+                    }
+                }
+            }
+
+            logging::write("Render device: {}, vendor {}, driver {}, device {}, video memory {}", adapter_name, vendor_id, driver_version, device_id, video_memory);
         }
 
         if (SUCCEEDED(_ctx->D3DDeviceContext->QueryInterface(IID_PPV_ARGS(_ctx->D3DDeviceContext1.get_pp())))) {
@@ -373,17 +445,39 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
             _ctx->D3DDeviceContext = _ctx->D3DDeviceContext1;
         }
         else {
-            logging::write("Direct3D ID3D11DeviceContext1 not found");
+            logging::write(logging::type::warning, "Direct3D ID3D11DeviceContext1 not found");
         }
     }
 
     // Swap chain
     {
-        nptr<IDXGIFactory> factory {};
-        auto d3d_create_factory = ::CreateDXGIFactory(IID_PPV_ARGS(factory.get_pp()));
+        // The swap chain comes from the factory that created the device, as DXGI documents: on DXGI 1.1 (Windows 7 without
+        // the platform update) a separate CreateDXGIFactory factory answers CreateSwapChain with DXGI_ERROR_INVALID_CALL
+        nptr<IDXGIDevice> dxgi_device {};
+        HRESULT d3d_query_dxgi_device = _ctx->D3DDevice->QueryInterface(IID_PPV_ARGS(dxgi_device.get_pp()));
 
-        if (FAILED(d3d_create_factory)) {
-            throw AppInitException("CreateDXGIFactory failed", d3d_create_factory);
+        if (FAILED(d3d_query_dxgi_device)) {
+            throw AppInitException("Direct3D device QueryInterface IDXGIDevice failed", d3d_query_dxgi_device);
+        }
+
+        FO_VERIFY_AND_THROW(dxgi_device, "DXGI device is null");
+        auto dxgi_device_holder = MakeComObjectHolder(dxgi_device);
+
+        nptr<IDXGIAdapter> adapter {};
+        HRESULT d3d_get_adapter = dxgi_device->GetAdapter(adapter.get_pp());
+
+        if (FAILED(d3d_get_adapter)) {
+            throw AppInitException("DXGI device GetAdapter failed", d3d_get_adapter);
+        }
+
+        FO_VERIFY_AND_THROW(adapter, "DXGI adapter is null");
+        auto adapter_holder = MakeComObjectHolder(adapter);
+
+        nptr<IDXGIFactory> factory {};
+        HRESULT d3d_get_factory = adapter->GetParent(IID_PPV_ARGS(factory.get_pp()));
+
+        if (FAILED(d3d_get_factory)) {
+            throw AppInitException("DXGI adapter GetParent IDXGIFactory failed", d3d_get_factory);
         }
 
         FO_VERIFY_AND_THROW(factory, "DXGI factory is null");
@@ -427,15 +521,15 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                             throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2, d3d_create_swap_chain_3, d3d_create_swap_chain_4);
                         }
                         else {
-                            logging::write("Direct3D swap chain created with one buffer count");
+                            logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                         }
                     }
                     else {
-                        logging::write("Direct3D swap chain created with non-flip swap effect");
+                        logging::write(logging::type::warning, "Direct3D swap chain created with non-flip swap effect");
                     }
                 }
                 else {
-                    logging::write("Direct3D swap chain created with flip sequential swap effect");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with flip sequential swap effect");
                 }
             }
         }
@@ -453,18 +547,13 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
                     throw AppInitException("CreateSwapChain failed", d3d_create_swap_chain, d3d_create_swap_chain_2);
                 }
                 else {
-                    logging::write("Direct3D swap chain created with one buffer count");
+                    logging::write(logging::type::warning, "Direct3D swap chain created with one buffer count");
                 }
             }
         }
 
         // Disable Alt+Enter
-        nptr<IDXGIFactory> swap_chain_factory {};
-        if (SUCCEEDED(_ctx->SwapChain->GetParent(IID_PPV_ARGS(swap_chain_factory.get_pp())))) {
-            FO_VERIFY_AND_THROW(swap_chain_factory, "Swap chain factory is null");
-            auto swap_chain_factory_holder = MakeComObjectHolder(swap_chain_factory);
-            swap_chain_factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
-        }
+        (void)factory->MakeWindowAssociation(hwnd, DXGI_MWA_NO_WINDOW_CHANGES | DXGI_MWA_NO_ALT_ENTER | DXGI_MWA_NO_PRINT_SCREEN);
     }
 
     // Samplers
@@ -536,23 +625,6 @@ void Direct3D_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState>
 
     _ctx->BackBufSize = screen->Size;
 
-    // One pixel staging texture
-    D3D11_TEXTURE2D_DESC one_pix_staging_desc;
-    one_pix_staging_desc.Width = 1;
-    one_pix_staging_desc.Height = 1;
-    one_pix_staging_desc.MipLevels = 1;
-    one_pix_staging_desc.ArraySize = 1;
-    one_pix_staging_desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-    one_pix_staging_desc.SampleDesc.Count = 1;
-    one_pix_staging_desc.SampleDesc.Quality = 0;
-    one_pix_staging_desc.Usage = D3D11_USAGE_STAGING;
-    one_pix_staging_desc.BindFlags = 0;
-    one_pix_staging_desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    one_pix_staging_desc.MiscFlags = 0;
-
-    auto d3d_create_one_pix_staging_tex = _ctx->D3DDevice->CreateTexture2D(&one_pix_staging_desc, nullptr, _ctx->OnePixStagingTex.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_one_pix_staging_tex), "Direct3D CreateTexture2D failed for the one-pixel staging texture", d3d_create_one_pix_staging_tex, one_pix_staging_desc.Width, one_pix_staging_desc.Height);
-
     // Dummy texture
     constexpr ucolor dummy_pixel[1] = {ucolor {255, 0, 255, 255}};
     _ctx->DummyTexture = CreateTexture({1, 1}, false, false);
@@ -581,7 +653,6 @@ Direct3D_Renderer::~Direct3D_Renderer()
     ReleaseComObjectSlot(_ctx->MainRenderTarget);
     ReleaseComObjectSlot(_ctx->PointSampler);
     ReleaseComObjectSlot(_ctx->LinearSampler);
-    ReleaseComObjectSlot(_ctx->OnePixStagingTex);
     ReleaseComObjectSlot(_ctx->SwapChain);
     if (_ctx->D3DDeviceContext1) {
         ReleaseComObjectSlot(_ctx->D3DDeviceContext1);
@@ -1062,59 +1133,61 @@ Direct3D_Texture::~Direct3D_Texture()
     ReleaseComObjectSlot(ShaderTexView);
 }
 
-auto Direct3D_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_TRACE_ZONE(Render);
-
-    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested Direct3D texture pixel is outside texture bounds", pos, Size);
-
-    auto d3d_device_context = _ctx->D3DDeviceContext;
-    FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
-
-    D3D11_BOX src_box;
-    src_box.left = pos.x;
-    src_box.top = pos.y;
-    src_box.right = pos.x + 1;
-    src_box.bottom = pos.y + 1;
-    src_box.front = 0;
-    src_box.back = 1;
-
-    d3d_device_context->CopySubresourceRegion(_ctx->OnePixStagingTex.get_no_const(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
-
-    D3D11_MAPPED_SUBRESOURCE tex_resource;
-    auto d3d_map_staging_texture = d3d_device_context->Map(_ctx->OnePixStagingTex.get_no_const(), 0, D3D11_MAP_READ, 0, &tex_resource);
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for the one-pixel staging texture", d3d_map_staging_texture, pos, Size);
-
-    auto staging_unmap = scope_fail([&]() noexcept { d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0); });
-
-    auto mapped_data = make_nptr(tex_resource.pData);
-    FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
-    ucolor result = *mapped_data.reinterpret_as<ucolor>();
-
-    d3d_device_context->Unmap(_ctx->OnePixStagingTex.get_no_const(), 0);
-    staging_unmap.release();
-
-    return result;
-}
-
 auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
     FO_TRACE_ZONE(Render);
 
+    unique_del_ptr<ID3D11Texture2D> staging_tex = CopyTextureRegionToStaging(_ctx, TexHandle, Size, pos, size);
+    optional<vector<ucolor>> pixels = ReadStagingTexturePixels(_ctx, staging_tex, size, false);
+    FO_VERIFY_AND_THROW(pixels.has_value(), "Direct3D blocking staging map returned no pixels", pos, size);
+
+    return std::move(pixels.value());
+}
+
+auto Direct3D_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+    unique_del_ptr<ID3D11Texture2D> staging_tex = CopyTextureRegionToStaging(_ctx, TexHandle, Size, pos, size);
+
+    return safe_alloc::make_unique<Direct3D_TextureReadback>(_ctx, std::move(staging_tex), size);
+}
+
+Direct3D_TextureReadback::Direct3D_TextureReadback(ptr<Direct3D_Renderer::Context> ctx, unique_del_ptr<ID3D11Texture2D> staging_tex, isize32 size) :
+    _ctx {ctx},
+    _stagingTex {std::move(staging_tex)},
+    _size {size}
+{
+}
+
+auto Direct3D_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_stagingTex, "Direct3D texture readback pixels were already taken");
+
+    optional<vector<ucolor>> pixels = ReadStagingTexturePixels(_ctx, _stagingTex, _size, true);
+
+    if (pixels.has_value()) {
+        _stagingTex.reset();
+    }
+
+    return pixels;
+}
+
+// The immediate context executes in submission order, so the copy observes every draw recorded before it
+static auto CopyTextureRegionToStaging(ptr<Direct3D_Renderer::Context> ctx, nptr<ID3D11Texture2D> tex_handle, isize32 tex_size, ipos32 pos, isize32 size) -> unique_del_ptr<ID3D11Texture2D>
+{
     FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
     FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
     FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
     FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
-    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
-    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= tex_size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, tex_size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= tex_size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, tex_size.height);
+    FO_VERIFY_AND_THROW(tex_handle, "Direct3D texture handle is null");
 
-    auto d3d_device = _ctx->D3DDevice;
+    auto d3d_device = ctx->D3DDevice;
     FO_VERIFY_AND_THROW(d3d_device, "Direct3D device is null");
-    auto d3d_device_context = _ctx->D3DDeviceContext;
+    auto d3d_device_context = ctx->D3DDeviceContext;
     FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
-
-    vector<ucolor> result;
-    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     D3D11_TEXTURE2D_DESC staging_desc;
     staging_desc.Width = size.width;
@@ -1131,7 +1204,7 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
 
     nptr<ID3D11Texture2D> staging_tex {};
     auto d3d_create_staging_tex = d3d_device->CreateTexture2D(&staging_desc, nullptr, staging_tex.get_pp());
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_staging_tex), "Direct3D CreateTexture2D failed for a texture-region staging texture", d3d_create_staging_tex, pos, size, Size);
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_create_staging_tex), "Direct3D CreateTexture2D failed for a texture-region staging texture", d3d_create_staging_tex, pos, size, tex_size);
     FO_VERIFY_AND_THROW(staging_tex, "Staging texture is null");
     auto staging_tex_holder = MakeComObjectHolder(staging_tex);
 
@@ -1143,21 +1216,38 @@ auto Direct3D_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vecto
     src_box.front = 0;
     src_box.back = 1;
 
-    d3d_device_context->CopySubresourceRegion(staging_tex.get(), 0, 0, 0, 0, TexHandle.get_no_const(), 0, &src_box);
+    d3d_device_context->CopySubresourceRegion(staging_tex.get(), 0, 0, 0, 0, tex_handle.get(), 0, &src_box);
+
+    return staging_tex_holder;
+}
+
+// Without waiting, a copy the GPU has not executed yet answers DXGI_ERROR_WAS_STILL_DRAWING and yields nothing
+static auto ReadStagingTexturePixels(ptr<Direct3D_Renderer::Context> ctx, ptr<ID3D11Texture2D> staging_tex, isize32 size, bool no_wait) -> optional<vector<ucolor>>
+{
+    auto d3d_device_context = ctx->D3DDeviceContext;
+    FO_VERIFY_AND_THROW(d3d_device_context, "Direct3D device context is null");
 
     D3D11_MAPPED_SUBRESOURCE tex_resource;
-    auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex.get(), 0, D3D11_MAP_READ, 0, &tex_resource);
-    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for a texture-region staging texture", d3d_map_staging_texture, pos, size, Size);
+    auto d3d_map_staging_texture = d3d_device_context->Map(staging_tex.get(), 0, D3D11_MAP_READ, no_wait ? D3D11_MAP_FLAG_DO_NOT_WAIT : 0, &tex_resource);
+
+    if (no_wait && d3d_map_staging_texture == DXGI_ERROR_WAS_STILL_DRAWING) {
+        return std::nullopt;
+    }
+
+    FO_VERIFY_AND_THROW(SUCCEEDED(d3d_map_staging_texture), "Direct3D Map failed for a texture-region staging texture", d3d_map_staging_texture, size);
+    auto staging_unmap = scope_exit([&]() noexcept { d3d_device_context->Unmap(staging_tex.get(), 0); });
+
     auto mapped_data = make_nptr(tex_resource.pData);
     FO_VERIFY_AND_THROW(mapped_data, "Mapped texture data pointer is null");
     auto mapped_bytes = mapped_data.reinterpret_as<uint8_t>();
+
+    vector<ucolor> result;
+    result.resize(numeric_cast<size_t>(size.width) * size.height);
 
     for (int32_t i = 0; i < size.height; i++) {
         auto src = mapped_bytes.offset(numeric_cast<size_t>(tex_resource.RowPitch) * i);
         memory::copy(&result[numeric_cast<size_t>(i) * size.width], src, numeric_cast<size_t>(size.width) * 4);
     }
-
-    d3d_device_context->Unmap(staging_tex.get(), 0);
 
     return result;
 }

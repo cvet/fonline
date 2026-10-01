@@ -290,8 +290,12 @@ reparent does. `Source/Tests/Test_ServerEngine.cpp` exercises symmetric Player/C
 ### Managed synchronization failure diagnostics
 
 Every public `Task<bool>` acquisition/restoration helper in managed `CoreScripts/Sync.cs` publishes an
-externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`). Each
-subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
+externally returned `false` to the server-side `Sync.OnFailure` event (`Action<Sync.FailureInfo>`), unless
+destruction explains it. A refusal for availability (`entity_unavailable_before_acquire`,
+`entity_unavailable_after_acquire`, `entity_unavailable`, `dependency_unavailable`, `snapshot_incomplete`)
+whose context holds a destroyed or destroying entity is the expected answer to a teardown the caller could not
+prevent, so the helper still returns `false` and publishes nothing; the structural reasons are always published.
+Each subscriber receives the same immutable diagnostic snapshot. The engine neither formats nor logs the report
 and owns no enable/disable setting; the embedding project chooses its subscribers and reactions with
 `Sync.OnFailure += HandleFailure` and can unsubscribe with `-=`. The handler receives data directly and
 chooses its own text, JSON, metrics or other representation.
@@ -332,6 +336,13 @@ location and suppresses the speculative result. Keep this distinction when addin
 inner refusal must never be counted as an external failure. The per-call diagnostic helper is a stack/value object;
 success constructs no report objects, stack traces, shared counters or ambient asynchronous state.
 
+Retries have a channel of their own. A helper that finds its cover stale after acquiring it and is about to
+take it again publishes `Sync.OnRetry` (`Action<Sync.RetryInfo>`: `Operation`, `Reason`, the caller location and
+`HelperFile`/`HelperLine` of the retry site); unlike failures, a retry inside a nested helper is published too,
+since it is exactly what is measured. A retry loop outside `Sync` reports through `Sync.ReportRetry(reason)`, with
+its own location as both caller and site. With no subscriber nothing is allocated. How often each site fires
+separates retries a lock handoff resolves from ones that wait for another thread to reach a later frame.
+
 A diagnostic proves that this Sync call returned `false`. Its caller may return, retry or recover. It does not
 prove rollback, lost rewards, or the eventual outcome of a quest. Investigate the exact deployed source
 revision, the caller's preceding mutations and the code after the failed guard, then correlate entity IDs
@@ -344,7 +355,9 @@ Offline regression coverage compiles the actual helpers against an acquisition f
 dotnet run --project Source/Scripting/Managed/SyncTests/FOnline.Sync.Tests.csproj
 ```
 
-It checks all boolean acquisition overloads, caller forwarding, destruction during acquisition, recovered
+It checks that every boolean acquisition overload refuses a destroyed root without publishing it, that
+destruction during acquisition stays unpublished, that an entity its own thread is destroying stays available
+while one another thread destroys is refused before any acquisition, and covers caller forwarding, recovered
 map migration, best-effort silence, partial restoration, reason distinctions, JSON escaping and exception
 propagation. Embedding projects also validate their baked scripts on the native backend.
 
@@ -425,7 +438,7 @@ own lock the way `EnsureEntitySynced()` does, and nothing is released. Each enti
 entry, which is the contract script widening relies on. A request that drops a held lock, or adds an entity
 covered only through the Critter-Player widen link or not covered at all, takes the full release-and-reacquire
 path, which re-proves the link under the acquired cover. `Game.SyncWiden` (`SyncContext::WidenEntities()`) is the
-primitive behind the managed `Sync.Widen` family: it requests the live held set plus the extras natively, so
+primitive behind the managed `Sync.Widen` family: it requests the held set plus the extras natively, so
 widening materializes no snapshot of the held set on the script side and prunes held entries that were destroyed.
 Pinned by `Source/Tests/Test_ServerEntityLifetime.cpp` → `ServerSyncWidenOfCoveredEntityKeepsHeldLocks`, where a
 job queued for the map must not get it while the widening context keeps working.
@@ -436,6 +449,49 @@ held exclusively nor marked by this context, the request takes the full path to 
 only the critter's own lock would let a foreign job acquire its new map concurrently. This applies even to a
 request identical to the held set, including an empty native widen. Pinned by
 `ServerSyncRetainedCoverRefreshesReparentedAncestors` for both replacement and widening.
+
+### An entity being destroyed
+
+`MarkAsDestroying()` is set by the thread that holds the entity's lock, and that thread keeps the lock until
+the entity is destroyed. Whether a destroying entity may be taken therefore depends on who asks, and the managed
+`Sync` helpers decide it in one place (`IsUnavailable()` in `CoreScripts/Sync.cs`). To the destroying thread the
+entity stays available: its finish, map-out and hide handlers run during the teardown on that thread, already
+cover the entity (`Game.IsEntityLocked`), and may read and write it under the lock like any other entity, so
+`Lock`, `Widen`, `Restore` and `IsCovered` accept it without waiting. To any other thread it is unavailable
+before anything is acquired: taking it would park on the destroyer, which may itself be waiting on the marks the
+asking job keeps, and would hand the entity back destroyed. A destroyed entity is unavailable to everyone.
+`SyncContext::WidenEntities()` follows the same rule for the held set, keeping a held owner that is being
+destroyed and dropping only destroyed ones. Pinned by `ServerSyncWidenKeepsHeldEntityBeingDestroyed` and by the
+[managed Sync harness](#managed-synchronization-failure-diagnostics).
+
+### Yielding the cover in place
+
+A retry loop that re-reads a relation after acquiring (a critter that moved, a group or spectator set that changed)
+cannot make another thread progress by re-requesting what it already holds: a covered request is retained without
+a release, and a nested `Sync()` never gives away the outer job's cover, since only the stage-2 escalation drops
+that and it runs only when the thread's own request is contended. `SyncContext::YieldLocks()` is that escalation on
+demand. It releases every lock the thread holds to zero - the current context's and every outer context's cover,
+descendant marks and singleton buckets - which hands each lock with a parked waiter straight to that waiter, then
+re-takes the same union in address order with a fresh ticket, so it queues behind them and parks holding nothing.
+The recursion of each lock is restored exactly, and a shutdown abort leaves the whole chain holding nothing, as
+the escalation does. Afterwards the current context re-proves its cover through an empty widen, because an owner
+reparented while released keeps its old ancestor marks; outer contexts get theirs back exactly as the escalation
+restores them. State read before the call may have changed or been destroyed, so the caller re-reads it. With a
+singleton bucket held by the current context it throws, for the reason `SyncEntities` does, and with nothing held
+it does nothing.
+
+Scripts reach it as `Game.SyncYield()` (`FO_COVER_PRIMITIVE`) through the managed `Sync.Yield()`. The `Sync` helpers
+use it for a retry caused by a relation that **changed** - a critter that moved, a group, spectator or item set that
+differs from the one just read - because the thread that changed it holds or wants locks this thread holds, and the
+handoff lets it finish. A retry caused by an **unavailable** entity - a group member `GetCritter` no longer returns,
+a map id with no map, a component node a widen refuses - still ends the script entry with `ScriptTask.Delay(0)`
+and resumes on a later frame: such an entity is mid-destroy or mid-unload, and that operation may be the very one
+that fired the calling handler (`UnloadCritter` marks the critter destroying, fires `OnCritterUnload`, and only then
+drops it from its global group), so no wait inside the call can let it finish. Waiting in place there exhausted the
+retry budget in `following.global_leader_unload_locks_follower`. Pinned by
+`Source/Tests/Test_ServerEntityLifetime.cpp` -> `ServerSyncYieldHandsTheWholeThreadCoverToWaitersAndTakesItBack`,
+where a waiter blocked on the outer job's map gets it only through the yield, and
+`ServerSyncYieldRefusesWhileTheSingletonIsHeld`; the managed split by `Source/Scripting/Managed/SyncTests`.
 
 ### Storage shape
 
@@ -583,6 +639,20 @@ Do not duplicate the Common entity taxonomy here; [EntityModel.md](EntityModel.m
 Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization runs through the same passability guard the client applies (`GeometryHelper::NormalizeHexOffset` with an `is_movable` predicate): when rounding a sub-hex offset would cross into a blocked neighboring hex, the reported logical hex is retained and the offset is clamped instead of starting a full-cell correction toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
+
+### An arrival the client predicted is reconciled before the request behind it
+
+Movement and inbound player messages are two different `WorkerPool` jobs (`WorkerJobType::CritterMovement` and `WorkerJobType::Player`), ordered only by the per-entity sync locks, and the server's copy of a movement starts one uplink transit after the client's. An action request judged by reach can therefore arrive while the server's critter is still short of the hex the client acted from. `Process_MoveFinished()` (message `SendCritterMoveFinished`) is what removes the race from the common case: the client reports a movement that played out to its end, the server reconciles through the same path walk the stop path uses, and because the handler is synchronous inside `ProcessPlayer()`'s ordered message loop, the position is settled **before** the request behind it is read. An interrupted movement already reported itself through `Process_StopMove()`; this covers the movement that simply completed, which previously told the server nothing.
+
+The report is attributed by the end hex of the plan it finished — the initiator never receives its own `CritterMove` and so has no server-side movement id to echo — and the remainder it may fast-forward is clamped to `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`, so the allowance is the connection's own measured delay rather than a client claim. A larger claim is refused and logged. `Process_MoveFinished()` deliberately does **not** fire `OnPlayerMoveCritter`: an arrival is a statement about a movement already made, not a request a script may veto. `Process_Move()`'s async-fix bridge — the divergence measured in hexes — is logged from `Server.MoveBridgeReportHexes` upward, together with the connection round trip.
+
+### A teleport ends the plan it interrupts
+
+`MapManager::Transfer` stops a moving critter and lands it on the target hex with **no** hex offset: a critter caught between two hexes carries that step as a sub-hex offset, and keeping it at the landing hex made every client normalize it into a neighbouring hex, so the next move started one hex off the server's and was bridged back across it. Within one map the server tells its observers only `CritterTeleport`, not a stop, so `Net_OnCritterTeleport` stops the plan a client is still playing and clears its offset before placing the critter — otherwise `ProcessMoving` would walk it straight back onto the old path until the next movement message arrived. `ServerCritterMovePositionReconciliation` pins the server half; the live `teleport_mid_move` scenario of the movement-sync playtest shows the client half in the trace.
+
+### A refused move request ends the route it interrupts
+
+`Critter.MoveToHex` on a critter that is already moving replaces its route. When the new request finds a route, `StartCritterMoving()` swaps the plans and every observer receives the new one as a single `CritterMove`; no stop is announced in between. When the request is refused instead — no speed, the goal already reached (`AlreadyHere` answers `Success`), a busy, walled-off or too distant goal — the current route still ends, and it ends through `StopCritterMoving()`: the observers receive `CritterPos` and `OnCritterStopMoving` fires. A bare `Critter::StopMoving()` there once left the server critter standing while every client kept playing the route it had last received to its end, so a creature the AI re-targeted mid-step walked away on screen and died where the client had walked it. `ServerCritterMovePositionReconciliation` pins both halves.
 
 Server scripts can call `Player.RefreshCritterMoving(cr)` to resend the authoritative movement snapshot for a critter on the player's current map. Moving critters are sent as `CritterMove`; stationary critters are sent as `CritterPos`, which lets the client stop prediction and apply the server hex, hex offset, and direction without inventing a project-specific correction packet.
 

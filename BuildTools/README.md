@@ -354,7 +354,7 @@ change. Patched regions, all transparent identity/config **text** (never code):
 - `PACKAGED_BUILD_NAME` — marker `###NotPackaged###`, a 128-byte array. The package/build identity string;
   each runtime variant patches its own so `IsPackaged()` and the build name reflect the package.
 - `INTERNAL_CONFIG` — markers `###InternalConfig###…` / `###InternalConfigEnd###`, capacity
-  fixed by the engine at 10000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
+  fixed by the engine at 20000 bytes. The baked bootstrap config blob; embedding projects cannot resize it.
 - Embedded resources — capacity `FO_EMBEDDED_DATA_CAPACITY` (200000).
 
 `package.py` also rewrites the PE PDB path (`patch_pe_pdb_path`) and the Android Gradle `$PLACEHOLDER$` tokens.
@@ -423,6 +423,21 @@ key that clients pin; `public` prints it again later. The script needs nothing b
 ## Source formatting
 
 `buildtools.py format-source` formats the engine `Source/` tree with `clang-format`. The binary is resolved by `discover_clang_format()`: the `FO_CLANG_FORMAT` override first (when set), then `clang-format-20`/`clang-format` on `PATH`; the resolved binary must report major version 20. This keeps the command usable both from CI (clang-format-20 on `PATH`) and from an embedding project that supplies a bundled binary through `FO_CLANG_FORMAT`.
+
+## Temporary compatibility dates
+
+Code kept only for older builds or data carries `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or
+`[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed), see [../Docs/Essentials.md](../Docs/Essentials.md#temporary-compatibility).
+`temporary_compat.py` fails once a date has passed and lists every place of that id:
+
+```sh
+python3 BuildTools/temporary_compat.py                                        # the engine Source tree
+python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
+python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+```
+
+`--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are
+`tests/test_temporary_compat.py`, and the `validate` workflow runs both.
 
 ## Pipeline documentation
 

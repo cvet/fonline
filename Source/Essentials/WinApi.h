@@ -82,6 +82,9 @@ namespace winapi
     void free_library(nptr<void> module_handle) noexcept;
     // A null module handle means the running executable, which is where the loader search starts
     auto get_proc_address(nptr<void> module_handle, const string& func_name) noexcept -> nptr<void>;
+    // Code and system text of the calling thread's last error, read right after the call that failed
+    auto get_last_error_text() noexcept -> string;
+    auto get_os_version() noexcept -> string;
 
     // A file this process holds alone: a second opener is refused rather than allowed to share it. The
     // descriptor is the platform's own, and -1 means the open failed

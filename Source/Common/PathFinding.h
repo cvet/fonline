@@ -55,9 +55,11 @@ struct FindPathInput
     mpos ToHex {};
     ipos16 ToHexOffset {};
     msize MapSize {};
-    int32_t MaxLength {}; // Maximum BFS depth (from engine Settings.Geometry.MaxPathFindLength)
-    int32_t Cut {}; // Stop BFS when within this distance of target; 0 = must reach exact target
-    int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check in BFS
+    int32_t MaxLength {}; // Longest route allowed, in steps (from engine Settings.Geometry.MaxPathFindLength)
+    int32_t EnclosureProbeLimit {}; // Forward hexes after which the target side is flooded back within the same budget; 0 = never
+    int32_t CritterDetour {}; // A living critter on the route costs as much as a detour this many steps long
+    int32_t Cut {}; // Stop the search when within this distance of target; 0 = must reach exact target
+    int32_t Multihex {}; // Multihex radius; 0 = single hex; >0 = directional perimeter check per step
     bool FreeMovement {}; // Use LineTracer optimization for control steps and continuous end offset
     function<bool(mpos)> CheckTarget {}; // Optional exact multi-target predicate; replaces ToHex/Cut when set
     function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
@@ -85,6 +87,15 @@ struct FindPathOutput
     ipos16 EndHexOffset {}; // FreeMovement sub-hex stop offset relative to NewToHex center; zero when FreeMovement is off or the real target coincides with NewToHex center
 };
 
+struct FindReachableInput
+{
+    mpos FromHex {};
+    msize MapSize {};
+    int32_t MaxLength {}; // Longest route allowed, in steps (from engine Settings.Geometry.MaxPathFindLength)
+    const_span<mpos> TargetHexes {}; // Hexes to answer for; the flood stops once every one of them is reached
+    function<HexBlockResult(mpos)> CheckHex {}; // Check if a single hex blocks movement
+};
+
 struct TraceLineInput
 {
     mpos StartHex {};
@@ -108,20 +119,23 @@ struct TraceLineOutput
 
 namespace PathFinding
 {
-    // Check the BFS-direction front arc for a single hex or multihex perimeter.
+    // Check the movement-direction front arc for a single hex or multihex perimeter.
     // Return the worst result in Blocked > DeferCritter > DeferGag > Passable order
-    [[nodiscard]] auto CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
+    auto CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult;
 
-    // Core pathfinding algorithm (BFS with deferred routing through gags/critters)
-    [[nodiscard]] auto FindPath(const FindPathInput& input) -> FindPathOutput;
+    // Core pathfinding algorithm (A* with deferred routing through gags/critters)
+    auto FindPath(const FindPathInput& input) -> FindPathOutput;
+
+    // Single-hex flood from FromHex over every hex CheckHex does not block, at most MaxLength steps out.
+    // Return the target hexes it reaches, in the order given
+    auto FindReachable(const FindReachableInput& input) -> vector<mpos>;
 
     // Compute the half-hex-clamped FreeMovement endpoint relative to the target's real offset.
     // Return nullopt for an undefined stop direction so callers preserve the mover's offset
-    [[nodiscard]] auto EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>;
+    auto EvaluateFreeMovementEndOffset(mpos new_to_hex, mpos to_hex, ipos16 to_hex_offset) -> optional<ipos16>;
 
     // Core line trace from start toward target, stopping at blocked hexes
-    [[nodiscard]] auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;
-
+    auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;
 }
 
 FO_END_NAMESPACE

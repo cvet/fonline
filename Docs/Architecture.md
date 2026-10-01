@@ -58,7 +58,7 @@ See [Applications.md](Applications.md) for the application map.
 - `Geometry.h`, `Movement.h`, `PathFinding.h`, `MapLoader.h` — reusable map and movement primitives.
 - `NetBuffer.h`, `NetworkUdp.h` — common networking primitives.
 - `ConfigFile.h`, `DataSource.h`, `FileSystem.h`, `CacheStorage.h` — config and data access support.
-- `ImageWriter.h` — TGA/PNG encoders for the diagnostic images the engine writes itself (screenshots, render-target and atlas dumps).
+- `ImageWriter.h` — PNG encoders for the images the engine produces itself: file dumps of screenshots, render targets and atlases (`WritePng`, RGBA with no row filtering, so a dump stays cheap to write and opens in any viewer), and `EncodeCompactPng`, an in-memory opaque RGB PNG with per-row adaptive filtering for images that are sent over a connection rather than dumped. The client script export `Game.CaptureScreenshot(maxSide)` returns the last complete frame in that form, downscaled by an integer factor until its longer side fits `maxSide` (`0` keeps full size). It refuses to run inside a render callback, where the main render target holds a half-drawn frame.
 
 This layer should stay reusable. Game rules should generally be expressed through content/scripts or project-native extensions, not by embedding one project's policy into common engine code.
 

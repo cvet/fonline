@@ -60,9 +60,9 @@ public:
     auto operator=(SDLGpu_Texture&&) noexcept -> SDLGpu_Texture& = delete;
     ~SDLGpu_Texture() override;
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override;
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override;
 
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override;
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override;
 
     nptr<SDL_GPUTexture> TexHandle {};
@@ -70,6 +70,49 @@ public:
 
 private:
     mutable ptr<SDLGpu_Renderer::Context> _ctx;
+};
+
+// The fence of one submitted command buffer, shared by every readback recorded into it. Until the buffer is
+// submitted there is no fence yet, and the readbacks riding on it are simply not ready
+class SDLGpu_SubmitFence final
+{
+public:
+    explicit SDLGpu_SubmitFence(ptr<SDL_GPUDevice> device);
+    SDLGpu_SubmitFence(const SDLGpu_SubmitFence&) = delete;
+    SDLGpu_SubmitFence(SDLGpu_SubmitFence&&) noexcept = delete;
+    auto operator=(const SDLGpu_SubmitFence&) = delete;
+    auto operator=(SDLGpu_SubmitFence&&) noexcept = delete;
+    ~SDLGpu_SubmitFence();
+
+    [[nodiscard]] auto IsSignaled() -> bool;
+
+    void SetSubmitted(ptr<SDL_GPUFence> fence);
+    void SetFinished() noexcept;
+
+private:
+    ptr<SDL_GPUDevice> _device;
+    nptr<SDL_GPUFence> _fence {};
+    bool _finished {};
+};
+
+// The copy lands in a download transfer buffer, mapped once the fence of its command buffer has signaled
+class SDLGpu_TextureReadback final : public RenderTextureReadback
+{
+public:
+    SDLGpu_TextureReadback(ptr<SDLGpu_Renderer::Context> ctx, ptr<SDL_GPUTransferBuffer> transfer_buf, shared_ptr<SDLGpu_SubmitFence> fence, isize32 size);
+    SDLGpu_TextureReadback(const SDLGpu_TextureReadback&) = delete;
+    SDLGpu_TextureReadback(SDLGpu_TextureReadback&&) noexcept = delete;
+    auto operator=(const SDLGpu_TextureReadback&) = delete;
+    auto operator=(SDLGpu_TextureReadback&&) noexcept = delete;
+    ~SDLGpu_TextureReadback() override;
+
+    auto TakePixels() -> optional<vector<ucolor>> override;
+
+private:
+    ptr<SDLGpu_Renderer::Context> _ctx;
+    nptr<SDL_GPUTransferBuffer> _transferBuf;
+    shared_ptr<SDLGpu_SubmitFence> _fence;
+    isize32 _size;
 };
 
 class SDLGpu_DrawBuffer final : public RenderDrawBuffer
@@ -193,6 +236,7 @@ struct SDLGpu_Renderer::Context
     size_t UploadTransferBufSize {};
     nptr<SDL_GPUTransferBuffer> DownloadTransferBuf {};
     size_t DownloadTransferBufSize {};
+    shared_ptr<SDLGpu_SubmitFence> CmdBufFence {}; // Present once a readback rides on the command buffer being recorded
     unique_nptr<RenderTexture> DummyTexture {};
     optional<ucolor> PendingClearColor {};
     bool PendingClearDepth {};
@@ -469,12 +513,17 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
 
     auto fence = make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(ctx->CmdBuf.get()));
     ctx->CmdBuf = nullptr;
+    shared_ptr<SDLGpu_SubmitFence> readback_fence = std::exchange(ctx->CmdBufFence, {});
     FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
 
     SDL_GPUFence* fence_handles[] = {fence.get()};
     bool wait_ok = SDL_WaitForGPUFences(ctx->Device.get(), true, fence_handles, 1);
     SDL_ReleaseGPUFence(ctx->Device.get(), fence.get());
     FO_VERIFY_AND_THROW(wait_ok, "SDL_WaitForGPUFences failed", SDL_GetError());
+
+    if (readback_fence) {
+        readback_fence->SetFinished();
+    }
 }
 
 static auto EnsureTransferBuffer(ptr<SDLGpu_Renderer::Context> ctx, nptr<SDL_GPUTransferBuffer>& transfer_buf, size_t& transfer_buf_size, size_t required_size, bool download) -> ptr<SDL_GPUTransferBuffer>
@@ -573,6 +622,20 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
 
     logging::write("Used SDL_GPU rendering ({})", SDL_GetGPUDeviceDriver(_ctx->Device.get()));
 
+    // Name the GPU and driver so a client log can explain a rendering problem; SDL fills only what the backend reports
+    {
+        auto or_unknown = [](string_view value) -> string_view { return !value.empty() ? value : string_view("unknown"); };
+        SDL_PropertiesID device_props = SDL_GetGPUDeviceProperties(_ctx->Device.get());
+        string_view device_name = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_NAME_STRING, ""));
+        string_view driver_name = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_NAME_STRING, ""));
+        string_view driver_version = or_unknown(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, ""));
+        auto backend = make_nptr(SDL_GetGPUDeviceDriver(_ctx->Device.get()));
+        string driver_info = strex(SDL_GetStringProperty(device_props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "")).normalize_line_endings().trim().replace("\n", "; ").str();
+        string info_pair = !driver_info.empty() ? strex(", info {}", driver_info).str() : string();
+
+        logging::write("Render device: {}, vendor {}, driver {}, backend {}{}", device_name, driver_name, driver_version, backend ? string_view(backend.get()) : string_view("unknown"), info_pair);
+    }
+
     // Shader format: prefer the SPIR-V flavor (Vulkan), fall back to MSL (Metal)
     SDL_GPUShaderFormat device_formats = SDL_GetGPUShaderFormats(_ctx->Device.get());
 
@@ -599,7 +662,7 @@ void SDLGpu_Renderer::Init(GlobalSettings& settings, ptr<const AppScreenState> s
             FO_VERIFY_AND_THROW(swapchain_params_ok, "SDL_SetGPUSwapchainParameters failed", SDL_GetError());
         }
         else {
-            logging::write("SDL_GPU immediate present mode is not supported, VSync stays enabled");
+            logging::write(logging::type::warning, "SDL_GPU immediate present mode is not supported, VSync stays enabled");
         }
     }
 
@@ -660,6 +723,8 @@ SDLGpu_Renderer::~SDLGpu_Renderer()
         (void)SDL_CancelGPUCommandBuffer(_ctx->CmdBuf.get());
         _ctx->CmdBuf = nullptr;
     }
+
+    _ctx->CmdBufFence.reset();
 
     if (_ctx->Device) {
         (void)SDL_WaitForGPUIdle(_ctx->Device.get());
@@ -729,9 +794,19 @@ void SDLGpu_Renderer::Present()
         SDL_BlitGPUTexture(_ctx->CmdBuf.get(), &blit_info);
     }
 
-    bool submit_ok = SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get());
-    _ctx->CmdBuf = nullptr;
-    FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
+    // A fence costs a little per submit, so only a command buffer that carries readbacks asks for one
+    if (_ctx->CmdBufFence) {
+        shared_ptr<SDLGpu_SubmitFence> readback_fence = std::exchange(_ctx->CmdBufFence, {});
+        auto fence = make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(_ctx->CmdBuf.get()));
+        _ctx->CmdBuf = nullptr;
+        FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
+        readback_fence->SetSubmitted(fence);
+    }
+    else {
+        bool submit_ok = SDL_SubmitGPUCommandBuffer(_ctx->CmdBuf.get());
+        _ctx->CmdBuf = nullptr;
+        FO_VERIFY_AND_THROW(submit_ok, "SDL_SubmitGPUCommandBuffer failed", SDL_GetError());
+    }
 }
 
 auto SDLGpu_Renderer::CreateTexture(isize32 size, bool linear_filtered, bool with_depth) -> unique_ptr<RenderTexture>
@@ -1095,14 +1170,6 @@ SDLGpu_Texture::~SDLGpu_Texture()
     }
 }
 
-auto SDLGpu_Texture::GetTexturePixel(ipos32 pos) const -> ucolor
-{
-    FO_VERIFY_AND_THROW(Size.is_valid_pos(pos), "Requested SDL_GPU texture pixel is outside texture bounds", pos, Size);
-
-    auto region = GetTextureRegion(pos, {1, 1});
-    return region.front();
-}
-
 auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor>
 {
     FO_TRACE_ZONE(Render);
@@ -1145,6 +1212,133 @@ auto SDLGpu_Texture::GetTextureRegion(ipos32 pos, isize32 size) const -> vector<
     SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), transfer_buf.get());
 
     return result;
+}
+
+auto SDLGpu_Texture::RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback>
+{
+    FO_TRACE_ZONE(Render);
+
+    FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+    FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
+    FO_VERIFY_AND_THROW(pos.x >= 0, "Position x is negative", pos.x);
+    FO_VERIFY_AND_THROW(pos.y >= 0, "Position y is negative", pos.y);
+    FO_VERIFY_AND_THROW(pos.x + size.width <= Size.width, "Requested texture read rectangle right edge is outside texture bounds", pos.x, size.width, Size.width);
+    FO_VERIFY_AND_THROW(pos.y + size.height <= Size.height, "Requested texture read rectangle bottom edge is outside texture bounds", pos.y, size.height, Size.height);
+    FO_VERIFY_AND_THROW(TexHandle, "SDL_GPU texture handle is null");
+
+    // The copy must observe a clear still pending on this texture, as the blocking read does
+    FlushPendingClears(_ctx);
+
+    SDL_GPUTransferBufferCreateInfo transfer_buf_info = {};
+    transfer_buf_info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+    transfer_buf_info.size = numeric_cast<uint32_t>(size.square() * sizeof(ucolor));
+
+    auto transfer_buf = make_nptr(SDL_CreateGPUTransferBuffer(_ctx->Device.get(), &transfer_buf_info));
+    FO_VERIFY_AND_THROW(transfer_buf, "SDL_CreateGPUTransferBuffer failed for a texture readback", SDL_GetError(), size);
+
+    if (!_ctx->CmdBufFence) {
+        _ctx->CmdBufFence = safe_alloc::make_shared<SDLGpu_SubmitFence>(_ctx->Device);
+    }
+
+    auto readback = safe_alloc::make_unique<SDLGpu_TextureReadback>(_ctx, transfer_buf, _ctx->CmdBufFence, size);
+
+    SDL_GPUTextureRegion src_region = {};
+    src_region.texture = TexHandle.get_no_const();
+    src_region.x = numeric_cast<uint32_t>(pos.x);
+    src_region.y = numeric_cast<uint32_t>(pos.y);
+    src_region.w = numeric_cast<uint32_t>(size.width);
+    src_region.h = numeric_cast<uint32_t>(size.height);
+    src_region.d = 1;
+
+    SDL_GPUTextureTransferInfo transfer_info = {};
+    transfer_info.transfer_buffer = transfer_buf.get();
+
+    auto copy_pass = EnsureCopyPass(_ctx);
+    SDL_DownloadFromGPUTexture(copy_pass.get(), &src_region, &transfer_info);
+
+    return readback;
+}
+
+SDLGpu_SubmitFence::SDLGpu_SubmitFence(ptr<SDL_GPUDevice> device) :
+    _device {device}
+{
+}
+
+SDLGpu_SubmitFence::~SDLGpu_SubmitFence()
+{
+    SetFinished();
+}
+
+auto SDLGpu_SubmitFence::IsSignaled() -> bool
+{
+    if (_finished) {
+        return true;
+    }
+    if (!_fence) {
+        return false;
+    }
+
+    if (SDL_QueryGPUFence(_device.get(), _fence.get())) {
+        SetFinished();
+        return true;
+    }
+
+    return false;
+}
+
+void SDLGpu_SubmitFence::SetSubmitted(ptr<SDL_GPUFence> fence)
+{
+    FO_VERIFY_AND_THROW(!_fence && !_finished, "SDL_GPU readback fence is already submitted");
+
+    _fence = fence;
+}
+
+void SDLGpu_SubmitFence::SetFinished() noexcept
+{
+    if (_fence) {
+        SDL_ReleaseGPUFence(_device.get(), _fence.get());
+        _fence = nullptr;
+    }
+
+    _finished = true;
+}
+
+SDLGpu_TextureReadback::SDLGpu_TextureReadback(ptr<SDLGpu_Renderer::Context> ctx, ptr<SDL_GPUTransferBuffer> transfer_buf, shared_ptr<SDLGpu_SubmitFence> fence, isize32 size) :
+    _ctx {ctx},
+    _transferBuf {transfer_buf},
+    _fence {std::move(fence)},
+    _size {size}
+{
+}
+
+SDLGpu_TextureReadback::~SDLGpu_TextureReadback()
+{
+    // The GPU releases a transfer buffer only after the work using it, so dropping one in flight is safe
+    if (_transferBuf) {
+        SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), _transferBuf.get());
+    }
+}
+
+auto SDLGpu_TextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_transferBuf, "SDL_GPU texture readback pixels were already taken");
+
+    if (!_fence->IsSignaled()) {
+        return std::nullopt;
+    }
+
+    size_t data_size = _size.square() * sizeof(ucolor);
+    vector<ucolor> pixels;
+    pixels.resize(_size.square());
+
+    auto mapped = MapTransferBuffer(_ctx, _transferBuf, false);
+    memory::copy(pixels.data(), mapped, data_size);
+    SDL_UnmapGPUTransferBuffer(_ctx->Device.get(), _transferBuf.get());
+
+    SDL_ReleaseGPUTransferBuffer(_ctx->Device.get(), _transferBuf.get());
+    _transferBuf = nullptr;
+
+    return pixels;
 }
 
 void SDLGpu_Texture::UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch)

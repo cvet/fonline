@@ -151,21 +151,8 @@ auto DataBase::GetDbRequestsPerMinute() const -> size_t
 
 auto DataBase::GetAllIds(hstring collection_name) const -> vector<DataBaseKey>
 {
-    FO_TRACE_ZONE(Database);
-
     FO_VERIFY_AND_THROW(_impl, "Database implementation is null");
-    auto key_type = _impl->GetCollectionKeyType(collection_name);
-    auto ids = _impl->GetAllRecordIds(collection_name);
-
-    for (auto& id : ids) {
-        id = DecodeBackendDbKey(id, key_type, _impl->GetStringKeyEscaping());
-
-        if (GetDbKeyType(id) != key_type) {
-            throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
-        }
-    }
-
-    return ids;
+    return _impl->GetAllDocumentIds(collection_name);
 }
 
 auto DataBase::GetAllIntIds(hstring collection_name) const -> vector<ident_t>
@@ -545,6 +532,77 @@ auto DataBaseImpl::InValidState() const noexcept -> bool
 auto DataBaseImpl::GetDbRequestsPerMinute() const -> size_t
 {
     return _dbRequestsPerMinute.load(std::memory_order_relaxed);
+}
+
+auto DataBaseImpl::GetAllDocumentIds(hstring collection_name) const -> vector<DataBaseKey>
+{
+    FO_TRACE_ZONE(Database);
+
+    auto key_type = GetCollectionKeyType(collection_name);
+    auto key_escaping = GetStringKeyEscaping();
+
+    // Keys the commit thread added or removed while the backend was listed are listed again, so the result is the
+    // stored key set with the still-pending inserts and deletes laid over it, the same view document reads give
+    while (true) {
+        uint64_t committed_before = 0;
+
+        {
+            scoped_lock locker {_stateLocker};
+            auto it = _committedKeyChanges.find(collection_name);
+            committed_before = it != _committedKeyChanges.end() ? it->second : 0;
+        }
+
+        auto ids = GetAllRecordIds(collection_name);
+
+        for (auto& id : ids) {
+            id = DecodeBackendDbKey(id, key_type, key_escaping);
+
+            if (GetDbKeyType(id) != key_type) {
+                throw DataBaseException("Database collection returned invalid key type", collection_name, id, DbKeyTypeName(key_type));
+            }
+        }
+
+        scoped_lock locker {_stateLocker};
+        auto committed_it = _committedKeyChanges.find(collection_name);
+        uint64_t committed_after = committed_it != _committedKeyChanges.end() ? committed_it->second : 0;
+
+        if (committed_after != committed_before) {
+            continue;
+        }
+
+        unordered_set<DataBaseKey> present {ids.begin(), ids.end()};
+        vector<DataBaseKey> inserted;
+
+        for (const auto& pending_op : _pendingCommitOperations) {
+            if (pending_op->CollectionName != collection_name) {
+                continue;
+            }
+
+            if (pending_op->Type == CommitOperationType::Insert) {
+                if (present.emplace(pending_op->RecordId).second) {
+                    inserted.emplace_back(pending_op->RecordId);
+                }
+            }
+            else if (pending_op->Type == CommitOperationType::Delete) {
+                present.erase(pending_op->RecordId);
+            }
+        }
+
+        vector<DataBaseKey> result;
+        result.reserve(present.size());
+
+        auto take_present = [&](vector<DataBaseKey>& source) {
+            for (auto& id : source) {
+                if (present.erase(id) != 0) {
+                    result.emplace_back(std::move(id));
+                }
+            }
+        };
+
+        take_present(ids);
+        take_present(inserted);
+        return result;
+    }
 }
 
 auto DataBaseImpl::GetDocument(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
@@ -1126,7 +1184,6 @@ void DataBaseImpl::CommitNextChange() noexcept
         }
 
         op = _pendingCommitOperations.front();
-        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
     }
 
     if (!_backendFailed) {
@@ -1206,6 +1263,13 @@ void DataBaseImpl::CommitNextChange() noexcept
 
     try {
         scoped_lock state_locker {_stateLocker};
+
+        // The change stops being laid over reads here, so a reader that fetched the record before the write reads it again
+        _docReadRetryMarkers.erase({op->CollectionName, op->RecordId});
+
+        if (op->Type != CommitOperationType::Update) {
+            _committedKeyChanges[op->CollectionName]++;
+        }
 
         _pendingCommitOperations.pop_front();
     }

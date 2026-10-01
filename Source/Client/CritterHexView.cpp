@@ -664,6 +664,10 @@ void CritterHexView::ProcessMoving()
     bool moved = cur_hex != prev_hex;
     auto hex_offset = GetHexOffset();
 
+    if (moved && _engine->Settings->Network.MoveSyncTrace) {
+        _engine->TraceMoveSync("step", strex("cr={} own={} hex={},{} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, cur_hex.x, cur_hex.y, iround<int32_t>(moving->GetElapsedTime())).strv());
+    }
+
     if (moved || hex_offset != progress.HexOffset) {
 #if FO_ENABLE_3D
         if (_model) {
@@ -700,8 +704,20 @@ void CritterHexView::ProcessMoving()
     }
 
     if (progress.Completed && GetHex() == moving->GetEndHex()) {
+        mpos end_hex = moving->GetEndHex();
+
         StopMoving();
         RefreshView();
+
+        if (_engine->Settings->Network.MoveSyncTrace) {
+            mpos stop_hex = GetHex();
+
+            _engine->TraceMoveSync("arrive", strex("cr={} own={} end={},{} hex={},{}", GetId(), GetIsChosen() ? 1 : 0, end_hex.x, end_hex.y, stop_hex.x, stop_hex.y).strv());
+        }
+
+        // Reported after the stop, so the position sent is the one the player is now looking at: StopMoving
+        // re-splits the accumulated offset and may settle the logical hex differently
+        _engine->CritterMovingFinished(this, end_hex);
     }
 }
 

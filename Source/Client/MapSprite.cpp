@@ -160,6 +160,11 @@ void MapSprite::SetEggAppearence(EggAppearenceType egg_appearence) noexcept
     _eggAppearence = egg_appearence;
 }
 
+void MapSprite::SetEggStructure(bool egg_structure) noexcept
+{
+    _eggStructure = egg_structure;
+}
+
 void MapSprite::SetColor(ucolor color) noexcept
 {
     _color = color;
@@ -265,8 +270,8 @@ void MapSprite::AddToExtraChain(ptr<MapSprite> mspr)
 
 auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t
 {
-    // Bit layout: [group 8][primary 24][sub-layer 8][secondary 16][layer 8]; a standing row is one ground depth, so
-    // its walls (lowest sub-layer) go first and no slice of the row paints over an item that only overlaps it sideways
+    // Bit layout: [group 8][primary 24][layer 8][sub-layer 8][secondary 16]; a standing row is one ground depth, so its
+    // critters stand in front of every item of it, and among the items its walls (lowest sub-layer) go first
     uint64_t group = static_cast<uint64_t>(draw_order < DrawOrderType::NormalBegin || draw_order > DrawOrderType::NormalEnd ? draw_order : DrawOrderType::NormalBegin);
     bool standing = group == static_cast<uint64_t>(DrawOrderType::NormalBegin);
     uint64_t primary = standing ? GeometryHelper::GetHexScreenRow(hex) : hex.y;
@@ -274,7 +279,7 @@ auto MapSpriteList::MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t 
     uint64_t layer = standing ? static_cast<uint64_t>(draw_order) - static_cast<uint64_t>(DrawOrderType::NormalBegin) : 0;
     uint64_t sub = numeric_cast<uint64_t>(sub_layer - std::numeric_limits<int8_t>::min());
 
-    return (group << 56) | (primary << 32) | (sub << 24) | (secondary << 8) | layer;
+    return (group << 56) | (primary << 32) | (layer << 24) | (sub << 16) | secondary;
 }
 
 void MapSpriteList::GrowPool() noexcept
@@ -314,6 +319,7 @@ auto MapSpriteList::AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_off
     mspr->_lightRight = nullptr;
     mspr->_lightLeft = nullptr;
     mspr->_eggAppearence = EggAppearenceType::None;
+    mspr->_eggStructure = false;
     mspr->_color = ucolor::clear;
     mspr->_elevation = 0;
     mspr->_angle = 0;

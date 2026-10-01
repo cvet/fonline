@@ -435,8 +435,10 @@ class PackageGenerator:
             'Dialog': 'ExitDialog', 'Control': 'Finish', 'Event': 'EndDialog', 'Value': 'Return', 'Order': '999',
         })
         publish.text = '1'
+        # Anchored after CostFinalize, which gives INSTALLDIR its path: wixl can seat a dialog placed only before
+        # ProgressDlg ahead of costing, and msiexec then fails it on the empty path with error 2343
         install_sequence = ET.SubElement(ui, 'InstallUISequence')
-        show = ET.SubElement(install_sequence, 'Show', {'Dialog': 'FOnlineInstallDirDlg', 'Before': 'ProgressDlg'})
+        show = ET.SubElement(install_sequence, 'Show', {'Dialog': 'FOnlineInstallDirDlg', 'After': 'CostFinalize'})
         show.text = 'NOT Installed'
         ET.SubElement(fragment, 'UIRef', {'Id': 'WixUI_Common'})
 

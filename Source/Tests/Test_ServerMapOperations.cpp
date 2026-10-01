@@ -1344,6 +1344,52 @@ namespace MapOpsTest
         map.GetPathLength(cr, mpos(-1, -1), 0, null);
     }
 
+    int TestMapFindReachableHexes()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+
+        // A hex walled in on every side drops out of the answer, the others keep the order they were given in
+        mpos pocket(40, 40);
+        array<mpos> walls = {mpos(39, 39), mpos(40, 39), mpos(41, 39), mpos(39, 40), mpos(41, 40), mpos(39, 41), mpos(40, 41), mpos(41, 41)};
+        for (uint i = 0; i < walls.length(); i++) {
+            map.BlockHex(walls[i], true);
+        }
+
+        array<mpos> targets = {mpos(15, 15), pocket, mpos(10, 10), mpos(60, 20)};
+        array<mpos> reachable = map.FindReachableHexes(mpos(10, 10), targets, null);
+        if (reachable.length() != 3) return -3;
+        if (reachable[0] != mpos(15, 15) || reachable[1] != mpos(10, 10) || reachable[2] != mpos(60, 20)) return -4;
+
+        array<mpos> withCallback = map.FindReachableHexes(mpos(10, 10), targets, AllowItemPathGag);
+        if (withCallback.length() != 3) return -5;
+
+        array<mpos> none;
+        if (map.FindReachableHexes(mpos(10, 10), none, null).length() != 0) return -6;
+
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+    void TestMapFindReachableHexesInvalidTargetThrows()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) {
+            return;
+        }
+
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) {
+            return;
+        }
+
+        array<mpos> targets = {mpos(15, 15), mpos(-1, -1)};
+        map.FindReachableHexes(mpos(10, 10), targets, null);
+    }
+
     int TestMapGetHexInPath()
     {
         Location loc = CreateTestLocation();
@@ -5135,6 +5181,16 @@ TEST_CASE("MapPathOperations")
     SECTION("CritterPathLengthInvalidToHexThrows")
     {
         RUN_FUNC_THROWS("MapOpsTest::TestMapCritterPathLengthInvalidToHexThrows", "Invalid to hex args");
+    }
+
+    SECTION("FindReachableHexes")
+    {
+        RUN_FUNC("MapOpsTest::TestMapFindReachableHexes");
+    }
+
+    SECTION("FindReachableHexesInvalidTargetThrows")
+    {
+        RUN_FUNC_THROWS("MapOpsTest::TestMapFindReachableHexesInvalidTargetThrows", "Invalid target hex arg");
     }
 
     SECTION("GetHexInPath")

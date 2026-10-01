@@ -1569,6 +1569,13 @@ FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncRelease(ptr<ServerEngine> 
     ctx->Release();
 }
 
+///@ ExportMethod Async
+FO_SCRIPT_API FO_COVER_PRIMITIVE void Server_Game_SyncYield(ptr<ServerEngine> server)
+{
+    auto ctx = server->RequireCurrentSyncContext();
+    ctx->YieldLocks();
+}
+
 ///@ ExportMethod
 FO_SCRIPT_API vector<ptr<ServerEntity>> Server_Game_GetHeldSyncEntities(ptr<ServerEngine> server)
 {

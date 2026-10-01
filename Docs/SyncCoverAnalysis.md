@@ -37,6 +37,7 @@ Three smaller markers describe how a value's cover moves rather than who owes it
 | `[AcquiresCover]` | method | The helper acquires cover through `Sync` for entities it names itself -- a global-map group's members, the carrier and map a radio resolves to -- and answers whether it succeeded, possibly with a record of what it covered. A body calling it counts as acquiring, exactly as one calling `Sync` directly. Where the helper covers an entity it returns or takes, `[ProvidesCover]` is the more precise statement and wins. |
 | `[PassesCover]` | parameter | The method returns this argument unchanged (`Game.VerifyNotNull`), so the result is covered exactly when the argument was, with the same reach. |
 | `[CoverEffect(kind)]` | method | What the call does to the held cover: `Replace`, `Extend`, `Restore`, `Snapshot` or `Release`. It is what the `Sync` surface declares about itself, and every rule below reads the effect from there. |
+| `[CoversOnlyArguments]` | method | The `Sync` helper covers exactly what its `[ProvidesCover]` parameters declare, with the declared reach, and resolves no other entity for cover. It is what lets FOSYNC015 compare a call against the cover its arguments already have. |
 
 `[RequiresCover]` means two things depending on where it sits, and that split is the design rather than an
 overload:
@@ -108,10 +109,11 @@ reach up to its map. Sibling-to-parent escalation and parent-cover reduction wer
 | `FOSYNC002` | An argument for a `[RequiresCover]` parameter that is neither covered by the caller, received from a `[ProvidesCover]` source, nor re-declared. A provided value is one returned by a provider, handed to a `[ProvidesCover]` parameter earlier in the body (with that parameter's reach), passed through a `[PassesCover]` parameter, taken out of a provided collection, deconstructed from a provided tuple, or chosen by `?:` between provided values and `null`. A body calling `Sync` or an `[AcquiresCover]` helper discharges it. Nothing is owed for a `null` or `default` argument or an omitted optional parameter, nor in a compilation whose `Sync` has no acquisition helpers (a client or mapper target, whose scripts run on one thread). |
 | `FOSYNC003` | An execution-context entry point that does not declare `[RequiresCover]` on the entity the engine already synchronized for it. |
 | `FOSYNC004` | Cover state is probed (`Sync.IsCovered`, `Game.IsEntityLocked`) instead of acquired. |
-| `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncWiden` / `Game.SyncRelease` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
+| `FOSYNC005` | A raw synchronization primitive is used outside its wrapper: `Game.Sync` / `Game.SyncWiden` / `Game.SyncRelease` / `Game.SyncYield` outside `Sync`, `Game.Lock` / `Game.Unlock` outside `GameLock`. |
 | `FOSYNC009` | Cover for a value is not re-proved after an await that released it. |
 | `FOSYNC010` | The boolean answer of a cover acquisition is discarded -- the call is a whole statement, or assigned to `_` -- instead of read. |
 | `FOSYNC011` | A `Sync` helper changes the held cover -- through the primitive or through another helper whose declared effect changes it -- without declaring a `[CoverEffect]` of its own. |
+| `FOSYNC015` | A widening declared `[CoversOnlyArguments]` names only entities the caller already covers, nothing since has released that cover, and no `Sync.Snapshot` can run after it in the same script entry -- so the call acquires nothing and only makes the method asynchronous. |
 
 FOSYNC004 and the entity half of FOSYNC005 come from the retired external sync-flow audit, which owned them as
 `forbidden-is-covered-probe` / `forbidden-is-entity-locked-probe` and `direct-game-sync`. Neither needs
@@ -121,7 +123,7 @@ code branching on it either works unprotected on one path or silently skips the 
 that nothing migrated, which reaching for the primitive directly drops.
 
 **Which methods those are is declared at the export, not listed in the analyzer.** A C++ script export marks
-itself `FO_COVER_PRIMITIVE` (`Game.Sync`, `Game.SyncWiden`, `Game.SyncRelease`), `FO_COVER_PROBE`
+itself `FO_COVER_PRIMITIVE` (`Game.Sync`, `Game.SyncWiden`, `Game.SyncRelease`, `Game.SyncYield`), `FO_COVER_PROBE`
 (`Game.IsEntityLocked`) or `FO_SINGLETON_LOCK` (`Game.Lock`, `Game.Unlock`); codegen carries the marker through
 `MethodDesc`, and the managed baker emits `[CoverPrimitive]`, `[CoverProbe]` or `[SingletonLock]` on the
 generated method. The model's own probe, `Sync.IsCovered`, declares `[CoverProbe]` in C# beside it. Until
@@ -494,6 +496,95 @@ that released it (see [Closing the backlog](#closing-the-backlog)). Severities c
 `.editorconfig`. Note that the generated managed project sets `TreatWarningsAsErrors`, so promoting a rule to
 `warning` makes it a hard build failure — roll out by severity, not all at once.
 
+## A widening that acquires nothing (FOSYNC015)
+
+Every rule above asks whether a value has cover. FOSYNC015 asks the converse: whether a `Sync` widening establishes
+any cover the caller did not already have. When it does not, the call changes nothing a script can rely on and still
+costs something real -- it makes the method `async`, and a handler that must finish before its event returns (the
+persistence migration at `OnCritterPreLoad`) cannot afford a suspension point. The rule is a verdict and gates the
+build as an error, like the rest of the family.
+
+### What the engine does that makes such a call empty
+
+Holding an entity covers everything beneath it in the sync hierarchy (`IsEntityAccessValid` walks the parent chain),
+and the dispatcher's cover of an entry point's subject is the handler's cover. A widening of such an entity takes its
+own lock without waiting (`TryRetainCoveredRequest`), and that own lock is the only thing it adds. Nothing needs it:
+reparenting and destruction require the entity's own lock, and the engine takes it at that point itself --
+`DestroyItem`, `RemoveItemFromCritter`, `AddItemToCritter` and `RemoveItemHolder` call `EnsureEntitySynced`, which
+retains the own lock of an entity already covered through its chain. `ServerEntity::SetParent` verifies it, and a full
+gameplay run never reports that check.
+
+The one observer of the own lock is `Sync.Snapshot`. It reports the explicit set of the current script context, and
+every script entry runs in a context nested under its dispatcher's, so a snapshot never contains the dispatcher's
+cover and contains a descendant only if something made it explicit. A snapshot restored after a real suspension, or
+re-widened as a liveness check, therefore answers differently with and without the widening. The rule stays silent
+wherever a snapshot may follow.
+
+### What the rule proves
+
+A candidate is an `Extend` call on a helper declared `[CoversOnlyArguments]`. Each argument bound to a `[ProvidesCover]`
+parameter must already be covered with that parameter's reach:
+
+- **Covered values.** A parameter of the enclosing method declared `[RequiresCover]` (with its declared reach); the
+  result of a provider -- an accessor or helper declaring `[return: ProvidesCover]` -- taken directly, as a local
+  assigned only at its declaration, as an element, or through `foreach`; a value handed through `[PassesCover]`; an
+  always-covered entity. A collection is covered when written in place from covered values, or when it is a local list
+  whose every contribution in the body is visible (`Add`, `Insert`, `AddRange`, removals); a list passed to anything
+  else can hold anything.
+- **Reach.** The item-destroy widenings declare `CoverReach.Parent` on their items, because they also cover each item's
+  holder. An instance accessor that provides cover returns what lives under its receiver, so its result's holder is
+  covered too -- except across the `Critter`-`Player` link, where each half provides the other. That pair is recognised
+  from the declarations (each type has a providing accessor returning the other), not by name.
+- **Nothing released it since.** The cover a value had when it was established survives to the call unless a loss runs
+  in between: an await of anything that may really suspend, an await of a callee that changes cover without putting it
+  back, or a call not awaited whose callee can replace, restore or release cover. "May really suspend" is proved from
+  bodies: a method never suspends when every await in it awaits another such method and a body that is not `async`
+  returns only a finished task. `[PreservesCover]` alone is not enough here -- a callee that restores its snapshot after
+  a real suspension brings back only what the snapshot named, never the dispatcher's cover. A value declared, rebound
+  or re-acquired (by an acquisition that runs on every path) after the last loss is fresh; a loss anywhere in a loop
+  around the call reaches every value the loop does not declare anew.
+
+### Where a snapshot may follow
+
+The continuation of the call is the rest of the body it sits in, then everything after the method returns, up the
+script entry. The call graph is collected from the whole compilation:
+
+- **Calls** after the widening, or anywhere in a loop around it, that reach `Sync.Snapshot`. A call in a branch the
+  widening leaves by returning cannot follow it.
+- **Callers.** An entry point starts a context of its own and has nothing of its dispatcher after it. A
+  `[CallableByName]` method returns into every reflection invoke (`MethodBase.Invoke`), because that is how
+  `ScriptFunc` dispatches it. A method turned into a delegate returns into every invocation of the delegate's type; one
+  handed straight to a method outside the compilation runs inside that call. A method no code reaches is dispatched by
+  the engine or unused, and starts a context of its own.
+- **Dispatch.** A call to a virtual or interface member reaches every override the compilation declares.
+- **Delegates.** A delegate type reaches a snapshot when some method or lambda made into that type does. A type still
+  naming a type parameter stands for every construction of its definition -- unless the generic method building it is
+  called by nothing in the compilation, which is how the remote-call adapters are instantiated through reflection and
+  handed to the engine.
+
+### Test code does not decide for shipped code
+
+Tests call shipped helpers in ways the game never does and take snapshots afterwards: a migration test runs the
+migration and then moves items through a path that snapshots. For a widening in shipped code, callers in sources marked
+`fonline_sync.test_code = true` in `.editorconfig` are not part of its continuation -- shipped code runs without them. A
+widening inside test code is still judged against every caller, test code included.
+
+### Fixing a finding
+
+Remove the call. When the method then awaits nothing, make it synchronous rather than leave an `async` method that never
+suspends: FOSYNC009 treats awaiting such a method as losing the caller's cover, because nothing in its body hands it
+back. If the widening was there to skip an entity already destroyed -- the only `false` it gives a covered entity, since
+the thread destroying an entity takes it like any other ([An entity being destroyed](ServerRuntime.md#an-entity-being-destroyed))
+-- say so with `IsDestroyed`; that is a liveness question, not a cover one.
+
+### What it cost to introduce
+
+The rule found 18 widenings on the embedding project's corpus -- entry points re-widening their dispatched subject, item
+cleanups widening a covered critter's inventory for destruction, a lock followed by a widening of the same set -- and all
+18 were fixed in the same change, so it gates from zero. The persistence migration it was built for is caught in its
+original form (`WidenItemForDestroy` over an item of the covered critter); the other widenings there named lists filled
+by a helper, which the rule cannot see into, and were removed by hand.
+
 ## Where it lives
 
 - Analyzer: `Source/Scripting/Managed/Analyzers/` (`netstandard2.0`, which is how the compiler loads
@@ -503,7 +594,8 @@ that released it (see [Closing the backlog](#closing-the-backlog)). Severities c
 - Declarations: `CoverVocabulary.cs` resolves the contract for one compilation -- the attribute symbols, the
   engine-owned types the rules are scoped by, and the predicates that read a declaration. `CoverModel` beside it
   holds the part that is inference from a callee's body, so which answers are contract and which are
-  approximation stays visible.
+  approximation stays visible. FOSYNC015 lives in `SyncCoverAnalyzer.CoveredWidening.cs`: it collects the call graph
+  during the compilation and decides at its end, so its diagnostics are compilation-end diagnostics.
 - Self-tests: `Source/Scripting/Managed/Analyzers/Tests/`, a plain console runner (compile a snippet, assert
   the reported ids). `dotnet run` exits 0 when every case passes. The denotation cases also pin the text the
   diagnostic spans, because which value it names -- the child, not the stale parent -- is the contract.
@@ -660,11 +752,14 @@ point**, rather than "some acquisition happens somewhere in this body". That sin
 FOSYNC002's limitation below describes, what would have caught the destroyed-entity race family, and what the
 rules inherited from the retired external audit all need.
 
-The redundancy family is deliberately **not** built. It was implemented once as `FOSYNC012`-`014` over a
-control-flow fixed point, measured (one finding on the whole server corpus, a defensive re-lock in a test) and
-withdrawn (owner decision 2026-09-21): a diagnostic here is a verdict — it fails the build or it is not
-reported — and "this acquisition provably does nothing" is not a defect. It could only ever be advice, which
-has no place in a gate. `entry-cover-state-manipulation` and `broad-world-lock` remain unimplemented.
+The advisory redundancy family was implemented once as `FOSYNC012`-`014` over a control-flow fixed point, measured
+(one finding on the whole server corpus, a defensive re-lock in a test) and withdrawn (owner decision 2026-09-21): a
+diagnostic here is a verdict, and "this acquisition may be unnecessary" is advice. It also looked for the wrong thing:
+it counted an own lock taken as work done, so widening a descendant of a covered entity was never redundant for it,
+and the dispatcher's cover never counted as held. The verdict form is FOSYNC015 (owner decision 2026-09-25, see
+[A widening that acquires nothing](#a-widening-that-acquires-nothing-fosync015)): an own lock the engine would take
+itself is no work, and the only observer of the difference, a later snapshot, is ruled out by the call graph. The
+numbers `FOSYNC012`-`014` stay retired. `entry-cover-state-manipulation` and `broad-world-lock` remain unimplemented.
 
 `redundant-entry-lock` shows the shape cheaply. An entry point re-locking a parameter its dispatcher already
 covered looks redundant by inspection, and in the embedding project 75 sites do exactly that — but the ones

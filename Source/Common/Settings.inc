@@ -77,6 +77,9 @@ SETTING(vector<string>, ManagedScript, AdditionalFiles); // Analyzer configurati
 SETTING(string, ManagedScript, AnalysisLevel); // Analysis level of the generated managed project, empty keeps the SDK default
 SETTING(string, ManagedScript, AnalysisMode); // Analysis mode of the generated managed project, empty keeps the SDK default
 SETTING(bool, ManagedScript, BakerDryRun, false); // If true, managed baker writes stub markers instead of compiling assemblies
+SETTING(string, ManagedScript, PatchPointWeaver); // Patch point weaver project path; when set, the script build gives every eligible script method a patch point, so a running process can replace its body (ScriptPatches)
+SETTING(bool, ManagedScript, ServerPatchesEnabled, false); // If true, the server applies script patches (ScriptPatches.Apply); the woven patch points cost the same either way
+SETTING(bool, ManagedScript, ClientPatchesEnabled, false); // If true, a client applies the script patches its server sends; each client reads its own config
 SETTING_GROUP_END(ManagedScript);
 
 ///@ ExportSettings Common
@@ -99,6 +102,7 @@ SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compress
 SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
 SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds, applied to both directions
 SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
+SETTING(bool, Network, MoveSyncTrace, false); // If true, server and client write one MOVESYNC log line per movement synchronization event, as stable key=value fields for offline analysis; too verbose for production
 SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
 SETTING(string, Network, ForceMetadataVersion, ""); // Custom metadata version, for simulating a client baked apart from the server
@@ -184,6 +188,8 @@ SETTING(bool, Geometry, MapSmoothPath, true); // Enable pathfinding path smoothi
 SETTING(string, Geometry, MapDataPrefix, "Geometry"); // Path and prefix for names used for geometry sprites
 SETTING(bool, Geometry, CritterBlockHex, false); // If true, critters block hexes
 SETTING(int32_t, Geometry, MaxPathFindLength, 400); // Maximum pathfinding length
+SETTING(int32_t, Geometry, PathFindEnclosureProbe, 1024); // Hexes a path search may flood back from its target to prove it walled off, 0 to disable
+SETTING(int32_t, Geometry, PathFindCritterDetour, 12); // Hexes of detour a path search trades for walking through one living critter
 SETTING_GROUP_END(Geometry);
 
 ///@ ExportSettings Common
@@ -295,6 +301,7 @@ SETTING_GROUP(Baking, virtual AngelScriptSettings, virtual ManagedScriptSettings
 SETTING(bool, Baking, ForceBaking, false); // If true, baking of all packs are forced
 SETTING(bool, Baking, SingleThreadBaking, false); // If true, single-threaded baking is enabled
 SETTING(bool, Baking, IgnoreMissingBakerWarning, false); // If true, missing baker warning is suppressed when stale baked resources already exist
+SETTING(bool, Baking, PrebakeOnStartup, true); // If false, an unpackaged application starts on the resources already baked instead of running the baker first; for launching several processes from one freshly baked checkout
 SETTING(vector<string>, Baking, IgnoreInputDirs); // Resource pack input directories left out of every pack, relative to the config declaring the pack; each must be an input of some pack
 SETTING(bool, Baking, PreciseModelBounds, false); // If true, model bounds measure every skinned vertex; if false, per-bone envelope boxes produce a conservative superset far faster
 SETTING(float32_t, Baking, ModelAttachmentMinExtent, 0.01f); // Smallest world extent a directly attached model may reach; below it the export sits in a smaller unit space than the engine
@@ -404,6 +411,8 @@ SETTING(int32_t, Server, SyncPeriodMs, 10); // Sync-point job period in millisec
 SETTING(int32_t, Server, FrameTimePeriodNs, 900); // Frame-time update job period in nanoseconds
 SETTING(int32_t, Server, ConnectionProcessPeriodMs, 100); // Player / unlogined-player connection job re-poll period between data-arrival wakes, in milliseconds
 SETTING(int32_t, Server, CritterMovingPeriodMs, 50); // Critter movement-step job period in milliseconds
+SETTING(int32_t, Server, MoveBridgeReportHexes, 2); // Async-fix bridge length in hexes from which the client/server movement divergence is logged; 0 disables the report
+SETTING(int32_t, Server, MoveFinishCatchUpMaxMs, 300); // Upper bound in milliseconds on the movement remainder a client-reported arrival may fast-forward; the effective allowance is also capped by the connection round trip
 SETTING(int32_t, Server, HealthFilePeriodMs, 300); // Health-file refresh job period in milliseconds
 SETTING(int32_t, Server, ShutdownGraceMs, 5000); // Grace period in milliseconds for in-flight worker jobs to drain on shutdown before parked entity-lock waiters are force-aborted
 SETTING_GROUP_END(Server);

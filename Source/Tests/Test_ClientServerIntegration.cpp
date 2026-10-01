@@ -102,7 +102,9 @@ namespace ClientServerIntegrationServer
 
         // Inventory and map items each take their own send path to the owning client
         cr.AddItem("UnitTestSharedItem".hstr());
-        map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
+        Item groundItem = map.AddItem(mpos(10, 10), "UnitTestSharedItem".hstr());
+        // A draw sub-layer of the item's own, which only its synced data can carry to the client
+        groundItem.DrawOrderSubLayer = 3;
 
         // A second critter on the same map arrives at the client as a foreign critter, which is a different
         // send path from the controlled one, and moving it drives the position updates
@@ -169,6 +171,8 @@ namespace ClientServerIntegrationServer
 
             if (crMapCover !is null) {
                 Game.MoveItem(added, crMapCover, mpos(10, 10));
+                // Written once the item is already drawn, so the client has to sort its sprite again
+                added.DrawOrderSubLayer = 5;
             }
         }
         else if (step == 2) {
@@ -614,7 +618,19 @@ namespace ClientServerIntegrationClient
 
         // Map contents are not asserted on: the world steps move items between the inventory and the map,
         // so the count here depends on which step last landed
-        CurMap.GetItems();
+        Item[] landedItems = CurMap.GetItems();
+
+        // The login's ground item carries a draw sub-layer of its own, and the inspection waits until the client
+        // holds that value as well
+        bool layeredItemArrived = false;
+
+        for (uint i = 0; i < landedItems.length(); i++) {
+            if (landedItems[i].Id.value != 0 && landedItems[i].DrawOrderSubLayer == 3) {
+                layeredItemArrived = true;
+            }
+        }
+
+        if (!layeredItemArrived) return -20;
 
         if (CurMap.GetCritters(CritterFindType::Any).isEmpty()) return -5;
         if (CurMap.GetCritter(Chosen.Id) is null) return -6;
@@ -686,7 +702,7 @@ namespace ClientServerIntegrationClient
 
         CurMap.MoveScreenToHex(there, ipos16(0, 0), 20, true);
         CurMap.SetTransparentEgg(TransparentEggSlot::Primary, Chosen);
-        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8));
+        CurMap.SetTransparentEgg(TransparentEggSlot::Secondary, here, ipos(0, 0), isize(8, 8), TransparentEggTarget::Structure);
 
         // The global lookups resolve against the current map, so they only answer in a session
         if (Game.GetCritter(Chosen.Id) is null) return -9;
@@ -1633,6 +1649,45 @@ TEST_CASE("ClientLogsInThroughARemoteCall")
             REQUIRE_NOTHROW(map_view->DrawMap());
             ImGui::Render();
         }
+
+        // A sub-layer set on a server item reaches the client as its offset does, and a value that arrives after
+        // the item is drawn moves its sprite: the item world step 0 drops beside the login's one comes out after it
+        nptr<ItemHexView> login_item;
+        nptr<ItemHexView> dropped_item;
+
+        for (ptr<ItemHexView> hex_item : map_view->GetItemsOnHex(mpos {10, 10})) {
+            if (hex_item->GetDrawOrderSubLayer() == 3) {
+                login_item = hex_item;
+            }
+            else if (hex_item->GetDrawOrderSubLayer() == 5) {
+                dropped_item = hex_item;
+            }
+        }
+
+        REQUIRE(login_item);
+        REQUIRE(dropped_item);
+        REQUIRE_NOTHROW(map_view->InstantScrollTo(mpos {10, 10}));
+
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(map_view->Process());
+        REQUIRE_NOTHROW(map_view->DrawMap());
+        ImGui::Render();
+
+        REQUIRE(login_item->IsMapSpriteVisible());
+        REQUIRE(dropped_item->IsMapSpriteVisible());
+        CHECK(dropped_item->GetMapSprite()->GetSortValue() > login_item->GetMapSprite()->GetSortValue());
+
+        // A scroll rebuilds every sprite from current values, so the new value is also written where no rebuild
+        // follows: the sprite has to move by itself
+        dropped_item->SetDrawOrderSubLayer(1);
+
+        ImGui::NewFrame();
+        REQUIRE_NOTHROW(map_view->Process());
+        REQUIRE_NOTHROW(map_view->DrawMap());
+        ImGui::Render();
+
+        REQUIRE(dropped_item->IsMapSpriteVisible());
+        CHECK(dropped_item->GetMapSprite()->GetSortValue() < login_item->GetMapSprite()->GetSortValue());
     }
 
     // A static item the server drops from this map instance has to leave the client's map view without a reload

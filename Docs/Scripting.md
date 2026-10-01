@@ -248,7 +248,7 @@ Native script APIs are grouped by file name:
 
 Each exported function is marked with `///@ ExportMethod` and normally starts with a side/type prefix such as `Server_Map_`, `Client_Game_`, `Common_ImGui_`, or `Mapper_Game_`. Codegen turns these declarations into script-visible method descriptors and backend call wrappers. Trailing C++ default parameters are preserved in metadata and restored in the AngelScript registration declarations, with C++ value-type defaults such as `fpos32 {}` normalized to script expressions such as `fpos()`. Prefer a single exported method with defaults over duplicate overloads that only append optional arguments. See [ScriptMethodsMap.md](ScriptMethodsMap.md) for the per-file map and counts.
 
-For entity instance methods, the AngelScript dispatch layer validates the receiver before entering the native method body. `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
+For entity instance methods, both script dispatch layers validate the receiver before entering the native method body. AngelScript's `Entity_MethodCall` calls `CheckScriptEntityAccessAndNonDestroyed`, which checks server sync coverage and destroyed state for the `self` entity; the managed bridge resolves the receiver of `NativeCallMethodImpl` / `NativeCallMethodIndexed` through `ResolveCoveredEntity`, which rejects a destroyed receiver and then calls `ValidateAccess`, and does the same for the entity of an event subscription or a fired entity event. The check has to run at the boundary: an export body reads receiver properties through `noexcept` accessors, so an uncovered receiver found inside the body ends the process instead of raising `Entity access without sync` into the script. Do not add an entry-only `ValidateEntityAccess(self)` or repeat the receiver check before ordinary receiver reads. Later in the body, validate entities only at real access/assert boundaries such as event dispatch or post-reentry continuation. When a covered entity must keep its own lock across a detach or reparent, use the cover-retaining, idempotent `EnsureEntitySynced(...)`; it retains existing caller cover — never releasing or parking on it — and cannot acquire an omitted dependency.
 
 When adding a method, route it to the side that owns the state it mutates. For example, authoritative item creation belongs under server methods, while sprite/UI helpers belong under client/common frontend methods.
 
@@ -269,7 +269,9 @@ in each compilation's preprocessing context, so projects do not need a utility m
 runtime contract or adapts it to the engine. This includes script attributes and initialization, native internal
 calls, remote-call and registered-function dispatch, invoke/exception accounting, synchronization and async
 suspension, entity-holder mechanics, enum metadata parity, always-on invariant helpers, `hstring` hashing, and
-generated engine value-type adapters.
+generated engine value-type adapters. Among the attributes is `[TemporaryCompat("Id", "YYYY-MM-DD")]`, the managed
+twin of the native `FO_TEMPORARY_COMPAT` marker for code kept only for older builds or data
+([Essentials.md](Essentials.md#temporary-compatibility)).
 
 Higher-level facilities such as GUI widgets and input state, color/math/time helpers, sprite composition, line
 tracing, serialization, tweening, reflection conveniences, and generic AngelScript-compatibility collection or
@@ -500,6 +502,19 @@ entries share that id space from one baker/native ABI manifest. A hash mismatch 
 (`Native.BindAbi`) is a load error. Method and event dispatch keep their bounded native argument-pointer tables
 inline rather than allocating a vector buffer per call.
 
+Arrays of integers and floats in method arguments, method results and remote calls cross as one byte block, like
+fixed-value array properties.
+`DataAccessor::ReadArrayRaw` / `WriteArrayRaw` let the native call adapters (`ConvertArg` / `ReturnArg` in
+`ScriptSystem.h`) copy a `vector` of plain numbers at once, and the managed backend reads the same way when it
+boxes an array result or a handler's array argument into a fresh `List<T>` (`BoxNativeCallValue`). The managed
+accessor answers through `Native.GetListRawBytes` / `SetListRawBytes`, which copy the `List<T>` storage through
+`CollectionsMarshal`. The remote-call serializer writes and reads such an array as its raw wire bytes, since a
+primitive's wire form is its little-endian memory layout. An accessor or element type without a raw form answers
+`false` and keeps element-wise access, so `bool`, enums, `hstring`, value types and handles still cross one element
+at a time, and so does an array a native caller hands to a script (`NativeDataAccessor` has no raw form yet).
+Element by element, a multi-megabyte `List<byte>` took seconds to cross.
+`Native.GetAndResetListItemCrossings` counts the elements that crossed one by one, for the interop tests.
+
 `Source/Scripting/Managed/CoreScripts/` contains only engine-owned stable C# runtime support such as `Attributes.cs`, `Initializator.cs`, and `Native.cs`. Those core files are compiled in place: every directory listed in `ManagedScript.Dirs` contributes its top-level `.cs` files to the generated project, engine and project sources alike. Script-visible types are generated into the `ManagedScript.GeneratedDir` directory: `hstring` and value/ref wrappers go to files such as `ServerTypes.gen.cs`, `ClientTypes.gen.cs`, and `MapperTypes.gen.cs`, while the managed `Entity` base and concrete entity wrappers go to `ServerEntities.gen.cs`, `ClientEntities.gen.cs`, and `MapperEntities.gen.cs`. Generated managed project files and MSBuild-generated assembly metadata also belong to the project managed directory; the engine source directory should not receive generated project `.csproj`, solution `.sln`, assembly info, or target API files. The managed baker only treats its own generated API files as stale cleanup candidates: `.gen.csproj` / `.gen.sln`, known generated managed API filenames, and `.gen.cs` files carrying the baker's auto-generated disclaimer. Project-owned generated C# files produced by other tools, such as GUI generator output, must stay intact. When `FO_MANAGED_SCRIPTING` is enabled, `Source/Tools/ManagedScriptBaker.*` builds server/client/mapper stub metadata, generates C# API files for enums, value/ref types, entity wrappers, events, settings, ABI bind stubs (`*Abi.gen.cs`), and content constants, writes one generated project plus a matching solution with `.gen` filenames (for example `<FO_NICE_NAME>.gen.csproj` and `<FO_NICE_NAME>.gen.sln`), adds an auto-generated disclaimer to generated files, deletes stale baker-owned generated artifacts from the managed project directory, then compiles the generated `.gen.cs` files together with project `.cs` sources directly into the current baking pack under `Baking/<Pack>/Assemblies/Assemblies-<target>/` as `<Pack>.<Target>.dll`. The incremental bake stamp is taken after that generation and includes the generated API files, project/solution, and `runtime.manifest`, so a generator- or ABI-only change rebuilds the packed DLL instead of shipping new C# with a skipped assembly. The lowercase target suffix uses the same `-server` / `-client` / `-mapper` resource filtering contract as other baked outputs. Generated settings accessors for numeric/bool project settings and numeric/bool engine `ExportSettings` read through indexed `Native.GetSettingValue<T>` against the `GlobalSettings` of the backend the calling assembly is bound to (builtin fields through typed accessors, custom entries through the existing runtime setting store); the generated surface is get-only. String and list settings still go through the name-based get/set helpers. C# module init code can read feature flags, view settings, and other settings from the backend currently executing that target, including in-process parallel test workers. Mapper generated settings receive the Client/Common engine `ExportSettings` surface as well, matching mapper AngelScript visibility for editor rendering, input, geometry, and mapper helper settings. Generated entity wrappers also include generic `Entity.GetAsInt<TProp>()`, `Entity.SetAsInt<TProp>()`, `Entity.GetAsAny<TProp>()`, and `Entity.SetAsAny<TProp>()` property-index helpers that pass `Native.EnumToInt32` into the integer property-index bridge rather than `Convert.ToInt32`. Non-nullable scalar typed accessors use the indexed unboxed bridge described above. Entity accessors for `int8`, `uint8`, `int16`, and `uint16` keep the integer bridge, passing the index directly without boxing the property enum, to preserve its default for an unbound virtual getter. Generated wrappers also include metadata-driven entity-holder helpers (`Add<X>`, `Has<X>s`, `Get<X>`, `Get<X>s`) backed by inner-entry ids: `Get<X>s` snapshots once through `Native.FillInnerEntities` (scratch frame, then a heap buffer only when n exceeds 256) instead of Count + n×At, and also emits a caller-owned `Get<X>s(T[] buffer)` overload. An insufficient native buffer returns the required count with no partial write. Server-side generic `Game.Destroy(...)` aliases remain over generated `DestroyEntity` calls. Engine CoreScripts also provide a managed `ScriptFunc.Invoke(string, ...)` dispatcher for managed `Module::Func` callbacks, including generic ref-result overloads and managed exception counters for `GetGlobalExceptionCount()` / `GetContextExceptionCount()`; these counters cover managed `Invoke` failures, observed faulted tasks, swallowed managed event exceptions, and propagated managed callback/property/registered-func exceptions. `ScriptFunc.Invoke` first resolves methods inside the managed assembly, then falls back to `Native.InvokeScriptFunc`, which asks backend-neutral C++ `ScriptSystem` for registered candidates with the same name, pre-checks candidate compatibility against the boxed C# argument shapes, and invokes the first signature whose exact engine argument descriptors can be populated. Generated wrappers also include `Game.GetPropertyInfo(<Type>Property, out ...)` overloads for entity and fixed-type property enums; these property-info overloads are emitted from bake-time metadata and mirror the AngelScript property-info surface without a runtime internal call. For virtual-property callbacks, generated `Game.AddPropertySetter(...)` overloads support both `PropertySetter<TEntity,TValue>` (`entity, ref value`) and `PropertySetterWithProperty<TEntity,TProperty,TValue>` (`entity, property, ref value`), matching AngelScript setters that are registered for a property group.
 
 For a generic ref-result overload, managed lookup first preserves the traditional shape whose last parameter is
@@ -546,6 +561,8 @@ Script exceptions are reported with their script frames placed into the native s
 
 A CLR exception caught entirely inside project C# does not cross an invocation boundary, so it cannot increment the managed exception counters automatically. A test harness that deliberately catches such an exception can call `ScriptExceptions.RecordCaught(exception)` before acknowledging it; the helper increments both managed exception counters without logging an already handled failure. Do not use it to suppress an unhandled or unrelated exception.
 
+The managed exception counters are `ScriptExceptions.GlobalCount`, every fault the backend recorded, and a counting scope opened with `using ScriptExceptions.Scope scope = ScriptExceptions.OpenScope();`, whose `Count` holds the synchronous faults recorded on the logical flow that opened it. The scope lives in an `AsyncLocal`, so it follows the flow through every `await`, whichever thread the continuation resumes on, and never sees a fault of another flow; nested scopes each count the fault. A deferred Task fault completes on a foreign thread and reaches only the global count. A harness measures one callback by opening a scope around it - a per-thread counter read before and after an `await` compares two different threads' counts and charges the fault to whichever callback ran there.
+
 ### The analysis profile of the generated script project
 
 The generated script project always sets `Nullable=enable`, `TreatWarningsAsErrors=true` and
@@ -572,6 +589,10 @@ Three rules are enforced by the baker rather than left to the embedder:
 - **Analyzers and their configuration files participate in the incremental bake check.** Editing an analyzer
   project or a banned-symbols list recompiles the scripts. Without that, a newly added rule stays silent
   until an unrelated source file changes, which is indistinguishable from a rule that found nothing.
+
+One more setting shapes the generated project without being analysis: `ManagedScript.PatchPointWeaver` adds the
+weaver as a build-only project reference and a target that weaves the intermediate assembly after compilation (see
+[Patch points](#patch-points)); its project and sources take part in the incremental bake check the same way.
 
 Severities are not part of this surface: they come from the embedding project's `.editorconfig`, which Roslyn
 resolves per source file, so the file governing `Scripts/**` is the one above those sources rather than one
@@ -770,10 +791,122 @@ selected again per target, does not carry them.
   `libssl` on first use, so a Linux host that compiles fragments needs OpenSSL installed. `Init.cmake` keeps the
   static LibreSSL out of the executable's dynamic symbol table (`--exclude-libs`); otherwise that system libcrypto
   would bind its own internal calls to LibreSSL's unversioned definitions. Other platforms link no crypto shim.
+- A request with `Kind = DynamicCompileKind.Patch` compiles a patch instead of a fragment; see
+  [Patch points](#patch-points).
 
 `BuildTools/tests/test_managed_script_compiler.py` compiles fragments with the production compiler against a stand-in
 script assembly: values, private members, errors and their lines, preprocessor symbols, hoisted usings, and another
 side's image.
+
+### Patch points
+
+A fragment can change state and swap engine-dispatched handlers, but it cannot change the body of a script method that
+other script code calls directly. Patch points close that gap: the bake weaves one into every eligible script method, and
+a patch assembly compiled after the bake redirects the method to a replacement for as long as the patch stays applied.
+This is not Mono hot reload, which the engine cannot use: after a metadata update Mono only discards methods its
+interpreter transformed (`metadata_update_published` → `invalidate_transformed`), so JIT code keeps running the old body,
+and it accepts updates only for assemblies built without optimizations.
+
+**Weaving.** `ManagedScript.PatchPointWeaver` names the weaver project
+(`Source/Scripting/Managed/PatchPoints/FOnline.PatchPointWeaver.csproj`); when it is set, the generated script project
+builds the weaver inside a target of its own and runs it on the intermediate assembly of the server and client scripts
+right after compilation, so every later step of the build sees the woven assembly. The mapper never applies a patch and
+is not woven. The weaver is built there rather than referenced, because a reference to an executable project copies the
+weaver, Mono.Cecil and their runtime files into the script output. It rewrites the assembly in place with Mono.Cecil,
+keeps its embedded PDB and MVID, and leaves an assembly it already wove alone, because the target runs after a compile
+that found nothing to do as well. The weaver project and its sources are therefore `CustomAdditionalCompileInputs` of
+the script project, so changing the weaver compiles and weaves again, and they are inputs of the managed bake stamp.
+
+Eligible are the methods with a body outside the `FOnline` namespace, which holds CoreScripts and the generated API:
+constructors, generic methods and methods of generic types, varargs methods, compiler-generated bodies (lambdas, local
+functions, state machine `MoveNext`, auto-properties) and methods marked `[NoPatchPoint]` are left alone. A lambda or a
+state machine is replaced together with the method that creates it; an async or iterator method is patched at its kickoff
+method, so a call already suspended in it finishes the old body. `[NoPatchPoint]` is for a hot method whose cost a
+profile has shown; a bug in it is then fixed by patching its callers.
+
+The prologue reads one static field and branches:
+
+```text
+    ldsfld  PatchPointSlots::Active     // false while no patch is applied
+    brtrue  CHECK
+BODY:  <original body>
+CHECK: ldc.i4 <slot>; call PatchPointRedirects::Slot; brfalse BODY
+       <arguments>; ldc.i4 <slot>; ldtoken <method>; call PatchPointRedirects::R<n>(..., slot, self); ret
+```
+
+- No value crosses a branch: Mono assigns a value that crosses basic blocks to a callee-saved register
+  (`mono_arch_get_global_int_regs`), whose save and restore in the method prologue every call would pay. The cold path
+  therefore reads the slot through the inlined `Slot` helper, and the redirect reads it again instead of receiving it.
+- `self` is the method's handle, a constant: `ldftn` would cost a runtime call (`mono_ldftn`) on every patched call.
+- The `calli` that reaches the replacement lives in a redirect shared by every method with the same signature, with
+  class types erased to `object`, because Mono refuses to inline a method that contains an indirect call
+  (`INLINE_FAILURE ("indirect call")` in `method-to-ir.c`). A method whose IL fits Mono's inline limit (20 bytes, not an
+  async or iterator kickoff) is marked `AggressiveInlining`, so it stays inlined together with its check.
+- Signatures carrying custom modifiers are preserved in the redirect. In particular, `ref readonly` returns wrap the
+  by-reference type in a required modifier; erasing that wrapper to `object` would make the method's IL invalid.
+- A revert between the two reads hands the redirect an empty slot; the redirect then calls the method itself through
+  `self.GetFunctionPointer()`, and its check, which now finds the slot empty, runs the original body. That pointer is
+  native code, which is what `calli` takes on the JIT; the race needs a second thread, which the single-threaded Web
+  interpreter does not have.
+- The weaver writes the metadata token of every woven method, by slot, into the `FOnline.PatchPoints.Table` manifest
+  resource. It writes the module twice, because tokens are known only once Cecil has laid the tables out, and verifies
+  that every slot still names its method.
+- `PatchPointSlots.Slots` is the address of a native table of function pointers, indexed with `sizeof(native int)` so
+  one assembly serves 32- and 64-bit runtimes. `PatchPointSlots` has no static initializer, so reading `Active` and
+  `Slots` needs no class-init check.
+
+**Applying a patch.** A patch assembly declares static replacement methods marked
+`[ReplacesMethod(typeof(T), "Name")]`. A replacement takes the target's parameters, preceded by the target object for an
+instance method (`ref` for a struct), and returns the target's type. The patch also carries a manifest,
+`DynamicPatchManifest.GetFunctions()`, that returns one `ScriptPatchFunction` per replacement: the replacement's
+`MethodInfo` and its function pointer taken with `ldftn` inside the patch. The pointer comes from the patch itself because
+the interpreter (Web) expects its own method handle where the JIT expects code, and
+`RuntimeMethodHandle.GetFunctionPointer` returns a native entry point in either mode.
+
+- `ScriptPatches.Apply(assembly)` checks every replacement (static, non-generic, one target with exactly the matching
+  signature, a patch point on that target in the running script module) before any of them takes effect, then publishes
+  a new table with a single write, so a call sees either every function of the patch or none of them. `Revert(set)` and
+  `RevertAll()` publish again. A later patch of a method wins, and reverting it restores the earlier one. A call already
+  running keeps the body it started with.
+- `Active` is set once the table is published and cleared with the last revert, which restores the plain prologue. A
+  call may still read `Slots` after `Active` was cleared, so a published table is never freed and `Slots` never returns
+  to zero; each publication keeps one table of `sizeof(native int)` per patch point.
+- The prologue loads `Active` and then `Slots` with plain loads, which ARM64 may reorder; the first publication issues
+  `Interlocked.MemoryBarrierProcessWide` between writing `Slots` and setting `Active`, so no core sees `Active` without
+  a table. The slot is read through the address just loaded from `Slots`, a dependent load; a thread that still sees
+  the previous table calls the previous function or the original body.
+- Each side has its own switch: `ManagedScript.ServerPatchesEnabled` on the server and
+  `ManagedScript.ClientPatchesEnabled` on a client, read from that side's own config, so a client can refuse whatever its
+  server sends. `Apply` throws while the switch of its side is off, the mapper never applies a patch, and the woven
+  prologue costs the same either way.
+- `IsAvailable`, `PatchPointCount` and `HasPatchPoint(method)` read the table; `Applied` lists the patch sets in effect.
+
+**Compiling a patch.** `DynamicScriptCompiler` with `Kind = DynamicCompileKind.Patch` compiles a compilation unit rather
+than a method body: the request's usings become global usings, and diagnostics name `patch(line,column)`. The first pass
+binds every `[ReplacesMethod]` method to its target and refuses one that is not static, is generic, matches no or several
+targets, or targets a method outside the script assembly or without a patch point (`FOPATCH002`, read from the table of
+the running assembly or of the other side's image); a patch without replacements is `FOPATCH001`. A replacement may be
+private — that is what lets its signature name a private script type — so the patch declares `IgnoresAccessChecksTo`
+for itself as well as for the scripts, and the manifest's `ldftn` passes the runtime access check. The second pass adds
+the manifest and emits an optimized assembly, since a replacement keeps running where the original ran. Escaped C#
+identifiers such as `@return` remain escaped when the manifest takes the replacement's address.
+
+**Cost.** On the embedded Mono JIT, with no patch applied, the check adds about 0.1 ns to a small inlined method, 0.4 ns
+to a call of a static method and 0.6 ns to an instance method; the cold path makes the method call out, so it keeps a
+frame. While another method is patched a call pays 0.3–0.6 ns, and a patched call about 2 ns for the redirect. The
+assembly grows by about 45 bytes of IL per woven method, the shared redirects and the 4-byte table entry (Last Frontier:
++4.6% server, +8.7% client scripts). JIT code grows only for the methods a process runs: each compiled woven method is
+about 110–290 bytes larger on x64, and each inlined copy of a small method carries its own check, so code made of small
+methods grows the most (Last Frontier: server JIT code +10–12%, client +55–64%; image and JIT code together add
+1.2–1.7 MB to a process).
+
+`BuildTools/tests/test_managed_patch_points.py` weaves a stand-in script assembly with the production weaver, compiles
+patches with the production compiler and applies them under the .NET SDK: static, instance, struct, async, `ref`/`out`,
+private-target, reference-returning and `ref readonly` replacements, explicit property accessors, escaped identifiers,
+an inlined small method and a loop observing a concurrent patch, a delegate created before the patch, layered patches
+and their reverts, static and struct redirects handed an empty slot, a foreign-module token collision, the compiler's
+refusals and a process with patches disabled. The embedded-Mono path is covered by the embedding project's gameplay
+suite (Last Frontier: `admin_code`).
 
 ### Managed continuation scheduling
 

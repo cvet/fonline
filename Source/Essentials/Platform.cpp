@@ -295,6 +295,17 @@ auto platform::get_func_addr(nptr<void> module_handle, const string& func_name) 
 #endif
 }
 
+auto platform::get_last_module_error() noexcept -> string
+{
+#if FO_WINDOWS
+    return winapi::get_last_error_text();
+#elif FO_LINUX || FO_MAC
+    return posix::get_last_library_error();
+#else
+    return {};
+#endif
+}
+
 #if FO_WINDOWS || FO_LINUX || FO_MAC
 static auto make_module_file_name(const string& module_name) noexcept -> string
 {
@@ -309,5 +320,14 @@ static auto make_module_file_name(const string& module_name) noexcept -> string
     return module_name.ends_with(extension) ? module_name : strex(strex::safe_format, "{}{}", module_name, extension).str();
 }
 #endif
+
+auto platform::get_os_version() noexcept -> string
+{
+#if FO_WINDOWS
+    return winapi::get_os_version();
+#else
+    return posix::get_os_version();
+#endif
+}
 
 FO_END_NAMESPACE

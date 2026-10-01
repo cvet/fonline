@@ -153,7 +153,12 @@ host code.
 
 Startup/runtime handoff diagnostics go to the normal `<host>.log` through the regular `logging::write` path.
 The host brings up engine global data (`global_data::create()` in `main`) and opens that log fresh up front
-(`logging::to_file(GetExeLogFileName(), false)`) — the host runs first, so it truncates. It then keeps its handle
+(`logging::to_file(GetExeLogFileName(), false)`) — the host runs first, so it starts the file. The previous
+launch's log is not truncated but renamed beside it first (`GetExePreviousLogFileName()`, `<exe>.prev.log`,
+replacing the one before), because a crash or a hang is diagnosed from the log the next launch would
+otherwise erase; a project can read it back at start. When the rename fails (another process holds the previous
+file open) the new log opens anyway and its first line is a warning that the previous log could not be kept. It then
+keeps its handle
 open across the loaded-DLL call instead of closing before the handoff: `logging::to_file` opens the file without
 an exclusive lock (the platform default —
 MSVC `std::ofstream` is deny-none, POSIX has no mandatory open lock), and every log write seeks to end of
@@ -310,14 +315,20 @@ the wire format changes or an older updater/host lifecycle is unsafe to continue
 generation-1 clients before descriptor or binary transfer because their frozen hosts may attempt an
 in-process runtime reload. Generation 3 runs the whole exchange inside the secure channel
 ([Networking.md](Networking.md#secure-channel)) and drops the session keys the handshake used to carry; a
-generation-2 runtime cannot complete that channel, so it fails to connect instead of receiving `updater_outdated`.
-Generation 4 is the `.fores` resource format built beside it without the channel: `hash` of a resource pack entry
-is the header `PackHash` rather than the whole-file digest, the descriptor carries each resource base's header, and
-`GetUpdateFile` is a bounded range request (`requested_size`, `expected_hash`), which the per-resource patch sync
-below needs. Generation 5 is the two together. A generation-3 client is refused before any transfer, since it would
-compare `PackHash` against a digest it computes itself and re-download for ever, and a generation-4 one cannot
-complete the channel; each of them needs the latest full client package once. Gameplay compatibility
+generation-2 runtime cannot complete that channel. Generation 4 is the `.fores` resource format built beside it
+without the channel: `hash` of a resource pack entry is the header `PackHash` rather than the whole-file digest, the
+descriptor carries each resource base's header, and `GetUpdateFile` is a bounded range request (`requested_size`,
+`expected_hash`), which the per-resource patch sync below needs. Generation 5 is the two together. A generation-3
+client is refused before any transfer, since it would compare `PackHash` against a digest it computes itself and
+re-download for ever. Each of them needs the latest full client package once. Gameplay compatibility
 (`Settings.Network.CompatibilityVersion`) is separate and changes with every build.
+
+A client from before the channel (generation 2 and below, or 4) still receives `updater_outdated`, although it cannot
+open the channel: it writes its handshake in the clear, and the server recognizes the plaintext message signature at
+the start of the stream and answers with the one plaintext it ever sends, a fixed handshake answer in that client's
+frozen layout (see [Networking.md](Networking.md#connection-integration)). Without that answer such a client would
+report the server as unreachable and tell the player to try again later, and a game client left running across the
+deploy would re-connect every frame.
 
 ### Handshake
 
@@ -629,7 +640,7 @@ Both the bundled runtime library in client packages and the runtime libraries st
 
 Client resource packs are written in the engine pack format ([ResourcePackFormat.md](ResourcePackFormat.md)), from sorted normalized paths and with no timestamp anywhere in the file. This matters because the baker touches unchanged output files during incremental runs; package output must ignore those mtimes so a content-identical repack keeps the same hash in the updater descriptor and does not force clients to redownload every pack. The `Embedded` pack is the one that stays a zip, since it is patched into the executable rather than shipped as a file: the packager reopens its in-memory buffer, verifies the exact entry list and streams every entry through Python's CRC-checking reader before embedding it, where a corrupt archive would otherwise be undetectable until a player's client failed to read it. `../BuildTools/tests/test_package_zip_helpers.py` covers that zip's mtime independence and post-build validation; its entry order is the sorted collection every pack is built from.
 
-The internal config patch area has a fixed engine-owned capacity of 10000 bytes; embedding projects cannot resize it. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data. The baked config ends with the pack declarations every packaged application mounts its packs from, so variant config is written in front of it; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md#runtime-settings).
+The internal config patch area has a fixed engine-owned capacity of 20000 bytes; embedding projects cannot resize it. It carries every delta of a package's config against the bake baseline plus the pack declarations, so a project with many release gates or packs outgrows a tighter area, and `package.py` then stops with `Data size is too big`. `package.py` discovers the reserved size from the generated binary markers before writing bootstrap config data. The baked config ends with the pack declarations every packaged application mounts its packs from, so variant config is written in front of it; see [ConfigurationAndDataSources.md](ConfigurationAndDataSources.md#runtime-settings).
 
 Naming convention from `build_runtime_update_target_name` in `BuildTools/package.py`:
 - `Windows-win64`, `Linux-x64`, `Linux-arm64`, `macOS-arm64`, `Android-arm64`, etc.
@@ -712,6 +723,7 @@ instead of looping back to the game which would only reject the connection again
 | A second client on the same folder | client log `Client updater: resource directory ... is being updated by another client, waiting for it`, later `... is free again`; the screen reads `Waiting for another game window to finish its update`. Not a failure and not reported |
 | First launch of a fresh install, or after files changed outside the updater, spends seconds on `Check local game files` | the one-time pair verification: client log `Client updater: checking N local packs no earlier run has proved intact, bytes B`, then `local packs checked, damaged D`. A damaged pack logs `local pack X is damaged, the whole pack will be downloaded again` or `... has a damaged patch payload, it will be fetched again` and is repaired by the same run |
 | Updater protocol mismatch | server log `Connected client X has outdated updater version Y`; generation-1 client message box `Client updater outdated, please update the base client`; generation-2+ wording `Client updater is incompatible with this server. Please install the latest full client package.` |
+| Client from before the secure channel (updater generation 2 and below, or 4) | server log `Client H:P predates the secure channel and is told to install the latest client`, then `Closed connection from H:P (client closed)` once the client drops it; the client shows the updater-mismatch message box of its generation above. A game client already running throws `ResourcesOutdatedException`, runs its updater and ends at the same box |
 | Gameplay version mismatch on a self-update platform | resource updater finishes silently with `WasCompatibilityOutdated() == true`; the runtime opens the binary updater UI, stages the current module, shows the restart prompt, and returns `ReloadRequested`; the host promotes the staged runtime and exits |
 | Gameplay version mismatch on Web / iOS / Android | message box `Client outdated, please update via your app store`, then quit (no in-process self-update on these platforms) |
 | Wrong file index / offset | server log `Wrong file index N, from host '...'` / `Wrong update file offset O, file index N, client host '...'` (both at `logging::type::warning`), client gets disconnected |

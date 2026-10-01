@@ -37,8 +37,6 @@
 
 FO_BEGIN_NAMESPACE
 
-static constexpr auto MAX_STORED_PIXEL_PICKS = 100;
-
 RenderTarget::RenderTarget(isize32 size, unique_ptr<RenderTexture> texture) :
     _texture {std::move(texture)},
     _size {size}
@@ -86,7 +84,6 @@ auto RenderTargetManager::CreateRenderTarget(bool with_depth, isize32 size, bool
     _flush();
 
     auto rt = safe_alloc::make_unique<RenderTarget>(size, CreateRenderTargetTexture(size, linear_filtered, with_depth));
-    rt->_lastPixelPicks.reserve(MAX_STORED_PIXEL_PICKS);
 
     _rtAll.push_back(std::move(rt));
     return _rtAll.back();
@@ -137,7 +134,6 @@ void RenderTargetManager::PushRenderTarget(ptr<RenderTarget> rt)
     if (!redundant) {
         _flush();
         _render->SetRenderTarget(rt->_texture);
-        rt->_lastPixelPicks.clear();
     }
 
     _rtStack.emplace_back(rt);
@@ -161,37 +157,6 @@ void RenderTargetManager::PopRenderTarget()
     }
 
     _rtStack.pop_back();
-}
-
-auto RenderTargetManager::GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor
-{
-#if FO_NO_TEXTURE_LOOKUP
-    ignore_unused(rt);
-    ignore_unused(x);
-    ignore_unused(y);
-
-    return ucolor {255, 255, 255, 255};
-
-#else
-    // Try to find in last picks
-    for (auto&& [last_pos, last_color] : rt->_lastPixelPicks) {
-        if (last_pos == pos) {
-            return last_color;
-        }
-    }
-
-    // Read one pixel
-    ucolor color = rt->_texture->GetTexturePixel(pos);
-
-    // Refresh picks
-    rt->_lastPixelPicks.emplace(rt->_lastPixelPicks.begin(), pos, color);
-
-    if (rt->_lastPixelPicks.size() > MAX_STORED_PIXEL_PICKS) {
-        rt->_lastPixelPicks.pop_back();
-    }
-
-    return color;
-#endif
 }
 
 void RenderTargetManager::ClearCurrentRenderTarget(ucolor color, bool with_depth)
@@ -236,9 +201,9 @@ void RenderTargetManager::DumpTextures(string_view writable_root) const
             atlases_memory_size / 1000000, atlases_memory_size % 1000000 / 1000));
 
     auto write_rt = [&dir](string_view name, ptr<const RenderTarget> rt) {
-        string fname = strex("{}/{}_{}x{}.tga", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
+        string fname = strex("{}/{}_{}x{}.png", dir, name, rt->_texture->Size.width, rt->_texture->Size.height);
         auto tex_data = rt->_texture->GetTextureRegion({0, 0}, rt->_texture->Size);
-        ImageWriter::WriteSimpleTga(fname, rt->_texture->Size, std::move(tex_data));
+        ImageWriter::WritePng(fname, rt->_texture->Size, tex_data);
     };
 
     size_t num = 1;

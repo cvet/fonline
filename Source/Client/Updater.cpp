@@ -111,7 +111,7 @@ Updater::Updater(ptr<GlobalSettings> settings, ptr<IAppWindow> window) :
         }
     }
     catch (const std::exception& ex) {
-        logging::write("Client updater: splash is unusable until the resources are synced, {}", ex.what());
+        logging::write(logging::type::warning, "Client updater: splash is unusable until the resources are synced, {}", ex.what());
         _splashPic.reset();
     }
 
@@ -258,7 +258,7 @@ auto Updater::Process() -> bool
         _conn.Process();
     }
     catch (const std::exception& ex) {
-        logging::write("Client updater: update failed, {}", ex.what());
+        logging::write(logging::type::warning, "Client updater: update failed, {}", ex.what());
         // The connection disconnects before it rethrows a handler's failure, and that disconnect already recorded
         // a lost server: the throw is the cause, so a full disk or a broken pack is not blamed on the server
         _result = UpdaterResult::Failed;
@@ -437,7 +437,7 @@ void Updater::FinishPackVerification(const PackVerification& verification)
     // The pair's catalog still names the right content, so without this check the sync would call it current and
     // every launch would read the same damaged bytes again
     if (!verifier.IsBaseIntact()) {
-        logging::write("Client updater: local pack {} is damaged, the whole pack will be downloaded again", verification.PackName);
+        logging::write(logging::type::warning, "Client updater: local pack {} is damaged, the whole pack will be downloaded again", verification.PackName);
         _damagedPacks[verification.PackName] = LocalDamage::Base;
         return;
     }
@@ -447,7 +447,7 @@ void Updater::FinishPackVerification(const PackVerification& verification)
     }
 
     if (!verifier.IsPatchIntact()) {
-        logging::write("Client updater: local pack {} has a damaged patch payload, it will be fetched again", verification.PackName);
+        logging::write(logging::type::warning, "Client updater: local pack {} has a damaged patch payload, it will be fetched again", verification.PackName);
         _damagedPacks[verification.PackName] = LocalDamage::Patch;
         return;
     }
@@ -463,7 +463,7 @@ void Updater::FinishResourcesUpdate()
 
     for (const UpdateFile& file : _resourceTargets) {
         if (!IsLocalResourceCurrent(file)) {
-            logging::write("Client updater: resource target is not installed {}", file.Name);
+            logging::write(logging::type::warning, "Client updater: resource target is not installed {}", file.Name);
             Abort(UpdaterResult::Failed, StrUpdateFailed);
             return;
         }
@@ -496,7 +496,7 @@ void Updater::FinishResourcesUpdate()
     string local_metadata_version = ReadLocalMetadataVersion();
 
     if (local_metadata_version != _serverMetadataVersion) {
-        logging::write("Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Common.Packaged ? _settings->Baking.ClientResources : _settings->Baking.BakeOutput);
+        logging::write(logging::type::warning, "Client updater: synced resources run metadata version {} while the server runs {}, resources {}", local_metadata_version, _serverMetadataVersion, _settings->Common.Packaged ? _settings->Baking.ClientResources : _settings->Baking.BakeOutput);
         _result = UpdaterResult::MetadataMismatch;
         return;
     }
@@ -534,7 +534,7 @@ void Updater::RebuildResourceIndex() const
         vector<string> pack_paths;
 
         if (!ResolveResourceIndexPacks(pack_dirs, indexed_packs, packs, pack_paths)) {
-            logging::write("Client updater: can't resolve every pack, leaving the merged index to the next run");
+            logging::write(logging::type::warning, "Client updater: can't resolve every pack, leaving the merged index to the next run");
             return;
         }
 
@@ -544,7 +544,7 @@ void Updater::RebuildResourceIndex() const
         logging::write("Client updater: merged index rebuilt over {} packs", packs.size());
     }
     catch (const std::exception& ex) {
-        logging::write("Client updater: can't build the merged index, {}", ex.what());
+        logging::write(logging::type::warning, "Client updater: can't build the merged index, {}", ex.what());
 
         if (!index_path.empty()) {
             (void)fs::remove_file(index_path);
@@ -570,7 +570,7 @@ auto Updater::ReadLocalMetadataVersion() const -> string
         return ReadMetadataVersion(metadata_bin);
     }
     catch (const std::exception& ex) {
-        logging::write("Client updater: can't read local metadata version, {}", ex.what());
+        logging::write(logging::type::warning, "Client updater: can't read local metadata version, {}", ex.what());
         return {};
     }
 }
@@ -605,13 +605,13 @@ void Updater::GetNextFile()
         string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
-            logging::write("Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
+            logging::write(logging::type::warning, "Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
 
         if (!ReplaceFileSafely(temp_path_str, prev_path_str)) {
-            logging::write("Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs::exists(prev_path_str));
+            logging::write(logging::type::warning, "Client updater: failed to promote downloaded file from {} to {}, installed file present {}", temp_path_str, prev_path_str, fs::exists(prev_path_str));
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
@@ -660,19 +660,19 @@ void Updater::GetNextFile()
 
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
-                logging::write("Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
+                logging::write(logging::type::warning, "Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
                 fs::remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
-                    logging::write("Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
+                    logging::write(logging::type::warning, "Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
                     fs::remove_file(temp_path);
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
                     if (!ReplaceFileSafely(temp_path, prev_path_str)) {
-                        logging::write("Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs::exists(prev_path_str));
+                        logging::write(logging::type::warning, "Client updater: failed to promote existing temp file from {} to {}, installed file present {}", temp_path, prev_path_str, fs::exists(prev_path_str));
                         Abort(UpdaterResult::Failed, StrFilesystemError);
                         return;
                     }
@@ -695,7 +695,7 @@ void Updater::GetNextFile()
                 }
             }
             else if (!next_update_file.IsClientBinary && !IsResumablePackPrefix(temp_path, next_update_file.PackHeader)) {
-                logging::write("Client updater: temp file {} was started from another server build, restarting download", temp_path);
+                logging::write(logging::type::warning, "Client updater: temp file {} was started from another server build, restarting download", temp_path);
                 fs::remove_file(temp_path);
                 next_update_file.RemaningSize = next_update_file.Size;
             }
@@ -718,7 +718,7 @@ void Updater::GetNextFile()
             auto available = fs::available_space(dir);
 
             if (available.has_value() && *available < next_update_file.RemaningSize) {
-                logging::write("Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
+                logging::write(logging::type::warning, "Client updater: not enough free space for {}, need {}, available {}", next_update_file.Name, next_update_file.RemaningSize, *available);
                 Abort(UpdaterResult::Failed, StrFilesystemError);
                 return;
             }
@@ -728,7 +728,7 @@ void Updater::GetNextFile()
         _tempFile = fs::disk_write_file {temp_path, open_mode};
 
         if (!_tempFile) {
-            logging::write("Client updater: failed to open temp file {}", temp_path);
+            logging::write(logging::type::warning, "Client updater: failed to open temp file {}", temp_path);
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
@@ -803,7 +803,7 @@ void Updater::FinishResourceRange()
             _patchWriter = safe_alloc::make_unique<ResourcePatchWriter>(base, patch, std::move(entries), file.PackHeader.ContentHash);
         }
         catch (const std::exception& ex) {
-            logging::write("Client updater: replacing unusable resource pair {}, {}", file.Name, ex.what());
+            logging::write(logging::type::warning, "Client updater: replacing unusable resource pair {}, {}", file.Name, ex.what());
             _resourceRange = ResourceRange::None;
             _rangeData.clear();
             GetNextFile();
@@ -925,11 +925,11 @@ void Updater::Net_OnConnect(ClientConnection::ConnectResult result)
         logging::write("Client updater: switched to native binary update mode");
     }
     else if (result == ClientConnection::ConnectResult::UpdaterOutdated) {
-        logging::write("Client updater: protocol is outdated, aborting");
+        logging::write(logging::type::warning, "Client updater: protocol is outdated, aborting");
         Abort(UpdaterResult::UpdaterOutdated, StrUpdaterOutdated);
     }
     else {
-        logging::write("Client updater: connection failed");
+        logging::write(logging::type::warning, "Client updater: connection failed");
         Abort(UpdaterResult::ConnectionFailed, StrCantConnectToServer);
     }
 }
@@ -971,7 +971,7 @@ void Updater::Net_OnInitData()
 
     if (data.empty()) {
         if (_binariesMode) {
-            logging::write("Client updater: native update list is empty");
+            logging::write(logging::type::warning, "Client updater: native update list is empty");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
         else {
@@ -1078,7 +1078,7 @@ void Updater::Net_OnInitData()
 
             if (damage != _damagedPacks.end()) {
                 // A damaged base is replaced whole; a damaged patch payload is fetched again by the next append
-                logging::write("Client updater: repairing damaged local pack {}", fname);
+                logging::write(logging::type::warning, "Client updater: repairing damaged local pack {}", fname);
                 try_patch = damage->second == LocalDamage::Patch;
             }
             else if (IsLocalResourceCurrent(resource)) {
@@ -1092,7 +1092,7 @@ void Updater::Net_OnInitData()
         // Everything the updater does afterwards - the promotion, the sweeps, the next run's comparison -
         // looks inside the directory it owns, so a name that resolves outside it is never seen again
         if (!fs::is_contained_relative_path(local_name)) {
-            logging::write("Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
+            logging::write(logging::type::warning, "Client updater: server listed a file the client cannot place, name {}, local {}", fname, local_name);
             Abort(UpdaterResult::Failed, StrUpdateFailed);
             return;
         }
@@ -1121,7 +1121,7 @@ void Updater::Net_OnInitData()
             _result = UpdaterResult::BinariesStaged;
         }
         else {
-            logging::write("Client updater: server has no matching native update payload");
+            logging::write(logging::type::warning, "Client updater: server has no matching native update payload");
             _result = UpdaterResult::ServerMissingNativeUpdate;
         }
     }
@@ -1358,7 +1358,7 @@ auto Updater::ReadPatchIdentity(string_view patch_path, string_view base_path) -
         return VerifiedFileIdentity {.Size = file.get_size(), .WriteTime = fs::last_write_time(patch_path), .Content = info->IndexHash};
     }
     catch (const std::exception& ex) {
-        logging::write("Client updater: can't read resource patch {}, {}", patch_path, ex.what());
+        logging::write(logging::type::warning, "Client updater: can't read resource patch {}, {}", patch_path, ex.what());
         return std::nullopt;
     }
 }
@@ -1389,10 +1389,10 @@ void Updater::RecoverInterruptedReplacements() const
                 (void)fs::remove_file(backup_path);
             }
             else if (fs::rename_durable(backup_path, live_path)) {
-                logging::write("Client updater: restored {} from an interrupted replacement", live_path);
+                logging::write(logging::type::warning, "Client updater: restored {} from an interrupted replacement", live_path);
             }
             else {
-                logging::write("Client updater: can't restore {} from {}", live_path, backup_path);
+                logging::write(logging::type::warning, "Client updater: can't restore {} from {}", live_path, backup_path);
             }
         }
     };
@@ -1454,7 +1454,7 @@ auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile&
             return resource.GetContentHash() == update_file.PackHeader.ContentHash;
         }
         catch (const std::exception& ex) {
-            logging::write("Client updater: invalid downloaded resource catalog {}, {}", file_path, ex.what());
+            logging::write(logging::type::warning, "Client updater: invalid downloaded resource catalog {}, {}", file_path, ex.what());
             return false;
         }
     }
@@ -1848,7 +1848,7 @@ void ShowUpdaterFailure(UpdaterResult result)
 {
     string_view target_name = GetCurrentBinaryUpdateTargetName();
 
-    logging::write("Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
+    logging::write(logging::type::warning, "Client updater: terminal result {}, binary target {}", UpdaterResultToString(result), target_name);
 
     // Report terminal client failures before showing the dialog. The unconditional log still records
     // deliberately unreported failures

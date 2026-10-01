@@ -10,6 +10,10 @@ public static partial class Sync
 
     public static event Action<FailureInfo>? OnFailure;
 
+    // A helper that found its cover stale after acquiring it and is about to take it again; how often each retry site
+    // fires is what tells a lock handoff apart from a wait that needs another thread to reach a later frame
+    public static event Action<RetryInfo>? OnRetry;
+
     public sealed class FailureInfo
     {
         internal FailureInfo(string operation, string reason, string callerFile, string callerMember, int callerLine,
@@ -42,6 +46,54 @@ public static partial class Sync
         public IReadOnlyList<hstring> ProtoIds { get; }
     }
 
+    public sealed class RetryInfo
+    {
+        internal RetryInfo(string operation, string reason, string callerFile, string callerMember, int callerLine,
+                           string helperFile, int helperLine)
+        {
+            Operation = operation;
+            Reason = reason;
+            CallerFile = callerFile;
+            CallerMember = callerMember;
+            CallerLine = callerLine;
+            HelperFile = helperFile;
+            HelperLine = helperLine;
+        }
+
+        public string Operation { get; }
+        public string Reason { get; }
+        public string CallerFile { get; }
+        public string CallerMember { get; }
+        public int CallerLine { get; }
+        public string HelperFile { get; }
+        public int HelperLine { get; }
+    }
+
+    // For a retry loop outside Sync, which has no FailureDiagnostic of its own: the loop is both caller and site
+    public static void ReportRetry(string reason, [CallerMemberName] string operation = "",
+                                   [CallerLineNumber] int retryLine = 0, [CallerFilePath] string retryFile = "")
+    {
+        PublishRetry(new RetryInfo(operation, reason, retryFile, operation, retryLine, retryFile, retryLine));
+    }
+
+    private static void PublishRetry(RetryInfo retry)
+    {
+        Action<RetryInfo>? observers = OnRetry;
+
+        if (observers == null) {
+            return;
+        }
+
+        foreach (Action<RetryInfo> observer in observers.GetInvocationList()) {
+            try {
+                observer(retry);
+            }
+            catch (Exception ex) {
+                ScriptExceptions.Report(ex);
+            }
+        }
+    }
+
     public sealed class FailureEntity
     {
         internal FailureEntity(Entity entity)
@@ -72,6 +124,17 @@ public static partial class Sync
             CallerLine = callerLine;
         }
 
+        // Unlike Report, an internal caller is published too: a retry inside a nested helper is exactly what is measured
+        public void Retry(string reason, [CallerMemberName] string operation = "", [CallerLineNumber] int retryLine = 0,
+                          [CallerFilePath] string helperFile = "")
+        {
+            if (OnRetry == null) {
+                return;
+            }
+
+            PublishRetry(new RetryInfo(operation, reason, CallerFile, CallerMember, CallerLine, helperFile, retryLine));
+        }
+
         public bool Report(string reason, object? first = null, object? second = null, object? third = null,
                            [CallerMemberName] string operation = "", [CallerLineNumber] int failureLine = 0,
                            [CallerFilePath] string helperFile = "")
@@ -80,6 +143,11 @@ public static partial class Sync
 
             // Internal failures may be retried or deliberately ignored by best-effort cleanup
             if (CallerFile == helperFile || observers == null) {
+                return false;
+            }
+
+            // A teardown the caller could not prevent explains the refusal, so it says nothing about the code that asked
+            if (IsLifecycleReason(reason) && (IsGone(first) || IsGone(second) || IsGone(third))) {
                 return false;
             }
 
@@ -111,6 +179,30 @@ public static partial class Sync
             }
 
             return false;
+        }
+
+        private static bool IsLifecycleReason(string reason)
+        {
+            return reason is "entity_unavailable_before_acquire" or "entity_unavailable_after_acquire" or
+                             "entity_unavailable" or "dependency_unavailable" or "snapshot_incomplete";
+        }
+
+        private static bool IsGone(object? value)
+        {
+            switch (value) {
+            case Entity entity:
+                return entity.IsDestroyed || entity.IsDestroying;
+            case IEnumerable<Entity> entries:
+                foreach (Entity entry in entries) {
+                    if (entry.IsDestroyed || entry.IsDestroying) {
+                        return true;
+                    }
+                }
+
+                return false;
+            default:
+                return false;
+            }
         }
 
         private static void CaptureContext(object? value, List<FailureEntity> entities, List<ident> entityIds,

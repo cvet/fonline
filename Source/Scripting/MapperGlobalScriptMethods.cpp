@@ -915,7 +915,7 @@ FO_SCRIPT_API void Mapper_Game_SaveMapperScreenshot(ptr<MapperEngine> mapper, st
     }
 
     string path = fs::make_writable_path(mapper->Settings->Common.UserWritablePath, strex(filePath).format_path());
-    ImageWriter::WriteSimplePng(path, size, pixels);
+    ImageWriter::WritePng(path, size, pixels);
 }
 
 FO_END_NAMESPACE

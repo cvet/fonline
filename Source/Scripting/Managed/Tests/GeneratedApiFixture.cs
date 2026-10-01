@@ -27,6 +27,8 @@ internal static class Native
     public static void ReportException(Exception exception)
     {
     }
+    public static int ContinuationSignals;
+    public static void SignalContinuationsReady() => ContinuationSignals++;
     public static string LastContinuationName = "";
     public static void RunScriptContinuation(Action continuation)
     {

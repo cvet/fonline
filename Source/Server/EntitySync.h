@@ -214,6 +214,9 @@ public:
     void WidenEntities(const_span<ptr<ServerEntity>> extras);
     void SyncEntity(nptr<ServerEntity> entity);
     void EnsureEntitySynced(nptr<ServerEntity> entity);
+    // Hands every lock this thread holds, outer contexts included, to the threads queued on it and takes the same set
+    // back, so a retry waits for another thread's progress in place; state read before it may have changed
+    void YieldLocks();
     void Release() noexcept;
 
     // Recorded in a separate bucket from `_heldLocks`, which a later `Sync::Lock(...)` replaces wholesale and
@@ -246,6 +249,11 @@ private:
     // The deadlock breaker when back-off cannot progress: the whole thread-held union is released and re-taken
     // in address order with counts restored exactly, and a shutdown abort rolls it back to zero
     void AcquireLocksOrderedFair(const_span<ptr<EntityLock>> locks, const_span<ptr<EntityLock>> holds);
+    // The thread's recursion on every lock recorded by `first` and the contexts below it, exclusive and marked apart
+    static void CollectHeldUnion(nptr<SyncContext> first, unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, unordered_map<ptr<EntityLock>, int32_t>& reregister_count);
+    // Drops the counted union to zero and re-takes it in address order, parking holding nothing; a shutdown abort
+    // leaves `first` and the contexts below it holding nothing
+    static void ReacquireUnionOrderedFair(nptr<SyncContext> first, const unordered_map<ptr<EntityLock>, int32_t>& reacquire_count, const unordered_map<ptr<EntityLock>, int32_t>& reregister_count, bool yield_between);
     void ReleaseLocks() noexcept;
     void ReleaseSingletonLocks() noexcept;
 

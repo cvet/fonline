@@ -1296,6 +1296,7 @@ namespace ClientEngineTest
         try { Game.ChangeLanguage("nolang"); } catch { ClientRejectionCount |= 64; }
         try { Game.SaveScreenshot(""); } catch { ClientRejectionCount |= 128; }
         try { Game.SaveText("", "text"); } catch { ClientRejectionCount |= 256; }
+        try { Game.CaptureScreenshot(-1); } catch { ClientRejectionCount |= 512; }
 
         // Video playback is idle, so the query must answer false rather than fail
         if (Game.IsVideoPlaying()) return -1;
@@ -2934,6 +2935,69 @@ TEST_CASE("ModelPosePhasesMatchTheSinglePassPose")
     }
 }
 
+TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
+{
+    // A model sprite has no pixels on the CPU until its atlas picture comes back from the GPU. The null renderer reads
+    // at once, which pins what the mask holds and when it is refreshed; the non-blocking backends only delay the answer
+    constexpr string_view MESH_PATH = "Models/HitMask.fbx";
+    constexpr string_view MODEL_PATH = "Models/HitMask.fo3d";
+
+    vector<uint8_t> mesh_blob = MakeRuntimeModelTriangleMesh();
+    vector<pair<string, vector<uint8_t>>> model_resources;
+    model_resources.emplace_back(string {"ModelAnimationInfo.foinfo"}, MakeUnitTestModelAnimationInfo(MODEL_PATH));
+    model_resources.emplace_back(string {MESH_PATH}, mesh_blob);
+    model_resources.emplace_back(string {MODEL_PATH}, MakeRuntimeModelDescription(MODEL_PATH, MESH_PATH, mesh_blob));
+
+    auto settings = MakeClientTestSettings();
+    auto client = MakeClientEngine(settings, MakeClientTestResources(std::move(model_resources)));
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+
+    shared_ptr<Sprite> sprite = client->SprMngr.LoadSprite(client->Hashes.to_hashed_string(MODEL_PATH), AtlasType::MapSprites, true);
+    auto model_spr = sprite.dyn_cast<ModelSprite>();
+    REQUIRE(static_cast<bool>(model_spr));
+
+    // The null renderer draws nothing, so each picture is painted into the atlas right after the draw that claims it
+    auto draw_with_opaque_pixel = [&model_spr](ipos32 opaque_pos) {
+        model_spr->DrawToAtlas();
+
+        isize32 size = model_spr->GetSize();
+        REQUIRE(size.width >= 2);
+        REQUIRE(size.height >= 2);
+
+        ptr<RenderTexture> atlas_tex = model_spr->GetAtlas()->GetTexture();
+        ipos32 origin {iround<int32_t>(atlas_tex->SizeData[0] * model_spr->GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * model_spr->GetAtlasRect().y)};
+        vector<ucolor> pixels(size.square(), ucolor {0, 0, 0, 0});
+        pixels[numeric_cast<size_t>(opaque_pos.y) * numeric_cast<size_t>(size.width) + numeric_cast<size_t>(opaque_pos.x)] = ucolor {255, 255, 255, 255};
+        atlas_tex->UpdateTextureRegion(origin, size, pixels);
+
+        return origin;
+    };
+
+    ipos32 first {0, 0};
+    ipos32 second {1, 1};
+    ipos32 origin = draw_with_opaque_pixel(first);
+
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
+
+    // Without a new picture the mask stands, so picking again reads nothing back, whatever the atlas holds now
+    ptr<RenderTexture> atlas_tex = model_spr->GetAtlas()->GetTexture();
+    atlas_tex->UpdateTextureRegion(origin + second, {1, 1}, vector<ucolor>(1, ucolor {255, 255, 255, 255}));
+
+    CHECK(model_spr->IsHitTest(first));
+    CHECK_FALSE(model_spr->IsHitTest(second));
+
+    // A redraw leaves the mask stale, and the next hit test takes the new picture
+    draw_with_opaque_pixel(second);
+
+    CHECK_FALSE(model_spr->IsHitTest(first));
+    CHECK(model_spr->IsHitTest(second));
+    CHECK_FALSE(model_spr->IsHitTest({-1, 0}));
+    CHECK_FALSE(model_spr->IsHitTest({model_spr->GetSize().width, 0}));
+}
+#endif
+
+#if FO_ANGELSCRIPT_SCRIPTING
 TEST_CASE("ScriptDebuggerEndpointServesItsTcpPort")
 {
     // The debugger was assumed to need an attached debugger client, but the endpoint server is ordinary
@@ -3286,9 +3350,9 @@ TEST_CASE("ClientEngineGlobalScriptBindings")
 
     int32_t rejection_count = 0;
     REQUIRE(client->CallFunc(client->Hashes.to_hashed_string("ClientEngineTest::UnitTestGetClientRejectionCount"), rejection_count));
-    // Only four probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
+    // Only five probes must reject; the rest legitimately answer instead of throwing, reporting a bool or a zero
     // sound handle, queueing nothing, or accepting a pack that resolves to no entries
-    CHECK(rejection_count == 8 + 16 + 128 + 256);
+    CHECK(rejection_count == 8 + 16 + 128 + 256 + 512);
 }
 
 TEST_CASE("MultiFrameSpritesPlayAndCopy")

@@ -98,16 +98,28 @@ namespace
 
         auto GetAllRecordIds(hstring collection_name) const -> vector<DataBaseKey> override
         {
-            scoped_lock locker {_collectionsLocker};
-
-            if (_collections.count(collection_name) == 0) {
-                return {};
-            }
-
             vector<DataBaseKey> ids;
 
-            for (const auto& id : _collections.at(collection_name) | std::views::keys) {
-                ids.emplace_back(id);
+            {
+                scoped_lock locker {_collectionsLocker};
+
+                if (_collections.count(collection_name) != 0) {
+                    for (const auto& id : _collections.at(collection_name) | std::views::keys) {
+                        ids.emplace_back(id);
+                    }
+                }
+            }
+
+            function<void()> callback;
+
+            {
+                scoped_lock locker {_callbackLocker};
+                callback = std::move(_onGetAllRecordIds);
+                _onGetAllRecordIds = {};
+            }
+
+            if (callback) {
+                callback();
             }
 
             return ids;
@@ -146,6 +158,13 @@ namespace
         {
             scoped_lock locker {_callbackLocker};
             _onGetRecord = std::move(callback);
+        }
+
+        // Runs once, after a key listing has been taken and before it is returned
+        void SetOnGetAllRecordIds(function<void()> callback)
+        {
+            scoped_lock locker {_callbackLocker};
+            _onGetAllRecordIds = std::move(callback);
         }
 
         void SetStrictRecordSemantics(bool enabled = true)
@@ -191,9 +210,44 @@ namespace
             {
                 scoped_lock locker {_blockedReadLocker};
                 _blockedReadEnabled = false;
+                _blockedReadAfterCopy = false;
             }
 
             _blockedReadCv.notify_all();
+        }
+
+        // Holds a read after it has fetched the record, so the backend can change between the fetch and its check
+        void BlockRecordReadAfterCopy(ident_t id)
+        {
+            scoped_lock locker {_blockedReadLocker};
+            _blockedReadEnabled = true;
+            _blockedReadAfterCopy = true;
+            _blockedReadId = id;
+            _blockedReadEntered = false;
+        }
+
+        void BlockRecordWrite(ident_t id)
+        {
+            scoped_lock locker {_blockedWriteLocker};
+            _blockedWriteEnabled = true;
+            _blockedWriteId = id;
+            _blockedWriteEntered = false;
+        }
+
+        void WaitUntilBlockedWriteEntered()
+        {
+            unique_lock locker {_blockedWriteLocker};
+            _blockedWriteCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedWriteLocker) { return _blockedWriteEntered; });
+        }
+
+        void UnblockRecordWrite()
+        {
+            {
+                scoped_lock locker {_blockedWriteLocker};
+                _blockedWriteEnabled = false;
+            }
+
+            _blockedWriteCv.notify_all();
         }
 
         void BlockSnapshot()
@@ -261,13 +315,20 @@ namespace
                 _recordReadCount[id]++;
             }
 
+            bool block_after_copy = false;
+
             {
                 unique_lock locker {_blockedReadLocker};
 
                 if (_blockedReadEnabled && _blockedReadId == id) {
-                    _blockedReadEntered = true;
-                    _blockedReadCv.notify_all();
-                    _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return !_blockedReadEnabled; });
+                    if (_blockedReadAfterCopy) {
+                        block_after_copy = true;
+                    }
+                    else {
+                        _blockedReadEntered = true;
+                        _blockedReadCv.notify_all();
+                        _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return !_blockedReadEnabled; });
+                    }
                 }
             }
 
@@ -284,15 +345,16 @@ namespace
                 }
             }
 
-            scoped_lock locker {_collectionsLocker};
+            AnyData::Document record = CopyStoredRecord(collection_name, id);
 
-            if (_collections.count(collection_name) == 0) {
-                return {};
+            if (block_after_copy) {
+                unique_lock locker {_blockedReadLocker};
+                _blockedReadEntered = true;
+                _blockedReadCv.notify_all();
+                _blockedReadCv.wait(locker, [this]() FO_TSA_REQUIRES(_blockedReadLocker) { return !_blockedReadEnabled; });
             }
 
-            const auto& collection = _collections.at(collection_name);
-            auto it = collection.find(id);
-            return it != collection.end() ? it->second.Copy() : AnyData::Document {};
+            return record;
         }
 
         void InsertRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
@@ -314,6 +376,16 @@ namespace
 
         void UpdateRecord(hstring collection_name, const DataBaseKey& id, const AnyData::Document& doc) override
         {
+            {
+                unique_lock write_locker {_blockedWriteLocker};
+
+                if (_blockedWriteEnabled && _blockedWriteId == id) {
+                    _blockedWriteEntered = true;
+                    _blockedWriteCv.notify_all();
+                    _blockedWriteCv.wait(write_locker, [this]() FO_TSA_REQUIRES(_blockedWriteLocker) { return !_blockedWriteEnabled; });
+                }
+            }
+
             scoped_lock locker {_collectionsLocker};
 
             if (_failBackendWrites) {
@@ -367,25 +439,45 @@ namespace
     private:
         static auto SettingsPtr(DataBaseSettings& settings) noexcept -> ptr<DataBaseSettings> { return &settings; }
 
+        auto CopyStoredRecord(hstring collection_name, const DataBaseKey& id) const -> AnyData::Document
+        {
+            scoped_lock locker {_collectionsLocker};
+
+            if (_collections.count(collection_name) == 0) {
+                return {};
+            }
+
+            const auto& collection = _collections.at(collection_name);
+            auto it = collection.find(id);
+            return it != collection.end() ? it->second.Copy() : AnyData::Document {};
+        }
+
         hash_storage _hashes {};
         DataBaseStringKeyEscaping _stringKeyEscaping {};
         mutable mutex _collectionsLocker {};
         mutable mutex _callbackLocker {};
         mutable mutex _blockedReadLocker {};
+        mutable mutex _blockedWriteLocker {};
         mutable mutex _readStatsLocker {};
         mutable mutex _mirrorLocker {};
         mutable mutex _restoreLocker {};
         mutable mutex _snapshotTestLocker {};
         mutable std::condition_variable_any _blockedReadCv {};
+        mutable std::condition_variable_any _blockedWriteCv {};
         mutable std::condition_variable_any _mirrorCv {};
         mutable std::condition_variable_any _restoreCv {};
         mutable std::condition_variable_any _snapshotTestCv {};
         mutable DataBase::Collections _collections FO_TSA_GUARDED_BY(_collectionsLocker) {};
         mutable unordered_map<DataBaseKey, size_t> _recordReadCount FO_TSA_GUARDED_BY(_readStatsLocker) {};
         mutable function<void()> _onGetRecord FO_TSA_GUARDED_BY(_callbackLocker) {};
+        mutable function<void()> _onGetAllRecordIds FO_TSA_GUARDED_BY(_callbackLocker) {};
         mutable bool _blockedReadEnabled FO_TSA_GUARDED_BY(_blockedReadLocker) {};
         mutable bool _blockedReadEntered FO_TSA_GUARDED_BY(_blockedReadLocker) {};
         mutable DataBaseKey _blockedReadId FO_TSA_GUARDED_BY(_blockedReadLocker) {ident_t {}};
+        mutable bool _blockedReadAfterCopy FO_TSA_GUARDED_BY(_blockedReadLocker) {};
+        bool _blockedWriteEnabled FO_TSA_GUARDED_BY(_blockedWriteLocker) {};
+        bool _blockedWriteEntered FO_TSA_GUARDED_BY(_blockedWriteLocker) {};
+        DataBaseKey _blockedWriteId FO_TSA_GUARDED_BY(_blockedWriteLocker) {ident_t {}};
         bool _pendingChangesMirrored FO_TSA_GUARDED_BY(_mirrorLocker) {};
         bool _pendingChangesRestored FO_TSA_GUARDED_BY(_restoreLocker) {};
         bool _strictRecordSemantics FO_TSA_GUARDED_BY(_collectionsLocker) {};
@@ -862,6 +954,46 @@ TEST_CASE("DataBaseGetDocumentAppliesCommittedChangeCompletedDuringRead")
     REQUIRE(!doc.Empty());
     CHECK(doc["value"].AsInt64() == 2);
     CHECK(db.GetRecordReadCount(record_id) >= 2);
+}
+
+TEST_CASE("DataBaseGetDocumentRereadsChangeCommittedAfterItsFetch")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+    ident_t record_id = ident_t {1001};
+
+    // The commit thread has taken the change before the read starts and writes it after the read fetched the record
+    db.PrimeRecord(collection, record_id, MakeDoc({{"value", 1}}));
+    db.BlockRecordWrite(record_id);
+    db.Update(collection, record_id, "value", numeric_cast<int64_t>(2));
+    db.StartCommitChanges();
+    db.WaitUntilBlockedWriteEntered();
+    db.BlockRecordReadAfterCopy(record_id);
+
+    std::promise<AnyData::Document> doc_promise;
+    auto doc_future = doc_promise.get_future();
+    std::thread reader {[&] {
+        try {
+            doc_promise.set_value(db.GetDocument(collection, record_id));
+        }
+        catch (...) {
+            doc_promise.set_exception(std::current_exception());
+        }
+    }};
+
+    db.WaitUntilBlockedReadEntered();
+    db.UnblockRecordWrite();
+    db.WaitCommitChanges();
+    db.UnblockRecordRead();
+
+    auto doc = doc_future.get();
+    reader.join();
+
+    REQUIRE(!doc.Empty());
+    CHECK(doc["value"].AsInt64() == 2);
+    CHECK(db.GetRecordReadCount(record_id) == 2);
 }
 
 TEST_CASE("DataBaseGetDocumentIgnoresOtherRecordChanges")
@@ -1407,6 +1539,50 @@ TEST_CASE("DataBaseSupportsStringKeys")
     db.WaitCommitChanges();
 
     CHECK(db.SnapshotRecord(collection, record_id).Empty());
+}
+
+TEST_CASE("DataBaseGetAllDocumentIdsAppliesPendingInsertsAndDeletes")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    // Nothing is committed yet: the listing must already show the insert and hide the delete
+    db.PrimeRecord(collection, ident_t {1}, MakeDoc({{"value", 1}}));
+    db.PrimeRecord(collection, ident_t {2}, MakeDoc({{"value", 2}}));
+    db.Insert(collection, ident_t {3}, MakeDoc({{"value", 3}}));
+    db.Delete(collection, ident_t {1});
+    db.Insert(collection, ident_t {4}, MakeDoc({{"value", 4}}));
+    db.Delete(collection, ident_t {4});
+
+    auto pending_ids = db.GetAllDocumentIds(collection);
+    CHECK(pending_ids == vector<DataBaseKey> {DataBaseKey {ident_t {2}}, DataBaseKey {ident_t {3}}});
+
+    db.StartCommitChanges();
+    db.WaitCommitChanges();
+
+    auto committed_ids = db.GetAllDocumentIds(collection);
+    std::ranges::sort(committed_ids);
+    CHECK(committed_ids == pending_ids);
+}
+
+TEST_CASE("DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing")
+{
+    GlobalSettings settings {false};
+    hash_storage hashes;
+    TestDataBase db {settings};
+    hstring collection = hashes.to_hashed_string("test_collection");
+
+    // The insert is committed and leaves the queue after the backend was listed but before the listing is checked
+    db.Insert(collection, ident_t {5}, MakeDoc({{"value", 5}}));
+    db.SetOnGetAllRecordIds([&db] {
+        db.StartCommitChanges();
+        db.WaitCommitChanges();
+    });
+
+    auto ids = db.GetAllDocumentIds(collection);
+    CHECK(ids == vector<DataBaseKey> {DataBaseKey {ident_t {5}}});
 }
 
 TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")

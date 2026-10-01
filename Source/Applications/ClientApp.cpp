@@ -111,7 +111,17 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
 
     // The host opens the file for the whole launch and the runtime appends to it, so the two halves of
     // one run read as one log
-    logging::to_file(fs::make_writable_path(Data->WritableRoot, GetExeLogFileName()), false);
+    string log_path = fs::make_writable_path(Data->WritableRoot, GetExeLogFileName());
+
+    // A crash or a hang is diagnosed from the log the next launch would otherwise truncate
+    string previous_log_path = fs::make_writable_path(Data->WritableRoot, GetExePreviousLogFileName());
+    bool previous_log_kept = !fs::exists(log_path) || fs::rename(log_path, previous_log_path);
+    logging::to_file(log_path, false);
+
+    // Another process holding the previous file open makes the rename fail, and that run's log is then lost
+    if (!previous_log_kept) {
+        logging::write(logging::type::warning, "Client runtime host: previous log could not be kept as {}", previous_log_path);
+    }
 
     string session_marker = MakeClientSessionMarkerPath(Data->WritableRoot);
     auto requested_runtime = ResolveRequestedClientRuntime(args);
@@ -134,14 +144,14 @@ static auto RunEmbeddedOrLoadedClient(CommandLineArgs args) -> bool
             return loaded_result.value();
         }
 
-        logging::write("Client runtime host: bundled DLL did not start, trying embedded fallback");
+        logging::write(logging::type::warning, "Client runtime host: bundled DLL did not start, trying embedded fallback");
     }
     else {
         logging::write("Client runtime host: bundled DLL load skipped");
     }
 
     if (requested_runtime.CheckCompatibilityVersion && requested_runtime.CompatibilityVersion != FO_COMPATIBILITY_VERSION) {
-        logging::write("Client runtime host: embedded fallback rejected, requested compatibility {}, embedded compatibility {}", requested_runtime.CompatibilityVersion, FO_COMPATIBILITY_VERSION);
+        logging::write(logging::type::warning, "Client runtime host: embedded fallback rejected, requested compatibility {}, embedded compatibility {}", requested_runtime.CompatibilityVersion, FO_COMPATIBILITY_VERSION);
         return false;
     }
 
@@ -158,7 +168,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     logging::write("Client runtime host: preparing DLL {}, compatibility check {}", requested_runtime.Path, requested_runtime.CheckCompatibilityVersion ? "enabled" : "disabled");
 
     if (!ApplyStagedBinaryUpdate(requested_runtime.Path)) {
-        logging::write("Client runtime host: failed to apply staged binary update before loading {}", requested_runtime.Path);
+        logging::write(logging::type::warning, "Client runtime host: failed to apply staged binary update before loading {}", requested_runtime.Path);
         return std::nullopt;
     }
 
@@ -171,7 +181,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     auto runtime_module = TryLoadRuntime(requested_runtime, exports);
 
     if (!runtime_module) {
-        logging::write("Client runtime host: failed to load DLL {}", requested_runtime.Path);
+        logging::write(logging::type::warning, "Client runtime host: failed to load DLL {}", requested_runtime.Path);
         return std::nullopt;
     }
 
@@ -200,7 +210,7 @@ static auto RunClientFromLibrary(CommandLineArgs args, const RequestedClientRunt
     // Not a reason to fall back to the embedded runtime: the library has run, so its own copies of the
     // statically linked runtimes are live in this process, and starting a second set beside them is unsafe
     if (!IsValidClientRuntimeResult(runtime_result.Result)) {
-        logging::write("Client runtime host: DLL {} returned invalid result {}, success {}, requested path {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath);
+        logging::write(logging::type::warning, "Client runtime host: DLL {} returned invalid result {}, success {}, requested path {}", requested_runtime.Path, ClientRuntimeResultKindToString(runtime_result.Result.ResultKind), runtime_result.Result.Success ? "yes" : "no", runtime_result.RequestedRuntimePath);
         runtime_result.Result.ResultKind = ClientRuntimeResultKind::FatalError;
         runtime_result.Result.Success = false;
     }
@@ -213,7 +223,7 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
     FO_VERIFY_AND_THROW(!runtime_path.empty(), "Client runtime host received a reload result without a requested runtime path");
 
     if (!ApplyStagedBinaryUpdate(runtime_path)) {
-        logging::write("Client runtime host: failed to promote staged runtime at {}", runtime_path);
+        logging::write(logging::type::warning, "Client runtime host: failed to promote staged runtime at {}", runtime_path);
         return false;
     }
 
@@ -223,7 +233,7 @@ static auto PromoteStagedReloadForRestart(string_view runtime_path) -> bool
         string runtime_file_name = GetCurrentClientRuntimeFileName();
 
         if (!WriteClientRuntimeBootstrapTarget(bootstrap_path.value(), runtime_path, runtime_file_name)) {
-            logging::write("Client runtime host: failed to persist runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
+            logging::write(logging::type::warning, "Client runtime host: failed to persist runtime bootstrap {} -> {}", bootstrap_path.value(), runtime_path);
             return false;
         }
 
@@ -304,7 +314,7 @@ static auto RunClientRuntime(CommandLineArgs args) noexcept -> ClientRuntimeResu
         }
     }
     catch (const std::exception& ex) {
-        logging::write("Client runtime embedded: exception {}", ex.what());
+        logging::write(logging::type::warning, "Client runtime embedded: exception {}", ex.what());
         CleanupClientApp();
         exceptions::report_and_continue(ex);
 
@@ -397,7 +407,7 @@ static void MainEntry([[maybe_unused]] void* data)
                         GetApp()->RequestQuit();
                         return;
                     default:
-                        logging::write("Client runtime embedded: updater failed");
+                        logging::write(logging::type::warning, "Client runtime embedded: updater failed");
                         ShowUpdaterFailure(result);
                         GetApp()->RequestQuit();
                         return;
@@ -470,14 +480,16 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     auto runtime_module = platform::load_pinned_module(requested_runtime.Path);
 
     if (!runtime_module) {
-        logging::write("Client runtime host: LoadModule failed for {}", requested_runtime.Path);
+        string load_error = platform::get_last_module_error();
+        logging::write(logging::type::warning, "Client runtime host: LoadModule failed for {}: {}", requested_runtime.Path, load_error);
         return nullptr;
     }
 
     auto query_exports = platform::get_func_addr<QueryClientRuntimeExportsFunc>(runtime_module, "FO_QueryClientRuntimeExports");
 
     if (query_exports == nullptr) {
-        logging::write("Client runtime host: DLL {} does not export FO_QueryClientRuntimeExports", requested_runtime.Path);
+        string lookup_error = platform::get_last_module_error();
+        logging::write(logging::type::warning, "Client runtime host: DLL {} does not export FO_QueryClientRuntimeExports: {}", requested_runtime.Path, lookup_error);
         return nullptr;
     }
 
@@ -489,14 +501,14 @@ static auto TryLoadRuntime(const RequestedClientRuntime& requested_runtime, Clie
     bool abi_supported = exports_valid && IsSupportedClientRuntimeAbi(exports.Metadata.HostAbiVersion);
 
     if (!query_ok || !exports_valid || !abi_supported) {
-        logging::write("Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_ok ? "ok" : "failed", exports_valid ? "valid" : "invalid", abi_supported ? "supported" : "unsupported", exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
+        logging::write(logging::type::warning, "Client runtime host: DLL {} rejected, export query {}, metadata {}, ABI {}, runtime ABI {}, host ABI {}", requested_runtime.Path, query_ok ? "ok" : "failed", exports_valid ? "valid" : "invalid", abi_supported ? "supported" : "unsupported", exports.Metadata.HostAbiVersion, FO_CLIENT_RUNTIME_HOST_ABI_VERSION);
         return nullptr;
     }
 
     if (requested_runtime.CheckCompatibilityVersion && !IsClientRuntimeCompatibilityMatch(exports.Metadata, requested_runtime.CompatibilityVersion)) {
         string metadata_compat = exports.Metadata.CompatibilityVersion != nullptr ? string(exports.Metadata.CompatibilityVersion) : string();
         string metadata_build = exports.Metadata.BuildHash != nullptr ? string(exports.Metadata.BuildHash) : string();
-        logging::write("Client runtime host: DLL {} rejected by compatibility check, requested {}, DLL compatibility {}, DLL build {}", requested_runtime.Path, requested_runtime.CompatibilityVersion, metadata_compat, metadata_build);
+        logging::write(logging::type::warning, "Client runtime host: DLL {} rejected by compatibility check, requested {}, DLL compatibility {}, DLL build {}", requested_runtime.Path, requested_runtime.CompatibilityVersion, metadata_compat, metadata_build);
         return nullptr;
     }
 
@@ -527,12 +539,12 @@ static auto ApplyStagedBinaryUpdate(string_view runtime_live_path) -> bool
     fs::remove_file(backup_path);
 
     if (final_exists && !fs::rename(final_path, backup_path)) {
-        logging::write("Client runtime host: failed to move live DLL {} to backup {}", final_path, backup_path);
+        logging::write(logging::type::warning, "Client runtime host: failed to move live DLL {} to backup {}", final_path, backup_path);
         return false;
     }
 
     if (!fs::rename(staged_path, final_path)) {
-        logging::write("Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
+        logging::write(logging::type::warning, "Client runtime host: failed to promote staged DLL {} to {}", staged_path, final_path);
 
         if (final_exists) {
             fs::rename(backup_path, final_path);

@@ -4532,9 +4532,11 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {AnyData::Array {}}, hashes, resolver));
 
-    AnyData::Dict invalid_unknown_field;
-    invalid_unknown_field.Emplace("Unknown", AnyData::Value {int64_t {1}});
-    CHECK_THROWS(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(invalid_unknown_field)}, hashes, resolver));
+    // A stored value may carry a field deleted since it was saved, so the value path drops it instead of failing
+    AnyData::Dict deleted_field;
+    deleted_field.Emplace("Unknown", AnyData::Value {int64_t {1}});
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromValue(&props, snapshot_prop, AnyData::Value {std::move(deleted_field)}, hashes, resolver));
+    CHECK_FALSE(PropertiesSerializer::SavePropertyToValue(&props, snapshot_prop, hashes, resolver).AsDict().Contains("Unknown"));
 
     AnyData::Dict invalid_anchor;
     AnyData::Array short_anchor;
@@ -4654,6 +4656,67 @@ TEST_CASE("PropertiesLoadFromDocumentSkipsTechnicalAndUnknownFields")
     CHECK(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
     CHECK(props.GetValue<int32_t>(counter_prop) == 15);
     CHECK(props.GetValue<string>(title_prop) == "  south gate  ");
+}
+
+TEST_CASE("PropertiesLoadFromDocumentSkipsDeletedRefTypeFields")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("DocumentRefTypeEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+
+    auto snapshots_prop = registrar.RegisterProperty({"Common", "RouteSnapshot[]", "Snapshots", "Mutable", "Persistent", "PublicSync"});
+    auto envelope_prop = registrar.RegisterProperty({"Common", "RouteEnvelope", "Envelope", "Mutable", "Persistent", "PublicSync"});
+
+    auto make_snapshot = [](string_view note, bool with_deleted_field) {
+        AnyData::Array values;
+        values.EmplaceBack(int64_t {7});
+
+        AnyData::Dict snapshot;
+        snapshot.Emplace("Values", AnyData::Value {std::move(values)});
+        snapshot.Emplace("Note", AnyData::Value {string {note}});
+
+        if (with_deleted_field) {
+            snapshot.Emplace("FinishUnixTime", AnyData::Value {int64_t {1790000000}});
+        }
+
+        return AnyData::Value {std::move(snapshot)};
+    };
+
+    auto make_snapshots = [&](bool with_deleted_field) {
+        AnyData::Array snapshots;
+        snapshots.EmplaceBack(make_snapshot("first", with_deleted_field));
+        snapshots.EmplaceBack(make_snapshot("second", with_deleted_field));
+        return AnyData::Value {std::move(snapshots)};
+    };
+
+    auto make_envelope = [&](bool with_deleted_field) {
+        AnyData::Dict envelope;
+        envelope.Emplace("Primary", make_snapshot("nested", with_deleted_field));
+        envelope.Emplace("Title", AnyData::Value {string {"route"}});
+
+        if (with_deleted_field) {
+            envelope.Emplace("RetiredTitle", AnyData::Value {string {"old route"}});
+        }
+
+        return AnyData::Value {std::move(envelope)};
+    };
+
+    AnyData::Document doc;
+    doc.Emplace("Snapshots", make_snapshots(true));
+    doc.Emplace("Envelope", make_envelope(true));
+
+    Properties props(&registrar);
+    CHECK(PropertiesSerializer::LoadFromDocument(ptr<Properties>(&props), doc, hashes, resolver));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&props, snapshots_prop, hashes, resolver) == make_snapshots(false));
+    CHECK(PropertiesSerializer::SavePropertyToValue(&props, envelope_prop, hashes, resolver) == make_envelope(false));
+
+    // Property text is authored rather than stored, so a field it names must exist
+    auto text_data = props.SaveToText(nullptr);
+    REQUIRE(text_data.contains("Envelope"));
+    text_data["Envelope"] += " RetiredTitle old";
+
+    Properties from_text(&registrar);
+    CHECK_THROWS(from_text.ApplyFromText(text_data));
 }
 
 TEST_CASE("PropertiesLoadFromDocumentReportsInvalidFieldButContinues")

@@ -10,11 +10,11 @@ using Microsoft.CodeAnalysis.Diagnostics;
 
 // Self-tests for the managed script analyzers. Each case compiles a snippet against a minimal stand-in for
 // the pieces of the script surface the analyzer reasons about, runs the analyzer over it, and compares the
-// reported diagnostic ids against the expectation.
+// reported diagnostic ids against the expectation
 internal static class Program
 {
     // The analyzer resolves the attributes, FOnline.Entity and the engine-owned FOnline.Sync by metadata
-    // name, so a small stand-in keeps the tests independent of the real CoreScripts build.
+    // name, so a small stand-in keeps the tests independent of the real CoreScripts build
     private const string Preamble = @"
 namespace FOnline
 {
@@ -45,7 +45,7 @@ namespace FOnline
     public sealed class EventAttribute : System.Attribute { }
 
     // The baker puts this on the base and overrides it on the generated prototype/static classes; the analyzer
-    // reads the override rather than a list of type names.
+    // reads the override rather than a list of type names
     public class Entity
     {
         public virtual bool IsAlwaysCovered { get { return false; } }
@@ -85,6 +85,12 @@ namespace FOnline
     [System.AttributeUsage(System.AttributeTargets.Method)]
     public sealed class SingletonLockAttribute : System.Attribute { }
 
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class CoversOnlyArgumentsAttribute : System.Attribute { }
+
+    [System.AttributeUsage(System.AttributeTargets.Method)]
+    public sealed class CallableByNameAttribute : System.Attribute { }
+
     [System.AttributeUsage(System.AttributeTargets.ReturnValue)]
     public sealed class ReturnsAncestorAttribute : System.Attribute { }
 
@@ -109,6 +115,9 @@ namespace FOnline
 
         [return: ProvidesCover]
         public Player? GetPlayer() { return null; }
+
+        [return: ProvidesCover]
+        public System.Collections.Generic.List<Item> GetItems() { return null; }
     }
     public class Map : Entity
     {
@@ -117,11 +126,14 @@ namespace FOnline
 
         [return: ReturnsParent]
         public Location GetLocation() { return null; }
+
+        [return: ProvidesCover]
+        public System.Collections.Generic.List<Critter> GetCritters() { return null; }
     }
     public class Location : Entity { }
 
     // Item methods are declared once on the shared base and inherited by both, which is what makes the
-    // static side worth modelling explicitly.
+    // static side worth modelling explicitly
     [System.AttributeUsage(System.AttributeTargets.Method)]
     public sealed class PreservesCoverAttribute : System.Attribute
     {
@@ -157,7 +169,7 @@ namespace FOnline
     }
 
     // Stands in for the engine exports that hand back a covered set, such as Map.GetCrittersInRadius: the
-    // acquisition covered the map, and the map's cover reaches the critters on it.
+    // acquisition covered the map, and the map's cover reaches the critters on it
     public static class Roster
     {
         [return: ProvidesCover]
@@ -192,6 +204,24 @@ namespace FOnline
         [CoverEffect(CoverEffectKind.Extend)]
         public static System.Threading.Tasks.Task<bool> Grab(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
         public static System.Threading.Tasks.Task<bool> WidenLookalike(Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+
+        // Widenings that cover exactly what their parameters declare, one of them with each item's holder
+        [CoverEffect(CoverEffectKind.Extend)]
+        [PreservesCover]
+        [CoversOnlyArguments]
+        public static System.Threading.Tasks.Task<bool> WidenNamed([ProvidesCover] Entity entity) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Extend)]
+        [PreservesCover]
+        [CoversOnlyArguments]
+        public static System.Threading.Tasks.Task<bool> WidenNamedSet([ProvidesCover] System.Collections.Generic.List<Entity> entities) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Extend)]
+        [PreservesCover]
+        [CoversOnlyArguments]
+        public static System.Threading.Tasks.Task<bool> WidenItemForDestroy([ProvidesCover] System.Collections.Generic.List<Entity> roots, [ProvidesCover(CoverReach.Parent)] Item item) { return System.Threading.Tasks.Task.FromResult(true); }
+        [CoverEffect(CoverEffectKind.Extend)]
+        [PreservesCover]
+        [CoversOnlyArguments]
+        public static System.Threading.Tasks.Task<bool> WidenWithHolder([ProvidesCover(CoverReach.Parent)] Critter cr) { return System.Threading.Tasks.Task.FromResult(true); }
     }
 
     public static class Game
@@ -208,7 +238,7 @@ namespace FOnline
         [SingletonLock]
         public static void Unlock() { }
 
-        // The rest of the surface, which shares the type but takes entities as ordinary arguments.
+        // The rest of the surface, which shares the type but takes entities as ordinary arguments
         public static bool CallStaticItemFunction(Critter? cr, StaticItem staticItem, Item? usedItem, string param) { return true; }
     }
 
@@ -224,7 +254,7 @@ namespace LastFrontier
 {
     using FOnline;
 
-    // A same-named project type must NOT be able to discharge an engine cover obligation.
+    // A same-named project type must NOT be able to discharge an engine cover obligation
     public static class Sync2
     {
         public static bool Lock(Entity entity) { return true; }
@@ -956,7 +986,7 @@ namespace LastFrontier
     }
 }");
 
-        // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back.
+        // FOSYNC009 -- the value-aware half: cover that an await released and nothing took back
         Check(failures,
               "a value used after an await with no re-proof is reported",
               @"
@@ -1402,7 +1432,7 @@ namespace LastFrontier
 }",
               "FOSYNC009");
 
-        // Source order is not execution order; these two are what the position-only version got wrong.
+        // Source order is not execution order; these two are what the position-only version got wrong
         Check(failures, "an await in a sibling branch does not reach the other branch", @"
 namespace LastFrontier
 {
@@ -1483,7 +1513,7 @@ namespace LastFrontier
     }
 }");
 
-        // A covered collection covers what is taken out of it -- the acquisition reached the elements too.
+        // A covered collection covers what is taken out of it -- the acquisition reached the elements too
         Check(failures, "an element read by index carries the collection cover", @"
 namespace LastFrontier
 {
@@ -1587,7 +1617,7 @@ namespace LastFrontier
 }");
 
         // The reason the exemption belongs to the value and not to the type system: a prototype derives
-        // from the concrete entity, so excluding it from "entity" would drop the contract on the upcast.
+        // from the concrete entity, so excluding it from "entity" would drop the contract on the upcast
         Check(failures, "a prototype satisfies the obligation on its own", @"
 namespace LastFrontier
 {
@@ -1646,7 +1676,7 @@ namespace LastFrontier
 }",
               "FOSYNC002");
 
-        // Exempting the receiver must not exempt the call.
+        // Exempting the receiver must not exempt the call
         Check(failures,
               "an argument is still checked on a static-data receiver",
               @"
@@ -1660,7 +1690,7 @@ namespace LastFrontier
 }",
               "FOSYNC002");
 
-        // Game carries the whole script surface, so the rule must be scoped to the acquisition methods.
+        // Game carries the whole script surface, so the rule must be scoped to the acquisition methods
         Check(failures, "static map data as an ordinary Game argument is not an acquisition", @"
 namespace LastFrontier
 {
@@ -1788,6 +1818,7 @@ namespace LastFrontier
 }");
 
         CheckDenotation(failures);
+        CheckCoveredWidening(failures);
 
         foreach (string failure in failures) {
             Console.Error.WriteLine("FAIL: " + failure);
@@ -1863,7 +1894,7 @@ namespace LastFrontier
     // What an acquisition must DENOTE to re-prove a value, and the relations that widen that answer.
     //
     // The distinction these pin is the one the rule was silently getting wrong: an acquisition of a parent
-    // read BEFORE the await mentions the child and denotes something the child may have left.
+    // read BEFORE the await mentions the child and denotes something the child may have left
     private static void CheckDenotation(List<string> failures)
     {
         const string Head = @"
@@ -2118,6 +2149,428 @@ namespace LastFrontier
                       new Expected("FOSYNC009", "cr"));
     }
 
+    // FOSYNC015: every positive case has a twin that differs by the one thing that makes the widening necessary
+    private static void CheckCoveredWidening(List<string> failures)
+    {
+        const string Head = @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class Probe
+    {
+        static async Task Pause() { await Task.Yield(); }
+";
+        const string Tail = @"
+    }
+}";
+
+        Check(failures,
+              "a handler widening the subject its dispatcher covered is reported",
+              Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+            cr.SendGroupInfo();
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures,
+              "the migration shape: an item of a covered critter widened for destruction",
+              Head + @"
+        [Event]
+        public static async Task OnLoad([RequiresCover] Critter cr)
+        {
+            await Migrate(cr);
+        }
+
+        private static async Task Migrate([RequiresCover] Critter cr)
+        {
+            List<Item> items = cr.GetItems();
+
+            for (int i = 0; i < items.Count; i++) {
+                Item item = items[i];
+
+                if (!await Sync.WidenItemForDestroy(new List<Entity> { cr }, item)) {
+                    continue;
+                }
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures,
+              "a set of covered entities built in place and through Add is reported",
+              Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            List<Entity> scope = new List<Entity> { cr };
+
+            foreach (Item item in cr.GetItems()) {
+                scope.Add(item);
+            }
+
+            if (!await Sync.WidenNamedSet(scope)) {
+                return;
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures, "a set a helper filled is not proved and stays silent", Head + @"
+        static void Fill(List<Entity> scope) { }
+
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            List<Entity> scope = new List<Entity> { cr };
+            Fill(scope);
+
+            if (!await Sync.WidenNamedSet(scope)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "a snapshot later in the same body keeps the widening", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "a snapshot the caller takes after the call keeps the widening", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            await Prepare(cr);
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }
+
+        private static async Task Prepare([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures,
+              "a helper nothing in the compilation calls is dispatched by the engine",
+              Head + @"
+        public static async Task ReachedNatively([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        // A method found by name runs inside every reflection invoke, so a snapshot after any of them keeps it
+        Check(failures, "a method dispatched by name returns into the invoke that may snapshot", Head + @"
+        [CallableByName]
+        public static async Task ReachedByName([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }
+
+        [Event]
+        public static async Task Dispatch([RequiresCover] Critter cr, System.Reflection.MethodInfo target)
+        {
+            target.Invoke(null, new object[] { cr });
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures,
+              "a method dispatched by name with nothing after the invoke is reported",
+              Head + @"
+        [CallableByName]
+        public static async Task ReachedByName([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }
+
+        [Event]
+        public static void Dispatch([RequiresCover] Critter cr, System.Reflection.MethodInfo target)
+        {
+            target.Invoke(null, new object[] { cr });
+        }" + Tail,
+              "FOSYNC015");
+
+        // A delegate returns into its invocation: a snapshot there keeps the widening, a snapshot in an unrelated
+        // delegate of another type does not
+        Check(failures, "a callback whose invoker snapshots afterwards keeps the widening", Head + @"
+        private static async Task Callback([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }
+
+        [Event]
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            System.Func<Critter, Task> step = Callback;
+            await step(cr);
+            List<Entity> cover = Sync.Snapshot();
+            await Pause();
+
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures,
+              "a callback whose invoker does nothing afterwards is reported",
+              Head + @"
+        private static async Task Callback([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }
+
+        private static List<Entity> Keep() { return Sync.Snapshot(); }
+
+        [Event]
+        public static async Task Run([RequiresCover] Critter cr)
+        {
+            System.Func<Critter, Task> step = Callback;
+            System.Func<List<Entity>> unrelated = Keep;
+            _ = unrelated;
+            await step(cr);
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures, "an await that released the cover makes the widening a re-proof", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            await Pause();
+
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "a release before the widening makes it a re-proof", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            Sync.Release();
+
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "an await later in a loop reaches the widening on the next turn", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            foreach (Item item in cr.GetItems()) {
+                if (!await Sync.WidenItemForDestroy(new List<Entity> { cr }, item)) {
+                    continue;
+                }
+
+                await Pause();
+            }
+        }" + Tail);
+
+        Check(failures,
+              "a lock re-taken after the await makes the widening redundant again",
+              Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            await Pause();
+
+            if (!await Sync.LockAsync(cr)) {
+                return;
+            }
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures, "a plain parameter is not proved covered", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr, Critter other)
+        {
+            if (!await Sync.WidenNamed(other)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "an item covered alone leaves its holder to the destroy widening", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Item item)
+        {
+            if (!await Sync.WidenItemForDestroy(new List<Entity>(), item)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures,
+              "an item covered with its parent is reported",
+              Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover(CoverReach.Parent)] Item item)
+        {
+            if (!await Sync.WidenItemForDestroy(new List<Entity>(), item)) {
+                return;
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures,
+              "a critter found on a covered map comes with the map",
+              Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Map map)
+        {
+            foreach (Critter cr in map.GetCritters()) {
+                if (!await Sync.WidenWithHolder(cr)) {
+                    continue;
+                }
+            }
+        }" + Tail,
+              "FOSYNC015");
+
+        Check(failures, "a partner's critter does not come with its map", Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Player player)
+        {
+            Critter? cr = player.GetControlledCritter();
+
+            if (cr == null || !await Sync.WidenWithHolder(cr)) {
+                return;
+            }
+        }" + Tail);
+
+        Check(failures, "a widening inside a lambda runs at a time nobody can see", Head + @"
+        [Event]
+        public static void OnSomething([RequiresCover] Critter cr)
+        {
+            System.Func<Task<bool>> later = async () => await Sync.WidenNamed(cr);
+            _ = later;
+        }" + Tail);
+
+        Check(failures,
+              "a callee that restores its snapshot after a real suspension loses the dispatcher's cover",
+              Head + @"
+        private static async Task Restoring()
+        {
+            List<Entity> cover = Sync.Snapshot();
+            await Task.Yield();
+
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }
+
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            await Restoring();
+
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail);
+
+        // A test calling shipped code and snapshotting afterwards keeps the widening, unless its source is marked as
+        // code that never ships
+        const string Shipped = Head + @"
+        public static async Task Helper([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }
+
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            await Helper(cr);
+        }" + Tail;
+        const string TestCaller = @"
+namespace LastFrontier
+{
+    using FOnline;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    public static class ProbeTest
+    {
+        [Event]
+        public static async Task OnTest([RequiresCover] Critter cr)
+        {
+            await Probe.Helper(cr);
+            List<Entity> cover = Sync.Snapshot();
+            await Task.Yield();
+
+            if (!await Sync.Restore(cover)) {
+                return;
+            }
+        }
+    }
+}";
+
+        CheckFiles(failures, "a test caller that snapshots keeps a shipped widening",
+                   new[] { ("Shipped.cs", Preamble + Shipped, (string?)null), ("Tests/ProbeTest.cs", TestCaller, null) });
+        CheckFiles(failures, "a test caller marked as unshipped code does not decide",
+                   new[] { ("Shipped.cs", Preamble + Shipped, (string?)null),
+                           ("Tests/ProbeTest.cs", TestCaller, "fonline_sync.test_code") },
+                   "FOSYNC015");
+
+        // The rule reads the declaration, not the name: without the marker the same call says nothing
+        CheckWithPreamble(failures,
+                          "a widening that does not declare its cover exhaustive is not judged",
+                          Preamble.Replace("[CoversOnlyArguments]", ""),
+                          Head + @"
+        [Event]
+        public static async Task OnSomething([RequiresCover] Critter cr)
+        {
+            if (!await Sync.WidenNamed(cr)) {
+                return;
+            }
+        }" + Tail);
+    }
+
+    private static void CheckFiles(List<string> failures, string name,
+                                   (string Path, string Source, string? Option)[] files, params string[] expected)
+    {
+        string[] actual = RunFiles(files).Select(d => d.Id).OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        string[] wanted = expected.OrderBy(id => id, StringComparer.Ordinal).ToArray();
+
+        if (!actual.SequenceEqual(wanted)) {
+            failures.Add($"{name}: expected [{string.Join(", ", wanted)}] but got [{string.Join(", ", actual)}]");
+        }
+    }
+
     private static void Check(List<string> failures, string name, string snippet, params string[] expected)
     {
         CheckWithPreamble(failures, name, Preamble, snippet, expected);
@@ -2174,6 +2627,83 @@ namespace LastFrontier
         }
     }
 
+    // Several files, each with its path and the .editorconfig keys that apply to it
+    private static ImmutableArray<Diagnostic> RunFiles((string Path, string Source, string? Option)[] files)
+    {
+        var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty)
+            .Split(System.IO.Path.PathSeparator)
+            .Where(path => path.Length != 0)
+            .Select(path => (MetadataReference)MetadataReference.CreateFromFile(path))
+            .ToList();
+        SyntaxTree[] trees = files.Select(file => CSharpSyntaxTree.ParseText(file.Source, path: file.Path)).ToArray();
+        CSharpCompilation compilation =
+            CSharpCompilation.Create("AnalyzerSelfTest",
+                                     trees,
+                                     references,
+                                     new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        ImmutableArray<Diagnostic> compileErrors =
+            compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToImmutableArray();
+
+        if (!compileErrors.IsEmpty) {
+            throw new InvalidOperationException("analyzer self-test snippet does not compile: " + compileErrors[0]);
+        }
+
+        var options = new Dictionary<string, string>();
+
+        foreach ((string path, string _, string? option) in files) {
+            if (option != null) {
+                options[path] = option;
+            }
+        }
+
+        var analyzerOptions =
+            new AnalyzerOptions(ImmutableArray<AdditionalText>.Empty, new PathOptionsProvider(options));
+        CompilationWithAnalyzers withAnalyzers =
+            compilation.WithAnalyzers(ImmutableArray.Create<DiagnosticAnalyzer>(new SyncCoverAnalyzer()),
+                                      analyzerOptions);
+
+        return withAnalyzers.GetAnalyzerDiagnosticsAsync().GetAwaiter().GetResult();
+    }
+
+    // Stands in for .editorconfig: one `key = true` per listed path
+    private sealed class PathOptionsProvider : AnalyzerConfigOptionsProvider
+    {
+        private readonly Dictionary<string, string> Keys;
+
+        public PathOptionsProvider(Dictionary<string, string> keys)
+        {
+            Keys = keys;
+        }
+
+        public override AnalyzerConfigOptions GlobalOptions => new KeyOptions(null);
+
+        public override AnalyzerConfigOptions GetOptions(SyntaxTree tree)
+        {
+            return new KeyOptions(Keys.TryGetValue(tree.FilePath, out string? key) ? key : null);
+        }
+
+        public override AnalyzerConfigOptions GetOptions(AdditionalText textFile)
+        {
+            return new KeyOptions(null);
+        }
+    }
+
+    private sealed class KeyOptions : AnalyzerConfigOptions
+    {
+        private readonly string? Key;
+
+        public KeyOptions(string? key)
+        {
+            Key = key;
+        }
+
+        public override bool TryGetValue(string key, out string value)
+        {
+            value = "true";
+            return Key != null && key == Key;
+        }
+    }
+
     private static ImmutableArray<Diagnostic> Run(string source, TimeSpan? timeout = null)
     {
         var references = ((string?)AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") ?? string.Empty)
@@ -2188,7 +2718,7 @@ namespace LastFrontier
                                      references,
                                      new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
 
-        // A snippet that does not compile would make a diagnostic expectation meaningless.
+        // A snippet that does not compile would make a diagnostic expectation meaningless
         ImmutableArray<Diagnostic> compileErrors =
             compilation.GetDiagnostics().Where(d => d.Severity == DiagnosticSeverity.Error).ToImmutableArray();
 

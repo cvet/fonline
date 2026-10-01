@@ -337,7 +337,7 @@ void NetworkClientConnection_Sockets::ApplyTcpNoDelay()
     }
 
     if (!_sock.set_nodelay(true)) {
-        logging::write("Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
+        logging::write(logging::type::warning, "Can't set TCP_NODELAY (disable Nagle) to socket, error '{}'", net_sockets::last_error_text());
     }
 #endif
 }

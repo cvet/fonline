@@ -46,6 +46,9 @@ static constexpr int32_t LIGHT_COLOR_CHANNEL_MAX = 255;
 static constexpr float32_t MAP_DEPTH_RANGE_MARGIN = 1000.0f;
 static constexpr isize32 MAP_RENDER_TARGET_PADDING = {GameSettings::MAP_HEX_WIDTH, GameSettings::MAP_HEX_LINE_HEIGHT * 2};
 
+// A map flush effect may displace its lookup (a screen shake, a heat warp) by a few percent of the view
+static constexpr int32_t MAP_COMPOSITE_MARGIN_DIVISOR = 8;
+
 void SpritePattern::Finish()
 {
     if (!Finished) {
@@ -2406,7 +2409,7 @@ auto MapView::GetHexMapPos(mpos hex) const -> ipos32
     return {hex_offset.x, hex_offset.y};
 }
 
-void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, bool apply_size_ext)
+void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_offset, isize32 egg_size, TransparentEggTarget target, bool apply_size_ext)
 {
     if (!_mapSize.is_valid_pos(hex)) {
         ClearTransparentEgg(slot);
@@ -2417,6 +2420,7 @@ void MapView::SetTransparentEgg(TransparentEggSlot slot, mpos hex, ipos32 hex_of
     egg.Hex = hex;
     egg.HexOffset = hex_offset;
     egg.Size = egg_size;
+    egg.Target = target;
     egg.ApplySizeExt = apply_size_ext;
     egg.Valid = true;
 
@@ -2450,7 +2454,7 @@ void MapView::UpdateTransparentEgg(TransparentEggSlot slot)
     float32_t egg_height_ext = egg.ApplySizeExt ? numeric_cast<float32_t>(_engine->Settings->Render.EggEllipseHeightExt) : 0.0f;
     float32_t radius_w = std::max((numeric_cast<float32_t>(egg.Size.width) + egg_width_ext) * 0.5f, 1.0f);
     float32_t radius_h = std::max((numeric_cast<float32_t>(egg.Size.height) + egg_height_ext) * 0.5f, 1.0f);
-    _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32_t>(center_x), numeric_cast<float32_t>(center_y)}, {radius_w, radius_h});
+    _engine->SprMngr.SetEgg(slot, egg.Hex, {numeric_cast<float32_t>(center_x), numeric_cast<float32_t>(center_y)}, {radius_w, radius_h}, egg.Target);
 }
 
 void MapView::UpdateTransparentEggs()
@@ -2565,8 +2569,10 @@ void MapView::DrawMap()
                     cam_buf->ChunkScreenAnchor[3] = cam_buf->MapAnchorScreenPos[3] * draw_scale.y;
                 }
 
+                irect32 composite_rect = GetMapCompositeRect(draw_area);
+                frect32 composite_source = frect32(composite_rect);
                 _rtLight->SetCustomDrawEffect(flush_light);
-                _engine->SprMngr.DrawRenderTarget(_rtLight, true);
+                _engine->SprMngr.DrawRenderTarget(_rtLight, true, &composite_source, &composite_rect);
                 _engine->OnRenderMap_AfterLighting.Fire(this, draw_area);
             }
 
@@ -2773,14 +2779,28 @@ void MapView::DrawFogSlot(const irect32& draw_area, DrawOrderType draw_order)
                 _engine->EffectMngr.SetEffectScriptValues(flush_effect, 0, const_span<float32_t> {values, 14});
             }
 
+            irect32 composite_rect = GetMapCompositeRect(draw_area);
+            frect32 composite_source = frect32(composite_rect);
             _rtLight->SetCustomDrawEffect(flush_effect);
-            _engine->SprMngr.DrawRenderTarget(_rtLight, true);
+            _engine->SprMngr.DrawRenderTarget(_rtLight, true, &composite_source, &composite_rect);
         }
         else {
             // Without a custom flush effect: draw the fog points straight into the scene
             _engine->SprMngr.DrawPoints(fog_points, RenderPrimitiveType::TriangleStrip, &draw_area, fog_effect);
         }
     }
+}
+
+// The light target is sized for the widest zoom, so a full-target composite shades pixels no flush ever shows
+auto MapView::GetMapCompositeRect(const irect32& draw_area) const -> irect32
+{
+    FO_VERIFY_AND_THROW(_rtLight, "Lighting render target is not allocated");
+
+    isize32 rt_size = _rtLight->GetSize();
+    int32_t width = draw_area.width + MAP_RENDER_TARGET_PADDING.width + draw_area.width / MAP_COMPOSITE_MARGIN_DIVISOR;
+    int32_t height = draw_area.height + MAP_RENDER_TARGET_PADDING.height + draw_area.height / MAP_COMPOSITE_MARGIN_DIVISOR;
+
+    return {0, 0, std::min(width, rt_size.width), std::min(height, rt_size.height)};
 }
 
 auto MapView::DrawEntitySprite(ptr<ClientEntity> entity, ptr<RenderEffect> effect, ucolor color, int32_t padding) -> bool
@@ -3583,7 +3603,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
             return;
         }
 
-        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr->GetHex(), mspr->GetEggAppearence());
+        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr);
 
         if (potentially_egg ? sort_value <= best_egg_sort : sort_value <= best_sort) {
             return;
@@ -3765,6 +3785,8 @@ auto MapView::FindPath(nptr<CritterHexView> find_cr, mpos start_hex, mpos& targe
     input.ToHexOffset = target_hex_offset;
     input.MapSize = _mapSize;
     input.MaxLength = _engine->Settings->Geometry.MaxPathFindLength;
+    input.EnclosureProbeLimit = _engine->Settings->Geometry.PathFindEnclosureProbe;
+    input.CritterDetour = _engine->Settings->Geometry.PathFindCritterDetour;
     input.Cut = cut < 0 ? 0 : cut;
     input.Multihex = multihex;
     input.FreeMovement = _engine->Settings->Geometry.MapFreeMovement;

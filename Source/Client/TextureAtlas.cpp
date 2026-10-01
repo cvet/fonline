@@ -619,10 +619,10 @@ void TextureAtlasManager::DumpAtlases(string_view writable_root) const
             break;
         }
 
-        string fname = strex("{}/{}_{}_{}x{}.tga", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
+        string fname = strex("{}/{}_{}_{}x{}.png", dir, atlas_type_name, count, atlas->GetSize().width, atlas->GetSize().height);
         auto tex_data = atlas->GetTexture()->GetTextureRegion({0, 0}, atlas->GetSize());
         atlas->GetLayout()->DrawDumpOverlay(tex_data);
-        ImageWriter::WriteSimpleTga(fname, atlas->GetSize(), std::move(tex_data));
+        ImageWriter::WritePng(fname, atlas->GetSize(), tex_data);
         count++;
     }
 }

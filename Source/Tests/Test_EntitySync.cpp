@@ -1500,6 +1500,7 @@ TEST_CASE("EntityLockContention")
         EntityLock other[4]; // per-entity locks the sync threads also want
         std::atomic<uint64_t> ticket {0};
         std::atomic_int reader_ops {0};
+        std::atomic_int readers_cycling {0};
         std::atomic_int sync_ops {0};
         std::atomic_bool stop {false};
 
@@ -1512,15 +1513,29 @@ TEST_CASE("EntityLockContention")
 
         for (int i = 0; i < reader_count; i++) {
             readers.emplace_back([&]() {
+                bool cycled = false;
+
                 while (!stop.load(std::memory_order_acquire)) {
                     gl.AcquireShared(ticket.fetch_add(1, std::memory_order_relaxed));
                     reader_ops.fetch_add(1, std::memory_order_relaxed);
                     gl.ReleaseShared();
+
+                    if (!cycled) {
+                        cycled = true;
+                        readers_cycling.fetch_add(1, std::memory_order_release);
+                    }
+
                     // Sleep (not just yield) so the lock actually frees and exclusive syncers
                     // make steady progress — keeps the contention window without starving writers
                     std::this_thread::sleep_for(std::chrono::microseconds(10));
                 }
             });
+        }
+
+        // On a slow host thread start-up alone can outlast the whole churn, and readers that first run after it
+        // meet nothing; the syncers wait until every reader has taken the lock once
+        while (readers_cycling.load(std::memory_order_acquire) < reader_count) {
+            std::this_thread::yield();
         }
 
         std::vector<std::thread> syncers;

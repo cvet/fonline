@@ -592,6 +592,7 @@ static void DispatchManagedCallbackBoxed(ptr<ManagedScriptBackend> backend, uint
 static auto NativeGetAndResetTypedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
 static auto NativeGetAndResetBoxedCallbackDispatches(void* backend_ptr, MonoString** error) noexcept -> int64_t;
 static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** error) noexcept -> int64_t;
+static auto NativeGetAndResetListItemCrossings(void* backend_ptr, MonoString** error) noexcept -> int64_t;
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t;
 static auto NativeReadInteropCounters(mono_bool enable, int64_t* gc_handles, int64_t* metadata_lookups, int64_t* managed_objects, int64_t* native_allocations, int64_t* native_bytes) noexcept -> mono_bool;
 static void NativeProbeTransportScenario(void* backend_ptr, MonoObject* handler, int32_t transport, int32_t adapter_kind, int32_t iterations, mono_bool external_thread, void* uco_entry, int32_t registration_id, int32_t* faults, MonoString** error) noexcept;
@@ -641,6 +642,10 @@ static auto CreateManagedList(ptr<const ManagedScriptBackend> backend, const Bas
 static auto GetManagedListCount(ptr<const ManagedScriptBackend> backend, MonoObject* list) -> size_t;
 static auto GetManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, size_t index) -> MonoObject*;
 static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, MonoObject* item);
+static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend);
+static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool;
+static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool;
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool;
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*;
 static auto CreateManagedDictionaryOfList(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& element_type) -> MonoObject*;
 static auto GetManagedDictionaryCount(ptr<const ManagedScriptBackend> backend, MonoObject* dictionary) -> size_t;
@@ -697,6 +702,7 @@ static auto MakeManagedGlobalSimpleType(ptr<EngineMetadata> meta, string_view ty
 
 // Entity resolution and inner-entry helpers
 static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>;
 static auto ResolveProtoEntityFromRawData(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& base_type, span<const uint8_t> raw_data) -> nptr<Entity>;
 static auto ExtractProtoHashFromManagedEntity(MonoObject* value) -> hstring::hash_t;
 static void ValidateManagedInnerEntity(ptr<const Entity> entity);
@@ -852,6 +858,32 @@ struct ManagedDataAccessor final : DataAccessor
         auto array = data.reinterpret_as<ManagedArrayBridgeData>();
         MonoObject* item = BoxNativeSimpleValue(array->Backend, array->Type.BaseType, value.get());
         AddManagedListItem(array->Backend, array->GetObject(), item);
+    }
+
+    [[nodiscard]] auto ReadArrayRaw(ptr<void> data, span<uint8_t> dest) const -> bool override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+        return TryReadManagedListRaw(array->Backend, array->Type.BaseType, array->GetObject(), dest);
+    }
+
+    [[nodiscard]] auto WriteArrayRaw(ptr<void> data, const_span<uint8_t> src) const -> bool override
+    {
+        auto array = data.reinterpret_as<ManagedArrayBridgeData>();
+
+        if (!IsManagedRawArrayElement(array->Type.BaseType)) {
+            return false;
+        }
+
+        // The bridge keeps its old list until the new one is filled, the same way ClearArray replaces it
+        MonoObject* list = CreateManagedList(array->Backend, array->Type.BaseType);
+
+        if (!TryWriteManagedListRaw(array->Backend, array->Type.BaseType, list, src)) {
+            return false;
+        }
+
+        array->SetObject(list);
+        array->Elements.clear();
+        return true;
     }
 
     [[nodiscard]] auto GetDictSize(ptr<void> data) const -> size_t override
@@ -1041,6 +1073,7 @@ struct ManagedBackendCaches
     std::atomic<uint64_t> TypedCallbackDispatches {};
     std::atomic<uint64_t> BoxedCallbackDispatches {};
     std::atomic<uint64_t> ContinuationPumps {};
+    std::atomic<uint64_t> ListItemCrossings {};
 };
 
 // Built once per callback registration: the native signature, the frame layout it maps to and the generated adapter
@@ -2684,6 +2717,18 @@ static auto NativeGetAndResetContinuationPumps(void* backend_ptr, MonoString** e
     });
 }
 
+static auto NativeGetAndResetListItemCrossings(void* backend_ptr, MonoString** error) noexcept -> int64_t
+{
+    return CaptureNativeError(error, [&]() -> int64_t {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto caches = backend->GetCaches();
+        FO_VERIFY_AND_THROW(caches, "Managed backend caches are not created");
+
+        caches->CountDispatches.store(true, std::memory_order_relaxed);
+        return numeric_cast<int64_t>(caches->ListItemCrossings.exchange(0, std::memory_order_relaxed));
+    });
+}
+
 // Interop probe: drives InteropProbe.AdaptProbe from a native loop over one transport and returns the loop time in
 // nanoseconds. Modes mirror InteropProbe.CallbackMode; the probe never touches a production registration
 static auto NativeProbeCallbackTransport(void* backend_ptr, MonoObject* handler, int32_t mode, int32_t iterations, void* uco_entry, int32_t registration_id, MonoString** error) noexcept -> int64_t
@@ -3287,6 +3332,7 @@ static void NativeSubscribeEventImpl(void* backend_ptr, int32_t event_id, void* 
 
     nptr<Entity> entity = ResolveEventEntity(backend, entry, entity_ptr);
     FO_VERIFY_AND_THROW(entity, "Managed event target is destroyed", entry.Owner, entry.Name);
+    entity->ValidateAccess();
 
     // A handler holds one subscription per entity event, whichever wrapper of the entity it arrives through
     if (FindManagedEventSubscription(backend, entity, entry.Name, handler).has_value()) {
@@ -3426,7 +3472,7 @@ static auto NativeFireEventImpl(void* backend_ptr, const ManagedAbiEventRuntime&
     auto backend = ResolveBoundBackend(backend_ptr);
     FO_VERIFY_AND_THROW(entry.Desc && entry.Event, "Managed ABI event descriptor is null", entry.Owner, entry.Name);
 
-    auto entity = ResolveEntity(backend, entity_ptr);
+    auto entity = ResolveCoveredEntity(backend, entity_ptr);
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
 
     if (args_count != entry.Event->Args.size()) {
@@ -3537,7 +3583,7 @@ static auto NativeFireEventIndexed(void* backend_ptr, int32_t event_id, void* en
         FO_VERIFY_AND_THROW(frame_size == numeric_cast<int32_t>(entry.FrameSize), "Managed scalar event frame size mismatch", entry.Owner, entry.Name, frame_size, entry.FrameSize);
         FO_VERIFY_AND_THROW(entry.Args.size() == entry.Event->Args.size(), "Managed event ABI slot count mismatch", entry.Owner, entry.Name);
 
-        auto entity = ResolveEntity(backend, entity_ptr);
+        auto entity = ResolveCoveredEntity(backend, entity_ptr);
         Entity* self_entity = entity.get_no_const();
         size_t first_event_arg = entry.IsGlobal ? 0 : 1;
         size_t call_args_count = entry.Args.size() + first_event_arg;
@@ -4017,7 +4063,7 @@ static auto NativeCallMethodImpl(void* backend_ptr, const ManagedAbiMethodRuntim
     string_view owner_type_name = entry.Owner;
     string_view method_name_str = entry.Method ? string_view {entry.Method->Name} : string_view {};
     bool is_ref_type_method = entry.IsRefType;
-    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+    auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
     size_t args_count = args != nullptr ? mono_array_length(args) : 0;
     uint32_t args_handle = args != nullptr ? NewManagedGcHandle(reinterpret_cast<MonoObject*>(args), 0) : 0;
     auto free_args_handle = scope_exit([args_handle]() noexcept {
@@ -4212,7 +4258,7 @@ static auto NativeCallMethodIndexed(void* backend_ptr, int32_t method_id, void* 
 
         bool is_ref_type_method = entry.IsRefType;
         bool is_ref_type_factory = is_ref_type_method && method->Name == "__Factory";
-        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveEntity(backend, entity_ptr)} : nptr<Entity> {};
+        auto entity = !is_ref_type_method ? nptr<Entity> {ResolveCoveredEntity(backend, entity_ptr)} : nptr<Entity> {};
         Entity* self_entity = entity.get_no_const();
         void* self_ref = entity_ptr;
         size_t first_method_arg = is_ref_type_factory ? 0 : 1;
@@ -4723,9 +4769,17 @@ static void NativeRegisterRemoteCallHandlerImpl(void* backend_ptr, MonoString* n
                     bridge.Type = arg_type;
                     bridge.SetObject(CreateManagedList(backend, arg_type.BaseType));
 
-                    for (int32_t j = 0; j < count; j++) {
-                        auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
-                        AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
+                    // Plain numbers are stored on the wire exactly as in memory, so the whole block goes over at once
+                    if (count != 0 && IsManagedRawArrayElement(arg_type.BaseType)) {
+                        const_span<uint8_t> raw = reader.read_bytes(numeric_cast<size_t>(count) * arg_type.BaseType.Size);
+                        bool written = TryWriteManagedListRaw(backend, arg_type.BaseType, bridge.GetObject(), raw);
+                        FO_VERIFY_AND_THROW(written, "Managed list rejected a raw remote call array", call_name, wire_arg_name, arg_type.BaseType.Name);
+                    }
+                    else {
+                        for (int32_t j = 0; j < count; j++) {
+                            auto element = ReadRemoteCallSimple(reader, arg_type.BaseType, engine->Hashes, storage, hooks);
+                            AddManagedListItem(backend, bridge.GetObject(), BoxNativeSimpleValue(backend, arg_type.BaseType, element.get()));
+                        }
                     }
 
                     data_storage[arg_index] = make_ptr(&bridge).void_cast();
@@ -4901,6 +4955,7 @@ static void RegisterInternalCalls()
     AddInternalCall("FOnline.Native::GetAndResetTypedCallbackDispatchesInternal", NativeGetAndResetTypedCallbackDispatches);
     AddInternalCall("FOnline.Native::GetAndResetBoxedCallbackDispatchesInternal", NativeGetAndResetBoxedCallbackDispatches);
     AddInternalCall("FOnline.Native::GetAndResetContinuationPumpsInternal", NativeGetAndResetContinuationPumps);
+    AddInternalCall("FOnline.Native::GetAndResetListItemCrossingsInternal", NativeGetAndResetListItemCrossings);
     AddInternalCall("FOnline.Native::ProbeCallbackTransportInternal", NativeProbeCallbackTransport);
     AddInternalCall("FOnline.Native::ProbeTransportScenarioInternal", NativeProbeTransportScenario);
     AddInternalCall("FOnline.Native::ReadInteropCountersInternal", NativeReadInteropCounters);
@@ -5332,6 +5387,17 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
         list.SetObject(CreateManagedList(backend, type.BaseType));
         size_t size = accessor->GetArraySize(data);
 
+        // Plain numbers go over in one block whenever the source array can hand them out that way
+        if (size != 0 && IsManagedRawArrayElement(type.BaseType)) {
+            vector<uint8_t> raw(size * type.BaseType.Size);
+
+            if (accessor->ReadArrayRaw(data, raw)) {
+                bool written = TryWriteManagedListRaw(backend, type.BaseType, list.GetObject(), raw);
+                FO_VERIFY_AND_THROW(written, "Managed list rejected a raw array block", type.BaseType.Name);
+                return list.GetObject();
+            }
+        }
+
         for (size_t i = 0; i < size; i++) {
             MonoObject* item = BoxNativeSimpleValue(backend, type.BaseType, accessor->GetArrayElement(data, i).get());
             AddManagedListItem(backend, list.GetObject(), item);
@@ -5550,6 +5616,15 @@ static auto SerializeManagedRemoteCallArgs(ptr<ManagedScriptBackend> backend, co
             // Wire: int32 count, then each element (shared scalar format) — matches AngelScript's array framing
             size_t count = arg_obj != nullptr ? GetManagedListCount(backend, arg_obj) : 0;
             writer.write<int32_t>(numeric_cast<int32_t>(count));
+
+            if (count != 0 && IsManagedRawArrayElement(arg.Type.BaseType)) {
+                vector<uint8_t> raw(count * arg.Type.BaseType.Size);
+
+                if (TryReadManagedListRaw(backend, arg.Type.BaseType, arg_obj, raw)) {
+                    writer.write_bytes(raw);
+                    continue;
+                }
+            }
 
             for (size_t j = 0; j < count; j++) {
                 MonoObject* item = GetManagedListItem(backend, arg_obj, j);
@@ -5938,13 +6013,75 @@ static auto GetManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObje
 {
     int32_t index_value = numeric_cast<int32_t>(index);
     void* args[] = {list, &index_value};
-    return InvokeNativeHelper(backend, "GetListItem", 2, args);
+    MonoObject* item = InvokeNativeHelper(backend, "GetListItem", 2, args);
+    CountManagedListItemCrossing(backend);
+    return item;
 }
 
 static void AddManagedListItem(ptr<const ManagedScriptBackend> backend, MonoObject* list, MonoObject* item)
 {
     void* args[] = {list, item};
     (void)InvokeNativeHelper(backend, "AddListItem", 2, args);
+    CountManagedListItemCrossing(backend);
+}
+
+// A test proves a list crossed as one block by reading this counter; it stays off until the first read
+static void CountManagedListItemCrossing(ptr<const ManagedScriptBackend> backend)
+{
+    nptr<ManagedBackendCaches> caches = backend->GetCaches();
+
+    if (caches && caches->CountDispatches.load(std::memory_order_relaxed)) {
+        caches->ListItemCrossings.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+// Element-wise list access boxes every value through a runtime invoke, which turns a megabyte of bytes into seconds
+static auto IsManagedRawArrayElement(const BaseTypeDesc& element_type) -> bool
+{
+    return element_type.IsInt || element_type.IsFloat;
+}
+
+static auto TryReadManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, span<uint8_t> dest) -> bool
+{
+    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+        return false;
+    }
+
+    void* args[] = {list};
+    MonoArray* raw = reinterpret_cast<MonoArray*>(InvokeNativeHelper(backend, "GetListRawBytes", 1, args));
+
+    if (raw == nullptr) {
+        return false;
+    }
+
+    size_t raw_size = mono_array_length(raw);
+    FO_VERIFY_AND_THROW(raw_size == dest.size(), "Managed list raw size does not match the native array", element_type.Name, raw_size, dest.size());
+
+    if (raw_size != 0) {
+        memory::copy(dest.data(), mono_array_addr(raw, uint8_t, 0), raw_size);
+    }
+
+    return true;
+}
+
+static auto TryWriteManagedListRaw(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& element_type, MonoObject* list, const_span<uint8_t> src) -> bool
+{
+    if (!IsManagedRawArrayElement(element_type) || list == nullptr) {
+        return false;
+    }
+
+    FO_VERIFY_AND_THROW(element_type.Size != 0 && src.size() % element_type.Size == 0, "Raw array block is not a whole number of elements", element_type.Name, src.size());
+
+    MonoArray* raw = mono_array_new(GetDomainOrThrow(backend->GetDomain()), mono_get_byte_class(), src.size());
+    FO_VERIFY_AND_THROW(raw != nullptr, "Can't allocate a managed raw array block", element_type.Name, src.size());
+
+    if (!src.empty()) {
+        memory::copy(mono_array_addr(raw, uint8_t, 0), src.data(), src.size());
+    }
+
+    void* args[] = {list, raw};
+    MonoObject* result = InvokeNativeHelper(backend, "SetListRawBytes", 2, args);
+    return result != nullptr && *static_cast<MonoBoolean*>(mono_object_unbox(result)) != 0;
 }
 
 static auto CreateManagedDictionary(ptr<const ManagedScriptBackend> backend, const BaseTypeDesc& key_type, const BaseTypeDesc& value_type) -> MonoObject*
@@ -7160,6 +7297,15 @@ static auto ResolveEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -
         throw ScriptSystemException("Managed entity target is destroyed", entity->GetName());
     }
 
+    return entity;
+}
+
+// The receiver of an exported method or event is checked for cover before the native body runs: a body that reads a
+// property reaches a noexcept accessor, where the same check terminates the process instead of throwing
+static auto ResolveCoveredEntity(ptr<ManagedScriptBackend> backend, void* entity_ptr) -> ptr<Entity>
+{
+    ptr<Entity> entity = ResolveEntity(backend, entity_ptr);
+    entity->ValidateAccess();
     return entity;
 }
 

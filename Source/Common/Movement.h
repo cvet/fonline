@@ -151,4 +151,8 @@ private:
     mpos _blockHex {};
 };
 
+// One MOVESYNC key=value line per movement synchronization event while Network.MoveSyncTrace is on, read by tooling:
+// `t` is the local monotonic clock in microseconds, shared by every process on one machine, `st` the synchronized time
+void WriteMoveSyncTrace(string_view side, string_view event, synctime sync_time, string_view details);
+
 FO_END_NAMESPACE
