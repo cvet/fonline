@@ -2,6 +2,24 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-01 - requested texture readback and CPU model hit masks
+
+Scope and source revisions:
+
+- Reconciled Engine documentation head `e6c4444ce419ee148602b68963bea2326c73725b` with master through `123c5b0b2e76ac34e9090e36e5a886d0298900ee`, one incoming commit after `ba2a13ff736cae204372aafc4e2490aeb0bfb717`. Audited all sixteen changed files: five renderer backends, shared rendering interfaces, model/atlas consumers, removed render-target pixel cache, native tests, and incoming legacy prose.
+- Preserved the legacy rendering page as a route pointer and moved its new explanation into canonical English and reviewed Russian rendering pages. The automatic source merges retain the documentation branch's enum documentation and particle-buffer contract without changing incoming readback behavior.
+
+Documentation and contract reconciliation:
+
+- Documented blocking versus requested reads, ordered snapshots, polling and exactly-once transfer, renderer lifetime, backend-specific completion/fallback boundaries, and model-mask reuse, first-readiness and pose-lag limits. Removed the obsolete last-pixel-pick-cache claim. No pre-release breaking-change ledger or scripting-backend capability change is introduced.
+- Updated the rendering documentation regression to bind these boundaries to the source-owned native fixtures. Refreshed inventory, API source locations and EN/RU references, locale metadata, snippets, site/search/routes, AI retrieval evaluation and delivery in dependency order.
+
+Validation and limits:
+
+- The full documentation validator passed 408 Markdown entries; 64 focused documentation tests passed. Snippets passed 307 normative, 159 evidence and 181 external-parser checks; 192 translation pairs are current. Inventory remains 996 exports, 122 test files and 279 settings. AI retrieval passed 28 tasks/67 checks (100%); delivery passed 396 public documents at 2,119,547 full-context bytes. The seventeen-domain public-model diff is empty. Diff checks passed.
+- `LF_UnitTests` and `LF_ClientLib` built successfully; the normal client build compiled Direct3D, OpenGL, Vulkan and SDL_GPU. The focused `NullRenderer` case passed all 20 assertions, including the requested-region sections. This entry claims that focused native contract evidence; broad integration and visible backend acceptance remain separate. Ruby/Bundler are unavailable on the current PATH, so no local Jekyll artifact/browser publication result is claimed.
+- The local project build enables Managed C# and disables AngelScript. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` is AngelScript-gated; compiling or running this configuration does not execute that fixture. NullRenderer contract tests do not qualify hardware fence timing, Web fallback latency, or visible picking; those require separate backend-specific acceptance. Earlier embedding-project branch reports are not treated as current local or Engine-owned proof.
+
 ## 2026-10-01 - pathfinding comment-only revision
 
 Scope and source revisions:

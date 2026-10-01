@@ -1909,8 +1909,8 @@
         "Source/Common/Settings.inc",
         "BuildTools/cmake/stages/Init.cmake"
       ],
-      "content_sha256": "43bb179d96766781c8b723661ac50b8263ea42f8c6ad9643c78b6b8f191a2600",
-      "byte_size": 107015
+      "content_sha256": "9ac1b7de3f6de111e0946dd417f7dadc72dcb49b0cdc7dd3c30087f9a7c48361",
+      "byte_size": 109864
     },
     {
       "id": "gameplay-testing",
@@ -6885,8 +6885,8 @@
         "Docs/ru/explanation/rendering/index.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "c9014b68fe64ad9ac1e47f643ce5c2a47bbac21536ce208c9c5f11b4ec013d09",
-      "byte_size": 5218,
+      "content_sha256": "5e7d82292bd85ddae4a94be58a0a9c2427a825f2ed9a8a7d136e8febb4567db2",
+      "byte_size": 5348,
       "redirect_to": "frontend-rendering"
     },
     {
@@ -14086,8 +14086,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "2d43c55124f151c30a2613b6d426454184482c449903a4116c123a93f053cd0b",
-      "byte_size": 2116698
+      "content_sha256": "b8dfdf1d2cd632e60b9f5c1fbd9a09b7edfa1795dc4e211c0ebae60584ed5ffa",
+      "byte_size": 2119547
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14100,7 +14100,7 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "622f085ff7420c10b407f08f5995431b10f45a27828e81cfc0021cadb48cd556",
+      "content_sha256": "6fccb64355a0e1c5fceb1b21019188b5272323857264dc9f61e065f79903c436",
       "byte_size": 113156
     },
     {
@@ -14240,7 +14240,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "ff0d0cb7926fc45186103abace866486ddcf7379bf24a57bff698bc9377ff8e6",
+      "content_sha256": "5756ca4ecc7e271d5d2daa6735d9744b32a51ff77d274277ff04549ff44854f6",
       "byte_size": 267384
     },
     {
@@ -14268,7 +14268,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "0dc6f647ac9888d07ce363df3ebaba03af194b8b6a11d190aa988d3b42657d58",
+      "content_sha256": "44a04f6281c587d36c0fdee824c0ab79fc8caf3712311813fb656ddb4f541260",
       "byte_size": 105169
     },
     {
@@ -14289,15 +14289,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "ea4941d71d6180ca8f1e372a00190273d5380446a95b10f5aae7eb263341bc1e",
-      "byte_size": 1254465
+      "content_sha256": "ff31203c6aba3d03891335d2f19975ae342794940d0200fd1780399d3fd3c0bb",
+      "byte_size": 1255433
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "fc61c589c723f5a83a93de2f448a4fad143f19ee70dc3221b408aac7345be877",
-      "byte_size": 1776676
+      "content_sha256": "10197a9a3ef1d0a078eb899902635e311ccc37e53cd5f5d2c46480bce729bdfe",
+      "byte_size": 1778392
     }
   ]
 }

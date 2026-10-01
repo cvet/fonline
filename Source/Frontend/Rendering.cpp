@@ -36,6 +36,18 @@
 
 FO_BEGIN_NAMESPACE
 
+ImmediateTextureReadback::ImmediateTextureReadback(vector<ucolor> pixels) :
+    _pixels {std::move(pixels)}
+{
+}
+
+auto ImmediateTextureReadback::TakePixels() -> optional<vector<ucolor>>
+{
+    FO_VERIFY_AND_THROW(_pixels.has_value(), "Texture readback pixels were already taken");
+
+    return std::exchange(_pixels, std::nullopt);
+}
+
 RenderTexture::RenderTexture(isize32 size, bool linear_filtered, bool with_depth) :
     Size {size},
     SizeData {numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height), 1.0f / numeric_cast<float32_t>(size.width), 1.0f / numeric_cast<float32_t>(size.height)},

@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"43bb179d96766781c8b723661ac50b8263ea42f8c6ad9643c78b6b8f191a2600"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"9ac1b7de3f6de111e0946dd417f7dadc72dcb49b0cdc7dd3c30087f9a7c48361"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -266,7 +266,8 @@ stub behavior.
 - `BlendFuncType` и `BlendEquationType` — blend state из effect config.
 - `DepthVariantType` и `EFFECT_DEPTH_VARIANTS` — slot варианта depth state отдельного draw.
 - `Vertex2D` и `Vertex3D` — layouts вершин sprite/model paths.
-- `RenderTexture` — texture/render-target resource backend.
+- `RenderTexture` — texture/render-target resource backend с блокирующим чтением и запросом области.
+- `RenderTextureReadback` — ожидаемый CPU snapshot пикселей; `ImmediateTextureReadback` хранит уже доступные на CPU pixels.
 - `RenderDrawBuffer` — vertex/index storage, загружаемый в backend.
 - `RenderEffect` — shader/effect со standard uniform и script-value buffers.
 - `Renderer` — интерфейс, реализованный конкретными backends.
@@ -290,6 +291,24 @@ hex grid. `MapView::LightFanToPrimitves` вычисляет значение ч�
 проверки allocation draw buffers и parsing effect configuration. Он читает
 sections `Effect`/`EffectInfo`, pass count, blend settings и script-visible
 buffers до передачи shader files конкретному backend.
+
+### Чтение текстуры на CPU
+
+`RenderTexture::GetTextureRegion(pos, size)` — **блокирующее** чтение. Оно подходит для инициализации, screenshot/dump и других операций, которым pixels нужны немедленно, но не для повторного picking внутри frame path. Оба пути требуют положительного размера прямоугольника внутри границ текстуры.
+
+`RequestTextureRegion(pos, size)` записывает copy в точке запроса, учитывая предшествующие ему draws и clears. `RenderTextureReadback::TakePixels()` проверяет готовность без ожидания: до завершения возвращает `std::nullopt`, затем отдаёт pixels ровно один раз. Повторное получение после успеха бросает исключение. Layout pixels и порядок строк совпадают с `GetTextureRegion`. Запрос и его backend resources должны оставаться внутри lifetime владеющего renderer/context.
+
+Сам запрос не на всех платформах неблокирующий; следующие fallback-пути входят в текущий контракт:
+
+| Backend | Запрос и завершение |
+| --- | --- |
+| Null | CPU copy в `ImmediateTextureReadback`; результат готов сразу. |
+| Direct3D 11 | `CopySubresourceRegion` в собственную staging texture; `Map` с `D3D11_MAP_FLAG_DO_NOT_WAIT` проверяет завершение. |
+| OpenGL | Pixel-pack buffer и `glFenceSync`; `glClientWaitSync` с нулевым timeout проверяет завершение. Нужны sync, pixel-buffer и map-range capabilities; на Web и без этих capabilities запрос выполняет блокирующее чтение сразу. |
+| Vulkan | Host-visible copy в записываемом frame command buffer между render passes; completed-frame tracking либо frame fence подтверждает готовность без submit/wait в запросе. Вне записи frame запрос использует блокирующий fallback. |
+| SDL_GPU | Download transfer buffer в текущем command buffer; общий `SDL_QueryGPUFence` отслеживает завершение. Submission fence получают только buffers с readbacks; до submission результат не готов. |
+
+`ModelSprite::IsHitTest` использует CPU `vector<bool>` alpha mask изображения модели в atlas вместо чтения GPU pixel для каждого запроса. `DrawToAtlas` помечает mask устаревшей; следующий hit test обновляет её, держа не более одного readback in flight и сохраняя последнюю готовую mask до получения новой. **До готовности первой mask hit testing возвращает false.** Силуэт движущейся или анимированной модели может отставать от rendered pose, обычно на frame или два, но фиксированный срок завершения не гарантируется. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит mask из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
 
 ### Геометрия atlas спрайтов и моделей
 
@@ -594,7 +613,7 @@ entry points через X-macro table. Поэтому binary не имеет loa
 
 - **Одна queue, два frames in flight.** `VULKAN_FRAMES_IN_FLIGHT = 2`; каждый slot содержит command buffer, fence, acquire semaphore, descriptor pool, mapped uniform bump buffer, staging ring и deferred-destroy queue. `BeginFrame()` ждёт fence своего slot, очищает deferred destroys, resets pools, acquires swapchain image, clears и начинает render pass. `EndFrame()` submits и presents. Render-complete semaphores принадлежат swapchain images, acquire semaphores — slots. Fence гарантирует завершение всех более ранних submissions этой queue.
 - **Deferred destroy per slot.** `Destroy*Safe(...)` добавляют handles в current slot; queue очищается после ожидания его fence. Разные helper names нужны из-за integer handles на 32-bit. Всегда используется `VK_NULL_HANDLE`. Swapchain recreation делает `vkDeviceWaitIdle`, очищает все queues и перестраивает synchronization.
-- **Uploads записываются в frame command buffer, readback flush-ит его.** `UpdateTextureRegion` временно завершает render pass и пишет barrier/copy/barrier в тот же buffer, сохраняя immediate-mode order: clear atlas до upload выполняется именно первым. Pixels идут через pooled staging ring. `GetTextureRegion` вызывает `FlushFrameCommandBufferMidFrame()`, submit/wait и затем immediate staging copy. Upload вне recording frame также использует immediate path.
+- **Uploads и requested readbacks записываются в frame command buffer; блокирующее чтение flush-ит его.** `UpdateTextureRegion` временно завершает render pass и пишет barrier/copy/barrier в frame buffer через staging ring, сохраняя порядок предшествующих clears/uploads. `RequestTextureRegion` также записывает copy между render passes без mid-frame submit/wait; `TakePixels` проверяет completed-frame index либо submission fence. `GetTextureRegion` по-прежнему вызывает `FlushFrameCommandBufferMidFrame()` (submit записанного prefix, wait idle, возобновление recording), затем immediate staging copy. Uploads и readback requests вне записи frame используют immediate path. Новые immediate-queue операции должны сохранять эти границы порядка и готовности.
 - **Dynamic geometry использует per-draw-buffer/per-slot ring pools.** Каждый `DrawBuffer::Upload` берёт следующий persistently mapped HOST_VISIBLE buffer текущего slot. Ring resets при первом acquire нового frame после fence. Capacity grows только при необходимости; steady state — memcpy без create/allocate/free на каждый draw. Static buffers используют one-off staging в device-local memory.
 - **Shaders baked с `highp`.** `mediump` превращается в SPIR-V `RelaxedPrecision`, который Vulkan drivers могут выполнить как FP16; большие time/world values переполняются и дают black output. Effect baker поэтому выдаёт `precision highp float`.
 - **Backbuffer metrics обновляются при resize без обязательного `SetRenderTarget`.** `ApplySwapchainTargetMetrics()` вызывается при выборе backbuffer, `OnResizeWindow()` и deferred recreation. Это важно для host ImGui, который рисует прямо в swapchain.
@@ -624,7 +643,7 @@ validation layer. Запускайте visible client с
 
 Основные свойства:
 
-- **Immediate-mode поверх explicit passes.** `Context` держит не более одного open render/copy pass; passes открываются lazy, clear хранится до следующего load-op, uploads идут через cycled transfer buffers, readback submits и ждёт fence.
+- **Immediate-mode поверх explicit passes.** `Context` держит не более одного open render/copy pass; passes открываются lazy, clear хранится до load-op, uploads идут через cycled transfer buffers. Блокирующее `GetTextureRegion` submits и ждёт fence. `RequestTextureRegion` материализует pending clears и записывает download в текущий command buffer без такого ожидания; `Present()` получает общий submission fence только для buffers с readbacks. `TakePixels()` проверяет fence, а блокирующий flush отмечает readbacks завершённого buffer готовыми.
 - **Backbuffer proxy.** Рендеринг идёт в RGBA8 proxy, затем `Present()` blit-ит его в swapchain. Это сохраняет uniform color formats и безопасные mid-frame flushes.
 - **Pipeline cache per effect.** Immutable pipelines keyed по pass, topology, наличию depth, `DisableBlending`, `DisableCulling`.
 - **Отдельные SDL shader flavors.** SDL_GPU требует per-stage descriptor sets (vertex sampler/UBO sets 0/1, fragment sets 2/3), поэтому baker выдаёт `-spv_sdl`, remapped `-msl_*` и `[EffectInfoSdl]`. Native Vulkan `-spv` не меняется.
@@ -648,7 +667,6 @@ textures. `RenderTargetManager`:
 - поддерживает stack `PushRenderTarget()` / `PopRenderTarget()`;
 - очищает current target;
 - изменяет размеры targets;
-- читает pixels с небольшим cache последнего pixel pick;
 - удаляет targets, очищает stack и умеет dump textures для диагностики.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory` и `ParticleSpriteFactory`
@@ -1068,6 +1086,8 @@ read/write/clear, upload draw buffer и effect draw, а также rejection unb
 depth variant. Atlas packing/dump geometry принадлежит
 `Test_TextureAtlas.cpp`, matrix/depth projection — `Test_Geometry.cpp`, а
 model/image/particle suites — соответствующим runtime paths.
+
+Requested-region sections `NullRenderer` проверяют layout строк, snapshot в точке запроса, bounds и однократную передачу результата. В `Test_ClientEngine.cpp` есть `ModelSpriteHitTestReadsItsMaskFromTheAtlas` для повторного использования CPU-mask и её обновления после redraw. Fixture компилируется только с `FO_ANGELSCRIPT_SCRIPTING`; Managed-only build его не выполняет. Оба fixtures не доказывают fence timing и видимый picking на GPU backend.
 
 Native tests доказывают backend-neutral invariants, но не реализацию GPU.
 Добавляйте visible target-specific route для каждого затронутого backend:

@@ -66,6 +66,10 @@ Continue with the [canonical English explanation](en/explanation/rendering/#fram
 
 Continue with the [canonical English explanation](en/explanation/rendering/#rendering-abstraction).
 
+### Reading a texture back
+
+Continue with the [canonical English explanation](en/explanation/rendering/#reading-a-texture-back).
+
 ### Sprite and model atlas geometry
 
 Continue with the [canonical English explanation](en/explanation/rendering/#sprite-and-model-atlas-geometry).

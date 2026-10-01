@@ -79,10 +79,11 @@ public:
     {
     }
 
-    [[nodiscard]] auto GetTexturePixel(ipos32 pos) const -> ucolor override { return _pixels[CalcTextureIndex(*this, pos)]; }
-
     [[nodiscard]] auto GetTextureRegion(ipos32 pos, isize32 size) const -> vector<ucolor> override
     {
+        // Reads refuse an empty region on every backend, and this one stands in for them in tests
+        FO_VERIFY_AND_THROW(size.width > 0, "Size width must be positive", size.width);
+        FO_VERIFY_AND_THROW(size.height > 0, "Size height must be positive", size.height);
         ValidateTextureRect(*this, pos, size);
 
         vector<ucolor> result;
@@ -97,6 +98,12 @@ public:
         }
 
         return result;
+    }
+
+    auto RequestTextureRegion(ipos32 pos, isize32 size) const -> unique_ptr<RenderTextureReadback> override
+    {
+        // Reads refuse an empty region on every backend, and this one stands in for them in tests
+        return safe_alloc::make_unique<ImmediateTextureReadback>(GetTextureRegion(pos, size));
     }
 
     void UpdateTextureRegion(ipos32 pos, isize32 size, const_span<ucolor> data, bool use_dest_pitch) override

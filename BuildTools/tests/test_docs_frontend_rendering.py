@@ -102,6 +102,32 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         self.assertIn("zero `[VkLayer/...`", guide)
         self.assertIn("visible map and GUI", guide)
 
+    def test_requested_readbacks_and_model_mask_limits_are_documented(self) -> None:
+        header = self._read("Source/Frontend/Rendering.h")
+        tests = self._read("Source/Tests/Test_Rendering.cpp")
+        model_tests = self._read("Source/Tests/Test_ClientEngine.cpp")
+        for term in ("RequestTextureRegion", "RenderTextureReadback", "TakePixels"):
+            self.assertIn(term, header)
+            self.assertIn(term, self._read(GUIDE_PATH))
+            self.assertIn(term, self._read(RUSSIAN_PATH))
+        for marker in (
+            "RequestedRegionMatchesTheBlockingReadAndIsHandedOverOnce",
+            "RequestedRegionShowsTheTextureAsOfTheRequest",
+            "RequestedRegionOutsideTheTextureIsRefused",
+        ):
+            self.assertIn(marker, tests)
+        self.assertIn("ModelSpriteHitTestReadsItsMaskFromTheAtlas", model_tests)
+        self.assertNotIn("GetRenderTargetPixel", self._read("Source/Client/RenderTarget.h"))
+        guide = self._read(GUIDE_PATH)
+        for boundary in (
+            "Before the first mask is ready, hit testing returns false",
+            "blocking read at request time",
+            "Outside frame recording",
+            "FO_ANGELSCRIPT_SCRIPTING",
+            "not a server-authoritative hit",
+        ):
+            self.assertIn(boundary, guide)
+
     def test_project_evidence_supports_reusable_practices(self) -> None:
         evidence = json.loads(self._read("BuildTools/ExternalProjectEvidence.json"))
         record = next(
