@@ -315,6 +315,45 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ## Resources, sprites, effects, and render targets
 
+### Map unload and native storage lifetime
+
+`ClientEngine::Net_OnLoadMap()` unloads the previous map before constructing the
+next one. `UnloadMap()` fires `OnMapUnload`, calls `MapView::DestroySelf()`, drops
+the current map/location owners, and cleans the critter-frame and sprite caches.
+The entity registry contains borrows; it does not keep retired maps alive.
+
+A script handle can retain a logically destroyed map. Managed entity wrappers
+own a native reference until their finalizer runs, so native object destruction
+is not an unload boundary. `MapView::OnDestroySelf()` releases the cell grid,
+lighting and view buffers, sprite pools, entity collections, deferred refresh
+owners, fog/light data and scratch storage immediately. Invalid handles retain
+the entity shell and properties, rather than the loaded map's working storage.
+`MapSpriteList::InvalidateAll()` still preserves its pool for camera rebuilds;
+permanent map teardown uses `Clear()` to release it.
+
+All three map render targets (map color/depth, indoor roof mask, and light/fog)
+are deleted from `RenderTargetManager` at unload. Construction failure also
+releases any targets already created. Unload first flushes queued sprite draws;
+matching indoor-mask borrows in all cached effects are cleared before the
+texture is deleted. The manager owns targets
+independently of the map object, so dropping a map pointer alone cannot release
+them. `GetRenderTargetCount()` reports its live target inventory for lifecycle
+diagnostics.
+
+Sprite-cache cleanup evicts unreferenced cached sprites, then deletes empty
+atlas pages and their render targets. A page with any live allocation stays
+resident. Freed rectangles on such pages remain reusable. Model mesh/animation
+definitions are a separate per-manager cache keyed by resource identity; they
+are not retired map owners and can retain a session's resource high-water mark.
+
+`Test_ClientEntityLifetime.cpp` checks repeated map unloads while retaining all
+native map handles, failed construction, expired standalone image atlases, and
+cleanup with both live and empty shared atlas pages. In debug/profiling builds
+with allocator statistics, it also bounds storage retained by destroyed maps.
+Process private bytes and working set include allocator caches, the managed
+runtime and renderer/driver allocations, so their remaining high-water mark
+alone does not establish that a map is still loaded.
+
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, and handles Fallout-style animation frame mapping.

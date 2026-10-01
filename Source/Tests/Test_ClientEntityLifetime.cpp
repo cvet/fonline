@@ -35,9 +35,11 @@
 
 #include "Application.h"
 #include "Client.h"
+#include "ItemHexView.h"
 #include "MapView.h"
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
+#include "TextureAtlas.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -266,6 +268,130 @@ TEST_CASE("ClientEntityFinalReleasePreservesSuccessorRegistration")
     CHECK(client->GetEntity(ident_t {1001}) == new_player);
     new_player->DestroySelf();
     CHECK_FALSE(client->GetEntity(ident_t {1001}));
+}
+
+TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
+{
+    auto settings = MakeClientLifetimeSettings();
+    BakerTests::OverrideSetting(settings.View.MapDirectDraw, false);
+    BakerTests::OverrideSetting(settings.View.DisableIndoorMask, false);
+    BakerTests::OverrideSetting(settings.View.DisableLighting, false);
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("LifetimeMap"), client->GetPropertyRegistrar("Map").as_ptr());
+    proto->SetSize(msize {500, 500});
+    auto& rt_mngr = client->SprMngr.GetRtMngr();
+    size_t initial_targets = rt_mngr.GetRenderTargetCount();
+    size_t initial_memory = memory::get_in_use_bytes();
+    vector<refcount_ptr<MapView>> retired_maps;
+
+    for (uint32_t cycle = 0; cycle < 12; cycle++) {
+        auto map = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001 + cycle}, proto.as_ptr(), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept {
+            safe_call([&map] {
+                if (!map->IsDestroyed()) {
+                    map->DestroySelf();
+                }
+            });
+        });
+        CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 3);
+        map->DestroySelf();
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(client->GetEntity(map->GetId()));
+        CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
+        retired_maps.emplace_back(map);
+    }
+
+    // Managed wrappers can retain every retired map; native storage must be released before their finalizers run
+    if (initial_memory != 0) {
+        size_t retained_memory = memory::get_in_use_bytes();
+        INFO("Retained map memory: " << retained_memory << "; initial: " << initial_memory);
+        CHECK(retained_memory < initial_memory + 8 * 1024 * 1024);
+    }
+}
+
+TEST_CASE("ClientMapConstructionFailureReleasesRenderTargets")
+{
+    auto settings = MakeClientLifetimeSettings();
+    BakerTests::OverrideSetting(settings.View.MapDirectDraw, false);
+    BakerTests::OverrideSetting(settings.View.DisableIndoorMask, false);
+    BakerTests::OverrideSetting(settings.View.DisableLighting, false);
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("InvalidLifetimeMap"), client->GetPropertyRegistrar("Map").as_ptr());
+    proto->SetSize(msize {0, 0});
+    size_t initial_targets = client->SprMngr.GetRtMngr().GetRenderTargetCount();
+
+    CHECK_THROWS_AS(safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, proto.as_ptr(), isize32 {320, 200}), VerificationException);
+    CHECK_FALSE(client->GetEntity(ident_t {9001}));
+    CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() == initial_targets);
+}
+
+TEST_CASE("ClientMapUnloadDropsPendingItemOwners")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto map_proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("PendingLifetimeMap"), client->GetPropertyRegistrar("Map").as_ptr());
+    map_proto->SetSize(msize {32, 32});
+    auto item_proto = safe_alloc::make_refcounted<ProtoItem>(client->Hashes.to_hashed_string("PendingLifetimeItem"), client->GetPropertyRegistrar("Item").as_ptr());
+    auto map = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9001}, map_proto.as_ptr(), isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    });
+    auto item = safe_alloc::make_refcounted<ItemHexView>(map.as_ptr(), ident_t {}, item_proto.as_ptr());
+    map->RefreshItem(item, true);
+    REQUIRE(item->GetRefCount() == 2);
+    item->DestroySelf();
+    CHECK(item->GetRefCount() == 2);
+    map->DestroySelf();
+    CHECK(item->GetRefCount() == 1);
+}
+
+TEST_CASE("ExpiredOneImageAtlasReleasesRenderTarget")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto atlas_mngr = client->SprMngr.GetAtlasMngr();
+    auto& rt_mngr = client->SprMngr.GetRtMngr();
+    size_t initial_targets = rt_mngr.GetRenderTargetCount();
+
+    for (uint32_t cycle = 0; cycle < 12; cycle++) {
+        auto [atlas, allocation, pos] = atlas_mngr->FindAtlasPlace(AtlasType::OneImage, isize32 {16, 16});
+        ignore_unused(atlas, pos);
+        CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 1);
+    }
+}
+
+TEST_CASE("AtlasCleanupReleasesOnlyEmptyPages")
+{
+    auto settings = MakeClientLifetimeSettings();
+    RenderTargetManager rt_mngr(GetApp()->MainWindow.GetRender(), [] { });
+    TextureAtlasManager atlas_mngr(&settings, &rt_mngr);
+    size_t initial_targets = rt_mngr.GetRenderTargetCount();
+    auto [atlas1, allocation1, pos1] = atlas_mngr.FindAtlasPlace(AtlasType::MapSprites, isize32 {16, 16});
+    auto [atlas2, allocation2, pos2] = atlas_mngr.FindAtlasPlace(AtlasType::MapSprites, isize32 {16, 16});
+    ignore_unused(pos1, pos2);
+    unique_del_nptr<TextureAtlasLayout::Allocation> owner1 = std::move(allocation1);
+    unique_del_nptr<TextureAtlasLayout::Allocation> owner2 = std::move(allocation2);
+    REQUIRE(atlas1 == atlas2);
+    CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 1);
+
+    owner1 = nullptr;
+    atlas_mngr.CleanupAtlases();
+    CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 1);
+    CHECK_FALSE(atlas2->GetLayout()->IsEmpty());
+
+    owner2 = nullptr;
+    atlas_mngr.CleanupAtlases();
+    CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
+    atlas_mngr.CleanupAtlases();
+    CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
 }
 
 FO_END_NAMESPACE

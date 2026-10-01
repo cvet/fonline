@@ -387,6 +387,7 @@ private:
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
+    void DestroyRenderTargets();
     void OnScreenSizeChanged();
 
     EventUnsubscriber _eventUnsubscriber {};

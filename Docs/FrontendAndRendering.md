@@ -455,6 +455,13 @@ without covering that corner. No surviving sprite, pixel region, or UV ever
 moves. This runtime-only layout behaviour adds no settings and does not alter
 sprite-resource serialization.
 
+`TextureAtlasManager::CleanupAtlases()` deletes empty pages together with their
+manager-owned render targets, including `OneImage` pages. `SpriteManager` calls
+it after cache eviction, and new-page creation also cleans expired pages. Pages
+with live sprite allocations remain valid; cleanup does not move their pixels
+or change their UVs. This returns empty map pages at map unload instead of
+keeping the peak texture allocation for the entire client session.
+
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
 positioning, scaling, rotation, map projection, and standing-sprite depth

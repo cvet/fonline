@@ -34,6 +34,12 @@ For an embedding project with dev name `LF`, the standard generated names are `L
 
 ## Running tests
 
+`Test_ClientEntityLifetime.cpp` includes map-resource lifetime regressions:
+repeat unloads with retained native map handles, reject an invalid map without
+leaking its render targets, recycle standalone image atlases, and evict empty
+shared atlas pages while preserving live allocations. Its native storage bound
+also runs when debug/profiling allocator statistics are available.
+
 Client script probes can deliver lifecycle notifications through
 `Game.SimulateDisconnect()`, `Game.SimulateConnectingFailed()` and
 `Game.SimulateInfoMessage(infoMessage, extraText)`.

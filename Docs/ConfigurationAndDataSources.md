@@ -223,6 +223,12 @@ The cache describes effective pairs, including writable replacements and patches
 keep their configured positions. A later logical pack wins regardless of where its selected files live.
 Cached and direct views preserve lookup, deletion, modification times and enumeration order.
 
+`ResourceIndexSource` and `ResourcePackSource` move the decoded byte vector into the file buffer holder when
+opening a file. The caller retains that allocation until it releases the `File`; opening a large stored resource
+does not allocate a second full-size copy just to hand it across the data-source boundary. Deflated entries
+still hold their compressed and decoded buffers at the same time during decompression. The pointer-transfer
+contract is checked by `FileBufferHolderMovesVectorStorage` in `Test_ResourceIndex.cpp`.
+
 Freshness checks base headers and patch commit identities. Missing/stale caches use direct mounts. A corrupt
 cache body is logged and removed at the disposable-cache boundary, then authoritative pairs are mounted.
 The next updater rebuild recreates it. A corrupt authoritative source remains an error. See

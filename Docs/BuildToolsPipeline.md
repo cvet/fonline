@@ -590,7 +590,9 @@ Start here for final target organization or post-generation diagnostics, not for
 
 Reusable helpers live in `BuildTools/cmake/helpers/`:
 
-- `Build.cmake` — build/target creation helpers.
+- `Build.cmake` — build/target creation helpers. `AddExecutableApplication` owns
+  `/LARGEADDRESSAWARE` for all Windows x86 executables; see
+  [Windows x86 address space](BuildWorkflow.md#windows-x86-address-space).
 - `Commands.cmake` — command target helpers.
 - `Options.cmake` — option/value helpers.
 - `State.cmake` — staged pipeline state/hook support.

@@ -510,12 +510,10 @@ auto ResourcePackSource::OpenFile(string_view path, size_t& size, uint64_t& writ
     }
 
     vector<uint8_t> data = ReadEntryData(*entry);
-    auto buf = safe_alloc::make_unique_arr<uint8_t>(data.size());
-    memory::copy(buf.get(), data.data(), data.size());
 
     size = data.size();
     write_time = _writeTime;
-    return MakeFileBufferHolder(std::move(buf));
+    return MakeFileBufferHolder(std::move(data));
 }
 
 auto ResourcePackSource::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>

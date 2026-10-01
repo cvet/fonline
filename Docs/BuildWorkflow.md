@@ -65,6 +65,20 @@ allocation fail with `ENOMEM` despite available memory. Shared libraries retain 
 including in MemorySanitizer configurations; the executable-only `-pie` option must not be
 applied to shared or module targets.
 
+## Windows x86 address space
+
+`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake` links every
+32-bit Windows engine executable with `/LARGEADDRESSAWARE`, including client
+hosts, headless applications, servers, and tools. The flag depends on the target
+platform and pointer size, independently of the binary-output postfix and the
+embedding project's target names. Shared libraries do not set the process limit.
+
+On 64-bit Windows, the flag raises the x86 process's user virtual address limit
+from 2 GB to 4 GB. On 32-bit Windows 7, the default remains 2 GB; the flag does not
+increase physical RAM. See [Microsoft's address-space limits](https://learn.microsoft.com/en-us/windows/win32/memory/memory-limits-for-windows-releases).
+`BuildTools/check_windows7_imports.py --require-large-address-aware` verifies the
+finished executable's PE flag alongside its Windows 7 import compatibility.
+
 ## Fetching through a mirror of your own
 
 `prepare-workspace` downloads the toolset, the Android SDK/NDK, the MSVC SDK and the LLVM sources from

@@ -421,6 +421,8 @@ void stack_trace::capture_native_frames_from_context(const void* os_context, voi
 // kept are the return address, the caller's stack pointer after the return and its frame pointer
 __declspec(naked) auto stack_trace::save_resume_point(stack_trace::resume_point* point) noexcept -> int
 {
+    (void)point;
+
     // clang-format off
     __asm {
         mov eax, [esp + 4]
