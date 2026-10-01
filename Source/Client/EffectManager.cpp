@@ -131,6 +131,15 @@ auto EffectManager::GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<R
     return &effect->ScriptValueBuf.value();
 }
 
+void EffectManager::ClearIndoorMaskTexture(ptr<const RenderTexture> texture)
+{
+    for (auto& effect : _loadedEffects | std::views::values) {
+        if (effect->IndoorMaskTex == nptr<const RenderTexture> {texture}) {
+            effect->IndoorMaskTex.reset();
+        }
+    }
+}
+
 void EffectManager::UpdateEffects(const GameTimer& game_time)
 {
     FO_TRACE_ZONE(Render);
