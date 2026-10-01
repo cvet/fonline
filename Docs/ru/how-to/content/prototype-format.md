@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"97846f2a1114a47727cb0cef91a84c6d60355233a2bbe9bd709a468349ee747d"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"c23460464687030c5f15dedc6afcc6dc26907d414091e090fd25973474a03155"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -149,6 +149,13 @@ parent path и отклоняют self-cycle, цикл из двух узлов 
 - допустимое свойство разбирается согласно своему типу метаданных.
 
 Свойство является temporary, если оно mutable или принадлежит core и при этом не persistent. Сгенерированный [каталог свойств](../../reference/prototype-format/properties.md) применяет именно это правило к текущим встроенным метаданным и перечисляет активные стороны.
+
+Пропуск server-only property в client records не удаляет его авторские строки из client hash
+dictionary: `ProtoBaker` собирает также строки server pack, включая FixedType values. Доступ к property
+остаётся server-only. Даже client-only rebuild требует server metadata для этого сбора; исходники
+актуального server pack разбираются без повторной script validation и перезаписи pack.
+Границы output и receiving pool описаны в [Запекании](../../explanation/content-pipeline/baking.md) и
+[сетевом контракте](../../explanation/authority-and-networking/index.md#восстановление-неизвестного-hash).
 
 Проектные метаданные отсутствуют в каталоге одного движка. Production-проект должен сгенерировать сопутствующий каталог из объединённых метаданных движка и проекта и опубликовать его в проектной документации.
 

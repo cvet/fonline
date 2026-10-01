@@ -5,7 +5,7 @@ document_id: map-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/map-format.html
 ---
-<!-- docs-translation: {"document_id":"map-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/map-format.md","source_sha256":"cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853"} -->
+<!-- docs-translation: {"document_id":"map-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/map-format.md","source_sha256":"8a3a03955311abcf640034cf3dc1c0bbb5aec41ec3fdb510a83dbb0682a865ab"} -->
 # Формат карт FOnline
 
 Это руководство определяет переиспользуемый контракт движка для авторских файлов `.fomap`. Оно описывает исходный синтаксис, идентичность карт и размещений, переопределения свойств, владение предметами, цикл загрузки и сохранения в Mapper, раздельное запекание для сторон и начальное создание runtime-сущностей.
@@ -175,6 +175,11 @@ ContainerId = 200
 - динамические сущности синхронизируются обычным runtime-механизмом сущностей, а не встраиваются в статический слой клиента.
 
 Скрытые статические предметы не записываются как клиентские предметы, но строки их клиентских свойств всё равно добавляются в словарь хешей. Благодаря этому серверная статическая логика сохраняет идентификаторы, нужные клиентскому resolver хешей, не раскрывая видимую сущность карты.
+
+Client dictionary также содержит все строки, собранные для server map blob: авторские значения
+`Server` properties и overrides криттеров/dynamic items. Добавляются только строки, не server entities
+или property records. В client pool они попадают лишь при загрузке этой карты; для более ранней передачи
+map-only hash нужен иной объявленный receiving source. См. [сетевой контракт](../../explanation/authority-and-networking/index.md#восстановление-неизвестного-hash).
 
 После изменения карты или связанного прототипа всегда заново создавайте и упаковывайте оба output. Односторонний устаревший результат недопустим, даже если затронутой кажется только одна runtime-роль.
 

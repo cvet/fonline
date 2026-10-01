@@ -150,6 +150,12 @@ metadata property is known; it never turns an unknown property into a valid one.
 
 A property is temporary when it is mutable or core-owned and is not persistent. The generated [property catalog](../../reference/prototype-format/properties.md) applies this exact rule to current built-in metadata and lists the active sides.
 
+Skipping a server-only property in client records does not remove its authored strings from the client
+hash dictionary: `ProtoBaker` collects the server pack's strings too, including FixedType values. Property
+access remains server-only. A client-only rebuild still needs server metadata for this collection; it
+parses an already-current server pack's sources without revalidating scripts or rewriting that pack.
+See [Baking](../../explanation/content-pipeline/baking.md) and [networking](../../explanation/authority-and-networking/index.md#unresolved-hash-recovery) for output and receiving-pool boundaries.
+
 Project metadata is not present in the engine-only catalog. A production embedding project should generate a companion catalog from its combined engine/project metadata and publish it in project documentation.
 
 Parser applicability is only the first gate. A project should separately classify fields as:

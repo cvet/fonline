@@ -435,7 +435,7 @@
       "name": "Side-specific bake",
       "requirement": "Treat server and client map binaries as a coupled output and regenerate both after source or referenced prototype changes.",
       "stability": "experimental",
-      "description": "The server receives critters and all items; the client receives visible static items and its required string hashes.",
+      "description": "The server receives critters and all items; the client receives visible static items and all authored server-map strings, without server entity or property records.",
       "source": {
         "path": "Source/Tools/MapBaker.cpp",
         "anchors": [
@@ -3563,5 +3563,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "78fa6bc9772d2f2ac4ad9c435e388b7deee51232b35c99a3ca34b3af588a1e4e"
+  "contract_digest": "15a1b6ba93fb54d5a797a8869dda10a5858bec01f49127fba15c1181a4cfe01e"
 }

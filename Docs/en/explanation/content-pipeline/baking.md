@@ -777,7 +777,9 @@ After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.
 
-`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
+`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items; its hash dictionary includes their client properties, hidden static-item client properties, and every string collected for the server blob. Thus authored `Server` values and critter/dynamic-item overrides can resolve after that map loads without putting those entities or server property records in the client blob.
+
+`ProtoBaker` similarly carries the server prototype pack's strings in `fopro-bin-client`, while `Server` property data and applicability remain server-only. When only the client pack is stale, it still parses the server side to collect strings, without rerunning script validation or writing the current server pack. A shared future orders client writing after server-string collection; errors remain fatal. The native `ClientPackCarriesStringsOfServerOnlyProperties` section and `MapBaker`'s `BakesCrittersAndStaticItems` checks bind these boundaries to real output tables. Regenerate affected prototype/map outputs after updating the baker; unchanged source timestamps do not establish that old outputs carry the enlarged dictionaries.
 
 Both blobs start with `BAKED_MAP_FILE_MAGIC` and
 `BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`.

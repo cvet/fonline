@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"1d3477e68b69cab00f51c58d9e0207c9e2cf59832663c0448a006994b9b6026b"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"55ec3c020e45684340b6661c04e4e8d49c21d8d0807c252ce546c2c1663de8e0"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -130,13 +130,19 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 
 Клиент и сервер независимо строят hash-хранилища из локальных ресурсов, поэтому сервер может передать созданный в runtime `hstring` или строку из отсутствующего у клиента содержимого. `NetInBuffer::ReadHashedString` разрешает сырой hash через переданный `HashResolver`. При неудаче обработчик видит сырой `hstring::hash_t`, входной буфер сбрасывается, а `ReadHashedString` выбрасывает обычный `NetBufferException`. Тот же обработчик покрывает ленивое разрешение вне буфера, например преобразование сырых реплицированных свойств в AngelScript `hstring`, массив, словарь или объект proto-ссылки.
 
-Чем именно наполняется клиентское хранилище, тем и определяется, какие строки под угрозой. При
-старте это локальные ресурсы: пакеты прототипов, литералы `.hstr()` в скриптах, бейкеры диалогов и
-текста, — а собственная таблица хешей карты `fomap-bin-client` приезжает только при загрузке этой
-карты (`MapView::LoadStaticData`). Свойств экземпляров криттеров в клиентском map-bin нет вовсе.
-Поэтому `hstring` со `Common` / `PublicSync` / `OwnerSync`, строка которого существует лишь как
-переопределение экземпляра на карте или лишь в серверном map-bin, не разрешится, если придёт раньше
-регистрации соответствующего клиентского хеша — ровно то окно, которое закрывает восстановление ниже.
+Наполнение клиентского хранилища определяет риск. При старте регистрируются локальные metadata,
+идентичности proto/FixedType и значения hashed properties (включая авторские `Server` values),
+литералы client-compiled scripts, text keys, sprite paths и model names. `ProtoBaker` переносит строки
+server pack в client prototype dictionary, не открывая доступ к server properties. Таблица карты
+`fomap-bin-client` приезжает лишь при её загрузке (`MapView::LoadStaticData`); она также содержит строки
+server map, включая overrides криттеров/dynamic items, без сериализации этих server entities как client
+records. Строки в публичных словарях не являются секретами лишь потому, что исходное свойство — `Server`.
+
+Литерал только в server script, runtime-composed value или значение карты, переданное до её загрузки,
+всё ещё не получает автоматической клиентской регистрации. Producer обязан подготовить receiving pool
+до синхронизации hash — и в AngelScript, и в Managed C#. Восстановление ниже диагностирует недостающую
+строку после ошибочного чтения и не является обычным каналом доставки. Правила coupled output и
+incremental collection приведены в [Запекании](../content-pipeline/baking.md).
 
 Движок восстанавливается вместо бесконечного цикла отключений:
 

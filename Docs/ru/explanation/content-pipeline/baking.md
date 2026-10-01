@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"68f5223514961a1ecd7a909c1af1a77a4d3408aba38afcf72302159053de4e58"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"10d9bb11894a3a319b15234a1d43e70f9b85fca521bf0bdb851a69b280f38dbe"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -399,7 +399,9 @@ Coverage проверяется по полной unit-square area каждог�
 
 Baked sprite использует engine-owned magic/version, per-frame draw offset, cropped RGBA и mesh kind. `SpriteResource` является единственным строгим codec для client, particle editor и server-side image loader. Decoder проверяет exact slice consumption, footer, counts, indices, bounds и shared references. Mesh хранит fixed-width coordinates/indices, original logical size и cropped origin, который может быть negative. Runtime legacy fallback отсутствует. Plain rectangular consumers восстанавливают original canvas; font sheets загружаются через `SpriteManager::LoadSpriteAsQuad`. После изменения format или `SpriteMesh.*` без нового build hash нужен `ForceBakeResources`.
 
-`MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items, а hash dictionary также собирает client properties скрытых static items, чтобы `Common` hstring разрешались без раскрытия entities.
+`MapBaker` пишет отдельные server/client blobs. Client blob содержит видимые static items; его hash dictionary включает их client properties, client properties скрытых static items и все строки, собранные для server blob. Поэтому авторские `Server` values и overrides криттеров/dynamic items разрешаются после загрузки карты, но сами entities и server property records в client blob не появляются.
+
+`ProtoBaker` аналогично переносит строки server prototype pack в `fopro-bin-client`, сохраняя данные и применимость `Server` properties только на сервере. Если устарел лишь client pack, server side всё равно разбирается для сбора строк, без повторной script validation или записи актуального server pack. Shared future ставит client writing после сбора server strings; ошибки остаются фатальными. Native-секция `ClientPackCarriesStringsOfServerOnlyProperties` и проверки `BakesCrittersAndStaticItems` у `MapBaker` закрепляют эти границы на настоящих output tables. После обновления baker пересоздайте затронутые prototype/map outputs: неизменные source timestamps не доказывают, что старый output содержит расширенный словарь.
 
 Оба blob начинаются с `BAKED_MAP_FILE_MAGIC` и
 `BAKED_MAP_FILE_VERSION` из `Source/Common/MapLoader.h`.

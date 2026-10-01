@@ -313,8 +313,8 @@
       "english_path": "Docs/en/explanation/authority-and-networking/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/authority-and-networking/index.md",
-      "source_sha256": "1d3477e68b69cab00f51c58d9e0207c9e2cf59832663c0448a006994b9b6026b",
-      "source_bytes": 35136,
+      "source_sha256": "55ec3c020e45684340b6661c04e4e8d49c21d8d0807c252ce546c2c1663de8e0",
+      "source_bytes": 35700,
       "status": "current"
     },
     {
@@ -326,8 +326,8 @@
       "english_path": "Docs/en/explanation/content-pipeline/baking.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/content-pipeline/baking.md",
-      "source_sha256": "68f5223514961a1ecd7a909c1af1a77a4d3408aba38afcf72302159053de4e58",
-      "source_bytes": 82809,
+      "source_sha256": "10d9bb11894a3a319b15234a1d43e70f9b85fca521bf0bdb851a69b280f38dbe",
+      "source_bytes": 83681,
       "status": "current"
     },
     {
@@ -573,8 +573,8 @@
       "english_path": "Docs/en/how-to/content/map-format.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/content/map-format.md",
-      "source_sha256": "cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853",
-      "source_bytes": 15243,
+      "source_sha256": "8a3a03955311abcf640034cf3dc1c0bbb5aec41ec3fdb510a83dbb0682a865ab",
+      "source_bytes": 15704,
       "status": "current"
     },
     {
@@ -625,8 +625,8 @@
       "english_path": "Docs/en/how-to/content/prototype-format.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/content/prototype-format.md",
-      "source_sha256": "97846f2a1114a47727cb0cef91a84c6d60355233a2bbe9bd709a468349ee747d",
-      "source_bytes": 16830,
+      "source_sha256": "c23460464687030c5f15dedc6afcc6dc26907d414091e090fd25973474a03155",
+      "source_bytes": 17440,
       "status": "current"
     },
     {
@@ -1522,7 +1522,7 @@
       "english_path": "Docs/en/reference/map-format/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/map-format/index.md",
-      "source_sha256": "37e17571cbf62e9d29d4de5d7ca41ac6c07f7f155a6e9596c4268ddda68c808e",
+      "source_sha256": "c5cab5631e0bbfe2bed53282866fa771bc72570b43ad3c413c95da89bcce8171",
       "source_bytes": 2371,
       "status": "current"
     },
@@ -1561,8 +1561,8 @@
       "english_path": "Docs/en/reference/map-format/validation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/map-format/validation.md",
-      "source_sha256": "4a798fc761b36d9baf06c32741beb5038f83b72616a99ddadf52876098e51648",
-      "source_bytes": 9182,
+      "source_sha256": "627a90cda6f951c1536624fb66ebd41ce0249bae4e1b4bd30d35613003909d59",
+      "source_bytes": 9230,
       "status": "current"
     },
     {

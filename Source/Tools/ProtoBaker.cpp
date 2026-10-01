@@ -78,40 +78,68 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
         return;
     }
 
-    vector<std::future<void>> file_bakings;
+    bool bake_server = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time);
+    bool bake_client = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time);
+    bool bake_mapper = !_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time);
 
-    if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-server", max_write_time)) {
-        file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Server", [&]() FO_DEFERRED {
+    vector<std::future<void>> file_bakings;
+    std::shared_future<set<string>> server_hash_strings;
+
+    // Synced values can originate from Server properties: carry their strings without exposing the property data.
+    // Parse the server side even when its pack is current
+    if (bake_server || bake_client) {
+        server_hash_strings = run_async(GetAsyncMode(), "BakeProto-Server", [&]() FO_DEFERRED -> set<string> {
             auto engine = BakerServerEngine(*_context->BakedFiles);
-            engine.MapScriptTypes(&engine);
+            set<string> hash_strings;
+
+            if (bake_server) {
+                engine.MapScriptTypes(&engine);
 #if FO_ANGELSCRIPT_SCRIPTING
-            InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
+                InitAngelScriptScripting(&engine, *_context->Settings, *_context->BakedFiles);
 #endif
 #if FO_MANAGED_SCRIPTING
-            InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
+                InitManagedScripting(&engine, _context->BakedFiles, _context->Settings->Baking.CacheResources, _context->Settings->Baking.BakeOutput);
 #endif
-            auto data = BakeProtoFiles(&engine, &engine, filtered_files);
-            _context->WriteData(_context->PackName + ".fopro-bin-server", data);
-        }));
+                auto data = BakeProtoFiles(&engine, &engine, filtered_files, {}, &hash_strings);
+                _context->WriteData(_context->PackName + ".fopro-bin-server", data);
+            }
+            else {
+                // The server pack is current and was validated when it was baked, only its strings are needed here
+                (void)BakeProtoFiles(&engine, nullptr, filtered_files, {}, &hash_strings);
+            }
+
+            return hash_strings;
+        }).share();
     }
 
-    if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-client", max_write_time)) {
+    if (bake_client) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Client", [&]() FO_DEFERRED {
+            const set<string>& server_strings = server_hash_strings.get();
             auto engine = BakerClientEngine(*_context->BakedFiles);
-            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files, server_strings, nullptr);
             _context->WriteData(_context->PackName + ".fopro-bin-client", data);
         }));
     }
 
-    if (!_context->BakeChecker || _context->BakeChecker(_context->PackName + ".fopro-bin-mapper", max_write_time)) {
+    if (bake_mapper) {
         file_bakings.emplace_back(run_async(GetAsyncMode(), "BakeProto-Mapper", [&]() FO_DEFERRED {
             auto engine = BakerMapperEngine(*_context->BakedFiles);
-            auto data = BakeProtoFiles(&engine, nullptr, filtered_files);
+            auto data = BakeProtoFiles(&engine, nullptr, filtered_files, {}, nullptr);
             _context->WriteData(_context->PackName + ".fopro-bin-mapper", data);
         }));
     }
 
     size_t errors = 0;
+
+    if (server_hash_strings.valid()) {
+        try {
+            (void)server_hash_strings.get();
+        }
+        catch (const std::exception& ex) {
+            logging::write("Proto baking error: {}", ex.what());
+            errors++;
+        }
+    }
 
     for (auto& file_baking : file_bakings) {
         try {
@@ -128,7 +156,7 @@ void ProtoBaker::BakeFiles(const FileCollection& files, string_view target_path)
     }
 }
 
-auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files) const -> vector<uint8_t>
+auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSystem> script_sys, const vector<File>& files, const set<string>& extra_hash_strings, nptr<set<string>> out_hash_strings) const -> vector<uint8_t>
 {
     FO_TRACE_ZONE(Baking);
 
@@ -339,6 +367,16 @@ auto ProtoBaker::BakeProtoFiles(ptr<EngineMetadata> meta, nptr<const ScriptSyste
                 auto writer_ptr = make_ptr(&writer);
                 writer_ptr->write_byte_vector(props_data);
             }
+        }
+    }
+
+    for (const auto& str : extra_hash_strings) {
+        str_hashes.emplace(meta->Hashes.to_hashed_string(str));
+    }
+
+    if (out_hash_strings) {
+        for (const auto& hstr : str_hashes) {
+            out_hash_strings->emplace(hstr.as_str());
         }
     }
 

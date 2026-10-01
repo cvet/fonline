@@ -62,10 +62,10 @@
           "passed": true,
           "top_document_ids": [
             "engine-architecture",
-            "baking-pipeline",
             "buildtools-readme",
             "debugging",
-            "script-methods-map"
+            "script-methods-map",
+            "frontend-rendering"
           ]
         }
       ],
@@ -870,7 +870,7 @@
             "map-format-guide",
             "entity-model",
             "client-runtime",
-            "server-runtime"
+            "baking-pipeline"
           ]
         }
       ],
@@ -1379,7 +1379,7 @@
             "buildtools-readme",
             "networking",
             "generated-helper-cli-commands",
-            "baking-pipeline"
+            "client-updater"
           ]
         }
       ],

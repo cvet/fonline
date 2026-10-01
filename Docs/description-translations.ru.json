@@ -4404,8 +4404,8 @@
           "translation": "Используйте явные положительные ID, уникальные для всех секций Critter и Item одной карты."
         },
         "/rules/@id=map-format.rule.side-specific-bake/description": {
-          "source_sha256": "e3e84760bcb337bf2b8a78b143e9d5b68c432e62e15a3fe70e59d1980b70f9ef",
-          "translation": "Сервер получает криттеров и все предметы; клиент получает видимые статические предметы и необходимые ему хеши строк."
+          "source_sha256": "3c2e242bafc2f6a462e6ba110323e5b8ec4ae9ffe7bfd610f8c62232632454b9",
+          "translation": "Сервер получает криттеров и все предметы; клиент получает видимые статические предметы и все авторские строки серверной карты, без записей server entities или properties."
         },
         "/rules/@id=map-format.rule.side-specific-bake/name": {
           "source_sha256": "8e528fa22cb6f1e762b5289f2b11ee8a514606ffab20f96a1a6cb3cdb295e42c",

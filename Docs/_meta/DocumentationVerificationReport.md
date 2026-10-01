@@ -2,6 +2,24 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-01 - authored server strings in client dictionaries
+
+Scope and source revisions:
+
+- Re-fetch found master commit `fdd0b5f786f5e80197d3188703810c27ea6e4504` after `d09f2da90127a29b5f66f255fa299f1ed9b50ef9`. Reconciled it on documentation head `704a7b5a8ec5157f3f908ac3096afd16c6188d62`; audited all eight incoming files, including both baker implementations and their real-output regressions.
+- Kept the three legacy routes as pointers. Reconciled canonical EN/RU baking, networking, map-format and prototype-format owners and the map-format machine rule. The embedding project's quest/narrative producers and catalog-wide projection tests remain project-owned.
+
+Documentation and contract reconciliation:
+
+- Client prototype/map dictionaries carry authored server-side strings without widening property applicability or serializing server entities/records into the client payload. Client-only proto rebuilding still collects server strings when the server output is current; a shared future orders writing and failures remain fatal. Map dictionary registration still occurs only on map load.
+- Explained the remaining gap for runtime-composed/server-code-only values, the receiving-pool obligation for both scripting backends, and why `UnresolvedHash` recovery is diagnostic rather than the normal delivery channel. Strings in a public dictionary are not secrets merely because their authored property is Server-only.
+- Regenerated map/prototype models and EN/RU references, public index, descriptions, snippets, locale/site/search/routes and AI delivery. The seventeen-domain contract diff reports one descriptive map-model correction and no required compatibility disposition. No format-version change or pre-release breaking-change ledger is introduced.
+
+Validation and limits:
+
+- Fresh `LF_UnitTests` and `LF_Baker` builds passed; `ProtoBaker,MapBaker` passed 329 assertions in two cases, including the client-only rebuild and map-instance string checks. Fifty focused documentation tests and the full validator (408 Markdown entries) passed; all owning generated checks passed, with 4816 descriptions, 192 current locale pairs and 396 public routes/documents. AI evaluation remains 28 tasks/67 checks at 100%.
+- A previous embedding-project bake used the older baker and is not evidence for this revision. The current project plan requires a new bake and first-read client projection regressions after its matching source merge. Remote CI, production payloads, visible backend acceptance and published Jekyll artifacts were not validated by this pass.
+
 ## 2026-10-01 - parallel resource packaging and indoor-mask retirement
 
 Scope and source revisions:

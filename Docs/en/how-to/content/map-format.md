@@ -176,6 +176,11 @@ Choose deliberately:
 
 Hidden static items are omitted as client item records, but their client property strings are still collected into the hash dictionary. This lets server-only static logic retain identifiers needed by the client-side hash resolver without exposing a visible map entity.
 
+The client dictionary also contains all strings collected for the server map blob: authored `Server`
+property values and critter/dynamic-item overrides included. Only strings are added, not server entities
+or property records. They enter the client's pool only when this map loads; sending a map-only hash
+earlier still requires another declared receiving source. See [networking](../../explanation/authority-and-networking/index.md#unresolved-hash-recovery).
+
 Always regenerate and package both outputs after changing a map or a referenced prototype. Treat a one-sided stale result as invalid even when only one runtime role appears affected.
 
 ## Coordinates And Bounds

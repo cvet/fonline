@@ -130,13 +130,19 @@ When changing hash serialization, inspect both generated metadata/hash registrat
 
 Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
 
-What fills that client storage decides which strings are at risk. At startup it takes local
-resources — proto packs, script `.hstr()` literals, the dialog and text bakers — and a map's own
-`fomap-bin-client` hash table arrives only when that map loads (`MapView::LoadStaticData`). Critter
-instance properties are not in the client map-bin at all. So a `Common` / `PublicSync` / `OwnerSync`
-`hstring` whose string exists only as a map-instance override, or only in the server map-bin, fails
-to resolve when it arrives before the matching client hash is registered — which is exactly the
-window the recovery below closes.
+What fills that client storage decides which strings are at risk. Startup registers local metadata,
+proto/fixed-type identities and hashed property values (including authored `Server` values), client-compiled
+script literals, text keys, sprite paths and model names. `ProtoBaker` carries server-pack strings in the
+client prototype dictionary without enabling server property access. A map's `fomap-bin-client` table
+arrives only when that map loads (`MapView::LoadStaticData`); it also carries the server map's strings,
+including critter/dynamic-item overrides, without serializing those server entities as client records.
+Strings in these public dictionaries are not secrets merely because their source property is `Server`.
+
+A server-only script literal, a runtime-composed value, or a map value delivered before its map loads
+still has no automatic client registration. A producer must establish the receiving pool before syncing
+the hash, for both AngelScript and Managed C#. The recovery below diagnoses a missing string after the
+failed read; it is not the normal delivery channel. See [Baking](../content-pipeline/baking.md) for the
+coupled output and incremental collection rules.
 
 The engine recovers from this instead of looping on the disconnect:
 

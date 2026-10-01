@@ -41,6 +41,20 @@
 
 FO_BEGIN_NAMESPACE
 
+// The pack opens with its string table: the count, then each string length-prefixed
+static auto ReadProtoPackStrings(const vector<uint8_t>& data) -> set<string>
+{
+    auto reader = data_reader {data};
+    uint32_t count = reader.read<uint32_t>();
+    set<string> strings;
+
+    for (uint32_t i = 0; i < count; i++) {
+        strings.emplace(reader.read_string());
+    }
+
+    return strings;
+}
+
 TEST_CASE("ProtoBaker")
 {
     using namespace BakerTests;
@@ -55,12 +69,15 @@ TEST_CASE("ProtoBaker")
     CHECK_NOTHROW(bakers.front()->BakeFiles(TestRig::MakeEmptyFiles(), ""));
 
     auto add_server_metadata = [](TestRig& local_rig) { local_rig.AddBakedFile("Metadata.fometa-server", BakerTests::MakeEmptyMetadataBlob()); };
+    // A client bake parses the server side too, for the strings the server pack carries, so it needs server metadata
     auto add_client_mapper_metadata = [](TestRig& local_rig) {
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
     auto add_client_mapper_metadata_blob = [](TestRig& local_rig, const vector<uint8_t>& metadata_blob) {
+        local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
     };
@@ -171,6 +188,7 @@ $Parent = )")
         local_rig.AddSourceFile("Items/Diamond.fopro", make_diamond_source(child_parents));
 
         auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+        local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
         local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
 
@@ -214,6 +232,7 @@ $Parent = )")
             local_rig.AddSourceFile("Items/Cycle.fopro", content);
 
             auto metadata_blob = BakerTests::MakeEmptyMetadataBlob();
+            local_rig.AddBakedFile("Metadata.fometa-server", metadata_blob);
             local_rig.AddBakedFile("Metadata.fometa-client", metadata_blob);
             local_rig.AddBakedFile("Metadata.fometa-mapper", metadata_blob);
 
@@ -406,6 +425,33 @@ $Name = VaultDoorBlueprint
         CHECK(local_rig.Outputs.contains("ProtoPackFixed.fopro-bin-client"));
         CHECK(local_rig.Outputs.contains("ProtoPackFixed.fopro-bin-mapper"));
         CHECK(local_rig.Outputs.size() == 2);
+    }
+
+    SECTION("ClientPackCarriesStringsOfServerOnlyProperties")
+    {
+        TestRig local_rig;
+        local_rig.AddSourceFile("Protos/Blueprint.fopro", R"([Blueprint]
+$Name = VaultDoorBlueprint
+ServerEffectIds = RevealVaultDoor HideVaultDoor
+SharedEffectId = OpenVaultDoor
+)");
+        add_client_mapper_metadata_blob(local_rig,
+            BakerTests::MakeMetadataBlob({
+                {"FixedType", {{"Blueprint"}}},
+                {"Property", {{"Blueprint", "Server", "hstring[]", "ServerEffectIds"}, {"Blueprint", "Common", "hstring", "SharedEffectId"}}},
+            }));
+
+        // Only the client pack is outdated, so the server side is parsed for its strings and not written
+        auto client_only_bake = [](string_view path, uint64_t) { return path.ends_with(".fopro-bin-client"); };
+        ProtoBaker baker(local_rig.MakeContext("ProtoPackStrings", client_only_bake));
+        REQUIRE_NOTHROW(baker.BakeFiles(local_rig.GetAllSourceFiles(), ""));
+        REQUIRE(local_rig.Outputs.contains("ProtoPackStrings.fopro-bin-client"));
+        CHECK(local_rig.Outputs.size() == 1);
+
+        auto client_strings = ReadProtoPackStrings(local_rig.Outputs.at("ProtoPackStrings.fopro-bin-client"));
+        CHECK(client_strings.contains("OpenVaultDoor"));
+        CHECK(client_strings.contains("RevealVaultDoor"));
+        CHECK(client_strings.contains("HideVaultDoor"));
     }
 
     SECTION("RejectsInvalidProtoSectionNames")

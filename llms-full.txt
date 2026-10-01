@@ -6370,7 +6370,7 @@ fixture.
 ===== BEGIN DOCUMENT prototype-format-guide =====
 Source: Docs/en/how-to/content/prototype-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/prototype-format.html
-Content SHA-256: 97846f2a1114a47727cb0cef91a84c6d60355233a2bbe9bd709a468349ee747d
+Content SHA-256: c23460464687030c5f15dedc6afcc6dc26907d414091e090fd25973474a03155
 
 ---
 layout: default
@@ -6524,6 +6524,12 @@ metadata property is known; it never turns an unknown property into a valid one.
 
 A property is temporary when it is mutable or core-owned and is not persistent. The generated [property catalog](../../reference/prototype-format/properties.md) applies this exact rule to current built-in metadata and lists the active sides.
 
+Skipping a server-only property in client records does not remove its authored strings from the client
+hash dictionary: `ProtoBaker` collects the server pack's strings too, including FixedType values. Property
+access remains server-only. A client-only rebuild still needs server metadata for this collection; it
+parses an already-current server pack's sources without revalidating scripts or rewriting that pack.
+See [Baking](../../explanation/content-pipeline/baking.md) and [networking](../../explanation/authority-and-networking/index.md#unresolved-hash-recovery) for output and receiving-pool boundaries.
+
 Project metadata is not present in the engine-only catalog. A production embedding project should generate a companion catalog from its combined engine/project metadata and publish it in project documentation.
 
 Parser applicability is only the first gate. A project should separately classify fields as:
@@ -6637,7 +6643,7 @@ When an embedding project advances its Engine revision:
 ===== BEGIN DOCUMENT map-format-guide =====
 Source: Docs/en/how-to/content/map-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/map-format.html
-Content SHA-256: cd72eed704aecb3db0397d7385e5f7a206d556694f195cb7a35270869ed5c853
+Content SHA-256: 8a3a03955311abcf640034cf3dc1c0bbb5aec41ec3fdb510a83dbb0682a865ab
 
 ---
 layout: default
@@ -6816,6 +6822,11 @@ Choose deliberately:
 - dynamic entities are synchronized through the normal runtime entity path, not embedded in the client static layer.
 
 Hidden static items are omitted as client item records, but their client property strings are still collected into the hash dictionary. This lets server-only static logic retain identifiers needed by the client-side hash resolver without exposing a visible map entity.
+
+The client dictionary also contains all strings collected for the server map blob: authored `Server`
+property values and critter/dynamic-item overrides included. Only strings are added, not server entities
+or property records. They enter the client's pool only when this map loads; sending a map-only hash
+earlier still requires another declared receiving source. See [networking](../../explanation/authority-and-networking/index.md#unresolved-hash-recovery).
 
 Always regenerate and package both outputs after changing a map or a referenced prototype. Treat a one-sided stale result as invalid even when only one runtime role appears affected.
 
@@ -14904,7 +14915,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 1d3477e68b69cab00f51c58d9e0207c9e2cf59832663c0448a006994b9b6026b
+Content SHA-256: 55ec3c020e45684340b6661c04e4e8d49c21d8d0807c252ce546c2c1663de8e0
 
 ---
 layout: default
@@ -15038,13 +15049,19 @@ When changing hash serialization, inspect both generated metadata/hash registrat
 
 Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
 
-What fills that client storage decides which strings are at risk. At startup it takes local
-resources — proto packs, script `.hstr()` literals, the dialog and text bakers — and a map's own
-`fomap-bin-client` hash table arrives only when that map loads (`MapView::LoadStaticData`). Critter
-instance properties are not in the client map-bin at all. So a `Common` / `PublicSync` / `OwnerSync`
-`hstring` whose string exists only as a map-instance override, or only in the server map-bin, fails
-to resolve when it arrives before the matching client hash is registered — which is exactly the
-window the recovery below closes.
+What fills that client storage decides which strings are at risk. Startup registers local metadata,
+proto/fixed-type identities and hashed property values (including authored `Server` values), client-compiled
+script literals, text keys, sprite paths and model names. `ProtoBaker` carries server-pack strings in the
+client prototype dictionary without enabling server property access. A map's `fomap-bin-client` table
+arrives only when that map loads (`MapView::LoadStaticData`); it also carries the server map's strings,
+including critter/dynamic-item overrides, without serializing those server entities as client records.
+Strings in these public dictionaries are not secrets merely because their source property is `Server`.
+
+A server-only script literal, a runtime-composed value, or a map value delivered before its map loads
+still has no automatic client registration. A producer must establish the receiving pool before syncing
+the hash, for both AngelScript and Managed C#. The recovery below diagnoses a missing string after the
+failed read; it is not the normal delivery channel. See [Baking](../content-pipeline/baking.md) for the
+coupled output and incremental collection rules.
 
 The engine recovers from this instead of looping on the disconnect:
 
@@ -15340,7 +15357,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 68f5223514961a1ecd7a909c1af1a77a4d3408aba38afcf72302159053de4e58
+Content SHA-256: 10d9bb11894a3a319b15234a1d43e70f9b85fca521bf0bdb851a69b280f38dbe
 
 ---
 layout: default
@@ -16121,7 +16138,9 @@ After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.
 
-`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
+`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items; its hash dictionary includes their client properties, hidden static-item client properties, and every string collected for the server blob. Thus authored `Server` values and critter/dynamic-item overrides can resolve after that map loads without putting those entities or server property records in the client blob.
+
+`ProtoBaker` similarly carries the server prototype pack's strings in `fopro-bin-client`, while `Server` property data and applicability remain server-only. When only the client pack is stale, it still parses the server side to collect strings, without rerunning script validation or writing the current server pack. A shared future orders client writing after server-string collection; errors remain fatal. The native `ClientPackCarriesStringsOfServerOnlyProperties` section and `MapBaker`'s `BakesCrittersAndStaticItems` checks bind these boundaries to real output tables. Regenerate affected prototype/map outputs after updating the baker; unchanged source timestamps do not establish that old outputs carry the enlarged dictionaries.
 
 Both blobs start with `BAKED_MAP_FILE_MAGIC` and
 `BAKED_MAP_FILE_VERSION` from `Source/Common/MapLoader.h`.
@@ -23897,7 +23916,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: 37e17571cbf62e9d29d4de5d7ca41ac6c07f7f155a6e9596c4268ddda68c808e
+Content SHA-256: c5cab5631e0bbfe2bed53282866fa771bc72570b43ad3c413c95da89bcce8171
 
 ---
 title: Generated Map Format Reference
@@ -23921,7 +23940,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>78fa6bc9772d2f2ac4ad9c435e388b7deee51232b35c99a3ca34b3af588a1e4e</code> |
+| Contract digest | <code>15a1b6ba93fb54d5a797a8869dda10a5858bec01f49127fba15c1181a4cfe01e</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |

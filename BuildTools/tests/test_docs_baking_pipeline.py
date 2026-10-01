@@ -143,6 +143,20 @@ class BakingPipelineDocumentationTests(unittest.TestCase):
         self.assertIn(GUIDE_PATH, record["engine_targets"])
         self.assertNotIn(LEGACY_PATH, record["engine_targets"])
 
+    def test_client_dictionaries_include_authored_server_strings_not_server_records(self) -> None:
+        proto = self._read("Source/Tools/ProtoBaker.cpp")
+        maps = self._read("Source/Tools/MapBaker.cpp")
+        self.assertIn("if (bake_server || bake_client)", proto)
+        self.assertIn("server_hash_strings.get()", proto)
+        self.assertIn("client_hash_strings.emplace(hstr.as_str())", maps)
+        for path in (GUIDE_PATH, RUSSIAN_PATH):
+            guide = self._read(path)
+            self.assertIn("ClientPackCarriesStringsOfServerOnlyProperties", guide)
+            self.assertIn("BakesCrittersAndStaticItems", guide)
+        networking = self._read("Docs/en/explanation/authority-and-networking/index.md")
+        self.assertIn("not secrets", networking)
+        self.assertIn("both AngelScript and Managed C#", networking)
+
 
 if __name__ == "__main__":
     unittest.main()
