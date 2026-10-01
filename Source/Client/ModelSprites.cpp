@@ -69,11 +69,47 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    int32_t atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-    int32_t atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+    RefreshHitMask();
 
-    uint8_t alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
-    return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
+    // Before the first picture arrives the model is not under the cursor yet, for the frame or two a readback takes
+    if (!_hitMaskSize.is_valid_pos(pos)) {
+        return false;
+    }
+
+    return _hitMask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_hitMaskSize.width) + numeric_cast<size_t>(pos.x)];
+}
+
+// The mask trails the drawn picture by the frame or two a readback takes, a lag picking under a moving cursor absorbs
+void ModelSprite::RefreshHitMask() const
+{
+    // One readback in flight at a time, and only for a picture the mask does not show yet
+    if (!_hitReadback && _hitMaskStale) {
+        ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
+        ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
+
+        _hitReadback = atlas_tex->RequestTextureRegion(atlas_pos, _size);
+        _hitReadbackSize = _size;
+        _hitMaskStale = false;
+    }
+
+    if (!_hitReadback) {
+        return;
+    }
+
+    optional<vector<ucolor>> pixels = _hitReadback->TakePixels();
+
+    if (!pixels.has_value()) {
+        return;
+    }
+
+    _hitMask.resize(pixels->size());
+
+    for (size_t i = 0; i < pixels->size(); i++) {
+        _hitMask[i] = _sprMngr->CheckHitTest(numeric_cast<int32_t>((*pixels)[i].comp.a));
+    }
+
+    _hitMaskSize = _hitReadbackSize;
+    _hitReadback.reset();
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
@@ -185,6 +221,9 @@ void ModelSprite::SetSize(isize32 size)
 void ModelSprite::DrawToAtlas()
 {
     _factory->DrawModelToAtlas(this);
+
+    // The mask now shows the previous picture, and the next hit test asks for this one
+    _hitMaskStale = true;
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
@@ -463,7 +502,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
     auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
-    prepared_crop.Atlas->GetRenderTarget()->ClearLastPixelPicks();
     _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();
