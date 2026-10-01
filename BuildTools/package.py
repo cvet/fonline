@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import glob
 import hashlib
 import io
 import json
+import multiprocessing
 import os
 import re
 import shlex
@@ -19,6 +21,7 @@ import tarfile
 import tempfile
 import zipfile
 import zlib
+from concurrent.futures import ProcessPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
@@ -79,6 +82,7 @@ RESOURCE_ARCHIVE_CACHE_HELPER_ENV = 'FO_RESOURCE_ARCHIVE_CACHE_HELPER'
 RESOURCE_ARCHIVE_CACHE_MISS = 2
 RESOURCE_ARCHIVE_CACHE_UNAVAILABLE = 3
 RESOURCE_ARCHIVE_HASH_CHUNK_BYTES = 1024 * 1024
+RESOURCE_PACK_JOBS_ENV = 'FO_RESOURCE_PACK_JOBS'
 
 # Maps the (platform, arch-in-binary-entry-directory) pair used by the packager
 # to the C++ binary target arch reported by GetCurrentBinaryUpdateTargetName()
@@ -104,6 +108,16 @@ PACKAGER_TO_CXX_BINARY_TARGET_ARCH = {
 	('iOS', 'simulator'): 'simulator',
 	('Web', 'wasm'): 'wasm',
 }
+
+def positive_job_count(value: str) -> int:
+	try:
+		jobs = int(value)
+	except ValueError:
+		raise argparse.ArgumentTypeError('Resource pack jobs must be a positive integer') from None
+	if jobs < 1:
+		raise argparse.ArgumentTypeError('Resource pack jobs must be a positive integer')
+	return jobs
+
 
 def parse_args() -> argparse.Namespace:
 	parser = argparse.ArgumentParser(description='FOnline packager')
@@ -134,6 +148,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-binary-output-postfix', dest='binary_output_postfix', default='', help='suffix appended to binary output dir names')
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-resource-pack-compress-level', dest='resource_pack_compress_level', type=int, choices=range(0, 10), help='override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)')
+	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
 	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
 	return parser.parse_args()
 
@@ -896,6 +911,7 @@ class Packager:
 	client_res_dir: str = field(init=False)
 	platform_binaries_dir: str = field(init=False)
 	resource_pack_compress_level: int = field(init=False)
+	resource_pack_jobs: int = field(init=False, default=1)
 	resource_pack_min_compress_gain: int = field(init=False)
 	bundle_compress_level: int = field(init=False)
 	target_output_path: str = field(init=False)
@@ -914,6 +930,7 @@ class Packager:
 		self.client_res_dir = self.fomain.mainSection().getStr('Baking.ClientResources')
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.resource_pack_compress_level = self.args.resource_pack_compress_level if getattr(self.args, 'resource_pack_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.ResourcePackCompressLevel')
+		self.resource_pack_jobs = self.args.resource_pack_jobs
 		self.resource_pack_min_compress_gain = self.fomain.mainSection().getInt('Baking.ResourcePackMinCompressGain')
 		self.bundle_compress_level = self.args.bundle_compress_level if getattr(self.args, 'bundle_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.BundleCompressLevel')
 		self.target_output_path = self.build_target_output_path()
@@ -1473,7 +1490,7 @@ class Packager:
 		local_path = local_archives.get(key)
 
 		if local_path is not None and os.path.isfile(local_path):
-			if os.path.realpath(local_path) != os.path.realpath(archive_path):
+			if os.path.normcase(os.path.realpath(local_path)) != os.path.normcase(os.path.realpath(archive_path)):
 				shutil.copy2(local_path, archive_path)
 
 			validate_resource_pack(archive_path, entry_names)
@@ -1494,11 +1511,11 @@ class Packager:
 		if not hasattr(self, 'resource_archive_paths'):
 			self.resource_archive_paths = {}
 
-		archive_identity = os.path.realpath(archive_path)
+		archive_identity = os.path.normcase(os.path.realpath(archive_path))
 		self.resource_archive_paths = {
 			cached_key: cached_path
 			for cached_key, cached_path in self.resource_archive_paths.items()
-			if os.path.realpath(cached_path) != archive_identity
+			if os.path.normcase(os.path.realpath(cached_path)) != archive_identity
 		}
 		self.resource_archive_paths[key] = archive_path
 
@@ -1649,6 +1666,55 @@ class Packager:
 		entries = [(os.path.relpath(file_path, base_path).replace(os.sep, '/'), file_path) for file_path in files]
 		self.write_resource_pack_entries(archive_path, entries)
 
+	def package_resource_packs(self, packs: Sequence[tuple[str, Sequence[str], str]]) -> None:
+		if self.resource_pack_jobs == 1 or len(packs) < 2:
+			for pack_name, files, base_res_name in packs:
+				self.package_resource_pack(pack_name, files, base_res_name)
+			return
+
+		parents = list(range(len(packs)))
+		aliases: dict[tuple[str, str], int] = {}
+
+		def find_group(index: int) -> int:
+			while parents[index] != index:
+				index = parents[index]
+			return index
+
+		for index, (pack_name, _, base_res_name) in enumerate(packs):
+			archive_path = os.path.join(self.target_output_path, base_res_name, pack_name + '.fores')
+			identity = os.path.normcase(os.path.realpath(archive_path))
+			for alias in (('pack', os.path.normcase(pack_name)), ('destination', identity)):
+				if alias in aliases:
+					parents[find_group(index)] = find_group(aliases[alias])
+				else:
+					aliases[alias] = index
+
+		groups: dict[int, list[tuple[str, Sequence[str], str]]] = {}
+		for index, pack in enumerate(packs):
+			groups.setdefault(find_group(index), []).append(pack)
+
+		worker_count = min(self.resource_pack_jobs, len(groups))
+		batches: list[list[tuple[str, Sequence[str], str]]] = [[] for _ in range(worker_count)]
+		batch_bytes = [0] * worker_count
+		weighted_groups = [(sum(os.path.getsize(path) for _, files, _ in group for path in files), group)
+			for group in groups.values()]
+		for group_bytes, group in sorted(weighted_groups, key=lambda entry: entry[0], reverse=True):
+			worker_index = min(range(worker_count), key=lambda index: (batch_bytes[index], len(batches[index])))
+			batches[worker_index].extend(group)
+			batch_bytes[worker_index] += group_bytes
+
+		# Sharing a worker preserves local archive reuse and prevents concurrent writes to one destination
+		worker_packager = copy.copy(self)
+		worker_packager.resource_archive_paths = {}
+		with ProcessPoolExecutor(max_workers=worker_count, mp_context=multiprocessing.get_context('spawn')) as executor:
+			futures = [executor.submit(package_resource_pack_batch, worker_packager, batch) for batch in batches]
+			for future in futures:
+				archive_paths, cache_unavailable = future.result()
+				for key, archive_path in archive_paths.items():
+					self.remember_resource_archive(archive_path, key)
+				if cache_unavailable:
+					self.resource_archive_cache_unavailable = True
+
 	def load_config_data(self) -> None:
 		config_name, self.config_data = self.read_config_data(self.args.target)
 		self.target_config = load_config_from_data(self.config_data)
@@ -1665,6 +1731,7 @@ class Packager:
 		log('Baking input', self.baking_path)
 
 		self.ensure_resource_dirs()
+		packs: list[tuple[str, Sequence[str], str]] = []
 
 		for pack_name in self.get_target_resource_packs(self.args.target):
 			files = self.collect_resource_files(pack_name, self.args.target)
@@ -1673,15 +1740,16 @@ class Packager:
 				self.embedded_data = self.make_embedded_pack(files, os.path.join(self.baking_path, pack_name))
 			else:
 				base_res_name = self.server_res_dir if self.args.target == 'Server' else self.client_res_dir
-				self.package_resource_pack(pack_name, files, base_res_name)
+				packs.append((pack_name, files, base_res_name))
 
 		if self.args.target == 'Server':
 			for pack_name in self.get_target_resource_packs('Client'):
 				if pack_name == EMBEDDED_PACK_NAME:
 					continue
 				files = self.collect_resource_files(pack_name, 'Client')
-				self.package_resource_pack(pack_name, files, self.client_res_dir)
+				packs.append((pack_name, files, self.client_res_dir))
 
+		self.package_resource_packs(packs)
 		self.load_config_data()
 
 	def patch_embedded(self, file_path: str) -> None:
@@ -2375,6 +2443,12 @@ class Packager:
 		except Exception:
 			self.cleanup_output()
 			raise
+
+
+def package_resource_pack_batch(packager: Packager, packs: Sequence[tuple[str, Sequence[str], str]]) -> tuple[dict[str, str], bool]:
+	for pack_name, files, base_res_name in packs:
+		packager.package_resource_pack(pack_name, files, base_res_name)
+	return packager.resource_archive_paths, getattr(packager, 'resource_archive_cache_unavailable', False)
 
 
 def main() -> None:

@@ -474,6 +474,17 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 
 Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource directory, written from the loose baked tree with the per-target file filter applied; the format is [ResourcePackFormat.md](ResourcePackFormat.md). It is the only form packaging writes - zip, bos and dat stay readable at mount time as optional support for foreign or legacy data, but nothing produces them any more. The writer lives in `package.py` rather than in the engine because the file list depends on the packaging target, which the baker does not know. `Baking.ResourcePackCompressLevel` sets the `.fores` compression level and `Baking.ResourcePackMinCompressGain` the percentage a blob must give back before it is deflated instead of stored as it is. `Embedded` is the one exception: it is compiled into the executable rather than shipped as a file, stays a zip, and uses `Baking.BundleCompressLevel` together with the outer distribution bundles. Every compression level the engine takes is written on the zlib scale whatever codec consumes it - `0` stores, `9` is the strongest - so a setting keeps its meaning if its format moves to another codec, which then maps the value onto its own range. `package.py` takes `-resource-pack-compress-level` and `-bundle-compress-level` to override either one for a single run.
 
+Resource archives are sequential by default. `package.py -resource-pack-jobs N`, or `FO_RESOURCE_PACK_JOBS`
+when the argument is absent, bounds independent archive work to `N` processes. The limit must be a positive
+integer. Workers use `spawn` on every host and retain the same complete writer and validator, including on
+archive-cache hits. Tasks for one pack name or physical destination run in order on one worker, retaining
+local reuse of identical server/client archives. Groups are assigned to workers by total source bytes,
+with large groups assigned first. Each assigned batch retains its archive-cache availability state, so
+failed optional-cache probes for the whole invocation are bounded by the worker limit rather than the
+archive count. Workers finish
+before managed-runtime packs are rewritten or a failed package is removed; the parent retains validated
+archive identities for later reuse. Choose a limit that fits the host's available CPU and memory.
+
 `BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
 shipped bytes, encoded catalog sizes, the stored/deflate split and write time - so the choice of format stays
 answerable against a real corpus rather than from memory. It takes the baked root as an argument and deletes
