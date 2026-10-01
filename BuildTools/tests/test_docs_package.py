@@ -100,7 +100,7 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["summary"]["pack_count"], 19)
         self.assertEqual(model["summary"]["implemented_pack_count"], 18)
         self.assertEqual(model["summary"]["artifact_pack_count"], 8)
-        self.assertEqual(model["summary"]["cli_argument_count"], 15)
+        self.assertEqual(model["summary"]["cli_argument_count"], 16)
         self.assertEqual(
             [entry["name"] for entry in model["targets"]],
             ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"],

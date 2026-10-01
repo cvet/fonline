@@ -1453,7 +1453,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661
+Content SHA-256: 151806f4af4fc3c3f5eb639b38346c826bb8a51cd72faf8627bc4a5382da6cd7
 
 ---
 layout: default
@@ -1730,6 +1730,8 @@ A server package includes server resources and client update resource packs. Whe
 Keep those product and infrastructure details in the embedding project. [Release Operations](operations.md) supplies the reusable process, readiness, rollout, shutdown, and rollback runbook without claiming that infrastructure as Engine-owned.
 
 ## Reproducibility and provenance
+
+Resource archives are sequential by default. `package.py -resource-pack-jobs N` overrides `FO_RESOURCE_PACK_JOBS` (default `1`); both accept only positive integers. Independent `.fores` work runs in at most `N` spawned processes on every host. Tasks sharing a pack name or physical destination stay ordered on one worker, preserving local reuse and preventing concurrent writes. Groups are balanced by source bytes, largest first. Every worker retains the complete writer, cache protocol and payload validation; optional-cache unavailability persists within its batch, bounding failed probes by the worker count. The parent adopts validated archive identities and waits for workers before runtime-specific pack rewriting or failure cleanup. Embedded resources and final distribution bundles are outside this worker lane. Choose the limit for available CPU and memory; it is not a format change or a measured speedup guarantee.
 
 FOnline writes each non-Embedded resource pack as a deterministic `.fores` base from sorted normalized paths, without serialized timestamps. The [Resource Pack Format](../../../ResourcePackFormat.md) specifies the version-2 header, content and physical hashes, complete catalog, optional writable patch, and validation rules. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern per-blob deflate; `Baking.BundleCompressLevel` governs outer distribution bundles and the executable's Embedded ZIP. `package.py` accepts separate `-resource-pack-compress-level` and `-bundle-compress-level` overrides. It verifies every produced resource payload, including decoded length and content hash, before packaging succeeds. Embedded ZIP remains sorted with fixed timestamps and permissions and is CRC-checked from its in-memory bytes before binary patching. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.
 
@@ -17383,7 +17385,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 9ac1b7de3f6de111e0946dd417f7dadc72dcb49b0cdc7dd3c30087f9a7c48361
+Content SHA-256: 498fc0b5b8ff1be77eeb94b2e75deff6d9b2fe35816012dfaf84438e6094b253
 
 ---
 layout: default
@@ -18040,6 +18042,10 @@ acceptance claim is driver-specific.
 - dump render-target textures for debugging.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
+
+The manager owns every target it creates; a `MapView` borrows its map, light and indoor-mask targets and releases all three in `OnDestroySelf()`. Destruction first flushes queued sprite draws while their textures are alive. Before deleting the indoor mask, `EffectManager::ClearIndoorMaskTexture()` clears only matching `IndoorMaskTex` borrows across all cached effects, including effects no longer selected for map flushing. Another live map's mask and the surrounding target stack remain intact. `GetRenderTargetCount()` counts manager-owned targets for lifecycle diagnostics, not backend memory or driver residency.
+
+`Source/Tests/Test_ClientEntityLifetime.cpp` pins repeated release under default, disabled-mask and direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`) plus queued draws, cached effects, another live map and an outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory and visible map-transition acceptance remain separate checks.
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
@@ -23268,7 +23274,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9
+Content SHA-256: aa85535fdcb627b8997b0f9e35da5caae58df7979677871aadeb6d61f09b2b08
 
 ---
 layout: default
@@ -23489,6 +23495,8 @@ Managed class libraries remain resource payload rather than binary companions. W
 `package.py` writes each non-Embedded target pack as `.fores` from the filtered loose bake output; `Embedded` remains ZIP inside the executable. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern `.fores` blobs, while `Baking.BundleCompressLevel` governs Embedded and outer bundles. One-run overrides are `-resource-pack-compress-level` and `-bundle-compress-level`. The format and updater selection/recovery contract are in [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers stable entry names and contents plus compression level. A restored or newly written archive always passes the same exact-entry and CRC validation; misses and an optional-cache-unavailable result fall back to local creation, while other helper failures remain packaging errors. Repeated identical archives in one packaging process reuse the first validated result.
+
+`-resource-pack-jobs N` or `FO_RESOURCE_PACK_JOBS` (default `1`) bounds independent `.fores` archives to positive `N` spawned workers. Pack-name/destination collisions stay ordered within one worker; every archive still passes full payload validation. Workers finish before runtime-pack rewriting or failure cleanup. See [Packaging and Release](../../how-to/release/packaging.md#reproducibility-and-provenance) for batching, cache state, resource limits and the unchanged reproducibility boundary.
 
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
@@ -25587,7 +25595,7 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 ===== BEGIN DOCUMENT generated-package-index =====
 Source: Docs/en/reference/packages/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/packages/
-Content SHA-256: da8fea67954a88af1c995bcf0557759ad2666d2f14f08da5d128b0e4de5f8c83
+Content SHA-256: 1c6ee88f8602cd8ceedf2dc28e26dd2c9782105ce0eec539bfb2241849532af9
 
 ---
 title: Generated Package Interface
@@ -25623,7 +25631,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>be83fb2d181b0a244ec30e08ddc5fe64ea10e717c3597e9df7c706e3f67aea98</code> |
+| Contract digest | <code>313dabe8fc596a60ae1f1cb5636c7bd32faaa8d16a1a4c25eb1dba7211b84460</code> |
 
 ## Coverage
 
@@ -25632,7 +25640,7 @@ Use this cross-contract sequence:
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
 | [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
-| [Packager CLI](cli.md) | 15 | Exact internal package.py invocation contract. |
+| [Packager CLI](cli.md) | 16 | Exact internal package.py invocation contract. |
 
 ## Boundary
 

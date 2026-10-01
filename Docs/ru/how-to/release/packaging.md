@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"151806f4af4fc3c3f5eb639b38346c826bb8a51cd72faf8627bc4a5382da6cd7"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -390,6 +390,8 @@ clients прочитайте [Client Runtime Split and Updater](../../explanatio
 объявляя инфраструктуру собственностью Engine.
 
 ## Воспроизводимость и происхождение
+
+Архивы ресурсов по умолчанию создаются последовательно. `package.py -resource-pack-jobs N` переопределяет `FO_RESOURCE_PACK_JOBS` (по умолчанию `1`); допустимы только положительные целые. Независимые `.fores` создаются не более чем в `N` процессах с `spawn` на любом host. Задачи с общим именем pack или физическим destination выполняются по порядку в одном worker, сохраняя локальное повторное использование и исключая конкурентную запись. Группы распределяются по объёму source bytes, начиная с самых крупных. Каждый worker использует полный writer, cache protocol и payload validation; недоступность optional cache сохраняется внутри batch, ограничивая неудачные probes числом workers. Parent принимает проверенные archive identities и дожидается workers до переписывания runtime-specific packs или очистки неудавшегося package. Embedded resources и конечные distribution bundles не входят в эту worker lane. Выбирайте лимит по доступным CPU и памяти; это не изменение формата и не гарантия измеренного ускорения.
 
 FOnline записывает каждый не-Embedded resource pack как детерминированную базу `.fores` из отсортированных нормализованных путей, не сохраняя timestamps. [Формат пакетов ресурсов](../../../ResourcePackFormat.md) определяет заголовок версии 2, физический и логический хеши, полный каталог, необязательный writable-патч и проверки целостности. `Baking.ResourcePackCompressLevel` и `Baking.ResourcePackMinCompressGain` управляют сжатием отдельных ресурсов; `Baking.BundleCompressLevel` — внешними пакетами и ZIP Embedded. Для одного запуска `package.py` принимает `-resource-pack-compress-level` и `-bundle-compress-level`. Он проверяет декодированную длину и хеш каждого payload до завершения упаковки. Embedded ZIP сохраняет фиксированные timestamps/permissions и проходит CRC-проверку до встраивания в бинарный файл. Внешние ZIP и TAR packages используют
 логические file modes target, а не modes filesystem host, поэтому Windows

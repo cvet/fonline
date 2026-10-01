@@ -493,8 +493,15 @@ An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper
 names and contents plus compression level. Exit code 0 from `restore` supplies a ready archive, while 2 is a
 miss; after a miss the validated archive is passed to `store`, and an interrupted write calls `release`. Exit
 code 3 reports an unavailable optional cache and disables later helper calls in the same package process.
-Regardless of origin, the normal entry-list and CRC validation remains mandatory. Identical archives needed
+Regardless of origin, the normal entry-list, checksum and decoded-payload validation remains mandatory. Identical archives needed
 twice by one package process are copied from its first validated result without another helper call.
+`-resource-pack-jobs N` (or `FO_RESOURCE_PACK_JOBS`, default 1) bounds independent resource archives to `N`
+spawned processes. Each worker runs the full writer, cache protocol and integrity checks. One pack name or
+physical destination stays on one worker, preserving order and local reuse between server/client outputs.
+The parent adopts validated archive identities and waits for
+workers before runtime-specific resource rewriting or failure cleanup.
+Worker batches are balanced by source bytes, largest groups first. Each batch retains the unavailable-cache
+state between its archives, bounding failed optional-cache probes by the worker limit for the invocation.
 
 ## Packaging: post-build binary patching
 

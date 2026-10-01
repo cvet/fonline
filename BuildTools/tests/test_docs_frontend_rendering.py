@@ -128,6 +128,22 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
         ):
             self.assertIn(boundary, guide)
 
+    def test_map_target_retirement_has_a_source_bound_documentation_owner(self) -> None:
+        tests = self._read("Source/Tests/Test_ClientEntityLifetime.cpp")
+        map_source = self._read("Source/Client/MapView.cpp")
+        effects = self._read("Source/Client/EffectManager.cpp")
+        self.assertIn("_engine->SprMngr.Flush();", map_source)
+        self.assertIn("ClearIndoorMaskTexture", map_source)
+        self.assertIn("effect->IndoorMaskTex.reset();", effects)
+        for marker in (
+            "MapViewRenderTargetsAreReleasedOnDestroy",
+            "MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences",
+        ):
+            self.assertIn(marker, tests)
+            self.assertIn(marker, self._read(GUIDE_PATH))
+            self.assertIn(marker, self._read(RUSSIAN_PATH))
+        self.assertIn("not backend memory or driver residency", self._read(GUIDE_PATH))
+
     def test_project_evidence_supports_reusable_practices(self) -> None:
         evidence = json.loads(self._read("BuildTools/ExternalProjectEvidence.json"))
         record = next(

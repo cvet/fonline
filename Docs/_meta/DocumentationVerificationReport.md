@@ -2,6 +2,24 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-01 - parallel resource packaging and indoor-mask retirement
+
+Scope and source revisions:
+
+- Reconciled Engine documentation head `40288358d78c8c6769fcfb1adde611a7a8440b2e` with master through `d09f2da90127a29b5f66f255fa299f1ed9b50ef9` (two incoming commits after `123c5b0b2e76ac34e9090e36e5a886d0298900ee`). Audited all ten changed files: packager and its fixtures, BuildTools prose, map/effect/render-target ownership, and client-lifetime tests.
+- Preserved `package.py::create_parser` during the source conflict so the helper CLI remains introspectable. Kept both legacy pages as route pointers and reconciled new prose in canonical English and reviewed Russian owners.
+
+Documentation and contract reconciliation:
+
+- Packaging remains serial by default; documented the positive worker limit, CLI/environment precedence, spawned batches, name/destination collision ordering, validated cache adoption, bounded unavailable-cache probes, and separation from Embedded/runtime rewriting. The additive internal CLI option changes one package-model entry; the seventeen-domain contract diff requires no compatibility disposition or pre-release breaking-change ledger.
+- Documented flush-before-retirement, matching cached effect borrows, map/light/indoor-mask target deletion, and the render-target owner count's limits. The native fixtures cover repeated unloads, queued draws, inactive cached effects, and another live map; neither the counter nor NullRenderer establishes GPU memory or visible hardware behavior.
+- Refreshed generated package/EN/RU references, description inventory (4816/4816), snippets, locale metadata, site/search/routes, AI retrieval and delivery. The BuildTools Russian implementation notes were reconciled with the current English MSI diagnostic rules as well as the new workers.
+
+Validation and limits:
+
+- Packaging tests passed 39 cases, including real CLI serial/parallel outputs, cold/warm caches, poisoned archives and destination identities. Focused documentation tests passed 58 cases; the full validator passed 408 Markdown entries. All generated checks passed: 307 normative snippets, 159 evidence snippets, 181 external-parser checks, 192 current translation pairs, 396 public routes/documents, and AI retrieval 28 tasks/67 checks at 100% (0.925 MRR). Screenshot/diagram provenance remains current. One delivery write hit a transient filesystem error; the owning generator rerun and freshness checks passed.
+- Fresh `LF_UnitTests` and `LF_ClientLib` builds passed. The two new map-target tests passed all 51 assertions. The full native suite is tracked separately in the active embedding-project integration plan; no project gameplay, remote CI, Jekyll publication, production package, or visible backend acceptance is claimed here.
+
 ## 2026-10-01 - requested texture readback and CPU model hit masks
 
 Scope and source revisions:

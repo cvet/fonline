@@ -16,7 +16,7 @@ CMake normally invokes this internal CLI once for each `BINARY` clause. Direct c
 ```text
 usage: package.py [-h] -maincfg MAINCFG -buildhash BUILDHASH -devname DEVNAME -nicename NICENAME -target {Server,Client,Mapper,Baker,AnimationViewer,ParticleViewer} -platform {Windows,Linux,Android,macOS,iOS,Web} -arch ARCH
                   [-expect-client-runtime EXPECT_CLIENT_RUNTIME] -pack PACK -config CONFIG -input INPUT [-binary-output-postfix BINARY_OUTPUT_POSTFIX] -output OUTPUT [-resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}]
-                  [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]
+                  [-resource-pack-jobs RESOURCE_PACK_JOBS] [-bundle-compress-level {0,1,2,3,4,5,6,7,8,9}]
 
 FOnline packager
 
@@ -41,6 +41,8 @@ options:
   -output OUTPUT        output dir
   -resource-pack-compress-level {0,1,2,3,4,5,6,7,8,9}
                         override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)
+  -resource-pack-jobs RESOURCE_PACK_JOBS
+                        maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)
   -bundle-compress-level {0,1,2,3,4,5,6,7,8,9}
                         override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)
 ```
@@ -61,4 +63,5 @@ options:
 | <a id="entry-package-cli-argument-binary-output-postfix-9e412853dd"></a><code>package.cli.argument.binary_output_postfix</code> | <code>-binary-output-postfix</code> | no | <code>store</code> | - | <code>-</code> | suffix appended to binary output dir names |
 | <a id="entry-package-cli-argument-output-2ae5ff278c"></a><code>package.cli.argument.output</code> | <code>-output</code> | yes | <code>store</code> | - | - | output dir |
 | <a id="entry-package-cli-argument-resource-pack-compress-level-1a964b7b3f"></a><code>package.cli.argument.resource_pack_compress_level</code> | <code>-resource-pack-compress-level</code> | no | <code>store</code> | <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>, <code>6</code>, <code>7</code>, <code>8</code>, <code>9</code> | - | override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest) |
+| <a id="entry-package-cli-argument-resource-pack-jobs-82d960426c"></a><code>package.cli.argument.resource_pack_jobs</code> | <code>-resource-pack-jobs</code> | no | <code>store</code> | - | <code>1</code> | maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1) |
 | <a id="entry-package-cli-argument-bundle-compress-level-b8ad3a9fba"></a><code>package.cli.argument.bundle_compress_level</code> | <code>-bundle-compress-level</code> | no | <code>store</code> | <code>0</code>, <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>, <code>5</code>, <code>6</code>, <code>7</code>, <code>8</code>, <code>9</code> | - | override the bundle compression level (zlib scale: 0 stores, 9 is the strongest) |

@@ -218,6 +218,8 @@ Managed class libraries remain resource payload rather than binary companions. W
 
 An embedding build may set `FO_RESOURCE_ARCHIVE_CACHE_HELPER` to a Python helper implementing `restore|store|release --key <sha256> --archive <path>`. The key covers stable entry names and contents plus compression level. A restored or newly written archive always passes the same exact-entry and CRC validation; misses and an optional-cache-unavailable result fall back to local creation, while other helper failures remain packaging errors. Repeated identical archives in one packaging process reuse the first validated result.
 
+`-resource-pack-jobs N` or `FO_RESOURCE_PACK_JOBS` (default `1`) bounds independent `.fores` archives to positive `N` spawned workers. Pack-name/destination collisions stay ordered within one worker; every archive still passes full payload validation. Workers finish before runtime-pack rewriting or failure cleanup. See [Packaging and Release](../../how-to/release/packaging.md#reproducibility-and-provenance) for batching, cache state, resource limits and the unchanged reproducibility boundary.
+
 When several package parts append to one `SingleZip`, byte-identical files at
 the same archive path are coalesced into one entry. Different contents at the
 same path are a packaging error; the packager never emits ambiguous duplicate

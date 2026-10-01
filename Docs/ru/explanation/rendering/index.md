@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"9ac1b7de3f6de111e0946dd417f7dadc72dcb49b0cdc7dd3c30087f9a7c48361"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"498fc0b5b8ff1be77eeb94b2e75deff6d9b2fe35816012dfaf84438e6094b253"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -672,6 +672,10 @@ textures. `RenderTargetManager`:
 `MapView`, `SpriteManager`, `ModelSpriteFactory` и `ParticleSpriteFactory`
 используют targets для map layers, light buffers, model/particle atlas render,
 hit testing и offscreen composition.
+
+Manager владеет каждым созданным target; `MapView` заимствует targets карты, освещения и indoor mask и освобождает все три в `OnDestroySelf()`. Сначала queued sprite draws выполняются через flush, пока их текстуры живы. Перед удалением indoor mask `EffectManager::ClearIndoorMaskTexture()` очищает только совпадающие borrows `IndoorMaskTex` во всех cached effects, включая эффекты, уже не выбранные для map flush. Mask другой живой карты и окружающий target stack остаются целыми. `GetRenderTargetCount()` считает targets во владении manager для lifecycle diagnostics, а не backend memory или driver residency.
+
+`Source/Tests/Test_ClientEntityLifetime.cpp` закрепляет повторное освобождение при default, disabled-mask и direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`), а также queued draws, cached effects, другую живую карту и outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory и видимая приёмка переходов между картами проверяются отдельно.
 
 При загрузке локальной карты `View.MapRenderTargetScale` фиксирует размеры
 render targets карты, освещения и indoor mask как логический размер экрана,

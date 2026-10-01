@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4815,
-    "current_count": 4815,
+    "entry_count": 4816,
+    "current_count": 4816,
     "missing_count": 0,
     "complete": true
   },
@@ -23861,8 +23861,8 @@
     },
     "package": {
       "source_model": "Docs/generated/package.json",
-      "entry_count": 64,
-      "current_count": 64,
+      "entry_count": 65,
+      "current_count": 65,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -23948,6 +23948,12 @@
           "locator": "/cli/arguments/@id=package.cli.argument.resource_pack_compress_level/description",
           "source": "override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)",
           "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
+          "status": "current"
+        },
+        {
+          "locator": "/cli/arguments/@id=package.cli.argument.resource_pack_jobs/description",
+          "source": "maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)",
+          "source_sha256": "ca07c91d43d723b438617d5e813296addc31deb3a39913741f69fefcdc495f8d",
           "status": "current"
         },
         {

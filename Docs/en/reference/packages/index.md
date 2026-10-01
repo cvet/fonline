@@ -32,7 +32,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>be83fb2d181b0a244ec30e08ddc5fe64ea10e717c3597e9df7c706e3f67aea98</code> |
+| Contract digest | <code>313dabe8fc596a60ae1f1cb5636c7bd32faaa8d16a1a4c25eb1dba7211b84460</code> |
 
 ## Coverage
 
@@ -41,7 +41,7 @@ Use this cross-contract sequence:
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
 | [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
-| [Packager CLI](cli.md) | 15 | Exact internal package.py invocation contract. |
+| [Packager CLI](cli.md) | 16 | Exact internal package.py invocation contract. |
 
 ## Boundary
 

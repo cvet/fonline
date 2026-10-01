@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"aa85535fdcb627b8997b0f9e35da5caae58df7979677871aadeb6d61f09b2b08"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -363,6 +363,8 @@ level. Восстановленный или только что записан�
 optional cache переходят к локальному созданию, а прочие failures helper
 остаются packaging errors. Повторный идентичный archive в одном процессе
 packaging использует первый проверенный результат.
+
+`-resource-pack-jobs N` или `FO_RESOURCE_PACK_JOBS` (по умолчанию `1`) ограничивает независимые архивы `.fores` положительным числом `N` процессов с `spawn`. Коллизии pack name/destination сохраняют порядок внутри одного worker; каждый archive по-прежнему проходит полную payload validation. Workers завершаются до переписывания runtime packs или очистки неудавшегося package. Batching, cache state, лимиты ресурсов и неизменную границу воспроизводимости см. в [Packaging and Release](../../how-to/release/packaging.md#воспроизводимость-и-происхождение).
 
 Когда несколько package parts добавляются в один `SingleZip`, байт-идентичные
 файлы с одним archive path объединяются в одну entry. Разное содержимое по

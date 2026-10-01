@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"2d91d2b9bbdf014607082e1b84136bd90bec2d64941f0aa8489371cd6311772d"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"875f60ff2201c7fa0d0682d5939cbe42bfefda52fd5fb012a08ba6bc85cd50cb"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -618,13 +618,18 @@ Android Wi-Fi endpoints как нумерованный список, кешир
 ресурсов останавливает сборку пакета до того, как попадёт в загружаемый клиент
 или в источник обновлений сервера.
 
-Вывод MSI compiler/linker наследуется процессом packaging. Поэтому при сбое
-`candle`, `light` или `wixl` их native file, ICE или Windows Installer
-diagnostic остаётся в build log до завершения packaging. На Windows `light`
-сначала запускается с ICE validation. Только точное сообщение о недоступности
-Windows Installer service выбирает одну повторную попытку с `-sval`, чтобы
-service-account runner мог создать обязательный MSI без ICE. Любая ошибка
-authoring, linker, обычной ICE или fallback остаётся фатальной.
+При сбое MSI compiler/linker его native file, ICE или Windows Installer
+diagnostic остаётся в build log до завершения packaging. На Windows `candle`
+и `light` считают предупреждения ошибками. Генератор подавляет только ICE91:
+все создаваемые MSI явно устанавливаются per-user в `LocalAppDataFolder`,
+поэтому предупреждение о смешанной области установки к ним неприменимо.
+Первый запуск `light` сохраняет ICE validation и буферизует вывод до его
+классификации; успешный link или окончательный сбой затем публикует вывод.
+Только точное сообщение о недоступности Windows Installer service выбирает
+одну повторную попытку того же link с `-sval`. При её успехе устаревшие строки
+`error` не выводятся, чтобы MSBuild не принял успешный custom target за сбой.
+Любая ошибка authoring, linker или обычной ICE завершает процесс сразу;
+ошибка повторной попытки также остаётся фатальной.
 
 Embedding build может задать `FO_RESOURCE_ARCHIVE_CACHE_HELPER` как Python
 helper с интерфейсом `restore|store|release --key <sha256> --archive <path>`.
@@ -636,6 +641,17 @@ miss; после miss проверенный archive передаётся `store
 CRC обязательны независимо от источника archive. Повторный идентичный archive
 в одном процессе копируется из первого проверенного результата без нового
 вызова helper.
+
+`-resource-pack-jobs N` (или `FO_RESOURCE_PACK_JOBS`, по умолчанию 1) ограничивает
+создание независимых архивов ресурсов `N` spawned processes. Каждый worker
+выполняет полный writer, cache protocol и проверки целостности. Одинаковое имя
+pack или физический путь назначения остаётся у одного worker, сохраняя порядок
+и локальное переиспользование между server/client outputs. Parent принимает
+идентичности проверенных архивов и ждёт workers до runtime-specific rewriting
+ресурсов или cleanup после сбоя. Группы распределяются по объёму исходных bytes,
+начиная с крупнейших. Каждый batch сохраняет состояние unavailable cache между
+своими архивами, поэтому число неудачных optional-cache probes ограничено числом
+workers для invocation.
 
 ## Packaging: изменение binary после сборки
 

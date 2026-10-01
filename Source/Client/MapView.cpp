@@ -154,12 +154,14 @@ MapView::~MapView()
     FO_VERIFY_AND_CONTINUE(_lightSources.empty(), "Client map view has light sources during destruction", GetId(), _lightSources.size());
     FO_VERIFY_AND_CONTINUE(!_rtMap, "Client map view still has map render target during destruction", GetId());
     FO_VERIFY_AND_CONTINUE(!_rtLight, "Client map view still has light render target during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_rtIndoorMask, "Client map view still has indoor mask render target during destruction", GetId());
 }
 
 void MapView::OnDestroySelf()
 {
     FO_TRACE_ZONE(Map);
 
+    _engine->SprMngr.Flush();
     _eventUnsubscriber.Unsubscribe();
 
     for (auto& cr : _critters) {
@@ -200,11 +202,16 @@ void MapView::OnDestroySelf()
 
     if (_rtMap) {
         _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap);
-        _rtMap = nullptr;
+        _rtMap.reset();
     }
     if (_rtLight) {
         _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight);
-        _rtLight = nullptr;
+        _rtLight.reset();
+    }
+    if (_rtIndoorMask) {
+        _engine->EffectMngr.ClearIndoorMaskTexture(_rtIndoorMask->GetTexture());
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtIndoorMask);
+        _rtIndoorMask.reset();
     }
 }
 

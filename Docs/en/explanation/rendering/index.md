@@ -654,6 +654,10 @@ acceptance claim is driver-specific.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
 
+The manager owns every target it creates; a `MapView` borrows its map, light and indoor-mask targets and releases all three in `OnDestroySelf()`. Destruction first flushes queued sprite draws while their textures are alive. Before deleting the indoor mask, `EffectManager::ClearIndoorMaskTexture()` clears only matching `IndoorMaskTex` borrows across all cached effects, including effects no longer selected for map flushing. Another live map's mask and the surrounding target stack remain intact. `GetRenderTargetCount()` counts manager-owned targets for lifecycle diagnostics, not backend memory or driver residency.
+
+`Source/Tests/Test_ClientEntityLifetime.cpp` pins repeated release under default, disabled-mask and direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`) plus queued draws, cached effects, another live map and an outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory and visible map-transition acceptance remain separate checks.
+
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
 The light target is composited only over the current chunk's drawn area, expanded by render-target padding and a one-eighth-chunk margin for shake and refractive sampling. `MapView::GetMapCompositeRect` supplies that bound to both ordinary `FlushLight` and the custom fog-slot path. In a zoomed-in view this avoids flushing the entire oversized light target while retaining the edge pixels the effects may read.

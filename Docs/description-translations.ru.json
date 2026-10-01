@@ -4723,6 +4723,10 @@
           "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
           "translation": "переопределить уровень сжатия пакета ресурсов (шкала zlib: 0 без сжатия, 9 максимально)"
         },
+        "/cli/arguments/@id=package.cli.argument.resource_pack_jobs/description": {
+          "source_sha256": "ca07c91d43d723b438617d5e813296addc31deb3a39913741f69fefcdc495f8d",
+          "translation": "максимум одновременно создаваемых архивов ресурсов (по умолчанию FO_RESOURCE_PACK_JOBS или 1)"
+        },
         "/cli/arguments/@id=package.cli.argument.target/description": {
           "source_sha256": "2c1f7b79e49ccc8890357c8defc768c79d51a8c7919d853ae61efc423a3f2aa4",
           "translation": "тип цели упаковки"

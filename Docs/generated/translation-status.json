@@ -27,8 +27,8 @@
       "english_path": "BuildTools/README.md",
       "english_path_state": "migrated",
       "russian_path": "BuildTools/README.ru.md",
-      "source_sha256": "2d91d2b9bbdf014607082e1b84136bd90bec2d64941f0aa8489371cd6311772d",
-      "source_bytes": 50118,
+      "source_sha256": "875f60ff2201c7fa0d0682d5939cbe42bfefda52fd5fb012a08ba6bc85cd50cb",
+      "source_bytes": 50807,
       "status": "current"
     },
     {
@@ -378,8 +378,8 @@
       "english_path": "Docs/en/explanation/rendering/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/rendering/index.md",
-      "source_sha256": "9ac1b7de3f6de111e0946dd417f7dadc72dcb49b0cdc7dd3c30087f9a7c48361",
-      "source_bytes": 109864,
+      "source_sha256": "498fc0b5b8ff1be77eeb94b2e75deff6d9b2fe35816012dfaf84438e6094b253",
+      "source_bytes": 110860,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "794a6f8d4c4dfe720e8c190b7507e009b57f7cb640f14cdcfa71efe999b41661",
-      "source_bytes": 32850,
+      "source_sha256": "151806f4af4fc3c3f5eb639b38346c826bb8a51cd72faf8627bc4a5382da6cd7",
+      "source_bytes": 33778,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "7a6f0dfde5474fd29a539edf3662c4506bec6a30229eaa003b24889df949e8c9",
-      "source_bytes": 26697,
+      "source_sha256": "aa85535fdcb627b8997b0f9e35da5caae58df7979677871aadeb6d61f09b2b08",
+      "source_bytes": 27196,
       "status": "current"
     },
     {
@@ -1743,8 +1743,8 @@
       "english_path": "Docs/en/reference/packages/cli.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/packages/cli.md",
-      "source_sha256": "59d25e88039af05cd20b9940be9d4ec73084f3cefad8bb07975f85b05dfce089",
-      "source_bytes": 6323,
+      "source_sha256": "f3a9edb29878c59b4649e7777f4a80a26d25829bd768e6e47ddddcfbacc83ddf",
+      "source_bytes": 6789,
       "status": "current"
     },
     {
@@ -1769,7 +1769,7 @@
       "english_path": "Docs/en/reference/packages/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/packages/index.md",
-      "source_sha256": "da8fea67954a88af1c995bcf0557759ad2666d2f14f08da5d128b0e4de5f8c83",
+      "source_sha256": "1c6ee88f8602cd8ceedf2dc28e26dd2c9782105ce0eec539bfb2241849532af9",
       "source_bytes": 3324,
       "status": "current"
     },
