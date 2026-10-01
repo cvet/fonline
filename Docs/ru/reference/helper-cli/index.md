@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"67257d87ab6bd7730de517dc3532e93552c9963c5e38036b850d8aeb28cc47f8"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-index","locale":"ru","source_path":"Docs/en/reference/helper-cli/index.md","source_sha256":"1b419a9cc05ba04d11c385c0be772994ac69d02304f6da587e7ddb152257f2d6"} -->
 
 # Сгенерированный справочник вспомогательных CLI
 
@@ -23,7 +23,7 @@ generated: true
 | Начиная с версии | Не объявлено |
 | Политика поддержки | Командные строки helpers являются привязанными к ревизии интерфейсами реализации; автоматизация должна закреплять ревизию движка. |
 | Исходный манифест | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Digest контракта | <code>1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14</code> |
+| Digest контракта | <code>346c42d340cb39623bfca5120856f5ae2d9198368758ea39ca7e672baeeb85e6</code> |
 
 ## Инвентарь
 
@@ -33,14 +33,14 @@ generated: true
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Покрытие кода](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Запуск игровых тестов](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | CMake-цели подключающего проекта и CI smoke-задачи игровых тестов | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
 | <a id="entry-helper-cli-ai-control-client-35184e9731"></a><code>helper-cli.ai-control-client</code> | [Клиент протокола AiControl](commands.md#entry-helper-cli-ai-control-client-35184e9731) | <code>tooling</code> | ИИ-адаптеры проекта, smoke-тесты протокола и непосредственная диагностика разработчиком | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) | 5 / 5 |
-| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Проверка импортов Windows 7](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | CI и релизная проверка Windows 7 подключающего проекта | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 1 |
+| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Проверка импортов Windows 7](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | CI и релизная проверка Windows 7 подключающего проекта | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 2 |
 | <a id="entry-helper-cli-android-device-ab99179ae9"></a><code>helper-cli.android-device</code> | [Управление устройством Android](commands.md#entry-helper-cli-android-device-ab99179ae9) | <code>platform</code> | Android-задачи подключающего проекта и непосредственное использование разработчиком | [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py) | 7 / 1 |
 | <a id="entry-helper-cli-simple-web-server-58fbf70798"></a><code>helper-cli.simple-web-server</code> | [Локальный Web-сервер](commands.md#entry-helper-cli-simple-web-server-58fbf70798) | <code>platform</code> | payload WebServer в BuildTools/package.py | [BuildTools/web/simple-web-server.py](https://github.com/cvet/fonline/blob/master/BuildTools/web/simple-web-server.py) | 0 / 2 |
 | <a id="entry-helper-cli-createmsi-18899fd2a5"></a><code>helper-cli.createmsi</code> | [Создание MSI](commands.md#entry-helper-cli-createmsi-18899fd2a5) | <code>build-release</code> | пакет Wix в BuildTools/package.py | [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py) | 0 / 2 |
 
 ## Покрытие
 
-Модель содержит 8 helpers, 16 подкоманд, 24 глобальных аргументов и 52 аргументов подкоманд.
+Модель содержит 8 helpers, 16 подкоманд, 25 глобальных аргументов и 52 аргументов подкоманд.
 
 Включено:
 

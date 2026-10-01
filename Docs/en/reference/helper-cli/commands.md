@@ -502,7 +502,7 @@ options:
 <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a>
 ## Windows 7 import validation
 
-Inspect linked PE files and reject imports that are unavailable on Windows 7.
+Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables.
 
 - Stable ID: `helper-cli.windows7-import-check`
 - Program: `check_windows7_imports.py`
@@ -515,20 +515,23 @@ Inspect linked PE files and reject imports that are unavailable on Windows 7.
 
 | Stable ID | Argument | Kind | Required | Values | Choices | Default | Description |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-windows7-import-check-argument-require-large-address-aware-eb51248263"></a><code>helper-cli.windows7-import-check.argument.require_large_address_aware</code> | <code>--require-large-address-aware</code> | <code>option</code> | no | <code>0</code> | - | <code>false</code> | Require the large-address flag on checked executables |
 | <a id="entry-helper-cli-windows7-import-check-argument-binaries-90e898370f"></a><code>helper-cli.windows7-import-check.argument.binaries</code> | <code>binaries</code> | <code>positional</code> | yes | <code>+</code> | - | - | linked PE executable or DLL to inspect |
 
 ### Exact top-level `--help` output
 
 ```text
-usage: check_windows7_imports.py [-h] binaries [binaries ...]
+usage: check_windows7_imports.py [-h] [--require-large-address-aware] binaries [binaries ...]
 
 Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries
 
 positional arguments:
-  binaries    linked PE executable or DLL to inspect
+  binaries              linked PE executable or DLL to inspect
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help            show this help message and exit
+  --require-large-address-aware
+                        Require the large-address flag on checked executables
 ```
 
 <a id="entry-helper-cli-android-device-ab99179ae9"></a>

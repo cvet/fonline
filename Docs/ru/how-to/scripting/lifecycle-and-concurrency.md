@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"24bc78eda628fea978bc4fbea3ab9d9698fa6c1555e7dab0739954306497fdc4"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"03389c356c8ff546c644ed1869b4addf6d1dedd58c23baf8b744ebf7d6f78aee"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -179,6 +179,10 @@ void ApplyImmediateRule(Critter critter)
 Явно отписывайтесь, когда поведение должно прекратиться до уничтожения владельца, при замене callback или когда долгоживущий global owner должен освободить проектный объект. Не ведите второй глобальный реестр проекта только ради отписки обычных entity callbacks при destruction: он дублирует владение lifetime движка и создаёт дополнительный источник stale handles.
 
 Event dispatch может запускать пользовательские callbacks, изменяющие подписки, поэтому движок обходит snapshot callback. Не рассчитывайте, что подписка, добавленная во время dispatch, будет вызвана в том же dispatch.
+
+### Преобразование свойства и реакция после записи
+
+Преобразующий setter выполняется до записи: он получает предлагаемое значение по ссылке, а чтение свойства сущности ещё видит старое значение. Используйте его для проверки или изменения этого значения, а не для перестройки UI cache по новому состоянию сущности. Reaction-only callbacks выполняются после записи. В AngelScript `Game.AddPropertySetter` выбирает post-set путь для handler только с сущностью; handler со значением по ссылке выбирает преобразование до записи. В Managed C# атрибут `[PropertySetter]` отмечает handler, а generated `Game.AddPropertyDeferredSetter(property, handler)` явно выбирает entity-only post-set путь; entity-only overload `AddPropertySetter` эквивалентен ему. Overload с `ref T` остаётся pre-set. Последующее событие, случайно обновляющее cache, не заменяет выбор правильной фазы.
 
 ### Граница preload персистентности
 

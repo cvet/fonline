@@ -84,6 +84,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
     SetGlobalDayColor(ucolor {255, 255, 255, 255});
 
     isize32 map_rt_size = CalculateMapRenderTargetSize();
+    auto release_targets_on_failure = scope_fail([this]() noexcept { safe_call([this] { DestroyRenderTargets(); }); });
 
     if (!_engine->Settings->View.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(true, map_rt_size, true);
@@ -179,26 +180,42 @@ void MapView::OnDestroySelf()
         for (auto& fog : fog_slot) {
             fog->Disposed = true; // so a script still holding the handle recreates it on the next map
         }
-
-        fog_slot.clear();
     }
 
-    _mapSprites.InvalidateAll();
-    _indoorMaskSprites.InvalidateAll();
+    // Managed wrappers may outlive unload indefinitely; they must not retain map storage or sprite pools
+    _mapSprites.Clear();
+    _indoorMaskSprites.Clear();
     _hexField.reset();
-    _viewField.clear();
+    decltype(_viewField) {}.swap(_viewField);
     _fogs = {};
-    _visibleLightSources.clear();
-    _lightPoints.clear();
-    _lightSources.clear();
-    _critters.clear();
-    _crittersMap.clear();
-    _items.clear();
-    _staticItems.clear();
-    _dynamicItems.clear();
-    _processingItems.clear();
-    _itemsMap.clear();
-    _spritePatterns.clear();
+    decltype(_hexLight) {}.swap(_hexLight);
+    decltype(_hexTargetLight) {}.swap(_hexTargetLight);
+    decltype(_visibleLightSources) {}.swap(_visibleLightSources);
+    decltype(_lightPoints) {}.swap(_lightPoints);
+    decltype(_lightSources) {}.swap(_lightSources);
+    decltype(_critters) {}.swap(_critters);
+    decltype(_crittersMap) {}.swap(_crittersMap);
+    decltype(_items) {}.swap(_items);
+    decltype(_staticItems) {}.swap(_staticItems);
+    decltype(_dynamicItems) {}.swap(_dynamicItems);
+    decltype(_processingItems) {}.swap(_processingItems);
+    decltype(_itemsMap) {}.swap(_itemsMap);
+    decltype(_deferredRefreshItems) {}.swap(_deferredRefreshItems);
+    decltype(_spritePatterns) {}.swap(_spritePatterns);
+    decltype(_critterToDeleteScratch) {}.swap(_critterToDeleteScratch);
+    decltype(_itemToDeleteScratch) {}.swap(_itemToDeleteScratch);
+    decltype(_reapplyLightSourcesScratch) {}.swap(_reapplyLightSourcesScratch);
+    decltype(_removeLightSourcesScratch) {}.swap(_removeLightSourcesScratch);
+    decltype(_fastPids) {}.swap(_fastPids);
+    decltype(_ignorePids) {}.swap(_ignorePids);
+    decltype(_headerExtraFields) {}.swap(_headerExtraFields);
+
+    DestroyRenderTargets();
+}
+
+void MapView::DestroyRenderTargets()
+{
+    FO_TRACE_ZONE(Map);
 
     if (_rtMap) {
         _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap);

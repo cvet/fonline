@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"aa85535fdcb627b8997b0f9e35da5caae58df7979677871aadeb6d61f09b2b08"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"38ba5052f07f1a0d456f3e24c999d4333adac35a0fe2359fd33f9c97364419e5"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -398,7 +398,7 @@ diagnostics, а не для source ownership или проверки build featu
 
 Переиспользуемые helpers находятся в `BuildTools/cmake/helpers/`:
 
-- `Build.cmake` — helpers создания build/target.
+- `Build.cmake` — helpers создания build/target, включая executable-only `/LARGEADDRESSAWARE` для Windows x86; см. [пределы адресного пространства и проверку](../../how-to/build/#адресное-пространство-windows-x86).
 - `Commands.cmake` — helpers command targets.
 - `Options.cmake` — helpers options/values.
 - `RunAndLog.cmake` — внутренний script-mode process runner, сохраняющий test

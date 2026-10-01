@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"62a08ad91f832efd79137bc9bbf72a358ea2c9095b301d7704de24f88124fb75"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"642ba6f2d29c8e6a964f005a9db2078673e3aa1c411b8a5fa6e439e07d6223b8"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -266,6 +266,14 @@ Particle resources идут через отдельный backend-neutral factor
 Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для криттера берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
 
 ## Ресурсы, sprites, effects и render targets
+
+### Выгрузка карты и время жизни нативной памяти
+
+`ClientEngine::UnloadMap()` уничтожает предыдущий `MapView` до создания следующей карты. Скриптовый handle может удерживать оболочку уничтоженной сущности: Managed wrappers освобождают нативную ссылку при финализации, а явный handle может сохраняться в обоих backends. Поэтому cell grid, view/light buffers, коллекции сущностей, отложенные владельцы предметов, fog data и ёмкость scratch buffers освобождаются при выгрузке, а не при окончательном удалении объекта. `MapSpriteList::InvalidateAll()` сохраняет pool для перестройки камеры; окончательная очистка использует `Clear()`, отсоединяет sprite holders и освобождает pool.
+
+При выгрузке удаляются все три принадлежащих manager render targets; ошибка конструктора также освобождает уже созданные targets. Очередь рисования сбрасывается до очистки, а совпадающие заимствования indoor mask в cached effects очищаются до удаления текстуры; см. [владение render targets](../rendering/#render-targets-и-клиентский-мост). После вытеснения sprite cache удаляются пустые atlas pages и их targets, но live allocations сохраняются. Model mesh/animation definitions остаются отдельным кэшем по resource identity, а не владельцами старых карт.
+
+`Test_ClientEntityLifetime.cpp` проверяет удерживаемые handles, отложенных владельцев предметов, ошибку конструктора и пустые/занятые atlas pages. Предел удерживаемой памяти проверяется только при доступных debug/profiling allocator statistics. Private bytes и working set процесса включают также allocator, managed runtime и renderer/driver caches: оставшийся high-water mark сам по себе не доказывает, что карта загружена; headless target counts не являются приёмкой памяти на физическом GPU.
 
 Клиентский resource path начинается с `FileSystem` из `GetClientResources()` и организован runtime managers:
 

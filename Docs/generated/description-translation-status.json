@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4816,
-    "current_count": 4816,
+    "entry_count": 4817,
+    "current_count": 4817,
     "missing_count": 0,
     "complete": true
   },
@@ -19712,8 +19712,8 @@
     },
     "helper-cli": {
       "source_model": "Docs/generated/helper-cli.json",
-      "entry_count": 124,
-      "current_count": 124,
+      "entry_count": 125,
+      "current_count": 125,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -20424,14 +20424,20 @@
         },
         {
           "locator": "/helpers/@id=helper-cli.windows7-import-check/description",
-          "source": "Inspect linked PE files and reject imports that are unavailable on Windows 7.",
-          "source_sha256": "edaf9703b95de1d1c33fa229137600cae51d4a2b7a52c9f4317ff603d5d7f59f",
+          "source": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables.",
+          "source_sha256": "ba820e17a98ac121a047225dfce65e7b4649a494414fa69d5dfdaf4e227edc12",
           "status": "current"
         },
         {
           "locator": "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.binaries/description",
           "source": "linked PE executable or DLL to inspect",
           "source_sha256": "23a5ed3d50ff93b7d50d3bf8289f1cc1b46cfdbc2e7e5594fc451c37281d344e",
+          "status": "current"
+        },
+        {
+          "locator": "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.require_large_address_aware/description",
+          "source": "Require the large-address flag on checked executables",
+          "source_sha256": "743a32103531d7e2c4007292a72e971fa3007e94ef680bef0132b45622a5bc14",
           "status": "current"
         },
         {

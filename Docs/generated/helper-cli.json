@@ -1177,11 +1177,27 @@
         "release-operator"
       ],
       "invocation_owner": "embedding-project Windows 7 CI and release validation",
-      "description": "Inspect linked PE files and reject imports that are unavailable on Windows 7.",
+      "description": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables.",
       "parser_description": "Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries",
-      "usage": "usage: check_windows7_imports.py [-h] binaries [binaries ...]",
-      "help_output": "usage: check_windows7_imports.py [-h] binaries [binaries ...]\n\nReject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries\n\npositional arguments:\n  binaries    linked PE executable or DLL to inspect\n\noptions:\n  -h, --help  show this help message and exit\n",
+      "usage": "usage: check_windows7_imports.py [-h] [--require-large-address-aware] binaries [binaries ...]",
+      "help_output": "usage: check_windows7_imports.py [-h] [--require-large-address-aware] binaries [binaries ...]\n\nReject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries\n\npositional arguments:\n  binaries              linked PE executable or DLL to inspect\n\noptions:\n  -h, --help            show this help message and exit\n  --require-large-address-aware\n                        Require the large-address flag on checked executables\n",
       "global_arguments": [
+        {
+          "id": "helper-cli.windows7-import-check.argument.require_large_address_aware",
+          "destination": "require_large_address_aware",
+          "kind": "option",
+          "action": "store_true",
+          "option_strings": [
+            "--require-large-address-aware"
+          ],
+          "metavar": null,
+          "required": false,
+          "nargs": 0,
+          "choices": null,
+          "default": false,
+          "type": null,
+          "description": "Require the large-address flag on checked executables"
+        },
         {
           "id": "helper-cli.windows7-import-check.argument.binaries",
           "destination": "binaries",
@@ -1587,8 +1603,8 @@
   "summary": {
     "helper_count": 8,
     "command_count": 16,
-    "global_argument_count": 24,
+    "global_argument_count": 25,
     "command_argument_count": 52
   },
-  "contract_digest": "1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14"
+  "contract_digest": "346c42d340cb39623bfca5120856f5ae2d9198368758ea39ca7e672baeeb85e6"
 }

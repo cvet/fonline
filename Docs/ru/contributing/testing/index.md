@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"c44a800aae7d65187e500465dff8f085c91206adfb3812c36f22b07d281f0e77"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"3117bb41a1f7ffd1a503e4f1063819af6617988d5e11360a19def470dee93b05"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -66,6 +66,8 @@ permalink: /Docs/ru/contributing/testing/
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
 
 ## Запуск тестов
+
+`Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
 
 Предпочтительная локальная проверка из настроенной build directory:
 

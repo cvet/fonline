@@ -144,6 +144,32 @@ class FrontendRenderingDocumentationTests(unittest.TestCase):
             self.assertIn(marker, self._read(RUSSIAN_PATH))
         self.assertIn("not backend memory or driver residency", self._read(GUIDE_PATH))
 
+    def test_retained_map_storage_and_empty_atlas_pages_have_current_owners(self) -> None:
+        map_source = self._read("Source/Client/MapView.cpp")
+        self.assertIn("_mapSprites.Clear();", map_source)
+        self.assertIn("DestroyRenderTargets();", map_source)
+        self.assertIn("scope_fail", map_source)
+        self.assertIn("_atlasMngr.CleanupAtlases();", self._read("Source/Client/SpriteManager.cpp"))
+        native_tests = self._read("Source/Tests/Test_ClientEntityLifetime.cpp")
+        for marker in (
+            "ClientMapUnloadReleasesRenderTargetsWithRetainedHandles",
+            "ClientMapConstructionFailureReleasesRenderTargets",
+            "ExpiredOneImageAtlasReleasesRenderTarget",
+            "AtlasCleanupReleasesOnlyEmptyPages",
+        ):
+            self.assertIn(marker, native_tests)
+            self.assertIn(marker, self._read(GUIDE_PATH))
+            self.assertIn(marker, self._read(RUSSIAN_PATH))
+        for locale in ("en", "ru"):
+            lifetime = self._read(f"Docs/{locale}/explanation/runtime/client.md")
+            self.assertIn("MapSpriteList::InvalidateAll()", lifetime)
+            self.assertIn("Clear()", lifetime)
+            self.assertIn("debug/profiling allocator statistics", lifetime)
+            resources = self._read(f"Docs/{locale}/reference/settings/configuration-and-data-sources.md")
+            self.assertIn("FileBufferHolderMovesVectorStorage", resources)
+            self.assertIn("compressed", resources)
+            self.assertIn("decoded", resources)
+
     def test_project_evidence_supports_reusable_practices(self) -> None:
         evidence = json.loads(self._read("BuildTools/ExternalProjectEvidence.json"))
         record = next(

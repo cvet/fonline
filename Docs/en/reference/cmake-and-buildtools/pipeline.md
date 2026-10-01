@@ -245,7 +245,7 @@ Start here for final target organization or post-generation diagnostics, not for
 
 Reusable helpers live in `BuildTools/cmake/helpers/`:
 
-- `Build.cmake` — build/target creation helpers.
+- `Build.cmake` — build/target creation helpers, including executable-only `/LARGEADDRESSAWARE` for Windows x86; see [address-space limits and validation](../../how-to/build/#windows-x86-address-space).
 - `Commands.cmake` — command target helpers.
 - `Options.cmake` — option/value helpers.
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.

@@ -178,6 +178,10 @@ Explicitly unsubscribe when behavior must stop before the owner is destroyed, wh
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
 
+### Property transformation versus post-set reactions
+
+A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
+
 ### Persistence preload boundary
 
 `Game.OnCritterPreLoad` is the server-side migration hook for an existing persisted critter. It fires once after the critter properties, inventory, and inner entities have been restored and the critter has been registered, but before map or global-map entry, visibility processing, `OnCritterInit(critter, false)`, and `OnCritterLoad`. Newly created critters do not receive this event.

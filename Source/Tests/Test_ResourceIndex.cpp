@@ -162,6 +162,20 @@ static void WriteStoredZip(string_view path, const vector<std::pair<string, stri
     REQUIRE(fs::write_file(path, const_span<uint8_t> {out.data(), out.size()}));
 }
 
+TEST_CASE("FileBufferHolderMovesVectorStorage")
+{
+    vector<uint8_t> data(4096, 0x5A);
+    ptr<const uint8_t> original = make_ptr(data.data());
+    auto holder = MakeFileBufferHolder(std::move(data));
+    ptr<const uint8_t> held = holder;
+
+    CHECK(held == original);
+    CHECK(holder[0] == 0x5A);
+    CHECK(holder[4095] == 0x5A);
+
+    CHECK_NOTHROW(MakeFileBufferHolder(vector<uint8_t> {}));
+}
+
 TEST_CASE("ResourcePackInApkRegion")
 {
     string dir = MakeTempIndexDir("apk_region");

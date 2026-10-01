@@ -317,6 +317,9 @@ Continue with the [canonical reference](../../en/reference/helper-cli/commands.m
 
 Continue with the [canonical reference](../../en/reference/helper-cli/commands.md).
 
+<a id="entry-helper-cli-windows7-import-check-argument-require-large-address-aware-eb51248263"></a>
+- [`entry-helper-cli-windows7-import-check-argument-require-large-address-aware-eb51248263`](../../en/reference/helper-cli/commands.md#entry-helper-cli-windows7-import-check-argument-require-large-address-aware-eb51248263)
+
 <a id="entry-helper-cli-windows7-import-check-argument-binaries-90e898370f"></a>
 - [`entry-helper-cli-windows7-import-check-argument-binaries-90e898370f`](../../en/reference/helper-cli/commands.md#entry-helper-cli-windows7-import-check-argument-binaries-90e898370f)
 

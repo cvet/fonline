@@ -869,8 +869,8 @@
             "prototype-format-guide",
             "map-format-guide",
             "entity-model",
-            "client-runtime",
-            "baking-pipeline"
+            "script-lifecycle-concurrency",
+            "client-runtime"
           ]
         }
       ],
@@ -2606,8 +2606,8 @@
             "generated-api-metadata",
             "adr-public-api-stability-contract",
             "generated-api-index",
-            "android-debugging",
-            "client-runtime"
+            "client-runtime",
+            "android-debugging"
           ]
         }
       ],

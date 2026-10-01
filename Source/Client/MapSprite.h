@@ -239,6 +239,7 @@ public:
     auto AddSprite(DrawOrderType draw_order, mpos hex, ipos32 hex_offset, nptr<const ipos32> phex_offset, nptr<const Sprite> spr, nptr<const Sprite*> pspr, nptr<const ipos32> spr_offset, nptr<const ipos32> root_offset, nptr<const uint8_t> alpha, nptr<RenderEffect*> effect, nptr<bool> callback, int8_t sub_layer) noexcept -> ptr<MapSprite>;
     void InvalidateAll() noexcept;
     void SortIfNeeded() noexcept;
+    void Clear() noexcept;
 
     static auto MakeDrawOrderPos(DrawOrderType draw_order, mpos hex, int8_t sub_layer) noexcept -> uint64_t;
 

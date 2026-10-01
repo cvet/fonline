@@ -473,6 +473,8 @@ pruned size and indexes keepers by coarse atlas cells, avoiding hot-path full
 scans. No surviving sprite, pixels, or UVs move; this changes no settings or
 resource serialization.
 
+`TextureAtlasManager::CleanupAtlases()` deletes empty pages and their manager-owned render targets, including `OneImage` pages. `SpriteManager` invokes it after cache eviction, and new-page creation also performs cleanup. Any page with a live allocation remains valid: cleanup neither moves pixels nor changes UVs. `ExpiredOneImageAtlasReleasesRenderTarget` and `AtlasCleanupReleasesOnlyEmptyPages` pin the empty/live boundary.
+
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
 positioning, scaling, rotation, map projection, and standing-sprite depth
@@ -657,6 +659,8 @@ acceptance claim is driver-specific.
 The manager owns every target it creates; a `MapView` borrows its map, light and indoor-mask targets and releases all three in `OnDestroySelf()`. Destruction first flushes queued sprite draws while their textures are alive. Before deleting the indoor mask, `EffectManager::ClearIndoorMaskTexture()` clears only matching `IndoorMaskTex` borrows across all cached effects, including effects no longer selected for map flushing. Another live map's mask and the surrounding target stack remain intact. `GetRenderTargetCount()` counts manager-owned targets for lifecycle diagnostics, not backend memory or driver residency.
 
 `Source/Tests/Test_ClientEntityLifetime.cpp` pins repeated release under default, disabled-mask and direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`) plus queued draws, cached effects, another live map and an outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory and visible map-transition acceptance remain separate checks.
+
+`MapView::DestroyRenderTargets()` is shared by unload and the construction-failure guard; retained script handles do not delay target retirement. `ClientMapUnloadReleasesRenderTargetsWithRetainedHandles` and `ClientMapConstructionFailureReleasesRenderTargets` cover both boundaries. Immediate native buffer/pool retirement is described in [client lifetime](../runtime/client.md#map-unload-and-native-storage-lifetime).
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 

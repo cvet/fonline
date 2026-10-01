@@ -85,7 +85,7 @@
       "owner": "quality",
       "audiences": ["engine-contributor", "embedding-project-build-system", "release-operator"],
       "invocation_owner": "embedding-project Windows 7 CI and release validation",
-      "description": "Inspect linked PE files and reject imports that are unavailable on Windows 7."
+      "description": "Inspect linked PE files for Windows 7 import compatibility and optionally require the large-address flag on executables."
     },
     {
       "id": "helper-cli.android-device",

@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"498fc0b5b8ff1be77eeb94b2e75deff6d9b2fe35816012dfaf84438e6094b253"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"996b474c6b9399d3ebe5f3f2c31120c6791df222b618fd867904a8057685f804"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -498,6 +498,8 @@ prune и индексирует keepers по coarse atlas cells, не выпол
 path. Surviving sprites, pixels и UV не двигаются; settings и serialization не
 меняются.
 
+`TextureAtlasManager::CleanupAtlases()` удаляет пустые pages вместе с принадлежащими manager render targets, включая `OneImage`. `SpriteManager` вызывает очистку после вытеснения sprite cache; она выполняется и перед созданием новой page. Page с любой live allocation сохраняется: pixels не перемещаются, UV не меняются. Границу проверяют `ExpiredOneImageAtlasReleasesRenderTarget` и `AtlasCleanupReleasesOnlyEmptyPages`.
+
 `Render.DrawWireframe` включает backend-independent geometry overlay.
 `SpriteManager` копирует реально отправленные triangle edges после position,
 scale, rotation, map projection и standing depth, затем рисует opaque magenta
@@ -676,6 +678,8 @@ hit testing и offscreen composition.
 Manager владеет каждым созданным target; `MapView` заимствует targets карты, освещения и indoor mask и освобождает все три в `OnDestroySelf()`. Сначала queued sprite draws выполняются через flush, пока их текстуры живы. Перед удалением indoor mask `EffectManager::ClearIndoorMaskTexture()` очищает только совпадающие borrows `IndoorMaskTex` во всех cached effects, включая эффекты, уже не выбранные для map flush. Mask другой живой карты и окружающий target stack остаются целыми. `GetRenderTargetCount()` считает targets во владении manager для lifecycle diagnostics, а не backend memory или driver residency.
 
 `Source/Tests/Test_ClientEntityLifetime.cpp` закрепляет повторное освобождение при default, disabled-mask и direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`), а также queued draws, cached effects, другую живую карту и outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory и видимая приёмка переходов между картами проверяются отдельно.
+
+`MapView::DestroyRenderTargets()` используется и при выгрузке, и в construction-failure guard: удерживаемые скриптовые handles не задерживают удаление targets. Границы проверяют `ClientMapUnloadReleasesRenderTargetsWithRetainedHandles` и `ClientMapConstructionFailureReleasesRenderTargets`. Немедленное освобождение native buffers/pools описано в [жизненном цикле клиента](../runtime/client.md#выгрузка-карты-и-время-жизни-нативной-памяти).
 
 При загрузке локальной карты `View.MapRenderTargetScale` фиксирует размеры
 render targets карты, освещения и indoor mask как логический размер экрана,

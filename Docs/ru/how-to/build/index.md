@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/
 ---
 
 # Процесс сборки
-<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"2f6953385814f14a1b966c7712452bf35c7f4aa0cbff84c58525fb78a5f87238"} -->
+<!-- docs-translation: {"document_id":"build-workflow","locale":"ru","source_path":"Docs/en/how-to/build/index.md","source_sha256":"91f5eb4f89c9119fe681f12cd3df4355e4915d7ae8f935d792512f7c2170a7e8"} -->
 Этот документ объясняет, как работать со сборками FOnline, не перенося
 предположения одного проекта в другой.
 
@@ -137,7 +137,7 @@ lanes с toolset `v143,version=14.44`; на не-Windows host они завер�
 До packaging или публикации проверьте каждый связанный EXE и DLL:
 
 ```powershell
-python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
+python BuildTools/check_windows7_imports.py --require-large-address-aware <client.exe> <client-runtime.dll>
 ```
 
 Проверка разбирает PE imports и отклоняет перечисленные в разделе
@@ -146,6 +146,12 @@ python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
 связанному managed runtime. Успешная статическая проверка не заменяет запуск
 на настоящей Windows 7 SP1. Установка toolset, пути к binary, package matrix,
 CI gate и приёмка на живом хосте принадлежат игровому проекту.
+
+## Адресное пространство Windows x86
+
+`AddExecutableApplication` в `BuildTools/cmake/helpers/Build.cmake` добавляет `/LARGEADDRESSAWARE` всем 32-битным Windows executables движка: client hosts, headless applications, servers и tools. Решение зависит от платформы и размера указателя, а не имени project target или binary postfix; shared libraries не задают предел процесса.
+
+На 64-битной Windows флаг позволяет x86-процессу использовать до 4 GB пользовательского адресного пространства вместо 2 GB. На 32-битной Windows 7 стандартный предел остаётся 2 GB; физическую RAM флаг не увеличивает. `check_windows7_imports.py --require-large-address-aware` проверяет PE flag готового EXE вместе с совместимостью imports и не требует этот flag от DLL. Обе проверки не доказывают загрузку реальных карт, устойчивое потребление памяти или приёмку на настоящей Windows 7.
 
 ## Загрузка через собственное зеркало
 

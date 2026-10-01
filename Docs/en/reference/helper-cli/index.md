@@ -21,7 +21,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14</code> |
+| Contract digest | <code>346c42d340cb39623bfca5120856f5ae2d9198368758ea39ca7e672baeeb85e6</code> |
 
 ## Inventory
 
@@ -31,14 +31,14 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Code coverage](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Gameplay test runner](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | embedding-project CMake targets and CI gameplay smoke jobs | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
 | <a id="entry-helper-cli-ai-control-client-35184e9731"></a><code>helper-cli.ai-control-client</code> | [AiControl protocol client](commands.md#entry-helper-cli-ai-control-client-35184e9731) | <code>tooling</code> | embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) | 5 / 5 |
-| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Windows 7 import validation](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | embedding-project Windows 7 CI and release validation | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 1 |
+| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Windows 7 import validation](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | embedding-project Windows 7 CI and release validation | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 2 |
 | <a id="entry-helper-cli-android-device-ab99179ae9"></a><code>helper-cli.android-device</code> | [Android device control](commands.md#entry-helper-cli-android-device-ab99179ae9) | <code>platform</code> | embedding-project Android tasks and direct developer use | [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py) | 7 / 1 |
 | <a id="entry-helper-cli-simple-web-server-58fbf70798"></a><code>helper-cli.simple-web-server</code> | [Local web server](commands.md#entry-helper-cli-simple-web-server-58fbf70798) | <code>platform</code> | BuildTools/package.py WebServer payload | [BuildTools/web/simple-web-server.py](https://github.com/cvet/fonline/blob/master/BuildTools/web/simple-web-server.py) | 0 / 2 |
 | <a id="entry-helper-cli-createmsi-18899fd2a5"></a><code>helper-cli.createmsi</code> | [MSI creation](commands.md#entry-helper-cli-createmsi-18899fd2a5) | <code>build-release</code> | BuildTools/package.py Wix pack | [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py) | 0 / 2 |
 
 ## Coverage
 
-The model contains 8 helpers, 16 subcommands, 24 global arguments, and 52 subcommand arguments.
+The model contains 8 helpers, 16 subcommands, 25 global arguments, and 52 subcommand arguments.
 
 Included:
 

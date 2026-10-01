@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"a01a1ca6a127fd9fadf7d1723a9a3db428c1e41b14bcea9cc6c0e9df2b4ac2b8"} -->
+<!-- docs-translation: {"document_id":"generated-helper-cli-commands","locale":"ru","source_path":"Docs/en/reference/helper-cli/commands.md","source_sha256":"b63efd6c3fcb58420d4fb7e488e55dce6fe6ef406a06caed62c68fda9a80ae3e"} -->
 
 # Команды вспомогательных CLI
 
@@ -504,7 +504,7 @@ options:
 <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a>
 ## Проверка импортов Windows 7
 
-Проверяет слинкованные PE-файлы и отклоняет импорты, недоступные в Windows 7.
+Проверяет совместимость импортов слинкованных PE-файлов с Windows 7 и по запросу требует флаг большого адресного пространства у исполняемых файлов.
 
 - Стабильный ID: `helper-cli.windows7-import-check`
 - Программа: `check_windows7_imports.py`
@@ -517,20 +517,23 @@ options:
 
 | Стабильный ID | Аргумент | Вид | Обязателен | Значения | Варианты | По умолчанию | Описание |
 | --- | --- | --- | --- | --- | --- | --- | --- |
+| <a id="entry-helper-cli-windows7-import-check-argument-require-large-address-aware-eb51248263"></a><code>helper-cli.windows7-import-check.argument.require_large_address_aware</code> | <code>--require-large-address-aware</code> | <code>option</code> | нет | <code>0</code> | - | <code>false</code> | Требовать флаг большого адресного пространства у проверяемых исполняемых файлов. |
 | <a id="entry-helper-cli-windows7-import-check-argument-binaries-90e898370f"></a><code>helper-cli.windows7-import-check.argument.binaries</code> | <code>binaries</code> | <code>positional</code> | да | <code>+</code> | - | - | Проверяемый слинкованный исполняемый PE-файл или DLL. |
 
 ### Точный вывод `--help` верхнего уровня
 
 ```text
-usage: check_windows7_imports.py [-h] binaries [binaries ...]
+usage: check_windows7_imports.py [-h] [--require-large-address-aware] binaries [binaries ...]
 
 Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries
 
 positional arguments:
-  binaries    linked PE executable or DLL to inspect
+  binaries              linked PE executable or DLL to inspect
 
 options:
-  -h, --help  show this help message and exit
+  -h, --help            show this help message and exit
+  --require-large-address-aware
+                        Require the large-address flag on checked executables
 ```
 
 <a id="entry-helper-cli-android-device-ab99179ae9"></a>

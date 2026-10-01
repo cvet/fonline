@@ -46,3 +46,7 @@ Continue with the [canonical guide](en/how-to/build/index.md).
 ## Validation checklist
 
 Continue with the [canonical guide](en/how-to/build/index.md).
+
+## Windows x86 address space
+
+Continue with [Windows x86 address space](en/how-to/build/#windows-x86-address-space).

@@ -42,6 +42,8 @@ The standard generated names use the embedding project's development-name prefix
 
 ## Running tests
 
+`Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
+
 Preferred local baseline from a configured build:
 
 ```bash

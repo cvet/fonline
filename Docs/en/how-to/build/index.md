@@ -120,10 +120,16 @@ The `win32-win7` and `win64-win7` build-platform keys are native-Windows MSVC la
 Before packaging or publishing that lane, inspect every linked EXE and DLL:
 
 ```powershell
-python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
+python BuildTools/check_windows7_imports.py --require-large-address-aware <client.exe> <client-runtime.dll>
 ```
 
 The check parses PE imports and rejects the curated Windows 8+ exports, absent libraries, and unsupported API-set contracts described in [Testing](../../contributing/testing/). This includes imports from a statically linked managed runtime. A passing static check is not a live Windows 7 SP1 startup test. The embedding project owns the concrete toolset installation, binary paths, package matrix, CI gate, and live-host acceptance.
+
+## Windows x86 address space
+
+`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake` links every 32-bit Windows engine executable with `/LARGEADDRESSAWARE`, including client hosts, headless applications, servers and tools. The decision follows platform and pointer size, not a project target name or binary postfix; shared libraries do not set the process limit.
+
+On 64-bit Windows, this permits an x86 user address space of up to 4 GB rather than 2 GB. On 32-bit Windows 7 the default remains 2 GB; the flag adds no physical RAM. `check_windows7_imports.py --require-large-address-aware` checks the finished EXE's PE flag alongside import compatibility and does not impose that flag on DLLs. Neither gate proves representative map loading, sustained memory behavior or acceptance on an actual Windows 7 host.
 
 ## Fetching through a mirror of your own
 

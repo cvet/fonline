@@ -64,6 +64,20 @@ class ScriptLifecycleDocumentationTests(unittest.TestCase):
         self.assertIn('SetFunctionAttributes(as_engine->GetFunctionById(yield_id), {"Async"});', globals_source)
         self.assertIn("Execute only callbacks that were due when this pass began", client)
 
+    def test_property_reactions_follow_storage_on_both_backends(self) -> None:
+        angelscript = self._read("Source/Scripting/AngelScript/AngelScriptEntity.cpp")
+        managed = self._read("Source/Scripting/Managed/ManagedScriptBackend.cpp")
+        generated_api = self._read("Source/Tools/ManagedScriptBaker.cpp")
+        self.assertIn("if (has_value_ref)", angelscript)
+        self.assertIn("prop->AddSetter(", angelscript)
+        self.assertIn("prop->AddPostSetter(", angelscript)
+        self.assertIn("prop->AddPostSetter(", managed)
+        self.assertIn("public static void AddPropertyDeferredSetter(", generated_api)
+        for locale in ("en", "ru"):
+            guide = self._read(f"Docs/{locale}/how-to/scripting/lifecycle-and-concurrency.md")
+            for contract in ("Game.AddPropertySetter", "Game.AddPropertyDeferredSetter", "ref T", "post-set"):
+                self.assertIn(contract, guide)
+
     def test_server_cover_and_entity_teardown_claims_match_runtime_markers(self) -> None:
         server = self._read("Source/Server/Server.cpp")
         entity_manager = self._read("Source/Server/EntityManager.cpp")

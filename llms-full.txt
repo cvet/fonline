@@ -1238,7 +1238,7 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: 2f6953385814f14a1b966c7712452bf35c7f4aa0cbff84c58525fb78a5f87238
+Content SHA-256: 91f5eb4f89c9119fe681f12cd3df4355e4915d7ae8f935d792512f7c2170a7e8
 
 ---
 layout: default
@@ -1362,10 +1362,16 @@ The `win32-win7` and `win64-win7` build-platform keys are native-Windows MSVC la
 Before packaging or publishing that lane, inspect every linked EXE and DLL:
 
 ```powershell
-python BuildTools/check_windows7_imports.py <client.exe> <client-runtime.dll>
+python BuildTools/check_windows7_imports.py --require-large-address-aware <client.exe> <client-runtime.dll>
 ```
 
 The check parses PE imports and rejects the curated Windows 8+ exports, absent libraries, and unsupported API-set contracts described in [Testing](../../contributing/testing/). This includes imports from a statically linked managed runtime. A passing static check is not a live Windows 7 SP1 startup test. The embedding project owns the concrete toolset installation, binary paths, package matrix, CI gate, and live-host acceptance.
+
+## Windows x86 address space
+
+`AddExecutableApplication` in `BuildTools/cmake/helpers/Build.cmake` links every 32-bit Windows engine executable with `/LARGEADDRESSAWARE`, including client hosts, headless applications, servers and tools. The decision follows platform and pointer size, not a project target name or binary postfix; shared libraries do not set the process limit.
+
+On 64-bit Windows, this permits an x86 user address space of up to 4 GB rather than 2 GB. On 32-bit Windows 7 the default remains 2 GB; the flag adds no physical RAM. `check_windows7_imports.py --require-large-address-aware` checks the finished EXE's PE flag alongside import compatibility and does not impose that flag on DLLs. Neither gate proves representative map loading, sustained memory behavior or acceptance on an actual Windows 7 host.
 
 ## Fetching through a mirror of your own
 
@@ -4304,7 +4310,7 @@ Run the focused documentation test, localization check, snippet check, site gene
 ===== BEGIN DOCUMENT script-lifecycle-concurrency =====
 Source: Docs/en/how-to/scripting/lifecycle-and-concurrency.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/lifecycle-and-concurrency.html
-Content SHA-256: 24bc78eda628fea978bc4fbea3ab9d9698fa6c1555e7dab0739954306497fdc4
+Content SHA-256: 03389c356c8ff546c644ed1869b4addf6d1dedd58c23baf8b744ebf7d6f78aee
 
 ---
 layout: default
@@ -4485,6 +4491,10 @@ Subscriptions are stored on the entity that owns the event. `Entity::MarkAsDestr
 Explicitly unsubscribe when behavior must stop before the owner is destroyed, when replacing a callback, or when a long-lived global owner should release a project object. Do not maintain a second project-wide registry solely to unsubscribe ordinary entity callbacks during destruction; that duplicates engine lifetime ownership and creates another source of stale handles.
 
 Event dispatch may run user callbacks that alter subscriptions, so the engine iterates a callback snapshot. Do not rely on a subscription added during a dispatch being called in that same dispatch.
+
+### Property transformation versus post-set reactions
+
+A value-transforming property setter runs before storage: it receives the proposed value by reference, while reading the entity still sees the previous property. Use it to validate or transform that value, not to rebuild a UI cache from the entity's new state. Reaction-only callbacks run after storage. In AngelScript, `Game.AddPropertySetter` selects the post-set path for an entity-only handler; the by-reference handler selects the transforming path. In Managed C#, `[PropertySetter]` marks the handler, while generated `Game.AddPropertyDeferredSetter(property, handler)` explicitly selects the entity-only post-set path; the entity-only `AddPropertySetter` overload is equivalent. The `ref T` overload remains pre-set. A later event that happens to refresh a cache is not a substitute for choosing the correct phase.
 
 ### Persistence preload boundary
 
@@ -4710,7 +4720,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: c44a800aae7d65187e500465dff8f085c91206adfb3812c36f22b07d281f0e77
+Content SHA-256: 3117bb41a1f7ffd1a503e4f1063819af6617988d5e11360a19def470dee93b05
 
 ---
 layout: default
@@ -4755,6 +4765,8 @@ Use this page when choosing native validation for an engine change or when addin
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
 ## Running tests
+
+`Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 
 Preferred local baseline from a configured build:
 
@@ -17404,7 +17416,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 498fc0b5b8ff1be77eeb94b2e75deff6d9b2fe35816012dfaf84438e6094b253
+Content SHA-256: 996b474c6b9399d3ebe5f3f2c31120c6791df222b618fd867904a8057685f804
 
 ---
 layout: default
@@ -17881,6 +17893,8 @@ pruned size and indexes keepers by coarse atlas cells, avoiding hot-path full
 scans. No surviving sprite, pixels, or UVs move; this changes no settings or
 resource serialization.
 
+`TextureAtlasManager::CleanupAtlases()` deletes empty pages and their manager-owned render targets, including `OneImage` pages. `SpriteManager` invokes it after cache eviction, and new-page creation also performs cleanup. Any page with a live allocation remains valid: cleanup neither moves pixels nor changes UVs. `ExpiredOneImageAtlasReleasesRenderTarget` and `AtlasCleanupReleasesOnlyEmptyPages` pin the empty/live boundary.
+
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
 positioning, scaling, rotation, map projection, and standing-sprite depth
@@ -18065,6 +18079,8 @@ acceptance claim is driver-specific.
 The manager owns every target it creates; a `MapView` borrows its map, light and indoor-mask targets and releases all three in `OnDestroySelf()`. Destruction first flushes queued sprite draws while their textures are alive. Before deleting the indoor mask, `EffectManager::ClearIndoorMaskTexture()` clears only matching `IndoorMaskTex` borrows across all cached effects, including effects no longer selected for map flushing. Another live map's mask and the surrounding target stack remain intact. `GetRenderTargetCount()` counts manager-owned targets for lifecycle diagnostics, not backend memory or driver residency.
 
 `Source/Tests/Test_ClientEntityLifetime.cpp` pins repeated release under default, disabled-mask and direct-draw settings (`MapViewRenderTargetsAreReleasedOnDestroy`) plus queued draws, cached effects, another live map and an outer target (`MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences`). Hardware memory and visible map-transition acceptance remain separate checks.
+
+`MapView::DestroyRenderTargets()` is shared by unload and the construction-failure guard; retained script handles do not delay target retirement. `ClientMapUnloadReleasesRenderTargetsWithRetainedHandles` and `ClientMapConstructionFailureReleasesRenderTargets` cover both boundaries. Immediate native buffer/pool retirement is described in [client lifetime](../runtime/client.md#map-unload-and-native-storage-lifetime).
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 
@@ -19075,7 +19091,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 62a08ad91f832efd79137bc9bbf72a358ea2c9095b301d7704de24f88124fb75
+Content SHA-256: 642ba6f2d29c8e6a964f005a9db2078673e3aa1c411b8a5fa6e439e07d6223b8
 
 ---
 layout: default
@@ -19421,6 +19437,14 @@ Map light source intensity is authored as a percentage magnitude (`0..100`, with
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets
+
+### Map unload and native storage lifetime
+
+`ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool.
+
+All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
+
+`Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
@@ -23293,7 +23317,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: aa85535fdcb627b8997b0f9e35da5caae58df7979677871aadeb6d61f09b2b08
+Content SHA-256: 38ba5052f07f1a0d456f3e24c999d4333adac35a0fe2359fd33f9c97364419e5
 
 ---
 layout: default
@@ -23542,7 +23566,7 @@ Start here for final target organization or post-generation diagnostics, not for
 
 Reusable helpers live in `BuildTools/cmake/helpers/`:
 
-- `Build.cmake` — build/target creation helpers.
+- `Build.cmake` — build/target creation helpers, including executable-only `/LARGEADDRESSAWARE` for Windows x86; see [address-space limits and validation](../../how-to/build/#windows-x86-address-space).
 - `Commands.cmake` — command target helpers.
 - `Options.cmake` — option/value helpers.
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
@@ -23796,7 +23820,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-helper-cli-index =====
 Source: Docs/en/reference/helper-cli/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/helper-cli/
-Content SHA-256: 67257d87ab6bd7730de517dc3532e93552c9963c5e38036b850d8aeb28cc47f8
+Content SHA-256: 1b419a9cc05ba04d11c385c0be772994ac69d02304f6da587e7ddb152257f2d6
 
 ---
 title: Generated Helper CLI Reference
@@ -23821,7 +23845,7 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | Since | Not declared |
 | Support policy | Helper command lines are revision-pinned implementation interfaces; automation must pin an engine revision. |
 | Source manifest | [BuildTools/HelperCliInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/HelperCliInterface.json) |
-| Contract digest | <code>1e369f94c850dd2684f402f7c73d0b07db6c1392e8aedd167833d77ee5629a14</code> |
+| Contract digest | <code>346c42d340cb39623bfca5120856f5ae2d9198368758ea39ca7e672baeeb85e6</code> |
 
 ## Inventory
 
@@ -23831,14 +23855,14 @@ This reference is generated from the `argparse.ArgumentParser` objects used by e
 | <a id="entry-helper-cli-codecoverage-b014400e5e"></a><code>helper-cli.codecoverage</code> | [Code coverage](commands.md#entry-helper-cli-codecoverage-b014400e5e) | <code>quality</code> | BuildTools/cmake/stages/Applications.cmake | [BuildTools/codecoverage.py](https://github.com/cvet/fonline/blob/master/BuildTools/codecoverage.py) | 4 / 0 |
 | <a id="entry-helper-cli-gameplay-test-runner-b34ed8deb4"></a><code>helper-cli.gameplay-test-runner</code> | [Gameplay test runner](commands.md#entry-helper-cli-gameplay-test-runner-b34ed8deb4) | <code>quality</code> | embedding-project CMake targets and CI gameplay smoke jobs | [BuildTools/gameplay_test_runner.py](https://github.com/cvet/fonline/blob/master/BuildTools/gameplay_test_runner.py) | 0 / 3 |
 | <a id="entry-helper-cli-ai-control-client-35184e9731"></a><code>helper-cli.ai-control-client</code> | [AiControl protocol client](commands.md#entry-helper-cli-ai-control-client-35184e9731) | <code>tooling</code> | embedding-project AI adapters, protocol smoke tests, and direct developer diagnostics | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) | 5 / 5 |
-| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Windows 7 import validation](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | embedding-project Windows 7 CI and release validation | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 1 |
+| <a id="entry-helper-cli-windows7-import-check-a0c7e4cb59"></a><code>helper-cli.windows7-import-check</code> | [Windows 7 import validation](commands.md#entry-helper-cli-windows7-import-check-a0c7e4cb59) | <code>quality</code> | embedding-project Windows 7 CI and release validation | [BuildTools/check_windows7_imports.py](https://github.com/cvet/fonline/blob/master/BuildTools/check_windows7_imports.py) | 0 / 2 |
 | <a id="entry-helper-cli-android-device-ab99179ae9"></a><code>helper-cli.android-device</code> | [Android device control](commands.md#entry-helper-cli-android-device-ab99179ae9) | <code>platform</code> | embedding-project Android tasks and direct developer use | [BuildTools/android_device.py](https://github.com/cvet/fonline/blob/master/BuildTools/android_device.py) | 7 / 1 |
 | <a id="entry-helper-cli-simple-web-server-58fbf70798"></a><code>helper-cli.simple-web-server</code> | [Local web server](commands.md#entry-helper-cli-simple-web-server-58fbf70798) | <code>platform</code> | BuildTools/package.py WebServer payload | [BuildTools/web/simple-web-server.py](https://github.com/cvet/fonline/blob/master/BuildTools/web/simple-web-server.py) | 0 / 2 |
 | <a id="entry-helper-cli-createmsi-18899fd2a5"></a><code>helper-cli.createmsi</code> | [MSI creation](commands.md#entry-helper-cli-createmsi-18899fd2a5) | <code>build-release</code> | BuildTools/package.py Wix pack | [BuildTools/msicreator/createmsi.py](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/createmsi.py) | 0 / 2 |
 
 ## Coverage
 
-The model contains 8 helpers, 16 subcommands, 24 global arguments, and 52 subcommand arguments.
+The model contains 8 helpers, 16 subcommands, 25 global arguments, and 52 subcommand arguments.
 
 Included:
 
@@ -26616,7 +26640,7 @@ The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProje
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: 8beafdb5c68576a4e622ed2f8fa712eabff8a341704024a0b7c0defc086d8edf
+Content SHA-256: d4bde46f2b7f5f5ad0d109b9c78557be91c918b8d302c07c882a69357f2886ab
 
 ---
 layout: default
@@ -26823,6 +26847,8 @@ The snapshot for a newly mounted source is taken before that source is published
 `Common.Packaged` is a fixed auto-setting populated from the executable's packaged marker by `GlobalSettings::ApplyAutoSettings()`. After settings are loaded, runtime policy must read that snapshot (`settings.Packaged`) so copied or injected settings stay internally consistent and testable. Direct `IsPackaged()` checks are reserved for pre-settings bootstrap decisions and `FileSystem::AddPackSource()`, where the physical executable marker deliberately selects archive-versus-directory mounting; tests may also inspect that marker when choosing compatible fixtures.
 
 Packaged clients select one effective source per configured logical pack: a writable replacement `Pack.fores` when present, otherwise the installed base, paired with a writable `Pack.patch.fores` only when it binds to that exact physical base. Its complete catalog determines present and deleted paths; later configured packs retain precedence. `GetClientResources()` assembles that same view for gameplay and the updater's metadata check. The suffix after the last Embedded entry can use a disposable `Resources.foindex` cache; stale or damaged cache data falls back to authoritative pair mounts, while damaged authoritative pack data remains an error. An absolute installed or APK root puts writable replacements under `<UserWritablePath>/Resources`. See [Resource Pack Format](../../../ResourcePackFormat.md) and [Client Runtime Split and Updater](../../explanation/runtime/client-updater.md).
+
+`ResourceIndexSource` and `ResourcePackSource` move the decoded byte vector into the file buffer holder. Its allocation remains owned until the caller releases the `File`: handing over a large stored resource no longer creates another full-size copy. Deflated entries still hold compressed and decoded buffers concurrently during decompression; this is reduced peak memory, not streaming or a new pack format. `FileBufferHolderMovesVectorStorage` in `Test_ResourceIndex.cpp` checks pointer preservation and empty buffers.
 
 ## Low-level disk access
 

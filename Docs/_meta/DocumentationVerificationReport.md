@@ -2,6 +2,21 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-01 - map storage retirement, decoded-resource ownership and Windows x86
+
+Scope and reconciliation:
+
+- Reconciled documentation head `a6ea81b2b1651b2097424c8251a9015e7db4177b` with master `a5786c7e6818133f4c7fa4f10d4523c5fec55d14` after `fdd0b5f786f5e80197d3188703810c27ea6e4504`; audited all 25 incoming files. The retained-map/atlas fixes extend the previously integrated mask cleanup rather than replacing its queued-draw, all-cached-effect or multi-map boundaries.
+- Canonical EN/RU client, rendering, data-source, build, pipeline and testing owners describe immediate unload storage retirement, failed-construction cleanup, empty versus live atlas pages, moved decoded buffers and executable-only Windows x86 large-address awareness. Kept all six legacy pages as pointers, preserving the new address-space and map-unload fragments.
+- Preserved `check_windows7_imports.py::create_parser` while incorporating the new optional PE-flag gate; refreshed the source-owned helper CLI description and reviewed Russian descriptions. Generated API changes are source-location shifts, not new script exports. No resource schema, network format or scripting-backend capability change is introduced.
+- The embedding project's inventory regression exposed a reusable authoring gap: the shared EN/RU lifecycle guide now distinguishes by-reference pre-set transformations from post-set reactions for both AngelScript and Managed C#. Source-bound documentation tests cover this distinction and the new native lifetime/build contracts; no game script or project CI is normative Engine proof.
+
+Validation status:
+
+- Fresh `LF_UnitTests` and `LF_Baker` builds passed. The full native suite passed 662698 assertions in 526 cases, exit 0, including the new map, atlas, sprite-holder and decoded-buffer fixtures. Windows 7 import/PE fixtures: 20 passed. Thirty-five focused build/rendering/helper/lifecycle/description documentation tests passed. Generated descriptions: 4817/4817 current. The seventeen-domain contract diff reports two internal helper-model changes and zero required dispositions.
+- Regenerate delivery artifacts after this final evidence entry, then require aggregate documentation validation and all owning freshness checks before committing. The overlapping earlier validator saw intermediate stale delivery outputs while generation was running; it was not a semantic runtime failure and is not a PASS.
+- The previous full native suite and project bake validate earlier integration snapshots. They are not substituted for the newest lifetime fixtures. Physical GPU memory, live Windows 7 acceptance, remote CI, package publication and exact-commit Pages deployment remain separate, unrun boundaries.
+
 ## 2026-10-01 - authored server strings in client dictionaries
 
 Scope and source revisions:

@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"8beafdb5c68576a4e622ed2f8fa712eabff8a341704024a0b7c0defc086d8edf"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"d4bde46f2b7f5f5ad0d109b9c78557be91c918b8d302c07c882a69357f2886ab"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -185,6 +185,8 @@ Snapshot нового источника снимается до его публ
 `Common.Packaged` — fixed auto-setting, заполняемый из packaged marker исполняемого файла в `GlobalSettings::ApplyAutoSettings()`. После загрузки настроек runtime-политика обязана читать этот снимок (`settings.Packaged`), чтобы скопированные или подставленные настройки оставались внутренне согласованными и тестируемыми. Прямые проверки `IsPackaged()` зарезервированы за решениями bootstrap до настроек и за `FileSystem::AddPackSource()`, где физический marker исполняемого файла намеренно выбирает монтирование архива или каталога; тесты также могут смотреть на этот marker при выборе совместимых фикстур.
 
 Упакованный клиент выбирает один effective source на каждый логический pack: writable замену `Pack.fores`, если она есть, иначе установленную базу, плюс writable `Pack.patch.fores`, привязанный к физическому хешу этой базы. Полный каталог пары определяет как присутствующие, так и удалённые пути; порядок приоритета логических packs сохраняется. `GetClientResources()` собирает одинаковый вид для gameplay и проверки metadata в updater. Для суффикса после последнего Embedded может применяться удаляемый кэш `Resources.foindex`: устаревший или повреждённый кэш заменяется прямым mount авторитетных пар, а повреждение самих packs остаётся ошибкой. При абсолютном installed/APK root замены хранятся в `<UserWritablePath>/Resources`. См. [формат пакетов ресурсов](../../../ResourcePackFormat.md) и [разделение client runtime и updater](../../explanation/runtime/client-updater.md).
+
+`ResourceIndexSource` и `ResourcePackSource` передают decoded byte vector во владение file buffer holder. Allocation сохраняется до освобождения `File` вызывающей стороной: передача большого stored resource больше не создаёт вторую полноразмерную копию. Во время decompression deflated entries по-прежнему одновременно удерживают compressed и decoded buffers. Это уменьшение пика памяти, а не streaming или новый формат pack. `FileBufferHolderMovesVectorStorage` в `Test_ResourceIndex.cpp` проверяет сохранение указателя и пустые buffers.
 
 ## Низкоуровневый доступ к диску
 

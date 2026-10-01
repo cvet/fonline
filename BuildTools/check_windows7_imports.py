@@ -63,6 +63,9 @@ class PeFormatError(ValueError):
     pass
 
 
+IMAGE_FILE_LARGE_ADDRESS_AWARE = 0x0020
+
+
 @dataclass(frozen=True)
 class ImportedSymbol:
     library: str
@@ -179,8 +182,22 @@ def check_binary(binary: Path) -> list[ImportedSymbol]:
     return sorted((item for item in read_imports(binary) if is_unavailable_on_windows7(item)), key=lambda item: (item.library, item.name))
 
 
+def is_large_address_aware(binary: Path) -> bool:
+    data = binary.read_bytes()
+    if len(data) < 0x40 or data[:2] != b"MZ":
+        raise PeFormatError("missing DOS header")
+
+    (pe_offset,) = _unpack_from("<I", data, 0x3C)
+    if data[pe_offset : pe_offset + 4] != b"PE\0\0":
+        raise PeFormatError("missing PE signature")
+
+    (characteristics,) = _unpack_from("<H", data, pe_offset + 4 + 18)
+    return bool(characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE)
+
+
 def create_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
+    parser.add_argument("--require-large-address-aware", action="store_true", help="Require the large-address flag on checked executables")
     parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
     return parser
 
@@ -203,6 +220,19 @@ def main(argv: list[str] | None = None) -> int:
             print(f"[Windows7Imports] {binary}: unsupported imports: {details}", file=sys.stderr)
         else:
             print(f"[Windows7Imports] {binary}: compatible")
+
+        if args.require_large_address_aware and binary.suffix.lower() == ".exe":
+            try:
+                large_address_aware = is_large_address_aware(binary)
+            except (OSError, PeFormatError) as error:
+                print(f"[Windows7Imports] {binary}: unable to inspect PE address flag: {error}", file=sys.stderr)
+                failed = True
+            else:
+                if not large_address_aware:
+                    print(f"[Windows7Imports] {binary}: missing IMAGE_FILE_LARGE_ADDRESS_AWARE", file=sys.stderr)
+                    failed = True
+                else:
+                    print(f"[Windows7Imports] {binary}: large-address aware")
 
     return 1 if failed else 0
 

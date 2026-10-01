@@ -96,6 +96,17 @@ auto MakeFileBufferHolder(unique_arr_ptr<uint8_t>&& buf) -> unique_del_ptr<const
     });
 }
 
+auto MakeFileBufferHolder(vector<uint8_t>&& buf) -> unique_del_ptr<const uint8_t>
+{
+    if (buf.empty()) {
+        return MakeFileBufferHolder(safe_alloc::make_unique_arr<uint8_t>(0));
+    }
+
+    unique_nptr<vector<uint8_t>> owner = safe_alloc::make_unique<vector<uint8_t>>(std::move(buf));
+    auto data = make_ptr<const uint8_t*>(owner->data());
+    return make_unique_del_ptr(data, [owner = std::move(owner)](const uint8_t*) mutable noexcept { owner.reset(); });
+}
+
 class DummySpace final : public DataSource
 {
 public:

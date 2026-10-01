@@ -343,6 +343,14 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ## Resources, sprites, effects, and render targets
 
+### Map unload and native storage lifetime
+
+`ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool.
+
+All three manager-owned map targets are retired at unload, and failed construction releases any already-created targets. Queued draws are flushed before teardown and matching cached indoor-mask borrows are cleared before texture deletion; see [render-target ownership](../rendering/#render-targets-and-client-bridge). Sprite-cache eviction also deletes empty atlas pages and their targets while preserving live allocations. Model mesh/animation definitions remain a separate resource-identity cache, not owners of retired maps.
+
+`Test_ClientEntityLifetime.cpp` covers retained handles, pending item owners, construction failure and empty/live atlas pages. Its retained-storage bound runs only when debug/profiling allocator statistics are available. Process private bytes and working set also include allocator, managed-runtime and renderer/driver caches; a remaining high-water mark alone is not proof of a loaded map, and headless target counts do not qualify hardware memory behavior.
+
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 
 - `ResourceManager` indexes resource files, resolves item default sprites, loads and caches critter animation frames, handles Fallout-style animation frame mapping, and exposes normalized sound-name mappings. See [Audio.md](../../../Audio.md) for extension precedence, effect identities, and numbered variants.

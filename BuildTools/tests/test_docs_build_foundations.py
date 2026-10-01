@@ -151,6 +151,21 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn("project-owned", guide)
         self.assertIn("server-only `INTERFACE` dependency", guide)
 
+    def test_windows_x86_address_space_is_owned_by_the_engine_helper(self) -> None:
+        helper = self._read("BuildTools/cmake/helpers/Build.cmake")
+        self.assertIn("FO_WINDOWS AND CMAKE_SIZEOF_VOID_P EQUAL 4", helper)
+        self.assertIn("TargetLinkOptions(${target} PRIVATE /LARGEADDRESSAWARE)", helper)
+        checker = self._read("BuildTools/check_windows7_imports.py")
+        self.assertIn("def create_parser()", checker)
+        self.assertIn("--require-large-address-aware", checker)
+        self.assertIn('binary.suffix.lower() == ".exe"', checker)
+        for locale in ("en", "ru"):
+            guide = self._read(BUILD_GUIDE.replace("Docs/en/", f"Docs/{locale}/"))
+            self.assertIn("/LARGEADDRESSAWARE", guide)
+            self.assertIn("--require-large-address-aware", guide)
+            self.assertIn("4 GB", guide)
+            self.assertIn("2 GB", guide)
+
     def test_canonical_and_legacy_build_routes_are_explicit(self) -> None:
         manifest = json.loads(self._read("Docs/documentation-manifest.json"))
         routes = (

@@ -68,3 +68,7 @@ Continue with [Client-side validation tests](en/explanation/runtime/client.md#cl
 ## Change checklist
 
 Continue with [Change checklist](en/explanation/runtime/client.md#change-checklist).
+
+### Map unload and native storage lifetime
+
+Continue with [map unload and native storage lifetime](en/explanation/runtime/client.md#map-unload-and-native-storage-lifetime).

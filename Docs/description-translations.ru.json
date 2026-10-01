@@ -1017,8 +1017,12 @@
           "translation": "Локальный Web-сервер"
         },
         "/helpers/@id=helper-cli.windows7-import-check/description": {
-          "source_sha256": "edaf9703b95de1d1c33fa229137600cae51d4a2b7a52c9f4317ff603d5d7f59f",
-          "translation": "Проверяет слинкованные PE-файлы и отклоняет импорты, недоступные в Windows 7."
+          "source_sha256": "ba820e17a98ac121a047225dfce65e7b4649a494414fa69d5dfdaf4e227edc12",
+          "translation": "Проверяет совместимость импортов слинкованных PE-файлов с Windows 7 и по запросу требует флаг большого адресного пространства у исполняемых файлов."
+        },
+        "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.require_large_address_aware/description": {
+          "source_sha256": "743a32103531d7e2c4007292a72e971fa3007e94ef680bef0132b45622a5bc14",
+          "translation": "Требовать флаг большого адресного пространства у проверяемых исполняемых файлов."
         },
         "/helpers/@id=helper-cli.windows7-import-check/global_arguments/@id=helper-cli.windows7-import-check.argument.binaries/description": {
           "source_sha256": "23a5ed3d50ff93b7d50d3bf8289f1cc1b46cfdbc2e7e5594fc451c37281d344e",
