@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"996b474c6b9399d3ebe5f3f2c31120c6791df222b618fd867904a8057685f804"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"1aaff99b44d51934edf9bc07ce6ac3ea9722556fa7f52b926d7465318ee9dc06"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -379,7 +379,14 @@ name на standing height; при этом более широкий lying pose 
 Повышенный weapon/overhead swing игнорируется, поэтому name не поднимается во
 время удара. Оба input baked per clip, и результат не дрейфует внутри animation.
 
-Automatic logical frame владеет переиспользуемым scratch render target 2x.
+Автоматический логический кадр использует переиспользуемый scratch render target 2x.
+Фабрика спрайтов моделей хранит совпадающие размеры в LRU-кэше с мягким бюджетом
+8 x 1024 x 1024 цветовых пикселей (32 MiB RGBA плюс память глубины конкретного backend).
+Кадр, превышающий этот бюджет, занимает кэш один. Очистка sprite cache освобождает
+все scratch targets и сбрасывает заимствованную текстуру blit effect до удаления
+её владельца; atlas allocations живых спрайтов и общие материалы моделей остаются
+валидными. Бюджет ограничивает удерживаемые промежуточные цветовые пиксели, а не
+всю память рендерера и не фиксированное число targets.
 Клиент объединяет baked active-animation bounds с per-animation AABB выбранных
 direct non-particle child links, parent clips которых активны. Если matching
 clip не активен либо link вложен под другой child rig, используется baked

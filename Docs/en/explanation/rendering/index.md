@@ -341,7 +341,14 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame owns the reusable 2x scratch render target. The
+The automatic logical frame uses a reusable 2x scratch render target. The model
+sprite factory reuses matching sizes in a least-recently-used cache with a soft
+budget of 8 x 1024 x 1024 colour pixels (32 MiB of RGBA storage, plus backend depth
+storage). A frame exceeding that budget occupies the cache alone. Sprite-cache
+cleanup releases every scratch target and clears the blit effect's borrowed
+texture before retiring its owner; live sprite atlas allocations and shared model
+materials remain valid. This budget limits retained intermediate colour pixels,
+not total renderer memory or a fixed number of targets. The
 client unions baked active-animation bounds with the per-animation AABBs of
 selected direct non-particle child links whose parent clips are active. If no
 matching clip is active, or a link is nested under another child rig, the baked

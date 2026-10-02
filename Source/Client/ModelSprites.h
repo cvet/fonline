@@ -132,13 +132,17 @@ public:
     [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager>;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    void ClenupCache() override;
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
+    void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;
     ptr<RenderSettings> _settings;
+    ptr<EffectManager> _effectMngr;
     unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};

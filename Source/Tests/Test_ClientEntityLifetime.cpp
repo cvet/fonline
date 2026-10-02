@@ -37,6 +37,9 @@
 #include "Client.h"
 #include "ItemHexView.h"
 #include "MapView.h"
+#include "ModelInfoBaker.h"
+#include "ModelMeshData.h"
+#include "ModelSprites.h"
 #include "PlayerView.h"
 #include "Test_BakerHelpers.h"
 #include "TextureAtlas.h"
@@ -78,7 +81,7 @@ static auto MakeClientLifetimeSettings() -> GlobalSettings
     return settings;
 }
 
-static auto MakeClientLifetimeEngine(GlobalSettings& settings) -> refcount_ptr<ClientEngine>
+static auto MakeClientLifetimeEngine(GlobalSettings& settings, vector<pair<string, vector<uint8_t>>> extra_resources = {}) -> refcount_ptr<ClientEngine>
 {
     vector<uint8_t> metadata = BakerTests::MakeEmptyMetadataBlob();
     auto source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("ClientEntityLifetime");
@@ -103,10 +106,154 @@ static auto MakeClientLifetimeEngine(GlobalSettings& settings) -> refcount_ptr<C
     BakerClientEngine compiler {compiler_resources};
     source->AddFile("ClientEntityLifetime.fos-bin-client", BakerTests::CompileInlineScripts(&compiler, "ClientEntityLifetimeScripts", {{"Scripts/Lifetime.fos", "void LifetimeFixtureEntry() {}"}}, [](string_view message) { FAIL(message); }));
 #endif
+    for (auto& [path, data] : extra_resources) {
+        source->AddFile(path, std::move(data));
+    }
+
     FileSystem resources;
     resources.AddCustomSource(std::move(source));
     return safe_alloc::make_refcounted<ClientEngine>(&settings, std::move(resources), &GetApp()->MainWindow);
 }
+
+#if FO_ENABLE_3D
+static auto MakeScratchModelResources() -> vector<pair<string, vector<uint8_t>>>
+{
+    constexpr string_view model_path = "Models/ScratchLifetime.fo3d";
+    constexpr string_view mesh_path = "Models/ScratchLifetime.fbx";
+    ModelMeshData mesh;
+    mesh.RootBone = safe_alloc::make_unique<ModelMeshBoneData>();
+    mesh.RootBone->Name = "Root";
+    mesh.RootBone->TransformationMatrix = mat44 {1.0f};
+    mesh.RootBone->GlobalTransformationMatrix = mat44 {1.0f};
+    ModelMeshGeometryData geometry;
+    geometry.SkinBoneNames = {"Root"};
+    geometry.SkinBoneOffsets = {mat44 {1.0f}};
+
+    for (vec3 position : {vec3 {}, vec3 {1.0f, 0.0f, 0.0f}, vec3 {0.0f, 1.0f, 0.0f}}) {
+        ModelMeshVertexData vertex {};
+        vertex.Position = position;
+        vertex.BlendWeights[0] = 1.0f;
+        geometry.Vertices.emplace_back(vertex);
+    }
+
+    geometry.Indices = {0, 1, 2};
+    mesh.RootBone->AttachedMesh = std::move(geometry);
+    vector<uint8_t> mesh_blob;
+    data_writer writer {mesh_blob};
+    WriteModelMeshData(writer, mesh, "ScratchLifetime");
+    BakerTests::TestRig rig;
+    rig.AddSourceFile(model_path, "Model ScratchLifetime.fbx\n", 1);
+    rig.AddSourceFile(mesh_path, "scratch mesh fixture", 1);
+    rig.AddBakedFile(mesh_path, mesh_blob, 1);
+    rig.AddBakedFile("Metadata.fometa-client", BakerTests::MakeEmptyMetadataBlob());
+    ModelInfoBaker baker(rig.MakeContext(), [](string_view path, const File& file) -> ModelSourceAsset {
+        ModelSourceAsset asset;
+        asset.FileName = path;
+        asset.WriteTime = file.GetWriteTime();
+        asset.Skeleton.FileName = path;
+        asset.Skeleton.Joints.emplace_back(ModelSkeletonJoint {.Name = "Root", .Hierarchy = {"Root"}, .RestLocalTransform = mat44 {1.0f}});
+        return asset;
+    });
+    baker.BakeFiles(rig.GetAllSourceFiles(), "");
+    REQUIRE(rig.Outputs.count(string {model_path}) == 1);
+    vector<pair<string, vector<uint8_t>>> resources;
+    resources.emplace_back(string {mesh_path}, std::move(mesh_blob));
+
+    for (auto& [path, data] : rig.Outputs) {
+        resources.emplace_back(path, std::move(data));
+    }
+
+    return resources;
+}
+
+TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
+{
+    constexpr string_view model_path = "Models/ScratchLifetime.fo3d";
+    auto settings = MakeClientLifetimeSettings();
+    BakerTests::OverrideSetting(settings.Render.ModelSpriteMaxTextureWidth, int32_t {4096});
+    BakerTests::OverrideSetting(settings.Render.ModelSpriteMaxTextureHeight, int32_t {4096});
+    auto client = MakeClientLifetimeEngine(settings, MakeScratchModelResources());
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto factory = client->SprMngr.GetSpriteFactory(typeid(ModelSpriteFactory)).dyn_cast<ModelSpriteFactory>();
+    REQUIRE(factory);
+    auto sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites).dyn_cast<ModelSprite>();
+    REQUIRE(sprite);
+    size_t initial_targets = client->SprMngr.GetRtMngr().GetRenderTargetCount();
+
+    SECTION("Changing frame sizes does not retain every temporary target")
+    {
+        for (int32_t size = 512; size < 1152; size += 32) {
+            sprite->SetSize({size, size});
+            sprite->DrawToAtlas();
+        }
+
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 12);
+    }
+
+    SECTION("Cache cleanup releases scratch targets while preserving a live sprite")
+    {
+        for (int32_t size = 256; size < 768; size += 32) {
+            sprite->SetSize({size, size});
+            sprite->DrawToAtlas();
+        }
+
+        client->SprMngr.CleanupSpriteCache();
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 1);
+        CHECK_FALSE(client->EffectMngr.Effects.FlushRenderTarget->MainTex);
+        REQUIRE(sprite->GetAtlas());
+        sprite->SetSize({256, 256});
+        REQUIRE_NOTHROW(sprite->DrawToAtlas());
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetStack().empty());
+    }
+
+    SECTION("An oversized frame occupies the scratch cache alone")
+    {
+        // The headless application's default 2048 texture cap cannot admit a frame beyond this cache budget.
+        int32_t previous_max_width = AppRender::MAX_ATLAS_WIDTH;
+        int32_t previous_max_height = AppRender::MAX_ATLAS_HEIGHT;
+        auto restore_texture_caps = scope_exit([&]() noexcept {
+            AppRender::MAX_ATLAS_WIDTH = previous_max_width;
+            AppRender::MAX_ATLAS_HEIGHT = previous_max_height;
+        });
+        AppRender::MAX_ATLAS_WIDTH = 4096;
+        AppRender::MAX_ATLAS_HEIGHT = 4096;
+        sprite->SetSize({512, 512});
+        sprite->DrawToAtlas();
+        auto large_sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites).dyn_cast<ModelSprite>();
+        REQUIRE(large_sprite);
+        large_sprite->SetSize({1536, 1536});
+        large_sprite->DrawToAtlas();
+        isize32 large_size = client->EffectMngr.Effects.FlushRenderTarget->MainTex->Size;
+        CAPTURE(large_size.width, large_size.height);
+        REQUIRE(numeric_cast<uint64_t>(large_size.width) * numeric_cast<uint64_t>(large_size.height) > 8 * 1024 * 1024);
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 2);
+        REQUIRE_NOTHROW(sprite->DrawToAtlas());
+        isize32 returned_size = client->EffectMngr.Effects.FlushRenderTarget->MainTex->Size;
+        CAPTURE(returned_size.width, returned_size.height);
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() <= initial_targets + 2);
+    }
+
+    SECTION("Recently used fitting sizes reuse their existing targets")
+    {
+        sprite->SetSize({512, 512});
+        sprite->DrawToAtlas();
+        nptr<const RenderTexture> first_texture = client->EffectMngr.Effects.FlushRenderTarget->MainTex;
+        isize32 first_size = first_texture->Size;
+        auto second_sprite = factory->LoadSprite(client->Hashes.to_hashed_string(model_path), AtlasType::MapSprites).dyn_cast<ModelSprite>();
+        REQUIRE(second_sprite);
+        second_sprite->SetSize({768, 768});
+        second_sprite->DrawToAtlas();
+        size_t targets_after_two_sizes = client->SprMngr.GetRtMngr().GetRenderTargetCount();
+        // Redraw the settled frame; a new size request can require a different root-relative placement.
+        sprite->DrawToAtlas();
+        isize32 returned_size = client->EffectMngr.Effects.FlushRenderTarget->MainTex->Size;
+        CAPTURE(first_size.width, first_size.height, returned_size.width, returned_size.height);
+        CHECK(client->EffectMngr.Effects.FlushRenderTarget->MainTex == first_texture);
+        CHECK(client->SprMngr.GetRtMngr().GetRenderTargetCount() == targets_after_two_sizes);
+    }
+}
+
+#endif
 
 TEST_CASE("MapViewRenderTargetsAreReleasedOnDestroy")
 {
