@@ -29,6 +29,7 @@ from typing import IO, Callable, Iterable, Literal, Mapping, Sequence
 import buildtools
 import foconfig
 import managed_runtime_payload
+import resource_pack_hash
 
 
 TARGET_CHOICES = ['Server', 'Client', 'Mapper', 'Baker', 'AnimationViewer', 'ParticleViewer']
@@ -149,6 +150,7 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-output', dest='output', required=True, help='output dir')
 	parser.add_argument('-resource-pack-compress-level', dest='resource_pack_compress_level', type=int, choices=range(0, 10), help='override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)')
 	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
+	parser.add_argument('-resource-pack-hash-library', help='explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*')
 	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
 	return parser.parse_args()
 
@@ -393,7 +395,7 @@ def encode_resource_pack_blob(data: bytes, compress_level: int, min_gain_percent
 	return RESOURCE_PACK_CODEC_DEFLATE, compressed
 
 
-def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int) -> None:
+def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, str | Path]], compress_level: int, min_gain_percent: int, *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
 	"""Write a full base pack with physical and decoded-content identities."""
 	assert 0 <= compress_level <= 9, 'Resource pack compression level is out of the zlib range'
 	assert 0 <= min_gain_percent <= 100, 'Resource pack minimum compression gain is not a percentage'
@@ -404,18 +406,18 @@ def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, s
 
 	index_records: list[tuple[str, int, int, int, int, int]] = []
 	body_hash = FNV_OFFSET
-	content_hash = fnv1a_64(struct.pack('<I', len(sorted_entries)))
+	content_hash = hash_bytes(struct.pack('<I', len(sorted_entries)))
 	with open(archive_path, 'wb') as dst:
 		dst.write(bytes(RESOURCE_PACK_HEADER_SIZE))
 		for arcname, file_path in sorted_entries:
 			raw = Path(file_path).read_bytes()
-			file_hash = fnv1a_64(raw)
+			file_hash = hash_bytes(raw)
 			codec, blob = encode_resource_pack_blob(raw, compress_level, min_gain_percent)
 			index_records.append((arcname, dst.tell(), len(blob), len(raw), codec, file_hash))
 			path_bytes = arcname.encode('utf-8')
-			content_hash = fnv1a_64(struct.pack('<IQQ', len(path_bytes), len(raw), file_hash), content_hash)
-			content_hash = fnv1a_64(path_bytes, content_hash)
-			body_hash = fnv1a_64(blob, body_hash)
+			content_hash = hash_bytes(struct.pack('<IQQ', len(path_bytes), len(raw), file_hash), content_hash)
+			content_hash = hash_bytes(path_bytes, content_hash)
+			body_hash = hash_bytes(blob, body_hash)
 			dst.write(blob)
 
 		index_offset = dst.tell()
@@ -428,7 +430,7 @@ def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, s
 			pool += path_bytes
 		index += pool
 		index_codec, stored_index = encode_resource_pack_blob(bytes(index), compress_level, min_gain_percent)
-		body_hash = fnv1a_64(stored_index, body_hash)
+		body_hash = hash_bytes(stored_index, body_hash)
 		dst.write(stored_index)
 		header = bytearray(RESOURCE_PACK_HEADER_SIZE)
 		struct.pack_into('<IHH', header, 0, RESOURCE_PACK_MAGIC, RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR)
@@ -437,12 +439,12 @@ def write_resource_pack(archive_path: str | Path, entries: Sequence[tuple[str, s
 		struct.pack_into('<II', header, 40, index_codec, len(index_records))
 		struct.pack_into('<QQ', header, 48, RESOURCE_PACK_HEADER_SIZE, index_offset - RESOURCE_PACK_HEADER_SIZE)
 		struct.pack_into('<Q', header, 64, content_hash)
-		struct.pack_into('<Q', header, 72, fnv1a_64(bytes(header[:72])))
+		struct.pack_into('<Q', header, 72, hash_bytes(bytes(header[:72])))
 		dst.seek(0)
 		dst.write(header)
 
 
-def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[str]) -> None:
+def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[str], *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
 	"""Validate a completed base pack before it is published or accepted from the archive cache."""
 	archive_name = str(archive_path)
 	try:
@@ -461,7 +463,7 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 
 			assert magic == RESOURCE_PACK_MAGIC, 'magic is invalid'
 			assert (version_major, version_minor) == (RESOURCE_PACK_VERSION_MAJOR, RESOURCE_PACK_VERSION_MINOR), 'version is unsupported'
-			assert fnv1a_64(header[:72]) == header_hash, 'header checksum mismatch'
+			assert hash_bytes(header[:72]) == header_hash, 'header checksum mismatch'
 			assert data_offset == RESOURCE_PACK_HEADER_SIZE, 'data offset is invalid'
 			assert index_offset == data_offset + data_size, 'data extent is invalid'
 			assert index_offset + index_stored_size == file_size, 'catalog extent is invalid'
@@ -472,7 +474,7 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 				chunk = archive.read(RESOURCE_ARCHIVE_HASH_CHUNK_BYTES)
 				if not chunk:
 					break
-				actual_pack_hash = fnv1a_64(chunk, actual_pack_hash)
+				actual_pack_hash = hash_bytes(chunk, actual_pack_hash)
 			assert actual_pack_hash == pack_hash, 'pack checksum mismatch'
 
 			archive.seek(index_offset)
@@ -488,7 +490,7 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 			records_size = entry_count * RESOURCE_PACK_ENTRY_SIZE
 			assert records_size <= len(index), 'catalog records are truncated'
 			actual_entries: list[str] = []
-			actual_content_hash = fnv1a_64(struct.pack('<I', entry_count))
+			actual_content_hash = hash_bytes(struct.pack('<I', entry_count))
 
 			for ordinal in range(entry_count):
 				path_offset, path_length, blob_offset, stored_size, decoded_size, codec, source, file_hash = struct.unpack_from(
@@ -504,11 +506,11 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 				assert path and all(part not in ('', '.', '..') for part in path.split('/')) and ':' not in path and '\\' not in path and '\0' not in path, 'entry path is invalid'
 				assert not actual_entries or actual_entries[-1] < path, 'entry paths are not strictly sorted'
 				actual_entries.append(path)
-				actual_content_hash = fnv1a_64(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
-				actual_content_hash = fnv1a_64(path_bytes, actual_content_hash)
+				actual_content_hash = hash_bytes(struct.pack('<IQQ', path_length, decoded_size, file_hash), actual_content_hash)
+				actual_content_hash = hash_bytes(path_bytes, actual_content_hash)
 				assert codec != RESOURCE_PACK_CODEC_STORED or stored_size == decoded_size, 'stored entry size mismatch: ' + path
 				archive.seek(blob_offset)
-				validate_resource_pack_payload(archive, stored_size, decoded_size, codec, file_hash)
+				validate_resource_pack_payload(archive, stored_size, decoded_size, codec, file_hash, hash_bytes=hash_bytes)
 
 			assert actual_entries == list(expected_entries), 'entry list mismatch'
 			assert actual_content_hash == content_hash, 'content checksum mismatch'
@@ -516,7 +518,7 @@ def validate_resource_pack(archive_path: str | Path, expected_entries: Sequence[
 		raise AssertionError(f'Resource pack validation failed: {archive_name}: {ex}') from ex
 
 
-def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded_size: int, codec: int, file_hash: int) -> None:
+def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded_size: int, codec: int, file_hash: int, *, hash_bytes: Callable[..., int] = fnv1a_64) -> None:
 	decoder = zlib.decompressobj() if codec == RESOURCE_PACK_CODEC_DEFLATE else None
 	remaining = stored_size
 	decoded_total = 0
@@ -538,7 +540,7 @@ def validate_resource_pack_payload(archive: IO[bytes], stored_size: int, decoded
 
 		decoded_total += len(decoded)
 		assert decoded_total <= decoded_size, 'decoded entry exceeds its declared size'
-		actual_hash = fnv1a_64(decoded, actual_hash)
+		actual_hash = hash_bytes(decoded, actual_hash)
 
 	assert decoder is None or decoder.eof, 'entry deflate stream is incomplete'
 	assert decoded_total == decoded_size, 'decoded entry size mismatch'
@@ -921,6 +923,8 @@ class Packager:
 	target_config: foconfig.ConfigParser | None = field(init=False, default=None)
 	logical_file_modes: dict[str, int] = field(init=False, default_factory=dict)
 	resource_archive_paths: dict[str, str] = field(init=False, default_factory=dict)
+	resource_pack_hash_library: str | None = field(init=False, default=None)
+	resource_pack_hasher: resource_pack_hash.ResourcePackHasher | None = field(init=False, default=None)
 
 	def __post_init__(self) -> None:
 		self.pack_args = set(self.args.pack.split('+'))
@@ -931,6 +935,7 @@ class Packager:
 		self.platform_binaries_dir = self.fomain.mainSection().getStr('Baking.PlatformBinaries')
 		self.resource_pack_compress_level = self.args.resource_pack_compress_level if getattr(self.args, 'resource_pack_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.ResourcePackCompressLevel')
 		self.resource_pack_jobs = self.args.resource_pack_jobs
+		self.resource_pack_hash_library = resource_pack_hash.discover_library(self.args.input, getattr(self.args, 'resource_pack_hash_library', None))
 		self.resource_pack_min_compress_gain = self.fomain.mainSection().getInt('Baking.ResourcePackMinCompressGain')
 		self.bundle_compress_level = self.args.bundle_compress_level if getattr(self.args, 'bundle_compress_level', None) is not None else self.fomain.mainSection().getInt('Baking.BundleCompressLevel')
 		self.target_output_path = self.build_target_output_path()
@@ -1493,7 +1498,7 @@ class Packager:
 			if os.path.normcase(os.path.realpath(local_path)) != os.path.normcase(os.path.realpath(archive_path)):
 				shutil.copy2(local_path, archive_path)
 
-			validate_resource_pack(archive_path, entry_names)
+			validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
 			log('Resource archive local hit', key)
 			return True
 
@@ -1503,9 +1508,19 @@ class Packager:
 			return False
 
 		assert status == 0, 'Resource archive cache restore failed with exit code ' + str(status)
-		validate_resource_pack(archive_path, entry_names)
+		validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
 		log('Resource archive cache hit', key)
 		return True
+
+	def resource_pack_hash_options(self) -> dict[str, Callable[..., int]]:
+		if self.resource_pack_hash_library is None:
+			return {}
+
+		if self.resource_pack_hasher is None:
+			self.resource_pack_hasher = resource_pack_hash.ResourcePackHasher(self.resource_pack_hash_library)
+			log('Resource archive native hash', self.resource_pack_hash_library)
+
+		return {'hash_bytes': self.resource_pack_hasher.hash_bytes}
 
 	def remember_resource_archive(self, archive_path: str, key: str) -> None:
 		if not hasattr(self, 'resource_archive_paths'):
@@ -1531,8 +1546,8 @@ class Packager:
 
 		try:
 			write_resource_pack(
-				archive_path, entries, self.resource_pack_compress_level, self.resource_pack_min_compress_gain)
-			validate_resource_pack(archive_path, entry_names)
+				archive_path, entries, self.resource_pack_compress_level, self.resource_pack_min_compress_gain, **self.resource_pack_hash_options())
+			validate_resource_pack(archive_path, entry_names, **self.resource_pack_hash_options())
 		except Exception:
 			self.run_resource_archive_cache_helper('release', cache_key, archive_path)
 			raise
@@ -1706,6 +1721,7 @@ class Packager:
 		# Sharing a worker preserves local archive reuse and prevents concurrent writes to one destination
 		worker_packager = copy.copy(self)
 		worker_packager.resource_archive_paths = {}
+		worker_packager.resource_pack_hasher = None
 		with ProcessPoolExecutor(max_workers=worker_count, mp_context=multiprocessing.get_context('spawn')) as executor:
 			futures = [executor.submit(package_resource_pack_batch, worker_packager, batch) for batch in batches]
 			for future in futures:

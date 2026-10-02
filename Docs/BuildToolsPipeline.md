@@ -354,13 +354,17 @@ changes `PATH`, as Xcode does for script phases. `Python3_EXECUTABLE` can select
 an explicit interpreter at configure time; the standalone `setup-mono` wrappers
 remain convenience entry points for an interactive shell.
 
-The nested runtime build uses `CMAKE_BUILD_PARALLEL_LEVEL` as its processor budget.
-BuildTools sets `DOTNET_PROCESSOR_COUNT` only in that child environment, so MSBuild's
-node count and Mono's native commands that use `Environment.ProcessorCount` honor the
-same limit. A tighter explicit `DOTNET_PROCESSOR_COUNT` is preserved. With no CMake
-limit the existing .NET processor selection remains in effect. When a CMake limit is
-set, both supplied limits must be decimal integers from 1 through 65535, the range
-supported by the runtime's processor override.
+The nested runtime build takes the lower supplied `CMAKE_BUILD_PARALLEL_LEVEL` or
+`DOTNET_PROCESSOR_COUNT` as its processor budget. BuildTools sets
+`DOTNET_PROCESSOR_COUNT` only in that child environment and passes an explicit
+`/maxcpucount:N` to MSBuild: Windows MSBuild's default node count does not honor
+the environment override. The node count is also capped at MSBuild's supported
+maximum of 1024. Mono's native commands that use `Environment.ProcessorCount`
+receive the processor budget. With neither override, existing processor selection remains
+in effect. Every supplied nonempty limit must be a decimal integer from 1 through
+65535, the range supported by the runtime's processor override. The actual MSBuild
+regression also exercises a larger wrapper default, so an environment-only cap fails
+on every host.
 
 #### Managed runtime workspace cache
 
@@ -512,6 +516,22 @@ failed optional-cache probes for the whole invocation are bounded by the worker 
 archive count. Workers finish
 before managed-runtime packs are rewritten or a failed package is removed; the parent retains validated
 archive identities for later reuse. Choose a limit that fits the host's available CPU and memory.
+
+Native host configurations also build `FOnlineResourcePackHash` before baking or CMake package targets.
+The small C ABI library in `BuildTools/resource-pack-hash/` computes the same streaming FNV-1a 64 using
+fixed-width unsigned arithmetic. It is independent of engine allocation, profiling and sanitizer
+runtimes; its C pointer and size are the Python buffer boundary, not an engine borrow. It uses only C
+type headers and is neither linked into nor shipped with game applications. The standalone project
+can also be built with `cmake -S BuildTools/resource-pack-hash -B <build>` and `cmake --build <build>`.
+
+The packager discovers the host library under an input root's `Binaries/BuildTools-<host>-<arch>/`;
+`-resource-pack-hash-library <path>` selects an explicit library. Without a host library, it uses the
+Python implementation. A present but unloadable library or one that fails the hash/streaming contract
+check is an error. The backend is owned by each packager and loaded separately in spawned workers.
+All header, physical, decoded-file and logical-content checks still run, including cache hits;
+compression settings, archive bytes and cache keys do not depend on the backend.
+`BuildTools/tests/test_resource_pack_hash.py` builds the actual standalone library, compares hashes
+and streamed seeds with Python, checks identical serial/parallel Raw packages, and rejects corruption.
 
 `BuildTools/measure_resource_packs.py` writes a baked tree in both formats and reports what each costs -
 shipped bytes, encoded catalog sizes, the stored/deflate split and write time - so the choice of format stays
