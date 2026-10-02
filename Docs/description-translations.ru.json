@@ -19286,6 +19286,14 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=script.method.client.Game.GetDisplayModes/description": {
+          "source_sha256": "cb53c66a9189868ed1a767ff537ab67bc8b356805b516172e2938c78f4d95239",
+          "translation": "Возвращает уникальные размеры полноэкранных режимов в пикселях для дисплея с окном клиента или пустой список, если данные недоступны."
+        },
+        "/symbols/@id=script.method.client.Game.GetDisplaySize/description": {
+          "source_sha256": "7b2ac372ca3eb2404fee4e794e1d947b973f55b2aca64d7575acc610bf8a80ed",
+          "translation": "Возвращает размеры рабочего стола в пикселях для дисплея с окном клиента или нулевой размер, если данные недоступны."
         }
       }
     }

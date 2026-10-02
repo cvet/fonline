@@ -2380,6 +2380,60 @@ auto AppWindow::GetSize() const -> isize32
     return ResolveWindowStub()->Size;
 }
 
+auto AppWindow::GetDisplaySize() const -> isize32
+{
+    if (_isVirtual) {
+        return _app->MainWindow.GetDisplaySize();
+    }
+
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
+        return {};
+    }
+
+    auto window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+    SDL_DisplayID display = SDL_GetDisplayForWindow(window.get());
+    auto mode = make_nptr(SDL_GetDesktopDisplayMode(display));
+
+    return mode ? isize32 {mode->w, mode->h} : isize32 {};
+}
+
+auto AppWindow::GetDisplayModes() const -> vector<isize32>
+{
+    if (_isVirtual) {
+        return _app->MainWindow.GetDisplayModes();
+    }
+
+    if (_app->_ctx->ActiveRendererType == RenderType::Null) {
+        return {};
+    }
+
+    auto window = ResolveWindowHandle().reinterpret_as<SDL_Window>();
+    SDL_DisplayID display = SDL_GetDisplayForWindow(window.get());
+    int32_t count = 0;
+    auto queried_modes = make_nptr(SDL_GetFullscreenDisplayModes(display, &count));
+
+    if (!queried_modes) {
+        return {};
+    }
+
+    auto free_modes = scope_exit([queried_modes]() noexcept { SDL_free(queried_modes.get_no_const()); });
+    vector<isize32> result;
+
+    for (int32_t i = 0; i < count; i++) {
+        auto mode = make_nptr(queried_modes[numeric_cast<size_t>(i)]);
+
+        if (mode && mode->w > 0 && mode->h > 0) {
+            isize32 size {mode->w, mode->h};
+
+            if (!vec_exists(result, size)) {
+                result.emplace_back(size);
+            }
+        }
+    }
+
+    return result;
+}
+
 void AppWindow::SetSize(isize32 size)
 {
     if (_isVirtual) {
@@ -3497,3 +3551,4 @@ static ImGuiKey KeycodeToImGuiKey(SDL_Keycode keycode)
 }
 
 FO_END_NAMESPACE
+

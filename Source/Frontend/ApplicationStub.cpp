@@ -192,6 +192,8 @@ public:
     }
 
     [[nodiscard]] auto GetSize() const -> isize32 override { return _state.Size; }
+    [[nodiscard]] auto GetDisplaySize() const -> isize32 override { return {}; }
+    [[nodiscard]] auto GetDisplayModes() const -> vector<isize32> override { return {}; }
     [[nodiscard]] auto GetScreenSize() const -> isize32 override { return _state.Size; }
     [[nodiscard]] auto GetPosition() const -> ipos32 override { return _state.Position; }
     [[nodiscard]] auto IsFocused() const -> bool override { return !_state.Minimized; }
@@ -261,3 +263,4 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>
 }
 
 FO_END_NAMESPACE
+

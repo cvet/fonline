@@ -118,6 +118,10 @@ Continue with the [canonical English explanation](en/explanation/rendering/#wind
 
 Continue with the [canonical English explanation](en/explanation/rendering/#fullscreen-borderless-desktop).
 
+### Display information for resolution selectors
+
+Continue with the [canonical English explanation](en/explanation/rendering/#display-information-for-resolution-selectors).
+
 ### Embedded clients in the multi-client host (virtual windows)
 
 Continue with the [canonical English explanation](en/explanation/rendering/#embedded-clients-in-the-multi-client-host-virtual-windows).

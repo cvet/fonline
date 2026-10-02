@@ -460,6 +460,16 @@ auto AppWindow::GetSize() const -> isize32
     return ResolveWindowStub()->Size;
 }
 
+auto AppWindow::GetDisplaySize() const -> isize32
+{
+    return {};
+}
+
+auto AppWindow::GetDisplayModes() const -> vector<isize32>
+{
+    return {};
+}
+
 void AppWindow::SetSize(isize32 size)
 {
     if (_isVirtual) {
@@ -827,3 +837,4 @@ void Application::ChooseOptionsWindow(string_view title, const vector<string>& o
 }
 
 FO_END_NAMESPACE
+

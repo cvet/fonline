@@ -175,6 +175,12 @@ Window responsibilities include:
 - resolving a native `WindowInternalHandle` for render backends;
 - resolving a `HeadlessWindowStub` in headless/stub contexts.
 
+### Display information for resolution selectors
+
+`IAppWindow::GetDisplaySize()` returns the desktop display-mode dimensions for the display containing the center of the native window. `GetDisplayModes()` returns unique positive width/height pairs from that display's SDL fullscreen modes; refresh rates and pixel formats do not produce duplicate sizes. Both methods query the current window/display association on each call, so a selector can refresh after a window moves between monitors. Dimensions use the SDL display-mode width/height units, consistent with the existing monitor settings.
+
+The managed client API exposes the same information through `Game.GetDisplaySize()` and `Game.GetDisplayModes()`. Virtual windows query the host main window's display. Null-renderer, headless, and stub frontends return an empty size/list; native query failures do the same. Callers own minimum/maximum filtering, standard-mode fallbacks, and preservation of the current logical resolution. These queries follow the native window frontend's thread contract and do not change the window, logical resolution, fullscreen state, or refresh rate.
+
 ### `AppInput` / `IAppInput`
 
 Input responsibilities include:

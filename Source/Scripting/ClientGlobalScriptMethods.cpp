@@ -146,6 +146,20 @@ FO_SCRIPT_API GamepadState Client_Game_GetGamepadState(ptr<ClientEngine> client)
     return client->SprMngr.GetInput()->GetGamepadState();
 }
 
+// Returns the desktop pixel dimensions of the display containing the client window, or zero when unavailable
+///@ ExportMethod
+FO_SCRIPT_API isize32 Client_Game_GetDisplaySize(ptr<ClientEngine> client)
+{
+    return client->SprMngr.GetWindow()->GetDisplaySize();
+}
+
+// Returns distinct pixel dimensions of fullscreen modes for the display containing the client window, or an empty list when unavailable
+///@ ExportMethod
+FO_SCRIPT_API vector<isize32> Client_Game_GetDisplayModes(ptr<ClientEngine> client)
+{
+    return client->SprMngr.GetWindow()->GetDisplayModes();
+}
+
 // Returns the current logical screen size
 ///@ ExportMethod GlobalGetter
 FO_SCRIPT_API isize32 Client_Game_ScreenSize(ptr<ClientEngine> client)
@@ -2007,3 +2021,4 @@ FO_SCRIPT_API void Client_Game_SetScreenKeyboard(ptr<ClientEngine> client, bool 
 }
 
 FO_END_NAMESPACE
+

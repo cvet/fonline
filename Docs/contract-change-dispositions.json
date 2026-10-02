@@ -7728,6 +7728,18 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-10-09 / Engine 2026.1.18-dev.",
       "compatibility": "Rebuild native binaries and rebake every metadata/managed role together at marker 69. Reject old rule forms and mixed binary/resource sets. No DB schema change is required; Proto Transform runs only on DB document loads, while Rename/Remove remain context-free for baking and lookups.",
       "owner": "content-data"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.7427eebb9e91aa9a",
+      "baseline_contract_sha256": "a96b969e7fce43d7276cf610957526e2115f1516f724265d2c282094e8845bd9",
+      "current_contract_sha256": "79729286f9e3766a71917e2559c3c6a14ba59fa84e3b49dfa3c3ca73c25bafbc",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory adds only experimental client/mapper GetDisplaySize and GetDisplayModes methods. Existing declarations, including the incoming explicit migration actions and grid selectors, retain their published contracts. The scope fingerprint is conservatively classified as breaking.",
+      "migration": "No caller or stored-data conversion is required for these additive query methods. Rebuild native hosts, extensions and script bindings, then rebake matching role metadata. Docs/en/explanation/rendering/index.md documents zero/empty results and display selection; retain the earlier version 18 and 22 migration steps when upgrading from older revisions.",
+      "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-10-10 / Engine 2026.1.24-dev.",
+      "compatibility": "Retain incoming compatibility marker 69 without an additional bump. AppWindow gains virtual methods, so native vtable consumers require coordinated rebuilds and matching baked resources; mixed native libraries must not be used. No persisted schema or network meaning changes are introduced by the queries.",
+      "owner": "frontend-and-rendering"
     }
   ]
 }

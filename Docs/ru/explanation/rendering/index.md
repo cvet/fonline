@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"229b05841a0feb861598f1e336cd90876e27ab03dadb7f236a362cfad627d49b"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"2089a67a2e8de24e758f234ea1d99b25d88799fc37a6f62da27b5d27f664b1cc"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -197,6 +197,25 @@ instance: render resources и settings встроенного клиента н�
 - различение реальных OS windows и **virtual windows** (`IsVirtual()`), которые multi-client host композитит сам и рендерит в собственном virtual size;
 - получение native `WindowInternalHandle` для render backends;
 - использование `HeadlessWindowStub` в headless/stub contexts.
+
+### Сведения о дисплее для выбора разрешения
+
+`IAppWindow::GetDisplaySize()` возвращает размеры режима рабочего стола дисплея,
+содержащего центр нативного окна. `GetDisplayModes()` возвращает уникальные
+положительные пары ширины и высоты из полноэкранных режимов SDL этого дисплея;
+разные частоты обновления и форматы пикселей не создают повторов размеров.
+Оба метода заново определяют дисплей окна при каждом вызове, поэтому список
+можно обновить после переноса окна на другой монитор. Единицы размеров совпадают
+с шириной и высотой режима SDL и существующими настройками монитора.
+
+Клиентский API Managed предоставляет те же сведения через
+`Game.GetDisplaySize()` и `Game.GetDisplayModes()`. Виртуальные окна запрашивают
+дисплей главного окна хоста. Null-renderer, headless и stub возвращают пустой
+размер или список; ошибка нативного запроса даёт тот же результат. Вызывающий
+код отвечает за минимальные и максимальные границы, стандартный список при
+отсутствии данных и сохранение текущего логического разрешения. Запросы следуют
+потоковому контракту нативного оконного frontend и не меняют окно, логическое
+разрешение, полноэкранное состояние или частоту обновления.
 
 ### `AppInput` / `IAppInput`
 

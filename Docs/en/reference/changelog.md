@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Added
+
+- Client scripts can query the desktop dimensions and display modes of the monitor containing the current window through `Game.GetDisplaySize` and `Game.GetDisplayModes`. SDL results exclude invalid and duplicate dimensions; unavailable display information returns zero dimensions or an empty list. Headless and stub windows provide the same unavailable result.
+
+### Migration
+
+- Upgrade from `2026.1.23-dev` at `e08ca424e4f24561d6610686b2b9f9548b9365db`. The preceding example configuration refresh is retained; no additional project settings conversion is introduced by these display queries.
+- Existing script calls, settings and stored data keep their meaning; no caller or persisted-data conversion is required. Regenerate bindings and rebake scripts before using the two new queries. The caller owns its resolution bounds, standard presets and fallback when display information is unavailable.
+- Rebuild Engine and embedding-project native binaries together for the additional `IAppWindow` virtual methods, and deploy matching baked metadata. Network compatibility remains `0.0.69`; network formats, resource schemas and saves do not change. Reconfigure native version/revision metadata for `2026.1.24-dev` and regenerate the API references, translation state, site/search/routes and AI delivery.
+
+## 2026.1.23-dev - 2026-10-10
+
 ### Fixed
 
 - Regenerate the complete MinimalMultiplayer, ContentShowcase and PackagingMatrix

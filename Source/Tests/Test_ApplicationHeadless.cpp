@@ -55,6 +55,8 @@ TEST_CASE("ApplicationChildWindowLifecycle")
         isize32 child_size = child->GetSize();
         CHECK(child_size.width > 0);
         CHECK(child_size.height > 0);
+        CHECK(child->GetDisplaySize() == app->MainWindow.GetDisplaySize());
+        CHECK(child->GetDisplayModes() == app->MainWindow.GetDisplayModes());
 
         app->SetActiveWindow(child);
         app->SetActiveWindow(&app->MainWindow);
@@ -242,6 +244,9 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 
     SECTION("GeometryAndStateRoundTrip")
     {
+        CHECK(window->GetDisplaySize() == isize32 {});
+        CHECK(window->GetDisplayModes().empty());
+
         isize32 initial_size = window->GetSize();
         CHECK(initial_size.width > 0);
         CHECK(initial_size.height > 0);
@@ -341,3 +346,4 @@ TEST_CASE("StubAppWindowServesAsAnEmbedderFrontend")
 }
 
 FO_END_NAMESPACE
+

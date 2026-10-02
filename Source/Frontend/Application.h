@@ -459,6 +459,8 @@ public:
     virtual ~IAppWindow() = default;
 
     [[nodiscard]] virtual auto GetSize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetDisplaySize() const -> isize32 = 0;
+    [[nodiscard]] virtual auto GetDisplayModes() const -> vector<isize32> = 0;
     [[nodiscard]] virtual auto GetScreenSize() const -> isize32 = 0;
     [[nodiscard]] virtual auto GetPosition() const -> ipos32 = 0;
     [[nodiscard]] virtual auto IsFocused() const -> bool = 0;
@@ -500,6 +502,8 @@ class AppWindow final : public IAppWindow
 
 public:
     [[nodiscard]] auto GetSize() const -> isize32 override;
+    [[nodiscard]] auto GetDisplaySize() const -> isize32 override;
+    [[nodiscard]] auto GetDisplayModes() const -> vector<isize32> override;
     [[nodiscard]] auto GetScreenSize() const -> isize32 override;
     [[nodiscard]] auto GetPosition() const -> ipos32 override;
     [[nodiscard]] auto IsFocused() const -> bool override;
@@ -869,3 +873,4 @@ auto GetAppWindowStub(GlobalSettings& settings) -> unique_ptr<IAppWindow>;
 auto IsQuitSignalReceived() noexcept -> bool;
 
 FO_END_NAMESPACE
+
