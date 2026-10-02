@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"10d9bb11894a3a319b15234a1d43e70f9b85fca521bf0bdb851a69b280f38dbe"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"97f9ae21a0bfdd24658f0b859eb4bd0e6bbe09bbbde0316d54ce15466f13f419"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -290,6 +290,12 @@ Raw-поля `checkCalls`, `scheduledCheckCalls`, `upToDateCheckCalls`, `submitC
 | `Map` | `MapBaker` | 8 | всегда |
 
 Цепочка particle/model/prototype/map намеренно использует orders `5`, `6`, `7`, `8`. Baker-ы одного order могут идти параллельно и не должны читать output друг друга. Поведение конкретного asset type выводится из класса baker-а и его тестов, а не из одного расширения файла.
+
+### Ошибки преобразования изображений
+
+При ошибке image conversion диагностика указывает путь исходного ресурса вместе
+с причиной. Baker по-прежнему дожидается всех запланированных conversions;
+любая ошибка завершает pack с отказом, а не разрешает неполный output.
 
 ### Общие metadata анимации
 

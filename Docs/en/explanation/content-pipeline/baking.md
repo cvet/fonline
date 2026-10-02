@@ -433,6 +433,12 @@ The particle/model/prototype/map stages intentionally form a strict dependency c
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
 
+### Image conversion failures
+
+When an image conversion fails, the diagnostic names its source resource path
+alongside the underlying error. All scheduled conversions are still awaited;
+any conversion failure fails the pack rather than accepting incomplete output.
+
 ### Shared animation metadata
 
 Shared animation metadata uses `AnimationInfo` as the aggregate record. The generic

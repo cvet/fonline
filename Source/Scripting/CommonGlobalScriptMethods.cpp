@@ -178,7 +178,8 @@ FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
 }
 
 // Opt-in diagnostic snapshot; availability and allocator scope are not a whole-process memory contract
-///@ ApiContract script.method.common.Game.GetAllocatorStatistics experimental
+///@ ApiContract script.method.common.Game.GetAllocatorStatistics experimental Since=2022.1.0.wip
+// Returns module-global rpmalloc pages and calling-thread size-class capacities, or an empty dictionary when diagnostics are unavailable
 ///@ ExportMethod
 FO_SCRIPT_API map<string, uint64_t> Common_Game_GetAllocatorStatistics(ptr<BaseEngine> engine)
 {
