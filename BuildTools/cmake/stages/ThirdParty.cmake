@@ -51,6 +51,8 @@ endmacro()
 StatusMessage("Third-party libs:")
 
 # Rpmalloc
+SetValue(expr_AllocatorStatistics $<OR:${expr_DebugBuild},${expr_TracyEnabled},$<BOOL:${FO_MEMORY_DIAGNOSTICS}>>)
+AddCompileDefinitionsList(FO_ALLOCATOR_STATISTICS=${expr_AllocatorStatistics})
 if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO_ANDROID))
     SetValue(FO_RPMALLOC_DIR "${FO_ENGINE_ROOT}/ThirdParty/rpmalloc")
     SetValue(FO_RPMALLOC_SOURCE
@@ -70,7 +72,7 @@ if(NOT FO_DISABLE_RPMALLOC AND (FO_WINDOWS OR FO_LINUX OR FO_MAC OR FO_IOS OR FO
         TargetCompileDefinitions(rpmalloc PRIVATE RPMALLOC_ENABLE_TESTS=1)
     endif()
     TargetCompileDefinitions(rpmalloc PRIVATE "$<$<PLATFORM_ID:Linux>:_GNU_SOURCE>")
-    TargetCompileDefinitions(rpmalloc PRIVATE $<$<OR:${expr_DebugBuild},${expr_TracyEnabled}>:ENABLE_STATISTICS=1>)
+    TargetCompileDefinitions(rpmalloc PRIVATE $<${expr_AllocatorStatistics}:ENABLE_STATISTICS=1>)
     # rpmalloc.c uses <stdatomic.h> unconditionally; MSVC compiles C sources without C11 by
     # default and keeps C atomics behind an extra switch (still experimental as of VS 17.14).
     SetTargetProperty(rpmalloc C_STANDARD 11)

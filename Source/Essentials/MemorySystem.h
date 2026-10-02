@@ -46,6 +46,26 @@ static_assert(__STDCPP_DEFAULT_NEW_ALIGNMENT__ >= MAX_SERIALIZED_ALIGNMENT);
 // Safe memory allocation
 namespace memory
 {
+    struct allocator_size_class_statistics
+    {
+        size_t block_bytes {};
+        size_t allocated_blocks {};
+        size_t reusable_blocks {};
+    };
+
+    struct allocator_statistics
+    {
+        bool available {};
+        size_t mapped_bytes {};
+        size_t committed_bytes {};
+        size_t huge_allocated_bytes {};
+        size_t heap_count {};
+        size_t thread_size_class_allocated_bytes {};
+        size_t thread_reusable_block_bytes {};
+        size_t thread_free_committed_page_bytes {};
+        std::array<allocator_size_class_statistics, 128> thread_size_classes {};
+    };
+
     using bad_alloc_callback = function<void()>;
 
     void init_backup_chunks();
@@ -54,6 +74,7 @@ namespace memory
     void report_bad_alloc(string_view message, string_view type_str, size_t count, size_t size) noexcept;
     [[noreturn]] void report_and_exit(string_view message) noexcept;
     auto get_in_use_bytes() noexcept -> size_t;
+    auto get_allocator_statistics() noexcept -> allocator_statistics;
     // Allocations made by the calling thread since it started; profiling builds only, false elsewhere
     auto get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -> bool;
 }
