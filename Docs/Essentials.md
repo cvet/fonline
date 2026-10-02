@@ -265,6 +265,30 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 
 Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. `std::function` is no longer among them — engine code uses `move_only_function` / `copyable_function`, whose heap tier terminates like the rest of the engine; the one remaining `std::function` is the `StackTrace.h` script-provider hook, which sits above the callable module in the include order. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `stack_trace::get()` from `memory::report_bad_alloc`, so the reporting path must not depend on the allocator that just failed.
 
+#### Allocator occupancy diagnostics
+
+`memory::get_allocator_statistics()` returns an allocation-free snapshot. It is available with rpmalloc
+in Debug and Tracy configurations, or with `FO_MEMORY_DIAGNOSTICS=ON` in regular configurations. Otherwise
+`available` is false; zero-filled counters are not evidence of an empty heap. `Game.GetAllocatorStatistics()`
+exposes the snapshot as a dictionary and returns an empty dictionary when unavailable.
+
+- `mappedBytes`, `committedBytes`, `hugeAllocatedBytes` and `heapCount` describe the rpmalloc instance in
+  the calling native module. Commitment is `global.active`, not the cumulative commit counter.
+- `threadSizeClassAllocatedBytes` is occupied block capacity in the calling thread's heap, including size
+  rounding and cross-thread releases still awaiting processing. It excludes huge allocations. It is not
+  the requested payload size, and must not be subtracted from global commitment to infer fragmentation.
+- `threadReusableBlockBytes` counts immediately reusable size-class slots, including previously unused
+  page tails. `threadFreeCommittedPageBytes` is the separate cache of free, still committed whole pages.
+- `class<block-size>AllocatedBlocks` and `class<block-size>ReusableBlocks` retain the distribution by
+  block capacity. A slot in one class is not generally available to a larger allocation.
+
+Thread lists are inspected only by their owning thread, without draining deferred frees, forcing a GC,
+or trimming caches. Global atomic counters are a live sample, not an atomic snapshot across all fields.
+The API does not traverse other live heaps and does not measure C-runtime `malloc`, GC-object storage,
+driver allocations, requested-size padding, or GPU fragmentation. Repeated occupancy at the same warmed
+workload point distinguishes a growing allocation set from reusable capacity retained by the allocator;
+the free capacity alone is not proof of harmful fragmentation.
+
 #### Third-party allocators
 
 | Library | Routed to | Where |

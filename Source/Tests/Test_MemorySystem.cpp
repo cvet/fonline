@@ -114,6 +114,72 @@ TEST_CASE("MemorySystem")
     }
 
 #if FO_HAVE_RPMALLOC && !FO_TRACE_ENABLED && defined(RPMALLOC_ENABLE_TESTS)
+    SECTION("AllocatorStatisticsExposeReusableHolesWithoutFlushingCaches")
+    {
+        memory::allocator_statistics full {};
+        memory::allocator_statistics holes {};
+        memory::allocator_statistics reused {};
+        bool initialized = false;
+        std::thread worker {[&] {
+            initialized = rpmalloc_test_initialize_pristine_thread_heap() != 0;
+
+            if (!initialized) {
+                return;
+            }
+
+            array<nptr<void>, 256> blocks {};
+
+            for (auto& block : blocks) {
+                block = safe_alloc::malloc_raw(4096);
+            }
+
+            full = memory::get_allocator_statistics();
+
+            for (size_t i = 0; i < blocks.size(); i += 2) {
+                safe_alloc::free_raw(blocks[i]);
+                blocks[i] = nullptr;
+            }
+
+            holes = memory::get_allocator_statistics();
+
+            for (size_t i = 0; i < blocks.size(); i += 2) {
+                blocks[i] = safe_alloc::malloc_raw(4096);
+            }
+
+            reused = memory::get_allocator_statistics();
+
+            for (auto block : blocks) {
+                safe_alloc::free_raw(block);
+            }
+        }};
+        worker.join();
+        REQUIRE(initialized);
+
+#if FO_ALLOCATOR_STATISTICS
+        REQUIRE(full.available);
+        CHECK(full.thread_size_class_allocated_bytes - holes.thread_size_class_allocated_bytes == 128 * 4096);
+        CHECK(holes.thread_reusable_block_bytes - full.thread_reusable_block_bytes == 128 * 4096);
+        CHECK(reused.thread_size_class_allocated_bytes == full.thread_size_class_allocated_bytes);
+        CHECK(reused.thread_reusable_block_bytes == full.thread_reusable_block_bytes);
+        CHECK(reused.mapped_bytes == holes.mapped_bytes);
+        CHECK(reused.committed_bytes == holes.committed_bytes);
+        size_t allocated_bytes = 0;
+        size_t reusable_bytes = 0;
+
+        for (const auto& size_class : holes.thread_size_classes) {
+            allocated_bytes += size_class.block_bytes * size_class.allocated_blocks;
+            reusable_bytes += size_class.block_bytes * size_class.reusable_blocks;
+        }
+
+        CHECK(allocated_bytes == holes.thread_size_class_allocated_bytes);
+        CHECK(reusable_bytes == holes.thread_reusable_block_bytes);
+#else
+        CHECK_FALSE(full.available);
+        CHECK_FALSE(holes.available);
+        CHECK_FALSE(reused.available);
+#endif
+    }
+
     SECTION("RpmallocPropagatesLaterPageCommitFailure")
     {
         size_t block_count = 0;
