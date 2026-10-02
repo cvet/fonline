@@ -5,6 +5,11 @@ cmake_minimum_required(VERSION 3.22)
 # Applications
 StatusMessage("Applications:")
 
+if(NOT CMAKE_CROSSCOMPILING AND (FO_WINDOWS OR FO_LINUX OR FO_MAC))
+    add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/resource-pack-hash"
+        "${CMAKE_CURRENT_BINARY_DIR}/ResourcePackHash")
+endif()
+
 if(FO_BUILD_CLIENT)
     if(NOT FO_BUILD_LIBRARY)
         AddExecutableApplication(${FO_DEV_NAME}_Client "${FO_ENGINE_ROOT}/Source/Applications/ClientApp.cpp"
@@ -189,6 +194,10 @@ if(FO_BUILD_BAKER OR FO_CODE_COVERAGE)
         TESTING_APP 0
         LINK_LIBS AppHeadless BakerLib
         WRITE_BUILD_HASH)
+
+    if(TARGET FOnlineResourcePackHash)
+        add_dependencies(${FO_DEV_NAME}_Baker FOnlineResourcePackHash)
+    endif()
 
     if(FO_BUILD_BAKER AND NOT FO_WEB)
         AddSharedApplication(${FO_DEV_NAME}_BakerLib "${FO_ENGINE_ROOT}/Source/Applications/BakerLib.cpp"

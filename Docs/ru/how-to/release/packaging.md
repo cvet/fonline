@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"151806f4af4fc3c3f5eb639b38346c826bb8a51cd72faf8627bc4a5382da6cd7"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"d414315bf791c060aef264f80e79c6bafe88ddcf2aa2ea436a063262a5eaff01"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -390,6 +390,18 @@ clients прочитайте [Client Runtime Split and Updater](../../explanatio
 объявляя инфраструктуру собственностью Engine.
 
 ## Воспроизводимость и происхождение
+
+Native host build создаёт необязательную библиотеку `FOnlineResourcePackHash`
+под `Binaries/BuildTools-<host>-<arch>/` одного из input roots. Упаковщик ищет её
+в порядке inputs; `-resource-pack-hash-library <path>` выбирает явный путь.
+Без найденной библиотеки используется Python. Найденная, но незагружаемая library
+или неверный known-vector/streaming-seed check — ошибка, а не fallback.
+Каждый packager, включая spawned workers, отдельно загружает backend. Оба используют
+одинаковый streaming FNV-1a 64 и сохраняют header, physical, decoded-payload и logical
+content validation, включая cache hits. Байты архива, compression settings и cache
+keys не зависят от ускорителя. Это host tooling, не игровой payload.
+`test_resource_pack_hash.py` собирает настоящую library, сравнивает Python/native
+и serial/parallel Raw results и отклоняет повреждённые payloads.
 
 Архивы ресурсов по умолчанию создаются последовательно. `package.py -resource-pack-jobs N` переопределяет `FO_RESOURCE_PACK_JOBS` (по умолчанию `1`); допустимы только положительные целые. Независимые `.fores` создаются не более чем в `N` процессах с `spawn` на любом host. Задачи с общим именем pack или физическим destination выполняются по порядку в одном worker, сохраняя локальное повторное использование и исключая конкурентную запись. Группы распределяются по объёму source bytes, начиная с самых крупных. Каждый worker использует полный writer, cache protocol и payload validation; недоступность optional cache сохраняется внутри batch, ограничивая неудачные probes числом workers. Parent принимает проверенные archive identities и дожидается workers до переписывания runtime-specific packs или очистки неудавшегося package. Embedded resources и конечные distribution bundles не входят в эту worker lane. Выбирайте лимит по доступным CPU и памяти; это не изменение формата и не гарантия измеренного ускорения.
 

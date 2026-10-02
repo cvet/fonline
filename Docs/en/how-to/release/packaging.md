@@ -274,6 +274,18 @@ Keep those product and infrastructure details in the embedding project. [Release
 
 ## Reproducibility and provenance
 
+Native host builds provide the optional `FOnlineResourcePackHash` library under
+an input root's `Binaries/BuildTools-<host>-<arch>/`. The packager discovers it in
+input order; `-resource-pack-hash-library <path>` explicitly selects one. Without
+a discovered library, Python hashes remain the fallback. A present but unloadable
+library or a failed known-vector/streaming-seed check is an error, not a fallback.
+Each packager loads its own backend, including spawned workers. Both backends use
+the same streaming FNV-1a 64 and retain header, physical, decoded-payload and logical
+content validation, including cache hits. Archive bytes, compression settings and
+cache keys do not depend on this accelerator. It is host tooling, not game payload.
+`test_resource_pack_hash.py` builds the real library, compares Python/native and
+serial/parallel Raw results, and rejects corrupt payloads.
+
 Resource archives are sequential by default. `package.py -resource-pack-jobs N` overrides `FO_RESOURCE_PACK_JOBS` (default `1`); both accept only positive integers. Independent `.fores` work runs in at most `N` spawned processes on every host. Tasks sharing a pack name or physical destination stay ordered on one worker, preserving local reuse and preventing concurrent writes. Groups are balanced by source bytes, largest first. Every worker retains the complete writer, cache protocol and payload validation; optional-cache unavailability persists within its batch, bounding failed probes by the worker count. The parent adopts validated archive identities and waits for workers before runtime-specific pack rewriting or failure cleanup. Embedded resources and final distribution bundles are outside this worker lane. Choose the limit for available CPU and memory; it is not a format change or a measured speedup guarantee.
 
 FOnline writes each non-Embedded resource pack as a deterministic `.fores` base from sorted normalized paths, without serialized timestamps. The [Resource Pack Format](../../../ResourcePackFormat.md) specifies the version-2 header, content and physical hashes, complete catalog, optional writable patch, and validation rules. `Baking.ResourcePackCompressLevel` and `Baking.ResourcePackMinCompressGain` govern per-blob deflate; `Baking.BundleCompressLevel` governs outer distribution bundles and the executable's Embedded ZIP. `package.py` accepts separate `-resource-pack-compress-level` and `-bundle-compress-level` overrides. It verifies every produced resource payload, including decoded length and content hash, before packaging succeeds. Embedded ZIP remains sorted with fixed timestamps and permissions and is CRC-checked from its in-memory bytes before binary patching. Outer ZIP and TAR packages use the target's logical file modes rather than the host filesystem's modes, so a Windows packaging host still emits executable Linux targets. Raw package parts merge their mode records into one package-root `.lf-package-modes.json` handoff instead of losing earlier parts. These are package-construction gates, not proof that the installer, delivery channel, publication step, or installed filesystem preserved the result. The package declaration parser and generated contract are deterministic and checked in CI.

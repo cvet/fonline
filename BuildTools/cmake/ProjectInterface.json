@@ -278,6 +278,15 @@
       "description": "Compile the Managed C# scripting backend and embedded Mono runtime."
     },
     {
+      "name": "FO_MEMORY_DIAGNOSTICS",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "profiling",
+      "description": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available."
+    },
+    {
       "name": "FO_DISABLE_RPMALLOC",
       "cache_type": "BOOL",
       "value_kind": "boolean",

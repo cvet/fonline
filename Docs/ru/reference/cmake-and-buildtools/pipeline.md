@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"bcd3caa71183a4f36ac0fa8ea3e56537c9331a2e95d9372c47bb22bd2a0001be"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"dd3a09eda6b702864fac68a1e7d63a7570350b0e6d6b01c1aead4e17754bb708"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -169,16 +169,15 @@ runtime; prebuilt runtime принимается как есть и уже до�
 Начинайте здесь при добавлении или удалении bundled dependency либо изменении
 правил изоляции её сборки.
 
-Вложенная сборка Managed runtime использует `CMAKE_BUILD_PARALLEL_LEVEL` как
-бюджет процессоров. BuildTools задаёт `DOTNET_PROCESSOR_COUNT` только в дочернем
-окружении: лимит соблюдают команды Mono, использующие `Environment.ProcessorCount`.
-Этот override не доказывает ограничение числа узлов MSBuild: локальные Windows
-проверки с SDK 10.0.110 и 10.0.401 сохраняли число узлов host при ограниченном
-managed processor count. Не скрывайте результат регрессии настоящего MSBuild
-и не подтверждайте бюджет вложенной сборки одной переменной окружения.
-Более строгий явно заданный лимит .NET сохраняется.
-Без лимита CMake выбор процессоров .NET не меняется; при его наличии оба
-переданных лимита должны быть десятичными целыми от 1 до 65535.
+Вложенная сборка Managed runtime берёт меньший из переданных лимитов
+`CMAKE_BUILD_PARALLEL_LEVEL` и `DOTNET_PROCESSOR_COUNT`. BuildTools задаёт последний
+только в дочернем окружении и добавляет `/maxcpucount:N`, ограниченный максимумом
+MSBuild в 1024 узла. Windows MSBuild не соблюдает одну переменную окружения;
+команды Mono с `Environment.ProcessorCount` получают исходный бюджет процессоров,
+без ограничения в 1024. Каждый непустой лимит должен быть десятичным целым
+от 1 до 65535. Если оба отсутствуют, выбор процессоров не меняется.
+`test_runtime_build_budget.py` запускает настоящий MSBuild с большим лимитом
+wrapper: одной переменной окружения недостаточно для подтверждения бюджета.
 
 ### `EngineSources.cmake`
 
@@ -256,6 +255,13 @@ FOnline во встраивающем проекте.
 code. Так ожидаемая диагностика negative tests сохраняется, а MSBuild не
 трактует строки со словом `error` как build failures. Другие generators
 запускают executable напрямую.
+
+Native-конфигурации Windows, Linux и macOS без cross-compilation также собирают
+`FOnlineResourcePackHash` перед baker и CMake package targets. Эта host-only
+C ABI library не зависит от Engine allocator, profiling и sanitizer runtimes;
+она не линкуется с игровыми приложениями и не входит в их payload. Отдельная сборка:
+`cmake -S BuildTools/resource-pack-hash -B <build>` и `cmake --build <build>`.
+См. [hash backend упаковщика](../../how-to/release/packaging.md#воспроизводимость-и-происхождение).
 
 См. [Applications](../applications.md).
 

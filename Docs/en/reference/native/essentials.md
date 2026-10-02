@@ -230,6 +230,32 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 
 Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. The sole `std::function` in `StackTrace.h` is also above the engine callable module. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
+#### Allocator occupancy diagnostics
+
+`memory::get_allocator_statistics()` returns an allocation-free snapshot. With
+rpmalloc it is enabled in Debug and Tracy builds, or by `FO_MEMORY_DIAGNOSTICS=ON`
+in regular builds. Otherwise `available` is false. The shared AngelScript/Managed
+C# export `Game.GetAllocatorStatistics()` returns an empty dictionary when unavailable;
+the script dictionary itself allocates, unlike the native snapshot.
+
+- `mappedBytes`, `committedBytes`, `hugeAllocatedBytes` and `heapCount` describe
+  the rpmalloc instance in the calling native module. Commitment is `global.active`,
+  not cumulative commit traffic.
+- `threadSizeClassAllocatedBytes` is occupied block capacity in the calling thread,
+  including size rounding and deferred cross-thread releases. It excludes huge
+  allocations and is not requested payload size or a process-wide live-byte count.
+- `threadReusableBlockBytes` counts immediately reusable slots, including unused
+  page tails. `threadFreeCommittedPageBytes` separately counts cached committed pages.
+- `class<block-size>AllocatedBlocks` and `class<block-size>ReusableBlocks` retain the
+  size-class distribution; a slot cannot generally satisfy a larger allocation.
+
+The snapshot never walks another live thread's heap, drains deferred frees, forces
+GC, or trims caches. Global atomic counters are not one atomic multi-field snapshot.
+CRT allocations, GC-object storage, drivers, padding and GPU fragmentation are
+outside this measurement. Do not subtract thread occupancy from global commitment
+to infer fragmentation; reusable capacity alone is not evidence of harmful fragmentation.
+`Test_MemorySystem.cpp` checks holes and reuse on the owning thread without cache flushing.
+
 #### Third-party allocators
 
 Vendored vkd3d-shader exposes no allocator hook. Its bake-scoped calls use

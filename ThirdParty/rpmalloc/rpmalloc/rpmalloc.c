@@ -3261,6 +3261,9 @@ rpmalloc_thread_statistics(rpmalloc_thread_statistics_t* stats) {
 		for (page_t* page = heap->page_available[iclass]; page; page = page->next)
 			free_count += (size_t)(page->block_count - page->block_used);
 		stats->sizecache += free_count * block_size;
+		// (FOnline Patch) Expose size-class occupancy without touching another thread's heap lists.
+		stats->size_use[iclass].block_size = block_size;
+		stats->size_use[iclass].reusable_count = free_count;
 
 		stats->size_use[iclass].alloc_current = (size_t)heap->size_use[iclass].alloc_current;
 		stats->size_use[iclass].alloc_peak = (size_t)heap->size_use[iclass].alloc_peak;

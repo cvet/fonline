@@ -21,6 +21,10 @@ foreach(package ${FO_PACKAGES})
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}
         COMMENT "Make package ${package}")
 
+    if(TARGET FOnlineResourcePackHash)
+        add_dependencies(MakePackage-${package} FOnlineResourcePackHash)
+    endif()
+
     foreach(entry ${Package_${package}_Parts})
         SetValue(packageCommands ${packageBaseCommands})
 

@@ -177,6 +177,38 @@ FO_SCRIPT_API string Common_Game_GitCommit(ptr<BaseEngine> engine)
     return string(FO_BUILD_HASH);
 }
 
+// Opt-in diagnostic snapshot; availability and allocator scope are not a whole-process memory contract
+///@ ApiContract script.method.common.Game.GetAllocatorStatistics experimental
+///@ ExportMethod
+FO_SCRIPT_API map<string, uint64_t> Common_Game_GetAllocatorStatistics(ptr<BaseEngine> engine)
+{
+    ignore_unused(engine);
+    auto stats = memory::get_allocator_statistics();
+
+    if (!stats.available) {
+        return {};
+    }
+
+    map<string, uint64_t> result {
+        {"mappedBytes", stats.mapped_bytes},
+        {"committedBytes", stats.committed_bytes},
+        {"hugeAllocatedBytes", stats.huge_allocated_bytes},
+        {"heapCount", stats.heap_count},
+        {"threadSizeClassAllocatedBytes", stats.thread_size_class_allocated_bytes},
+        {"threadReusableBlockBytes", stats.thread_reusable_block_bytes},
+        {"threadFreeCommittedPageBytes", stats.thread_free_committed_page_bytes},
+    };
+
+    for (const auto& size_class : stats.thread_size_classes) {
+        if (size_class.block_bytes != 0) {
+            result[strex("class{}AllocatedBlocks", size_class.block_bytes)] += size_class.allocated_blocks;
+            result[strex("class{}ReusableBlocks", size_class.block_bytes)] += size_class.reusable_blocks;
+        }
+    }
+
+    return result;
+}
+
 // Development-only debugger trap; intentionally not an embedding-project compatibility contract
 ///@ ApiContract script.method.common.Game.BreakIntoDebugger internal
 // Triggers the platform debugger break primitive for the current process

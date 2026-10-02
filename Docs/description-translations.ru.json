@@ -3420,6 +3420,10 @@
           "source_sha256": "b37699c017b0cb086cfa0cbdb1123b16051912fd809b3b26eeb48d40046df856",
           "translation": "Компилирует нативные символы движка без пространства имён FOnline."
         },
+        "/options/@id=cmake.option.FO_MEMORY_DIAGNOSTICS/description": {
+          "source_sha256": "b9192e59ad08c23e8b0388cb86c22509e51e0499e3a5b239db009cb77a5ded7e",
+          "translation": "Включает статистику заполнения rpmalloc в обычных сборках; Debug и Tracy уже включают её при доступном rpmalloc."
+        },
         "/options/@id=cmake.option.FO_DISABLE_RPMALLOC/description": {
           "source_sha256": "32cf386df267c9d9c885abd09313d2404817d760be1f8c2bee36a672a800128c",
           "translation": "Отключает встроенный аллокатор rpmalloc."

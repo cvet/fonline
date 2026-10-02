@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"1e7f3a2f7cd71263149502520f5c4d3f96ee1c628e4819a68597242b3395141b"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"9ac2088d8e634c7e03cd59cdc9adce033065b1a0eca868d3294b92a2b7372dc4"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -233,6 +233,32 @@ space и сорвать уже первое небольшое allocation. Span 
 | **Выравнивание** | `SafeAllocator` направляет over-aligned element types через aligned-перегрузки `operator new` / `delete`. Проверка over-alignment должна оставаться member-функцией: `alignof(T)` требует полного `T`, но allocator обязан работать с неполным типом, поскольку `std::vector<T>` может быть объявлен до определения `T`. |
 
 Известные допустимые ограничения: `std::future` / `std::promise` / `std::packaged_task`, `std::thread`, `std::filesystem::path` и файловые streams не принимают allocator. Они попадают в engine heap через global `new`, но бросают исключение при исчерпании памяти. Единственный `std::function` в `StackTrace.h` также расположен до callable module движка. Отдельно `BasicCore`, `StackTrace` и `BaseLogging` расположены до `MemorySystem` в порядке `Essentials.h` и поэтому намеренно используют контейнеры `std::`: `MemorySystem.cpp` вызывает `GetStackTrace()` из `ReportBadAlloc`, и reporting path не должен зависеть от allocator, который только что отказал.
+
+#### Диагностика заполнения аллокатора
+
+`memory::get_allocator_statistics()` возвращает снимок без выделений памяти. При
+rpmalloc он доступен в Debug и Tracy либо с `FO_MEMORY_DIAGNOSTICS=ON` в обычной
+сборке; иначе `available` равен false. Общий экспорт AngelScript/Managed C#
+`Game.GetAllocatorStatistics()` возвращает пустой словарь при недоступности.
+Сам скриптовый словарь выделяет память, в отличие от native snapshot.
+
+- `mappedBytes`, `committedBytes`, `hugeAllocatedBytes`, `heapCount` относятся к
+  экземпляру rpmalloc вызывающего native module. Commitment — `global.active`,
+  не накопленный объём операций commit.
+- `threadSizeClassAllocatedBytes` — занятая ёмкость блоков вызывающего потока,
+  включая округление и ещё не обработанные cross-thread frees, без huge allocations.
+  Это не размер запрошенных данных и не live bytes всего процесса.
+- `threadReusableBlockBytes` включает немедленно доступные слоты и неиспользованные
+  хвосты страниц. `threadFreeCommittedPageBytes` отдельно считает cached committed pages.
+- `class<block-size>AllocatedBlocks` и `class<block-size>ReusableBlocks` сохраняют
+  распределение классов размера; меньший слот обычно не обслужит больший запрос.
+
+Снимок не обходит чужие live heaps, не обрабатывает deferred frees, не вызывает GC
+и не чистит caches. Глобальные atomic counters не образуют единого атомарного снимка.
+CRT allocations, GC-object storage, драйверы, padding и GPU fragmentation не измеряются.
+Нельзя вычитать thread occupancy из global commitment для оценки фрагментации;
+свободная повторно используемая ёмкость сама по себе не доказывает вредную фрагментацию.
+`Test_MemorySystem.cpp` проверяет holes/reuse в потоке-владельце без очистки caches.
 
 <a id="third-party-allocators"></a>
 

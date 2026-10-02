@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/quality/profiling.html
 ---
 
 # Профилирование
-<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"c9409e4af4f48d4dfca7268211404b7c5d63abab39ee8230f2931d20a46c3d72"} -->
+<!-- docs-translation: {"document_id":"profiling","locale":"ru","source_path":"Docs/en/how-to/quality/profiling.md","source_sha256":"48df563bb4623c9b5ac88b45d8c6bdeb169aaa6e339d259bb8e5a346f342cd16"} -->
 > Документация движка о переиспользуемой интеграции Tracy, границах захвата
 > и сопоставимых измерениях производительности. Рабочие сцены, оркестрация
 > процессов и критерии приемки конкретной игры принадлежат игровому проекту.
@@ -424,6 +424,17 @@ sprite flush). Не добавляйте зоны механически в acce
 | Результат headless client используется как renderer evidence | Null/headless renderer не проверяет производительность видимого rendering. |
 | В Linux capture преобладает software rendering | Запишите renderer и driver; не сравнивайте captures программного и аппаратного renderer-а. |
 | Allocation totals кажутся неполными | Проверьте third-party/plain C allocations вне границы allocator-а движка. |
+
+## Заполнение аллокатора без Tracy capture
+
+Debug и Tracy с rpmalloc автоматически предоставляют occupancy. Для обычной
+сборки включите `FO_MEMORY_DIAGNOSTICS=ON`; по умолчанию OFF. Native
+`memory::get_allocator_statistics()` и общий экспорт AngelScript/Managed C#
+`Game.GetAllocatorStatistics()` разделяют global module pages и size classes
+вызывающего потока. Пустой скриптовый словарь означает недоступность, не пустой heap.
+Это не включает Tracy capture и не измеряет фрагментацию всего процесса или GPU.
+Ёмкости и границы неатомарного sample описаны в
+[Essentials](../../reference/native/essentials.md#диагностика-заполнения-аллокатора).
 
 ## Автоматизация на стороне проекта
 

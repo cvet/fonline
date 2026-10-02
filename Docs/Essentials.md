@@ -50,6 +50,10 @@ Continue with the [canonical English reference](en/reference/native/essentials.m
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).
 
+#### Allocator occupancy diagnostics
+
+Continue with [allocator occupancy diagnostics](en/reference/native/essentials.md#allocator-occupancy-diagnostics).
+
 ## Build integration
 
 Continue with the [canonical English reference](en/reference/native/essentials.md).

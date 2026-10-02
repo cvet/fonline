@@ -422,6 +422,17 @@ answer a named performance question and have an owner who can interpret it.
 | Software rendering dominates Linux capture | Record the renderer and driver; do not compare software and hardware renderer captures. |
 | Allocation totals appear incomplete | Check for third-party/plain C allocations outside the Engine allocator boundary. |
 
+## Allocator occupancy without a Tracy capture
+
+Debug and Tracy builds with rpmalloc expose occupancy automatically. For a regular
+build, opt in with `FO_MEMORY_DIAGNOSTICS=ON`; the default remains OFF. Native
+`memory::get_allocator_statistics()` and the shared AngelScript/Managed C#
+`Game.GetAllocatorStatistics()` distinguish global module pages from calling-thread
+size classes. An empty script dictionary means unavailable, not an empty heap.
+This does not enable Tracy capture or measure whole-process/GPU fragmentation.
+Interpret capacities and the non-atomic sampling boundary using
+[Essentials](../../reference/native/essentials.md#allocator-occupancy-diagnostics).
+
 ## Project-owned automation
 
 An embedding project should automate the repeatable parts without changing the

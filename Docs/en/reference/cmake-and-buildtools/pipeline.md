@@ -130,16 +130,15 @@ for the runtime safety and fragment-compilation contract.
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
-Nested managed-runtime builds use `CMAKE_BUILD_PARALLEL_LEVEL` as their processor
-budget. BuildTools sets `DOTNET_PROCESSOR_COUNT` only in the child environment,
-so Mono commands using `Environment.ProcessorCount` honor that limit. This
-override is not proof of an MSBuild node-count limit: local Windows checks with
-SDKs 10.0.110 and 10.0.401 retained the host node count while the managed
-processor count was limited. Keep the actual MSBuild budget regression visible;
-do not qualify nested-build concurrency from the environment variable alone.
-A tighter explicit .NET limit is preserved. Without a CMake
-limit, existing .NET processor selection is unchanged; with one, both supplied
-limits must be decimal integers from 1 through 65535.
+Nested managed-runtime builds take the lower supplied `CMAKE_BUILD_PARALLEL_LEVEL`
+or `DOTNET_PROCESSOR_COUNT` as the processor budget. BuildTools sets the latter
+only in the child environment and appends `/maxcpucount:N`, capped at MSBuild's
+maximum of 1024 nodes. Windows MSBuild's default node count does not honor the
+environment override alone; Mono's `Environment.ProcessorCount` receives the
+uncapped processor budget. Every supplied nonempty limit must be a decimal integer
+from 1 through 65535. With neither override, existing processor selection remains.
+`test_runtime_build_budget.py` exercises actual MSBuild with a larger wrapper
+default; an environment-only cap is not sufficient evidence.
 
 ### `EngineSources.cmake`
 
@@ -192,6 +191,13 @@ entry point configures and builds upstream sources independently of an
 embedding project's FOnline CMake configuration.
 
 For Visual Studio/MSBuild test targets, the stage invokes the test executable through `BuildTools/cmake/helpers/RunAndLog.cmake`. The helper captures stdout and stderr in `<build-dir>/<target>.log` and fails the CMake command from the real process exit code. This preserves expected negative-test diagnostics without letting MSBuild reinterpret lines containing words such as `error` as build failures. Other generators run the executable directly.
+
+Native non-cross-compiling Windows, Linux and macOS configurations also build
+`FOnlineResourcePackHash` before the baker and CMake package targets. This host-only
+C ABI library is independent of Engine allocation, profiling and sanitizer runtimes;
+it is not linked into or shipped with game applications. Standalone builds use
+`cmake -S BuildTools/resource-pack-hash -B <build>` and `cmake --build <build>`.
+See the [packaging hash backend](../../how-to/release/packaging.md#reproducibility-and-provenance).
 
 See [Applications](../applications.md).
 
