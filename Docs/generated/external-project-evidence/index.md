@@ -10,14 +10,14 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Snapshots: **2**
 - Classified concerns: **30**
-- Source references: **188**
+- Source references: **193**
 - Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 24, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
-| `last-frontier` | `lastfrontierdev/lf` | `c1813e6dad59cad3357cde133907458aef9f2e55` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier` | `lastfrontierdev/lf` | `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
 ## Classified concerns
@@ -227,9 +227,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Gameplay systems, content catalogs, and balance policy
 
-- Sources: `last-frontier:Docs/GameSystems.md`, `last-frontier:Docs/ContentWorkflow.md`, `fonline-tla:Docs/ReanimationPlan.md`, `fonline-tla:Scripts`
+- Sources: `last-frontier:Docs/GameSystems.md`, `last-frontier:Docs/ContentWorkflow.md`, `last-frontier:Docs/Crafting.md`, `last-frontier:Docs/Survival.md`, `last-frontier:Scripts/Craft.MaterialSources.cs`, `last-frontier:Scripts/Deterioration.cs`, `last-frontier:Scripts/BagSystem.cs`, `fonline-tla:Docs/ReanimationPlan.md`, `fonline-tla:Scripts`
 - Reusable claim: Quest, combat, economy, AI, faction, survival, and other gameplay systems exercise Engine surfaces but do not define reusable Engine behavior.
-- Decision: Keep all gameplay semantics, catalogs, balance, quests, and content acceptance in their game repositories.
+- Decision: Keep all gameplay semantics, catalogs, balance, quests, and content acceptance in their game repositories. Last Frontier's nearby paid personal-storage crafting, inventory-first exact material plans, master repair fees/faction access, lazy empty-container restock and guaranteed open metal salvage are current project policies, not Engine recipes, storage authorization, economic durability or visual/production acceptance guarantees.
 - Promotion gate: Promote only a minimal reusable primitive with Engine-owned source/tests; never generalize a game's rule set into Engine documentation.
 
 ### Analytics, live operations, support, and product services

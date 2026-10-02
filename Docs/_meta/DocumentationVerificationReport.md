@@ -9823,3 +9823,48 @@ Current local receipts:
   documentation slice, including generated outputs. No push, remote CI,
   Pages publication, live AngelScript
   runtime, physical GPU, Web/Android device or production acceptance is claimed.
+
+## 2026-10-03 — exact-size package patch and integration evidence sync
+
+Scope and source review:
+
+- Normally merged `origin/master` through
+  `fd4294cb866f5c32528e6301eefb2599fe79e57a`; integration HEAD is
+  `0d31d848837c9af3c4976d21283b4bead62133cf`. Published history and all safety
+  snapshots remain intact. No new native or scripting runtime implementation
+  was authored in this documentation reconciliation.
+- Re-derived `package.py::patch_data` and its fixtures. Canonical EN/RU
+  packaging documents the first matching marker, payload/reservation validation
+  before each field write, fixed-size padding and unchanged surrounding bytes.
+  The separate packaged-name write remains NUL-padded. This is not package-wide
+  transactionality, short-write rollback, signing or installation acceptance.
+  Retained the legacy pipeline pointer and linked the canonical release guide.
+- Repinned committed Last Frontier discovery evidence to
+  `d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31` and verified it alongside unchanged
+  TLA `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`. Storage material selection,
+  repair fees, storeroom restocking and guaranteed salvage are explicitly
+  project-owned gameplay policies, not reusable Engine economy guarantees.
+- Refreshed translation provenance only after reviewing both changed canonical
+  pairs. Aggregate comparison against `3317d57a3d32c015321bb3551d4f55f767939cd4`
+  finds zero contract changes across seventeen domains; no pre-release human
+  breaking-change ledger was added.
+
+Current local receipts and limits:
+
+- The focused internal-config, zip-helper and resource-pack hashing selection
+  passes 91 pytest cases. Invalid oversized, missing and truncated reservations
+  preserve bytes; combined embedded/config/name cases preserve file size and
+  mode. These fixtures do not inject arbitrary I/O faults.
+- External-evidence, package-doc, CMake-doc and security/secrets documentation
+  tests pass 26 cases; package security passes three additional pytest cases.
+  Snippet checks pass 307 normative, 159 evidence and 181 external-parser
+  checks. Screenshots remain fresh; all three diagrams/six SVG outputs are
+  current without new visual acceptance.
+- Owning generation and validation pass 408 Markdown entries, 192 locale pairs
+  and all 67 retrieval checks across 28 tasks (MRR 0.930). Embedding-project
+  gameplay and authored-data receipts belong to its dated project plan, not
+  normative Engine proof.
+- The previously recorded Visual Studio unchanged-reconfigure Codegen issue
+  remains open and was not retested or hidden. No remote CI, Pages publication,
+  live AngelScript, physical GPU, Web/Android device or production acceptance is
+  claimed. The owner authorizes logical commits, not a push.

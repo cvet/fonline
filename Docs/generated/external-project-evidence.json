@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_external_evidence.py",
   "source_manifest": "BuildTools/ExternalProjectEvidence.json",
-  "source_sha256": "f287c54099a9cb998eae0bf2ca5bac17eb0c5950f6ba18070d32be2205c82c0a",
+  "source_sha256": "05034f7c628fb5c164cab832ed8c5daea3981c83cdd0f436c1e02f3721eca096",
   "title": "External Project Evidence And Promotion Inventory",
   "policy": {
     "normative_boundary": "External project usage is discovery and compatibility evidence only. Engine source, tests, manifests, generated contracts, and Engine-owned examples remain normative.",
@@ -23,7 +23,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "c1813e6dad59cad3357cde133907458aef9f2e55",
+      "revision": "d028cbb35942fbb87171b94d2ef9c9ddcf6b6f31",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -1447,6 +1447,26 @@
           "path": "Docs/ContentWorkflow.md"
         },
         {
+          "snapshot": "last-frontier",
+          "path": "Docs/Crafting.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Docs/Survival.md"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Craft.MaterialSources.cs"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/Deterioration.cs"
+        },
+        {
+          "snapshot": "last-frontier",
+          "path": "Scripts/BagSystem.cs"
+        },
+        {
           "snapshot": "fonline-tla",
           "path": "Docs/ReanimationPlan.md"
         },
@@ -1472,7 +1492,7 @@
         "quality"
       ],
       "promotion_gate": "Promote only a minimal reusable primitive with Engine-owned source/tests; never generalize a game's rule set into Engine documentation.",
-      "decision": "Keep all gameplay semantics, catalogs, balance, quests, and content acceptance in their game repositories."
+      "decision": "Keep all gameplay semantics, catalogs, balance, quests, and content acceptance in their game repositories. Last Frontier's nearby paid personal-storage crafting, inventory-first exact material plans, master repair fees/faction access, lazy empty-container restock and guaranteed open metal salvage are current project policies, not Engine recipes, storage authorization, economic durability or visual/production acceptance guarantees."
     },
     {
       "id": "analytics-liveops-and-support",
@@ -1720,7 +1740,7 @@
   "summary": {
     "snapshot_count": 2,
     "record_count": 30,
-    "source_reference_count": 188,
+    "source_reference_count": 193,
     "records_by_disposition": {
       "boundary-owned": 2,
       "project-owned": 3,
