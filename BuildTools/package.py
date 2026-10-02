@@ -176,15 +176,15 @@ def log(*text: object) -> None:
 
 def patch_data(file_path: str | Path, mark: bytes, data: bytes, max_size: int) -> None:
 	assert len(data) <= max_size, 'Data size is too big ' + str(len(data)) + ' but maximum is ' + str(max_size)
-	with open(file_path, 'rb') as file:
+	with open(file_path, 'r+b') as file:
 		content = file.read()
-	file_size = os.path.getsize(file_path)
-	pos = content.find(mark)
-	assert pos != -1
-	padding = b'#' * (max_size - len(data))
-	content = content[:pos] + data + padding + content[pos + max_size:]
-	with open(file_path, 'wb') as file:
-		file.write(content)
+		file_size = len(content)
+		pos = content.find(mark)
+		assert pos != -1
+		assert pos + max_size <= file_size, 'Reserved binary field is truncated: ' + str(file_path)
+		padding = b'#' * (max_size - len(data))
+		file.seek(pos)
+		file.write(data + padding)
 	assert file_size == os.path.getsize(file_path)
 
 

@@ -142,6 +142,8 @@ Do not run several platform entries from one package ID unless all of their comp
 
 The packager patches reserved data regions after linking. It embeds resources and the selected baked config, writes the packaged build name, and may adjust PE PDB paths. It does not generate or execute code in those reserved regions. Signing, when configured, happens after patching and before archives or installers are emitted.
 
+Each embedded-data or configuration patch locates the first matching marker, checks the payload size and reservation bounds, and writes only that fixed-size region in place. The binary length and surrounding bytes stay unchanged; missing markers, oversized payloads and truncated reservations fail before that field is modified. This is a per-field guard, not an atomic transaction across all package patches. The packaged-name field uses its own fixed-size write and NUL padding. `BuildTools/tests/test_package_internal_config.py` checks the combined three-field result, variant configuration, first-marker selection and invalid fields that leave the input intact.
+
 ## Run the Engine packaging fixture
 
 `Examples/PackagingMatrix` is the executable Engine-owned baseline for native package mechanics. It is intentionally separate from the readable starter and multiplayer tutorials because `ConfigBaker` requires every server/client runtime setting to be initialized. Its checked-in `FOnlinePackagingMatrix.fomain` is deterministically generated from `Source/Common/Settings.inc`; `generate_config.py --check` fails when settings and the fixture diverge.

@@ -216,6 +216,8 @@ Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md), [
 
 ### `Packages.cmake`
 
+Binary fields are patched in place with payload/reservation bounds checked before each write; the field-local failure boundary and Engine-owned regressions are described in [packaging](../../how-to/release/packaging.md).
+
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and the current `BINARY` entry's optional output postfix.
 
 The local `package-web-debug` and `package-android-debug` wrappers pass

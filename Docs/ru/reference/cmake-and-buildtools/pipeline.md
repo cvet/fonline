@@ -287,6 +287,10 @@ C ABI library не зависит от Engine allocator, profiling и sanitizer 
 
 ### `Packages.cmake`
 
+Поля бинарника записываются на месте с проверкой размера payload и границ поля до
+каждой записи. Граница отказа отдельного поля и Engine-owned регрессии описаны в
+[руководстве packaging](../../how-to/release/packaging.md).
+
 Локальные wrappers `package-web-debug` и `package-android-debug` передают
 `-resource-pack-compress-level 1` для Raw payloads; сжатие distribution bundles
 по-прежнему берётся из project config. `test_buildtools_debug_packaging.py`
