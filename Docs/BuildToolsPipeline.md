@@ -354,6 +354,14 @@ changes `PATH`, as Xcode does for script phases. `Python3_EXECUTABLE` can select
 an explicit interpreter at configure time; the standalone `setup-mono` wrappers
 remain convenience entry points for an interactive shell.
 
+The nested runtime build uses `CMAKE_BUILD_PARALLEL_LEVEL` as its processor budget.
+BuildTools sets `DOTNET_PROCESSOR_COUNT` only in that child environment, so MSBuild's
+node count and Mono's native commands that use `Environment.ProcessorCount` honor the
+same limit. A tighter explicit `DOTNET_PROCESSOR_COUNT` is preserved. With no CMake
+limit the existing .NET processor selection remains in effect. When a CMake limit is
+set, both supplied limits must be decimal integers from 1 through 65535, the range
+supported by the runtime's processor override.
+
 #### Managed runtime workspace cache
 
 With `FO_WORKSPACE_CACHE` set, `setup-mono` takes the published `output/mono/<triplet>` tree from the cache
