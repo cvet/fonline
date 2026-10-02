@@ -5,7 +5,7 @@ locale: ru
 document_id: entity-model
 permalink: /Docs/ru/explanation/entity-and-property-model/
 ---
-<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"fe5b96b8dd777d58adf6efba10b9dc158351f99cc16470ecaea8679dc5b1f82f"} -->
+<!-- docs-translation: {"document_id":"entity-model","locale":"ru","source_path":"Docs/en/explanation/entity-and-property-model/index.md","source_sha256":"820e9a08d863ab37e7cec613fb606ae55542d6b4b9029a51b14a3d0125b015bb"} -->
 # Модель сущностей
 
 Этот документ описывает переиспользуемую runtime-модель сущностей: дескрипторы типов сущностей, сгенерированные средства доступа к свойствам, сущности-прототипы, владение внутренними сущностями, события сущностей и модель хранения свойств, на которой строятся другие runtime-системы.
@@ -179,6 +179,12 @@ Overlays, производные от прототипов, лениво соз�
 - `TargetType` - тип сущности, который может храниться в entry;
 - `Sync` - `NoSync`, `OwnerSync` или `PublicSync`;
 - `Persistent` - участвует ли членство в holder в persistence.
+
+Persistent-поля custom child не делают его holder entry persistent. `EntityManager::ForEachPersistentChildEntity()`
+пропускает entries без этого флага; `CreateCustomInnerEntity()` делает нового child persistent только при persistent
+entry и holder. Проверяйте сохранённого child и членство через настоящий unload/load, а не прямой вызов скриптовой
+инициализации. Загрузка critter восстанавливает inner entities до `OnCritterPreLoad` и последующей инициализации;
+callbacks игры определяют, как восстановить или завершить загруженное состояние.
 
 Общие persistent-поля `CustomHolderId` и `CustomHolderEntry` позволяют custom entities записывать отношения holder. `EntityManagerApi` предоставляет hooks создания, lookup и уничтожения custom entity:
 

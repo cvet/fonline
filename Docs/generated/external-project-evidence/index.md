@@ -10,14 +10,14 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Snapshots: **2**
 - Classified concerns: **30**
-- Source references: **186**
+- Source references: **188**
 - Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 24, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
-| `last-frontier` | `lastfrontierdev/lf` | `ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier` | `lastfrontierdev/lf` | `c1813e6dad59cad3357cde133907458aef9f2e55` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
 ## Classified concerns
@@ -47,7 +47,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 | `ai-control-bridge` AI observation and control bridge | `promoted` | `P2` | `tooling` | `Docs/en/how-to/build/embedding-project.md`<br>`Docs/en/how-to/ai-control-protocol.md`<br>`Docs/en/reference/ai-control-protocol/index.md`<br>`BuildTools/ai_control_client.py`<br>`BuildTools/tests/test_ai_control_protocol.py`<br>`Examples/AiControlSample` | `tooling`<br>`runtime`<br>`networking`<br>`quality`<br>`documentation` |
 | `packaging-platform-and-release` Cross-platform packaging and release evidence | `promotion-candidate` | `P1` | `build-release` | `Docs/en/how-to/build/index.md`<br>`Docs/en/how-to/release/packaging.md`<br>`Docs/en/reference/platforms/support-matrix.md`<br>`Docs/en/reference/packages/index.md`<br>`Docs/en/how-to/platforms/web-debugging.md`<br>`Docs/en/how-to/platforms/android-debugging.md`<br>`Examples/PackagingMatrix`<br>`Examples/MinimalMultiplayer` | `build-release`<br>`platform`<br>`quality`<br>`documentation` |
 | `updater-secrets-security-and-recovery` Updater, secrets, signing, security, and recovery operations | `promoted` | `P1` | `build-release` | `Docs/en/explanation/runtime/client-updater.md`<br>`Docs/en/how-to/release/packaging.md`<br>`Docs/en/how-to/release/security-and-secrets.md`<br>`Docs/en/how-to/release/operations.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/contributing/third-party/index.md` | `build-release`<br>`platform`<br>`runtime`<br>`networking`<br>`quality` |
-| `persistence-and-migration` Persistence, save migration, and compatibility | `promoted` | `P0` | `runtime` | `Docs/en/explanation/persistence/index.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/explanation/authority-and-networking/index.md` | `runtime`<br>`networking`<br>`scripting`<br>`quality` |
+| `persistence-and-migration` Persistence, save migration, and compatibility | `promoted` | `P0` | `runtime` | `Docs/en/explanation/persistence/index.md`<br>`Docs/en/explanation/entity-and-property-model/index.md`<br>`Docs/en/how-to/release/backup-and-recovery.md`<br>`Docs/en/how-to/migration/engine-upgrade.md`<br>`Docs/en/explanation/authority-and-networking/index.md` | `runtime`<br>`networking`<br>`scripting`<br>`quality` |
 | `gameplay-systems-and-content-policy` Gameplay systems, content catalogs, and balance policy | `project-owned` | `P3` | `scripting` | `last-frontier:Docs/GameSystems.md`<br>`last-frontier:Docs/ContentWorkflow.md`<br>`fonline-tla:Scripts` | `scripting`<br>`content-data`<br>`quality` |
 | `analytics-liveops-and-support` Analytics, live operations, support, and product services | `project-owned` | `P3` | `runtime` | `last-frontier:Docs/Analytics.md`<br>`last-frontier:Docs/Ops/AGENTS.md` | `runtime`<br>`networking`<br>`build-release` |
 | `angelscript-style-and-refactoring` AngelScript style, refactoring, and change batching | `promoted` | `P2` | `scripting` | `Docs/en/how-to/scripting/style-and-refactoring.md`<br>`Docs/en/explanation/scripting-runtime/index.md`<br>`Docs/en/contributing/documentation/index.md`<br>`BuildTools/buildtools.py`<br>`BuildTools/tests/test_docs_angelscript_style.py` | `scripting`<br>`quality`<br>`documentation` |
@@ -110,7 +110,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Sources: `last-frontier:Docs/MapAuthoring.md`, `last-frontier:Docs/ContentWorkflow.md`, `fonline-tla:README.md`, `fonline-tla:Maps`
 - Reusable claim: Map sections, placement identity, ownership, mapper round-trip, side-specific baking, and runtime materialization need one parser-backed contract.
-- Decision: Format and tool mechanics are Engine-owned; map kits, quests, encounters, and level-design policy stay external.
+- Decision: Format and tool mechanics are Engine-owned; map kits, quests, encounters, and level-design policy stay external. Last Frontier's edge detention bands, four-hex arrival gap, global/local exit separation and preview layouts are project policy; their map/tool/gameplay and owner-visual acceptance remain distinct from reusable format proof.
 - Promotion gate: Mapper, baker, loader, and materialization sources agree with generated reference and focused tests.
 
 ### Text packs, languages, and runtime lookup
@@ -166,7 +166,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Sources: `last-frontier:Docs/Testing.md`, `last-frontier:Tools/PipelineTests`, `fonline-tla:Docs/ReanimationPlan.md`, `fonline-tla:AGENTS.md`
 - Reusable claim: Games benefit from deterministic fixture setup, boundary-based test selection, narrow-first execution, timeout/log contracts, and cross-layer integration evidence.
-- Decision: Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned.
+- Decision: Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned. Linux automatic-range port selection and the exact Anchor run-variable/retired-property process-stop oracle are project harness policy, not new Engine transport or persistence guarantees.
 - Promotion gate: The project-neutral runner has deterministic positive/failure/timeout coverage, a synthetic fixture, and real baked headless server/client proof in Minimal Multiplayer.
 
 ### Native and script safety analyzers
@@ -220,9 +220,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Persistence, save migration, and compatibility
 
-- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/Properties.md`, `last-frontier:Scripts/Migration_Damage.cs`, `last-frontier:Scripts/Tests/Test_Migration_Damage.cs`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`
+- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/Properties.md`, `last-frontier:Scripts/Migration_Damage.cs`, `last-frontier:Scripts/Tests/Test_Migration_Damage.cs`, `last-frontier:Scripts/Modifiers.Impl.cs`, `last-frontier:Docs/Modifiers.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`
 - Reusable claim: Entity persistence, database backends, migration metadata, compatibility versions, backup, rollout, and rollback need separate Engine and project ownership.
-- Decision: Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. Last Frontier's six-type protection schema, checked int16/int8 legacy transfer before modifier reinitialization, per-game compatibility version and persisted-player fixture do not change Engine storage formats or qualify a production migration.
+- Decision: Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. The explicit persistent custom-holder gate and inner-entity load order are Engine-owned; Last Frontier's modifier restore/finish policy, six-type protection schema, checked int16/int8 legacy transfer, per-game compatibility version and actual persisted Sunder reload/idempotency fixture do not change Engine storage formats or qualify a production migration.
 - Promotion gate: Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.
 
 ### Gameplay systems, content catalogs, and balance policy

@@ -16598,7 +16598,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: fe5b96b8dd777d58adf6efba10b9dc158351f99cc16470ecaea8679dc5b1f82f
+Content SHA-256: 820e9a08d863ab37e7cec613fb606ae55542d6b4b9029a51b14a3d0125b015bb
 
 ---
 layout: default
@@ -16781,6 +16781,12 @@ Entities can hold other entities under named entries. Holder metadata lives in `
 - `TargetType` — what entity type the entry can hold;
 - `Sync` — `NoSync`, `OwnerSync`, or `PublicSync`;
 - `Persistent` — whether holder membership participates in persistence.
+
+Persistent fields on a custom child do not make its holder entry persistent. `EntityManager::ForEachPersistentChildEntity()`
+skips entries without that flag; `CreateCustomInnerEntity()` promotes a new child only when both the entry and
+holder are persistent. Validate the stored child and membership through actual unload/load, not a direct script
+initialization call. Critter loading restores inner entities before `OnCritterPreLoad` and subsequent initialization;
+the game's callbacks decide how to restore or finish the recovered state.
 
 The common persistent fields `CustomHolderId` and `CustomHolderEntry` let custom entities record holder relationships. `EntityManagerApi` provides custom-entity creation, lookup, and destruction hooks:
 

@@ -20,7 +20,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e",
+      "revision": "c1813e6dad59cad3357cde133907458aef9f2e55",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -193,7 +193,7 @@
       "external_targets": [],
       "required_reviews": ["content-data", "tooling", "runtime", "quality"],
       "promotion_gate": "Mapper, baker, loader, and materialization sources agree with generated reference and focused tests.",
-      "decision": "Format and tool mechanics are Engine-owned; map kits, quests, encounters, and level-design policy stay external."
+      "decision": "Format and tool mechanics are Engine-owned; map kits, quests, encounters, and level-design policy stay external. Last Frontier's edge detention bands, four-hex arrival gap, global/local exit separation and preview layouts are project policy; their map/tool/gameplay and owner-visual acceptance remain distinct from reusable format proof."
     },
     {
       "id": "text-and-localization-format",
@@ -365,7 +365,7 @@
       "external_targets": [],
       "required_reviews": ["quality", "scripting", "runtime", "documentation"],
       "promotion_gate": "The project-neutral runner has deterministic positive/failure/timeout coverage, a synthetic fixture, and real baked headless server/client proof in Minimal Multiplayer.",
-      "decision": "Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned."
+      "decision": "Engine now owns boundary-based test selection plus process readiness, marker, deadline, cleanup, and report semantics. Script test registries, game fixtures/assertions, filters, content, persistence backends, platform labs, and acceptance thresholds stay project-owned. Linux automatic-range port selection and the exact Anchor run-variable/retired-property process-stop oracle are project harness policy, not new Engine transport or persistence guarantees."
     },
     {
       "id": "native-analyzers",
@@ -554,6 +554,8 @@
         {"snapshot": "last-frontier", "path": "Docs/Properties.md"},
         {"snapshot": "last-frontier", "path": "Scripts/Migration_Damage.cs"},
         {"snapshot": "last-frontier", "path": "Scripts/Tests/Test_Migration_Damage.cs"},
+        {"snapshot": "last-frontier", "path": "Scripts/Modifiers.Impl.cs"},
+        {"snapshot": "last-frontier", "path": "Docs/Modifiers.md"},
         {"snapshot": "last-frontier", "path": "Docs/DocumentationMaintenance.md"},
         {"snapshot": "fonline-tla", "path": "README.md"},
         {"snapshot": "fonline-tla", "path": "DbPendingChanges.oplog"}
@@ -562,12 +564,12 @@
       "disposition": "promoted",
       "owner": "runtime",
       "priority": "P0",
-      "engine_targets": ["Docs/en/explanation/persistence/index.md", "Docs/en/how-to/release/backup-and-recovery.md", "Docs/en/how-to/migration/engine-upgrade.md", "Docs/en/explanation/authority-and-networking/index.md"],
+      "engine_targets": ["Docs/en/explanation/persistence/index.md", "Docs/en/explanation/entity-and-property-model/index.md", "Docs/en/how-to/release/backup-and-recovery.md", "Docs/en/how-to/migration/engine-upgrade.md", "Docs/en/explanation/authority-and-networking/index.md"],
       "planned_targets": [],
       "external_targets": [],
       "required_reviews": ["runtime", "networking", "scripting", "quality"],
       "promotion_gate": "Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.",
-      "decision": "Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. Last Frontier's six-type protection schema, checked int16/int8 legacy transfer before modifier reinitialization, per-game compatibility version and persisted-player fixture do not change Engine storage formats or qualify a production migration."
+      "decision": "Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. The explicit persistent custom-holder gate and inner-entity load order are Engine-owned; Last Frontier's modifier restore/finish policy, six-type protection schema, checked int16/int8 legacy transfer, per-game compatibility version and actual persisted Sunder reload/idempotency fixture do not change Engine storage formats or qualify a production migration."
     },
     {
       "id": "gameplay-systems-and-content-policy",
