@@ -298,7 +298,14 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame owns the reusable 2x scratch render target. After
+The automatic logical frame uses a reusable 2x scratch render target. The model
+sprite factory reuses matching sizes in a least-recently-used cache with a soft
+budget of 8 x 1024 x 1024 colour pixels (32 MiB of RGBA storage, plus backend depth
+storage). A frame exceeding the budget occupies the cache alone. Sprite-cache
+cleanup releases all scratch targets and their cached blit-effect texture borrows;
+live sprite atlas allocations and shared model materials remain valid. This keeps
+new model frame sizes from retaining temporary render targets for the whole session.
+After
 the pose is evaluated, every model sprite unions the active clip's baked root-model
 envelope with the baked envelopes of the currently selected geometry links. A root/skinned
 link is baked by posing its mesh through every animation mapped by the parent `.fo3d`.
