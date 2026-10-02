@@ -963,7 +963,10 @@ def render_search(
     }
     documents = []
     postings: dict[str, list[list[int]]] = defaultdict(list)
+    identity_terms: dict[str, set[int]] = defaultdict(set)
     for document_index, record in enumerate(eligible):
+        for token in _token_variants(str(record["title"]) + " " + str(record["id"])):
+            identity_terms[token].add(document_index)
         content = _markdown_body(str(record["content"]))
         document_headings = _headings(content)
         group_id, group_title = document_groups.get(
@@ -997,12 +1000,17 @@ def render_search(
             postings[token].append([document_index, score])
 
     search = _require_object(config, "search", "site_delivery search")
-    postings = {
-        token: token_postings
-        for token, token_postings in postings.items()
-        if len(documents) <= 2
-        or len(token_postings) / len(documents) <= MAX_DOCUMENT_FREQUENCY_RATIO
-    }
+    filtered_postings = {}
+    for token, token_postings in postings.items():
+        if len(documents) <= 2 or len(token_postings) / len(documents) <= MAX_DOCUMENT_FREQUENCY_RATIO:
+            filtered_postings[token] = token_postings
+        else:
+            # Common body terms still identify pages named after them. Dropping
+            # Tools/Source entirely lets prefix fallback match unrelated rare
+            # compounds instead of the exact document title.
+            if identity_terms.get(token):
+                filtered_postings[token] = token_postings
+    postings = filtered_postings
     output = {
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,

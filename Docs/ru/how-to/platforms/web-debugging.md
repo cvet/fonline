@@ -5,7 +5,7 @@ locale: ru
 document_id: web-debugging
 permalink: /Docs/ru/how-to/platforms/web-debugging.html
 ---
-<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"3e28702dfe9bddf0e371ddc480b8fdad6b36e1088d1fad4daaf61efde68ba179"} -->
+<!-- docs-translation: {"document_id":"web-debugging","locale":"ru","source_path":"Docs/en/how-to/platforms/web-debugging.md","source_sha256":"ac9a7601e53b44458de39b4d111158f28dd601c03a1a1e6abe355c7ca38d6828"} -->
 # Сборка, упаковка и отладка FOnline в браузере
 
 Это принадлежащая Engine инструкция по подготовке закреплённого Emscripten toolchain, сборке и упаковке WebAssembly-клиента, его локальной раздаче для диагностики, подключению к серверу проекта и квалификации браузерного deployment. Она следует текущим BuildTools, package shell, Web runtime, networking, renderer, updater, модели поддержки и проверенным project evidence. Встраивающий проект отвечает за bake контента, серверный профиль, аутентификацию, публичный origin, матрицу браузеров, deployment, мониторинг и решение о выпуске.
@@ -54,6 +54,11 @@ Web-доставка имеет четыре отдельных слоя evidenc
 Поддерживаемое Engine приложение — браузерный клиент. Не выводите поддержку Web server, Mapper, Baker или других приложений из веток исходников, которые случайно могут собраться через Emscripten. Метка `build_gated` квалифицирует компиляцию браузерного клиента; текущий реестр проверок не требует process smoke в браузере.
 
 ## Подготовка host и workspace
+
+JavaScript внутри `EM_JS` и `EM_ASM` должен состоять также из допустимых токенов
+препроцессора C++. Пустую строку JavaScript записывайте как `""`: `''` является
+недопустимым пустым символьным литералом для препроцессора C++ и вызывает
+`-Winvalid-pp-token`, хотя JavaScript принимает такую запись.
 
 `ThirdParty/emscripten` закрепляет `6.0.8`. Preparer удаляет и заново клонирует `Workspace/emsdk`, устанавливает и активирует именно эту версию с `--build=Release --shallow`, а BuildTools запускает configure/build внутри её `emsdk_env`. Произвольный системный `emcc` не используется.
 

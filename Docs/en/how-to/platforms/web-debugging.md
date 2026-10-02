@@ -55,6 +55,11 @@ The supported Engine application is the browser client. Do not infer support for
 
 ## Prepare the host and workspace
 
+JavaScript in `EM_JS` and `EM_ASM` must also contain valid C++ preprocessing
+tokens. Spell an empty JavaScript string as `""`: `''` is an invalid empty
+character literal for the C++ preprocessor and triggers `-Winvalid-pp-token`,
+even though JavaScript accepts it.
+
 `ThirdParty/emscripten` pins `6.0.8`. The preparer removes and reclones `Workspace/emsdk`, installs and activates that exact version with `--build=Release --shallow`, and BuildTools runs configure/build inside its `emsdk_env` script. It does not use an arbitrary system `emcc`.
 
 On a fresh Linux host, provision Node.js, Java, common build packages, and the SDK:

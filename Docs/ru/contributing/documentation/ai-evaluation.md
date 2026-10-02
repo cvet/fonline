@@ -5,7 +5,7 @@ locale: ru
 document_id: ai-documentation-evaluation
 permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 ---
-<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"8397e34cfcb6d3656b0ac2cb221572541670c447bf6be3c84ec96e8d8fe00254"} -->
+<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5"} -->
 # Оценка документации для ИИ
 
 Это руководство определяет версионированный контракт оценки использования
@@ -91,6 +91,13 @@ python BuildTools/tests/test_docs_ai_eval.py
 отсутствующие термины остаются доступными для анализа. Затем `--check` требует
 побайтно идентичный committed output и долю успешного retrieval не ниже
 порогового значения из исходника.
+
+Генератор сайта удаляет слишком частые body terms ради компактности индекса,
+кроме терминов, обозначающих заголовок или ID документа. Для них сохраняется
+полный список postings, включая совпадения в тексте: точный запрос `Tools`
+или `Source` не должен сводиться к редким составным словам вроде `ToolsDir`.
+Это правило генерации индекса; ранжирование браузера и Python продолжает
+использовать один сгенерированный индекс без отдельных исключений.
 
 Текущий контракт ранжирования в браузере и Python:
 

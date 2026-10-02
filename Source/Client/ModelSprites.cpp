@@ -407,7 +407,7 @@ auto ModelSpriteFactory::AcquireIntermediateRenderTarget(isize32 size) -> ptr<Re
 {
     FO_TRACE_ZONE(Model);
 
-    // 32 MiB of RGBA colour storage, plus backend depth storage. One oversized frame may use the cache alone.
+    // 32 MiB of RGBA colour storage, plus backend depth storage. One oversized frame may use the cache alone
     constexpr uint64_t pixel_budget = 8 * 1024 * 1024;
     uint64_t cached_pixels = 0;
 
@@ -442,7 +442,7 @@ void ModelSpriteFactory::ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt)
 {
     FO_TRACE_ZONE(Model);
 
-    // DrawTexture stores this borrow after the immediate atlas blit; discard it before retiring its owner.
+    // DrawTexture stores this borrow after the immediate atlas blit; discard it before retiring its owner
     if (auto effect = _effectMngr->Effects.FlushRenderTarget; effect && effect->MainTex == nptr<const RenderTexture> {rt->GetTexture()}) {
         effect->MainTex.reset();
     }

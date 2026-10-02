@@ -196,8 +196,8 @@
       "english_path": "Docs/en/contributing/documentation/ai-evaluation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/ai-evaluation.md",
-      "source_sha256": "8397e34cfcb6d3656b0ac2cb221572541670c447bf6be3c84ec96e8d8fe00254",
-      "source_bytes": 15032,
+      "source_sha256": "ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5",
+      "source_bytes": 15481,
       "status": "current"
     },
     {
@@ -261,8 +261,8 @@
       "english_path": "Docs/en/contributing/source-tree/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/source-tree/index.md",
-      "source_sha256": "267b0234e2da43f27bde553d17e31764d39c6184d225bb0b74247b4011d81d92",
-      "source_bytes": 7254,
+      "source_sha256": "8da1612321aedc56e3ace92d12cb55ed86cb9f6a9e2f3c759fada129d3ae3880",
+      "source_bytes": 7723,
       "status": "current"
     },
     {
@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "3117bb41a1f7ffd1a503e4f1063819af6617988d5e11360a19def470dee93b05",
-      "source_bytes": 29469,
+      "source_sha256": "18fdc24002ad6a6de5c90e3425d6afa15ed1e1355b38264fdfeff518c7b05d88",
+      "source_bytes": 29896,
       "status": "current"
     },
     {
@@ -729,8 +729,8 @@
       "english_path": "Docs/en/how-to/platforms/web-debugging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/platforms/web-debugging.md",
-      "source_sha256": "3e28702dfe9bddf0e371ddc480b8fdad6b36e1088d1fad4daaf61efde68ba179",
-      "source_bytes": 33311,
+      "source_sha256": "ac9a7601e53b44458de39b4d111158f28dd601c03a1a1e6abe355c7ca38d6828",
+      "source_bytes": 33577,
       "status": "current"
     },
     {
@@ -1132,8 +1132,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "38ba5052f07f1a0d456f3e24c999d4333adac35a0fe2359fd33f9c97364419e5",
-      "source_bytes": 27350,
+      "source_sha256": "bcd3caa71183a4f36ac0fa8ea3e56537c9331a2e95d9372c47bb22bd2a0001be",
+      "source_bytes": 29362,
       "status": "current"
     },
     {

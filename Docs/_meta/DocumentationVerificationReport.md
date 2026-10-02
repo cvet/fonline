@@ -9655,3 +9655,56 @@ Validation:
   assertions in 3 cases; the logged rejection of unknown authored text is an
   expected assertion path. Local work does not certify remote CI, published
   Pages, or an embedding project's save migration and gameplay acceptance.
+
+## 2026-10-02 - codegen repair, debug packaging and runtime build budget
+
+Scope and source revisions:
+
+- Reconciled `docs` from `b10cb8775edc7b3af3c0e520d318c1b0e0f645ba`
+  with `origin/master` `ab53f1265c926c9f8d9eaa2bf1c17c06f57dfc2b`.
+  Two incoming commits cover codegen stamp/byproduct repair, debug packager
+  arguments, nested managed-runtime CPU budgeting, a map-unload measurement
+  warm-up, and valid Web preprocessor tokens. Comment-only edits change no
+  runtime contract.
+- Incoming prose on three legacy routes was moved to paired canonical EN/RU
+  BuildTools pipeline, testing and Web debugging pages. Source-tree routing
+  distinguishes missing codegen outputs from a native baker implementation.
+- The new prose exposed search-index pruning that removed common words even
+  when they named a page. The site generator now retains such identity terms
+  and their postings; a regression distinguishes `Tools` from `ToolsDir`.
+  The existing query corpus, ranking thresholds and index-size budget remain
+  unchanged.
+
+Contract and generated-surface disposition:
+
+- Aggregate contract diff against the starting revision reports zero changes
+  across 17 domains; no breaking-change disposition is needed. Inventory and
+  public CMake/CLI/helper/API projections remain current. Refreshed snippets,
+  locale parity, search/routes, retrieval evaluation and AI delivery from their
+  owning generators.
+
+Validation and open limits:
+
+- Focused documentation tests: 54 passed and 62 subtests passed. Retrieval
+  passes all 67 checks across 28 tasks after the index repair.
+  Final search/retrieval/static-browser subset: 20 passed. Browser-source
+  checks do not certify a fresh Jekyll build or live browser acceptance.
+- Incoming BuildTools tests initially reported 15 passed, 6 skipped and 5
+  failed on Windows. The Ninja codegen rerun passed 7 cases; 6 Unix Makefiles
+  cases remain skipped because `make` is unavailable. Debug packaging parser
+  coverage passed for Web and three Android routes. Visual Studio's unchanged
+  reconfigure still invoked codegen a third time where the new test expected
+  two invocations; do not extend the Ninja result to that generator.
+- The runtime-budget suite reports 5 passed and 4 failed, also with the
+  runtime's pinned SDK 10.0.110 (the first run used SDK 10.0.401).
+  `DOTNET_PROCESSOR_COUNT` limits `Environment.ProcessorCount` to 2 or 3, but
+  the actual MSBuild project still reports 28 nodes. Environment forwarding
+  is not proof of the complete build's CPU budget. This remains an incoming
+  implementation/test mismatch, not a passing gate or an authorized runtime
+  repair in this documentation reconciliation.
+- Fresh `LF_UnitTests` build and full suite passed on the merged Engine source
+  worktree: 527 cases and 662,728 assertions, including the new warm-up checks.
+  Expected negative-fixture diagnostics are retained in the local log.
+  Embedding-project bake/gameplay checks are separate evidence;
+  local documentation checks do not certify remote CI, published Pages,
+  physical GPU memory, or Web/Android device acceptance.

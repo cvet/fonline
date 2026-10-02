@@ -26,6 +26,13 @@ Route to the owning directory first. Before naming a concrete file, helper, or
 target, verify its exact spelling in the current source inventory; adjacent
 backend names and project-generated executable names are not safe templates.
 
+For developer tools, distinguish a baker implementation in `Source/Tools/`
+from its build orchestration. Missing generated files and codegen dependency
+repair belong to `BuildTools/cmake/stages/Codegen.cmake` and
+`BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in`, not the baker or Mapper
+runtime. Follow the [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md)
+for that boundary; change the native tool owner when its baked behavior changes.
+
 ## `Source/Applications/`
 
 Contains app and library entry points. Examples include client, server variants, mapper, editor, baker, AngelScript compiler, Managed script baker, and testing app wrappers. Build target wiring is in `BuildTools/cmake/stages/Applications.cmake`.

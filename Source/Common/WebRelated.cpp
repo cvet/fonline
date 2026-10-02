@@ -233,7 +233,7 @@ EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
 });
 
 EM_JS(void, WebGetUserAgentImpl, (char* buffer, int buffer_size), {
-    stringToUTF8(navigator.userAgent || '', Number(buffer), buffer_size);
+    stringToUTF8(navigator.userAgent || "", Number(buffer), buffer_size);
 });
 
 EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {

@@ -44,6 +44,13 @@ The standard generated names use the embedding project's development-name prefix
 
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 
+The repeated-unload storage comparison warms one complete map load/unload
+cycle before reading rpmalloc's committed active-page counter. Twelve destroyed
+maps retained by native handles must then stay within the same 8 MiB bound.
+Render-target ownership is checked on every cycle, including warm-up; this
+separates allocator initialization from repeated retained-map storage, not GPU
+memory or process working-set acceptance.
+
 Preferred local baseline from a configured build:
 
 ```bash

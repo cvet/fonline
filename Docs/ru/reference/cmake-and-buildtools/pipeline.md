@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"38ba5052f07f1a0d456f3e24c999d4333adac35a0fe2359fd33f9c97364419e5"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"bcd3caa71183a4f36ac0fa8ea3e56537c9331a2e95d9372c47bb22bd2a0001be"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -51,6 +51,7 @@ revision-pinned implementation interfaces: автоматизация обяза
 - `BuildTools/cmake/stages/ThirdParty.cmake`
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Codegen.cmake`
+- `BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in`
 - `BuildTools/cmake/stages/CoreLibs.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
@@ -168,6 +169,17 @@ runtime; prebuilt runtime принимается как есть и уже до�
 Начинайте здесь при добавлении или удалении bundled dependency либо изменении
 правил изоляции её сборки.
 
+Вложенная сборка Managed runtime использует `CMAKE_BUILD_PARALLEL_LEVEL` как
+бюджет процессоров. BuildTools задаёт `DOTNET_PROCESSOR_COUNT` только в дочернем
+окружении: лимит соблюдают команды Mono, использующие `Environment.ProcessorCount`.
+Этот override не доказывает ограничение числа узлов MSBuild: локальные Windows
+проверки с SDK 10.0.110 и 10.0.401 сохраняли число узлов host при ограниченном
+managed processor count. Не скрывайте результат регрессии настоящего MSBuild
+и не подтверждайте бюджет вложенной сборки одной переменной окружения.
+Более строгий явно заданный лимит .NET сохраняется.
+Без лимита CMake выбор процессоров .NET не меняется; при его наличии оба
+переданных лимита должны быть десятичными целыми от 1 до 65535.
+
 ### `EngineSources.cmake`
 
 Создаёт списки исходников и сгенерированные resource files для последующих
@@ -185,8 +197,19 @@ library Engine.
 generated output path, project names, embedded data capacity, metadata source
 files и добавленные common headers.
 
-Стадия создаёт обычную и принудительную цели code generation. Начинайте здесь
-при изменении сгенерированных C++/script API metadata.
+`CodeGeneration` отслеживает аргументы, metadata и скрипт генератора через stamp
+`CodeGenTouch`. Сгенерированные headers, includes и C++ files объявлены как
+byproducts: неизменившееся содержимое сохраняет timestamp даже после
+`ForceCodeGeneration`, поэтому обновление stamp само по себе не пересобирает
+потребителей. Перед их запуском `EnsureCodegenOutputs.cmake` восстанавливает
+отсутствующие outputs той же командой генератора, в том числе для Makefiles,
+где одних зависимостей byproducts недостаточно. Ошибка генератора остаётся
+ошибкой сборки. Изменения аргументов или metadata по-прежнему вызывают генерацию
+и пересборку потребителей, когда меняется содержимое outputs.
+`test_codegen_cmake_dependencies.py` проверяет обычную/принудительную генерацию,
+инвалидацию, восстановление headers/sources и отказ восстановления с Makefiles
+и Ninja. Эти проверки конкретных generators не доказывают отсутствие повторной
+генерации Visual Studio после reconfigure без изменений.
 
 Связанный документ: [GeneratedApiAndMetadata.md](../metadata/index.md).
 
@@ -257,6 +280,13 @@ code. Так ожидаемая диагностика negative tests сохра
 [Scripting](../../explanation/scripting-runtime/).
 
 ### `Packages.cmake`
+
+Локальные wrappers `package-web-debug` и `package-android-debug` передают
+`-resource-pack-compress-level 1` для Raw payloads; сжатие distribution bundles
+по-прежнему берётся из project config. `test_buildtools_debug_packaging.py`
+проверяет сформированные команды настоящим parser упаковщика для Web и всех
+поддерживаемых Android architectures, нескольких debug configurations и путей
+с пробелами.
 
 Создаёт package targets из `FO_PACKAGES` и вызывает `BuildTools/package.py` с
 project context: main config, build hash, developer name, nice name,

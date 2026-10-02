@@ -86,6 +86,13 @@ keeps failed ranks, top document IDs, stale anchors, and missing terms
 inspectable. `--check` then requires byte-identical committed output and a
 retrieval success rate at or above the source-owned threshold.
 
+The site generator removes overly frequent body terms to keep the index
+compact, except when a term identifies a document title or ID. In that case
+it retains the term's complete postings, including body matches, so an exact
+`Tools` or `Source` query does not fall back only to rare compounds such as
+`ToolsDir`. This is an index-generation rule; browser and Python ranking
+continue to consume the same generated index without separate exceptions.
+
 The current browser/Python ranking contract:
 
 1. tokenizes technical identifiers without translating or stemming them;

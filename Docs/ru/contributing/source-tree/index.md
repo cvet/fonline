@@ -5,7 +5,7 @@ locale: ru
 document_id: source-tree
 permalink: /Docs/ru/contributing/source-tree/
 ---
-<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"267b0234e2da43f27bde553d17e31764d39c6184d225bb0b74247b4011d81d92"} -->
+<!-- docs-translation: {"document_id":"source-tree","locale":"ru","source_path":"Docs/en/contributing/source-tree/index.md","source_sha256":"8da1612321aedc56e3ace92d12cb55ed86cb9f6a9e2f3c759fada129d3ae3880"} -->
 # Руководство по дереву исходного кода
 
 Это руководство объясняет, откуда начинать навигацию по `Source/`. Оно дополняет краткий [Source README](../../../../Source/README.ru.md).
@@ -26,6 +26,13 @@ permalink: /Docs/ru/contributing/source-tree/
 helper или target проверяйте его точное написание в текущем inventory исходного
 кода: соседние имена backend и сгенерированные проектом executable нельзя
 использовать как шаблоны.
+
+Для developer tools различайте реализацию baker в `Source/Tools/` и управление
+его сборкой. Восстановление отсутствующих сгенерированных файлов и зависимостей
+codegen принадлежит `BuildTools/cmake/stages/Codegen.cmake` и
+`BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in`, а не runtime baker или
+Mapper. Для этой границы используйте [BuildTools pipeline](../../reference/cmake-and-buildtools/pipeline.md);
+при изменении поведения bake меняйте владельца самого native tool.
 
 ## `Source/Applications/`
 

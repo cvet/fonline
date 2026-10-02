@@ -19,7 +19,7 @@
     "success_rate": 1.0,
     "top_1_rate": 0.865672,
     "top_3_rate": 1.0,
-    "mean_reciprocal_rank": 0.925373,
+    "mean_reciprocal_rank": 0.930348,
     "minimum_success_rate": 1.0
   },
   "passed_task_count": 28,
@@ -41,14 +41,14 @@
             "engine-architecture"
           ],
           "max_rank": 3,
-          "rank": 2,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "angelscript-style",
             "engine-architecture",
+            "angelscript-style",
             "debugging",
-            "script-lifecycle-concurrency",
-            "project-local-dependencies"
+            "documentation-home",
+            "repository-home"
           ]
         },
         {
@@ -61,11 +61,11 @@
           "rank": 1,
           "passed": true,
           "top_document_ids": [
+            "source-tree",
             "engine-architecture",
-            "buildtools-readme",
-            "debugging",
-            "script-methods-map",
-            "frontend-rendering"
+            "testing",
+            "unit-tests-readme",
+            "profiling"
           ]
         }
       ],
@@ -115,12 +115,12 @@
             "tools"
           ],
           "max_rank": 3,
-          "rank": 3,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "buildtools-readme",
-            "packaging-and-release",
             "tools",
+            "source-tree",
+            "buildtools-readme",
             "buildtools-pipeline",
             "engine-architecture"
           ]
@@ -132,14 +132,14 @@
             "engine-architecture"
           ],
           "max_rank": 3,
-          "rank": 1,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
+            "script-methods-map",
+            "source-tree",
             "engine-architecture",
             "unit-tests-readme",
-            "testing",
-            "web-debugging",
-            "generated-api-metadata"
+            "mapper-tools"
           ]
         },
         {
@@ -233,7 +233,7 @@
             "generated-ai-control-protocol-security",
             "ai-control-sample-readme",
             "generated-ai-control-protocol-integration-validation",
-            "debugging"
+            "generated-api-metadata"
           ]
         },
         {
@@ -340,9 +340,9 @@
           "passed": true,
           "top_document_ids": [
             "project-local-dependencies",
-            "native-extensions-guide",
             "embedding-project",
             "minimal-project-readme",
+            "native-extensions-guide",
             "buildtools-pipeline"
           ]
         },
@@ -358,8 +358,8 @@
             "project-local-dependencies",
             "buildtools-readme",
             "packaging-and-release",
-            "android-debugging",
-            "frontend-rendering"
+            "debugging",
+            "android-debugging"
           ]
         },
         {
@@ -373,9 +373,9 @@
           "top_document_ids": [
             "project-local-dependencies",
             "client-updater",
-            "baking-pipeline",
-            "exception-safety",
-            "native-essentials"
+            "native-essentials",
+            "debugging",
+            "generated-api-metadata"
           ]
         }
       ],
@@ -478,10 +478,10 @@
           "passed": true,
           "top_document_ids": [
             "script-lifecycle-concurrency",
-            "managed-csharp-scripting",
+            "angelscript-style",
             "scripting-runtime",
             "nullability",
-            "testing"
+            "managed-csharp-scripting"
           ]
         }
       ],
@@ -673,10 +673,10 @@
           "passed": true,
           "top_document_ids": [
             "angelscript-style",
+            "frontend-rendering",
             "scripting-runtime",
             "generated-api-metadata",
-            "native-essentials",
-            "frontend-rendering"
+            "debugging"
           ]
         }
       ],
@@ -969,10 +969,10 @@
           "passed": true,
           "top_document_ids": [
             "map-format-guide",
+            "generated-map-format-validation",
             "generated-map-format-baking",
             "generated-map-format-properties",
-            "generated-map-format-validation",
-            "documentation-maintenance"
+            "generated-map-format-syntax"
           ]
         }
       ],
@@ -1271,7 +1271,8 @@
             "mapper-interactive-manual",
             "mapper-tools",
             "particle-format-guide",
-            "baking-pipeline"
+            "baking-pipeline",
+            "angelscript-style"
           ]
         }
       ],
@@ -1377,8 +1378,8 @@
           "top_document_ids": [
             "gameplay-testing",
             "buildtools-readme",
-            "networking",
             "generated-helper-cli-commands",
+            "managed-csharp-scripting",
             "client-updater"
           ]
         }
@@ -1466,10 +1467,10 @@
           "passed": true,
           "top_document_ids": [
             "debugging",
+            "client-updater",
             "managed-csharp-scripting",
             "profiling",
-            "generated-api-metadata",
-            "android-debugging"
+            "generated-api-metadata"
           ]
         }
       ],
@@ -1643,10 +1644,10 @@
           "passed": true,
           "top_document_ids": [
             "web-debugging",
+            "packaging-and-release",
             "client-updater",
             "debugging",
-            "frontend-rendering",
-            "server-runtime"
+            "frontend-rendering"
           ]
         },
         {
@@ -1717,8 +1718,8 @@
           "top_document_ids": [
             "engine-upgrade-guide",
             "web-debugging",
-            "documentation-maintenance",
             "debugging",
+            "documentation-maintenance",
             "client-updater"
           ]
         },
@@ -1732,10 +1733,10 @@
           "passed": true,
           "top_document_ids": [
             "engine-upgrade-guide",
+            "baking-pipeline",
+            "client-updater",
             "generated-api-metadata",
-            "native-essentials",
-            "generated-content-workflow",
-            "baking-pipeline"
+            "generated-content-workflow"
           ]
         }
       ],
@@ -1804,10 +1805,10 @@
           "passed": true,
           "top_document_ids": [
             "api-change-management",
-            "generated-api-metadata",
             "adr-public-api-stability-contract",
+            "generated-api-metadata",
             "engine-upgrade-guide",
-            "generated-content-workflow"
+            "native-essentials"
           ]
         },
         {
@@ -1819,11 +1820,11 @@
           "rank": 3,
           "passed": true,
           "top_document_ids": [
+            "buildtools-readme",
             "generated-api-metadata",
-            "generated-content-workflow",
             "api-change-management",
             "adr-public-api-stability-contract",
-            "baking-pipeline"
+            "generated-content-workflow"
           ]
         }
       ],
@@ -1884,10 +1885,10 @@
           "passed": true,
           "top_document_ids": [
             "support-matrix",
-            "documentation-maintenance",
             "packaging-and-release",
+            "documentation-maintenance",
             "generated-support-matrix-index",
-            "android-debugging"
+            "web-debugging"
           ]
         },
         {
@@ -1901,9 +1902,9 @@
           "top_document_ids": [
             "support-matrix",
             "legacy-public-api-entry",
+            "buildtools-pipeline",
             "documentation-maintenance",
-            "documentation-home",
-            "buildtools-pipeline"
+            "documentation-home"
           ]
         }
       ],
@@ -2001,7 +2002,7 @@
             "android-debugging",
             "client-updater",
             "security-and-secrets",
-            "web-debugging"
+            "managed-csharp-scripting"
           ]
         }
       ],
@@ -2474,8 +2475,8 @@
             "buildtools-pipeline",
             "generated-api-metadata",
             "managed-csharp-scripting",
-            "client-updater",
-            "buildtools-readme"
+            "debugging",
+            "native-essentials"
           ]
         },
         {
@@ -2484,14 +2485,14 @@
             "generated-cli-index"
           ],
           "max_rank": 3,
-          "rank": 1,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
-            "generated-cli-index",
             "generated-api-metadata",
+            "generated-cli-index",
+            "generated-helper-cli-commands",
             "buildtools-pipeline",
-            "buildtools-readme",
-            "documentation-maintenance"
+            "managed-csharp-scripting"
           ]
         },
         {
@@ -2504,10 +2505,10 @@
           "passed": true,
           "top_document_ids": [
             "generated-helper-cli-index",
-            "generated-api-metadata",
             "buildtools-pipeline",
+            "generated-api-metadata",
             "baking-pipeline",
-            "frontend-rendering"
+            "buildtools-readme"
           ]
         }
       ],
@@ -2584,13 +2585,13 @@
             "legacy-public-api-entry"
           ],
           "max_rank": 2,
-          "rank": 1,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
+            "adr-public-api-stability-contract",
             "legacy-public-api-entry",
-            "generated-api-metadata",
             "buildtools-readme",
-            "baking-pipeline",
+            "generated-api-metadata",
             "api-change-management"
           ]
         },
@@ -2600,14 +2601,14 @@
             "generated-api-index"
           ],
           "max_rank": 3,
-          "rank": 3,
+          "rank": 2,
           "passed": true,
           "top_document_ids": [
             "generated-api-metadata",
-            "adr-public-api-stability-contract",
             "generated-api-index",
-            "client-runtime",
-            "android-debugging"
+            "adr-public-api-stability-contract",
+            "script-lifecycle-concurrency",
+            "client-runtime"
           ]
         }
       ],
@@ -2707,9 +2708,9 @@
           "top_document_ids": [
             "generated-api-metadata",
             "native-essentials",
-            "generated-content-workflow",
             "buildtools-readme",
-            "configuration-data-sources"
+            "generated-content-workflow",
+            "documentation-home"
           ]
         },
         {
@@ -2723,10 +2724,10 @@
           "passed": true,
           "top_document_ids": [
             "generated-api-metadata",
+            "api-change-management",
             "generated-content-workflow",
-            "baking-pipeline",
             "adr-public-api-stability-contract",
-            "api-change-management"
+            "documentation-maintenance"
           ]
         }
       ],
@@ -2845,12 +2846,13 @@
             "generated-support-matrix-index"
           ],
           "max_rank": 2,
-          "rank": 2,
+          "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "support-matrix",
             "generated-support-matrix-index",
-            "generated-package-index"
+            "support-matrix",
+            "generated-package-index",
+            "web-debugging"
           ]
         },
         {
@@ -2865,8 +2867,8 @@
             "generated-public-examples-index",
             "public-example-repositories",
             "documentation-maintenance",
-            "generated-api-metadata",
-            "buildtools-readme"
+            "buildtools-readme",
+            "generated-api-metadata"
           ]
         }
       ],

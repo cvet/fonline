@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"3117bb41a1f7ffd1a503e4f1063819af6617988d5e11360a19def470dee93b05"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"18fdc24002ad6a6de5c90e3425d6afa15ed1e1355b38264fdfeff518c7b05d88"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -66,6 +66,13 @@ permalink: /Docs/ru/contributing/testing/
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
 
 ## Запуск тестов
+
+Сравнение памяти при повторных unload сначала прогревает один полный цикл
+загрузки/выгрузки карты, затем читает счётчик committed active pages rpmalloc.
+Двенадцать уничтоженных карт, сохранённых через native handles, должны остаться
+в прежнем лимите 8 MiB. Владение render targets проверяется на каждом цикле,
+включая прогрев: инициализация allocator отделена от памяти удержанных карт,
+но это не проверка GPU memory или process working set.
 
 `Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
 

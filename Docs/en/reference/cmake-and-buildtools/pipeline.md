@@ -39,6 +39,7 @@ guessing cross-revision compatibility.
 - `BuildTools/cmake/stages/ThirdParty.cmake`
 - `BuildTools/cmake/stages/EngineSources.cmake`
 - `BuildTools/cmake/stages/Codegen.cmake`
+- `BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in`
 - `BuildTools/cmake/stages/CoreLibs.cmake`
 - `BuildTools/cmake/stages/Applications.cmake`
 - `BuildTools/cmake/stages/ScriptsAndBaking.cmake`
@@ -129,6 +130,17 @@ for the runtime safety and fragment-compilation contract.
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
+Nested managed-runtime builds use `CMAKE_BUILD_PARALLEL_LEVEL` as their processor
+budget. BuildTools sets `DOTNET_PROCESSOR_COUNT` only in the child environment,
+so Mono commands using `Environment.ProcessorCount` honor that limit. This
+override is not proof of an MSBuild node-count limit: local Windows checks with
+SDKs 10.0.110 and 10.0.401 retained the host node count while the managed
+processor count was limited. Keep the actual MSBuild budget regression visible;
+do not qualify nested-build concurrency from the environment variable alone.
+A tighter explicit .NET limit is preserved. Without a CMake
+limit, existing .NET processor selection is unchanged; with one, both supplied
+limits must be decimal integers from 1 through 65535.
+
 ### `EngineSources.cmake`
 
 Builds source lists and generated resource files used by later stages. It appends source lists for engine layers such as Essentials, Common, Frontend, Client, Server, Tools, Scripting, and tests. It also prepares app icon/resource data such as the generated Windows `.rc` file.
@@ -139,7 +151,18 @@ Start here when a new hand-authored source file must become part of a core engin
 
 Constructs the code-generation command and output set. It passes project and engine metadata to `BuildTools/codegen.py`, including main config, build hash, generated output path, project names, embedded data capacity, metadata source files, and added common headers.
 
-It creates codegen targets such as normal and forced code generation. Start here when generated C++/script API metadata changes.
+`CodeGeneration` tracks arguments, metadata and the generator script through
+the `CodeGenTouch` stamp. Generated headers, includes and C++ files are
+byproducts: unchanged content keeps its timestamp, even after
+`ForceCodeGeneration`, so a refreshed stamp alone does not recompile consumers.
+Before consumers run, `EnsureCodegenOutputs.cmake` restores missing outputs
+using the same generator command, including on Makefiles where byproduct
+dependencies alone cannot repair them. Generator failures remain build failures.
+Changed arguments or metadata still regenerate outputs and rebuild consumers
+when their content changes. `test_codegen_cmake_dependencies.py` exercises
+normal/forced generation, invalidation, missing header/source repair and repair
+failure with Makefiles and Ninja. These generator-specific checks do not prove
+that Visual Studio avoids repeated generation after a no-change reconfigure.
 
 Related doc: [GeneratedApiAndMetadata.md](../metadata/index.md).
 
@@ -188,6 +211,13 @@ Related docs: [Baking Pipeline](../../explanation/content-pipeline/baking.md), [
 ### `Packages.cmake`
 
 Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` with project context such as main config, build hash, developer name, nice name, input/output paths, platform/architecture/config data, and the current `BINARY` entry's optional output postfix.
+
+The local `package-web-debug` and `package-android-debug` wrappers pass
+`-resource-pack-compress-level 1` for Raw payloads; distribution-bundle
+compression remains inherited from project configuration. The wrapper regression
+`test_buildtools_debug_packaging.py` checks the generated commands against the
+actual packager parser for Web and every supported Android architecture,
+multiple debug configurations and paths with spaces.
 
 `DefinePackage` declaration clauses, accepted runtime targets/platforms/architectures, pack tokens, support status, and payload effects are modeled in `BuildTools/PackageInterface.json` and rendered in the [generated package reference](../packages/index.md). The manifest is documentation/validation data; `DefinePackage`, `Packages.cmake`, and `package.py` remain the runtime authorities. Focused and structural tests compare the modeled grammar and dimensions with those implementations. The embedding project still owns which valid combinations it declares.
 

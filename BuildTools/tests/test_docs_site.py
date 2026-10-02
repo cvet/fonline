@@ -350,6 +350,31 @@ class DocumentationSiteTests(unittest.TestCase):
         self.assertEqual(russian_search["locale"], "ru")
         self.assertEqual(russian_search["document_count"], 0)
 
+    def test_common_body_term_retains_exact_document_identity(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        manifest_path = root / docs_site.DEFAULT_MANIFEST
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        manifest["documents"]["Docs/Guide.md"]["title"] = "Tools"
+        manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        for relative_path in manifest["documents"]:
+            path = root / relative_path
+            if path.is_file():
+                with path.open("a", encoding="utf-8") as output:
+                    output.write("\nTools are shared across workflows.\n")
+        methods_path = root / "Docs/generated/api/methods.md"
+        with methods_path.open("a", encoding="utf-8") as output:
+            output.write("\nToolsDir is a build argument.\n")
+
+        search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])
+        self.assertIn("tools", search["terms"])
+        self.assertEqual(len(search["terms"]["tools"]), len(search["documents"]))
+        self.assertEqual(
+            docs_site.search_documents(search, "tools")[0]["document"]["id"],
+            "guide",
+        )
+        self.assertNotIn("workflows", search["terms"])
+
     def test_current_russian_translation_drives_navigation_and_search(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
