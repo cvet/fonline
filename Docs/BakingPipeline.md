@@ -790,7 +790,9 @@ After this format changes, or when `SpriteMesh.*` values change without a new
 build hash, run `ForceBakeResources`; source-file timestamps alone cannot prove
 that an existing image output was baked with the same mesh settings.
 
-`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities.
+`MapBaker` writes separate server and client map blobs. The client blob serializes visible static items, and its hash dictionary is also accumulated from client-side properties of hidden static items so `Common` hstring values can resolve later without exposing the hidden item entities. The dictionary also takes every string of the server blob - `Server` properties and the map-instance values of critters and dynamic items - because server code copies such values into synced data and the client resolves a hash only against its own pool; the entities and their data stay server-side.
+
+`ProtoBaker` does the same for prototypes: `fopro-bin-client` carries every string of `fopro-bin-server` in its hash table while the `Server` property data stays in the server pack. A client bake parses the server side for that even when the server pack is current (without script validation, which ran when the server pack was baked). Pinned by the `ClientPackCarriesStringsOfServerOnlyProperties` section of `Source/Tests/Test_ProtoBaker.cpp` and the client-string checks of `BakesCrittersAndStaticItems` in `Source/Tests/Test_MapBaker.cpp`.
 
 Both blobs open with a format header - `BAKED_MAP_FILE_MAGIC` and `BAKED_MAP_FILE_VERSION` from
 `Source/Common/MapLoader.h` - which `MapLoader::ReadBakedFileHeader` validates before

@@ -176,10 +176,38 @@ The desktop main loops of the client, the mapper and the viewers wrap every iter
 - `BlendFuncType` and `BlendEquationType` — blend-state configuration read from effect config.
 - `DepthVariantType` and `EFFECT_DEPTH_VARIANTS` — the per-draw depth-state variant slot (see below).
 - `Vertex2D` and `Vertex3D` — vertex layouts used by sprite and model paths. For primitive batches uploaded through `SpriteManager::DrawPoints`, `PosX/PosY` are the draw-area-local pixel coordinates (with the `draw_area` scroll offset subtracted), and `TexU/TexV` carry `PrimitivePoint::TexUV + draw_area.xy` — that is, `DrawPoints` adds the draw-area top-left to whatever the caller authored. The intended idiom for world-stable per-fragment effects (dither, noise, gradient mapping) is to author the **same constant** `TexUV` on every vertex of a primitive batch — the absolute map-origin-anchored pixel position of the screen-anchor hex `_screenRawHex`. The fragment shader then reconstructs each fragment's true absolute world pixel position as `gl_FragCoord.xy + InTexCoord`. Because every vertex carries the same constant, varying interpolation is degenerate (no barycentric rounding can crawl the noise), and the rasterizer's per-pixel `gl_FragCoord` provides the spatial variation. This is robust against camera scroll, camera zoom, fan-triangle deformation from smooth sprite movement, and the `from_hex.x` parity sensitivity of `GeometryHelper::GetHexOffset` on offset-row hexagonal grids. `MapView::LightFanToPrimitves` authors it via `GeometryHelper::GetHexOffset(mpos(0, 0), _screenRawHex)`. `Primitive_Light.fofx` consumes it (`worldPixel = gl_FragCoord.xy + InTexCoord`) to jitter the light's edge taper with world-stable noise; other primitive shaders ignore `InTexCoord` and are unaffected. The light fan also carries the **normalized radial distance** in `PrimitivePoint::PointPosZ` (`LightFanToPrimitves`' `rim_dell`: 0 at the center, ~1 at the rim) → `InPosition.z`; `Primitive_Light.fofx` reads it as `Rim` and `smoothstep`s the outer band (`EdgeTaperStart`..1.0) to zero so brightness rises gently *from zero* at the rim instead of ending in a hard constant-slope edge (which is very visible when the light moves).
-- `RenderTexture` — backend texture/render-target resource.
+- `RenderTexture` — backend texture/render-target resource. It is read back two ways (below).
+- `RenderTextureReadback` — a texture region on its way back to the CPU, and `ImmediateTextureReadback`, the form a
+  backend without a non-blocking path returns.
 - `RenderDrawBuffer` — vertex/index storage uploaded to the backend.
 - `RenderEffect` — shader/effect object plus standard uniform/script-value buffers.
 - `Renderer` — backend interface implemented by concrete renderers.
+
+### Reading a texture back
+
+`GetTextureRegion` blocks until the GPU has finished everything that writes the texture, and on the explicit-pass
+backends it gets there by submitting and waiting mid-frame. It is for work that is off the frame path by nature — a
+screenshot, a texture dump, baking a font at load — and nothing that runs per frame may call it.
+
+`RequestTextureRegion` is the frame-path form. It records the copy where it is requested, so the copy observes every
+draw recorded before it, and returns a `RenderTextureReadback`; its `TakePixels()` never waits and hands the pixels
+over exactly once, as soon as the GPU has executed the copy — usually a frame or two later — in the same row order
+`GetTextureRegion` returns. Taking twice is a contract violation and throws. Per backend:
+
+| Backend | How the copy comes back | Ready when |
+|---|---|---|
+| Null | Read at request time (`ImmediateTextureReadback`) | Immediately |
+| Direct3D 11 | A staging texture of its own, `CopySubresourceRegion` at request | `Map` with `D3D11_MAP_FLAG_DO_NOT_WAIT` stops answering `DXGI_ERROR_WAS_STILL_DRAWING` |
+| OpenGL | `glReadPixels` into a pixel-pack buffer, then `glFenceSync` | `glClientWaitSync` with a zero timeout reports the fence signaled; needs `ARB_sync`, pixel buffers and `glMapBufferRange`, otherwise and on Web the read happens at request time |
+| Vulkan | `vkCmdCopyImageToBuffer` recorded into the frame command buffer between render passes, into a host-visible buffer | The frame's slot fence has signaled (`CompletedFrameIndex` or `vkGetFenceStatus`); outside frame recording the read happens at request time |
+| SDL_GPU | `SDL_DownloadFromGPUTexture` in a copy pass of the current command buffer | The fence that command buffer was submitted with signals (`SDL_QueryGPUFence`); only a command buffer carrying readbacks is submitted with a fence |
+
+The only frame-path consumer is `ModelSprite::IsHitTest`: a 3D model has no pixels on the CPU, so its `vector<bool>`
+hit mask — the same shape `AtlasSprite` builds from source pixels at load — is filled from a readback of its atlas
+picture. A redraw marks the mask stale; the next hit test asks for the new picture, keeps at most one readback in
+flight, and answers from the last mask that arrived. Until the first one arrives the model is not under the cursor,
+for the frame or two that takes. Before this, the hit test read one atlas pixel with a blocking read, which stalled
+the frame once per model under a moving cursor — and on Vulkan and SDL_GPU split the frame's submission to do it.
 
 `Source/Frontend/Rendering.cpp` owns backend-independent helper behavior, including draw-buffer allocation checks and effect configuration parsing. It reads effect sections such as `Effect` and `EffectInfo`, pass counts, blend settings, and script-visible buffers before backend-specific code consumes shader files.
 
@@ -270,7 +298,14 @@ overhead swing tops out *higher* and is ignored, so names never rise with a swin
 inputs are baked per clip, so the result is constant for a given animation and cannot
 drift within it.
 
-The automatic logical frame owns the reusable 2x scratch render target. After
+The automatic logical frame uses a reusable 2x scratch render target. The model
+sprite factory reuses matching sizes in a least-recently-used cache with a soft
+budget of 8 x 1024 x 1024 colour pixels (32 MiB of RGBA storage, plus backend depth
+storage). A frame exceeding the budget occupies the cache alone. Sprite-cache
+cleanup releases all scratch targets and their cached blit-effect texture borrows;
+live sprite atlas allocations and shared model materials remain valid. This keeps
+new model frame sizes from retaining temporary render targets for the whole session.
+After
 the pose is evaluated, every model sprite unions the active clip's baked root-model
 envelope with the baked envelopes of the currently selected geometry links. A root/skinned
 link is baked by posing its mesh through every animation mapped by the parent `.fo3d`.
@@ -427,6 +462,13 @@ without covering that corner. No surviving sprite, pixel region, or UV ever
 moves. This runtime-only layout behaviour adds no settings and does not alter
 sprite-resource serialization.
 
+`TextureAtlasManager::CleanupAtlases()` deletes empty pages together with their
+manager-owned render targets, including `OneImage` pages. `SpriteManager` calls
+it after cache eviction, and new-page creation also cleans expired pages. Pages
+with live sprite allocations remain valid; cleanup does not move their pixels
+or change their UVs. This returns empty map pages at map unload instead of
+keeping the peak texture allocation for the entire client session.
+
 `Render.DrawWireframe` enables a backend-independent runtime geometry
 overlay. `SpriteManager` copies the actual submitted triangle edges after
 positioning, scaling, rotation, map projection, and standing-sprite depth
@@ -510,7 +552,7 @@ Design and important behaviors:
 
 - **Single queue, two frames in flight.** The context owns `VULKAN_FRAMES_IN_FLIGHT` (= 2) frame slots, each bundling a command buffer, an in-flight fence, an acquire semaphore, a descriptor pool, a persistently-mapped uniform bump buffer, a texture-staging ring and a deferred-destroy queue. `BeginFrame()` advances the slot, waits its fence (normally instant — this replaces the old full `vkQueueWaitIdle`, so the CPU records frame N while the GPU renders frame N-1), flushes the slot's deferred destroys, resets its descriptor pool, points the context's current-slot aliases (`CommandBuffer`, `FrameDescriptorPool`, `FrameUniformBuffer`, …) at it, acquires a swapchain image, clears it, and begins the render pass; `EndFrame()` ends the pass, submits (signaling the slot fence and the acquired image's render-complete semaphore), and presents. Render-complete semaphores are **per swapchain image**, so a semaphore is never re-signaled while the presentation engine may still wait on it; acquire semaphores are per slot. A fence signal implies completion of all earlier submissions on the queue, which is the single correctness anchor for every per-slot resource reuse.
 - **Deferred destroys are per frame slot.** The typed `Destroy*Safe(...)` helpers enqueue into the *current* slot's queue; the queue is flushed right after that slot's fence is waited, by which point both in-flight frames that could reference the resource are provably complete. They intentionally have distinct names because Vulkan non-dispatchable handle typedefs collapse to the same integer type on 32-bit targets. All Vulkan handles use `VK_NULL_HANDLE` rather than `nullptr`, so the same code remains valid for both pointer-backed and integer-backed handle ABIs. Swapchain recreation paths settle the device (`vkDeviceWaitIdle`), flush all queues wholesale and rebuild every sync object.
-- **Texture uploads record into the frame command buffer; readbacks flush it.** Draws and clears record into the frame command buffer (executed at present time). `UpdateTextureRegion` during a recording frame suspends the render pass and records barrier → `vkCmdCopyBufferToImage` → barrier into that same buffer, so program order preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this frame executes before the upload — without this, "clear atlas, then upload sprites" would execute as *upload first, clear last* and silently erase glyphs/sprites) with no mid-frame submit or full-GPU wait; the pixels go through the frame slot's pooled staging ring. `GetTextureRegion` (readback) must observe everything recorded so far, so it first calls `FlushFrameCommandBufferMidFrame()` — submit the partially recorded frame buffer (waiting the swapchain-acquire semaphore if it is the frame's first submit), wait idle, resume recording — and then runs an immediate staging copy. Uploads outside a recording frame (texture init) use the immediate staging path too. Keep this invariant when adding any new immediate-queue operation.
+- **Texture uploads record into the frame command buffer; readbacks flush it.** Draws and clears record into the frame command buffer (executed at present time). `UpdateTextureRegion` during a recording frame suspends the render pass and records barrier → `vkCmdCopyBufferToImage` → barrier into that same buffer, so program order preserves the engine's immediate-mode ordering (an atlas clear recorded earlier this frame executes before the upload — without this, "clear atlas, then upload sprites" would execute as *upload first, clear last* and silently erase glyphs/sprites) with no mid-frame submit or full-GPU wait; the pixels go through the frame slot's pooled staging ring. `GetTextureRegion` (readback) must observe everything recorded so far, so it first calls `FlushFrameCommandBufferMidFrame()` — submit the partially recorded frame buffer (waiting the swapchain-acquire semaphore if it is the frame's first submit), wait idle, resume recording — and then runs an immediate staging copy; that is for screenshots, dumps and load-time baking only. `RequestTextureRegion` records its copy into the frame command buffer the way an upload does — suspend the render pass, barrier, `vkCmdCopyImageToBuffer`, barrier back, resume — so it neither submits nor waits, and becomes readable once that frame's slot fence has signaled. Uploads outside a recording frame (texture init) use the immediate staging path too. Keep this invariant when adding any new immediate-queue operation.
 - **Dynamic geometry goes through per-draw-buffer, per-frame-slot ring pools.** Every dynamic `DrawBuffer::Upload` takes the next buffer of the draw buffer's growable ring of persistently-mapped HOST_VISIBLE buffers for the current frame slot (one ring buffer per upload within a frame, so earlier draws pending in the frame command buffer keep their geometry snapshots). A ring resets on its first acquire in a new frame; its slot's in-flight fence was waited by then, so every buffer in it is GPU-free. Ring buffers only reallocate on capacity growth, so steady-state uploads are pure memcpy with zero `vkCreateBuffer`/`vkAllocateMemory`/`vkFreeMemory` traffic (per-upload buffer churn plus the matching deferred-destroy sweep previously dominated the backend's CPU frame cost ~25 ms/frame in crowd scenes). Static buffers keep the one-off staging copy to device-local memory.
 - **Shaders are baked with `highp` floats.** The effect baker emits ES shaders with `precision highp float`. `mediump` would become SPIR-V `RelaxedPrecision`, which desktop GL/D3D silently ignore but NVIDIA Vulkan drivers honor as FP16 — large uniform values (frame time in seconds, world-anchored UVs) then overflow half-float range (max 65504) and shaders that consume them (e.g. time-driven weather/atmosphere post-processing) collapse to black on Vulkan only.
 - **Back-buffer target metrics follow resizes without `SetRenderTarget`.** The letterboxed viewport, logical target size and projection for back-buffer rendering are recomputed by `ApplySwapchainTargetMetrics()` — from `SetRenderTarget(nullptr)`, from `OnResizeWindow()` and after a deferred swapchain recreation when the back buffer is the active target. The server host UI renders ImGui straight into the swapchain and never calls `SetRenderTarget`, so without the resize-path refresh a post-init window/logical-size change leaves a stale projection and the UI renders shrunken into a corner (Direct3D gets the same refresh by ending its `OnResizeWindow` with `SetRenderTarget(nullptr)`).
@@ -532,7 +574,7 @@ Vulkan changes should be validated on a platform with the Vulkan SDK by running 
 
 Design and important behaviors:
 
-- **Adapts the immediate-mode contract to SDL_GPU's explicit passes.** SDL_GPU records render/copy passes into per-frame command buffers, so the backend keeps a small pass state machine (`Context`): at most one render or copy pass is open at a time, passes begin lazily before the operation that needs them, `ClearRenderTarget` defers into the next render pass load-op, uploads run in copy passes through cycled transfer buffers, and texture readbacks submit the recorded work and wait on a fence.
+- **Adapts the immediate-mode contract to SDL_GPU's explicit passes.** SDL_GPU records render/copy passes into per-frame command buffers, so the backend keeps a small pass state machine (`Context`): at most one render or copy pass is open at a time, passes begin lazily before the operation that needs them, `ClearRenderTarget` defers into the next render pass load-op, uploads run in copy passes through cycled transfer buffers, and a blocking readback (`GetTextureRegion`) submits the recorded work and waits on a fence. A frame-path readback (`RequestTextureRegion`) instead downloads in a copy pass of the current command buffer and shares one fence with the other readbacks of that buffer (`SDLGpu_SubmitFence`), which `Present` then submits with `SDL_SubmitGPUCommandBufferAndAcquireFence`.
 - **Backbuffer proxy.** The window backbuffer is never rendered directly: `SetRenderTarget(nullptr)` targets an RGBA8 proxy texture (letterbox viewport math shared with the other backends) and `Present()` blits the proxy to the acquired swapchain texture, which keeps mid-frame flushes safe and pipeline color formats uniform.
 - **Per-effect pipeline cache.** Graphics pipelines are immutable state objects cached per effect, keyed by pass, topology, depth-target presence, `DisableBlending`, and `DisableCulling`.
 - **Consumes the SDL-convention baked flavors, not the native `-spv`.** SDL_GPU mandates a per-stage descriptor convention (vertex samplers = set 0 / UBOs = set 1, fragment samplers = set 2 / UBOs = set 3) that differs from the native Vulkan renderer's 2-set convention (UBO = set 0, sampler = set 1). So the effect baker emits an extra `-spv_sdl` flavor — the native SPIR-V with its descriptor decorations rewritten to the SDL convention — plus SDL-remapped `-msl_*` and an `[EffectInfoSdl]` metadata section (per-stage sampler/UBO counts + dense slot indices). The native `-spv` (consumed by `Rendering-Vulkan`) is untouched. The backend picks `-spv_sdl` for the Vulkan driver or `-msl_*` for the Metal driver via `SDL_GetGPUShaderFormats`, and reads the per-stage slots from `[EffectInfoSdl]`.
@@ -555,11 +597,14 @@ Validate SDL_GPU changes with a client scene launch under `Render.ForceSDLGpu=Tr
 - maintain a render-target stack through `PushRenderTarget()` and `PopRenderTarget()`;
 - clear the current render target;
 - resize render targets;
-- read pixels from render targets with a small last-pixel-pick cache;
 - delete render targets and clear the stack;
 - dump render-target textures for debugging.
 
 `MapView`, `SpriteManager`, `ModelSpriteFactory`, and `ParticleSpriteFactory` all rely on render targets for map layers, light buffers, model/particle atlas rendering, hit testing, and offscreen composition.
+
+The manager owns every target it creates; a `MapView` keeps borrows to its map, light, and indoor-mask targets and releases all three in `OnDestroySelf()`. Destruction first flushes queued sprite draws while their textures are still alive. Before releasing the indoor mask, `EffectManager::ClearIndoorMaskTexture()` clears only matching `IndoorMaskTex` borrows across all cached effects, including weather effects that are no longer the current map-flush effect. A different live map's texture and the surrounding render-target stack remain intact. `GetRenderTargetCount()` reports the manager's live owners for lifecycle diagnostics; it does not measure backend memory or driver residency.
+
+`Source/Tests/Test_ClientEntityLifetime.cpp` pins this with `MapViewRenderTargetsAreReleasedOnDestroy` (repeated destruction under default, disabled-mask, and direct-draw settings) and `MapViewDestroyClearsOnlyItsCachedIndoorMaskReferences` (queued draws, cached effects, another live map, and an outer render target).
 
 When a local map is loaded, `View.MapRenderTargetScale` fixes the map, light, and indoor-mask target dimensions to the logical screen size multiplied by that scale. The engine clamps the size to the renderer's texture limit; views beyond the resulting target use multiple chunks.
 

@@ -34,6 +34,16 @@ For an embedding project with dev name `LF`, the standard generated names are `L
 
 ## Running tests
 
+`Test_ClientEntityLifetime.cpp` includes map-resource lifetime regressions:
+repeat unloads with retained native map handles, reject an invalid map without
+leaking its render targets, recycle standalone image atlases, and evict empty
+shared atlas pages while preserving live allocations. Its native storage bound
+also runs when debug/profiling allocator statistics are available. It measures
+rpmalloc's committed active pages after warming one complete load/unload cycle,
+then holds twelve destroyed maps with the same 8 MiB bound. Render-target ownership
+is checked on every cycle, including the warm-up, so allocator initialization is
+outside the repeated-unload comparison.
+
 Client script probes can deliver lifecycle notifications through
 `Game.SimulateDisconnect()`, `Game.SimulateConnectingFailed()` and
 `Game.SimulateInfoMessage(infoMessage, extraText)`.
@@ -53,6 +63,8 @@ cover text compilation, dependency invalidation, malformed XML, and rejection
 of cooked files presented as authored inputs.
 
 The executable target can also be invoked directly when you need Catch2 arguments. In Last Frontier-style layouts, test binaries are emitted under `Binaries/Tests-*`, for example `Binaries/Tests-Windows-win64/LF_UnitTests.exe` or `Binaries/Tests-Linux-x64/LF_UnitTests`.
+
+`MapViewItemHitTesting*` covers active item sprites and selecting a faded wall over a floor with `ignore_transparent_egg`. The egg-selection fixture in `Source/Tests/Test_MapViewHitTesting.cpp` supplies its own prototypes and baked sprites and runs with either scripting backend; it exercises native `MapView` queries with alpha hit testing, both egg policies, and an empty point. `TransparentEgg*` complements this with wall-line and structure/prop classification rules.
 
 `BuildTools/tests/test_process_identity.py` is a Windows process-lifecycle regression. With `clang++` available it compiles the canonical `WinApi.cpp` process query into a small probe and checks a live foreign process and terminated processes whose handles remain open, including exit code `259`. Run it with `python -m pytest BuildTools/tests/test_process_identity.py`; it complements the `Platform` and `ClientSessionMarker*` native cases without needing the full engine linkage.
 
@@ -646,7 +658,8 @@ assuming empty means zero bytes. With content present, map creation runs the
 content generator instead of skipping it.
 
 The client-side `.fomap-bin-client` blob is a different, shorter layout (header,
-hash table and static items only).
+hash table and static items only). Its hash table holds the strings of the server blob
+too, so a map-instance value of a critter resolves on the client.
 
 A per-map static item removal is only observable end to end when the *same* static
 item id appears in both blobs: the server needs it in `StaticItemsById` to remove

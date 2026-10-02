@@ -55,13 +55,11 @@ public:
     [[nodiscard]] auto GetCustomDrawEffect() const noexcept -> nptr<RenderEffect> { return _customDrawEffect; }
 
     void SetCustomDrawEffect(nptr<RenderEffect> effect) const noexcept { _customDrawEffect = effect; }
-    void ClearLastPixelPicks() const noexcept { _lastPixelPicks.clear(); }
 
 private:
     unique_ptr<RenderTexture> _texture;
     isize32 _size;
     mutable nptr<RenderEffect> _customDrawEffect {};
-    mutable vector<tuple<ipos32, ucolor>> _lastPixelPicks {};
 };
 
 class RenderTargetManager
@@ -77,10 +75,10 @@ public:
     ~RenderTargetManager() = default;
 
     [[nodiscard]] auto CreateRenderTarget(bool with_depth, isize32 size, bool linear_filtered) -> ptr<RenderTarget>;
-    [[nodiscard]] auto GetRenderTargetPixel(ptr<const RenderTarget> rt, ipos32 pos) const -> ucolor;
     [[nodiscard]] auto GetRenderTargetStack() const -> const_span<ptr<RenderTarget>>;
     [[nodiscard]] auto GetCurrentRenderTarget() const -> nptr<const RenderTarget>;
     [[nodiscard]] auto GetCurrentRenderTarget() -> nptr<RenderTarget>;
+    [[nodiscard]] auto GetRenderTargetCount() const noexcept -> size_t { return _rtAll.size(); }
 
     void PushRenderTarget(ptr<RenderTarget> rt);
     void PopRenderTarget();

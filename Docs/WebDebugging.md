@@ -21,6 +21,10 @@ That last point matters: the current local/scene packaging task generates **both
 
 ### Key commands
 
+JavaScript embedded through `EM_JS` or `EM_ASM` must also consist of valid C++ preprocessing
+tokens. Use `""` for an empty JavaScript string: `''` is an invalid empty character literal
+to the C++ preprocessor and produces `-Winvalid-pp-token` even though JavaScript accepts it.
+
 Prepare the shared web workspace parts directly through BuildTools:
 
 ```powershell

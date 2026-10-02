@@ -291,9 +291,9 @@ public:
     void DestroyItems(const_span<ptr<ItemHexView>> items);
 
     auto GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offset) const -> bool;
-    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>; // With transparent egg
+    auto GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>;
     auto GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen, int32_t extra_range, bool check_transparent) -> pair<nptr<CritterHexView>, nptr<const MapSprite>>;
-    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
+    auto GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg = false) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>;
 
     void UpdateCritterLightSource(ptr<const CritterHexView> cr);
     void UpdateItemLightSource(ptr<const ItemHexView> item);
@@ -387,6 +387,7 @@ private:
     void LightFanToPrimitves(ptr<const LightSource> ls, vector<PrimitivePoint>& points) const;
 
     void OnDestroySelf() override;
+    void DestroyRenderTargets();
     void OnScreenSizeChanged();
 
     EventUnsubscriber _eventUnsubscriber {};

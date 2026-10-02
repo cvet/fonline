@@ -84,13 +84,57 @@ TEST_CASE("NullRenderer")
         array<ucolor, 4> row_data {{ucolor {1, 2, 3, 4}, ucolor {5, 6, 7, 8}, ucolor {9, 10, 11, 12}, ucolor {13, 14, 15, 16}}};
         tex->UpdateTextureRegion({0, 0}, {4, 1}, row_data);
 
-        CHECK(tex->GetTexturePixel({0, 0}) == row_data[0]);
-        CHECK(tex->GetTexturePixel({3, 0}) == row_data[3]);
+        CHECK(tex->GetTextureRegion({0, 0}, {1, 1}).front() == row_data[0]);
+        CHECK(tex->GetTextureRegion({3, 0}, {1, 1}).front() == row_data[3]);
 
         renderer.SetRenderTarget(tex);
         renderer.ClearRenderTarget(ucolor {20, 30, 40, 50});
 
-        CHECK(tex->GetTexturePixel({1, 1}) == ucolor {20, 30, 40, 50});
+        CHECK(tex->GetTextureRegion({1, 1}, {1, 1}).front() == ucolor {20, 30, 40, 50});
+    }
+
+    SECTION("RequestedRegionMatchesTheBlockingReadAndIsHandedOverOnce")
+    {
+        auto tex = renderer.CreateTexture({4, 3}, false, false);
+        vector<ucolor> pixels;
+
+        for (uint8_t i = 0; i < 12; i++) {
+            pixels.emplace_back(ucolor {i, numeric_cast<uint8_t>(i + 1), numeric_cast<uint8_t>(i + 2), numeric_cast<uint8_t>(255 - i)});
+        }
+
+        tex->UpdateTextureRegion({0, 0}, {4, 3}, pixels);
+
+        auto readback = tex->RequestTextureRegion({1, 1}, {3, 2});
+        optional<vector<ucolor>> taken = readback->TakePixels();
+
+        // The null backend has no GPU to wait for, so its readback is ready at once, row by row like the blocking read
+        REQUIRE(taken.has_value());
+        CHECK(taken.value() == tex->GetTextureRegion({1, 1}, {3, 2}));
+        CHECK(taken.value().front() == pixels[5]);
+        CHECK(taken.value().back() == pixels[11]);
+        CHECK_THROWS(readback->TakePixels());
+    }
+
+    SECTION("RequestedRegionShowsTheTextureAsOfTheRequest")
+    {
+        auto tex = renderer.CreateTexture({2, 2}, false, false);
+        renderer.SetRenderTarget(tex);
+        renderer.ClearRenderTarget(ucolor {1, 2, 3, 4});
+
+        auto readback = tex->RequestTextureRegion({0, 0}, {2, 2});
+        renderer.ClearRenderTarget(ucolor {9, 9, 9, 9});
+
+        optional<vector<ucolor>> taken = readback->TakePixels();
+        REQUIRE(taken.has_value());
+        CHECK(taken.value() == vector<ucolor>(4, ucolor {1, 2, 3, 4}));
+    }
+
+    SECTION("RequestedRegionOutsideTheTextureIsRefused")
+    {
+        auto tex = renderer.CreateTexture({4, 4}, false, false);
+
+        CHECK_THROWS(tex->RequestTextureRegion({3, 0}, {2, 1}));
+        CHECK_THROWS(tex->RequestTextureRegion({0, 0}, {0, 1}));
     }
 
     SECTION("DrawBufferUploadAndEffectDraw")

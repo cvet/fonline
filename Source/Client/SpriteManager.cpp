@@ -660,6 +660,8 @@ void SpriteManager::CleanupSpriteCache()
             ++it;
         }
     }
+
+    _atlasMngr.CleanupAtlases();
 }
 
 void SpriteManager::Flush()

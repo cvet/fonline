@@ -358,6 +358,18 @@ void MapSpriteList::InvalidateAll() noexcept
     _globalCounter = 0;
 }
 
+void MapSpriteList::Clear() noexcept
+{
+    FO_TRACE_ZONE(Map);
+
+    InvalidateAll();
+    decltype(_activeSprites) {}.swap(_activeSprites);
+    decltype(_spritesPool) {}.swap(_spritesPool);
+    _needSort = false;
+    _orderBroken = false;
+    _drawOrderRangeBegin = {};
+}
+
 void MapSpriteList::Invalidate(ptr<MapSprite> mspr) noexcept
 {
     FO_STRONG_ASSERT(mspr->_owner, "Map sprite has no owner", mspr->_index);

@@ -832,9 +832,9 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> se
 }
 
 ///@ ExportMethod
-FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos)
+FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos, bool ignoreTransparentEgg = false)
 {
-    auto entity = self->GetEntityAtScreen(pos, 0, true).first;
+    auto entity = self->GetEntityAtScreen(pos, 0, true, ignoreTransparentEgg).first;
     return entity;
 }
 

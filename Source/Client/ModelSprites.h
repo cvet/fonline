@@ -92,6 +92,7 @@ private:
         optional<ModelSpriteBoundsEnvelopeId> CropEnvelopeId {};
     };
 
+    void RefreshHitMask() const;
     void SetupFrame(isize32 frame_size);
     auto PrepareFrameCrop(isize32 frame_size, optional<ModelSpriteBounds> bounds) -> PreparedFrameCrop;
     void CommitFrameCrop(PreparedFrameCrop&& prepared_crop);
@@ -105,6 +106,14 @@ private:
     optional<isize32> _requestedFrameSize {};
     bool _boundedCropEstablished {};
     optional<ModelSpriteBoundsEnvelopeId> _cropEnvelopeId {};
+
+    // A hit test reads a mask of the drawn picture that arrives without waiting for the GPU. Picking is a query,
+    // so the cache it keeps is mutable
+    mutable vector<bool> _hitMask {};
+    mutable isize32 _hitMaskSize {};
+    mutable unique_nptr<RenderTextureReadback> _hitReadback {};
+    mutable isize32 _hitReadbackSize {};
+    mutable bool _hitMaskStale {true};
 };
 
 class ModelSpriteFactory : public SpriteFactory
@@ -123,13 +132,17 @@ public:
     [[nodiscard]] auto GetModelMngr() -> ptr<ModelManager>;
 
     auto LoadSprite(hstring path, AtlasType atlas_type) -> shared_ptr<Sprite> override;
+    void ClenupCache() override;
 
 private:
     auto LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>;
+    auto AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>;
+    void ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt);
     void DrawModelToAtlas(ptr<ModelSprite> model_spr);
 
     ptr<SpriteManager> _sprMngr;
     ptr<RenderSettings> _settings;
+    ptr<EffectManager> _effectMngr;
     unique_ptr<ModelManager> _modelMngr;
     unordered_map<hstring, shared_ptr<AtlasSprite>> _loadedMeshTextures {};
     vector<ptr<RenderTarget>> _rtIntermediate {};

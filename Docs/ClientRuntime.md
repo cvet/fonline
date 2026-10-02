@@ -299,6 +299,8 @@ Map light source intensity is authored as a percentage magnitude (`0..100`, with
 
 Map item hit testing walks the active item-owned `MapSprite` values in the ordinary and indoor-mask lists. `DrawHexItem` binds each primary and multihex sprite to its item, and invalidation clears that borrow before the pooled sprite can be reused. Empty screen points therefore cost one pass over visible sprites rather than one pass over every hex in the padded view field, while draw-order, transparent-egg, and alpha hit tests keep using the same sprite records as rendering.
 
+`map.GetEntityAtScreenPos(pos, ignoreTransparentEgg = false)` returns the picked entity or null at an empty point. The default prefers non-egg items over sprites faded by a transparent egg. Passing `true` selects by the same sprite alpha and draw order without that preference, allowing a tool to target the faded structure itself. This query option does not modify the render masks. Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same option; `MapViewItemHitTestingCanSelectTransparentEggOccluders` verifies a wall over a floor with an active egg, both policies, and clearing the egg.
+
 Transparent eggs are the screen-space ellipses that fade sprites in front of a focal point. `MapView::SetTransparentEgg(slot, hex, hex_offset, size, target, apply_size_ext)` places one of the two `TransparentEggSlot`s, exported as `map.SetTransparentEgg(...)`. The critter overload sizes the ellipse from the critter's sprite.
 
 `SpriteManager::CheckEggAppearence` decides whether a sprite is in front from its `EggAppearenceType`: `ByX` and `ByY` compare one hex coordinate, their corner combinations compare both, and roof tiles use `Always`. A sprite on the egg's own line counts as in front, so an egg on a wall's base line cuts every piece of that wall run inside the ellipse. The former hex-parity correction moved some pieces off this line and is gone.
@@ -314,6 +316,45 @@ Manual scrolling is the view's own state in the same way. `MapView::SetManualScr
 The reusable map presentation API includes `SetExtraScrollOffset()` for script-owned transient camera offsets. The engine applies the offset to the map view, but game-specific screen effects such as quake/shake timing and fade overlays are owned by embedding-project scripts.
 
 ## Resources, sprites, effects, and render targets
+
+### Map unload and native storage lifetime
+
+`ClientEngine::Net_OnLoadMap()` unloads the previous map before constructing the
+next one. `UnloadMap()` fires `OnMapUnload`, calls `MapView::DestroySelf()`, drops
+the current map/location owners, and cleans the critter-frame and sprite caches.
+The entity registry contains borrows; it does not keep retired maps alive.
+
+A script handle can retain a logically destroyed map. Managed entity wrappers
+own a native reference until their finalizer runs, so native object destruction
+is not an unload boundary. `MapView::OnDestroySelf()` releases the cell grid,
+lighting and view buffers, sprite pools, entity collections, deferred refresh
+owners, fog/light data and scratch storage immediately. Invalid handles retain
+the entity shell and properties, rather than the loaded map's working storage.
+`MapSpriteList::InvalidateAll()` still preserves its pool for camera rebuilds;
+permanent map teardown uses `Clear()` to release it.
+
+All three map render targets (map color/depth, indoor roof mask, and light/fog)
+are deleted from `RenderTargetManager` at unload. Construction failure also
+releases any targets already created. Unload first flushes queued sprite draws;
+matching indoor-mask borrows in all cached effects are cleared before the
+texture is deleted. The manager owns targets
+independently of the map object, so dropping a map pointer alone cannot release
+them. `GetRenderTargetCount()` reports its live target inventory for lifecycle
+diagnostics.
+
+Sprite-cache cleanup evicts unreferenced cached sprites, then deletes empty
+atlas pages and their render targets. A page with any live allocation stays
+resident. Freed rectangles on such pages remain reusable. Model mesh/animation
+definitions are a separate per-manager cache keyed by resource identity; they
+are not retired map owners and can retain a session's resource high-water mark.
+
+`Test_ClientEntityLifetime.cpp` checks repeated map unloads while retaining all
+native map handles, failed construction, expired standalone image atlases, and
+cleanup with both live and empty shared atlas pages. In debug/profiling builds
+with allocator statistics, it also bounds storage retained by destroyed maps.
+Process private bytes and working set include allocator caches, the managed
+runtime and renderer/driver allocations, so their remaining high-water mark
+alone does not establish that a map is still loaded.
 
 The client resource path starts with a `FileSystem` from `GetClientResources()` and is organized by runtime managers:
 

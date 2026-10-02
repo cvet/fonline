@@ -126,6 +126,7 @@ public:
     void SetEffectScriptValue(ptr<RenderEffect> effect, int32_t valueIndex, float32_t value);
     void SetEffectScriptValues(ptr<RenderEffect> effect, int32_t valueStartIndex, const_span<float32_t> values);
     void ClearEffectScriptValues(ptr<RenderEffect> effect);
+    void ClearIndoorMaskTexture(ptr<const RenderTexture> texture);
     auto GetOrCreateScriptValueBuf(ptr<RenderEffect> effect) -> ptr<RenderEffect::ScriptValueBuffer>;
     void LoadMinimalEffects();
     void LoadDefaultEffects();

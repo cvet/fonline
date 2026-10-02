@@ -7,23 +7,43 @@ import subprocess
 import pytest
 
 
-@pytest.mark.skipif(shutil.which('cmake') is None, reason='CMake is required')
-def test_reconfigured_codegen_arguments_invalidate_outputs(tmp_path: Path) -> None:
-    stage = Path(__file__).resolve().parents[1] / 'cmake/stages/Codegen.cmake'
-    fake_generator = tmp_path / 'generator.py'
-    fake_generator.write_text('''from pathlib import Path
+pytestmark = pytest.mark.skipif(shutil.which('cmake') is None, reason='CMake is required')
+GENERATORS = ('Unix Makefiles', 'Ninja')
+OUTPUTS = ('EngineConfig.gen.h', 'EmbeddedResources.gen.inc', 'InternalConfig.gen.inc',
+           'GenericCode-Common.gen.cpp',
+           *(f'MetadataRegistration-{side}{stub}.gen.cpp'
+             for side in ('Server', 'Client', 'Mapper') for stub in ('', 'Stub')))
+
+
+class CodegenProject:
+    def __init__(self, source: Path, generator: str | None) -> None:
+        if generator is not None and shutil.which('ninja' if generator == 'Ninja' else 'make') is None:
+            pytest.skip(f'{generator} is required')
+        self.source = source
+        self.build_dir = source / 'build'
+        self.generator = generator
+        self.metadata = source / 'metadata.txt'
+        self.metadata.write_text('first metadata')
+        fake_generator = source / 'generator.py'
+        fake_generator.write_text('''from pathlib import Path
 import sys
 args = Path(sys.argv[1][1:]).read_text().splitlines()
 output = Path(args[args.index('-genoutput') + 1])
 output.mkdir(exist_ok=True)
+if (output / 'reject-generation').exists():
+    sys.exit(42)
+content = '\\n'.join(args) + '\\n' + Path(args[args.index('-meta') + 1]).read_text()
 for name in ('EngineConfig.gen.h', 'EmbeddedResources.gen.inc', 'InternalConfig.gen.inc',
              'GenericCode-Common.gen.cpp',
              *(f'MetadataRegistration-{side}{stub}.gen.cpp' for side in ('Server','Client','Mapper') for stub in ('','Stub'))):
-    (output / name).write_text('\\n'.join(args))
+    path = output / name
+    if not path.exists() or path.read_text() != content:
+        path.write_text(content)
 with (output / 'invocations').open('a') as stream:
     stream.write('run\\n')
 ''')
-    cmake = '''cmake_minimum_required(VERSION 3.22)
+        stage = Path(__file__).resolve().parents[1] / 'cmake/stages/Codegen.cmake'
+        cmake = '''cmake_minimum_required(VERSION 3.22)
 project(CodegenDependencyTest NONE)
 macro(SetValue name)
     set(${name} ${ARGN})
@@ -40,9 +60,6 @@ endmacro()
 macro(FileWrite)
     file(WRITE ${ARGV})
 endmacro()
-macro(FileAppend)
-    file(APPEND ${ARGV})
-endmacro()
 macro(AddCustomCommand)
     add_custom_command(${ARGV})
 endmacro()
@@ -56,24 +73,122 @@ set(FO_DEV_NAME Test)
 set(FO_NICE_NAME Test)
 set(FO_EMBEDDED_DATA_CAPACITY 100)
 '''
-    cmake += f'set(FO_CODEGEN_SCRIPT "{fake_generator.as_posix()}")\ninclude("{stage.as_posix()}")\n'
-    (tmp_path / 'CMakeLists.txt').write_text(cmake)
-    build = tmp_path / 'build'
+        cmake += f'''set(FO_CODEGEN_SCRIPT "{fake_generator.as_posix()}")
+set(FO_SOURCE_META_FILES "{self.metadata.as_posix()}")
+include("{stage.as_posix()}")
+add_custom_command(OUTPUT "${{CMAKE_CURRENT_BINARY_DIR}}/consumer-receipt"
+    COMMAND "${{CMAKE_COMMAND}}" -E copy
+            "${{CMAKE_CURRENT_BINARY_DIR}}/GeneratedSource/EngineConfig.gen.h"
+            "${{CMAKE_CURRENT_BINARY_DIR}}/consumer-receipt"
+    DEPENDS "${{CMAKE_CURRENT_BINARY_DIR}}/GeneratedSource/EngineConfig.gen.h")
+add_custom_target(Consumer DEPENDS "${{CMAKE_CURRENT_BINARY_DIR}}/consumer-receipt")
+add_dependencies(Consumer CodeGeneration)
+'''
+        (source / 'CMakeLists.txt').write_text(cmake)
 
-    def configure_and_build(revision: str, capacity: int) -> None:
-        subprocess.run(['cmake', '-S', str(tmp_path), '-B', str(build),
+    def configure(self, revision: str = 'first-revision', capacity: int = 31) -> None:
+        generator_args = ['-G', self.generator] if self.generator else []
+        subprocess.run(['cmake', *generator_args, '-S', str(self.source), '-B', str(self.build_dir),
                         '-DFO_BUILD_HASH=' + revision, '-DFO_STRING_INLINE_CAPACITY=' + str(capacity)],
                        check=True, capture_output=True, text=True)
-        subprocess.run(['cmake', '--build', str(build), '--target', 'CodeGeneration'],
-                       check=True, capture_output=True, text=True)
 
-    configure_and_build('first-revision', 31)
-    header = build / 'GeneratedSource/EngineConfig.gen.h'
+    def build(self, target: str = 'Consumer', *, check: bool = True) -> subprocess.CompletedProcess[str]:
+        return subprocess.run(['cmake', '--build', str(self.build_dir), '--target', target],
+                              check=check, capture_output=True, text=True)
+
+    def output(self, name: str) -> Path:
+        return self.build_dir / 'GeneratedSource' / name
+
+    def invocations(self) -> int:
+        return len(self.output('invocations').read_text().splitlines())
+
+    def mtimes(self) -> dict[str, int]:
+        return {name: self.output(name).stat().st_mtime_ns for name in OUTPUTS}
+
+
+@pytest.mark.parametrize('generator', (None, *GENERATORS))
+def test_reconfigured_codegen_arguments_invalidate_outputs(tmp_path: Path, generator: str | None) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    header = project.output('EngineConfig.gen.h')
     assert 'first-revision' in header.read_text()
-    configure_and_build('second-revision', 63)
+    project.configure('second-revision', 63)
+    project.build()
     assert 'second-revision' in header.read_text()
     assert 'FO_STRING_INLINE_CAPACITY=63' in header.read_text()
-    args_mtime = (build / 'codegen-args.txt').stat().st_mtime_ns
-    configure_and_build('second-revision', 63)
-    assert (build / 'codegen-args.txt').stat().st_mtime_ns == args_mtime
-    assert (build / 'GeneratedSource/invocations').read_text().splitlines() == ['run', 'run']
+    assert (project.build_dir / 'consumer-receipt').read_text() == header.read_text()
+    args_mtime = (project.build_dir / 'codegen-args.txt').stat().st_mtime_ns
+    project.configure('second-revision', 63)
+    project.build()
+    assert (project.build_dir / 'codegen-args.txt').stat().st_mtime_ns == args_mtime
+    assert project.invocations() == 2
+
+
+@pytest.mark.parametrize('generator', GENERATORS)
+def test_forced_identical_codegen_does_not_rebuild_consumers(tmp_path: Path, generator: str) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    mtimes = project.mtimes()
+    receipt = project.build_dir / 'consumer-receipt'
+    receipt_mtime = receipt.stat().st_mtime_ns
+    project.build('ForceCodeGeneration')
+    assert project.invocations() == 2
+    project.build()
+    project.build()
+    assert project.invocations() == 2
+    assert project.mtimes() == mtimes
+    assert receipt.stat().st_mtime_ns == receipt_mtime
+
+
+@pytest.mark.parametrize('generator', GENERATORS)
+def test_unchanged_metadata_refresh_does_not_touch_outputs(tmp_path: Path, generator: str) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    mtimes = project.mtimes()
+    receipt = project.build_dir / 'consumer-receipt'
+    receipt_mtime = receipt.stat().st_mtime_ns
+    project.metadata.touch()
+    project.build()
+    project.build()
+    assert project.invocations() == 2
+    assert project.mtimes() == mtimes
+    assert receipt.stat().st_mtime_ns == receipt_mtime
+    project.metadata.write_text('changed metadata')
+    project.build()
+    assert project.invocations() == 3
+    assert 'changed metadata' in receipt.read_text()
+
+
+@pytest.mark.parametrize('generator', GENERATORS)
+@pytest.mark.parametrize('missing', ('EngineConfig.gen.h', 'MetadataRegistration-Server.gen.cpp'))
+def test_missing_codegen_output_is_restored(tmp_path: Path, generator: str, missing: str) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    mtimes = project.mtimes()
+    content = project.output(missing).read_bytes()
+    project.output(missing).unlink()
+    project.build()
+    project.build()
+    assert project.invocations() == 2
+    assert project.output(missing).read_bytes() == content
+    assert {name: mtime for name, mtime in project.mtimes().items() if name != missing} == {
+        name: mtime for name, mtime in mtimes.items() if name != missing}
+
+
+@pytest.mark.parametrize('generator', GENERATORS)
+def test_missing_output_repair_propagates_generator_failure(tmp_path: Path, generator: str) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    receipt = project.build_dir / 'consumer-receipt'
+    receipt_mtime = receipt.stat().st_mtime_ns
+    project.output('reject-generation').touch()
+    project.output('EngineConfig.gen.h').unlink()
+    result = project.build(check=False)
+    assert result.returncode != 0
+    assert not project.output('EngineConfig.gen.h').exists()
+    assert receipt.stat().st_mtime_ns == receipt_mtime

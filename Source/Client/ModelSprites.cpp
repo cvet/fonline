@@ -69,11 +69,47 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
         return false;
     }
 
-    int32_t atlas_x = pos.x + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[0] * GetAtlasRect().x);
-    int32_t atlas_y = pos.y + iround<int32_t>(GetAtlas()->GetTexture()->SizeData[1] * GetAtlasRect().y);
+    RefreshHitMask();
 
-    uint8_t alpha = _sprMngr->GetRtMngr().GetRenderTargetPixel(GetAtlas()->GetRenderTarget(), {atlas_x, atlas_y}).comp.a;
-    return _sprMngr->CheckHitTest(numeric_cast<int32_t>(alpha));
+    // Before the first picture arrives the model is not under the cursor yet, for the frame or two a readback takes
+    if (!_hitMaskSize.is_valid_pos(pos)) {
+        return false;
+    }
+
+    return _hitMask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_hitMaskSize.width) + numeric_cast<size_t>(pos.x)];
+}
+
+// The mask trails the drawn picture by the frame or two a readback takes, a lag picking under a moving cursor absorbs
+void ModelSprite::RefreshHitMask() const
+{
+    // One readback in flight at a time, and only for a picture the mask does not show yet
+    if (!_hitReadback && _hitMaskStale) {
+        ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
+        ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
+
+        _hitReadback = atlas_tex->RequestTextureRegion(atlas_pos, _size);
+        _hitReadbackSize = _size;
+        _hitMaskStale = false;
+    }
+
+    if (!_hitReadback) {
+        return;
+    }
+
+    optional<vector<ucolor>> pixels = _hitReadback->TakePixels();
+
+    if (!pixels.has_value()) {
+        return;
+    }
+
+    _hitMask.resize(pixels->size());
+
+    for (size_t i = 0; i < pixels->size(); i++) {
+        _hitMask[i] = _sprMngr->CheckHitTest(numeric_cast<int32_t>((*pixels)[i].comp.a));
+    }
+
+    _hitMaskSize = _hitReadbackSize;
+    _hitReadback.reset();
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
@@ -185,6 +221,9 @@ void ModelSprite::SetSize(isize32 size)
 void ModelSprite::DrawToAtlas()
 {
     _factory->DrawModelToAtlas(this);
+
+    // The mask now shows the previous picture, and the next hit test asks for this one
+    _hitMaskStale = true;
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
@@ -313,6 +352,7 @@ void ModelSprite::ApplyFrameCrop(isize32 frame_size, optional<ModelSpriteBounds>
 ModelSpriteFactory::ModelSpriteFactory(ptr<SpriteManager> spr_mngr, ptr<RenderSettings> settings, ptr<const EngineMetadata> engine_metadata, ptr<EffectManager> effect_mngr, ptr<GameTimer> game_time, ptr<AnimationResolver> anim_name_resolver) :
     _sprMngr {spr_mngr},
     _settings {settings},
+    _effectMngr {effect_mngr},
     _modelMngr {safe_alloc::make_unique<ModelManager>(
         settings, spr_mngr->GetResources(), engine_metadata, effect_mngr, &spr_mngr->GetRender(), game_time, anim_name_resolver, //
         [this, engine_metadata](string_view path) mutable FO_DEFERRED { return LoadTexture(engine_metadata->Hashes.to_hashed_string(path)); }, //
@@ -348,6 +388,66 @@ auto ModelSpriteFactory::LoadSprite(hstring path, AtlasType atlas_type) -> share
     model_spr->ApplyFrameCrop(draw_size, model_spr->_model->GetSpriteBounds());
 
     return model_spr;
+}
+
+void ModelSpriteFactory::ClenupCache()
+{
+    FO_TRACE_ZONE(Model);
+
+    _sprMngr->Flush();
+
+    while (!_rtIntermediate.empty()) {
+        ptr<RenderTarget> rt = _rtIntermediate.back();
+        _rtIntermediate.pop_back();
+        ReleaseIntermediateRenderTarget(rt);
+    }
+}
+
+auto ModelSpriteFactory::AcquireIntermediateRenderTarget(isize32 size) -> ptr<RenderTarget>
+{
+    FO_TRACE_ZONE(Model);
+
+    // 32 MiB of RGBA colour storage, plus backend depth storage. One oversized frame may use the cache alone
+    constexpr uint64_t pixel_budget = 8 * 1024 * 1024;
+    uint64_t cached_pixels = 0;
+
+    for (auto it = _rtIntermediate.begin(); it != _rtIntermediate.end(); ++it) {
+        isize32 cached_size = (*it)->GetTexture()->Size;
+
+        if (cached_size == size) {
+            std::rotate(it, std::next(it), _rtIntermediate.end());
+            return _rtIntermediate.back();
+        }
+
+        cached_pixels += numeric_cast<uint64_t>(cached_size.width) * numeric_cast<uint64_t>(cached_size.height);
+    }
+
+    uint64_t requested_pixels = numeric_cast<uint64_t>(size.width) * numeric_cast<uint64_t>(size.height);
+
+    while (!_rtIntermediate.empty() && cached_pixels + requested_pixels > pixel_budget) {
+        _sprMngr->Flush();
+        ptr<RenderTarget> rt = _rtIntermediate.front();
+        isize32 retired_size = rt->GetTexture()->Size;
+        cached_pixels -= numeric_cast<uint64_t>(retired_size.width) * numeric_cast<uint64_t>(retired_size.height);
+        _rtIntermediate.erase(_rtIntermediate.begin());
+        ReleaseIntermediateRenderTarget(rt);
+    }
+
+    ptr<RenderTarget> rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, size, true);
+    _rtIntermediate.emplace_back(rt);
+    return rt;
+}
+
+void ModelSpriteFactory::ReleaseIntermediateRenderTarget(ptr<RenderTarget> rt)
+{
+    FO_TRACE_ZONE(Model);
+
+    // DrawTexture stores this borrow after the immediate atlas blit; discard it before retiring its owner
+    if (auto effect = _effectMngr->Effects.FlushRenderTarget; effect && effect->MainTex == nptr<const RenderTexture> {rt->GetTexture()}) {
+        effect->MainTex.reset();
+    }
+
+    _sprMngr->GetRtMngr().DeleteRenderTarget(rt);
 }
 
 auto ModelSpriteFactory::LoadTexture(hstring path) -> pair<nptr<RenderTexture>, frect32>
@@ -426,17 +526,7 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
     isize32 frame_size = {render_frame_size.width * ModelInstance::FRAME_SCALE, render_frame_size.height * ModelInstance::FRAME_SCALE};
     FO_VERIFY_AND_THROW(frame_size.width <= AppRender::MAX_ATLAS_WIDTH && frame_size.height <= AppRender::MAX_ATLAS_HEIGHT, "Model sprite frame exceeds the device texture limit", frame_size.width, frame_size.height, render_frame_size.width, render_frame_size.height, ModelInstance::FRAME_SCALE, AppRender::MAX_ATLAS_WIDTH, AppRender::MAX_ATLAS_HEIGHT);
 
-    ptr<RenderTarget> rt_model = [&]() -> ptr<RenderTarget> {
-        for (ptr<RenderTarget> rt : _rtIntermediate) {
-            if (rt->GetTexture()->Size == frame_size) {
-                return rt;
-            }
-        }
-
-        auto rt = _sprMngr->GetRtMngr().CreateRenderTarget(true, frame_size, true);
-        _rtIntermediate.emplace_back(rt);
-        return rt;
-    }();
+    ptr<RenderTarget> rt_model = AcquireIntermediateRenderTarget(frame_size);
 
     _sprMngr->GetRtMngr().PushRenderTarget(rt_model);
     auto pop_model_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
@@ -463,7 +553,6 @@ void ModelSpriteFactory::DrawModelToAtlas(ptr<ModelSprite> model_spr)
 
     _sprMngr->GetRtMngr().PushRenderTarget(prepared_crop.Atlas->GetRenderTarget());
     auto pop_atlas_rt_on_fail = scope_fail([this]() noexcept { safe_call([this] { _sprMngr->GetRtMngr().PopRenderTarget(); }); });
-    prepared_crop.Atlas->GetRenderTarget()->ClearLastPixelPicks();
     _sprMngr->DrawRenderTarget(rt_model, false, &region_from, &region_to);
     _sprMngr->GetRtMngr().PopRenderTarget();
     pop_atlas_rt_on_fail.release();

@@ -1021,6 +1021,24 @@ def run_runtime_build(build_args: list[str], runtime_root: Path, *, target_os: s
 	# components absent from that toolchain, and Roslyn rejects invalid LIB entries
 	outer_build_variables = {'include', 'lib', 'libpath', 'makeflags', 'mflags', 'targetname'}
 	build_env = {name: value for name, value in os.environ.items() if name.casefold() not in outer_build_variables}
+	processor_limits = []
+	for variable in ('CMAKE_BUILD_PARALLEL_LEVEL', 'DOTNET_PROCESSOR_COUNT'):
+		value = build_env.get(variable)
+		if not value:
+			continue
+		try:
+			limit = int(value)
+		except ValueError:
+			raise SystemExit(f'{variable} must be a decimal integer between 1 and 65535') from None
+		if not 1 <= limit <= 65535:
+			raise SystemExit(f'{variable} must be a decimal integer between 1 and 65535')
+		processor_limits.append(limit)
+	if processor_limits:
+		# Windows MSBuild's default node count ignores the runtime processor override.
+		# Its explicit node count accepts no more than 1024
+		processor_limit = min(processor_limits)
+		build_env['DOTNET_PROCESSOR_COUNT'] = str(processor_limit)
+		build_args.append(f'/maxcpucount:{min(processor_limit, 1024)}')
 	if target_os in ('ios', 'iossimulator'):
 		# Mono supplies the target SDK explicitly; its macOS cross-AOT tools must not inherit that SDK
 		build_env.pop('SDKROOT', None)
@@ -2105,7 +2123,7 @@ def _package_web_debug_config(env: Mapping[str, str], devname: str, config: str)
 		'Raw+WebServer',
 		'-config',
 		config,
-		'-zip-compress-level',
+		'-resource-pack-compress-level',
 		'1',
 		'-output',
 		str(output_root),
@@ -2170,7 +2188,7 @@ def _package_android_debug_config(env: Mapping[str, str], devname: str, platform
 		'Raw',
 		'-config',
 		config,
-		'-zip-compress-level',
+		'-resource-pack-compress-level',
 		'1',
 		'-output',
 		str(output_root),

@@ -525,6 +525,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapLoader.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MapSprite.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_MapViewHitTesting.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MemorySystem.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_MetadataBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimation.cpp"
