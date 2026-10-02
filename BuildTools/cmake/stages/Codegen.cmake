@@ -66,7 +66,6 @@ foreach(entry ${FO_ADDED_COMMON_HEADERS})
 endforeach()
 
 AppendList(FO_CODEGEN_OUTPUT
-    "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EngineConfig.gen.h"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/EmbeddedResources.gen.inc"
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/InternalConfig.gen.inc"
@@ -93,12 +92,18 @@ SetValue(FO_CODEGEN_COMMAND
     ${Python3_EXECUTABLE}
     "${FO_CODEGEN_SCRIPT}"
     "@${CMAKE_CURRENT_BINARY_DIR}/codegen-args.txt")
+SetValue(codegenStampPath "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch")
+SetValue(codegenArgsArgument "@${codegenArgsPath}")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/../helpers/EnsureCodegenOutputs.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/EnsureCodegenOutputs.cmake" @ONLY)
+
 SetValue(codegenTouchCommand
     ${CMAKE_COMMAND}
     -E touch
     "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource/CodeGenTouch")
 
-AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
+AddCustomCommand(OUTPUT "${codegenStampPath}"
+    BYPRODUCTS ${FO_CODEGEN_OUTPUT}
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE} "${codegenArgsPath}"
@@ -106,7 +111,8 @@ AddCustomCommand(OUTPUT ${FO_CODEGEN_OUTPUT}
     COMMENT "Code generation")
 
 AddCommandTarget(CodeGeneration
-    DEPENDS ${FO_CODEGEN_OUTPUT}
+    COMMAND_ARGS COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_BINARY_DIR}/EnsureCodegenOutputs.cmake"
+    DEPENDS "${codegenStampPath}"
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}")
 AppendList(FO_GEN_DEPENDENCIES CodeGeneration)
 

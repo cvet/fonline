@@ -22,6 +22,7 @@ FOnline is normally configured from an embedding game project. The engine suppli
 - `BuildTools/cmake/stages/Finalize.cmake`
 - `BuildTools/cmake/helpers/Build.cmake`
 - `BuildTools/cmake/helpers/Commands.cmake`
+- `BuildTools/cmake/helpers/EnsureCodegenOutputs.cmake.in`
 - `BuildTools/cmake/helpers/Options.cmake`
 - `BuildTools/cmake/helpers/State.cmake`
 - `BuildTools/cmake/helpers/WriteBuildHash.cmake`
@@ -406,7 +407,18 @@ re-interpretation.
 
 Constructs the code-generation command and output set. It passes project and engine metadata to `BuildTools/codegen.py`, including main config, build hash, generated output path, project names, embedded data capacity, metadata source files, and added common headers.
 
-It creates codegen targets such as normal and forced code generation. Start here when generated C++/script API metadata changes.
+`CodeGeneration` tracks command arguments, metadata and the generator script through the `CodeGenTouch`
+stamp. Generated headers, includes and C++ files are declared as byproducts; unchanged content keeps its
+original timestamp, including after `ForceCodeGeneration`. This prevents Makefile generators from
+recompiling consumers solely because a forced generation refreshed the stamp. Before consumers run,
+`EnsureCodegenOutputs.cmake` checks for missing generated files and restores them through the same
+command. This also preserves repair on Makefiles, whose byproduct dependencies alone do not recreate
+missing files. Generator failures remain build failures. Argument or metadata changes still regenerate
+the API and rebuild consumers when output content changes.
+
+`BuildTools/tests/test_codegen_cmake_dependencies.py` verifies normal and forced generation, unchanged
+metadata, argument invalidation, missing header/source repair and repair failures with Makefiles and
+Ninja. Start here when generated C++/script API metadata changes.
 
 Related doc: [GeneratedApiAndMetadata.md](GeneratedApiAndMetadata.md).
 
@@ -473,6 +485,14 @@ Creates package targets from `FO_PACKAGES` and calls `BuildTools/package.py` wit
 `package.py` owns the reusable package payload layout and optional post-processing. Target modes are logical package data rather than a property of the host filesystem: Linux executables are recorded in the aggregate package's internal `.lf-package-modes.json`, and the same override is written into ZIP/TAR members. A publisher consumes that manifest when copying a Raw tree off NTFS and must exclude the manifest from the public payload. For a Windows Client package that includes the `Wix` pack, the packager invokes `msicreator/createmsi.py` to build a per-user MSI after the Raw payload is staged: the MSI gets the temporary `INSTALLED` marker used by installed-client writable-path resolution, registers the deep-link URI scheme, creates Start Menu + Desktop shortcuts and an Add/Remove Programs icon, and always presents an editable installation-directory dialog. The two linkers build that dialog's tab order by different rules, and `msiexec` rejects a dialog whose `Control_Next` loop misses `Control_First` with internal error 2834 before the first screen, so the generator lists each dialog's push buttons first. They also number `InstallUISequence` differently: `wixl` visits an action's dependencies in an order that changes from link to link, and a dialog shown only before `ProgressDlg` can land ahead of `CostFinalize`, where `INSTALLDIR` has no path yet and `msiexec` stops with internal error 2343, so the dialog is anchored after `CostFinalize` (details in `msicreator/readme.md`). Its file components use HKCU KeyPaths and explicit uninstall-directory removal, so both `wixl` and Windows ICE validation accept the same authoring. Windows `candle` and `light` promote warnings to errors. ICE91 alone is suppressed because every generated package has `InstallScope=perUser` and lives below `LocalAppDataFolder`, the package-only-per-user case for which ICE91 is inapplicable; the conditional ICE61 suppression remains limited to the declared same-version major-upgrade policy. Windows `light` normally runs the remaining ICE validation; only the exact diagnostic that the Windows Installer service is unavailable selects one retry with `-sval`, because service-account runners cannot always host ICE. The tentative validation output is buffered until its outcome is known: a successful fallback omits the superseded `error` lines so an enclosing MSBuild custom target cannot mistake a recovered link for failure. Authoring, linker, and ordinary ICE failures still emit their diagnostics and never select the fallback, and a failed fallback remains fatal. The MSI is a **required** artifact when the `Wix` pack is requested — a missing toolset (`wixl` 0.102 or newer on POSIX hosts, with its bundled `ui` extension; WiX v3 `candle`/`light` on Windows) or a generator/build error fails the package. Windows can prepare the version-pinned portable toolset under `Workspace/wix3` with `buildtools.py prepare-workspace wix`; the download obeys `FO_DOWNLOAD_MIRROR`, and `package.py` discovers it without a global install. On Debian/Ubuntu, `wixl` ships in its own `wixl` apt package, not in `msitools`. All installer values are read from the embedding project's config, so the packager stays game-agnostic:
 
 Each `[ResourcePack]` becomes one `<Name>.fores` under the target's resource directory, written from the loose baked tree with the per-target file filter applied; the format is [ResourcePackFormat.md](ResourcePackFormat.md). It is the only form packaging writes - zip, bos and dat stay readable at mount time as optional support for foreign or legacy data, but nothing produces them any more. The writer lives in `package.py` rather than in the engine because the file list depends on the packaging target, which the baker does not know. `Baking.ResourcePackCompressLevel` sets the `.fores` compression level and `Baking.ResourcePackMinCompressGain` the percentage a blob must give back before it is deflated instead of stored as it is. `Embedded` is the one exception: it is compiled into the executable rather than shipped as a file, stays a zip, and uses `Baking.BundleCompressLevel` together with the outer distribution bundles. Every compression level the engine takes is written on the zlib scale whatever codec consumes it - `0` stores, `9` is the strongest - so a setting keeps its meaning if its format moves to another codec, which then maps the value onto its own range. `package.py` takes `-resource-pack-compress-level` and `-bundle-compress-level` to override either one for a single run.
+
+Local `buildtools.py package-web-debug` and `package-android-debug` wrappers pass
+`-resource-pack-compress-level 1` for their Raw payloads. The former shared
+`-zip-compress-level` argument is no longer accepted; distribution-bundle compression
+remains inherited from the project config. The reusable regression in
+`BuildTools/tests/test_buildtools_debug_packaging.py` feeds both wrappers' generated
+arguments to the actual packager parser, including all supported Android architectures,
+three debug configurations and paths with spaces.
 
 Resource archives are sequential by default. `package.py -resource-pack-jobs N`, or `FO_RESOURCE_PACK_JOBS`
 when the argument is absent, bounds independent archive work to `N` processes. The limit must be a positive

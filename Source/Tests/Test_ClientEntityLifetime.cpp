@@ -208,7 +208,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
 
     SECTION("An oversized frame occupies the scratch cache alone")
     {
-        // The headless application's default 2048 texture cap cannot admit a frame beyond this cache budget.
+        // The headless application's default 2048 texture cap cannot admit a frame beyond this cache budget
         int32_t previous_max_width = AppRender::MAX_ATLAS_WIDTH;
         int32_t previous_max_height = AppRender::MAX_ATLAS_HEIGHT;
         auto restore_texture_caps = scope_exit([&]() noexcept {
@@ -244,7 +244,7 @@ TEST_CASE("ModelSpriteScratchTargetsAreReleasedByCacheCleanup")
         second_sprite->SetSize({768, 768});
         second_sprite->DrawToAtlas();
         size_t targets_after_two_sizes = client->SprMngr.GetRtMngr().GetRenderTargetCount();
-        // Redraw the settled frame; a new size request can require a different root-relative placement.
+        // Redraw the settled frame; a new size request can require a different root-relative placement
         sprite->DrawToAtlas();
         isize32 returned_size = client->EffectMngr.Effects.FlushRenderTarget->MainTex->Size;
         CAPTURE(first_size.width, first_size.height, returned_size.width, returned_size.height);
@@ -429,6 +429,24 @@ TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
     proto->SetSize(msize {500, 500});
     auto& rt_mngr = client->SprMngr.GetRtMngr();
     size_t initial_targets = rt_mngr.GetRenderTargetCount();
+
+    // Warm the committed pages the allocator keeps for reuse before measuring repeated unloads
+    {
+        auto map = safe_alloc::make_refcounted<MapView>(client.as_ptr(), ident_t {9000}, proto.as_ptr(), isize32 {320, 200});
+        auto destroy_map = scope_exit([&map]() noexcept {
+            safe_call([&map] {
+                if (!map->IsDestroyed()) {
+                    map->DestroySelf();
+                }
+            });
+        });
+        CHECK(rt_mngr.GetRenderTargetCount() == initial_targets + 3);
+        map->DestroySelf();
+        CHECK(map->IsDestroyed());
+        CHECK_FALSE(client->GetEntity(map->GetId()));
+        CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
+    }
+
     size_t initial_memory = memory::get_in_use_bytes();
     vector<refcount_ptr<MapView>> retired_maps;
 

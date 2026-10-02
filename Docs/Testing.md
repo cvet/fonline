@@ -38,7 +38,11 @@ For an embedding project with dev name `LF`, the standard generated names are `L
 repeat unloads with retained native map handles, reject an invalid map without
 leaking its render targets, recycle standalone image atlases, and evict empty
 shared atlas pages while preserving live allocations. Its native storage bound
-also runs when debug/profiling allocator statistics are available.
+also runs when debug/profiling allocator statistics are available. It measures
+rpmalloc's committed active pages after warming one complete load/unload cycle,
+then holds twelve destroyed maps with the same 8 MiB bound. Render-target ownership
+is checked on every cycle, including the warm-up, so allocator initialization is
+outside the repeated-unload comparison.
 
 Client script probes can deliver lifecycle notifications through
 `Game.SimulateDisconnect()`, `Game.SimulateConnectingFailed()` and
