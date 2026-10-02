@@ -236,13 +236,13 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
 
     size_t errors = 0;
 
-    for (auto& file_baking : file_bakings) {
+    for (size_t file_index = 0; file_index < file_bakings.size(); file_index++) {
         try {
-            SpriteInfoFileEntry entry = file_baking.get();
+            SpriteInfoFileEntry entry = file_bakings[file_index].get();
             sprite_info_entries[entry.SourcePath] = std::move(entry);
         }
         catch (const std::exception& ex) {
-            logging::write("Image baking error: {}", ex.what());
+            logging::write("Image baking error for '{}': {}", files_to_bake[file_index].first.GetPath(), ex.what());
             errors++;
         }
     }
