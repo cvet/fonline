@@ -173,6 +173,7 @@ ClientEngine::ClientEngine(ptr<GlobalSettings> settings, FileSystem&& resources,
     _conn.AddMessageHandler(NetMessage::CritterMoveSpeed, [this]() FO_DEFERRED { Net_OnCritterMoveSpeed(); });
     _conn.AddMessageHandler(NetMessage::CritterDir, [this]() FO_DEFERRED { Net_OnCritterDir(); });
     _conn.AddMessageHandler(NetMessage::CritterPos, [this]() FO_DEFERRED { Net_OnCritterPos(); });
+    _conn.AddMessageHandler(NetMessage::CritterMoveLease, [this]() FO_DEFERRED { Net_OnCritterMoveLease(); });
     _conn.AddMessageHandler(NetMessage::CritterAttachments, [this]() FO_DEFERRED { Net_OnCritterAttachments(); });
     _conn.AddMessageHandler(NetMessage::Property, [this]() FO_DEFERRED { Net_OnProperty(); });
     _conn.AddMessageHandler(NetMessage::InfoMessage, [this]() FO_DEFERRED { Net_OnInfoMessage(); });
@@ -456,6 +457,10 @@ void ClientEngine::MainLoop()
     TracyPlot("Client FPS", numeric_cast<int64_t>(GameTime.GetFramesPerSecond()));
 #endif
 
+    if (Settings->Network.MoveSyncTrace) {
+        TraceFrameHealth();
+    }
+
     // Network
     if (_connectionRequest && !_conn.IsConnecting() && !_conn.IsConnected()) {
         OnConnecting.Fire();
@@ -480,6 +485,8 @@ void ClientEngine::MainLoop()
         FO_VERIFY_AND_THROW(map, "Map is null");
         map->Process();
     }
+
+    ProcessDirectMove();
 
     bool manual_scrolling = false;
 
@@ -751,6 +758,19 @@ void ClientEngine::Net_SendMove(ptr<CritterHexView> cr)
         _conn.OutBuf->Write(control_step);
     }
     _conn.OutBuf->Write(moving->GetEndHexOffset());
+
+    // A held direction's plan goes with its number and lease; a path to a point runs to its end
+    uint32_t plan_seq = 0;
+    float32_t lease_distance = 0.0f;
+
+    if (_directMove.has_value() && _directMove->Plan.as_nptr() == moving) {
+        plan_seq = _directMove->PlanSeq;
+        lease_distance = _directMove->LeaseDistance;
+    }
+
+    _conn.OutBuf->Write(plan_seq);
+    _conn.OutBuf->Write(lease_distance);
+    _conn.OutBuf->Write(nanotime::now().milliseconds());
     _conn.OutBuf->EndMsg();
 
     if (Settings->Network.MoveSyncTrace) {
@@ -773,6 +793,7 @@ void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
     _conn.OutBuf->Write(cr->GetHex());
     _conn.OutBuf->Write(cr->GetHexOffset());
     _conn.OutBuf->Write(cr->GetDir());
+    _conn.OutBuf->Write(nanotime::now().milliseconds());
     _conn.OutBuf->EndMsg();
 
     if (Settings->Network.MoveSyncTrace) {
@@ -780,6 +801,25 @@ void ClientEngine::Net_SendStopMove(ptr<CritterHexView> cr)
         ipos16 hex_offset = cr->GetHexOffset();
 
         TraceMoveSync("stop_send", strex("cr={} hex={},{} offset={},{}", cr->GetId(), hex.x, hex.y, hex_offset.x, hex_offset.y).strv());
+    }
+}
+
+void ClientEngine::Net_SendMoveLease(ptr<CritterHexView> cr, uint32_t plan_seq, float32_t lease_distance)
+{
+    FO_VERIFY_AND_THROW(_curMap, "No current map");
+    auto map = GetCurMap();
+    FO_VERIFY_AND_THROW(map, "Map is null");
+
+    _conn.OutBuf->StartMsg(NetMessage::SendCritterMoveLease);
+    _conn.OutBuf->Write(map->GetId());
+    _conn.OutBuf->Write(cr->GetId());
+    _conn.OutBuf->Write(plan_seq);
+    _conn.OutBuf->Write(lease_distance);
+    _conn.OutBuf->Write(nanotime::now().milliseconds());
+    _conn.OutBuf->EndMsg();
+
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("lease_send", strex("cr={} seq={} lease_dist={}", cr->GetId(), plan_seq, lease_distance).strv());
     }
 }
 
@@ -1500,6 +1540,55 @@ void ClientEngine::Net_OnCritterPos()
     cr->RefreshView();
 }
 
+void ClientEngine::Net_OnCritterMoveLease()
+{
+    FO_TRACE_ZONE(Map);
+
+    auto cr_id = _conn.InBuf->Read<ident_t>();
+    auto server_uid = _conn.InBuf->Read<uint32_t>();
+    float32_t lease_distance = _conn.InBuf->Read<float32_t>();
+    auto sender_ms = _conn.InBuf->Read<int64_t>();
+
+    timespan late_time = _conn.RegisterSenderTime(sender_ms, nanotime::now());
+
+    if (!_curMap) {
+        return;
+    }
+
+    auto map = GetCurMap();
+    FO_VERIFY_AND_THROW(map, "Map is null");
+    auto cr = map->GetCritter(cr_id);
+
+    // A lease for a plan this client no longer shows - a newer plan came, the critter stopped or left sight - is spent
+    if (!cr || cr->GetIsChosen() || !cr->IsMoving() || cr->GetMovingServerUid() != server_uid) {
+        return;
+    }
+
+    auto moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
+    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
+    float32_t client_lease_time = std::max((lease_distance + cr->GetMovingServerDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+
+    if (client_lease_time <= moving->GetLeaseTime()) {
+        return;
+    }
+
+    moving->SetLeaseTime(client_lease_time, GameTime.GetFrameTime());
+
+    // A renewal a stall held back finds the critter waiting at the old lease: it runs to where it would be by now
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+
+    if (catch_up_time > timespan::zero) {
+        timespan smooth_time = std::min(catch_up_time, timespan {std::chrono::milliseconds {Settings->Client.MoveCatchUpSmoothMaxMs}});
+        moving->FastForward(catch_up_time - smooth_time);
+        cr->SetMovingCatchUp(smooth_time);
+    }
+
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("lease_recv", strex("cr={} uid={} lease_ms={} late_ms={} catchup_ms={}", cr_id, server_uid, iround<int32_t>(client_lease_time), late_time.milliseconds(), catch_up_time.milliseconds()).strv());
+    }
+}
+
 void ClientEngine::Net_OnCritterAttachments()
 {
     FO_TRACE_ZONE(Map);
@@ -2154,6 +2243,11 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     }
 
     auto end_hex_offset = _conn.InBuf->Read<ipos16>();
+    auto server_uid = _conn.InBuf->Read<uint32_t>();
+    float32_t lease_distance = _conn.InBuf->Read<float32_t>();
+    auto sender_ms = _conn.InBuf->Read<int64_t>();
+
+    timespan late_time = _conn.RegisterSenderTime(sender_ms, nanotime::now());
 
     if (!_curMap) {
         break_into_debugger();
@@ -2169,25 +2263,78 @@ void ClientEngine::ReceiveCritterMoving(nptr<CritterHexView> cr)
     FO_VERIFY_AND_THROW(map, "Map is null");
 
     mpos prev_hex = cr->GetHex();
+    mpos plan_start_hex = start_hex;
 
     cr->StopMoving();
 
+    // A plan the server started ahead - it caught up with a player whose move arrived late - begins where another
+    // player's copy stands at its start and runs faster to where the server has it, instead of skipping the steps
+    timespan server_ahead_time {};
+
+    if (!cr->GetIsChosen() && offset_time != 0 && prev_hex == start_hex) {
+        server_ahead_time = std::chrono::milliseconds {offset_time};
+        offset_time = 0;
+    }
+
     ipos16 start_hex_offset = cr->GetHexOffset();
+    size_t joined_steps = 0;
+
+    // The previous plan can carry this copy of the critter a few steps past where the new one starts, when that one
+    // took longer to arrive: the new plan is joined where the critter stands instead of walking it back to the start
+    if (offset_time == 0 && start_hex != cr->GetHex()) {
+        joined_steps = FindPathPrefixSteps(start_hex, steps, cr->GetHex(), map->GetSize(), numeric_cast<size_t>(Settings->Network.MovePlanJoinMaxSteps));
+
+        if (joined_steps != 0 && joined_steps < steps.size()) {
+            DropPathPrefix(steps, control_steps, joined_steps);
+            start_hex = cr->GetHex();
+        }
+        else {
+            joined_steps = 0;
+        }
+    }
 
     if (offset_time == 0 && start_hex != cr->GetHex()) {
         ipos32 cr_offset = GeometryHelper::GetHexOffset(start_hex, cr->GetHex());
         start_hex_offset = {numeric_cast<int16_t>(start_hex_offset.x + cr_offset.x), numeric_cast<int16_t>(start_hex_offset.y + cr_offset.y)};
     }
 
-    cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+    // A joined plan is shorter than the one the server timed, so its duration is its own
+    if (joined_steps != 0) {
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset));
+    }
+    else {
+        cr->SetMoving(safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(steps), std::move(control_steps), GameTime.GetFrameTime(), std::chrono::milliseconds {offset_time}, start_hex, start_hex_offset, end_hex_offset, numeric_cast<float32_t>(whole_time)));
+    }
+
     auto moving = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
+    // A copy joined further along is shorter than the server's plan; a lease's distance moves with it.
+    // The player's own critter is not held by a lease: its plans are its own input
+    float32_t distance_shift = (moving->GetWholeTime() - numeric_cast<float32_t>(whole_time)) * numeric_cast<float32_t>(speed) / 1000.0f;
+    cr->SetMovingServerPlan(server_uid, distance_shift);
+
+    if (lease_distance > 0.0f && !cr->GetIsChosen()) {
+        moving->SetLeaseTime(std::max((lease_distance + distance_shift) * 1000.0f / numeric_cast<float32_t>(speed), 0.001f), GameTime.GetFrameTime());
+    }
+
+    // A plan a stall held back is where the critter was seconds ago: the critter catches up with where it is by now,
+    // running the way faster rather than jumping, up to the smooth limit, and skipping what lies beyond it
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs}) + server_ahead_time;
+    timespan smooth_time {};
+
+    if (catch_up_time > timespan::zero) {
+        timespan smooth_limit = cr->GetIsChosen() ? timespan::zero : timespan {std::chrono::milliseconds {Settings->Client.MoveCatchUpSmoothMaxMs}};
+        smooth_time = std::min(catch_up_time, smooth_limit);
+        moving->FastForward(catch_up_time - smooth_time);
+        cr->SetMovingCatchUp(smooth_time);
+    }
+
     if (Settings->Network.MoveSyncTrace) {
         mpos end_hex = moving->GetEndHex();
 
-        TraceMoveSync("move_recv", strex("cr={} own={} start={},{} end={},{} prev_hex={},{} offset_ms={} whole_ms={}", cr->GetId(), cr->GetIsChosen() ? 1 : 0, start_hex.x, start_hex.y, end_hex.x, end_hex.y, prev_hex.x, prev_hex.y, offset_time, whole_time).strv());
+        TraceMoveSync("move_recv", strex("cr={} own={} start={},{} end={},{} prev_hex={},{} offset_ms={} whole_ms={} joined={} lease_ms={} late_ms={} ahead_ms={} catchup_ms={} smooth_ms={}", cr->GetId(), cr->GetIsChosen() ? 1 : 0, plan_start_hex.x, plan_start_hex.y, end_hex.x, end_hex.y, prev_hex.x, prev_hex.y, offset_time + numeric_cast<uint32_t>(server_ahead_time.milliseconds()), whole_time, joined_steps, iround<int32_t>(moving->GetLeaseTime()), late_time.milliseconds(), server_ahead_time.milliseconds(), catch_up_time.milliseconds(), smooth_time.milliseconds()).strv());
     }
 }
 
@@ -2636,6 +2783,9 @@ void ClientEngine::UnloadMap()
 
     OnMapUnload.Fire();
 
+    // A held direction belongs to the map it was given on; on the next one the input says again whether it is still held
+    _directMove.reset();
+
     if (_curMap) {
         auto map = GetCurMap();
         FO_VERIFY_AND_THROW(map, "Map is null");
@@ -2800,6 +2950,16 @@ void ClientEngine::Disconnect()
 
 void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed)
 {
+    if (pos_or_dir.index() == 1 && speed != 0) {
+        SteerDirectMove(cr, std::get<1>(pos_or_dir), numeric_cast<uint16_t>(speed));
+        return;
+    }
+
+    // A path order or a stop ends a held direction
+    if (_directMove.has_value() && _directMove->CritterId == cr->GetId()) {
+        _directMove.reset();
+    }
+
     if (cr->GetIsAttached()) {
         return;
     }
@@ -2815,37 +2975,21 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
     auto map = cr->GetMap();
 
     bool try_move = false;
-    mpos hex;
     ipos16 end_hex_offset;
     vector<mdir> steps;
     vector<uint16_t> control_steps;
 
     if (speed != 0) {
-        if (pos_or_dir.index() == 0) {
-            hex = std::get<0>(std::get<0>(pos_or_dir));
-            auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
-            auto cut = std::get<2>(std::get<0>(pos_or_dir));
-            auto find_path = map->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
+        mpos hex = std::get<0>(std::get<0>(pos_or_dir));
+        auto target_hex_offset = std::get<1>(std::get<0>(pos_or_dir));
+        auto cut = std::get<2>(std::get<0>(pos_or_dir));
+        auto find_path = map->FindPath(cr, cr->GetHex(), hex, cut, target_hex_offset);
 
-            if (find_path && !find_path->DirSteps.empty()) {
-                steps = find_path->DirSteps;
-                control_steps = find_path->ControlSteps;
-                end_hex_offset = find_path->EndHexOffset;
-                try_move = true;
-            }
-        }
-        else if (pos_or_dir.index() == 1) {
-            auto dir = std::get<1>(pos_or_dir);
-
-            hex = cr->GetHex();
-            end_hex_offset = cr->GetHexOffset();
-            vector<mdir> raw_steps;
-
-            if (map->TraceMoveWay(hex, end_hex_offset, raw_steps, dir, cr->GetMultihex())) {
-                steps.insert(steps.end(), raw_steps.begin(), raw_steps.end());
-                control_steps.push_back(numeric_cast<uint16_t>(steps.size()));
-                try_move = true;
-            }
+        if (find_path && !find_path->DirSteps.empty()) {
+            steps = find_path->DirSteps;
+            control_steps = find_path->ControlSteps;
+            end_hex_offset = find_path->EndHexOffset;
+            try_move = true;
         }
     }
 
@@ -2862,6 +3006,225 @@ void ClientEngine::CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipo
         cr->StopMoving();
         cr->RefreshView();
         Net_SendStopMove(cr);
+    }
+}
+
+auto ClientEngine::IsDirectPlanPlaying(ptr<CritterHexView> cr) const -> bool
+{
+    if (!_directMove.has_value() || !_directMove->Plan || !cr->IsMoving()) {
+        return false;
+    }
+
+    return cr->GetMoving() == _directMove->Plan.as_nptr();
+}
+
+void ClientEngine::SteerDirectMove(ptr<CritterHexView> cr, mdir dir, uint16_t speed)
+{
+    if (!_directMove.has_value() || _directMove->CritterId != cr->GetId()) {
+        _directMove = DirectMoveIntent {.CritterId = cr->GetId(), .Dir = dir, .Speed = speed};
+        PlanDirectMove(cr, "start", speed, false);
+        return;
+    }
+
+    DirectMoveIntent& intent = _directMove.value();
+    intent.Dir = dir;
+    intent.Speed = speed;
+
+    // A key change turns at least 45 degrees and lands at once; a stick's small turns wait out the re-plan interval
+    float32_t turn = GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), numeric_cast<float32_t>(intent.PlanDir.angle()));
+    bool immediate = speed != intent.PlanSpeed || turn >= numeric_cast<float32_t>(Settings->Client.DirectMoveRetargetImmediateAngle);
+    bool interval_passed = GameTime.GetFrameTime() - intent.PlanTime >= std::chrono::milliseconds {Settings->Client.DirectMoveRetargetMinMs};
+
+    if (IsDirectPlanPlaying(cr)) {
+        if (immediate || (dir != intent.PlanDir && interval_passed)) {
+            PlanDirectMove(cr, "turn", speed, false);
+        }
+
+        return;
+    }
+
+    if (!cr->IsMoving() && (immediate || interval_passed)) {
+        PlanDirectMove(cr, "resume", speed, false);
+    }
+}
+
+void ClientEngine::ProcessDirectMove()
+{
+    FO_TRACE_ZONE(Map);
+
+    if (!_directMove.has_value()) {
+        return;
+    }
+
+    nptr<MapView> map = GetCurMap();
+    nptr<CritterHexView> cr {};
+
+    if (map) {
+        cr = map->GetCritter(_directMove->CritterId);
+    }
+
+    if (!cr) {
+        _directMove.reset();
+        return;
+    }
+
+    DirectMoveIntent& intent = _directMove.value();
+    bool interval_passed = GameTime.GetFrameTime() - intent.PlanTime >= std::chrono::milliseconds {Settings->Client.DirectMoveRetargetMinMs};
+
+    // A plan the server sent for the critter plays out first; the held direction resumes when it ends, and a blocked
+    // direction is retried at the re-plan interval rather than every frame
+    if (!IsDirectPlanPlaying(cr)) {
+        if (!cr->IsMoving() && interval_passed) {
+            PlanDirectMove(cr, "resume", intent.Speed, false);
+        }
+
+        return;
+    }
+
+    auto moving = cr->GetMoving();
+    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
+
+    if (intent.Dir != intent.PlanDir && interval_passed) {
+        PlanDirectMove(cr, "turn", intent.Speed, false);
+        return;
+    }
+
+    float32_t step_time = moving->GetWholeTime() / numeric_cast<float32_t>(moving->GetSteps().size());
+
+    // The server and the other players run the plan only as far as the lease; it is renewed while the direction is
+    // held, a few steps ahead of the critter, so a stall on the player's link stops them there instead of a trace ahead
+    float32_t step_distance = moving->GetWholeDist() / numeric_cast<float32_t>(moving->GetSteps().size());
+    float32_t elapsed_distance = moving->GetElapsedTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f;
+
+    if (intent.LeaseDistance < moving->GetWholeDist() && intent.LeaseDistance - elapsed_distance <= step_distance * numeric_cast<float32_t>(Settings->Client.DirectMoveLeaseRenewSteps)) {
+        intent.LeaseDistance = std::min(elapsed_distance + step_distance * numeric_cast<float32_t>(Settings->Client.DirectMoveLeaseSteps), moving->GetWholeDist());
+        Net_SendMoveLease(cr, intent.PlanSeq, intent.LeaseDistance);
+    }
+
+    // A plan cut short by an obstacle ends where it ends; only a full one is followed by the next, at the speed the
+    // server has left it at, before its last steps are walked, so the move never stops between plans
+    if (intent.PlanReachedHorizon) {
+        float32_t remaining_time = moving->GetWholeTime() - moving->GetElapsedTime();
+
+        if (remaining_time <= step_time * numeric_cast<float32_t>(Settings->Client.DirectMoveExtendAheadSteps)) {
+            PlanDirectMove(cr, "extend", moving->GetSpeed(), true);
+        }
+    }
+}
+
+void ClientEngine::PlanDirectMove(ptr<CritterHexView> cr, string_view reason, uint16_t speed, bool extends_run)
+{
+    FO_TRACE_ZONE(Map);
+
+    int32_t horizon = Settings->Client.DirectMoveTraceSteps;
+    int32_t extend_ahead = Settings->Client.DirectMoveExtendAheadSteps;
+    int32_t lease_steps = Settings->Client.DirectMoveLeaseSteps;
+    int32_t lease_renew_steps = Settings->Client.DirectMoveLeaseRenewSteps;
+    FO_VERIFY_AND_THROW(horizon >= 1, "Client.DirectMoveTraceSteps must plan at least one step ahead", horizon);
+    FO_VERIFY_AND_THROW(extend_ahead >= 0 && extend_ahead < horizon, "Client.DirectMoveExtendAheadSteps must leave part of a plan to walk before it is extended", extend_ahead, horizon);
+    FO_VERIFY_AND_THROW(lease_steps >= 1 && lease_renew_steps >= 0 && lease_renew_steps < lease_steps, "Client.DirectMoveLeaseRenewSteps must renew a lease before it runs out", lease_steps, lease_renew_steps);
+    FO_VERIFY_AND_THROW(_directMove.has_value(), "Direct movement plan requested without a held direction", cr->GetId());
+
+    DirectMoveIntent& intent = _directMove.value();
+    bool continues_run = extends_run && !intent.PlanSlid;
+    intent.Plan.reset();
+    intent.PlanDir = intent.Dir;
+    intent.PlanSpeed = speed;
+    intent.PlanTime = GameTime.GetFrameTime();
+    intent.PlanReachedHorizon = false;
+    intent.PlanSlid = false;
+
+    if (cr->GetIsAttached()) {
+        return;
+    }
+
+    if (cr->IsMoving()) {
+        cr->SynchronizeMoving();
+    }
+
+    bool prev_moving = cr->IsMoving();
+
+    cr->StopMoving();
+    cr->NormalizeHexOffset();
+
+    auto map = cr->GetMap();
+    mpos start_hex = cr->GetHex();
+    ipos16 start_hex_offset = cr->GetHexOffset();
+
+    // An extension of a straight run is projected onto the line the run began on, so rounding does not accumulate from
+    // plan to plan; anything else starts a new line where the critter stands
+    if (!continues_run) {
+        intent.RayHex = start_hex;
+        intent.RayHexOffset = start_hex_offset;
+    }
+
+    TraceDirectionInput trace_input;
+    trace_input.StartHex = start_hex;
+    trace_input.StartHexOffset = start_hex_offset;
+    trace_input.RayHex = intent.RayHex;
+    trace_input.RayHexOffset = intent.RayHexOffset;
+    trace_input.Dir = intent.Dir;
+    trace_input.MaxSteps = horizon;
+    trace_input.Multihex = cr->GetMultihex();
+    trace_input.Slide = Settings->Client.DirectMoveSlide;
+    TraceDirectionOutput trace = map->TraceMoveWay(std::move(trace_input));
+    size_t steps_count = trace.Steps.size();
+    intent.PlanSlid = trace.Slid;
+
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("dir_plan", strex("cr={} reason={} dir={} speed={} steps={} slid={} hex={},{}", cr->GetId(), reason, intent.Dir.angle(), speed, steps_count, trace.Slid ? 1 : 0, start_hex.x, start_hex.y).strv());
+    }
+
+    if (steps_count == 0) {
+        if (prev_moving) {
+            cr->RefreshView();
+            Net_SendStopMove(cr);
+        }
+
+        return;
+    }
+
+    refcount_ptr<MovingContext> plan = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, std::move(trace.Steps), std::move(trace.ControlSteps), GameTime.GetFrameTime(), timespan {}, start_hex, start_hex_offset, trace.EndHexOffset);
+    plan->ValidateRuntimeState();
+
+    // A fresh plan is leased a few steps ahead; ProcessDirectMove renews the lease while the direction is held
+    float32_t step_distance = plan->GetWholeDist() / numeric_cast<float32_t>(steps_count);
+    intent.Plan = plan;
+    intent.PlanSeq = ++_directPlanSeq;
+    intent.LeaseDistance = std::min(step_distance * numeric_cast<float32_t>(lease_steps), plan->GetWholeDist());
+    intent.PlanReachedHorizon = std::cmp_equal(steps_count, horizon);
+    cr->SetMoving(std::move(plan));
+    cr->RefreshView();
+    Net_SendMove(cr);
+}
+
+// Once a second: how many frames the client drew and its longest frame. Movement is processed once a frame, so a
+// client drawing a few frames a second measures its host, not the synchronization
+void ClientEngine::TraceFrameHealth()
+{
+    // The trace line carries the synchronized time, which exists only once the server has sent it
+    if (!GameTime.IsTimeSynchronized()) {
+        return;
+    }
+
+    nanotime frame_time = GameTime.GetFrameTime();
+
+    if (_frameHealthLast) {
+        _frameHealthMaxGap = std::max(_frameHealthMaxGap, frame_time - _frameHealthLast);
+    }
+    else {
+        _frameHealthStart = frame_time;
+    }
+
+    _frameHealthLast = frame_time;
+    _frameHealthFrames++;
+
+    if (frame_time - _frameHealthStart >= std::chrono::seconds {1}) {
+        TraceMoveSync("frames", strex("n={} ms={} max_ms={}", _frameHealthFrames, (frame_time - _frameHealthStart).milliseconds(), _frameHealthMaxGap.milliseconds()).strv());
+
+        _frameHealthStart = frame_time;
+        _frameHealthFrames = 0;
+        _frameHealthMaxGap = timespan::zero;
     }
 }
 

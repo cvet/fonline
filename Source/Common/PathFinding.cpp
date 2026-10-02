@@ -149,6 +149,24 @@ static auto GetPlanePos(mpos hex) -> ipos32;
 static auto GetBucket(int64_t estimate) -> size_t;
 static auto IsNodeAfter(const PathSearchNode& a, const PathSearchNode& b) -> bool;
 
+// The line a direction trace follows: a point on it and the direction as a unit vector in the camera-projected plane,
+// the plane MovingContext measures its segments in
+struct DirectionLine
+{
+    mpos AnchorHex {};
+    ipos16 AnchorOffset {};
+    float32_t DirX {};
+    float32_t DirY {};
+};
+
+static auto MakeDirectionLine(mpos anchor_hex, ipos16 anchor_offset, float32_t angle) -> DirectionLine;
+static auto GetDistanceFromLine(const DirectionLine& line, mpos hex) -> float32_t;
+static auto FindDirectionLineStep(mpos hex, const DirectionLine& line, float32_t angle, msize map_size) -> optional<mdir>;
+static auto IsDirectionStepPassable(mpos hex, mdir dir, const TraceDirectionInput& input) -> bool;
+static auto FindDirectionSideStep(mpos hex, float32_t angle, const TraceDirectionInput& input) -> optional<mdir>;
+static auto EvaluateLineEndOffset(const DirectionLine& line, mpos end_hex) -> ipos16;
+static void CloseDirectionSegment(TraceDirectionOutput& output);
+
 auto PathFinding::CheckHexWithMultihex(mpos hex, mdir dir, int32_t multihex, msize map_size, const function<HexBlockResult(mpos)>& check_hex) -> HexBlockResult
 {
     // Single hex: just check center
@@ -506,6 +524,65 @@ auto PathFinding::TraceLine(const TraceLineInput& input) -> TraceLineOutput
 
     output.PreBlock = prev_hex;
     output.Block = next_hex;
+    return output;
+}
+
+auto PathFinding::TraceDirection(const TraceDirectionInput& input) -> TraceDirectionOutput
+{
+    FO_TRACE_ZONE(Map);
+
+    FO_VERIFY_AND_THROW(input.MaxSteps >= 0, "Direction trace step limit is negative", input.MaxSteps);
+    FO_VERIFY_AND_THROW(input.MapSize.is_valid_pos(input.StartHex), "Direction trace starts outside the map", input.StartHex, input.MapSize);
+    FO_VERIFY_AND_THROW(input.MapSize.is_valid_pos(input.RayHex), "Direction trace ray anchor lies outside the map", input.RayHex, input.MapSize);
+
+    TraceDirectionOutput output;
+    float32_t angle = numeric_cast<float32_t>(input.Dir.angle());
+    DirectionLine line = MakeDirectionLine(input.RayHex, input.RayHexOffset, angle);
+    mpos cur_hex = input.StartHex;
+
+    while (std::cmp_less(output.Steps.size(), input.MaxSteps)) {
+        optional<mdir> line_dir = FindDirectionLineStep(cur_hex, line, angle, input.MapSize);
+
+        if (line_dir.has_value()) {
+            mpos next_hex = cur_hex;
+            bool moved = GeometryHelper::MoveHexByDir(next_hex, line_dir.value(), input.MapSize);
+            FO_VERIFY_AND_THROW(moved, "Direction trace line step left the map", cur_hex, line_dir.value());
+
+            if (IsDirectionStepPassable(next_hex, line_dir.value(), input)) {
+                output.Steps.emplace_back(line_dir.value());
+                cur_hex = next_hex;
+                continue;
+            }
+        }
+
+        if (!input.Slide) {
+            break;
+        }
+
+        optional<mdir> side_dir = FindDirectionSideStep(cur_hex, angle, input);
+
+        if (!side_dir.has_value()) {
+            break;
+        }
+
+        // The drawn path turns at hex centres, so the run before the side step and the side step itself are segments
+        CloseDirectionSegment(output);
+        bool moved = GeometryHelper::MoveHexByDir(cur_hex, side_dir.value(), input.MapSize);
+        FO_VERIFY_AND_THROW(moved, "Direction trace side step left the map", cur_hex, side_dir.value());
+        output.Steps.emplace_back(side_dir.value());
+        CloseDirectionSegment(output);
+        output.Slid = true;
+
+        // A parallel line through the hex the side step reached; it slides again for as long as the obstacle keeps blocking
+        line = MakeDirectionLine(cur_hex, {}, angle);
+    }
+
+    CloseDirectionSegment(output);
+
+    if (!output.Steps.empty() && !output.Slid) {
+        output.EndHexOffset = EvaluateLineEndOffset(line, cur_hex);
+    }
+
     return output;
 }
 
@@ -1027,6 +1104,118 @@ static auto IsNodeAfter(const PathSearchNode& a, const PathSearchNode& b) -> boo
     }
 
     return a.Order > b.Order;
+}
+
+static auto MakeDirectionLine(mpos anchor_hex, ipos16 anchor_offset, float32_t angle) -> DirectionLine
+{
+    float32_t angle_rad = (angle - 90.0f) * DEG_TO_RAD_FLOAT;
+    return DirectionLine {.AnchorHex = anchor_hex, .AnchorOffset = anchor_offset, .DirX = std::cos(angle_rad), .DirY = std::sin(angle_rad)};
+}
+
+static auto GetDistanceFromLine(const DirectionLine& line, mpos hex) -> float32_t
+{
+    ipos32 center = GeometryHelper::GetHexOffset(line.AnchorHex, hex);
+    float32_t dx = numeric_cast<float32_t>(center.x - line.AnchorOffset.x);
+    float32_t dy = numeric_cast<float32_t>(center.y - line.AnchorOffset.y) * GeometryHelper::GetYProj();
+    return std::abs(dx * line.DirY - dy * line.DirX);
+}
+
+// Of the directions either side of the angle, the one whose next hex centre lies closest to the line, so the steps hug
+// it; a direction the angle runs exactly along stands alone. Whether that hex is free is the caller's question
+static auto FindDirectionLineStep(mpos hex, const DirectionLine& line, float32_t angle, msize map_size) -> optional<mdir>
+{
+    constexpr float32_t bracket_angle = 360.0f / static_cast<float32_t>(GameSettings::MAP_DIR_COUNT);
+
+    optional<mdir> best_dir;
+    float32_t best_distance = std::numeric_limits<float32_t>::max();
+
+    for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+        mdir dir = mdir(hdir(i));
+
+        if (GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), angle) >= bracket_angle) {
+            continue;
+        }
+
+        mpos next_hex = hex;
+        bool moved = GeometryHelper::MoveHexByDir(next_hex, dir, map_size);
+
+        if (!moved) {
+            continue;
+        }
+
+        float32_t distance = GetDistanceFromLine(line, next_hex);
+
+        if (distance < best_distance) {
+            best_dir = dir;
+            best_distance = distance;
+        }
+    }
+
+    return best_dir;
+}
+
+static auto IsDirectionStepPassable(mpos hex, mdir dir, const TraceDirectionInput& input) -> bool
+{
+    return PathFinding::CheckHexWithMultihex(hex, dir, input.Multihex, input.MapSize, input.CheckHex) == HexBlockResult::Passable;
+}
+
+// The free neighbour closest to the direction, and strictly under a right angle off it, so every step still advances
+// along the direction and a trace can never walk back over hexes it came from
+static auto FindDirectionSideStep(mpos hex, float32_t angle, const TraceDirectionInput& input) -> optional<mdir>
+{
+    optional<mdir> best_dir;
+    float32_t best_diff = 90.0f;
+
+    for (int32_t i = 0; i < GameSettings::MAP_DIR_COUNT; i++) {
+        mdir dir = mdir(hdir(i));
+        float32_t diff = GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(dir.angle()), angle);
+
+        if (diff >= best_diff) {
+            continue;
+        }
+
+        mpos next_hex = hex;
+        bool moved = GeometryHelper::MoveHexByDir(next_hex, dir, input.MapSize);
+
+        if (!moved || !IsDirectionStepPassable(next_hex, dir, input)) {
+            continue;
+        }
+
+        best_dir = dir;
+        best_diff = diff;
+    }
+
+    return best_dir;
+}
+
+// Projects the end hex centre onto the line and returns the map-pixel offset that puts the plan's last point on it
+static auto EvaluateLineEndOffset(const DirectionLine& line, mpos end_hex) -> ipos16
+{
+    ipos32 end_center = GeometryHelper::GetHexOffset(line.AnchorHex, end_hex);
+    float32_t y_proj = GeometryHelper::GetYProj();
+    float32_t anchor_x = numeric_cast<float32_t>(line.AnchorOffset.x);
+    float32_t anchor_y = numeric_cast<float32_t>(line.AnchorOffset.y);
+    float32_t to_end_x = numeric_cast<float32_t>(end_center.x) - anchor_x;
+    float32_t to_end_y = (numeric_cast<float32_t>(end_center.y) - anchor_y) * y_proj;
+    float32_t along = to_end_x * line.DirX + to_end_y * line.DirY;
+    int32_t ox = iround<int32_t>(anchor_x + along * line.DirX) - end_center.x;
+    int32_t oy = iround<int32_t>(anchor_y + along * line.DirY / y_proj) - end_center.y;
+
+    constexpr int32_t half_w = GameSettings::MAP_HEX_WIDTH / 2;
+    constexpr int32_t half_h = GameSettings::MAP_HEX_HEIGHT / 2;
+
+    int16_t clamped_ox = numeric_cast<int16_t>(std::clamp(ox, -half_w, half_w));
+    int16_t clamped_oy = numeric_cast<int16_t>(std::clamp(oy, -half_h, half_h));
+    return ipos16 {clamped_ox, clamped_oy};
+}
+
+static void CloseDirectionSegment(TraceDirectionOutput& output)
+{
+    uint16_t steps_count = numeric_cast<uint16_t>(output.Steps.size());
+
+    if (steps_count != 0 && (output.ControlSteps.empty() || output.ControlSteps.back() != steps_count)) {
+        output.ControlSteps.emplace_back(steps_count);
+    }
 }
 
 FO_END_NAMESPACE

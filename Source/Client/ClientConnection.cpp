@@ -39,7 +39,8 @@ FO_BEGIN_NAMESPACE
 ClientConnection::ClientConnection(ptr<ClientNetworkSettings> settings) :
     _settings {settings},
     _netIn(_settings->Network.NetBufferSize),
-    _netOut(_settings->Network.NetBufferSize)
+    _netOut(_settings->Network.NetBufferSize),
+    _downlinkDelay {std::chrono::milliseconds {_settings->Network.LinkDelayWindowMs}, std::chrono::milliseconds {_settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {_settings->Network.LinkDelayRebaseMs}}
 {
     _connectCallback = [](auto&&) FO_DEFERRED { };
     _disconnectCallback = []() FO_DEFERRED { };
@@ -254,6 +255,7 @@ void ClientConnection::ProcessConnection()
     if (handshake_sent && _netOut.IsEmpty() && !_pingTime && _settings->ClientNetwork.PingPeriod != 0 && nanotime::now() >= _pingCallTime) {
         _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(false);
+        _netOut.Write(nanotime::now().milliseconds());
         _netOut.EndMsg();
         _pingTime = nanotime::now();
     }
@@ -338,6 +340,7 @@ void ClientConnection::ResetConnectionState() noexcept
     _sealedOut.clear();
     _pingTime = nanotime::zero;
     _pingCallTime = nanotime::zero;
+    _downlinkDelay.Reset();
     _lastReceiveTime = nanotime::zero;
     _artificalInboundLagTime.reset();
     _artificalOutboundLagTime.reset();
@@ -515,6 +518,10 @@ void ClientConnection::Net_OnPing()
     FO_TRACE_ZONE(Network);
 
     bool answer = _netIn.Read<bool>();
+    auto sender_ms = _netIn.Read<int64_t>();
+
+    // A ping keeps the link's usual transit current while no critter moves in sight
+    (void)_downlinkDelay.AddSample(sender_ms, nanotime::now());
 
     if (answer) {
         nanotime time = nanotime::now();
@@ -525,8 +532,14 @@ void ClientConnection::Net_OnPing()
     else {
         _netOut.StartMsg(NetMessage::Ping);
         _netOut.Write(true);
+        _netOut.Write(nanotime::now().milliseconds());
         _netOut.EndMsg();
     }
+}
+
+auto ClientConnection::RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan
+{
+    return _downlinkDelay.AddSample(sender_ms, receive_time);
 }
 
 FO_END_NAMESPACE

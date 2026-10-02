@@ -2139,4 +2139,213 @@ TEST_CASE("PathFindingCost", "[.]")
     WARN(report);
 }
 
+TEST_CASE("PathFinding::TraceDirection")
+{
+    // Static, so the helper lambdas below read them without a capture; a class-typed constexpr local is odr-used by a copy
+    static constexpr msize map_size {200, 200};
+    static constexpr mpos start {100, 100};
+    constexpr int32_t horizon = 6;
+
+    auto make_input = [](mpos from, ipos16 from_offset, int32_t angle, int32_t max_steps, bool slide, function<bool(mpos)> is_blocked) -> TraceDirectionInput {
+        TraceDirectionInput input;
+        input.StartHex = from;
+        input.StartHexOffset = from_offset;
+        input.RayHex = from;
+        input.RayHexOffset = from_offset;
+        input.Dir = mdir(angle);
+        input.MaxSteps = max_steps;
+        input.Slide = slide;
+        input.MapSize = map_size;
+        input.CheckHex = [is_blocked = std::move(is_blocked)](mpos hex) -> HexBlockResult { return is_blocked(hex) ? HexBlockResult::Blocked : HexBlockResult::Passable; };
+        return input;
+    };
+
+    auto nothing_blocked = [](mpos /*hex*/) -> bool { return false; };
+
+    // Every hex a trace enters, in order
+    auto walk = [](mpos from, const TraceDirectionOutput& output) -> vector<mpos> {
+        vector<mpos> hexes;
+        mpos hex = from;
+
+        for (mdir step : output.Steps) {
+            bool moved = GeometryHelper::MoveHexByDir(hex, step, map_size);
+            REQUIRE(moved);
+            hexes.emplace_back(hex);
+        }
+
+        return hexes;
+    };
+
+    // Distance of a map-pixel point from the ray, in the projected plane where MovingContext measures its segments
+    auto distance_from_ray = [](float32_t px, float32_t py, int32_t angle) -> float32_t {
+        float32_t angle_rad = (numeric_cast<float32_t>(angle) - 90.0f) * DEG_TO_RAD_FLOAT;
+        float32_t dy = py * GeometryHelper::GetYProj();
+        return std::abs(px * std::sin(angle_rad) - dy * std::cos(angle_rad));
+    };
+
+    SECTION("ClearRayRunsTheWholeHorizonAsOneSegment")
+    {
+        for (int32_t angle : {0, 30, 45, 90, 135, 200, 275, 330}) {
+            auto output = PathFinding::TraceDirection(make_input(start, {}, angle, horizon, true, nothing_blocked));
+
+            CHECK(std::cmp_equal(output.Steps.size(), horizon));
+            CHECK_FALSE(output.Slid);
+            REQUIRE(output.ControlSteps.size() == 1);
+            CHECK(output.ControlSteps.front() == horizon);
+        }
+    }
+
+    SECTION("ChainedTracesStayOnOneStraightLine")
+    {
+        // A held direction is walked as a chain of short traces, each starting where the last ended and projected onto
+        // the line the run began on; the ends must stay on that line instead of drifting by a rounding error a link
+        for (int32_t angle : {20, 45, 100, 160, 250, 310}) {
+            mpos hex = start;
+            ipos16 offset {};
+
+            for (int32_t link = 0; link < 12; link++) {
+                auto input = make_input(hex, offset, angle, horizon, false, nothing_blocked);
+                input.RayHex = start;
+                input.RayHexOffset = {};
+                auto output = PathFinding::TraceDirection(input);
+                REQUIRE(std::cmp_equal(output.Steps.size(), horizon));
+                vector<mpos> hexes = walk(hex, output);
+                hex = hexes.back();
+                offset = output.EndHexOffset;
+
+                ipos32 end_center = GeometryHelper::GetHexOffset(start, hex);
+                float32_t end_x = numeric_cast<float32_t>(end_center.x + offset.x);
+                float32_t end_y = numeric_cast<float32_t>(end_center.y + offset.y);
+                CHECK(distance_from_ray(end_x, end_y, angle) <= 1.5f);
+            }
+        }
+    }
+
+    SECTION("RayStartsFromTheSubHexOffset")
+    {
+        // A mover drawn below its hex centre keeps that height when it walks east: the ray is parallel, not recentred
+        auto output = PathFinding::TraceDirection(make_input(start, ipos16 {0, 6}, 90, horizon, false, nothing_blocked));
+
+        REQUIRE(std::cmp_equal(output.Steps.size(), horizon));
+        CHECK(std::abs(output.EndHexOffset.y - 6) <= 1);
+    }
+
+    SECTION("BlockedRayStopsWithoutSlide")
+    {
+        auto is_wall = [](mpos hex) -> bool { return GeometryHelper::GetHexOffset(start, hex).x > GameSettings::MAP_HEX_WIDTH * 3; };
+        auto output = PathFinding::TraceDirection(make_input(start, {}, 90, horizon, false, is_wall));
+
+        CHECK_FALSE(output.Steps.empty());
+        CHECK(std::cmp_less(output.Steps.size(), horizon));
+        CHECK_FALSE(output.Slid);
+
+        for (mpos hex : walk(start, output)) {
+            CHECK_FALSE(is_wall(hex));
+        }
+    }
+
+    SECTION("SlideFollowsAWallTowardTheDirection")
+    {
+        // Heading down-right into a wall below: the trace keeps going right along the wall instead of stopping
+        auto is_wall = [](mpos hex) -> bool { return GeometryHelper::GetHexOffset(start, hex).y >= GameSettings::MAP_HEX_LINE_HEIGHT; };
+        auto stopped = PathFinding::TraceDirection(make_input(start, {}, 120, horizon, false, is_wall));
+        auto slid = PathFinding::TraceDirection(make_input(start, {}, 120, horizon, true, is_wall));
+
+        CHECK(std::cmp_less(stopped.Steps.size(), horizon));
+        CHECK(std::cmp_equal(slid.Steps.size(), horizon));
+        CHECK(slid.Slid);
+        CHECK(slid.EndHexOffset == ipos16 {});
+
+        vector<mpos> hexes = walk(start, slid);
+
+        for (mpos hex : hexes) {
+            CHECK_FALSE(is_wall(hex));
+        }
+
+        CHECK(GeometryHelper::GetHexOffset(start, hexes.back()).x > GameSettings::MAP_HEX_WIDTH * 3);
+        REQUIRE_FALSE(slid.ControlSteps.empty());
+        CHECK(slid.ControlSteps.back() == horizon);
+    }
+
+    SECTION("PushingStraightIntoAWallDoesNotMove")
+    {
+        auto is_wall = [](mpos hex) -> bool { return GeometryHelper::GetHexOffset(start, hex).x > 0; };
+        auto output = PathFinding::TraceDirection(make_input(start, {}, 90, horizon, true, is_wall));
+
+        CHECK(output.Steps.empty());
+        CHECK(output.ControlSteps.empty());
+    }
+
+    SECTION("NoStepGoesAgainstTheDirection")
+    {
+        // Whatever the obstacles, every step is under a right angle off the direction, so a trace cannot oscillate
+        random_generator rng {1790};
+
+        for (int32_t round = 0; round < 40; round++) {
+            unordered_set<mpos> blocked;
+
+            for (int32_t i = 0; i < 120; i++) {
+                blocked.emplace(mpos {numeric_cast<int16_t>(90 + rng.next_between(0, 20)), numeric_cast<int16_t>(90 + rng.next_between(0, 20))});
+            }
+
+            blocked.erase(start);
+            int32_t angle = rng.next_between(0, 359);
+            auto output = PathFinding::TraceDirection(make_input(start, {}, angle, 12, true, [&blocked](mpos hex) { return blocked.contains(hex); }));
+
+            for (mdir step : output.Steps) {
+                CHECK(GeometryHelper::GetDirAngleDiff(numeric_cast<float32_t>(step.angle()), numeric_cast<float32_t>(angle)) < 90.0f);
+            }
+
+            for (mpos hex : walk(start, output)) {
+                CHECK_FALSE(blocked.contains(hex));
+            }
+        }
+    }
+
+    SECTION("ZeroHorizonTracesNothing")
+    {
+        auto output = PathFinding::TraceDirection(make_input(start, {}, 90, 0, true, nothing_blocked));
+
+        CHECK(output.Steps.empty());
+        CHECK(output.ControlSteps.empty());
+        CHECK(output.EndHexOffset == ipos16 {});
+    }
+
+    SECTION("MapEdgeEndsTheTrace")
+    {
+        // Two hexes short of the map edge along the direction, found by walking there rather than by coordinates
+        mpos near_edge = start;
+
+        while (true) {
+            mpos next = near_edge;
+
+            if (!GeometryHelper::MoveHexByDir(next, mdir(90), map_size)) {
+                break;
+            }
+
+            near_edge = next;
+        }
+
+        for (int32_t i = 0; i < 2; i++) {
+            bool moved_back = GeometryHelper::MoveHexByDir(near_edge, mdir(270), map_size);
+            REQUIRE(moved_back);
+        }
+
+        // The edge stops the direction itself; sliding follows the edge instead, and never leaves the map either way
+        auto stopped = PathFinding::TraceDirection(make_input(near_edge, {}, 90, horizon, false, nothing_blocked));
+        auto slid = PathFinding::TraceDirection(make_input(near_edge, {}, 90, horizon, true, nothing_blocked));
+
+        CHECK(stopped.Steps.size() == 2);
+
+        for (mpos hex : walk(near_edge, slid)) {
+            CHECK(map_size.is_valid_pos(hex));
+        }
+    }
+
+    SECTION("NegativeHorizonIsRejected")
+    {
+        CHECK_THROWS(PathFinding::TraceDirection(make_input(start, {}, 90, -1, true, nothing_blocked)));
+    }
+}
+
 FO_END_NAMESPACE

@@ -117,6 +117,30 @@ struct TraceLineOutput
     mpos LastMovable {};
 };
 
+struct TraceDirectionInput
+{
+    mpos StartHex {};
+    ipos16 StartHexOffset {}; // The ray starts where the mover is drawn, not at its hex centre
+    // A point the ray passes through, onto which the end is projected back: the start of a fresh direction, or where
+    // an extended one was first held, so rounding never accumulates along a chain of traces
+    mpos RayHex {};
+    ipos16 RayHexOffset {};
+    mdir Dir {};
+    int32_t MaxSteps {};
+    int32_t Multihex {};
+    bool Slide {}; // Step round a blocked hex toward the direction instead of stopping at it
+    msize MapSize {};
+    function<HexBlockResult(mpos)> CheckHex {}; // Anything but Passable blocks: a held direction does not route through gags or critters
+};
+
+struct TraceDirectionOutput
+{
+    vector<mdir> Steps {};
+    vector<uint16_t> ControlSteps {};
+    ipos16 EndHexOffset {}; // Puts the end of a trace that never left the ray back on the ray; zero once it slid
+    bool Slid {};
+};
+
 namespace PathFinding
 {
     // Check the movement-direction front arc for a single hex or multihex perimeter.
@@ -136,6 +160,10 @@ namespace PathFinding
 
     // Core line trace from start toward target, stopping at blocked hexes
     auto TraceLine(const TraceLineInput& input) -> TraceLineOutput;
+
+    // Trace a held direction along its ray, optionally sliding past what blocks it. A trace that stays on the ray
+    // ends on it, so consecutive traces draw one straight line; a side step never goes against the direction
+    auto TraceDirection(const TraceDirectionInput& input) -> TraceDirectionOutput;
 }
 
 FO_END_NAMESPACE
