@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "18fdc24002ad6a6de5c90e3425d6afa15ed1e1355b38264fdfeff518c7b05d88",
-      "source_bytes": 29896,
+      "source_sha256": "37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa",
+      "source_bytes": 30355,
       "status": "current"
     },
     {
@@ -404,8 +404,8 @@
       "english_path": "Docs/en/explanation/runtime/client.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client.md",
-      "source_sha256": "642ba6f2d29c8e6a964f005a9db2078673e3aa1c411b8a5fa6e439e07d6223b8",
-      "source_bytes": 49256,
+      "source_sha256": "fc0c9166706ccfd9e4ffc0a30e372e19b2b466112201294691aad715166aa21b",
+      "source_bytes": 49864,
       "status": "current"
     },
     {

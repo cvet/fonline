@@ -3598,7 +3598,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offs
     return false;
 }
 
-auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>
+auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>
 {
     FO_TRACE_ZONE(Map);
 
@@ -3627,7 +3627,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
             return;
         }
 
-        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr);
+        bool potentially_egg = !ignore_transparent_egg && _engine->SprMngr.IsEggTransp(pos, mspr);
 
         if (potentially_egg ? sort_value <= best_egg_sort : sort_value <= best_sort) {
             return;
@@ -3746,10 +3746,10 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
     return {best, best_mspr};
 }
 
-auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>
+auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>
 {
     bool item_egg = false;
-    auto item_hit = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent);
+    auto item_hit = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent, ignore_transparent_egg);
     auto cr_hit = GetCritterAtScreen(screen_pos, false, extra_range, check_transparent);
 
     if (cr_hit.first && item_hit.first) {

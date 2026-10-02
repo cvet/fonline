@@ -9708,3 +9708,21 @@ Validation and open limits:
   Embedding-project bake/gameplay checks are separate evidence;
   local documentation checks do not certify remote CI, published Pages,
   physical GPU memory, or Web/Android device acceptance.
+
+### Additional 2026-10-02 wave - faded-structure hit testing
+
+- A scoped refresh found `origin/master`
+  `8b5afb7b26c6fb6de44e73638a8670ad4d476fb7`. Its eight paths add
+  `ignoreTransparentEgg = false` to the native/script entity picker, marker
+  66, and a self-contained native fixture. Merge into the first integration
+  `ada3cf13c44a6a6ca25625ffe62a7b469afb358e` without replacing its history.
+- Reconciled old-route additions into canonical EN/RU client runtime and
+  testing pages. Default picking remains unchanged; the opt-in policy keeps
+  alpha and entity draw-order checks and changes neither render mask.
+  AngelScript and Managed C# share the optional argument contract.
+- Refreshed API and source inventory. The conservative machine diff finds
+  two experimental changes (signature and compatibility marker); both have
+  exact-hash dispositions. Current behavior is documented without a separate
+  pre-release breaking-change narrative. Fresh native/project validation
+  must use this additional wave; the preceding 527-case result is initial-wave
+  evidence only.

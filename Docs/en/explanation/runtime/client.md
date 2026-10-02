@@ -331,6 +331,15 @@ Moving 2D critters keep logical path/hex progress in `MovingContext` while `Crit
 - local lighting sources and render targets;
 - mapper mode helpers used by engine tools.
 
+`map.GetEntityAtScreenPos(pos, ignoreTransparentEgg = false)` returns the picked
+entity or null at an empty point. The default prefers non-egg items over sprites
+faded by an egg. Passing `true` removes that preference while retaining sprite
+alpha checks and ordinary entity draw-order selection; a tool can target the
+faded structure itself. It changes picking policy, not either render mask.
+Native `MapView::GetItemAtScreen` and `GetEntityAtScreen` expose the same
+default-false option. The script default applies to both AngelScript and Managed
+C#; an embedding project owns when its input mode opts in.
+
 `MapView` is still a client-side view over the Common map model. Reusable coordinate/pathfinding rules belong in [Maps, Movement, and Geometry](../maps-and-movement.md); presentation details such as render targets, light textures, transparent eggs, map scrolling, and hit testing belong here and in [Frontend and Rendering](../rendering/).
 
 `MapView::SetTransparentEgg` configures either screen-space egg slot; its critter overload uses sprite size. The explicit-rectangle script overload takes `TransparentEggTarget` after `eggSize`. `TransparentEggTarget::AnyOccluder` cuts all occluders; `Structure` cuts only walls and roofs, not props. `MapSprite::SetEggStructure` holds prototype-derived classification; roofs use `EggAppearenceType::Always`. `CheckEggAppearence` includes the egg's own line, so full wall runs are cut without hex-parity adjustment. `IsCutByTransparentEgg` defines eligibility (`Test_TransparentEgg.cpp`).

@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 122,
+    "test_file_count": 123,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -139,6 +139,7 @@
       "Source/Tests/Test_MapBaker.cpp",
       "Source/Tests/Test_MapLoader.cpp",
       "Source/Tests/Test_MapSprite.cpp",
+      "Source/Tests/Test_MapViewHitTesting.cpp",
       "Source/Tests/Test_Mapper.cpp",
       "Source/Tests/Test_MemorySystem.cpp",
       "Source/Tests/Test_MetadataBaker.cpp",

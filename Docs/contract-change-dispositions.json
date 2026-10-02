@@ -7284,6 +7284,30 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current rendering guide and generated property reference document this behavior.",
       "compatibility": "Deploy matching Engine binaries and client/server resources; never mix metadata from separate bakes.",
       "owner": "rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.de6bc2e10f55de02",
+      "baseline_contract_sha256": "a493925dc4d252b5cba67d93f8c2788aa42522ee08454951d42cbd8840101384",
+      "current_contract_sha256": "81702d4ef2ca63001d9048a0649658c03bb2e9160e3cc8c9ff6e03228cdcbf17",
+      "classification": "breaking",
+      "rationale": "The incoming map-picking API revision advances the central experimental compatibility marker from 65 to 66.",
+      "migration": "Rebuild matching binaries and regenerate bindings and baked resources from this Engine revision; no stored property conversion is introduced.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current client runtime guide describes the picking option.",
+      "compatibility": "Keep client/server binaries and metadata on one Engine revision and compatibility marker 66.",
+      "owner": "rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.e3142072a2646163",
+      "baseline_contract_sha256": "a493925dc4d252b5cba67d93f8c2788aa42522ee08454951d42cbd8840101384",
+      "current_contract_sha256": "81702d4ef2ca63001d9048a0649658c03bb2e9160e3cc8c9ff6e03228cdcbf17",
+      "classification": "breaking",
+      "rationale": "Map.GetEntityAtScreenPos adds the optional ignoreTransparentEgg boolean; false preserves the previous picking policy and true opts out of egg preference without changing render masks.",
+      "migration": "Existing AngelScript and Managed C# calls keep their meaning via the default false argument. Regenerate bindings and rebake; only tools that need faded structure selection pass true.",
+      "release_note": "No separate breaking-change note before the first Engine release; the current client runtime guide and generated API document the complete signature.",
+      "compatibility": "Use matching generated bindings, native binaries and metadata; the conservative machine signature diff does not require a source-call rewrite.",
+      "owner": "rendering"
     }
   ]
 }

@@ -884,9 +884,9 @@ FO_SCRIPT_API nptr<CritterView> Client_Map_GetCritterAtScreenPos(ptr<MapView> se
 
 // Returns the top selectable client entity at a screen position using pixel-precise hit testing, or null when none is hit
 ///@ ExportMethod
-FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos)
+FO_SCRIPT_API nptr<ClientEntity> Client_Map_GetEntityAtScreenPos(ptr<MapView> self, ipos32 pos, bool ignoreTransparentEgg = false)
 {
-    auto entity = self->GetEntityAtScreen(pos, 0, true).first;
+    auto entity = self->GetEntityAtScreen(pos, 0, true, ignoreTransparentEgg).first;
     return entity;
 }
 

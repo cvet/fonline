@@ -51,6 +51,13 @@ Render-target ownership is checked on every cycle, including warm-up; this
 separates allocator initialization from repeated retained-map storage, not GPU
 memory or process working-set acceptance.
 
+`MapViewItemHitTesting*` and `TransparentEgg*` cover native sprite picking and
+egg classification. `Test_MapViewHitTesting.cpp` owns its prototypes, baked
+sprites and optional AngelScript fixture, so it runs with either scripting
+backend. It checks a faded wall over a floor, both `ignore_transparent_egg`
+policies, alpha hit testing, an empty point and clearing the egg. These native
+queries do not certify an embedding game's cursor input or tool effects.
+
 Preferred local baseline from a configured build:
 
 ```bash

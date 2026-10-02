@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"642ba6f2d29c8e6a964f005a9db2078673e3aa1c411b8a5fa6e439e07d6223b8"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"fc0c9166706ccfd9e4ffc0a30e372e19b2b466112201294691aad715166aa21b"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -262,6 +262,15 @@ Particle resources идут через отдельный backend-neutral factor
 `GetHexOffset(from, to)` равен `GetHexPos(to) - GetHexPos(from)`, поэтому при прокрутке view origin `RebuildMapOffset()` перемещает каждую light vertex на одинаковую pixel delta. `MapView` сдвигает cached `_lightPoints` на эту delta вместо перестроения каждого fan. Скрытие последнего видимого hex источника света по-прежнему заставляет перестроить primitives, чтобы убрать оставшиеся triangles, а вошедшие в view источники заново применяют fans и выполняют обычное перестроение. `Test_Geometry.cpp` закрепляет инвариант uniform translation.
 
 Переиспользуемый API представления карты включает `SetExtraScrollOffset()` для transient camera offsets, которыми владеют скрипты. Движок применяет offset к map view, но game-specific screen effects вроде quake/shake timing и fade overlays принадлежат скриптам встраиваемого проекта.
+
+`map.GetEntityAtScreenPos(pos, ignoreTransparentEgg = false)` возвращает выбранную
+сущность или null в пустой точке. По умолчанию непрорезанные предметы имеют
+приоритет над спрайтами внутри «яйца». Значение `true` снимает этот приоритет,
+сохраняя alpha checks спрайта и обычный выбор сущностей по порядку отрисовки:
+инструмент может выбрать саму полупрозрачную конструкцию. Меняется picking policy,
+не render masks. Native `MapView::GetItemAtScreen` и `GetEntityAtScreen` имеют ту
+же опцию с default false. Скриптовый default одинаков для AngelScript и Managed
+C#; режимы ввода, включающие опцию, принадлежат встраивающему проекту.
 
 Прозрачные «яйца» скрывают экранные заслоняющие спрайты. `MapView::SetTransparentEgg` настраивает слот; перегрузка для криттера берёт размер его спрайта. Скриптовая перегрузка с явным прямоугольником принимает `TransparentEggTarget` после `eggSize`. `TransparentEggTarget::AnyOccluder` затрагивает все подходящие спрайты; `Structure` — только стены и крыши, сохраняя предметы обстановки. `MapSprite::SetEggStructure` хранит классификацию; скриптовые спрайты наследуют флаги прототипа, крыши используют `EggAppearenceType::Always`. `CheckEggAppearence` включает спрайты на линии эллипса и скрывает весь участок стены без прежней поправки чётности гекса. Общее правило — `IsCutByTransparentEgg` (`Test_TransparentEgg.cpp`).
 

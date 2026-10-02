@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"18fdc24002ad6a6de5c90e3425d6afa15ed1e1355b38264fdfeff518c7b05d88"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -75,6 +75,13 @@ permalink: /Docs/ru/contributing/testing/
 но это не проверка GPU memory или process working set.
 
 `Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
+
+`MapViewItemHitTesting*` и `TransparentEgg*` проверяют native sprite picking и
+классификацию «яйца». `Test_MapViewHitTesting.cpp` содержит собственные прототипы,
+baked sprites и optional AngelScript fixture, поэтому работает с обоими
+скриптовыми backend. Проверяются полупрозрачная стена над полом, обе политики
+`ignore_transparent_egg`, alpha hit testing, пустая точка и сброс «яйца». Native
+queries не подтверждают ввод курсора или эффекты инструмента встраивающей игры.
 
 Предпочтительная локальная проверка из настроенной build directory:
 
