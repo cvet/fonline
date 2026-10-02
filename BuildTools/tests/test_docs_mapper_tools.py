@@ -338,7 +338,7 @@ class MapperToolsDocumentationTests(unittest.TestCase):
             for source in record["sources"]
         }
         self.assertIn(
-            ("last-frontier", "Scripts/MapperRender.fos"), sources
+            ("last-frontier", "Scripts/MapperRender.cs"), sources
         )
         self.assertIn(
             ("last-frontier", "Tools/MapPreview/generate_map_preview.py"),

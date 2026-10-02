@@ -211,7 +211,7 @@ class WebDebuggingDocumentationTests(unittest.TestCase):
             ("last-frontier", ".github/workflows/cross-platform-tests.yml"),
             ("last-frontier", "Tools/PipelineTests/web_runner.py"),
             ("last-frontier", "Tools/PipelineTests/test_login_enter_game_web.py"),
-            ("last-frontier", "Tools/PipelineTests/test_web_token_login_web.py"),
+            ("last-frontier", "Tools/PipelineTests/test_site_token_login_web.py"),
             ("last-frontier", "Tools/PipelineTests/test_web_combat_web.py"),
             ("last-frontier", "LastFrontier.fomain"),
             ("fonline-tla", "CMakePresets.json"),

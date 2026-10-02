@@ -10,14 +10,14 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 - Snapshots: **2**
 - Classified concerns: **30**
-- Source references: **180**
+- Source references: **186**
 - Dispositions: `boundary-owned` 2, `project-owned` 3, `promoted` 24, `promotion-candidate` 1
 
 ## Audited snapshots
 
 | Snapshot | Repository | Exact revision | Availability | Role |
 | --- | --- | --- | --- | --- |
-| `last-frontier` | `lastfrontierdev/lf` | `50b8cb4e9ec706887708640e4474b9f8281097d8` | `private-local-checkout` | Primary mature embedding-project evidence |
+| `last-frontier` | `lastfrontierdev/lf` | `ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e` | `private-local-checkout` | Primary mature embedding-project evidence |
 | `fonline-tla` | `cvet/fonline-tla` | `b603d8fdbc2b2f89f233b2a1938686ead9d8d480` | `public-pinned-checkout` | Independent compatibility and legacy-migration evidence |
 
 ## Classified concerns
@@ -150,7 +150,7 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Mapper, AnimationViewer, and ParticleViewer
 
-- Sources: `last-frontier:CMakeLists.txt`, `last-frontier:.vscode/tasks.json`, `last-frontier:Docs/BuildAndLaunch.md`, `last-frontier:Docs/MapAuthoring.md`, `last-frontier:Docs/Particles.md`, `last-frontier:Docs/CharacterGenerator.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `last-frontier:Scripts/MapperRender.fos`, `last-frontier:Tools/MapPreview/generate_map_preview.py`, `fonline-tla:README.md`
+- Sources: `last-frontier:CMakeLists.txt`, `last-frontier:.vscode/tasks.json`, `last-frontier:Docs/BuildAndLaunch.md`, `last-frontier:Docs/MapAuthoring.md`, `last-frontier:Docs/Particles.md`, `last-frontier:Docs/CharacterGenerator.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `last-frontier:Scripts/MapperRender.cs`, `last-frontier:Tools/MapPreview/generate_map_preview.py`, `fonline-tla:README.md`
 - Reusable claim: Interactive tool controls, persistence, resource mounting, outputs, recovery, and visible review evidence need Engine-owned manuals.
 - Decision: Stock tool behavior is Engine-owned; Last Frontier demonstrates project tasks, single-process headless map-preview orchestration, warmup and view plans, developer packaging, assets, and layered acceptance, while the TLA README supplies historical compatibility evidence for a project-owned Mapper target and negative evidence because it has no focused-viewer or reusable capture workflow.
 - Promotion gate: The stock tools launch against an Engine-owned fixture and changed controls are visibly exercised.
@@ -158,8 +158,8 @@ This internal audit records discovery material, ownership decisions, and promoti
 ### Client and server profiling
 
 - Sources: `last-frontier:Docs/Profiling.md`, `fonline-tla:Docs/ReanimationPlan.md`
-- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries.
-- Decision: Profiling mechanics are Engine-owned; scenes, runners, thresholds, and reports stay project-owned.
+- Reusable claim: Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.
+- Decision: Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation.
 - Promotion gate: At least one representative Engine-owned capture proves native and script zones with exact tools.
 
 ### Reusable gameplay and integration test harness
@@ -192,21 +192,21 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Declarative GUI authoring and screen generation
 
-- Sources: `last-frontier:Docs/GuiSystem.md`, `last-frontier:Tools/InterfaceEditor`, `fonline-tla:README.md`, `fonline-tla:Gui`
+- Sources: `last-frontier:Docs/GuiSystem.md`, `last-frontier:Docs/GenericUiSystem.md`, `last-frontier:Scripts/Gui.cs`, `last-frontier:Gui/UiTextHotspot.fogui`, `last-frontier:Tools/InterfaceEditor`, `fonline-tla:README.md`, `fonline-tla:Gui`
 - Reusable claim: The Engine owns the script GUI runtime, but current declarative file formats, generators, editors, widgets, screens, and styles belong to games.
-- Decision: Keep runtime mechanics in Engine docs and declarative authoring in each project.
+- Decision: Keep runtime mechanics in Engine docs and declarative authoring in each project. Last Frontier's TextInset measurement/drawing, independently owned cloned hotspot sprites, PDA thumbnail/card sizes and fixed CRT footer are project-library and screen policies, not new Engine GUI types or a reusable declarative format.
 - Promotion gate: A declarative format becomes an Engine contract only after its parser/generator, fixtures, and compatibility policy are Engine-owned.
 
 ### AI observation and control bridge
 
-- Sources: `last-frontier:Docs/AiControl.md`, `last-frontier:SourceExt/ClientAiBridge.cpp`, `last-frontier:Scripts/AiControl.fos`, `last-frontier:Tools/AiControlMcp/ai_control_mcp.py`, `fonline-tla:Docs/AiControl.md`, `fonline-tla:SourceExt/ClientAiBridge.cpp`, `fonline-tla:Scripts/AiControl.fos`, `fonline-tla:Tools/AiControlMcp/ai_control_mcp.py`
+- Sources: `last-frontier:Docs/AiControl.md`, `last-frontier:SourceExt/ClientAiBridge.cpp`, `last-frontier:Scripts/AiControl.cs`, `last-frontier:Tools/AiControlMcp/ai_control_mcp.py`, `fonline-tla:Docs/AiControl.md`, `fonline-tla:SourceExt/ClientAiBridge.cpp`, `fonline-tla:Scripts/AiControl.fos`, `fonline-tla:Tools/AiControlMcp/ai_control_mcp.py`
 - Reusable claim: Two projects expose AI observation/action bridges, but their schemas, QA commands, MCP adapters, and content semantics are still independently project-owned.
 - Decision: Promote only the transport envelope, authorization, bounded command/event lifecycle, reference client, and protocol sample; keep every project's observation schema, action catalog, administrator tools, and MCP namespace project-owned.
 - Promotion gate: Keep the generated experimental contract, loopback threat boundary, reference client, malformed-peer tests, protocol smoke, and runnable sample current; a native core listener still requires a separate runtime and security promotion.
 
 ### Cross-platform packaging and release evidence
 
-- Sources: `last-frontier:Docs/Architecture.md`, `last-frontier:Docs/BuildAndLaunch.md`, `last-frontier:.github/workflows/ci.yml`, `last-frontier:.github/workflows/cross-platform-tests.yml`, `last-frontier:.vscode/tasks.json`, `last-frontier:.vscode/launch.json`, `last-frontier:CMakeLists.txt`, `last-frontier:LastFrontier.fomain`, `last-frontier:Tools/PipelineTests/web_runner.py`, `last-frontier:Tools/PipelineTests/test_login_enter_game_web.py`, `last-frontier:Tools/PipelineTests/test_web_token_login_web.py`, `last-frontier:Tools/PipelineTests/test_web_combat_web.py`, `fonline-tla:README.md`, `fonline-tla:.github/workflows/build.yml`, `fonline-tla:CMakePresets.json`, `fonline-tla:TLA.fomain`
+- Sources: `last-frontier:Docs/Architecture.md`, `last-frontier:Docs/BuildAndLaunch.md`, `last-frontier:.github/workflows/ci.yml`, `last-frontier:.github/workflows/cross-platform-tests.yml`, `last-frontier:.vscode/tasks.json`, `last-frontier:.vscode/launch.json`, `last-frontier:CMakeLists.txt`, `last-frontier:LastFrontier.fomain`, `last-frontier:Tools/PipelineTests/web_runner.py`, `last-frontier:Tools/PipelineTests/test_login_enter_game_web.py`, `last-frontier:Tools/PipelineTests/test_site_token_login_web.py`, `last-frontier:Tools/PipelineTests/test_web_combat_web.py`, `fonline-tla:README.md`, `fonline-tla:.github/workflows/build.yml`, `fonline-tla:CMakePresets.json`, `fonline-tla:TLA.fomain`
 - Reusable claim: Package grammar and capability differ from project-qualified host/target release evidence, artifacts, signing, and deployment.
 - Decision: Grammar, current capability, repeatable release procedure, evidence boundaries, and failure routing are documented. The Web guide now separates the build-gated WebGL2 client, stock package/shell/server behavior, WebSocket and browser runtime limits, production hosting, and project browser/release qualification. Last Frontier supplies a required nightly/manual packaged Chromium route with loopback serving, explicit wasm/isolation headers, WebSocket login/token coverage, and a deterministic rendered workload; TLA supplies independent Emscripten presets/settings but no equivalent checked browser-package lane. The Android guide separately covers ARM build gates, source-capable x86, generated Gradle/APK behavior, Wi-Fi ADB, typed server-host launch, debug-key fallback, unsupported native self-update, and project-owned device/store qualification. Last Frontier supplies current ARM64 local workflow and all-ABI nightly build evidence but no official APK artifact; TLA supplies independent settings/presets and ARM build evidence but no device qualification. The Engine packaging fixture and Minimal Multiplayer's own archive/runtime lane are Windows-green, and both native hosts require commit-addressed CI artifacts. The first landed Linux tutorial-package evidence, an exact remotely reachable example pin, immutable external artifact, and owner-authorized publication remain incomplete.
 - Promotion gate: Each claimed host/target package is reproduced from a public minimal project with immutable CI evidence and explicit capability limits.
@@ -220,9 +220,9 @@ This internal audit records discovery material, ownership decisions, and promoti
 
 ### Persistence, save migration, and compatibility
 
-- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`
+- Sources: `last-frontier:Docs/Scripts.md`, `last-frontier:Docs/Properties.md`, `last-frontier:Scripts/Migration_Damage.cs`, `last-frontier:Scripts/Tests/Test_Migration_Damage.cs`, `last-frontier:Docs/DocumentationMaintenance.md`, `fonline-tla:README.md`, `fonline-tla:DbPendingChanges.oplog`
 - Reusable claim: Entity persistence, database backends, migration metadata, compatibility versions, backup, rollout, and rollback need separate Engine and project ownership.
-- Decision: Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned.
+- Decision: Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. Last Frontier's six-type protection schema, checked int16/int8 legacy transfer before modifier reinitialization, per-game compatibility version and persisted-player fixture do not change Engine storage formats or qualify a production migration.
 - Promotion gate: Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.
 
 ### Gameplay systems, content catalogs, and balance policy

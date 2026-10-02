@@ -4731,6 +4731,10 @@
           "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
           "translation": "переопределить уровень сжатия пакета ресурсов (шкала zlib: 0 без сжатия, 9 максимально)"
         },
+        "/cli/arguments/@id=package.cli.argument.resource_pack_hash_library/description": {
+          "source_sha256": "5905b4e79a8f7a4283b518de0cdbee04056eefddeb8bc9b2f04a72e3f59e9a3e",
+          "translation": "Явная host-библиотека FNV-1a; иначе поиск под input Binaries/BuildTools-*."
+        },
         "/cli/arguments/@id=package.cli.argument.resource_pack_jobs/description": {
           "source_sha256": "ca07c91d43d723b438617d5e813296addc31deb3a39913741f69fefcdc495f8d",
           "translation": "максимум одновременно создаваемых архивов ресурсов (по умолчанию FO_RESOURCE_PACK_JOBS или 1)"
@@ -14070,6 +14074,14 @@
         "/symbols/@id=script.method.common.Game.AndroidBuild/description": {
           "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
           "translation": "Сообщает, предназначена ли эта сборка для Android."
+        },
+        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/description": {
+          "source_sha256": "27d45edfc63bfe220b251265e41bd9e27ee3f533cb3801a5b94c992697690582",
+          "translation": "Возвращает общие страницы rpmalloc native module и ёмкости классов размера вызывающего потока либо пустой словарь при недоступной диагностике."
+        },
+        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/contract/notes": {
+          "source_sha256": "05a8d37e8d9ca973e37124b10c59b52d27ca58f566e85a0494f818824d145d4b",
+          "translation": "Необязательный диагностический снимок; доступность и область аллокатора не являются контрактом памяти всего процесса."
         },
         "/symbols/@id=script.method.common.Game.BreakIntoDebugger/contract/notes": {
           "source_sha256": "454a289e2434edc126c92e13fa55a8cc1f5cbb6b7a59ff08d7e7af5eed623a53",

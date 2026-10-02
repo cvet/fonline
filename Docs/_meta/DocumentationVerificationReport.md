@@ -9726,3 +9726,100 @@ Validation and open limits:
   pre-release breaking-change narrative. Fresh native/project validation
   must use this additional wave; the preceding 527-case result is initial-wave
   evidence only.
+
+Final additional-wave local verification:
+
+- Regenerated the EN/RU method and migration references from the current API
+  model, and added the new self-contained fixture to both native test READMEs.
+  The additional generated-reference edits remain working-tree changes pending
+  the interactive owner's separate commit authorization.
+- Fresh native build and full unit suite passed: 528 cases and 662,739
+  assertions, exit 0. The new faded-wall/floor case executes in the current
+  Managed-enabled build and proves both default and opt-in picking policy.
+  This does not exercise the AngelScript-gated model-mask fixture or qualify
+  physical mouse/render behavior on a hardware backend.
+- API/documentation/site/retrieval/localization tests passed 40 cases and 12
+  subtests; default codegen argument tests passed eight cases. The final owning
+  generation/freshness chain passed 408 Markdown entries, 192 current locale
+  pairs and all 67 retrieval checks (28 tasks, MRR 0.930). Screenshot provenance
+  remains current without recapture.
+- The four runtime-budget failures and the Visual Studio unchanged-reconfigure
+  failure recorded above remain open on unchanged source. Native and
+  documentation success does not certify those gates, remote CI, Jekyll/Pages
+  publication, physical GPU behavior, or Web/Android device acceptance.
+
+## 2026-10-02 — allocator occupancy, host hashing and image diagnostics sync
+
+Scope and source review:
+
+- Integrated `origin/master` through `f1089d290f286b4bf0250c071ecfb9a1ff83d4e9`
+  with normal merges; current integration HEAD is
+  `9a52b4ad9e5a107144380aacc93cde6e2a93c97d`. Preserved the preceding thirteen
+  uncommitted documentation files and both named safety snapshots.
+- Re-derived allocator occupancy from `MemorySystem`, rpmalloc's local patch,
+  the shared script export and native fixture. Canonical EN/RU Essentials and
+  profiling distinguish module-global pages, calling-thread size classes,
+  unavailable counters, and allocating script dictionaries. The experimental
+  API applies equally to AngelScript and Managed C#; no whole-process, Mono GC
+  or GPU-fragmentation guarantee is inferred from the native snapshot.
+- Re-derived the optional host-only FNV1a64 resource-pack library and subprocess
+  CPU limits from the CMake stages, packaging loader and their standalone
+  fixtures. Packaging documents fallback versus a present invalid library,
+  worker handle recreation, input verification and unchanged byte/cache
+  identity; the pipeline documents the explicit MSBuild 1024-node cap.
+- Re-derived the incoming ImageBaker source-path error context while preserving
+  all scheduled conversions, error aggregation and final pack failure. Updated
+  the structured image-format source anchors; no image schema changed.
+- Registered the default-OFF experimental CMake opt-in, corrected displaced
+  debugger API metadata, and classified/described the added allocator query.
+  Reviewed the 2555-symbol native inventory fingerprint. Generated current
+  references, reviewed Russian descriptions and the aggregate contract
+  disposition; no pre-release human breaking-change ledger was added.
+- Repinned external-project evidence to committed Last Frontier
+  `ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e`, corrected migrated source paths,
+  and kept its Mono GC, soak scenes, runners, thresholds and CI decisions
+  explicitly project-owned. Verified both pinned committed trees, including
+  TLA `b603d8fdbc2b2f89f233b2a1938686ead9d8d480`, without LFS downloads.
+- The final project-only incoming wave preserves the Engine GUI/persistence
+  boundary: TextInset/hotspot cloning, PDA image sizing/footer and six-type
+  protection with checked int16/int8 pre-load migration remain project-owned.
+  Reviewed the exact committed sources and corresponding fixtures; no project
+  declarative GUI format, combat schema or production migration was promoted.
+
+Current local receipts:
+
+- Standalone resource-hash, runtime-budget and PowerShell regressions pass 84
+  tests, including a real native library/MSBuild run. These tested owners are
+  unchanged by the later ImageBaker-only upstream commit. This supersedes the
+  previous four CPU-budget failures, not the separate Visual Studio no-change
+  Codegen invocation finding.
+- Affected documentation tests pass 58 cases and 50 subtests. Owning freshness
+  and validation cover 408 Markdown entries, 4821/4821 reviewed descriptions,
+  current screenshot provenance and all 67 retrieval checks across 28 tasks
+  (MRR 0.930). Four aggregate changes across seventeen domains require one
+  disposition, which is covered; the image-format source-anchor update is
+  nonsemantic provenance.
+- Fresh native build and full embedding-project bake pass on Engine integration
+  `9a52b4ad9e5a107144380aacc93cde6e2a93c97d` and project
+  `ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e`;
+  compile output contains no reported warnings. With the deliberate local
+  `FO_MEMORY_DIAGNOSTICS=ON` opt-in, all 528 native cases and 662,750 assertions
+  pass, exit 0. The normal option default remains OFF; the opt-in does not
+  enable Tracy capture or promote a whole-process measurement claim.
+- Full documentation discovery initially found four stale expectations: the
+  new baking legacy anchor, an older reviewed-description count and two
+  renamed committed project evidence paths. Restored the missing canonical
+  pointer and reconciled the exact expectations without disabling a check;
+  all 553 tests pass on the full rerun (636.426s). After the final external
+  evidence repin, all 27 affected evidence/Mapper/Web tests pass as well.
+  Project-specific gameplay/asset acceptance is recorded in the project plan,
+  not used as normative Engine proof.
+- Focused default Visual Studio Codegen reconfiguration still fails the
+  unchanged-invocation gate: actual three invocations versus expected two;
+  generated arguments and consumer contents are correct. The unchanged
+  CodeGeneration implementation was not patched or its check weakened in
+  this documentation integration. This remains explicit build-validation debt.
+- The interactive owner explicitly authorized committing the complete current
+  documentation slice, including generated outputs. No push, remote CI,
+  Pages publication, live AngelScript
+  runtime, physical GPU, Web/Android device or production acceptance is claimed.

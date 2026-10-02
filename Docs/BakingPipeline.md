@@ -66,6 +66,10 @@ Continue with the [canonical English explanation](en/explanation/content-pipelin
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#built-in-baker-types).
 
+### Image conversion failures
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#image-conversion-failures).
+
 ### Shared animation metadata
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#shared-animation-metadata).

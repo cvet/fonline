@@ -28,11 +28,11 @@
     "declared interface default"
   ],
   "summary": {
-    "option_count": 44,
+    "option_count": 45,
     "required_option_count": 9,
-    "optional_option_count": 35,
+    "optional_option_count": 36,
     "options_by_cache_type": {
-      "BOOL": 22,
+      "BOOL": 23,
       "STRING": 22
     },
     "options_by_category": {
@@ -44,6 +44,7 @@
       "model-shape": 4,
       "native-interface": 1,
       "output": 2,
+      "profiling": 1,
       "project-identity": 4,
       "quality": 2,
       "rendering": 2,
@@ -340,6 +341,16 @@
       "category": "scripting",
       "description": "Compile the Managed C# scripting backend and embedded Mono runtime.",
       "id": "cmake.option.FO_MANAGED_SCRIPTING"
+    },
+    {
+      "name": "FO_MEMORY_DIAGNOSTICS",
+      "cache_type": "BOOL",
+      "value_kind": "boolean",
+      "required": false,
+      "default": "OFF",
+      "category": "profiling",
+      "description": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available.",
+      "id": "cmake.option.FO_MEMORY_DIAGNOSTICS"
     },
     {
       "name": "FO_DISABLE_RPMALLOC",

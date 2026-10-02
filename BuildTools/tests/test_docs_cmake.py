@@ -58,7 +58,7 @@ class DocumentationCMakeTests(unittest.TestCase):
 
         self.assertEqual(model["schema_version"], 1)
         self.assertEqual(model["generated_by"], "BuildTools/docs_cmake.py")
-        self.assertEqual(model["summary"]["option_count"], 44)
+        self.assertEqual(model["summary"]["option_count"], 45)
         self.assertEqual(model["summary"]["required_option_count"], 9)
         self.assertEqual(model["summary"]["stage_count"], 10)
         self.assertEqual(model["summary"]["helper_count"], 6)
@@ -67,6 +67,8 @@ class DocumentationCMakeTests(unittest.TestCase):
         self.assertEqual(model["options"][0]["id"], "cmake.option.FO_MAIN_CONFIG")
         self.assertEqual(model["helpers"][0]["id"], "cmake.helper.SetOption")
         options = {entry["name"]: entry for entry in model["options"]}
+        self.assertEqual(options["FO_MEMORY_DIAGNOSTICS"]["default"], "OFF")
+        self.assertEqual(options["FO_MEMORY_DIAGNOSTICS"]["category"], "profiling")
         self.assertEqual(options["FO_SPARK_PARTICLES"]["default"], "OFF")
         self.assertEqual(options["FO_EFFEKSEER_PARTICLES"]["default"], "OFF")
         helpers = {entry["name"]: entry for entry in model["helpers"]}

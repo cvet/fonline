@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-index","locale":"ru","source_path":"Docs/en/reference/cmake/index.md","source_sha256":"ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-index","locale":"ru","source_path":"Docs/en/reference/cmake/index.md","source_sha256":"ccd81df1ef1b149c42f05345a67b3714bb6a5837479c5d92df5fac680973b7b9"} -->
 
 # Сгенерированный интерфейс проекта CMake
 
@@ -28,7 +28,7 @@ generated: true
 
 | Справочник | Записи | Назначение |
 | --- | --- | --- |
-| [Параметры проекта](options.md) | 44 | Обязательные входы, значения по умолчанию и приоритет переопределений. |
+| [Параметры проекта](options.md) | 45 | Обязательные входы, значения по умолчанию и приоритет переопределений. |
 | [Стадии и hooks](stages.md) | 10 | Строгий порядок генерации проекта и границы расширения. |
 | [Проектные helper-команды](helpers.md) | 6 | Выбранные команды, предназначенные для подключающих проектов. |
 

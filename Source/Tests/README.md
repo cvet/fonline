@@ -67,7 +67,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
 - `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
+- `Source/Tests/Test_MemorySystem.cpp` (OOM/commit failure policy and opt-in owner-thread occupancy, reusable holes and size-class totals without cache flushing)
 - `Source/Tests/Test_Platform.cpp`
 - `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
@@ -95,6 +95,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_LineTracer.cpp`
 - `Source/Tests/Test_MapLoader.cpp`
 - `Source/Tests/Test_MapSprite.cpp`
+- `Source/Tests/Test_MapViewHitTesting.cpp` (self-contained faded-wall/floor picking, default and opt-in egg policy; either scripting backend)
 - `Source/Tests/Test_Movement.cpp`
 - `Source/Tests/Test_PathFinding.cpp`
 - `Source/Tests/Test_Properties.cpp`

@@ -3,6 +3,18 @@
   "entries": [
     {
       "domain": "api",
+      "change_id": "api-change.model-scope.de8e5b7dd058b178",
+      "baseline_contract_sha256": "81702d4ef2ca63001d9048a0649658c03bb2e9160e3cc8c9ff6e03228cdcbf17",
+      "current_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
+      "classification": "breaking",
+      "rationale": "The reviewed native-codegen inventory adds the experimental shared Game.GetAllocatorStatistics query. Existing symbols retain their stability and signatures; the aggregate inventory fingerprint is conservatively classified as a model-scope break.",
+      "migration": "No existing AngelScript or Managed C# call needs rewriting. Regenerate bindings and rebake both roles before using the new diagnostic query; an empty dictionary means unavailable.",
+      "release_note": "No separate human breaking-change ledger before the first Engine release. Current Essentials/profiling documentation and the generated API describe availability, fields and measurement scopes.",
+      "compatibility": "Keep metadata and native binaries on the same Engine revision. The added diagnostic query changes neither persisted data nor resource-pack/network formats; no compatibility-marker bump is required.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
       "change_id": "api-change.model-scope.aa7672d0a0e4f82a",
       "baseline_contract_sha256": "3793cfff44caa5db761f882c757781e638ebd081072b5a456dc1bb69a1efcda4",
       "current_contract_sha256": "a493925dc4d252b5cba67d93f8c2788aa42522ee08454951d42cbd8840101384",

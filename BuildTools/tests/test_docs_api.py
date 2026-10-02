@@ -343,12 +343,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                     [],
                 )
         self.assertTrue(all(not Path(source).is_absolute() for source in model["metadata_source_files"]))
-        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 2)
-        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2554)
+        self.assertEqual(model["summary"]["explicit_contract_declaration_count"], 3)
+        self.assertEqual(model["summary"]["explicit_contract_symbol_count"], 2555)
         self.assertEqual(model["summary"]["default_contract_symbol_count"], 0)
         self.assertEqual(
             model["summary"]["symbols_by_stability"],
-            {"experimental": 2553, "internal": 1},
+            {"experimental": 2554, "internal": 1},
         )
         debugger_symbol = next(
             symbol for symbol in model["symbols"] if symbol["id"] == "script.method.common.Game.BreakIntoDebugger"
@@ -357,7 +357,13 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertTrue(debugger_symbol["contract"]["explicit"])
         experimental_symbols = [symbol for symbol in model["symbols"] if symbol["stability"] == "experimental"]
         self.assertTrue(all(symbol["since"] == "2022.1.0.wip" for symbol in experimental_symbols))
-        self.assertTrue(all(symbol["contract"]["selector"] == "scope:native-codegen" for symbol in experimental_symbols))
+        allocator_id = "script.method.common.Game.GetAllocatorStatistics"
+        allocator_symbol = next(symbol for symbol in experimental_symbols if symbol["id"] == allocator_id)
+        self.assertEqual(allocator_symbol["contract"]["selector"], allocator_id)
+        self.assertIn("empty dictionary", allocator_symbol["description"])
+        self.assertIn("whole-process memory contract", allocator_symbol["contract"]["notes"])
+        self.assertTrue(all(symbol["contract"]["selector"] == "scope:native-codegen"
+                            for symbol in experimental_symbols if symbol["id"] != allocator_id))
 
     def test_scope_contract_pins_inventory_and_allows_exact_override_without_hash_changes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

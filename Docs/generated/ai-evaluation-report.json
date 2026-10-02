@@ -372,8 +372,8 @@
           "passed": true,
           "top_document_ids": [
             "project-local-dependencies",
-            "client-updater",
             "native-essentials",
+            "client-updater",
             "debugging",
             "generated-api-metadata"
           ]

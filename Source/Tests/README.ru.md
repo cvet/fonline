@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"795907272a66b68f4b0a0cafd594ac408090a277c8557a6debaef74099220922"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -58,7 +58,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
 - `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
+- `Source/Tests/Test_MemorySystem.cpp` (политика OOM/commit failure и opt-in заполнение heap потока-владельца, повторно используемые slots и суммы size classes без очистки caches)
 - `Source/Tests/Test_Platform.cpp`
 - `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
@@ -86,6 +86,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_LineTracer.cpp`
 - `Source/Tests/Test_MapLoader.cpp`
 - `Source/Tests/Test_MapSprite.cpp`
+- `Source/Tests/Test_MapViewHitTesting.cpp` (самодостаточный выбор стены/пола, обычная и opt-in политика «яйца»; оба скриптовых backend)
 - `Source/Tests/Test_Movement.cpp`
 - `Source/Tests/Test_PathFinding.cpp`
 - `Source/Tests/Test_Properties.cpp`

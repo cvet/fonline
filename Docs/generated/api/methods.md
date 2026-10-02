@@ -961,6 +961,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-common-game-encodeutf8-0facf943fc"></a>
 - [`symbol-script-method-common-game-encodeutf8-0facf943fc`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-encodeutf8-0facf943fc)
 
+<a id="symbol-script-method-common-game-getallocatorstatistics-968de1e118"></a>
+- [`symbol-script-method-common-game-getallocatorstatistics-968de1e118`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-getallocatorstatistics-968de1e118)
+
 <a id="symbol-script-method-common-game-getclipboardtext-5c2e09e2f9"></a>
 - [`symbol-script-method-common-game-getclipboardtext-5c2e09e2f9`](../../en/reference/script-api/methods.md#symbol-script-method-common-game-getclipboardtext-5c2e09e2f9)
 

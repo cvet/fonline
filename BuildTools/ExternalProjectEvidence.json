@@ -20,7 +20,7 @@
     "last-frontier": {
       "repository": "lastfrontierdev/lf",
       "url": "git@github.com:lastfrontierdev/lf.git",
-      "revision": "50b8cb4e9ec706887708640e4474b9f8281097d8",
+      "revision": "ace9953e3da1c20ef54dd612990c1dc7dd3bcc6e",
       "availability": "private-local-checkout",
       "role": "Primary mature embedding-project evidence"
     },
@@ -314,7 +314,7 @@
         {"snapshot": "last-frontier", "path": "Docs/Particles.md"},
         {"snapshot": "last-frontier", "path": "Docs/CharacterGenerator.md"},
         {"snapshot": "last-frontier", "path": "Docs/DocumentationMaintenance.md"},
-        {"snapshot": "last-frontier", "path": "Scripts/MapperRender.fos"},
+        {"snapshot": "last-frontier", "path": "Scripts/MapperRender.cs"},
         {"snapshot": "last-frontier", "path": "Tools/MapPreview/generate_map_preview.py"},
         {"snapshot": "fonline-tla", "path": "README.md"}
       ],
@@ -336,7 +336,7 @@
         {"snapshot": "last-frontier", "path": "Docs/Profiling.md"},
         {"snapshot": "fonline-tla", "path": "Docs/ReanimationPlan.md"}
       ],
-      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries.",
+      "reusable_claim": "Profiling needs exact tool/version matching, one measured process, reproducible workloads, source zones, export interpretation, and evidence boundaries. Allocator occupancy must distinguish module-global pages from calling-thread size classes and unavailable counters from zero occupancy.",
       "disposition": "promoted",
       "owner": "quality",
       "priority": "P1",
@@ -345,7 +345,7 @@
       "external_targets": [],
       "required_reviews": ["quality", "runtime", "frontend", "build-release"],
       "promotion_gate": "At least one representative Engine-owned capture proves native and script zones with exact tools.",
-      "decision": "Profiling mechanics are Engine-owned; scenes, runners, thresholds, and reports stay project-owned."
+      "decision": "Profiling mechanics and the shared AngelScript/Managed allocator snapshot are Engine-owned, re-derived from MemorySystem, its native fixture and the CMake opt-in. Last Frontier Mono GC interpretation, soak scenes, collection-stability filter, runners, thresholds and reports stay project-owned; they do not certify whole-process or GPU fragmentation."
     },
     {
       "id": "gameplay-test-harness",
@@ -432,6 +432,9 @@
       "title": "Declarative GUI authoring and screen generation",
       "sources": [
         {"snapshot": "last-frontier", "path": "Docs/GuiSystem.md"},
+        {"snapshot": "last-frontier", "path": "Docs/GenericUiSystem.md"},
+        {"snapshot": "last-frontier", "path": "Scripts/Gui.cs"},
+        {"snapshot": "last-frontier", "path": "Gui/UiTextHotspot.fogui"},
         {"snapshot": "last-frontier", "path": "Tools/InterfaceEditor"},
         {"snapshot": "fonline-tla", "path": "README.md"},
         {"snapshot": "fonline-tla", "path": "Gui"}
@@ -445,7 +448,7 @@
       "external_targets": ["last-frontier:Docs/GuiSystem.md", "last-frontier:Tools/InterfaceEditor", "fonline-tla:Gui"],
       "required_reviews": ["frontend", "tooling", "scripting"],
       "promotion_gate": "A declarative format becomes an Engine contract only after its parser/generator, fixtures, and compatibility policy are Engine-owned.",
-      "decision": "Keep runtime mechanics in Engine docs and declarative authoring in each project."
+      "decision": "Keep runtime mechanics in Engine docs and declarative authoring in each project. Last Frontier's TextInset measurement/drawing, independently owned cloned hotspot sprites, PDA thumbnail/card sizes and fixed CRT footer are project-library and screen policies, not new Engine GUI types or a reusable declarative format."
     },
     {
       "id": "ai-control-bridge",
@@ -453,7 +456,7 @@
       "sources": [
         {"snapshot": "last-frontier", "path": "Docs/AiControl.md"},
         {"snapshot": "last-frontier", "path": "SourceExt/ClientAiBridge.cpp"},
-        {"snapshot": "last-frontier", "path": "Scripts/AiControl.fos"},
+        {"snapshot": "last-frontier", "path": "Scripts/AiControl.cs"},
         {"snapshot": "last-frontier", "path": "Tools/AiControlMcp/ai_control_mcp.py"},
         {"snapshot": "fonline-tla", "path": "Docs/AiControl.md"},
         {"snapshot": "fonline-tla", "path": "SourceExt/ClientAiBridge.cpp"},
@@ -485,7 +488,7 @@
         {"snapshot": "last-frontier", "path": "LastFrontier.fomain"},
         {"snapshot": "last-frontier", "path": "Tools/PipelineTests/web_runner.py"},
         {"snapshot": "last-frontier", "path": "Tools/PipelineTests/test_login_enter_game_web.py"},
-        {"snapshot": "last-frontier", "path": "Tools/PipelineTests/test_web_token_login_web.py"},
+        {"snapshot": "last-frontier", "path": "Tools/PipelineTests/test_site_token_login_web.py"},
         {"snapshot": "last-frontier", "path": "Tools/PipelineTests/test_web_combat_web.py"},
         {"snapshot": "fonline-tla", "path": "README.md"},
         {"snapshot": "fonline-tla", "path": ".github/workflows/build.yml"},
@@ -548,6 +551,9 @@
       "title": "Persistence, save migration, and compatibility",
       "sources": [
         {"snapshot": "last-frontier", "path": "Docs/Scripts.md"},
+        {"snapshot": "last-frontier", "path": "Docs/Properties.md"},
+        {"snapshot": "last-frontier", "path": "Scripts/Migration_Damage.cs"},
+        {"snapshot": "last-frontier", "path": "Scripts/Tests/Test_Migration_Damage.cs"},
         {"snapshot": "last-frontier", "path": "Docs/DocumentationMaintenance.md"},
         {"snapshot": "fonline-tla", "path": "README.md"},
         {"snapshot": "fonline-tla", "path": "DbPendingChanges.oplog"}
@@ -561,7 +567,7 @@
       "external_targets": [],
       "required_reviews": ["runtime", "networking", "scripting", "quality"],
       "promotion_gate": "Engine storage/migration behavior is source-backed; every game validates its schema/data and recovery path before rollout.",
-      "decision": "Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned."
+      "decision": "Engine mechanics plus provider-neutral backup-set, oplog, restore, and drill boundaries are promoted; concrete schemas, migrations, providers, schedules, retention, objectives, credentials, and production operations remain project-owned. Last Frontier's six-type protection schema, checked int16/int8 legacy transfer before modifier reinitialization, per-game compatibility version and persisted-player fixture do not change Engine storage formats or qualify a production migration."
     },
     {
       "id": "gameplay-systems-and-content-policy",

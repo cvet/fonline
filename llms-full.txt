@@ -362,7 +362,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 74bf4ef1b8d4f001449af3e25b5cc285355af1fd44b42d04f166e2f9e57b6e98
+Content SHA-256: fb1f17deb0487281984b8d00bfbb4c6650d06eba2b9b7924fc715eb2a3d8833a
 
 ---
 title: FOnline Public Contract Index
@@ -409,10 +409,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2554**
-- Symbols with source-backed descriptions: **2554**
+- Discovered symbols: **2555**
+- Symbols with source-backed descriptions: **2555**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2554**
+- Explicitly classified symbols: **2555**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -1459,7 +1459,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 151806f4af4fc3c3f5eb639b38346c826bb8a51cd72faf8627bc4a5382da6cd7
+Content SHA-256: d414315bf791c060aef264f80e79c6bafe88ddcf2aa2ea436a063262a5eaff01
 
 ---
 layout: default
@@ -1736,6 +1736,18 @@ A server package includes server resources and client update resource packs. Whe
 Keep those product and infrastructure details in the embedding project. [Release Operations](operations.md) supplies the reusable process, readiness, rollout, shutdown, and rollback runbook without claiming that infrastructure as Engine-owned.
 
 ## Reproducibility and provenance
+
+Native host builds provide the optional `FOnlineResourcePackHash` library under
+an input root's `Binaries/BuildTools-<host>-<arch>/`. The packager discovers it in
+input order; `-resource-pack-hash-library <path>` explicitly selects one. Without
+a discovered library, Python hashes remain the fallback. A present but unloadable
+library or a failed known-vector/streaming-seed check is an error, not a fallback.
+Each packager loads its own backend, including spawned workers. Both backends use
+the same streaming FNV-1a 64 and retain header, physical, decoded-payload and logical
+content validation, including cache hits. Archive bytes, compression settings and
+cache keys do not depend on this accelerator. It is host tooling, not game payload.
+`test_resource_pack_hash.py` builds the real library, compares Python/native and
+serial/parallel Raw results, and rejects corrupt payloads.
 
 Resource archives are sequential by default. `package.py -resource-pack-jobs N` overrides `FO_RESOURCE_PACK_JOBS` (default `1`); both accept only positive integers. Independent `.fores` work runs in at most `N` spawned processes on every host. Tasks sharing a pack name or physical destination stay ordered on one worker, preserving local reuse and preventing concurrent writes. Groups are balanced by source bytes, largest first. Every worker retains the complete writer, cache protocol and payload validation; optional-cache unavailability persists within its batch, bounding failed probes by the worker count. The parent adopts validated archive identities and waits for workers before runtime-specific pack rewriting or failure cleanup. Embedded resources and final distribution bundles are outside this worker lane. Choose the limit for available CPU and memory; it is not a format change or a measured speedup guarantee.
 
@@ -15397,7 +15409,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 10d9bb11894a3a319b15234a1d43e70f9b85fca521bf0bdb851a69b280f38dbe
+Content SHA-256: 97f9ae21a0bfdd24658f0b859eb4bd0e6bbe09bbbde0316d54ce15466f13f419
 
 ---
 layout: default
@@ -15833,6 +15845,12 @@ For the exact project-configuration grammar and precedence rules, see [Configure
 The particle/model/prototype/map stages intentionally form a strict dependency chain: particle outputs at order `5` are visible to model-info validation at order `6`, model descriptions are visible to prototype validation at order `7`, and baked prototypes are visible to map baking at order `8`. Bakers at the same order may run concurrently across resource packs and therefore must not consume one another's outputs.
 
 When documenting a specific asset type, inspect the relevant baker class and its tests rather than inferring behavior from file extensions alone.
+
+### Image conversion failures
+
+When an image conversion fails, the diagnostic names its source resource path
+alongside the underlying error. All scheduled conversions are still awaited;
+any conversion failure fails the pack rather than accepting incomplete output.
 
 ### Shared animation metadata
 
@@ -21790,7 +21808,7 @@ Run `python validate.py --web-runtime` from `Examples/ContentShowcase` for the o
 ===== BEGIN DOCUMENT profiling =====
 Source: Docs/en/how-to/quality/profiling.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/quality/profiling.html
-Content SHA-256: c9409e4af4f48d4dfca7268211404b7c5d63abab39ee8230f2931d20a46c3d72
+Content SHA-256: 48df563bb4623c9b5ac88b45d8c6bdeb169aaa6e339d259bb8e5a346f342cd16
 
 ---
 layout: default
@@ -22215,6 +22233,17 @@ answer a named performance question and have an owner who can interpret it.
 | Headless client result is used as renderer evidence | A null/headless renderer does not validate visible rendering performance. |
 | Software rendering dominates Linux capture | Record the renderer and driver; do not compare software and hardware renderer captures. |
 | Allocation totals appear incomplete | Check for third-party/plain C allocations outside the Engine allocator boundary. |
+
+## Allocator occupancy without a Tracy capture
+
+Debug and Tracy builds with rpmalloc expose occupancy automatically. For a regular
+build, opt in with `FO_MEMORY_DIAGNOSTICS=ON`; the default remains OFF. Native
+`memory::get_allocator_statistics()` and the shared AngelScript/Managed C#
+`Game.GetAllocatorStatistics()` distinguish global module pages from calling-thread
+size classes. An empty script dictionary means unavailable, not an empty heap.
+This does not enable Tracy capture or measure whole-process/GPU fragmentation.
+Interpret capacities and the non-atomic sampling boundary using
+[Essentials](../../reference/native/essentials.md#allocator-occupancy-diagnostics).
 
 ## Project-owned automation
 
@@ -23366,7 +23395,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: bcd3caa71183a4f36ac0fa8ea3e56537c9331a2e95d9372c47bb22bd2a0001be
+Content SHA-256: dd3a09eda6b702864fac68a1e7d63a7570350b0e6d6b01c1aead4e17754bb708
 
 ---
 layout: default
@@ -23500,16 +23529,15 @@ for the runtime safety and fragment-compilation contract.
 
 Start here when a bundled dependency is added, removed, or needs build isolation rules.
 
-Nested managed-runtime builds use `CMAKE_BUILD_PARALLEL_LEVEL` as their processor
-budget. BuildTools sets `DOTNET_PROCESSOR_COUNT` only in the child environment,
-so Mono commands using `Environment.ProcessorCount` honor that limit. This
-override is not proof of an MSBuild node-count limit: local Windows checks with
-SDKs 10.0.110 and 10.0.401 retained the host node count while the managed
-processor count was limited. Keep the actual MSBuild budget regression visible;
-do not qualify nested-build concurrency from the environment variable alone.
-A tighter explicit .NET limit is preserved. Without a CMake
-limit, existing .NET processor selection is unchanged; with one, both supplied
-limits must be decimal integers from 1 through 65535.
+Nested managed-runtime builds take the lower supplied `CMAKE_BUILD_PARALLEL_LEVEL`
+or `DOTNET_PROCESSOR_COUNT` as the processor budget. BuildTools sets the latter
+only in the child environment and appends `/maxcpucount:N`, capped at MSBuild's
+maximum of 1024 nodes. Windows MSBuild's default node count does not honor the
+environment override alone; Mono's `Environment.ProcessorCount` receives the
+uncapped processor budget. Every supplied nonempty limit must be a decimal integer
+from 1 through 65535. With neither override, existing processor selection remains.
+`test_runtime_build_budget.py` exercises actual MSBuild with a larger wrapper
+default; an environment-only cap is not sufficient evidence.
 
 ### `EngineSources.cmake`
 
@@ -23562,6 +23590,13 @@ entry point configures and builds upstream sources independently of an
 embedding project's FOnline CMake configuration.
 
 For Visual Studio/MSBuild test targets, the stage invokes the test executable through `BuildTools/cmake/helpers/RunAndLog.cmake`. The helper captures stdout and stderr in `<build-dir>/<target>.log` and fails the CMake command from the real process exit code. This preserves expected negative-test diagnostics without letting MSBuild reinterpret lines containing words such as `error` as build failures. Other generators run the executable directly.
+
+Native non-cross-compiling Windows, Linux and macOS configurations also build
+`FOnlineResourcePackHash` before the baker and CMake package targets. This host-only
+C ABI library is independent of Engine allocation, profiling and sanitizer runtimes;
+it is not linked into or shipped with game applications. Standalone builds use
+`cmake -S BuildTools/resource-pack-hash -B <build>` and `cmake --build <build>`.
+See the [packaging hash backend](../../how-to/release/packaging.md#reproducibility-and-provenance).
 
 See [Applications](../applications.md).
 
@@ -23711,7 +23746,7 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: ba79a78cf6b596a4c0e4eac8660749c7c19e9c523abf2b91ac260bc65d3f4206
+Content SHA-256: ccd81df1ef1b149c42f05345a67b3714bb6a5837479c5d92df5fac680973b7b9
 
 ---
 title: Generated CMake Project Interface
@@ -23741,7 +23776,7 @@ This reference describes the project-facing CMake surface consumed by an embeddi
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
-| [Project options](options.md) | 44 | Required inputs, defaults, and override precedence. |
+| [Project options](options.md) | 45 | Required inputs, defaults, and override precedence. |
 | [Stages and hooks](stages.md) | 10 | Strict project-generation order and extension boundaries. |
 | [Project helpers](helpers.md) | 6 | Selected commands intended for embedding projects. |
 
@@ -23959,7 +23994,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-image-format-index =====
 Source: Docs/en/reference/image-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/image-format/
-Content SHA-256: 6852b33db9fea229d86943d7191951b9b9fa2b1984d2dc3a3e55550b6ed40c54
+Content SHA-256: d6049e57e23cb5727d821486af7b059177a61f4ee85c7b7414f9f78a1fb1480b
 
 ---
 title: Generated Image Format Reference
@@ -23983,7 +24018,7 @@ This reference describes the Engine-owned image import, FOFRM composition, baked
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own asset catalogs, source licensing, visual style, compression policy, resource-pack precedence, animation substitutions, movement tuning, and visible acceptance. |
 | Source manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Contract digest | <code>073a503b709213fadec01e0bfc3d97b784800f9a368d77f862cd89b1c96ec9b0</code> |
+| Contract digest | <code>1269bc60b487ff594867d59dafb3b23b789b5a9adc8b6ac0630a163cfe8c15c4</code> |
 | Baker | <code>Image</code>, order 4 |
 | Baked pixels | <code>RGBA8</code> |
 | Runtime side | <code>client</code> |
@@ -25302,7 +25337,7 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: 1e7f3a2f7cd71263149502520f5c4d3f96ee1c628e4819a68597242b3395141b
+Content SHA-256: 9ac2088d8e634c7e03cd59cdc9adce033065b1a0eca868d3294b92a2b7372dc4
 
 ---
 layout: default
@@ -25536,6 +25571,32 @@ Three distinct things are at stake when code bypasses this vocabulary, and they 
 
 Known and accepted limits: `std::future`/`std::promise`/`std::packaged_task`, `std::thread`, `std::filesystem::path` and the file streams have no allocator parameter at all, so they reach the engine heap through global `new` but throw on exhaustion. The sole `std::function` in `StackTrace.h` is also above the engine callable module. Separately, `BasicCore`, `StackTrace` and `BaseLogging` sit above `MemorySystem` in the `Essentials.h` include order and therefore use `std::` containers by design — `MemorySystem.cpp` calls `GetStackTrace()` from `ReportBadAlloc`, so the reporting path must not depend on the allocator that just failed.
 
+#### Allocator occupancy diagnostics
+
+`memory::get_allocator_statistics()` returns an allocation-free snapshot. With
+rpmalloc it is enabled in Debug and Tracy builds, or by `FO_MEMORY_DIAGNOSTICS=ON`
+in regular builds. Otherwise `available` is false. The shared AngelScript/Managed
+C# export `Game.GetAllocatorStatistics()` returns an empty dictionary when unavailable;
+the script dictionary itself allocates, unlike the native snapshot.
+
+- `mappedBytes`, `committedBytes`, `hugeAllocatedBytes` and `heapCount` describe
+  the rpmalloc instance in the calling native module. Commitment is `global.active`,
+  not cumulative commit traffic.
+- `threadSizeClassAllocatedBytes` is occupied block capacity in the calling thread,
+  including size rounding and deferred cross-thread releases. It excludes huge
+  allocations and is not requested payload size or a process-wide live-byte count.
+- `threadReusableBlockBytes` counts immediately reusable slots, including unused
+  page tails. `threadFreeCommittedPageBytes` separately counts cached committed pages.
+- `class<block-size>AllocatedBlocks` and `class<block-size>ReusableBlocks` retain the
+  size-class distribution; a slot cannot generally satisfy a larger allocation.
+
+The snapshot never walks another live thread's heap, drains deferred frees, forces
+GC, or trims caches. Global atomic counters are not one atomic multi-field snapshot.
+CRT allocations, GC-object storage, drivers, padding and GPU fragmentation are
+outside this measurement. Do not subtract thread occupancy from global commitment
+to infer fragmentation; reusable capacity alone is not evidence of harmful fragmentation.
+`Test_MemorySystem.cpp` checks holes and reuse on the owning thread without cache flushing.
+
 #### Third-party allocators
 
 Vendored vkd3d-shader exposes no allocator hook. Its bake-scoped calls use
@@ -25717,7 +25778,7 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 ===== BEGIN DOCUMENT generated-package-index =====
 Source: Docs/en/reference/packages/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/packages/
-Content SHA-256: 1c6ee88f8602cd8ceedf2dc28e26dd2c9782105ce0eec539bfb2241849532af9
+Content SHA-256: 9d4a376f4179a3256c834767349b2b4d879b42e6108f025976005eb7d59da4cc
 
 ---
 title: Generated Package Interface
@@ -25753,7 +25814,7 @@ Use this cross-contract sequence:
 | Support policy | No versioned package support line is declared; embedding projects must pin an engine revision. |
 | Manifest | [BuildTools/PackageInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/PackageInterface.json) |
 | Packager | [BuildTools/package.py](https://github.com/cvet/fonline/blob/master/BuildTools/package.py) |
-| Contract digest | <code>313dabe8fc596a60ae1f1cb5636c7bd32faaa8d16a1a4c25eb1dba7211b84460</code> |
+| Contract digest | <code>13ad77ab5b1a53bc20e8c3a701043aebcc6c6c27dcc3e03b9d0fa696c6602b2f</code> |
 
 ## Coverage
 
@@ -25762,7 +25823,7 @@ Use this cross-contract sequence:
 | [Declaration](declaration.md) | 2 | CMake clauses and per-binary modifiers. |
 | [Targets/platforms/packs](matrix.md) | 6 / 6 / 19 | Accepted runtime dimensions and support status. |
 | [Payloads and artifacts](payloads.md) | 8 | Implemented output-producing pack tokens. |
-| [Packager CLI](cli.md) | 16 | Exact internal package.py invocation contract. |
+| [Packager CLI](cli.md) | 17 | Exact internal package.py invocation contract. |
 
 ## Boundary
 
@@ -26334,7 +26395,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: ff43010c5cd13f8d9c5653b9eaa43afd66d276f73e09a2703aea28e1ec4e326f
+Content SHA-256: 4682ce981459989f6c44c8184a07dd6636df660a5fd0855e27bc00a2b665b958
 
 ---
 title: Generated API Reference
@@ -26351,7 +26412,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Reference | Symbols | Coverage |
 | --- | --- | --- |
-| [Native script methods](methods.md) | 996 | Native methods exported to scripts. |
+| [Native script methods](methods.md) | 997 | Native methods exported to scripts. |
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
@@ -26362,25 +26423,25 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2554 |
-| Symbols with descriptions | 2554 |
+| Addressable symbols | 2555 |
+| Symbols with descriptions | 2555 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 45 |
-| Explicit contract declarations | 2 |
-| Explicitly classified symbols | 2554 |
+| Explicit contract declarations | 3 |
+| Explicitly classified symbols | 2555 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2553 |
+| <code>experimental</code> | 2554 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2554 stable IDs with SHA-256 <code>86de8cfbdf1cc0d902e5eb46abe0bb0dc3a2dc18bd7246cc1841e245ddc920fb</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2555 stable IDs with SHA-256 <code>7a8bef24e97c589f0113e44ee76aaacfc531585cd0203ca075b38bbbe8560ccf</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -28472,7 +28533,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 795907272a66b68f4b0a0cafd594ac408090a277c8557a6debaef74099220922
+Content SHA-256: 89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6
 
 ---
 layout: default
@@ -28543,7 +28604,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_GlobalData.cpp`
 - `Source/Tests/Test_HashedString.cpp`
 - `Source/Tests/Test_Logging.cpp`
-- `Source/Tests/Test_MemorySystem.cpp`
+- `Source/Tests/Test_MemorySystem.cpp` (OOM/commit failure policy and opt-in owner-thread occupancy, reusable holes and size-class totals without cache flushing)
 - `Source/Tests/Test_Platform.cpp`
 - `Source/Tests/Test_RandomGenerator.cpp`
 - `Source/Tests/Test_SafeArithmetics.cpp`
@@ -28571,6 +28632,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_LineTracer.cpp`
 - `Source/Tests/Test_MapLoader.cpp`
 - `Source/Tests/Test_MapSprite.cpp`
+- `Source/Tests/Test_MapViewHitTesting.cpp` (self-contained faded-wall/floor picking, default and opt-in egg policy; either scripting backend)
 - `Source/Tests/Test_Movement.cpp`
 - `Source/Tests/Test_PathFinding.cpp`
 - `Source/Tests/Test_Properties.cpp`

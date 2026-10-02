@@ -11,6 +11,19 @@ ENGINE_ROOT = BUILDTOOLS_DIR.parent
 
 
 class ProfilingDocumentationTests(unittest.TestCase):
+    def test_allocator_occupancy_keeps_native_and_script_scopes_explicit(self) -> None:
+        essentials = (ENGINE_ROOT / "Docs/en/reference/native/essentials.md").read_text(encoding="utf-8")
+        profiling = (ENGINE_ROOT / "Docs/en/how-to/quality/profiling.md").read_text(encoding="utf-8")
+        model = json.loads((ENGINE_ROOT / "BuildTools/cmake/ProjectInterface.json").read_text(encoding="utf-8"))
+        option = next(entry for entry in model["options"] if entry["name"] == "FO_MEMORY_DIAGNOSTICS")
+        self.assertEqual(option["default"], "OFF")
+        for marker in ("Game.GetAllocatorStatistics()", "AngelScript/Managed", "calling thread",
+                       "empty dictionary", "script dictionary itself allocates", "not one atomic",
+                       "Do not subtract thread occupancy"):
+            self.assertIn(marker, essentials)
+        self.assertIn("FO_MEMORY_DIAGNOSTICS=ON", profiling)
+        self.assertIn("whole-process/GPU fragmentation", profiling)
+
     def test_build_configurations_pin_tracy_modes(self) -> None:
         source = (
             ENGINE_ROOT / "BuildTools/cmake/stages/Init.cmake"

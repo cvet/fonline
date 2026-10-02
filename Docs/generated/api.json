@@ -10,8 +10,8 @@
       "selector": "scope:native-codegen",
       "stability": "experimental",
       "since": "2022.1.0.wip",
-      "symbol_count": 2554,
-      "inventory_sha256": "86de8cfbdf1cc0d902e5eb46abe0bb0dc3a2dc18bd7246cc1841e245ddc920fb",
+      "symbol_count": 2555,
+      "inventory_sha256": "7a8bef24e97c589f0113e44ee76aaacfc531585cd0203ca075b38bbbe8560ccf",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -70,13 +70,13 @@
     "api_contract_scope_selector": "scope:native-codegen"
   },
   "summary": {
-    "symbol_count": 2554,
+    "symbol_count": 2555,
     "symbols_by_kind": {
       "entity": 7,
       "enum": 58,
       "enum-value": 773,
       "event": 122,
-      "method": 996,
+      "method": 997,
       "migration-rule": 28,
       "property": 132,
       "ref-field": 41,
@@ -87,17 +87,17 @@
       "value-type": 22
     },
     "symbols_by_stability": {
-      "experimental": 2553,
+      "experimental": 2554,
       "internal": 1
     },
-    "explicit_contract_declaration_count": 2,
-    "explicit_contract_symbol_count": 2554,
+    "explicit_contract_declaration_count": 3,
+    "explicit_contract_symbol_count": 2555,
     "default_contract_symbol_count": 0,
     "explicit_contracts_by_stability": {
-      "experimental": 2553,
+      "experimental": 2554,
       "internal": 1
     },
-    "described_symbol_count": 2554,
+    "described_symbol_count": 2555,
     "missing_description_count": 0,
     "symbols_without_source_count": 14,
     "metadata_source_file_count": 45,
@@ -51884,14 +51884,14 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 183
+        "line": 216
       },
       "contract": {
         "explicit": true,
         "selector": "script.method.common.Game.BreakIntoDebugger",
         "source": {
           "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-          "line": 181
+          "line": 214
         },
         "notes": "Development-only debugger trap; intentionally not an embedding-project compatibility contract"
       },
@@ -51925,7 +51925,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 579
+        "line": 612
       },
       "contract": {
         "explicit": true,
@@ -51974,7 +51974,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 524
+        "line": 557
       },
       "contract": {
         "explicit": true,
@@ -52023,7 +52023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 689
+        "line": 722
       },
       "contract": {
         "explicit": true,
@@ -52072,7 +52072,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 634
+        "line": 667
       },
       "contract": {
         "explicit": true,
@@ -52121,7 +52121,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 898
+        "line": 931
       },
       "contract": {
         "explicit": true,
@@ -52170,7 +52170,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 912
+        "line": 945
       },
       "contract": {
         "explicit": true,
@@ -52219,7 +52219,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 891
+        "line": 924
       },
       "contract": {
         "explicit": true,
@@ -52268,7 +52268,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 905
+        "line": 938
       },
       "contract": {
         "explicit": true,
@@ -52317,7 +52317,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 919
+        "line": 952
       },
       "contract": {
         "explicit": true,
@@ -52452,7 +52452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 293
+        "line": 326
       },
       "contract": {
         "explicit": true,
@@ -52551,7 +52551,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 788
+        "line": 821
       },
       "contract": {
         "explicit": true,
@@ -52614,7 +52614,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 306
+        "line": 339
       },
       "contract": {
         "explicit": true,
@@ -52644,6 +52644,47 @@
       ]
     },
     {
+      "id": "script.method.common.Game.GetAllocatorStatistics",
+      "family_id": "script.method.common.Game.GetAllocatorStatistics",
+      "kind": "method",
+      "name": "GetAllocatorStatistics",
+      "runtime_sides": [
+        "server",
+        "client",
+        "mapper"
+      ],
+      "receiver": "Game",
+      "signature": "string=>uint64 Game.GetAllocatorStatistics()",
+      "description": "Returns module-global rpmalloc pages and calling-thread size-class capacities, or an empty dictionary when diagnostics are unavailable",
+      "flags": [],
+      "stability": "experimental",
+      "since": "2022.1.0.wip",
+      "deprecated": null,
+      "examples": [],
+      "source": {
+        "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+        "line": 183
+      },
+      "contract": {
+        "explicit": true,
+        "selector": "script.method.common.Game.GetAllocatorStatistics",
+        "source": {
+          "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
+          "line": 181
+        },
+        "notes": "Opt-in diagnostic snapshot; availability and allocator scope are not a whole-process memory contract"
+      },
+      "declared_target": "common",
+      "receivers": [
+        "Game"
+      ],
+      "return": {
+        "type": "string=>uint64",
+        "nullable": false
+      },
+      "arguments": []
+    },
+    {
       "id": "script.method.common.Game.GetClipboardText",
       "family_id": "script.method.common.Game.GetClipboardText",
       "kind": "method",
@@ -52663,7 +52704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 493
+        "line": 526
       },
       "contract": {
         "explicit": true,
@@ -52704,7 +52745,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 387
+        "line": 420
       },
       "contract": {
         "explicit": true,
@@ -52760,7 +52801,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 344
+        "line": 377
       },
       "contract": {
         "explicit": true,
@@ -52823,7 +52864,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 335
+        "line": 368
       },
       "contract": {
         "explicit": true,
@@ -52879,7 +52920,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 396
+        "line": 429
       },
       "contract": {
         "explicit": true,
@@ -52942,7 +52983,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 842
+        "line": 875
       },
       "contract": {
         "explicit": true,
@@ -52983,7 +53024,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 353
+        "line": 386
       },
       "contract": {
         "explicit": true,
@@ -53039,7 +53080,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 262
+        "line": 295
       },
       "contract": {
         "explicit": true,
@@ -53102,7 +53143,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 731
+        "line": 764
       },
       "contract": {
         "explicit": true,
@@ -53143,7 +53184,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 566
+        "line": 599
       },
       "contract": {
         "explicit": true,
@@ -53192,7 +53233,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 586
+        "line": 619
       },
       "contract": {
         "explicit": true,
@@ -53233,7 +53274,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 602
+        "line": 635
       },
       "contract": {
         "explicit": true,
@@ -53289,7 +53330,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 511
+        "line": 544
       },
       "contract": {
         "explicit": true,
@@ -53338,7 +53379,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 531
+        "line": 564
       },
       "contract": {
         "explicit": true,
@@ -53379,7 +53420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 547
+        "line": 580
       },
       "contract": {
         "explicit": true,
@@ -53435,7 +53476,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 676
+        "line": 709
       },
       "contract": {
         "explicit": true,
@@ -53484,7 +53525,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 696
+        "line": 729
       },
       "contract": {
         "explicit": true,
@@ -53525,7 +53566,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 712
+        "line": 745
       },
       "contract": {
         "explicit": true,
@@ -53581,7 +53622,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 621
+        "line": 654
       },
       "contract": {
         "explicit": true,
@@ -53630,7 +53671,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 641
+        "line": 674
       },
       "contract": {
         "explicit": true,
@@ -53671,7 +53712,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 657
+        "line": 690
       },
       "contract": {
         "explicit": true,
@@ -53727,7 +53768,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 326
+        "line": 359
       },
       "contract": {
         "explicit": true,
@@ -53981,7 +54022,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 228
+        "line": 261
       },
       "contract": {
         "explicit": true,
@@ -54073,7 +54114,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 192
+        "line": 225
       },
       "contract": {
         "explicit": true,
@@ -54122,7 +54163,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 210
+        "line": 243
       },
       "contract": {
         "explicit": true,
@@ -54171,7 +54212,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 201
+        "line": 234
       },
       "contract": {
         "explicit": true,
@@ -54392,7 +54433,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 317
+        "line": 350
       },
       "contract": {
         "explicit": true,
@@ -54441,7 +54482,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 767
+        "line": 800
       },
       "contract": {
         "explicit": true,
@@ -54532,7 +54573,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 740
+        "line": 773
       },
       "contract": {
         "explicit": true,
@@ -54637,7 +54678,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 286
+        "line": 319
       },
       "contract": {
         "explicit": true,
@@ -54693,7 +54734,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 242
+        "line": 275
       },
       "contract": {
         "explicit": true,
@@ -54749,7 +54790,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 235
+        "line": 268
       },
       "contract": {
         "explicit": true,
@@ -54798,7 +54839,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 989
+        "line": 1022
       },
       "contract": {
         "explicit": true,
@@ -54854,7 +54895,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 975
+        "line": 1008
       },
       "contract": {
         "explicit": true,
@@ -54910,7 +54951,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 961
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -54966,7 +55007,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 982
+        "line": 1015
       },
       "contract": {
         "explicit": true,
@@ -55022,7 +55063,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 968
+        "line": 1001
       },
       "contract": {
         "explicit": true,
@@ -55078,7 +55119,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 219
+        "line": 252
       },
       "contract": {
         "explicit": true,
@@ -55127,7 +55168,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 362
+        "line": 395
       },
       "contract": {
         "explicit": true,
@@ -55190,7 +55231,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 502
+        "line": 535
       },
       "contract": {
         "explicit": true,
@@ -55239,7 +55280,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1010
+        "line": 1043
       },
       "contract": {
         "explicit": true,
@@ -55295,7 +55336,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1024
+        "line": 1057
       },
       "contract": {
         "explicit": true,
@@ -55351,7 +55392,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1031
+        "line": 1064
       },
       "contract": {
         "explicit": true,
@@ -55407,7 +55448,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1017
+        "line": 1050
       },
       "contract": {
         "explicit": true,
@@ -55463,7 +55504,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 996
+        "line": 1029
       },
       "contract": {
         "explicit": true,
@@ -55519,7 +55560,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 1003
+        "line": 1036
       },
       "contract": {
         "explicit": true,
@@ -55575,7 +55616,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 800
+        "line": 833
       },
       "contract": {
         "explicit": true,
@@ -55631,7 +55672,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 863
+        "line": 896
       },
       "contract": {
         "explicit": true,
@@ -55701,7 +55742,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 884
+        "line": 917
       },
       "contract": {
         "explicit": true,
@@ -55771,7 +55812,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 821
+        "line": 854
       },
       "contract": {
         "explicit": true,
@@ -55827,7 +55868,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 835
+        "line": 868
       },
       "contract": {
         "explicit": true,
@@ -55890,7 +55931,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 856
+        "line": 889
       },
       "contract": {
         "explicit": true,
@@ -55960,7 +56001,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 870
+        "line": 903
       },
       "contract": {
         "explicit": true,
@@ -56023,7 +56064,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 849
+        "line": 882
       },
       "contract": {
         "explicit": true,
@@ -56086,7 +56127,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 877
+        "line": 910
       },
       "contract": {
         "explicit": true,
@@ -56156,7 +56197,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 814
+        "line": 847
       },
       "contract": {
         "explicit": true,
@@ -56219,7 +56260,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 807
+        "line": 840
       },
       "contract": {
         "explicit": true,
@@ -56282,7 +56323,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 828
+        "line": 861
       },
       "contract": {
         "explicit": true,
@@ -56345,7 +56386,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 933
+        "line": 966
       },
       "contract": {
         "explicit": true,
@@ -56394,7 +56435,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 947
+        "line": 980
       },
       "contract": {
         "explicit": true,
@@ -56443,7 +56484,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 940
+        "line": 973
       },
       "contract": {
         "explicit": true,
@@ -56492,7 +56533,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 926
+        "line": 959
       },
       "contract": {
         "explicit": true,
@@ -56541,7 +56582,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 954
+        "line": 987
       },
       "contract": {
         "explicit": true,
@@ -56633,7 +56674,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 405
+        "line": 438
       },
       "contract": {
         "explicit": true,
@@ -56724,7 +56765,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 448
+        "line": 481
       },
       "contract": {
         "explicit": true,
@@ -56815,7 +56856,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 774
+        "line": 807
       },
       "contract": {
         "explicit": true,
@@ -56913,7 +56954,7 @@
       "examples": [],
       "source": {
         "path": "Source/Scripting/CommonGlobalScriptMethods.cpp",
-        "line": 749
+        "line": 782
       },
       "contract": {
         "explicit": true,

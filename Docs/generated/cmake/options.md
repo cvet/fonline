@@ -90,6 +90,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-managed-scripting-2d987bea20"></a>
 - [`entry-cmake-option-fo-managed-scripting-2d987bea20`](../../en/reference/cmake/options.md#entry-cmake-option-fo-managed-scripting-2d987bea20)
 
+<a id="entry-cmake-option-fo-memory-diagnostics-1d6b26dfed"></a>
+- [`entry-cmake-option-fo-memory-diagnostics-1d6b26dfed`](../../en/reference/cmake/options.md#entry-cmake-option-fo-memory-diagnostics-1d6b26dfed)
+
 <a id="entry-cmake-option-fo-disable-rpmalloc-32bd067e30"></a>
 - [`entry-cmake-option-fo-disable-rpmalloc-32bd067e30`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-rpmalloc-32bd067e30)
 

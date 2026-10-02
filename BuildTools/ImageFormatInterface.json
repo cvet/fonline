@@ -422,7 +422,7 @@
       "stability": "experimental",
       "requirement": "Selected files bake asynchronously; each exception is logged, and any nonzero error count ends the Image baker with ImageBakerException.",
       "rationale": "A full scan reports all independently failing image resources in one run without silently succeeding.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["run_async(GetAsyncMode(), task_name", "logging::write(\"Image baking error: {}\"", "throw ImageBakerException(\"Errors during images baking\", errors)"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["run_async(GetAsyncMode(), task_name", "logging::write(\"Image baking error for '{}': {}\"", "files_to_bake[file_index].first.GetPath()", "throw ImageBakerException(\"Errors during images baking\", errors)"]}]
     }
   ],
   "runtime_rules": [

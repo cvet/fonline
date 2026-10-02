@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4817,
-    "current_count": 4817,
+    "entry_count": 4821,
+    "current_count": 4821,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2556,
-      "current_count": 2556,
+      "entry_count": 2558,
+      "current_count": 2558,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -8725,6 +8725,18 @@
           "locator": "/symbols/@id=script.method.common.Game.EncodeUtf8/description",
           "source": "Encodes one Unicode scalar value as a UTF-8 string",
           "source_sha256": "5d1baa130db90fde9edb988a67356a1438e054303c3eec497f0fc2def0ef2e8b",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/contract/notes",
+          "source": "Opt-in diagnostic snapshot; availability and allocator scope are not a whole-process memory contract",
+          "source_sha256": "05a8d37e8d9ca973e37124b10c59b52d27ca58f566e85a0494f818824d145d4b",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/description",
+          "source": "Returns module-global rpmalloc pages and calling-thread size-class capacities, or an empty dictionary when diagnostics are unavailable",
+          "source_sha256": "27d45edfc63bfe220b251265e41bd9e27ee3f533cb3801a5b94c992697690582",
           "status": "current"
         },
         {
@@ -17198,8 +17210,8 @@
     },
     "cmake": {
       "source_model": "Docs/generated/cmake.json",
-      "entry_count": 64,
-      "current_count": 64,
+      "entry_count": 65,
+      "current_count": 65,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -17428,6 +17440,12 @@
           "locator": "/options/@id=cmake.option.FO_MAP_HEX_WIDTH/description",
           "source": "Map cell width in pixels.",
           "source_sha256": "78f6fd0cd5d984c627826ecdcc50fc69e145b5ccf06471e88248b5def972895a",
+          "status": "current"
+        },
+        {
+          "locator": "/options/@id=cmake.option.FO_MEMORY_DIAGNOSTICS/description",
+          "source": "Enable rpmalloc occupancy statistics in regular builds; Debug and Tracy already enable them when rpmalloc is available.",
+          "source_sha256": "b9192e59ad08c23e8b0388cb86c22509e51e0499e3a5b239db009cb77a5ded7e",
           "status": "current"
         },
         {
@@ -23867,8 +23885,8 @@
     },
     "package": {
       "source_model": "Docs/generated/package.json",
-      "entry_count": 65,
-      "current_count": 65,
+      "entry_count": 66,
+      "current_count": 66,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -23954,6 +23972,12 @@
           "locator": "/cli/arguments/@id=package.cli.argument.resource_pack_compress_level/description",
           "source": "override the resource pack compression level (zlib scale: 0 stores, 9 is the strongest)",
           "source_sha256": "8bdeed3192930b67e8098007fe6790966ca76cf55598999b2a8d7a5269ebe9bd",
+          "status": "current"
+        },
+        {
+          "locator": "/cli/arguments/@id=package.cli.argument.resource_pack_hash_library/description",
+          "source": "explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*",
+          "source_sha256": "5905b4e79a8f7a4283b518de0cdbee04056eefddeb8bc9b2f04a72e3f59e9a3e",
           "status": "current"
         },
         {

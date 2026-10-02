@@ -100,7 +100,10 @@ class DocumentationPackageTests(unittest.TestCase):
         self.assertEqual(model["summary"]["pack_count"], 19)
         self.assertEqual(model["summary"]["implemented_pack_count"], 18)
         self.assertEqual(model["summary"]["artifact_pack_count"], 8)
-        self.assertEqual(model["summary"]["cli_argument_count"], 16)
+        self.assertEqual(model["summary"]["cli_argument_count"], 17)
+        hash_argument = next(entry for entry in model["cli"]["arguments"]
+                             if entry["id"] == "package.cli.argument.resource_pack_hash_library")
+        self.assertIn("FNV-1a", hash_argument["description"])
         self.assertEqual(
             [entry["name"] for entry in model["targets"]],
             ["Server", "Client", "Mapper", "Baker", "AnimationViewer", "ParticleViewer"],

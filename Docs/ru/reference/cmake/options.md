@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"dff586b228d27379f377790c900389a895bb9992743795475b5df72b70c2ce32"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-options","locale":"ru","source_path":"Docs/en/reference/cmake/options.md","source_sha256":"3c9a9f7959aaa6abfebe264b74ecc4aa493df98e86b330739758300879ac2cf9"} -->
 
 # Параметры проекта CMake
 
@@ -47,6 +47,7 @@ generated: true
 | <a id="entry-cmake-option-fo-native-scripting-a1e2650595"></a><code>cmake.option.FO_NATIVE_SCRIPTING</code> | <code>FO_NATIVE_SCRIPTING</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>scripting</code> | Резервирует настройку корня исходников Native scripting; в текущем дереве реализованного Native backend нет. |
 | <a id="entry-cmake-option-fo-angelscript-scripting-e9acfd5025"></a><code>cmake.option.FO_ANGELSCRIPT_SCRIPTING</code> | <code>FO_ANGELSCRIPT_SCRIPTING</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>scripting</code> | Компилирует backend скриптов AngelScript. |
 | <a id="entry-cmake-option-fo-managed-scripting-2d987bea20"></a><code>cmake.option.FO_MANAGED_SCRIPTING</code> | <code>FO_MANAGED_SCRIPTING</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>scripting</code> | Компилирует скриптовый backend Managed C# и встроенную среду выполнения Mono. |
+| <a id="entry-cmake-option-fo-memory-diagnostics-1d6b26dfed"></a><code>cmake.option.FO_MEMORY_DIAGNOSTICS</code> | <code>FO_MEMORY_DIAGNOSTICS</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>profiling</code> | Включает статистику заполнения rpmalloc в обычных сборках; Debug и Tracy уже включают её при доступном rpmalloc. |
 | <a id="entry-cmake-option-fo-disable-rpmalloc-32bd067e30"></a><code>cmake.option.FO_DISABLE_RPMALLOC</code> | <code>FO_DISABLE_RPMALLOC</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>dependency</code> | Отключает встроенный аллокатор rpmalloc. |
 | <a id="entry-cmake-option-fo-disable-mongo-93a97ad4ec"></a><code>cmake.option.FO_DISABLE_MONGO</code> | <code>FO_DISABLE_MONGO</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>dependency</code> | Отключает поддержку backend MongoDB. |
 | <a id="entry-cmake-option-fo-disable-sqlite-9c7adf45d0"></a><code>cmake.option.FO_DISABLE_SQLITE</code> | <code>FO_DISABLE_SQLITE</code> | <code>BOOL</code> / <code>boolean</code> | Нет | <code>OFF</code> | - | <code>dependency</code> | Отключает поддержку backend SQLite. |
