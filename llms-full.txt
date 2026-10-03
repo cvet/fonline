@@ -1459,7 +1459,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: 0b1994e8dc88621fde498c302f20c87ff72537b28812537877c7e78b0752a056
+Content SHA-256: a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b
 
 ---
 layout: default
@@ -1744,12 +1744,19 @@ an input root's `Binaries/BuildTools-<host>-<arch>/`. The packager discovers it 
 input order; `-resource-pack-hash-library <path>` explicitly selects one. Without
 a discovered library, Python hashes remain the fallback. A present but unloadable
 library or a failed known-vector/streaming-seed check is an error, not a fallback.
+On Windows, loading temporarily enables `SEM_FAILCRITICALERRORS` on the calling
+thread, preserving its other flags and restoring the previous mode after either
+success or failure. An invalid DLL raises `OSError` without an interactive loader
+dialog; the process error mode is unchanged. Failure to set or restore the thread
+mode is also an error.
 Each packager loads its own backend, including spawned workers. Both backends use
 the same streaming FNV-1a 64 and retain header, physical, decoded-payload and logical
 content validation, including cache hits. Archive bytes, compression settings and
 cache keys do not depend on this accelerator. It is host tooling, not game payload.
 `test_resource_pack_hash.py` builds the real library, compares Python/native and
 serial/parallel Raw results, and rejects corrupt payloads.
+Valid and invalid native loads run in subprocesses with bounded timeouts; Windows
+checks also verify thread-flag restoration and preservation of the process mode.
 
 Resource archives are sequential by default. `package.py -resource-pack-jobs N` overrides `FO_RESOURCE_PACK_JOBS` (default `1`); both accept only positive integers. Independent `.fores` work runs in at most `N` spawned processes on every host. Tasks sharing a pack name or physical destination stay ordered on one worker, preserving local reuse and preventing concurrent writes. Groups are balanced by source bytes, largest first. Every worker retains the complete writer, cache protocol and payload validation; optional-cache unavailability persists within its batch, bounding failed probes by the worker count. The parent adopts validated archive identities and waits for workers before runtime-specific pack rewriting or failure cleanup. Embedded resources and final distribution bundles are outside this worker lane. Choose the limit for available CPU and memory; it is not a format change or a measured speedup guarantee.
 
@@ -4734,7 +4741,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa
+Content SHA-256: 831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601
 
 ---
 layout: default
@@ -4924,6 +4931,11 @@ When `FO_CODE_COVERAGE` is enabled, `BuildTools/cmake/stages/Init.cmake` selects
 - `AnalyzeCodeCoverage`
 
 Coverage output is rooted under `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+The isolated Applications-stage fixtures in
+`BuildTools/tests/test_codecoverage_llvm_objects.py` include the real resource-pack
+hash helper sources and prove that native host platforms build the helper without
+LLVM coverage flags. They also retain actual instrumented-process collection, core
+library reuse and quick-exit flush assertions.
 `BuildTools/codecoverage.py` reports first-party production engine sources under
 `Engine/Source/`; it excludes `Source/Tests/`, `ThirdParty/`,
 `GeneratedSource/`, and `Applications/` from the denominator. See
@@ -15416,7 +15428,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 97f9ae21a0bfdd24658f0b859eb4bd0e6bbe09bbbde0316d54ce15466f13f419
+Content SHA-256: 87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8
 
 ---
 layout: default
@@ -15554,7 +15566,7 @@ Current target responsibilities:
 - `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-Baking.ForceBaking False`.
 - `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-Baking.ForceBaking True`.
 - Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
-- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`. The marker uses the same configured `FO_BUILD_HASH` as the native baker and applications; a later Git HEAD change cannot relabel the completed bake. Reconfigure, rebuild and rebake when the source revision changes.
 - `CompileAngelScript` and `CompileManagedScripts` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind either script backend or a bake invocation.
 
 After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:
@@ -23408,7 +23420,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 47bd6d7432e89ff391572ec1fd74bf49165e4084dd2f52ea20f0f036a6961036
+Content SHA-256: 05ae26c07fc194a4c4af68e6c2f1b28f746bb0963972f0785e8f4fca69e9f6bb
 
 ---
 layout: default
@@ -23700,7 +23712,13 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `Options.cmake` — option/value helpers.
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
-- `WriteBuildHash.cmake` — writes build-hash state used by generation/baking flows.
+- `WriteBuildHash.cmake` — writes the configured `FO_BUILD_HASH` supplied as `BUILD_HASH`
+  into native and resource markers. It does not reread Git HEAD or choose a new
+  random identity when the marker is written. Markers therefore match the build
+  identity embedded in the configured native applications, including source
+  archives without Git and output paths containing spaces.
+  `BuildTools/tests/test_cmake_build_hash.py` verifies actual compiled applications
+  and both standard baking targets before and after a Git revision change.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
 

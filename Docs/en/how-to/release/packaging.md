@@ -281,12 +281,19 @@ an input root's `Binaries/BuildTools-<host>-<arch>/`. The packager discovers it 
 input order; `-resource-pack-hash-library <path>` explicitly selects one. Without
 a discovered library, Python hashes remain the fallback. A present but unloadable
 library or a failed known-vector/streaming-seed check is an error, not a fallback.
+On Windows, loading temporarily enables `SEM_FAILCRITICALERRORS` on the calling
+thread, preserving its other flags and restoring the previous mode after either
+success or failure. An invalid DLL raises `OSError` without an interactive loader
+dialog; the process error mode is unchanged. Failure to set or restore the thread
+mode is also an error.
 Each packager loads its own backend, including spawned workers. Both backends use
 the same streaming FNV-1a 64 and retain header, physical, decoded-payload and logical
 content validation, including cache hits. Archive bytes, compression settings and
 cache keys do not depend on this accelerator. It is host tooling, not game payload.
 `test_resource_pack_hash.py` builds the real library, compares Python/native and
 serial/parallel Raw results, and rejects corrupt payloads.
+Valid and invalid native loads run in subprocesses with bounded timeouts; Windows
+checks also verify thread-flag restoration and preservation of the process mode.
 
 Resource archives are sequential by default. `package.py -resource-pack-jobs N` overrides `FO_RESOURCE_PACK_JOBS` (default `1`); both accept only positive integers. Independent `.fores` work runs in at most `N` spawned processes on every host. Tasks sharing a pack name or physical destination stay ordered on one worker, preserving local reuse and preventing concurrent writes. Groups are balanced by source bytes, largest first. Every worker retains the complete writer, cache protocol and payload validation; optional-cache unavailability persists within its batch, bounding failed probes by the worker count. The parent adopts validated archive identities and waits for workers before runtime-specific pack rewriting or failure cleanup. Embedded resources and final distribution bundles are outside this worker lane. Choose the limit for available CPU and memory; it is not a format change or a measured speedup guarantee.
 

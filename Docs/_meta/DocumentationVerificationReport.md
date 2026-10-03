@@ -9966,3 +9966,25 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   Jekyll/browser, fresh native build/bake, physical GUI, Pages or production claim
   is made. The separate pre-existing Visual Studio unchanged-reconfigure gate is
   not changed or hidden by this source-comment convention update.
+
+## 2026-10-03 — Configured native and resource build markers
+
+- Scope: `BuildTools/cmake/helpers/Build.cmake`, `WriteBuildHash.cmake`, and
+  `stages/ScriptsAndBaking.cmake`; reviewed the actual command aliases and both
+  canonical EN/RU CMake pipeline and resource-baking pages.
+- The marker writer previously read Git HEAD after compilation. A revision change
+  between configuration and compilation could label a binary with a revision
+  different from its embedded `FO_BUILD_HASH`; source archives also generated a
+  separate random value for each marker. Pass the configured hash explicitly,
+  require it to be nonempty, and quote complete arguments with `VERBATIM`.
+- The engine-owned `test_cmake_build_hash.py` compiles and executes a native
+  fixture through the real marker macro and both actual resource-baking targets.
+  Before the fix, all three revision-change cases failed and all three unchanged
+  controls passed. After the fix, all eighteen cases pass: three targets, unchanged
+  or advanced Git revision or no Git checkout, and paths with or without spaces.
+  Every sidecar must match the value compiled into the executable; baking also
+  checks the fixture's resource artifact. This changes build provenance markers,
+  not the resource-pack metadata compatibility hash.
+- Embedding-project configuration, fresh native compilation, resource baking,
+  and dependent runtime acceptance are being verified separately. This entry
+  does not claim Windows-native qualification or remote CI acceptance.

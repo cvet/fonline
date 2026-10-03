@@ -4,7 +4,10 @@ import functools
 import random
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import Mock
 
 import pytest
 
@@ -99,14 +102,105 @@ def test_loaded_native_hasher_is_not_pickled_into_workers(hash_library: Path, tm
         package.validate_resource_pack(tmp_path / f"output/Resources/{name}.fores", ["payload"])
 
 
+def check_native_load_in_subprocess(library: Path, valid: bool) -> None:
+    script = textwrap.dedent("""
+        import ctypes
+        import sys
+        sys.path.insert(0, sys.argv[1])
+        from resource_pack_hash import ResourcePackHasher
+        if sys.platform == 'win32':
+            kernel = ctypes.WinDLL('kernel32', use_last_error=True)
+            kernel.GetErrorMode.restype = ctypes.c_uint32
+            kernel.GetThreadErrorMode.restype = ctypes.c_uint32
+            kernel.SetThreadErrorMode.argtypes = [ctypes.c_uint32, ctypes.POINTER(ctypes.c_uint32)]
+            process_mode = kernel.GetErrorMode()
+            assert kernel.SetThreadErrorMode(0x8002, None)
+        try:
+            hasher = ResourcePackHasher(sys.argv[2])
+        except OSError:
+            assert sys.argv[3] == 'invalid'
+        else:
+            assert sys.argv[3] == 'valid'
+            assert hasher.hash_bytes(b'foobar') == 0x85944171F73967E8
+        if sys.platform == 'win32':
+            assert kernel.GetThreadErrorMode() == 0x8002
+            assert kernel.GetErrorMode() == process_mode
+        print('load verified')
+    """)
+    result = subprocess.run([sys.executable, "-c", script, str(BUILDTOOLS), str(library),
+                             "valid" if valid else "invalid"], capture_output=True, text=True, timeout=10)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert result.stdout.strip() == "load verified"
+
+
+def test_native_load_preserves_error_mode(hash_library: Path) -> None:
+    check_native_load_in_subprocess(hash_library, valid=True)
+
+
 def test_present_invalid_library_fails_instead_of_falling_back(tmp_path: Path) -> None:
     library = tmp_path / resource_pack_hash.library_name()
     library.write_bytes(b"invalid native library")
-    with pytest.raises(OSError):
-        resource_pack_hash.ResourcePackHasher(str(library))
+    check_native_load_in_subprocess(library, valid=False)
     with pytest.raises(AssertionError, match="not found"):
         resource_pack_hash.discover_library([], str(tmp_path / "missing"))
     assert resource_pack_hash.discover_library([str(tmp_path)]) is None
+
+
+@pytest.mark.parametrize("initial_mode", [0, 1, 0x8002])
+@pytest.mark.parametrize("load_fails", [False, True])
+def test_windows_load_suppresses_dialogs_and_restores_thread_mode(monkeypatch: pytest.MonkeyPatch,
+                                                                initial_mode: int, load_fails: bool) -> None:
+    mode = initial_mode
+
+    def set_mode(new_mode: int, previous: object) -> int:
+        nonlocal mode
+        if previous is not None:
+            previous._obj.value = mode
+        mode = new_mode
+        return 1
+
+    kernel = SimpleNamespace(GetThreadErrorMode=Mock(return_value=initial_mode),
+                             SetThreadErrorMode=Mock(side_effect=set_mode))
+    win_dll = Mock(return_value=kernel)
+    error = OSError("invalid native library")
+    library = SimpleNamespace(FO_Fnv1a64=Mock(side_effect=lambda data, size, seed: package.fnv1a_64(data[:size], seed)))
+
+    def load(path: str) -> object:
+        assert path == "fixture.dll"
+        assert mode == initial_mode | 1
+        if load_fails:
+            raise error
+        return library
+
+    monkeypatch.setattr(resource_pack_hash.sys, "platform", "win32")
+    monkeypatch.setattr(resource_pack_hash.ctypes, "WinDLL", win_dll, raising=False)
+    monkeypatch.setattr(resource_pack_hash.ctypes, "CDLL", load)
+    if load_fails:
+        with pytest.raises(OSError) as caught:
+            resource_pack_hash.ResourcePackHasher("fixture.dll")
+        assert caught.value is error
+    else:
+        assert resource_pack_hash.ResourcePackHasher("fixture.dll").hash_bytes(b"foobar") == 0x85944171F73967E8
+    assert mode == initial_mode
+    win_dll.assert_called_once_with("kernel32", use_last_error=True)
+    assert kernel.SetThreadErrorMode.call_count == 2
+
+
+@pytest.mark.parametrize("failing_call", [1, 2])
+def test_windows_error_mode_failure_is_reported(monkeypatch: pytest.MonkeyPatch, failing_call: int) -> None:
+    kernel = SimpleNamespace(GetThreadErrorMode=Mock(return_value=0),
+                             SetThreadErrorMode=Mock(side_effect=[0] if failing_call == 1 else [1, 0]))
+    error = OSError("error mode rejected")
+    load = Mock(return_value=SimpleNamespace(FO_Fnv1a64=Mock(side_effect=lambda data, size, seed: package.fnv1a_64(data[:size], seed))))
+    monkeypatch.setattr(resource_pack_hash.sys, "platform", "win32")
+    monkeypatch.setattr(resource_pack_hash.ctypes, "WinDLL", Mock(return_value=kernel), raising=False)
+    monkeypatch.setattr(resource_pack_hash.ctypes, "WinError", Mock(return_value=error), raising=False)
+    monkeypatch.setattr(resource_pack_hash.ctypes, "get_last_error", Mock(return_value=87), raising=False)
+    monkeypatch.setattr(resource_pack_hash.ctypes, "CDLL", load)
+    with pytest.raises(OSError) as caught:
+        resource_pack_hash.ResourcePackHasher("fixture.dll")
+    assert caught.value is error
+    assert load.call_count == failing_call - 1
 
 
 def test_discovery_uses_input_priority_and_interpreter_width(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
