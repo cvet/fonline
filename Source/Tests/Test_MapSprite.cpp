@@ -42,6 +42,32 @@ static auto AddTestSprite(MapSpriteList& list, DrawOrderType draw_order, mpos he
     return list.AddSprite(draw_order, hex, ipos32 {}, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, sub_layer);
 }
 
+TEST_CASE("MapSpriteListClearDetachesRetainedHolders")
+{
+    MapSpriteList list;
+    bool valid = false;
+    nptr<MapSprite> chain_root;
+    auto sprite = list.AddSprite(DrawOrderType::Item, mpos {100, 100}, ipos32 {}, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, &valid, 0);
+    chain_root = sprite;
+    sprite->CreateExtraChain(chain_root.get_pp());
+    REQUIRE(valid);
+    REQUIRE(chain_root);
+
+    list.Clear();
+    CHECK_FALSE(valid);
+    CHECK_FALSE(chain_root);
+    CHECK_FALSE(list.HasActiveSprites());
+    CHECK(list.GetDrawOrderRange(DrawOrderType::Item, DrawOrderType::Item).first == 0);
+    CHECK(list.GetDrawOrderRange(DrawOrderType::Item, DrawOrderType::Item).second == 0);
+
+    list.Clear();
+    auto replacement = AddTestSprite(list, DrawOrderType::Item, mpos {100, 100}, 0);
+    CHECK(replacement->IsValid());
+    list.SortIfNeeded();
+    CHECK(list.GetActiveSprites().size() == 1);
+    list.Clear();
+}
+
 TEST_CASE("MapSpriteListDrawOrder")
 {
     constexpr mpos WALL_CELL {100, 100};

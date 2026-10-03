@@ -233,7 +233,7 @@ EM_JS(void, WebSetWebSocketSchemeImpl, (int secure), {
 });
 
 EM_JS(void, WebGetUserAgentImpl, (char* buffer, int buffer_size), {
-    stringToUTF8(navigator.userAgent || '', Number(buffer), buffer_size);
+    stringToUTF8(navigator.userAgent || "", Number(buffer), buffer_size);
 });
 
 EM_JS(void, WebShowErrorImpl, (const char* title_ptr, const char* text_ptr), {
@@ -393,7 +393,7 @@ extern "C"
     }
 
     // Emscripten ships these two as weak stubs only in its libstubs library, which it links solely under
-    // ALLOW_UNIMPLEMENTED_SYSCALLS - see Docs/WebDebugging.md, "Managed Runtime On Wasm"
+    // ALLOW_UNIMPLEMENTED_SYSCALLS; the Web managed-runtime diagnostics explain why weak stubs are insufficient
     int __syscall_uname(struct utsname* buf)
     {
         if (buf == nullptr) {

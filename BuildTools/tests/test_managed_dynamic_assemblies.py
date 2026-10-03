@@ -14,7 +14,7 @@ ENGINE = Path(__file__).resolve().parents[2]
 MANAGED = ENGINE / "Source/Scripting/Managed"
 CORE = MANAGED / "CoreScripts"
 CORE_FILES = (
-    "Native.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs",
+    "Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs",
     "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs", "DynamicAssemblies.cs",
     "ScriptStaticCleanup.cs", "EntityWrapperTracker.cs", "Any.cs",
 )

@@ -1,0 +1,11 @@
+/Build/
+/Engine/
+/Baking/
+/Cache/
+/Resources-Baked/
+/ServerResources/
+/PlatformBinaries/
+/Workspace/
+/WebTests/node_modules/
+/*.log
+/*.tga

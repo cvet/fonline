@@ -125,6 +125,9 @@ typedef struct rpmalloc_thread_statistics_t {
 	} span_use[5];
 	//! Per size class statistics (only if ENABLE_STATISTICS=1)
 	struct {
+		//! (FOnline Patch) Block capacity and immediately reusable blocks in the calling heap
+		size_t block_size;
+		size_t reusable_count;
 		//! Current number of allocations
 		size_t alloc_current;
 		//! Peak number of allocations

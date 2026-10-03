@@ -292,7 +292,7 @@ TEST_CASE("DiskFileSystem")
 }
 
 // Which primitive lands the requested name and which keeps whatever the entry is already called, on both
-// filesystem kinds — the split callers addressing files by exact name depend on (Docs/ConfigurationAndDataSources.md)
+// filesystem kinds — the split callers addressing files by exact name depend on
 static auto IsCaseInsensitiveFs(string_view dir) -> bool
 {
     string upper_probe = strex(dir).combine_path("CaseProbe.tmp").str();

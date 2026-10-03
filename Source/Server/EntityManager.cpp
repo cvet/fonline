@@ -343,8 +343,7 @@ void EntityManager::InitEntityIdBoundary()
     _persistedEntityId = _lastEntityId;
 }
 
-// Runs single-threaded during init and calls back into the engine, which re-locks the registry, so holding
-// `_registryLock` across it would self-deadlock (Docs/ThreadSafetyAnalysis.md)
+// Runs single-threaded during init and calls back into the engine, which re-locks the registry
 void EntityManager::LoadEntities() FO_TSA_NO_ANALYSIS
 {
     FO_TRACE_ZONE(Entity);

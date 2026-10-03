@@ -84,7 +84,11 @@ struct ManagedAbiNativeFrame
     ManagedAbiSlot Ret {};
     array<size_t, MAX_CALL_ARGS> ArgOffsets {};
     size_t ResultOffset {};
-    alignas(std::max_align_t) array<uint8_t, MANAGED_ABI_SCALAR_FRAME_CAPACITY + (MAX_CALL_ARGS + 1) * alignof(std::max_align_t)> Storage {};
+    union
+    {
+        array<uint8_t, MANAGED_ABI_SCALAR_FRAME_CAPACITY + (MAX_CALL_ARGS + 1) * alignof(std::max_align_t)> Storage {};
+        std::max_align_t StorageAlignment;
+    };
 };
 
 struct ManagedAbiMethodEntry

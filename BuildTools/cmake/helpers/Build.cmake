@@ -668,6 +668,10 @@ macro(AddExecutableApplication target sourceFile)
 	endif()
 	set(CMAKE_FOLDER "${_fo_prev_folder}")
 
+	if(FO_WINDOWS AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+		TargetLinkOptions(${target} PRIVATE /LARGEADDRESSAWARE)
+	endif()
+
 	if(MSVC AND NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 		# ASan instrumentation inflates stack frames well past the 1 MiB Windows executable default, so
 		# sanitizer configs get the same 8 MiB reserve that Linux runs already have from the default rlimit.

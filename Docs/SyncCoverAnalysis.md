@@ -574,7 +574,7 @@ widening inside test code is still judged against every caller, test code includ
 Remove the call. When the method then awaits nothing, make it synchronous rather than leave an `async` method that never
 suspends: FOSYNC009 treats awaiting such a method as losing the caller's cover, because nothing in its body hands it
 back. If the widening was there to skip an entity already destroyed -- the only `false` it gives a covered entity, since
-the thread destroying an entity takes it like any other ([An entity being destroyed](ServerRuntime.md#an-entity-being-destroyed))
+the thread destroying an entity takes it like any other ([An entity being destroyed](en/explanation/runtime/server.md#an-entity-being-destroyed))
 -- say so with `IsDestroyed`; that is a liveness question, not a cover one.
 
 ### What it cost to introduce
@@ -609,7 +609,7 @@ by a helper, which the rule cannot see into, and were removed by hand.
   with rules of its own adds a second entry rather than growing this one, which keeps game-specific
   diagnostics out of the reusable engine. The rest of the analysis profile — rule-set version and mode,
   packaged analyzers, analyzer configuration files — is described in
-  [Scripting.md](Scripting.md#the-analysis-profile-of-the-generated-script-project). Editing an analyzer
+  [Managed C# Scripting](en/how-to/scripting/managed-csharp.md#configure-the-backend). Editing an analyzer
   project re-triggers the managed bake, so a new rule takes effect on the next build rather than waiting for
   an unrelated source file to change.
 

@@ -44,6 +44,7 @@ DeclareBoolOptions(
 	FO_ANGELSCRIPT_SCRIPTING "Supporting of AngelScript scripting" OFF
 	FO_MANAGED_SCRIPTING "Support Managed scripting" OFF
 	FO_DISABLE_RPMALLOC "Force disable using of Rpmalloc" OFF
+	FO_MEMORY_DIAGNOSTICS "Enable rpmalloc occupancy statistics in regular builds" OFF
 	FO_DISABLE_MONGO "Force disable using of Mongo" OFF
 	FO_DISABLE_SQLITE "Force disable using of SQLite" OFF
 	FO_DISABLE_ASIO "Force disable using of Asio" OFF

@@ -558,10 +558,7 @@ auto ResourceIndexSource::OpenFile(string_view path, size_t& size, uint64_t& wri
     size = numeric_cast<size_t>(entry->DecodedSize);
     write_time = _packWriteTimes[entry->PackIndex];
 
-    auto buf = unique_arr_ptr<uint8_t> {safe_alloc::make_unique_arr<uint8_t>(data.size())};
-    std::copy(data.begin(), data.end(), buf.get());
-
-    return MakeFileBufferHolder(std::move(buf));
+    return MakeFileBufferHolder(std::move(data));
 }
 
 auto ResourceIndexSource::GetFileNames(string_view dir, bool recursive, string_view ext) const -> vector<string>

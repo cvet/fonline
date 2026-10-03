@@ -620,7 +620,7 @@ auto GeometryHelper::GetHexWorldPos(mpos hex, ipos32 hex_offset, float32_t eleva
 auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t elevation) -> vec3
 {
     // Anchoring the ground point at z = legacy_y / sin(angle) is what makes ProjectWorldToMap reproduce
-    // the legacy GetHexPos position at elevation 0 (Docs/MapsMovementGeometry.md, "Map camera projection")
+    // the legacy GetHexPos position at elevation 0
     ipos32 hex_pos = GetHexPos(raw_hex);
     float32_t sin_a = std::sin(GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT);
 
@@ -635,7 +635,7 @@ auto GeometryHelper::GetHexWorldPos(ipos32 raw_hex, ipos32 hex_offset, float32_t
 auto GeometryHelper::ProjectWorldToMap(vec3 world_pos) -> vec3
 {
     // Reference projection without scroll or zoom, returning map pixels in .x/.y and view depth in .z
-    // (larger == nearer). Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
+    // (larger == nearer)
     float32_t angle_rad = GameSettings::MAP_CAMERA_ANGLE * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);
@@ -672,7 +672,7 @@ auto GeometryHelper::ProjectMapYToVerticalDepth(float32_t map_y, float32_t ancho
 auto GeometryHelper::MakeMapCameraView(float32_t camera_angle_deg, float32_t yaw_deg, fpos32 scroll_offset, float32_t zoom) -> mat44
 {
     // The GPU form of ProjectWorldToMap with scroll, zoom, and yaw folded in; yaw == 0 reproduces the fixed
-    // isometric view. Contract: Docs/MapsMovementGeometry.md, "Map camera projection"
+    // isometric view
     float32_t angle_rad = camera_angle_deg * DEG_TO_RAD_FLOAT;
     float32_t sin_a = std::sin(angle_rad);
     float32_t cos_a = std::cos(angle_rad);

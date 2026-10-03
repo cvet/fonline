@@ -42,8 +42,12 @@
 
 FO_BEGIN_NAMESPACE
 
+// The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
+// SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2555 InventorySha256=7a8bef24e97c589f0113e44ee76aaacfc531585cd0203ca075b38bbbe8560ccf
+
 // Force change of compatability version
-///@ MigrationRule Version 0 0 65
+///@ MigrationRule Version 0 0 66
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -51,8 +55,8 @@ extern bool IsTestingInProgress;
 
 #define FO_DEFERRED // Lambda annotation
 
-// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the flags and
-// what each one does on violation: Docs/ServerRuntime.md, entity-access validation
+// Every entity method declares its call-time preconditions with FO_VALIDATE_ENTITY(<flags>); the FO_VE_CHECK_*
+// macros below name each flag and what it does on violation
 class Entity;
 inline void ValidateEntityAccess(nptr<const Entity> entity);
 
@@ -76,6 +80,8 @@ inline void ValidateEntityAccess(nptr<const Entity> entity);
 // Explicit-entity access check (validates a passed-in entity argument rather than `this`)
 #define FO_VALIDATE_ENTITY_ACCESS_VALUE(entity) ValidateEntityAccess(entity)
 
+// Strong signed 64-bit identity token whose zero value is false and whose ordering compares the stored value
+// value: Signed 64-bit identity payload; zero represents an empty identity
 ///@ ExportValueType Name = ident Layout = int64-value
 using ident_t = strong_type<int64_t, struct ident_t_, strong_type_bool_test_tag, strong_type_sortings_tag>;
 static_assert(some_strong_type<ident_t>);
@@ -400,51 +406,52 @@ struct GameSettings
     static constexpr int32_t MAX_MAP_SIZE = 4000;
 };
 
+// Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy
 ///@ ExportEnum
 enum class EngineInfoMessage : uint16_t
 {
-    None = 0,
+    None = 0, // Selects no conventional engine information-message slot
 
-    NetWrongLogin = 1001,
-    NetWrongPass = 1002,
-    NetPlayerAlready = 1003,
-    NetPlayerInGame = 1004,
-    NetConnection = 1007,
-    NetConnError = 1008,
-    NetConnSuccess = 1010,
-    NetHexesBusy = 1012,
-    NetDisconnByDemand = 1013,
-    NetConnFail = 1018,
-    NetStartLocFail = 1020,
-    NetStartMapFail = 1021,
-    NetStartCoordFail = 1022,
-    NetBdError = 1023,
-    NetWrongNetProto = 1024,
-    NetDataTransErr = 1025,
-    NetNetMsgErr = 1026,
-    NetSetProtoErr = 1027,
-    NetLoginOk = 1028,
-    NetWrongTagSkill = 1029,
-    NetDifferentLang = 1030,
-    NetManySymbols = 1031,
-    NetBeginEndSpaces = 1032,
-    NetTwoSpace = 1033,
-    NetBanned = 1034,
-    NetNameWrongChars = 1035,
-    NetPassWrongChars = 1036,
-    NetFailToLoadIface = 1037,
-    NetFailRunStartScript = 1038,
-    NetLanguageNotSupported = 1039,
-    NetKnockKnock = 1041,
-    NetBannedIp = 1043,
-    NetTimeLeft = 1045,
-    NetBan = 1046,
-    NetBanReason = 1047,
-    NetLoginScriptFail = 1048,
-    NetPermanentDeath = 1049,
+    NetWrongLogin = 1001, // Identifies a login rejection caused by an invalid account or login identifier
+    NetWrongPass = 1002, // Identifies a login rejection caused by an invalid password or equivalent authentication secret
+    NetPlayerAlready = 1003, // Identifies account creation rejected because the requested login already exists
+    NetPlayerInGame = 1004, // Identifies login rejected because the account already has an active game session
+    NetConnection = 1007, // Identifies the client status while it is initiating a server connection
+    NetConnError = 1008, // Identifies a generic connection error after a connection attempt or active session failure
+    NetConnSuccess = 1010, // Identifies successful transport connection before or during authentication
+    NetHexesBusy = 1012, // Identifies entry or spawning rejected because the required destination hexes are occupied
+    NetDisconnByDemand = 1013, // Identifies a disconnect requested explicitly by the player or client
+    NetConnFail = 1018, // Identifies failure to establish a connection to the game server
+    NetStartLocFail = 1020, // Identifies failure to resolve the starting location during player entry or creation
+    NetStartMapFail = 1021, // Identifies failure to resolve the starting map during player entry or creation
+    NetStartCoordFail = 1022, // Identifies failure to resolve starting map coordinates during player entry or creation
+    NetBdError = 1023, // Identifies a backend database failure while processing the requested account or game operation
+    NetWrongNetProto = 1024, // Identifies a client/server network-protocol version mismatch
+    NetDataTransErr = 1025, // Identifies an error while transferring or decoding connection data
+    NetNetMsgErr = 1026, // Identifies a malformed, invalid, or otherwise unacceptable network message
+    NetSetProtoErr = 1027, // Identifies an internal server failure while assigning or initializing required prototype state
+    NetLoginOk = 1028, // Identifies successful authentication and transition to game-state or map loading
+    NetWrongTagSkill = 1029, // Identifies character creation rejected because the required tagged-skill selection is invalid
+    NetDifferentLang = 1030, // Identifies a name rejected for mixing characters from different language alphabets
+    NetManySymbols = 1031, // Identifies a name rejected because too much of it consists of non-letter symbols
+    NetBeginEndSpaces = 1032, // Identifies a name rejected because it begins or ends with whitespace
+    NetTwoSpace = 1033, // Identifies a name rejected because it contains consecutive spaces
+    NetBanned = 1034, // Identifies an account that is blocked from logging in
+    NetNameWrongChars = 1035, // Identifies a name containing characters forbidden by the project's account policy
+    NetPassWrongChars = 1036, // Identifies a password containing characters forbidden by the project's account policy
+    NetFailToLoadIface = 1037, // Identifies client startup failure while loading the user interface
+    NetFailRunStartScript = 1038, // Identifies client startup failure while executing the project's start script
+    NetLanguageNotSupported = 1039, // Identifies an unsupported selected language and the need to use a project-defined fallback
+    NetKnockKnock = 1041, // Reserves the legacy knock-knock informational slot; embedding scripts define its concrete liveness or status use
+    NetBannedIp = 1043, // Identifies a connection rejected because its source IP address is blocked
+    NetTimeLeft = 1045, // Identifies a temporary restriction or session timer whose remaining duration is supplied by project text or extra data
+    NetBan = 1046, // Identifies the primary notification that the player or account has been banned
+    NetBanReason = 1047, // Identifies detailed ban metadata such as issuer, duration, and reason supplied by the project
+    NetLoginScriptFail = 1048, // Identifies authentication rejected because a project login script failed
+    NetPermanentDeath = 1049, // Identifies a project-defined permanent-death state that prevents continuing with the affected character or account
 
-    KickedFromGame = 5000,
-    ServerLog = 5001,
+    KickedFromGame = 5000, // Identifies forced removal of the player from the active game session
+    ServerLog = 5001, // Identifies a server-log message whose reader-facing payload is carried in extraText
 };
 
 static constexpr uint32_t FO_UPDATER_VERSION = 5;
@@ -951,119 +958,131 @@ auto RemoveInterthreadListener(uint16_t port) -> bool;
 auto FindInterthreadListener(uint16_t port) -> optional<InterthreadListener>;
 auto HasInterthreadListener(uint16_t port) -> bool;
 
+// Logical critter item destinations used for inventory, equipped-main-slot, and outside-item transfers
 ///@ ExportEnum
 enum class CritterItemSlot : uint8_t
 {
-    Inventory = 0,
-    Main = 1,
-    Outside = 255,
+    Inventory = 0, // Places the item in the critter's unequipped inventory
+    Main = 1, // Places the item in the critter's main equipped slot
+    Outside = 255, // Marks the item as outside the critter's owned inventory slots
 };
 
+// High-level life condition of a critter
 ///@ ExportEnum
 enum class CritterCondition : uint8_t
 {
-    Alive = 0,
-    Knockout = 1,
-    Dead = 2,
+    Alive = 0, // Critter is alive and may perform normal gameplay actions
+    Knockout = 1, // Critter is alive but incapacitated until it stands up or changes condition
+    Dead = 2, // Critter is dead and uses death-state handling and animation
 };
 
+// Engine-originated critter action notifications such as item movement, knockout, death, connection, and respawn.
+// Some actions have hardcoded local or server dispatch rules; project code should consume the symbolic action
 ///@ ExportEnum
 enum class CritterAction : uint16_t
 {
-    None = 0,
-    MoveItem = 2,
-    SwapItems = 3,
-    DropItem = 5,
-    Knockout = 16,
-    StandUp = 17,
-    Dead = 19,
-    Connect = 20,
-    Disconnect = 21,
-    Respawn = 22,
-    Refresh = 23,
+    None = 0, // No critter action notification is selected
+    MoveItem = 2, // Notifies observers that an item moved between critter slots
+    SwapItems = 3, // Notifies observers about the second item participating in a slot swap
+    DropItem = 5, // Notifies observers that the critter dropped an item from a slot
+    Knockout = 16, // Notifies observers that the critter entered the knockout condition
+    StandUp = 17, // Notifies observers that the critter recovered from knockout and stood up
+    Dead = 19, // Notifies observers that the critter entered the dead condition
+    Connect = 20, // Notifies observers that the player-controlled critter connected
+    Disconnect = 21, // Notifies observers that the player-controlled critter disconnected
+    Respawn = 22, // Notifies observers that the critter returned to the alive condition outside knockout recovery
+    Refresh = 23, // Requests observers to refresh the critter's visual action state
 };
 
+// Persistent critter animation posture passed to model animation resolution
 ///@ ExportEnum
 enum class CritterStateAnim : uint16_t
 {
-    None = 0,
-    Unarmed = 1,
+    None = 0, // No persistent critter animation posture is selected
+    Unarmed = 1, // Selects the unarmed persistent animation posture
 };
 
+// Requested critter movement or pose animation passed to model animation resolution
 ///@ ExportEnum
 enum class CritterActionAnim : uint16_t
 {
-    None = 0,
-    Idle = 1,
-    Walk = 3,
-    WalkBack = 15,
-    Limp = 4,
-    Run = 5,
-    RunBack = 16,
-    TurnRight = 17,
-    TurnLeft = 18,
-    PanicRun = 6,
-    SneakWalk = 7,
-    SneakRun = 8,
-    IdleProneFront = 86,
-    DeadFront = 102,
+    None = 0, // No action animation is requested
+    Idle = 1, // Requests the standing idle animation
+    Walk = 3, // Requests forward walking
+    WalkBack = 15, // Requests backward walking
+    Limp = 4, // Requests the limping movement animation
+    Run = 5, // Requests forward running
+    RunBack = 16, // Requests backward running
+    TurnRight = 17, // Requests an in-place right turn
+    TurnLeft = 18, // Requests an in-place left turn
+    PanicRun = 6, // Requests the panic-running animation
+    SneakWalk = 7, // Requests walking in the sneaking posture
+    SneakRun = 8, // Requests running in the sneaking posture
+    IdleProneFront = 86, // Requests the front-facing prone idle animation
+    DeadFront = 102, // Requests the front-facing death animation
 };
 
+// Perspective used by critter visibility queries: either direction or their union
 ///@ ExportEnum
 enum class CritterSeeType : uint8_t
 {
-    Any = 0,
-    WhoSeeMe = 1,
-    WhoISee = 2,
+    Any = 0, // Returns the union of incoming and outgoing critter visibility relations
+    WhoSeeMe = 1, // Selects critters whose visibility relation currently includes this critter
+    WhoISee = 2, // Selects critters currently visible to this critter
 };
 
+// Visibility override applied to a critter independently of normal perception checks
 ///@ ExportEnum
 enum class CritterVisibilityMode : uint8_t
 {
-    None = 0,
-    Full = 1,
+    None = 0, // Applies no full-visibility override and uses normal perception rules
+    Full = 1, // Forces the target into full visibility for the selected relation
 };
 
+// Composable filters for selecting critters by life state and player-or-NPC ownership
 ///@ ExportEnum
 enum class CritterFindType : uint8_t
 {
-    Any = 0,
-    NonDead = 0x01,
-    Dead = 0x02,
-    Players = 0x10,
-    Npc = 0x20,
-    NonDeadPlayers = 0x11,
-    DeadPlayers = 0x12,
-    NonDeadNpc = 0x21,
-    DeadNpc = 0x22,
+    Any = 0, // Selects critters without filtering life state or player ownership
+    NonDead = 0x01, // Selects alive and knocked-out critters while excluding dead critters
+    Dead = 0x02, // Selects dead critters regardless of player ownership
+    Players = 0x10, // Selects player-controlled critters regardless of life state
+    Npc = 0x20, // Selects non-player critters regardless of life state
+    NonDeadPlayers = 0x11, // Selects player-controlled critters that are not dead
+    DeadPlayers = 0x12, // Selects dead player-controlled critters
+    NonDeadNpc = 0x21, // Selects non-player critters that are not dead
+    DeadNpc = 0x22, // Selects dead non-player critters
 };
 
+// Current ownership location of an item: map hex, critter inventory, item container, or no owner
 ///@ ExportEnum
 enum class ItemOwnership : uint8_t
 {
-    MapHex = 0,
-    CritterInventory = 1,
-    ItemContainer = 2,
-    Nowhere = 3,
+    MapHex = 0, // Item is placed directly on a map hex
+    CritterInventory = 1, // Item is owned by a critter inventory or equipped slot
+    ItemContainer = 2, // Item is nested inside another item used as a container
+    Nowhere = 3, // Item has no map, critter, or item-container owner
 };
 
+// Wall-corner orientation used by map geometry and corner-aware rendering
 ///@ ExportEnum
 enum class CornerType : uint8_t
 {
-    NorthSouth = 0,
-    West = 1,
-    East = 2,
-    South = 3,
-    North = 4,
-    EastWest = 5,
+    NorthSouth = 0, // Selects the combined north-south wall-corner orientation
+    West = 1, // Selects the west-facing wall-corner orientation
+    East = 2, // Selects the east-facing wall-corner orientation
+    South = 3, // Selects the south-facing wall-corner orientation
+    North = 4, // Selects the north-facing wall-corner orientation
+    EastWest = 5, // Selects the combined east-west wall-corner orientation
 };
 
+// Policy for generating occupied hexes around a multihex prototype
 ///@ ExportEnum
 enum class MultihexGenerationType : uint8_t
 {
-    None = 0,
-    SameSibling = 1,
-    AnyUnique = 2,
+    None = 0, // Disables Mapper coalescing of item placements into a multihex mesh
+    SameSibling = 1, // Coalesces spatially adjacent compatible sibling items into one incrementally grown multihex mesh
+    AnyUnique = 2, // Coalesces compatible same-prototype items into distinct full-map groups without requiring adjacency
 };
 
 // The manual-scroll intent a view is currently under. Input decides it, the view consumes it, and the two
@@ -1071,11 +1090,11 @@ enum class MultihexGenerationType : uint8_t
 ///@ ExportEnum
 enum class ScrollDirection : uint8_t
 {
-    None = 0,
-    Left = 0x01,
-    Right = 0x02,
-    Up = 0x04,
-    Down = 0x08,
+    None = 0, // No manual-scroll direction is active
+    Left = 0x01, // Scroll toward the left edge
+    Right = 0x02, // Scroll toward the right edge
+    Up = 0x04, // Scroll toward the upper edge
+    Down = 0x08, // Scroll toward the lower edge
 };
 
 // The layers a map view draws. The mapper hides one to work on another, so the visible set is editor state
@@ -1083,15 +1102,15 @@ enum class ScrollDirection : uint8_t
 ///@ ExportEnum
 enum class MapLayers : uint8_t
 {
-    None = 0,
-    Items = 0x01,
-    Scenery = 0x02,
-    Walls = 0x04,
-    Critters = 0x08,
-    Tiles = 0x10,
-    Roof = 0x20,
-    Fast = 0x40,
-    All = 0x7F,
+    None = 0, // Draw none of the optional map layers
+    Items = 0x01, // Draw map items
+    Scenery = 0x02, // Draw scenery objects
+    Walls = 0x04, // Draw wall objects
+    Critters = 0x08, // Draw critters
+    Tiles = 0x10, // Draw ground tiles
+    Roof = 0x20, // Draw roof tiles
+    Fast = 0x40, // Draw the fast-rendered layer
+    All = 0x7F, // Draw every map layer
 };
 
 class AnimationResolver

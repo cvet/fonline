@@ -179,6 +179,7 @@ public:
     // The writable root comes from the caller: this manager holds render settings, which say nothing
     // about where the process may write
     void DumpAtlases(string_view writable_root) const;
+    void CleanupAtlases();
 
 private:
     auto CreateAtlas(AtlasType atlas_type, isize32 request_size) -> ptr<TextureAtlas>;

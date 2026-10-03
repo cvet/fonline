@@ -1,0 +1,89 @@
+{
+  "version": 8,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 22,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "tutorial-base",
+      "hidden": true,
+      "binaryDir": "${sourceDir}/Build/${presetName}",
+      "cacheVariables": {
+        "FO_BUILD_CLIENT": "ON",
+        "FO_BUILD_SERVER": "ON",
+        "FO_BUILD_BAKER": "ON"
+      }
+    },
+    {
+      "name": "windows",
+      "displayName": "Windows x64 (installed Visual Studio)",
+      "description": "Configure the tutorial client, headless server, baker, and live checks with the newest installed Visual Studio generator.",
+      "inherits": "tutorial-base",
+      "architecture": {
+        "value": "x64",
+        "strategy": "set"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
+    },
+    {
+      "name": "linux",
+      "displayName": "Linux GCC",
+      "description": "Configure the tutorial client, headless server, baker, and live checks with GCC and Ninja Multi-Config.",
+      "inherits": "tutorial-base",
+      "generator": "Ninja Multi-Config",
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc",
+        "CMAKE_CXX_COMPILER": "g++"
+      },
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "windows-check",
+      "displayName": "Windows tutorial checks",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": [
+        "RunTutorialChecks"
+      ]
+    },
+    {
+      "name": "linux-check",
+      "displayName": "Linux tutorial checks",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": [
+        "RunTutorialChecks"
+      ]
+    },
+    {
+      "name": "windows-package",
+      "displayName": "Windows tutorial package checks",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "targets": [
+        "RunTutorialPackageChecks"
+      ]
+    },
+    {
+      "name": "linux-package",
+      "displayName": "Linux tutorial package checks",
+      "configurePreset": "linux",
+      "configuration": "Release",
+      "targets": [
+        "RunTutorialPackageChecks"
+      ]
+    }
+  ]
+}

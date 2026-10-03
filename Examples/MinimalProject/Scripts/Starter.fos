@@ -1,0 +1,53 @@
+namespace Starter
+{
+
+string GetProjectName()
+{
+    return "FOnline Starter";
+}
+
+///@ RemoteCall Server StarterPing(int32 sequence)
+///@ RemoteCall Client StarterNotice(string message)
+
+#if SERVER
+
+///@ Setting Server bool Starter.ExitAfterStart
+
+[[ServerRemoteCall]]
+void StarterPing(Player player, int32 sequence)
+{
+    Game.Log("starter_remote_ping=" + sequence);
+}
+
+[[ModuleInit]]
+void InitStarter()
+{
+    Game.OnStart.Subscribe(OnStart);
+}
+
+[[Event]]
+void OnStart()
+{
+    Game.Log("starter_project=" + GetProjectName());
+    Game.Log("starter_native_extension_value=" + Game.NativeStarterValue());
+    Game.Log("starter_server_started");
+
+    if (Settings.Starter.ExitAfterStart) {
+        Game.Log("starter_smoke_passed");
+        Game.RequestQuit(true);
+    }
+}
+
+#endif
+
+#if CLIENT
+
+[[ClientRemoteCall]]
+void StarterNotice(string message)
+{
+    Game.Log("starter_notice=" + message);
+}
+
+#endif
+
+}

@@ -84,6 +84,7 @@ MapView::MapView(ptr<ClientEngine> engine, ident_t id, ptr<const ProtoMap> proto
     SetGlobalDayColor(ucolor {255, 255, 255, 255});
 
     isize32 map_rt_size = CalculateMapRenderTargetSize();
+    auto release_targets_on_failure = scope_fail([this]() noexcept { safe_call([this] { DestroyRenderTargets(); }); });
 
     if (!_engine->Settings->View.MapDirectDraw) {
         _rtMap = _engine->SprMngr.GetRtMngr().CreateRenderTarget(true, map_rt_size, true);
@@ -154,12 +155,14 @@ MapView::~MapView()
     FO_VERIFY_AND_CONTINUE(_lightSources.empty(), "Client map view has light sources during destruction", GetId(), _lightSources.size());
     FO_VERIFY_AND_CONTINUE(!_rtMap, "Client map view still has map render target during destruction", GetId());
     FO_VERIFY_AND_CONTINUE(!_rtLight, "Client map view still has light render target during destruction", GetId());
+    FO_VERIFY_AND_CONTINUE(!_rtIndoorMask, "Client map view still has indoor mask render target during destruction", GetId());
 }
 
 void MapView::OnDestroySelf()
 {
     FO_TRACE_ZONE(Map);
 
+    _engine->SprMngr.Flush();
     _eventUnsubscriber.Unsubscribe();
 
     for (auto& cr : _critters) {
@@ -177,34 +180,55 @@ void MapView::OnDestroySelf()
         for (auto& fog : fog_slot) {
             fog->Disposed = true; // so a script still holding the handle recreates it on the next map
         }
-
-        fog_slot.clear();
     }
 
-    _mapSprites.InvalidateAll();
-    _indoorMaskSprites.InvalidateAll();
+    // Managed wrappers may outlive unload indefinitely; they must not retain map storage or sprite pools
+    _mapSprites.Clear();
+    _indoorMaskSprites.Clear();
     _hexField.reset();
-    _viewField.clear();
+    decltype(_viewField) {}.swap(_viewField);
     _fogs = {};
-    _visibleLightSources.clear();
-    _lightPoints.clear();
-    _lightSources.clear();
-    _critters.clear();
-    _crittersMap.clear();
-    _items.clear();
-    _staticItems.clear();
-    _dynamicItems.clear();
-    _processingItems.clear();
-    _itemsMap.clear();
-    _spritePatterns.clear();
+    decltype(_hexLight) {}.swap(_hexLight);
+    decltype(_hexTargetLight) {}.swap(_hexTargetLight);
+    decltype(_visibleLightSources) {}.swap(_visibleLightSources);
+    decltype(_lightPoints) {}.swap(_lightPoints);
+    decltype(_lightSources) {}.swap(_lightSources);
+    decltype(_critters) {}.swap(_critters);
+    decltype(_crittersMap) {}.swap(_crittersMap);
+    decltype(_items) {}.swap(_items);
+    decltype(_staticItems) {}.swap(_staticItems);
+    decltype(_dynamicItems) {}.swap(_dynamicItems);
+    decltype(_processingItems) {}.swap(_processingItems);
+    decltype(_itemsMap) {}.swap(_itemsMap);
+    decltype(_deferredRefreshItems) {}.swap(_deferredRefreshItems);
+    decltype(_spritePatterns) {}.swap(_spritePatterns);
+    decltype(_critterToDeleteScratch) {}.swap(_critterToDeleteScratch);
+    decltype(_itemToDeleteScratch) {}.swap(_itemToDeleteScratch);
+    decltype(_reapplyLightSourcesScratch) {}.swap(_reapplyLightSourcesScratch);
+    decltype(_removeLightSourcesScratch) {}.swap(_removeLightSourcesScratch);
+    decltype(_fastPids) {}.swap(_fastPids);
+    decltype(_ignorePids) {}.swap(_ignorePids);
+    decltype(_headerExtraFields) {}.swap(_headerExtraFields);
+
+    DestroyRenderTargets();
+}
+
+void MapView::DestroyRenderTargets()
+{
+    FO_TRACE_ZONE(Map);
 
     if (_rtMap) {
         _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtMap);
-        _rtMap = nullptr;
+        _rtMap.reset();
     }
     if (_rtLight) {
         _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtLight);
-        _rtLight = nullptr;
+        _rtLight.reset();
+    }
+    if (_rtIndoorMask) {
+        _engine->EffectMngr.ClearIndoorMaskTexture(_rtIndoorMask->GetTexture());
+        _engine->SprMngr.GetRtMngr().DeleteRenderTarget(_rtIndoorMask);
+        _rtIndoorMask.reset();
     }
 }
 
@@ -3574,7 +3598,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offs
     return false;
 }
 
-auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>
+auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg) -> pair<nptr<ItemHexView>, nptr<const MapSprite>>
 {
     FO_TRACE_ZONE(Map);
 
@@ -3603,7 +3627,7 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
             return;
         }
 
-        bool potentially_egg = _engine->SprMngr.IsEggTransp(pos, mspr);
+        bool potentially_egg = !ignore_transparent_egg && _engine->SprMngr.IsEggTransp(pos, mspr);
 
         if (potentially_egg ? sort_value <= best_egg_sort : sort_value <= best_sort) {
             return;
@@ -3722,10 +3746,10 @@ auto MapView::GetCritterAtScreen(ipos32 screen_pos, bool ignore_dead_and_chosen,
     return {best, best_mspr};
 }
 
-auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>
+auto MapView::GetEntityAtScreen(ipos32 screen_pos, int32_t extra_range, bool check_transparent, bool ignore_transparent_egg) -> pair<nptr<ClientEntity>, nptr<const MapSprite>>
 {
     bool item_egg = false;
-    auto item_hit = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent);
+    auto item_hit = GetItemAtScreen(screen_pos, item_egg, extra_range, check_transparent, ignore_transparent_egg);
     auto cr_hit = GetCritterAtScreen(screen_pos, false, extra_range, check_transparent);
 
     if (cr_hit.first && item_hit.first) {

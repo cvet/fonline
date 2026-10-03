@@ -471,15 +471,7 @@ auto TextureAtlasManager::CreateAtlas(AtlasType atlas_type, isize32 request_size
 {
     FO_TRACE_ZONE(Render);
 
-    // Cleanup expired atlases
-    for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
-        if (it->get()->GetType() == AtlasType::OneImage && it->get()->GetLayout()->IsEmpty()) {
-            it = _allAtlases.erase(it);
-        }
-        else {
-            ++it;
-        }
-    }
+    CleanupAtlases();
 
     // Create new
     FO_VERIFY_AND_THROW(request_size.width > 0, "Requested atlas width must be positive", request_size.width);
@@ -579,6 +571,21 @@ auto TextureAtlasManager::FindAtlasPlace(AtlasType atlas_type, isize32 size) -> 
     ipos32 pos = {allocation_pos.x + ATLAS_SPRITES_PADDING, allocation_pos.y + ATLAS_SPRITES_PADDING};
 
     return {atlas, take_not_null(atlas_allocation), pos};
+}
+
+void TextureAtlasManager::CleanupAtlases()
+{
+    FO_TRACE_ZONE(Render);
+
+    for (auto it = _allAtlases.begin(); it != _allAtlases.end();) {
+        if ((*it)->GetLayout()->IsEmpty()) {
+            _rtMngr->DeleteRenderTarget((*it)->GetRenderTarget());
+            it = _allAtlases.erase(it);
+        }
+        else {
+            ++it;
+        }
+    }
 }
 
 void TextureAtlasManager::DumpAtlases(string_view writable_root) const

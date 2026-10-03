@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 from pathlib import Path
 import shutil
 import sys
@@ -46,7 +47,9 @@ def test_posix_emsdk_keeps_the_native_wrapper(monkeypatch: pytest.MonkeyPatch) -
 	assert cwd == Path('/workspace/emsdk')
 
 
-def make_emscripten_tree(root: Path, environment_script: str = 'emsdk_env.sh') -> Path:
+def make_emscripten_tree(root: Path, environment_script: str | None = None) -> Path:
+	if environment_script is None:
+		environment_script = 'emsdk_env.bat' if os.name == 'nt' else 'emsdk_env.sh'
 	emscripten_root = root / 'emsdk'
 	(emscripten_root / 'upstream' / 'emscripten').mkdir(parents=True)
 	(emscripten_root / '.emscripten').write_text('portable config\n')

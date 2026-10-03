@@ -78,6 +78,7 @@ public:
     [[nodiscard]] auto GetRenderTargetStack() const -> const_span<ptr<RenderTarget>>;
     [[nodiscard]] auto GetCurrentRenderTarget() const -> nptr<const RenderTarget>;
     [[nodiscard]] auto GetCurrentRenderTarget() -> nptr<RenderTarget>;
+    [[nodiscard]] auto GetRenderTargetCount() const noexcept -> size_t { return _rtAll.size(); }
 
     void PushRenderTarget(ptr<RenderTarget> rt);
     void PopRenderTarget();

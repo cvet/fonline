@@ -445,14 +445,40 @@ auto memory::get_thread_allocations(uint64_t& count, uint64_t& bytes) noexcept -
 
 auto memory::get_in_use_bytes() noexcept -> size_t
 {
-#if FO_HAVE_RPMALLOC && (FO_DEBUG || FO_TRACE_ENABLED)
+#if FO_HAVE_RPMALLOC && FO_ALLOCATOR_STATISTICS
     rpmalloc_global_statistics_t stats {};
     ::rpmalloc_global_statistics(&stats);
-
     return stats.active;
 #else
     return 0;
 #endif
+}
+
+auto memory::get_allocator_statistics() noexcept -> allocator_statistics
+{
+    allocator_statistics result {};
+
+#if FO_HAVE_RPMALLOC && FO_ALLOCATOR_STATISTICS
+    rpmalloc_global_statistics_t global {};
+    rpmalloc_thread_statistics_t thread {};
+    ::rpmalloc_global_statistics(&global);
+    ::rpmalloc_thread_statistics(&thread);
+    result.available = true;
+    result.mapped_bytes = global.mapped;
+    result.committed_bytes = global.active;
+    result.huge_allocated_bytes = global.huge_alloc;
+    result.heap_count = global.heap_count;
+    result.thread_reusable_block_bytes = thread.sizecache;
+    result.thread_free_committed_page_bytes = thread.spancache;
+
+    for (size_t i = 0; i < result.thread_size_classes.size(); i++) {
+        const auto& source = thread.size_use[i];
+        result.thread_size_classes[i] = {source.block_size, source.alloc_current, source.reusable_count};
+        result.thread_size_class_allocated_bytes += source.block_size * source.alloc_current;
+    }
+#endif
+
+    return result;
 }
 
 void memory::init_backup_chunks()
