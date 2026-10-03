@@ -120,8 +120,8 @@ def positive_job_count(value: str) -> int:
 	return jobs
 
 
-def parse_args() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description='FOnline packager')
+def create_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(prog='package.py', description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 	parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 	parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
@@ -152,7 +152,11 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
 	parser.add_argument('-resource-pack-hash-library', help='explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*')
 	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
-	return parser.parse_args()
+	return parser
+
+
+def parse_args() -> argparse.Namespace:
+	return create_parser().parse_args()
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:
@@ -172,15 +176,15 @@ def log(*text: object) -> None:
 
 def patch_data(file_path: str | Path, mark: bytes, data: bytes, max_size: int) -> None:
 	assert len(data) <= max_size, 'Data size is too big ' + str(len(data)) + ' but maximum is ' + str(max_size)
-	with open(file_path, 'rb') as file:
+	with open(file_path, 'r+b') as file:
 		content = file.read()
-	file_size = os.path.getsize(file_path)
-	pos = content.find(mark)
-	assert pos != -1
-	padding = b'#' * (max_size - len(data))
-	content = content[:pos] + data + padding + content[pos + max_size:]
-	with open(file_path, 'wb') as file:
-		file.write(content)
+		file_size = len(content)
+		pos = content.find(mark)
+		assert pos != -1
+		assert pos + max_size <= file_size, 'Reserved binary field is truncated: ' + str(file_path)
+		padding = b'#' * (max_size - len(data))
+		file.seek(pos)
+		file.write(data + padding)
 	assert file_size == os.path.getsize(file_path)
 
 

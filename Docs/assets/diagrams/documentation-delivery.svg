@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="650" viewBox="0 0 1120 650" role="img" aria-labelledby="documentation-delivery-title documentation-delivery-description">
+  <title id="documentation-delivery-title">Documentation delivery for people and AI</title>
+  <desc id="documentation-delivery-description">One canonical Markdown corpus is projected into GitHub Pages, machine-readable AI routes, and review evidence.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#42534a"/>
+    </marker>
+    <style>
+      text { font-family: Inter, Segoe UI, Arial, sans-serif; fill: #17211c; }
+      .diagram-title { font-size: 28px; font-weight: 700; }
+      .diagram-subtitle { font-size: 15px; fill: #4c5b53; }
+      .band-title { font-size: 16px; font-weight: 700; }
+      .node-title { font-size: 16px; font-weight: 700; }
+      .node-line { font-size: 13px; fill: #35433b; }
+      .source-note { font-size: 12px; fill: #58675f; }
+      .edge { fill: none; stroke: #42534a; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1120" height="650" rx="6" fill="#f8faf8" stroke="#c9d2cc"/>
+  <text class="diagram-title" x="560" y="47" text-anchor="middle">Documentation delivery for people and AI</text>
+  <text class="diagram-subtitle" x="560" y="76" text-anchor="middle">One canonical Markdown corpus is projected into GitHub Pages, machine-readable AI routes, and review evidence.</text>
+  <rect x="28" y="112" width="244" height="464" rx="6" fill="#fff1cf" fill-opacity="0.38" stroke="#8a5a00" stroke-opacity="0.58"/>
+  <text class="band-title" x="150" y="146" text-anchor="middle">Canonical sources</text>
+  <rect x="294" y="112" width="244" height="464" rx="6" fill="#e7f0fa" fill-opacity="0.38" stroke="#2d5e91" stroke-opacity="0.58"/>
+  <text class="band-title" x="416" y="146" text-anchor="middle">Deterministic projection</text>
+  <rect x="560" y="112" width="244" height="464" rx="6" fill="#e4f3f2" fill-opacity="0.38" stroke="#287274" stroke-opacity="0.58"/>
+  <text class="band-title" x="682" y="146" text-anchor="middle">Published consumers</text>
+  <rect x="826" y="112" width="266" height="464" rx="6" fill="#fbe6e2" fill-opacity="0.38" stroke="#a33a2b" stroke-opacity="0.58"/>
+  <text class="band-title" x="959" y="146" text-anchor="middle">One revision, proved</text>
+  <path class="edge" d="M 250 230 C 274 230, 292 230, 316 230"/>
+  <path class="edge" d="M 250 376 C 250 326.36, 316 279.64, 316 230"/>
+  <path class="edge" d="M 250 376 C 274 376, 292 376, 316 376"/>
+  <path class="edge" d="M 516 230 C 540 230, 558 230, 582 230"/>
+  <path class="edge" d="M 516 376 C 540 376, 558 376, 582 376"/>
+  <path class="edge" d="M 782 230 C 806 230, 826 212, 850 212"/>
+  <path class="edge" d="M 782 376 C 782 320.24, 850 267.76, 850 212"/>
+  <path class="edge" d="M 959 258 C 959 282, 959 262, 959 286"/>
+  <path class="edge" d="M 959 378 C 959 402, 959 382, 959 406"/>
+  <rect x="50" y="180" width="200" height="100" rx="6" fill="#fff1cf" stroke="#8a5a00" stroke-width="2"/>
+  <text class="node-title" x="150" y="211" text-anchor="middle">Versioned Markdown</text>
+  <text class="node-line" x="150" y="237" text-anchor="middle">owning technical docs</text>
+  <text class="node-line" x="150" y="257" text-anchor="middle">links and examples</text>
+  <rect x="50" y="326" width="200" height="100" rx="6" fill="#edf1ee" stroke="#59645d" stroke-width="2"/>
+  <text class="node-title" x="150" y="357" text-anchor="middle">Source manifest</text>
+  <text class="node-line" x="150" y="383" text-anchor="middle">IDs, owners, routes</text>
+  <text class="node-line" x="150" y="403" text-anchor="middle">locale and policy</text>
+  <rect x="316" y="180" width="200" height="100" rx="6" fill="#e7f0fa" stroke="#2d5e91" stroke-width="2"/>
+  <text class="node-title" x="416" y="211" text-anchor="middle">Site generators</text>
+  <text class="node-line" x="416" y="237" text-anchor="middle">navigation, search</text>
+  <text class="node-line" x="416" y="257" text-anchor="middle">routes and diagrams</text>
+  <rect x="316" y="326" width="200" height="100" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="416" y="357" text-anchor="middle">AI generators</text>
+  <text class="node-line" x="416" y="383" text-anchor="middle">bundles, public index</text>
+  <text class="node-line" x="416" y="403" text-anchor="middle">evaluation evidence</text>
+  <rect x="582" y="180" width="200" height="100" rx="6" fill="#e4f3f2" stroke="#287274" stroke-width="2"/>
+  <text class="node-title" x="682" y="211" text-anchor="middle">Human site</text>
+  <text class="node-line" x="682" y="237" text-anchor="middle">GitHub Pages + Jekyll</text>
+  <text class="node-line" x="682" y="257" text-anchor="middle">fonline.ru</text>
+  <rect x="582" y="326" width="200" height="100" rx="6" fill="#dff3e9" stroke="#176b55" stroke-width="2"/>
+  <text class="node-title" x="682" y="357" text-anchor="middle">AI routes</text>
+  <text class="node-line" x="682" y="383" text-anchor="middle">llms + manifest</text>
+  <text class="node-line" x="682" y="403" text-anchor="middle">generated JSON models</text>
+  <rect x="850" y="166" width="218" height="92" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="959" y="197" text-anchor="middle">Source and artifact</text>
+  <text class="node-line" x="959" y="223" text-anchor="middle">freshness, hashes, links</text>
+  <rect x="850" y="286" width="218" height="92" rx="6" fill="#fbe6e2" stroke="#a33a2b" stroke-width="2"/>
+  <text class="node-title" x="959" y="317" text-anchor="middle">Rendered browser</text>
+  <text class="node-line" x="959" y="343" text-anchor="middle">desktop, mobile, WCAG</text>
+  <rect x="850" y="406" width="218" height="92" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
+  <text class="node-title" x="959" y="437" text-anchor="middle">Review evidence</text>
+  <text class="node-line" x="959" y="463" text-anchor="middle">_site, reports, screenshots</text>
+  <text class="source-note" x="560" y="622" text-anchor="middle">Source-backed diagram: 7 checked paths; full provenance in Docs/generated/diagrams.json</text>
+</svg>

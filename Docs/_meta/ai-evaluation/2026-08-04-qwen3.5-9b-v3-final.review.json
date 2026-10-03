@@ -1,0 +1,1292 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_ai_model_review.py",
+  "reviewed_at": "2026-08-04T08:31:48.835142Z",
+  "reviewer": {
+    "id": "OpenAI Codex gpt-5.6-sol independent semantic reviewer with maintainer spot-check",
+    "method": "answer-by-answer semantic review against hidden source rubrics",
+    "independent_from_evaluated_models": true
+  },
+  "run": {
+    "path": "Workspace/ai-evaluation/2026-08-04-qwen3.5-9b-v3-final.json",
+    "sha256": "f62671f85a4fb29ce1b4b1b49245c9d00bec83d0c9e3279d7423022f3ca34b97",
+    "schema_version": 2,
+    "source_ref": "master",
+    "input_hashes": {
+      "Docs/ai-evaluation.json": "db2c834c0ee049406722fa705481f08ce6acb6426e10ca8f2222d44e649e9019",
+      "Docs/generated/ai-evaluation-report.json": "151a3af6402476e5614a6e4ec7e50cf9b010ecf94b43292f5dfb961f186796b9",
+      "docs-manifest.json": "f14577a60f6d7e074bdbe24b890b927de8ed9797ddcc5f6e621353cc19865d30",
+      "llms.txt": "471a86233febdf79dd931d16ef077d854839266852682f500a2a0ee533c4407f"
+    },
+    "model_family": "qwen3.5",
+    "model": "huihui_ai/qwen3.5-abliterated:9b",
+    "model_digest": "92a443adb124f5e805bbdee23fdb38fcd22a7bf00a1016b53f764e741369c600",
+    "provider": {
+      "id": "ollama",
+      "base_url": "http://127.0.0.1:11434",
+      "version": "0.32.5"
+    },
+    "parameters": {
+      "temperature": 0,
+      "seed": 0,
+      "num_context": 32768,
+      "num_predict": 6000,
+      "max_candidates": 6,
+      "max_document_bytes": 24000,
+      "max_context_bytes": 60000,
+      "self_review": false
+    },
+    "completed_at": "2026-08-04T08:26:42.219682Z"
+  },
+  "status_meaning": {
+    "answer_check_pass": "the answer semantically satisfies the check",
+    "forbidden_assumption_pass": "the answer does not violate the forbidden assumption",
+    "not_observable": "the supplied model input did not make the criterion reviewable"
+  },
+  "tasks": [
+    {
+      "id": "architecture-engine-project-boundary",
+      "category": "architecture",
+      "run_status": "completed",
+      "primary_document_id": "engine-architecture",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "ownership-split",
+          "description": "Separate product content and policy from reusable runtime and tooling.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "documentation-routing",
+          "description": "Route broad behavior and source navigation to their owning pages.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not infer the public engine boundary from one embedding project's directory layout.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "architecture-source-change-routing",
+      "category": "architecture",
+      "run_status": "completed",
+      "primary_document_id": "source-tree",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "quick-directory-routing",
+          "description": "Name the source directories for tools, scripting, frontend, and server work.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "tool-layer-boundary",
+          "description": "Treat baker implementations as source-backed tools instead of inferring a target name.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not guess a universal target or filename from a project-specific executable, substitute a broad architecture page for the Source Tree owner, or place ServerApp.cpp and server variant application entry files under Source/Server instead of Source/Applications.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "architecture-ai-control-boundary",
+      "category": "architecture",
+      "run_status": "completed",
+      "primary_document_id": "ai-control-protocol-guide",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "ai-control-engine-envelope",
+          "description": "Limit the reusable Engine contract to the transport, methods, bounds, and command lifecycle.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "ai-control-project-schema",
+          "description": "Keep observations, actions, MCP namespaces, and game policy in the embedding project.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "ai-control-threat-boundary",
+          "description": "Apply loopback-first operation, non-empty remote tokens, plaintext awareness, and shipping exclusion.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "ai-control-evidence-limit",
+          "description": "Distinguish protocol proof from native client and server-authority validation.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not publish lf_*, tla_*, one project's observation schema, or administrator actions as generic FOnline protocol methods.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "The reusable envelope, project schema, and evidence layers are present, but the answer contradicts shipping exclusion by saying a production client may compile the listener when explicitly enabled."
+    },
+    {
+      "id": "architecture-project-dependencies",
+      "category": "architecture",
+      "run_status": "completed",
+      "primary_document_id": "project-local-dependencies",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "dependency-ownership-selection",
+          "description": "Classify Engine, project, companion, tool-only, and system dependencies before integration.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "role-scoped-project-linking",
+          "description": "Use the public role-scoped helper before core libraries consume the dependency.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "dependency-runtime-delivery",
+          "description": "Treat development copies, package payloads, licenses, hashes, signing, and isolated acceptance as separate release work.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "dependency-platform-and-abi",
+          "description": "Separate requested, compiled, and initialized states and preserve allocator/ABI ownership.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not append directly to internal FO_*_LIBS lists, use an unpinned dependency, infer runtime availability from headers, or treat a local post-build copy as package acceptance.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Ownership, role linking, runtime states, and ABI boundaries are present, but the release-delivery answer omits license, runtime-file hash, signing ownership, and equivalent package evidence required separately from an isolated launch."
+    },
+    {
+      "id": "scripting-module-yield-lifecycle",
+      "category": "scripting",
+      "run_status": "completed",
+      "primary_document_id": "script-lifecycle-concurrency",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "module-init-order",
+          "description": "Explain module initialization as a defined lifecycle rather than arbitrary startup.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "yield-contract",
+          "description": "Explain that Yield requires async propagation and creates a suspension boundary.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "shutdown-gc-stop-condition",
+          "description": "Preserve the two-part AngelScriptBackend garbage-collection stop condition and the survivor-reporting boundary without ordering another owner's teardown.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not invent a project-specific module loader or callback order.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "description": "Do not call ModuleInit indexing bake-time discovery; the runtime indexes valid init functions and stores their priorities.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "description": "Do not claim that shutdown garbage collection always runs until no live objects remain; the live set may become stable and unreclaimable survivors are reported.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "description": "Do not invent one total order that interleaves client/server entity cleanup with the backend-internal module and garbage-collection stages.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "scripting-style-refactoring",
+      "category": "scripting",
+      "run_status": "completed",
+      "primary_document_id": "angelscript-style",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "script-module-and-format-baseline",
+          "description": "Route a module by matching namespace and filename and use the Engine formatter wrapper for AngelScript-specific repairs.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "script-module-side-contract",
+          "description": "Explain source ordering separately from runtime initialization and use value-tested side macros.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "script-state-and-attribute-boundary",
+          "description": "Keep mutable globals exceptional and enter dispatcher-owned attributed functions through their owning route.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "script-refactor-classification",
+          "description": "Classify mechanical, structural, behavioral, and contract changes before selecting proof.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "script-project-policy-boundary",
+          "description": "Keep comment language, game vocabulary, generated formats, migrations, and gameplay acceptance with the embedding project.",
+          "status": "fail",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not copy one game's comment language, migration backlog, generated files, module catalog, or gameplay test commands into the Engine convention.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Namespace, side, order, mutable-global, nullability, and refactor classes are present, but the answer omits dispatcher-owned attributed-call entry and does not retain generated formats, migrations, and gameplay acceptance in project policy."
+    },
+    {
+      "id": "scripting-entity-synchronization",
+      "category": "scripting",
+      "run_status": "completed",
+      "primary_document_id": "script-lifecycle-concurrency",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "entity-cover",
+          "description": "Require the native entry cover or an explicit wider cover for entity access.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "cover-suspension",
+          "description": "State that covers do not survive suspension and must be reacquired.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat Game.Lock as a replacement for entity synchronization, claim that an unrelated event, setter, callback, or direct entry starts empty, or characterize whether those dispatchers create or do not create an additional script scope, sync scope, or context without their owning native evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "The remote-call and post-Yield rules are present, but the opening sentence incorrectly treats RunScriptContext creation of a SyncContext as an entity cover; entity cover is established by the owning native dispatcher or explicit Game.Sync."
+    },
+    {
+      "id": "content-prototype-inheritance",
+      "category": "content",
+      "run_status": "completed",
+      "primary_document_id": "prototype-format-guide",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "prototype-merge-order",
+          "description": "Describe deterministic parent and child merge order and overlap risk.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "prototype-migration",
+          "description": "Treat renamed or removed prototype IDs as compatibility changes.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not infer prototype type or gameplay meaning from a project folder name.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Identity, merge order, and migrations are present, but the side-aware property statement incorrectly suggests an unknown property can be skipped by side flags and leaves disabled, virtual, and temporary property failures unresolved."
+    },
+    {
+      "id": "content-map-placement-ownership",
+      "category": "content",
+      "run_status": "completed",
+      "primary_document_id": "map-format-guide",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "placement-identities",
+          "description": "Require explicit positive IDs unique across critter and item placements.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "ownership-links",
+          "description": "Resolve inventory and container ownership through the correct authored owner IDs.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not rely on textual section order as an execution-order guarantee.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "inspect-animation-particle-assets",
+      "category": "content",
+      "run_status": "completed",
+      "primary_document_id": "viewer-tools",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "viewer-selection-boundary",
+          "description": "Choose the focused viewer and retain later Mapper and client validation.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "animation-review-controls",
+          "description": "Review scale, facing, clips, roots, and model hierarchy.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "particle-reproducibility",
+          "description": "Pin particle seed, prewarm, and direction and compare render paths.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "viewer-production-evidence-layers",
+          "description": "Keep focused inspection, Mapper placement, client behavior, and retained provenance as separate evidence layers.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat a focused viewer as an authoring editor or as proof of gameplay behavior.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "content-author-map-particles",
+      "category": "content",
+      "run_status": "completed",
+      "primary_document_id": "particle-authoring-tools",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "mapper-work-surfaces",
+          "description": "Orient the author among the map browser, controls, workspace, inspector, and history.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "spark-source-editing",
+          "description": "Use the SPARK source editor modes and deliberate save/discard path.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "full-window-capture",
+          "description": "Choose the deferred full-window API and wait before quitting.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat Mapper preview as runtime acceptance or hand-edit baked .spk/.efk output.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "automate-mapper-map-capture",
+      "category": "content",
+      "run_status": "completed",
+      "primary_document_id": "mapper-tools",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "mapper-save-safety",
+          "description": "Preserve the human save and runtime-validation boundary around authored map changes.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "mapper-batch-lifecycle",
+          "description": "Drive one warmed map at a time through the reusable loop and quit only after the batch.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "mapper-screenshot-boundary",
+          "description": "Select map-only or full-window capture deliberately and validate visual output.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "mapper-project-ownership",
+          "description": "Keep batch policy and downstream artifact processing in the embedding project.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not use Render.NullRenderer for visual capture or treat file existence as pixel evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "testing-gameplay-harness",
+      "category": "debugging",
+      "run_status": "completed",
+      "primary_document_id": "gameplay-testing",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "gameplay-boundary-selection",
+          "description": "Select the narrowest owner and add evidence for every crossed runtime or artifact boundary.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "gameplay-runner-contract",
+          "description": "Use semantic readiness/required/forbidden markers under one deadline with bounded cleanup and structured evidence.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "gameplay-project-boundary",
+          "description": "Keep game fixtures, script registration, filters, content, backends, and acceptance thresholds in the embedding project.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not turn one game's test registry, content ids, accounts, databases, ports, runners, or acceptance thresholds into an Engine API.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "debugging-native-script-route",
+      "category": "debugging",
+      "run_status": "completed",
+      "primary_document_id": "debugging",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "debugger-route-selection",
+          "description": "Select the debugger or test route from the failing ownership layer.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "script-debugger-contract",
+          "description": "Enable and attach the AngelScript debugger while distinguishing its process-selected TCP endpoint from UDP discovery.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not prescribe a private project's launch profile as an Engine default.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "description": "Do not call 43001 the default TCP endpoint; TCP uses a process-selected port in 43000..44999 and UDP discovery uses 43001.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "debugging-reproducible-tracy-capture",
+      "category": "debugging",
+      "run_status": "completed",
+      "primary_document_id": "profiling",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "profiling-build-mode",
+          "description": "Choose on-demand steady-state or total startup tracing through a real profiling configuration.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "profiling-process-boundary",
+          "description": "Profile one standalone side and keep its client or server counterpart regular.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "profiling-reproducibility",
+          "description": "Record workload provenance and reject noisy or incomparable attempts.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not instrument both standalone sides on the default Tracy port and infer attribution afterward.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Build modes, one-profiled-process topology, repetitions, and provenance are present, but the client route performs the stale-port check before starting and readying the regular server instead of immediately before the profiled client; the uncertainty also questions the explicitly regular counterpart."
+    },
+    {
+      "id": "debugging-web-client-layers",
+      "category": "debugging",
+      "run_status": "completed",
+      "primary_document_id": "web-debugging",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "browser-diagnostics",
+          "description": "Use browser console, network, and Wasm evidence before changing engine code.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "web-layer-troubleshooting",
+          "description": "Separate build, serving, browser, and server transport layers.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not assume a successful cross-build proves browser runtime behavior.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "migration-complete-engine-range",
+      "category": "migration",
+      "run_status": "completed",
+      "primary_document_id": "engine-upgrade-guide",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "complete-range-audit",
+          "description": "Audit every commit and changed path between the exact old and new Engine pins.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "compatibility-boundaries",
+          "description": "Review gameplay, updater, and frozen client ABI boundaries independently.",
+          "status": "fail",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat a submodule pointer update as sufficient review evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "The answer records pins and safety refs, but stops before auditing the complete old-to-new range and omits the independent gameplay CompatibilityVersion, updater protocol, and frozen client host/runtime ABI decisions."
+    },
+    {
+      "id": "migration-contract-diff-disposition",
+      "category": "migration",
+      "run_status": "completed",
+      "primary_document_id": "api-change-management",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "stable-model-matching",
+          "description": "Compare stable IDs and contract hashes rather than labels or source positions.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "disposition-fields",
+          "description": "Bind reviewed migration, release, compatibility, and owner decisions to the exact change.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not use an internal label to hide a modeled public compatibility break.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Stable IDs, hashes, and disposition fields are present, but the answer incorrectly derives additive/documentation/policy versus breaking classification from baseline stability and implies --write --enforce populates reviewed ledger decisions."
+    },
+    {
+      "id": "release-support-evidence",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "support-matrix",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "support-levels",
+          "description": "Distinguish compilation, process smoke, source capability, and project qualification.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "project-release-evidence",
+          "description": "Require versioned runtime, packaging, renderer, network, and updater evidence for release.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not equate one successful local build with maintained release support.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "release-package-capability",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "packaging-and-release",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "release-procedure",
+          "description": "Build declared variants, force-bake the selected config, and package only after inputs exist.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "package-boundary",
+          "description": "Separate Engine packager capabilities from project release policy, secrets, and signing.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "output-pack-contract",
+          "description": "Select an implemented compatible output-producing pack and name its artifact.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "package-target-platform-payload-catalog",
+          "description": "Name all six accepted targets, distinguish the four implemented payload platforms from unsupported macOS and iOS packaging, summarize each implemented payload, and preserve the signed-or-debug APK boundary.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not call macOS or iOS packaging supported, claim signing, store acceptance, or installer support from an Engine payload alone, describe package capability as a universal Engine guarantee, say output packs combine with any target/platform, or call the Gradle debug-key APK unsigned.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "release-secret-provisioning",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "security-and-secrets",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "secret-resolution-time",
+          "description": "Distinguish baking-host substitutions from target-time directives.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "redaction-is-narrow",
+          "description": "Do not mistake command-line log masking for secret storage or complete redaction.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "package-host-handoff",
+          "description": "Keep signing secrets on the protected packaging host and out of generated project files.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "exposure-response",
+          "description": "Revoke and rotate exposed material rather than trusting deletion or history rewriting.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat Common.SecretSettingTokens, CI masking, or deletion of a leaked value as credential security.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "release-server-rollout",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "release-operations",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "server-process-choice",
+          "description": "Prefer the foreground headless process under a real supervisor and state the detached daemon boundary.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "server-readiness-gate",
+          "description": "Require runtime initialization and a functional probe rather than process existence alone.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "server-stop-boundary",
+          "description": "Use graceful platform signals and do not misread the worker drain setting as a total stop timeout.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "server-rollback-unit",
+          "description": "Roll back a compatible immutable artifact/config/data unit through the same readiness gate.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat a live process, daemon parent exit, open listener, health file containing Starting..., or ShutdownGraceMs as sufficient end-to-end operational evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "release-backup-restore",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "backup-and-recovery",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "backend-durable-set",
+          "description": "Distinguish the durable set and consistency boundary for Memory, JSON, SQLite, and Mongo.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "oplog-not-backup",
+          "description": "Explain what the pending and committed recovery logs can and cannot recover.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "quiesced-backup-gate",
+          "description": "Require a graceful stop and complete backend/oplog capture when no reviewed online method exists.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "isolated-semantic-restore",
+          "description": "Restore a compatible release unit in isolation and validate game semantics across a restart.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "recovery-objectives-drill",
+          "description": "Keep RPO/RTO and real disaster-recovery drills project-owned and measured.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat an Engine recovery oplog, one SQLite file copied from a live WAL database, a successful provider snapshot, or a backend-only restore as complete production recovery evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Isolation, semantic restore, and DR drills are present, but the answer omits the Memory, full JSON, SQLite WAL, and provider-native Mongo durable-set boundaries and misstates committed-prefix validation as a condition for reconstructing successful post-backup changes."
+    },
+    {
+      "id": "migration-build-interface-selection",
+      "category": "migration",
+      "run_status": "completed",
+      "primary_document_id": "buildtools-pipeline",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "build-interface-ownership",
+          "description": "Separate Engine-owned stages and helpers from values supplied by the embedding game.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "cmake-override-order",
+          "description": "Use the generated project-interface order when more than one CMake input source exists.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "main-cli-boundary",
+          "description": "Take main BuildTools syntax from its executable parser-backed reference and keep helper/package surfaces separate.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "helper-cli-ownership-and-support",
+          "description": "Use the helper inventory for exact syntax, owner, invocation context, and revision support.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not infer public commands from filenames, copy stale help into prose, merge the main/helper/package CLI domains, or assume an unpinned compatibility line.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": true,
+      "notes": "The answer selects the owning source, satisfies every semantic check, respects the project boundary, and contains no material unsupported claim."
+    },
+    {
+      "id": "migration-public-contract-selection",
+      "category": "migration",
+      "run_status": "completed",
+      "primary_document_id": "legacy-public-api-entry",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "public-contract-stability-boundary",
+          "description": "Treat reachability and inventory coverage separately from an explicit compatibility promise.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "native-inventory-boundary",
+          "description": "Use the generated native reference as an inventory, require the pinned experimental scope, and retain the fail-closed internal fallback.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "contract-source-order",
+          "description": "Resolve disagreements through owning source metadata, machine models, generated references, and then handwritten guidance.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "public-contract-revision-pin",
+          "description": "Pin an exact Engine commit and compare every generated contract domain before adoption.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not infer stable support from symbol reachability, generated inventory presence, one project's usage, or an unpinned Engine branch; do not invent annotation syntax, file paths, a dedicated pin file, CI variable, config field, or another pin-storage mechanism; do not treat FO_ENGINE_ROOT or FO_WORKSPACE path variables as an Engine commit pin; and do not claim every inventory symbol needs an individual tag because the current validated inventory-pinned scope classifies the complete inventory.",
+          "status": "fail",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "The source order and inventory-pinned experimental scope are correct, but the uncertainty claims a semantic-version tag may satisfy the required exact Engine commit, contradicting the task and revision-pin contract."
+    },
+    {
+      "id": "architecture-essentials-and-metadata-ownership",
+      "category": "architecture",
+      "run_status": "completed",
+      "primary_document_id": "native-essentials",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "essentials-dependency-boundary",
+          "description": "Preserve the exact umbrella order and solve lower-layer dependency pressure without introducing a cycle.",
+          "status": "fail",
+          "notes": ""
+        },
+        {
+          "id": "essentials-build-inventory",
+          "description": "Route every new low-level source through the checked Essentials source list and core library.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "metadata-source-ownership",
+          "description": "Keep reusable generator machinery in Engine while the embedding project supplies its own inputs.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "metadata-contract-diff",
+          "description": "Compare every generated domain and require reviewed dispositions for compatibility breaks.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not bypass Essentials layering, add a .cpp to the Essentials.h umbrella, hand-edit generated output, treat an embedding project's metadata as reusable Engine authority, or infer compatibility from reachability alone.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "pass",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "Layering, source-list wiring, metadata ownership, and generated-domain validation are present, but the answer names the umbrella source without reporting the exact required Essentials header order."
+    },
+    {
+      "id": "release-package-support-and-example-evidence",
+      "category": "release",
+      "run_status": "completed",
+      "primary_document_id": "generated-package-index",
+      "primary_document_selected": true,
+      "source_selection": {
+        "status": "pass",
+        "notes": ""
+      },
+      "answer_checks": [
+        {
+          "id": "package-revision-and-project-boundary",
+          "description": "Pin the internal package interface to an Engine revision and keep the embedding project's release matrix separate.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "package-scope-boundary",
+          "description": "Separate accepted package dimensions and payload effects from project release, secrets, deployment, and signing policy.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "support-evidence-levels",
+          "description": "Distinguish compilation, process smoke, source capability, and unsupported public combinations.",
+          "status": "pass",
+          "notes": ""
+        },
+        {
+          "id": "example-publication-state",
+          "description": "Use the generated registry for exact Engine refs, remote visibility/state, source readiness, and observed checks.",
+          "status": "fail",
+          "notes": ""
+        }
+      ],
+      "forbidden_assumptions": [
+        {
+          "description": "Do not treat a syntactically valid package, a build-only lane, a private reserved repository, or unobserved required checks as production release evidence.",
+          "status": "pass",
+          "notes": ""
+        }
+      ],
+      "grounding": {
+        "status": "fail",
+        "notes": ""
+      },
+      "final_task_success": false,
+      "notes": "The package boundary and support states are correct, but the registry answer collapses per-repository remote states and required checks into a mix or predominant state instead of reporting each exact source, remote, pin, and check value; all current required checks are not-observed."
+    }
+  ],
+  "summary": {
+    "task_count": 27,
+    "reviewed_task_count": 27,
+    "successful_task_count": 15,
+    "final_task_success_rate": 0.5555555555555556
+  }
+}

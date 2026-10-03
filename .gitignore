@@ -1,6 +1,8 @@
 /Workspace
 /Temp
 /_**
+!/_data
+!/_layouts
 /.vs
 /.idea
 /.theia
@@ -13,5 +15,8 @@ __pycache__
 .venv
 node_modules
 package-lock.json
+!BuildTools/docs-browser/package-lock.json
+!Examples/ContentShowcase/WebTests/package-lock.json
+Gemfile.lock
 /Source/Scripting/Managed/**/bin/
 /Source/Scripting/Managed/**/obj/

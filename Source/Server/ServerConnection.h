@@ -47,17 +47,17 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEnum
 enum class DisconnectReason : uint8_t
 {
-    None = 0,
-    ClientClosed = 1,
-    InactivityTimeout = 2,
-    PingTimeout = 3,
-    LoginTimeout = 4,
-    ProtocolError = 5,
-    UpdaterError = 6,
-    ServerShutdown = 7,
-    ScriptRequest = 8,
-    LoginFailed = 9,
-    ReplacedByReconnect = 10,
+    None = 0, // Indicates that the connection has not recorded a close cause
+    ClientClosed = 1, // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable
+    InactivityTimeout = 2, // Indicates that no inbound message arrived before the configured inactivity deadline
+    PingTimeout = 3, // Indicates that the peer did not answer the previous server ping
+    LoginTimeout = 4, // Indicates that a pre-login connection made no progress before the configured login deadline
+    ProtocolError = 5, // Indicates malformed or unexpected protocol data or failed connection publication
+    UpdaterError = 6, // Indicates that the client requested an invalid updater file or range
+    ServerShutdown = 7, // Indicates an orderly server shutdown
+    ScriptRequest = 8, // Indicates that server script called Player.HardDisconnect()
+    LoginFailed = 9, // Indicates that login was rolled back after a server-side failure
+    ReplacedByReconnect = 10, // Indicates that a new login for the same account replaced this session
 };
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;

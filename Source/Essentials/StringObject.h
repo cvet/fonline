@@ -39,7 +39,7 @@
 FO_BEGIN_NAMESPACE
 
 // Inline character budget of the engine string, set by the build system. The value is a tuning knob rather
-// than a property of the type; Docs/Essentials.md records how it is measured and what raising it costs
+// than a property of the type
 inline constexpr size_t STRING_INLINE_CAPACITY = FO_STRING_INLINE_CAPACITY;
 
 // Same byte budget as the narrow string, so the rarely used wide string is not the larger object

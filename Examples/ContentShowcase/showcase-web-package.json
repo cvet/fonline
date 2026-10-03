@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "payload_directory": "FOCS-Client-ShowcaseRelease-Web",
+  "required_files": [
+    "FOCS_Client.js",
+    "FOCS_Client.wasm",
+    "Resources.data",
+    "Resources.js",
+    "index.html",
+    "web-server.py"
+  ],
+  "minimum_resources_data_bytes": 100000
+}

@@ -1,0 +1,742 @@
+{
+  "schema_version": 1,
+  "generated_by": "BuildTools/docs_audio.py",
+  "source_manifest": "BuildTools/AudioInterface.json",
+  "repository": "cvet/fonline",
+  "source_ref": "master",
+  "description": "Source-backed contract for FOnline audio baking, runtime decoding, playback handles, placement, mixing, script entry points, and validation boundaries.",
+  "scope": {
+    "surface": "audio",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "Authored WAV and native Ogg inputs, the baked Ogg payload, sound handles, placement updates, and client playback behavior are revision-pinned by focused baker and mixer tests.",
+    "included": [
+      "WAV authoring and Ogg Vorbis native resource inputs accepted by AudioBaker",
+      "AudioBaker delivery and AudioManager resource-path indexing",
+      "AudioManager decoding, conversion, streaming, mixing, placement, repeat, and stop behavior",
+      "Game.PlaySound, Game.UpdateSound, and Game.PlayMusic client script entry points",
+      "Audio settings, headless behavior, diagnostics, and project validation boundaries"
+    ],
+    "excluded": [
+      "project sound catalogs, concept-to-path mappings, variant selection, music state machines, ambient selection, and spatialization policy",
+      "recording, voice chat, capture devices, DSP graphs, buses, ducking, and authored attenuation curves",
+      "audio mastering targets, loudness policy, licensing, attribution, and source provenance",
+      "Effekseer sound nodes, which are not supported by the FOnline Effekseer runtime",
+      "video containers and video-associated audio"
+    ]
+  },
+  "sources": {
+    "audio_manager": "Source/Client/AudioManager.cpp",
+    "audio_manager_header": "Source/Client/AudioManager.h",
+    "audio_baker": "Source/Tools/AudioBaker.cpp",
+    "audio_baker_header": "Source/Tools/AudioBaker.h",
+    "client_global_scripts": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+    "settings": "Source/Common/Settings.inc",
+    "application": "Source/Frontend/Application.cpp",
+    "application_headless": "Source/Frontend/ApplicationHeadless.cpp",
+    "native_test_directory": "Source/Tests"
+  },
+  "outputs": {
+    "indexed_extensions": [
+      "wav",
+      "ogg"
+    ],
+    "baker_extensions": [
+      "wav",
+      "ogg"
+    ],
+    "decoder_extensions": [
+      "ogg"
+    ],
+    "raw_copy_extensions": [
+      "fofnt",
+      "bmfc",
+      "fnt",
+      "ogv",
+      "json",
+      "ini"
+    ],
+    "missing_suffix_fallback": false,
+    "wav": {
+      "container": "RIFF/WAVE",
+      "format_tags": [
+        1,
+        3
+      ],
+      "sample_bits": [
+        8,
+        16,
+        24,
+        32
+      ],
+      "compression": "PCM or IEEE float"
+    },
+    "ogg": {
+      "codec": "Vorbis",
+      "sample_format": "signed-16",
+      "native_stream_chunk_bytes": 65536,
+      "web_stream_chunk_bytes": 131072
+    },
+    "audio_settings": {
+      "DisableAudio": false,
+      "SoundVolume": 100,
+      "MusicVolume": 100
+    },
+    "mix_volume_range": [
+      0,
+      100
+    ],
+    "play_sound_returns_handle": true,
+    "placed_sound_updates": true,
+    "runtime_side": "client",
+    "headless_audio_enabled": false,
+    "unsupported_extension_rejected": true,
+    "authored_extension_preserved": true,
+    "native_test_files": [
+      "Source/Tests/Test_AudioBaker.cpp",
+      "Source/Tests/Test_AudioManager.cpp"
+    ]
+  },
+  "formats": [
+    {
+      "id": "audio.format.wav",
+      "name": "PCM WAV",
+      "extension": ".wav",
+      "role": "Authoring input converted to the runtime Ogg Vorbis payload",
+      "stability": "experimental",
+      "requirement": "Use RIFF/WAVE PCM at 8, 16, 24, or 32 bits, or IEEE float at 32 bits; chunks may appear in any order and unknown chunks are skipped with RIFF padding respected.",
+      "rationale": "AudioBaker normalizes supported WAV samples to interleaved signed 16-bit PCM and encodes one checked Ogg Vorbis resource at the authored path.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "AudioBaker::LoadWav",
+            "WAVE_FORMAT_PCM",
+            "WAVE_FORMAT_IEEE_FLOAT",
+            "WAV sample width is unsupported",
+            "EncodeVorbis"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.format.ogg",
+      "name": "Ogg Vorbis",
+      "extension": ".ogg",
+      "role": "Native runtime payload and lossless passthrough authoring input",
+      "stability": "experimental",
+      "requirement": "Use an Ogg bitstream containing Vorbis audio; AudioBaker verifies and copies an authored .ogg without lossy re-encoding, and AudioManager streams every baked audio resource through libvorbisfile.",
+      "rationale": "Every runtime payload is Vorbis even when its preserved authored path ends in .wav, so runtime dispatch never trusts the suffix as a codec declaration.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "ov_open_callbacks",
+            "OV_ENOTVORBIS",
+            "OriginalChannels",
+            "OriginalRate",
+            "OggStream.reset"
+          ]
+        },
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "if (ext == NATIVE_EXTENSION)",
+            "VerifyVorbisStream(path, data)",
+            "_context->WriteData(path, data)"
+          ]
+        }
+      ]
+    }
+  ],
+  "delivery_rules": [
+    {
+      "id": "audio.delivery.raw-copy",
+      "name": "AudioBaker delivery",
+      "stability": "experimental",
+      "requirement": "Include the Audio baker in each resource pack that owns runtime audio; it accepts the configured wav and ogg inputs and writes a verified Ogg Vorbis payload.",
+      "rationale": "Audio resources no longer use RawCopy: WAV is normalized and encoded while an already-native Ogg is verified and copied without another lossy pass.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.h",
+          "anchors": [
+            "class AudioBaker",
+            "NATIVE_EXTENSION = \"ogg\"",
+            "GetOrder() const"
+          ]
+        },
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "AudioBaker::BakeFile",
+            "EncodeVorbis(path, pcm)",
+            "_context->WriteData(path, vorbis_data)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.client-index",
+      "name": "Client sound index",
+      "stability": "experimental",
+      "requirement": "Call AudioManager.IndexFiles after client resources are available; it records every path whose suffix occurs in Audio.SoundFileExtensions.",
+      "rationale": "The manager exposes this source-backed path catalog, while Game.PlaySound itself receives the exact selected resource path and performs no concept or variant resolution.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "void AudioManager::IndexFiles()",
+            "Audio.SoundFileExtensions",
+            "_soundNames.emplace_back"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.effect-identity",
+      "name": "Exact authored path identity",
+      "stability": "experimental",
+      "requirement": "Pass the exact baked resource path, including its authored extension, to Game.PlaySound and Game.PlayMusic.",
+      "rationale": "AudioBaker preserves the authored path while replacing WAV bytes with Vorbis, and AudioManager reads that path directly without lowercasing or replacing the extension.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "string_view path = file.GetPath()",
+            "_context->WriteData(path"
+          ]
+        },
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "return Load(name, false",
+            "auto file = _resources->ReadFile(fname)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.extension-precedence",
+      "name": "Source extension and payload separation",
+      "stability": "experimental",
+      "requirement": "Treat a .wav suffix in baked resources as source identity, not runtime codec identity; all runtime bytes are Ogg Vorbis and .ogg sources remain .ogg.",
+      "rationale": "Preserving authored paths avoids rewriting project references while one runtime decoder and one package payload format remove platform-dependent format behavior.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.h",
+          "anchors": [
+            "Every audio resource the runtime plays is Ogg Vorbis",
+            "extension names the source format"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.delivery.music-path",
+      "name": "Music path ownership",
+      "stability": "experimental",
+      "requirement": "Pass music as an exact resource path; unlike effects, music is not resolved through the normalized sound-name index.",
+      "rationale": "PlayMusic forwards the supplied filename directly to AudioManager.Load.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "auto AudioManager::PlayMusic",
+            "return Load(fname, true, repeat_time, 1.0f, 0.0f)"
+          ]
+        }
+      ]
+    }
+  ],
+  "decoding_rules": [
+    {
+      "id": "audio.decoding.wav-chunk-order",
+      "name": "WAV chunk order",
+      "stability": "experimental",
+      "requirement": "Provide RIFF/WAVE with one usable fmt chunk and a non-empty data chunk; AudioBaker walks chunks in any order, skips unknown chunks, and respects odd-byte padding.",
+      "rationale": "Real exports commonly insert metadata chunks or reorder fmt and data, so the baker validates chunk bounds instead of prescribing a narrow sequence.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "while (reader.GetCurPos() + chunk_header_size <= file_size)",
+            "if (chunk_id == \"fmt \")",
+            "else if (chunk_id == \"data\")",
+            "chunk_size % 2"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.wav-pcm-width",
+      "name": "WAV PCM widths",
+      "stability": "experimental",
+      "requirement": "Author WAV as PCM at 8, 16, 24, or 32 bits or IEEE float at 32 bits; channel count and sample rate must be positive and block alignment must match the declared frame shape.",
+      "rationale": "AudioBaker converts each supported sample to signed 16-bit before Vorbis encoding and rejects truncated frames or inconsistent format metadata.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "pcm_width_ok",
+            "float_width_ok",
+            "WAV block alignment disagrees",
+            "DecodeWavSample"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.acm-shape",
+      "name": "Baked payload verification",
+      "stability": "experimental",
+      "requirement": "Reject a generated or passthrough payload unless libvorbisfile opens it as a valid Vorbis stream.",
+      "rationale": "The bake boundary catches malformed native input and encoder output before the client attempts playback; runtime then reads channel and sample-rate metadata from the verified stream.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "VerifyVorbisStream",
+            "ov_test_callbacks",
+            "test_result == 0"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.ogg-streaming",
+      "name": "Ogg streaming",
+      "stability": "experimental",
+      "requirement": "Expect Ogg Vorbis to decode in 64 KiB native chunks and 128 KiB Web chunks; short files are retained fully and release the stream after the initial decode.",
+      "rationale": "AudioManager uses a platform-sized streaming portion and clears OggStream when the first read reaches EOF.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "_streamingPortion = 0x20000",
+            "_streamingPortion = 0x10000",
+            "No need streaming",
+            "StreamOgg"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.device-conversion",
+      "name": "Device conversion",
+      "stability": "experimental",
+      "requirement": "Let AppAudio convert decoded sample format, channel count, and rate to the active SDL output-device format before playback.",
+      "rationale": "AudioManager does not require authored assets to match one fixed hardware format.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "_audio->ConvertAudio",
+            "ConvertedBuf"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_ConvertAudioSamples",
+            "AudioSpec"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.callback-mixing",
+      "name": "Audio callback mixing",
+      "stability": "experimental",
+      "requirement": "Treat playback as client audio-callback work; mutations of the active sound list must hold the audio-device lock.",
+      "rationale": "The SDL stream callback asks AudioManager to fill output while game-thread play/stop/update operations can add, mutate, or erase sounds.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "SetSource",
+            "ProcessSounds",
+            "LockDevice",
+            "UnlockDevice"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_OpenAudioDeviceStream",
+            "AudioStreamWriter",
+            "SDL_LockAudioStream"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.decoding.unsupported-extension",
+      "name": "Single runtime decoder",
+      "stability": "experimental",
+      "requirement": "Route authored audio through AudioBaker and let AudioManager decode every resulting resource as Ogg Vorbis regardless of its preserved source suffix.",
+      "rationale": "Unsupported source extensions never enter the Audio baker, and runtime has no suffix dispatch that could silently accept an empty or differently encoded payload.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "Every audio resource is baked to Ogg Vorbis",
+            "ov_open_callbacks",
+            "_playingSounds.emplace_back"
+          ]
+        }
+      ]
+    }
+  ],
+  "playback_rules": [
+    {
+      "id": "audio.playback.effect-api",
+      "name": "Game.PlaySound",
+      "stability": "experimental",
+      "requirement": "Use Game.PlaySound on the client for non-music playback and retain its uint32 handle when the sound must be placed again; zero means no live sound was started.",
+      "rationale": "The script method delegates the exact resource path to AudioManager and exposes the non-reused lifetime handle returned when the sound enters the mixer list.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlaySound",
+            "return client->AudioMngr.PlaySound"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.effect-base-first",
+      "name": "Exact effect path",
+      "stability": "experimental",
+      "requirement": "Resolve project concepts and numbered variants before Game.PlaySound, then pass the exact selected resource path including its authored suffix.",
+      "rationale": "Variant policy belongs to the embedding project; AudioManager performs no stem normalization, suffix fallback, or catalog convention.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "auto AudioManager::PlaySound(string_view name)",
+            "return PlaySound(name, 1.0f, 0.0f)",
+            "return Load(name, false"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.effect-contiguous-variants",
+      "name": "Placed sound start",
+      "stability": "experimental",
+      "requirement": "Use the Game.PlaySound overload with attenuation and pan to start a placed sound; attenuation at or below zero returns handle zero before file I/O.",
+      "rationale": "Placement is a caller-owned projection onto mixer attenuation and stereo balance, while distance curves and listener selection remain project policy.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlaySound(ptr<ClientEngine> client, string_view soundName, float32_t attenuation, float32_t pan)"
+          ]
+        },
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "if (attenuation <= 0.0f)",
+            "return Load(name, false, timespan::zero, attenuation, pan)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.global-mix",
+      "name": "Placed sound update",
+      "stability": "experimental",
+      "requirement": "Call Game.UpdateSound with a live handle to replace attenuation and pan as the source or listener moves; false means the handle is zero, audio is inactive, or playback already finished.",
+      "rationale": "The update runs under the audio-device lock, so the mixer observes one placement pair and a completed sound cannot be revived through a stale handle.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "auto AudioManager::UpdateSound",
+            "sound->Id == sound_id",
+            "sound->Attenuation = attenuation",
+            "sound->Pan = pan"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.music-api",
+      "name": "Game.PlayMusic",
+      "stability": "experimental",
+      "requirement": "Use Game.PlayMusic with an exact resource path and repeat interval; an empty path stops current music and succeeds.",
+      "rationale": "The script entry point owns the empty-name stop convention before delegating to AudioManager.",
+      "source": [
+        {
+          "path": "Source/Scripting/ClientGlobalScriptMethods.cpp",
+          "anchors": [
+            "Client_Game_PlayMusic",
+            "musicName.empty()",
+            "StopMusic",
+            "repeatTime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.single-music",
+      "name": "Single music stream",
+      "stability": "experimental",
+      "requirement": "Expect a new music request to stop every existing music instance before attempting to load the replacement.",
+      "rationale": "AudioManager.PlayMusic calls StopMusic before Load, so a failed replacement does not restore the previous track.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "auto AudioManager::PlayMusic",
+            "StopMusic();",
+            "return Load(fname, true, repeat_time, 1.0f, 0.0f)"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.repeat",
+      "name": "Repeat interval",
+      "stability": "experimental",
+      "requirement": "Pass a nonzero repeatTime to replay after completion; values at or below one millisecond repeat immediately, and larger values insert that delay.",
+      "rationale": "ProcessSound schedules NextPlayTime using a one-millisecond threshold and rewinds retained Ogg streams before replay.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "sound->RepeatTime",
+            "std::chrono::milliseconds {1}",
+            "ov_raw_seek",
+            "NextPlayTime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.separate-volumes",
+      "name": "Sound and music volumes",
+      "stability": "experimental",
+      "requirement": "Use Audio.SoundVolume and Audio.MusicVolume as startup defaults, then Game.SetSoundVolume and Game.SetMusicVolume for live changes; the frontend clamps each mix operation to 0 through 100.",
+      "rationale": "AudioManager owns live volume state because Engine settings are immutable, selects it by IsMusic, and AppAudio normalizes the clamped percentage before SDL mixing.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "_musicVolume {settings->Audio.MusicVolume}",
+            "_soundVolume {settings->Audio.SoundVolume}",
+            "sound->IsMusic ? _musicVolume : _soundVolume"
+          ]
+        },
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "std::clamp(volume, 0, 100)",
+            "SDL_MixAudio"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.disabled-success",
+      "name": "Disabled audio return convention",
+      "stability": "experimental",
+      "requirement": "Do not use PlayMusic true or a PlaySound handle as resource-existence proof when audio is disabled or unavailable; PlayMusic remains a successful no-op while PlaySound returns handle zero.",
+      "rationale": "A disabled device is a normal player state, so music reports no refusal and effects report only that no live sound exists; baker validation owns resource correctness.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "if (!_isActive || _soundVolume == 0)",
+            "if (!_isActive)",
+            "return true;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.playback.default-acm",
+      "name": "Stereo pan law",
+      "stability": "experimental",
+      "requirement": "Pass pan in the range -1 through 1 for the stock balance law: negative attenuates the right channel, positive attenuates the left, and the near channel stays at unity.",
+      "rationale": "AudioManager applies pan to the per-callback mix buffer rather than decoded storage, so later placement updates do not compound an earlier pan and loud samples are not boosted into clipping.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "void AudioManager::ApplyPan",
+            "float32_t left_gain",
+            "float32_t right_gain",
+            "ApplyPan(mix_buffer, sound->Pan)"
+          ]
+        }
+      ]
+    }
+  ],
+  "validation_rules": [
+    {
+      "id": "audio.validation.generated-reference",
+      "name": "Source-backed reference",
+      "stability": "internal",
+      "requirement": "Regenerate and check the audio model whenever AudioBaker, AudioManager, AppAudio, settings, package delivery, or script entry points change.",
+      "rationale": "The generated model rejects source-extension, runtime-codec, chunk-size, setting, handle, test-inventory, and headless drift before prose can silently become stale.",
+      "source": [
+        {
+          "path": "BuildTools/docs_audio.py",
+          "anchors": [
+            "generate_audio_model",
+            "_derive_outputs",
+            "Audio.SoundFileExtensions and AudioBaker extensions differ"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.raw-copy",
+      "name": "Audio baking gate",
+      "stability": "experimental",
+      "requirement": "Bake representative PCM/float WAV and native Ogg inputs, verify authored paths are preserved, inspect the audio counters, and open every output as Vorbis.",
+      "rationale": "Focused tests prove conversion and passthrough, while an embedding-project bake proves that its pack actually selects Audio and ships the resources consumed by its scripts.",
+      "source": [
+        {
+          "path": "Source/Tests/Test_AudioBaker.cpp",
+          "anchors": [
+            "TEST_CASE(\"AudioBaker\")"
+          ]
+        },
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "audioEncoded",
+            "audioPassthrough",
+            "audioInputBytes",
+            "audioOutputBytes"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.decoder-diagnostics",
+      "name": "Decoder diagnostics",
+      "stability": "experimental",
+      "requirement": "Treat AudioBaker exceptions and Ogg open/decode/device-conversion diagnostics as authoring or packaging failures; do not bless a zero playback handle as content validation.",
+      "rationale": "WAV and passthrough Ogg are rejected at bake time, while a resource that exists but cannot decode at runtime logs and enters the debugger instead of becoming silent success.",
+      "source": [
+        {
+          "path": "Source/Tools/AudioBaker.cpp",
+          "anchors": [
+            "Audio baking error",
+            "WAV encoding is not PCM or IEEE float",
+            "Ogg file is not a Vorbis stream"
+          ]
+        },
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "Open OGG file",
+            "Decode of sound",
+            "Conversion of sound"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.headless-boundary",
+      "name": "Headless boundary",
+      "stability": "experimental",
+      "requirement": "Do not claim audible validation from a headless or stub application; AppAudio is disabled there and playback may report no-op success.",
+      "rationale": "Headless audio deliberately exposes no active device or callback.",
+      "source": [
+        {
+          "path": "Source/Frontend/ApplicationHeadless.cpp",
+          "anchors": [
+            "auto AppAudio::IsEnabled() const",
+            "return false;"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.native-test-gap",
+      "name": "Focused native coverage",
+      "stability": "internal",
+      "requirement": "Run Test_AudioBaker and Test_AudioManager for WAV/Ogg baking, passthrough, invalid inputs, panning, placed playback, live updates, handle expiry, and mixer output.",
+      "rationale": "These suites execute the codec and callback contract directly; a visible client is still required to prove a real platform device and audible output.",
+      "source": [
+        {
+          "path": "Source/Tests/README.md",
+          "anchors": [
+            "Test_AudioBaker.cpp",
+            "Test_AudioManager.cpp"
+          ]
+        },
+        {
+          "path": "BuildTools/docs_audio.py",
+          "anchors": [
+            "native_test_files",
+            "native_test_directory"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.visible-client",
+      "name": "Visible audible validation",
+      "stability": "experimental",
+      "requirement": "On every claimed platform, use a visible client with audio enabled to play baked WAV-path and native-Ogg-path resources, move a placed sound, replace music, exercise delayed and immediate repeats, and test volume endpoints.",
+      "rationale": "Only an active platform audio device can prove conversion, callback scheduling, mixing, and audible output.",
+      "source": [
+        {
+          "path": "Source/Frontend/Application.cpp",
+          "anchors": [
+            "SDL_InitSubSystem(SDL_INIT_AUDIO)",
+            "SDL_OpenAudioDeviceStream",
+            "SDL_ResumeAudioStreamDevice"
+          ]
+        },
+        {
+          "path": "Source/Client/AudioManager.cpp",
+          "anchors": [
+            "ProcessSounds",
+            "PlaySound",
+            "UpdateSound",
+            "PlayMusic"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "audio.validation.project-boundary",
+      "name": "Embedding-project ownership",
+      "stability": "experimental",
+      "requirement": "Keep catalog conventions, spatial/recipient policy, mastering, licenses, attribution, budgets, and gameplay triggers in project documentation and tests.",
+      "rationale": "The engine supplies baking, runtime decoding, a client mixer, and placement parameters, not a complete game audio design or asset-governance system.",
+      "source": [
+        {
+          "path": "Source/Client/AudioManager.h",
+          "anchors": [
+            "PlaySound",
+            "UpdateSound",
+            "PlayMusic",
+            "StopSounds",
+            "StopMusic"
+          ]
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "entry_count": 31,
+    "format_count": 2,
+    "delivery_rule_count": 5,
+    "decoding_rule_count": 7,
+    "playback_rule_count": 10,
+    "validation_rule_count": 7,
+    "entries_by_stability": {
+      "experimental": 29,
+      "internal": 2
+    }
+  },
+  "contract_digest": "a5b3cb18613c5f67a6be38634f1e162fc652de55e57bf8b14482015ca92c9205"
+}

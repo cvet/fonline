@@ -195,11 +195,15 @@ def is_large_address_aware(binary: Path) -> bool:
     return bool(characteristics & IMAGE_FILE_LARGE_ADDRESS_AWARE)
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
+def create_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="check_windows7_imports.py", description="Reject imports Windows 7 SP1 cannot resolve from Windows 7-compatible PE binaries")
     parser.add_argument("--require-large-address-aware", action="store_true", help="Require the large-address flag on checked executables")
-    parser.add_argument("binaries", nargs="+", type=Path)
-    args = parser.parse_args()
+    parser.add_argument("binaries", nargs="+", type=Path, help="linked PE executable or DLL to inspect")
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = create_parser().parse_args(argv)
 
     failed = False
     for binary in args.binaries:

@@ -1,0 +1,490 @@
+---
+layout: default
+title: Networking
+locale: en
+document_id: networking
+permalink: /Docs/en/explanation/authority-and-networking/
+---
+
+# Networking
+
+This document explains the reusable engine networking layers: the secure channel, message buffers, debug/hash handling, client/server connection abstractions, and the ordered UDP transport.
+
+Use it when changing `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, client/server connections, or network tests.
+
+## Ownership model
+
+The engine owns the secure channel, transport abstractions, message framing, ordered UDP behavior, and client/server connection interfaces. An embedding project owns deployment topology, pinned production keys, rotation and operational policy, and game-specific command usage.
+
+Do not document project-specific hosts, ports, or release infrastructure here.
+
+## Source paths inspected
+
+- `Source/Common/NetBuffer.h`
+- `Source/Common/NetBuffer.cpp`
+- `Source/Common/NoiseProtocol.h`
+- `Source/Common/NoiseProtocol.cpp`
+- `Source/Common/SecureChannel.h`
+- `Source/Common/SecureChannel.cpp`
+- `Source/Common/NetworkUdp.h`
+- `Source/Common/NetworkUdp.cpp`
+- `Source/Common/Settings.inc`
+- `Source/Client/NetworkClient.h`
+- `Source/Client/NetworkClient-Interthread.cpp`
+- `Source/Client/NetworkClient-Sockets.cpp`
+- `Source/Client/NetworkClient-UdpSockets.cpp`
+- `Source/Server/NetworkServer.h`
+- `Source/Server/NetworkServer-Interthread.cpp`
+- `Source/Server/NetworkServer-UdpSockets.cpp`
+- `Source/Server/NetworkServer-Asio.cpp`
+- `Source/Server/NetworkServer-WebSockets.cpp`
+- `Source/Server/Server.cpp`
+- `Source/Server/ServerConnection.h`
+- `Source/Server/ServerConnection.cpp`
+- `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NetworkClient.cpp`
+- `Source/Tests/Test_NetworkServer.cpp`
+- `Source/Tests/Test_ClientServerIntegration.cpp`
+- `Source/Tests/Test_Cryptography.cpp`
+- `Source/Tests/Test_NoiseProtocol.cpp`
+- `Source/Tests/Test_SecureChannel.cpp`
+
+## Secure channel
+
+Every connection, including an in-process interthread connection, carries an ordered stream of sealed frames before any `NetMessage::Handshake` or updater data. The engine implements `Noise_NK_25519_ChaChaPoly_BLAKE2b` (Noise revision 34): the client has no pre-login identity, while the server proves possession of a static X25519 secret whose public half the client pins. The one-round-trip handshake derives fresh per-direction session keys. Network observers and forged servers cannot read or inject gameplay or updater messages; a party controlling the client process can still extract its session keys and send through a genuine session, so server-side authority and inbound validation remain necessary.
+
+The same `SecureChannel` runs over TCP, ordered UDP, WebSocket and interthread transports. WebSocket pinning is independent of the Web PKI used by WSS. The server-to-client stream is compressed before sealing; the client-to-server stream, which carries logins and tokens, is not compressed. Every frame has a big-endian 16-bit length and one Noise message. Transport payloads contain at most 65,519 plaintext bytes plus a 16-byte authentication tag. A frame with an invalid length is rejected before its body is buffered. The ordered UDP sequence/acknowledgement header remains outside the channel and cannot inject authenticated payloads. Connection shutdown, UDP-to-TCP fallback and reconnect start fresh channels; there is no plaintext fallback.
+
+There is one bounded exception to the no-plaintext-session rule: the server recognizes the frozen first-message signature of a client predating the secure channel and sends only a fixed legacy handshake answer with `updater_outdated` (compressed when configured). That client then closes; no gameplay or updater exchange follows in plaintext. Other malformed input still takes the secure-channel rejection path. This refusal is marked `FO_TEMPORARY_COMPAT(PreChannelClient, "2026-12-31")` at its implementation, state, and tests, and follows the [temporary-compatibility removal gate](../../reference/native/essentials.md#temporary-compatibility). `Test_SecureChannel.cpp` pins the reply through hand-driven and real TCP/UDP connections.
+
+| Frame | Sender | Body |
+|---|---|---|
+| Offer | Client | Count from 1 to `SecureChannel::MAX_OFFERED_KEYS` (4), then a first NK message for each pinned server key |
+| Answer | Server | Selected offer index and the second NK message; a server that opens none disconnects |
+| Transport | Either side | One authenticated Noise transport message |
+
+Both handshake messages have empty payloads and use the fixed `SecureChannel::PROLOGUE`. Each offered pin has its own ephemeral key. Offering the old and next pins together permits a staged key rotation without a second handshake. Nonces advance per direction; replayed, reordered, dropped and reflected frames fail authentication. A channel error is a `NoiseException` (or derived `SecureChannelException`) and closes the connection. The server latches receive-path rejection for its owning worker to disconnect with `ProtocolError`, logging a warning rather than treating an unauthenticated stranger as an engine exception.
+
+| Setting | Owner | Contract |
+|---|---|---|
+| `ServerNetwork.ChannelSecretKey` | Server | Required static X25519 secret, exactly 64 hex digits, even if external networking is disabled; a missing or malformed value prevents startup |
+| `ClientNetwork.ChannelServerKeys` | Client | One to four pinned public keys, each exactly 64 hex digits; an empty or invalid list prevents connection |
+
+`BuildTools/secure_channel_key.py generate <secret-file>` creates a new owner-readable secret file without overwriting one and prints its public key; `public <secret-file>` derives the public half of an existing key. Never bake a production secret into a client or repository config. Use target-host provisioning such as `$TARGET_FILE{...}` for the server value, publish only the public pin to clients, and follow [Security and Secrets](../../how-to/release/security-and-secrets.md). For rotation, ship both pins first, switch the server's secret, then remove the old pin after old clients are retired. The engine test fixture has its own deterministic key pair; that fixture is not a production identity.
+
+## Message buffers
+
+`Source/Common/NetBuffer.h` defines the shared binary message layer:
+
+- `NetBuffer` — common storage, growth, and raw copy support; confidentiality and integrity belong to `SecureChannel` outside the message buffer.
+- `NetOutBuffer` — write/framing helper for outgoing messages.
+- `NetInBuffer` — read/framing helper for incoming messages.
+
+Important constant: `NETMSG_SIGNATURE = 0x011E9422`, the marker at the start of each framed message inside the channel.
+
+`NetOutBuffer` responsibilities:
+
+- append raw bytes via `Push()`;
+- write arithmetic/enums/plain property types through typed `Write()`;
+- write strings and hashed strings;
+- write property data blocks with `WritePropsData()`;
+- frame messages with `StartMsg()` and `EndMsg()`.
+
+`NetInBuffer` responsibilities:
+
+- accumulate incoming bytes with `AddData()`;
+- determine when a full message needs processing with `NeedProcess()`;
+- read typed values, strings, and hashed strings;
+- read property data with `ReadPropsData()`;
+- parse message IDs with `ReadMsg()`;
+- expose `GetUnreadSize()` for only the current framed message and `GetBufferedUnreadSize()` for all retained input;
+- require exact consumption of the current frame before `ShrinkReadBuf()` or the next `NeedProcess()` advances past it;
+- shrink/reset read buffers after processing.
+
+Property synchronization and entity state transfer should go through these helpers instead of hand-rolled byte layouts.
+
+<a id="inbound-hardening-untrusted-client-server"></a>
+
+## Inbound hardening (untrusted client → server)
+
+The server treats all inbound bytes as hostile. Several complementary layers guard against resource-exhaustion and malformed input:
+
+- **Length-before-allocation rule.** Any peer-declared length/count must be validated against the bytes actually remaining in the *current frame* before allocation or iteration. `NetInBuffer::Read<string>()` and `NetInBuffer::ReadPropsData()` reject (`NetBufferException`) when the declared length exceeds `GetUnreadSize()`, so a tiny message cannot borrow bytes from the next coalesced frame or amplify into a multi-GB allocation. Inbound remote-call decoding uses a read-only `DataReader`: string bytes are bounds-checked as a borrowed view before constructing the owned string, while array, dict, and dict-of-array counts are charged against the remaining payload using each value type's minimum wire size before `Reserve()`, container creation, or a count-driven loop. The server-side content validator performs the same count preflight.
+- **Maximum message size.** `NetInBuffer::SetMaxMsgLen(len)` sets an upper bound on a single framed message; `NeedProcess()` throws `UnknownMessageException` (→ hard disconnect) at the header when `msg_len` exceeds it, before the receive buffer accumulates the payload. The server sets this from `ServerNetwork.MaxMessageSize` (0 = unlimited); the client leaves it unset so large server→client sync still works. All server-inbound messages are small control messages, so the default cap is well above any legitimate value.
+- **Maximum retained input.** `NetInBuffer::SetMaxBufLen(len)` caps total unread bytes retained across coalesced or partial frames, so a peer cannot grow the receive buffer by never completing a message. The server applies `ServerNetwork.MaxBufferedInputSize` (default 4 MiB) to TCP, UDP, interthread, and WebSocket input; the value must be `0` (unlimited) or at least `MaxMessageSize`, otherwise server startup fails. `AddData()` reports overflow on the network thread, while `ServerConnection` latches it once and the owning worker hard-disconnects the peer without recursively taking the transport lock.
+- **Remote-call structural limits.** A `///@ RemoteCall` may declare `MaxBytes N` and `MaxCollectionSize N`. Metadata carries both limits for every call: a declaration without either option is baked with the explicit `Limits 0 0` trailer, and registration rejects records without it. The server resolves the call name before allocating its body; the native validator and each enabled scripting decoder enforce the collection limit before reserve or container creation. AngelScript covers arrays, dictionaries, and nested dictionary arrays; the current Managed C# bridge uses the same wire reader but supports scalar and array arguments only. Unknown calls are rejected before body allocation. Adding the mandatory trailer changed compatibility metadata and therefore requires the corresponding compatibility-version bump. See [Remote Calls](../../reference/scripting/remote-calls.md) for the complete backend matrix.
+- **Remote-call runtime ceiling.** `ServerNetwork.MaxRemoteCallPayloadSize` (default 1 MiB) is the server-wide decoded-RPC ceiling. The effective payload ceiling is the smaller nonzero value of this setting and per-call `MaxBytes`; the structural call limit is the semantic protocol boundary, not a replacement for the global hostile-input limit.
+- **Per-pass message budget.** The server drains at most `ServerNetwork.MaxMessagesPerProcessPass` messages per connection per worker-job pass, then yields; the periodic player job reschedules, so leftover buffered messages drain on the next pass and one flooding connection cannot monopolize a worker thread shared with world jobs.
+- **UDP reorder window.** `UdpTransportOptions.MaxReorderAhead` (server: `ServerNetwork.MaxUdpReorderAhead`) bounds how far ahead of the next expected sequence the out-of-order reassembly map (`_receivedPackets`) buffers; payloads beyond the window are dropped (the sender retransmits), so a peer that never sends the in-order packet cannot grow the map without limit.
+- **Pre-handshake parse failures stay operational noise.** A malformed payload that raises `NetBufferException` before `ServerConnection::IsHandshakeComplete()` is logged once as an invalid-handshake warning with the remote host/port and hard-disconnected without invoking the global exception reporter. The same exception after a completed handshake still follows normal exception reporting. `ServerRejectsMalformedPreHandshakePayloadWithoutExceptionReport` in `Source/Tests/Test_ClientServerIntegration.cpp` pins the distinction.
+
+The per-type *content* validator (`ClientDataValidation.*`, invoked for client property writes and inbound remote-call payloads) is the complementary layer: it enforces finite floats, valid UTF-8, rejection of embedded NUL bytes in strings (a NUL is valid UTF-8 but never legitimate client text and is dangerous for C-string/log/DB consumers), non-negative sizes, count-to-payload consistency, enum/hash/proto resolution, and the declared remote-call collection ceiling. Absolute input and flood ceilings still live in the buffer/transport layer above.
+
+## Hashes
+
+Network buffers can serialize `hstring` values: `NetOutBuffer` writes the 64-bit hash, and `NetInBuffer` resolves it back to a string through a `HashResolver`.
+
+When changing hash serialization, inspect both generated metadata/hash registration and runtime network consumers.
+
+### Unresolved hash recovery
+
+Client and server build their hash storages independently from local resources, so the server can transmit an `hstring` that was created at runtime (or that lives in content the client lacks) and which the client cannot resolve. `NetInBuffer::ReadHashedString` resolves the raw hash through the supplied `HashResolver`; when that lookup fails, the resolver's failure handler sees the raw `hstring::hash_t`, the input buffer is reset, and `ReadHashedString` throws a regular `NetBufferException`. The same handler also covers non-buffer lazy resolves, such as converting raw replicated property data into AngelScript `hstring`, arrays, dictionaries, or proto-reference objects.
+
+What fills that client storage decides which strings are at risk. Startup registers local metadata,
+proto/fixed-type identities and hashed property values (including authored `Server` values), client-compiled
+script literals, text keys, sprite paths and model names. `ProtoBaker` carries server-pack strings in the
+client prototype dictionary without enabling server property access. A map's `fomap-bin-client` table
+arrives only when that map loads (`MapView::LoadStaticData`); it also carries the server map's strings,
+including critter/dynamic-item overrides, without serializing those server entities as client records.
+Strings in these public dictionaries are not secrets merely because their source property is `Server`.
+
+A server-only script literal, a runtime-composed value, or a map value delivered before its map loads
+still has no automatic client registration. A producer must establish the receiving pool before syncing
+the hash, for both AngelScript and Managed C#. The recovery below diagnoses a missing string after the
+failed read; it is not the normal delivery channel. See [Baking](../content-pipeline/baking.md) for the
+coupled output and incremental collection rules.
+
+The engine recovers from this instead of looping on the disconnect:
+
+1. `ClientEngine` registers a `HashStorage` resolve-failure handler. When the client hits an unknown hash on an established connection, the handler writes `NetMessage::UnresolvedHash` and performs one immediate pending-output flush. `ClientConnection::Process` still turns the following `NetBufferException` into a normal disconnect for direct buffer reads; lazy script/property exceptions may be contained by the script event system, so the server also hard-disconnects the reporter after receiving the hash. The report is tiny and the connection was just live, so it lands in the kernel send buffer without a sleep/retry busy-wait. If a wedged socket drops it, the client re-reports the same hash the next time it hits it, so no bounded-wait loop is needed. The client keeps no state, writes nothing to disk, and learns the string on the next normal reconnect.
+2. The server (`Process_UnresolvedHash`) resolves the reported hash against its own storage, logs it, and — when it can resolve the string — stores it in the persistent `HashReports` database collection (keyed by the string) and remembers it in memory. Hashes the server cannot resolve either are logged once per session and not stored. If a transport reports the close before the server worker reaches already-delivered input, the server checks a hard-disconnected connection for a pending `UnresolvedHash` before cleanup. The server then drops the connection (`HardDisconnect`), since a client that reported a bad hash has already stopped parsing the stream and is reconnecting — this also covers a client that reports without disconnecting itself.
+3. The server broadcasts a newly learned string to all already-connected clients (`NetMessage::HashList`) and, on every handshake, sends the full known set to the connecting client right after `InitData` (`SendAllReportedHashes`). `HashList` is a count followed by length-prefixed strings.
+4. Clients feed each received string through `HashResolver::ToHashedString`, which registers the same hash locally, so subsequent resolves of that hash succeed. Because the server resends the full set on every connect, a client that reported a hash and dropped resolves it after reconnecting.
+
+The reported strings are stored raw (not registered into the server hash storage) so the server can keep and rebroadcast them without recreating dead entries. On startup the server loads the persisted `HashReports` collection after static content is loaded but before runtime/world strings are created, and checks each stored string with `HashStorage::CheckHashedString` (a non-inserting existence check). A reported gap is treated as fixed once its string resolves — i.e. the missing data was added to content — so it is deleted from storage and no longer broadcast. A string that is still unresolvable is logged with a warning, kept, and rebroadcast, since the underlying content is still missing.
+
+This is a serialized contract change: `NetMessage::HashList` (server→client) and `NetMessage::UnresolvedHash` (client→server) were added, so the central compatibility marker in `Source/Common/Common.h` is bumped accordingly.
+
+## Client connection abstraction
+
+`Source/Client/NetworkClient.h` defines `NetworkClientConnection`.
+
+Compressed client/server traffic is one continuous zlib stream flushed with `Z_SYNC_FLUSH`; transport reads may split or coalesce its bytes and are not independent compressed packets. Malformed input cannot be skipped or resynchronized inside the same connection. `StreamDecompressor` reports peer-stream failures as `DecompressException`, and `ClientConnection` treats that as a protocol failure: it logs the error, disconnects, and resets its buffers and decompressor so a later reconnect starts from a clean stream. It does not retry the same bytes, continue on the poisoned stream, or reinterpret decompression failure as a UDP-to-TCP fallback condition.
+
+The public surface is transport-neutral:
+
+- `IsConnecting()` / `IsConnected()`;
+- byte counters: `GetBytesSend()`, `GetBytesReceived()`;
+- `CheckStatus(for_write)`;
+- `SendData()`;
+- `ReceiveData()`;
+- `Disconnect()`.
+
+Factory methods choose transport implementation:
+
+- `CreateInterthreadConnection()`
+- `CreateSocketsConnection()`
+- `CreateUdpSocketsConnection()`
+
+Concrete files include:
+
+- `NetworkClient-Interthread.cpp`
+- `NetworkClient-Sockets.cpp`
+- `NetworkClient-UdpSockets.cpp`
+
+The client runtime should depend on the abstract connection interface where possible; transport-specific behavior belongs in the implementation files.
+
+## Server connection abstraction
+
+`Source/Server/NetworkServer.h` defines two server-side abstractions:
+
+- `NetworkServerConnection` — one accepted/active connection.
+- `NetworkServer` — listening server lifecycle.
+
+`NetworkServerConnection` owns callback registration and dispatch:
+
+- `SetAsyncCallbacks(send, receive, disconnect)`;
+- `Dispatch()`;
+- `Disconnect()`;
+- `GetHost()` / `GetPort()`;
+- `IsDisconnected()`.
+
+The send callback returns outgoing bytes **by value**, and each transport owns the buffer handed to its socket. A borrowed sender buffer can be refilled by another dispatch or freed during disconnect while an I/O thread is still compressing or sending it. `Disconnect()` clears the callback under the same lock used for invocation, so teardown waits for any in-flight pull and later transport ticks cannot reach a disappearing sender.
+
+`NetworkServer` keeps weak references to every accepted connection. `Shutdown()` first closes registration
+against concurrent accepts, snapshots and disconnects all still-live connections, and only then invokes the
+transport-specific listener/io-context shutdown and thread join. A connection accepted concurrently with
+shutdown is either included in that snapshot or rejected and disconnected by `TrackConnection()`; it cannot
+escape between the accept callback and io-thread teardown. Repeated `Shutdown()` calls are no-ops.
+
+The server runtime applies two independent limits to connections that have not logged in:
+
+- `ServerNetwork.InactivityDisconnectTime` limits silence between any inbound messages;
+- `ServerNetwork.LoginTimeout` limits time without meaningful pre-login progress (0 disables it). Handshake,
+  authentication remote calls, and update-file requests refresh progress; transport pings do not. This lets a
+  legitimate updater continue while preventing a peer from keeping an unauthenticated slot forever by only
+  answering pings.
+
+A logged-in connection is also dropped when it stops answering pings. `ServerNetwork.ClientPingTime` sets the interval; if the previous ping remains unanswered when the next one is due, the server records `PingTimeout` and hard-disconnects the connection. The in-process interthread transport opts out of this watchdog because its peer lifetime is explicit through the callback channel and a busy shared process can delay both ends together; closing either interthread endpoint still disconnects its peer immediately. It is still pinged for latency measurement, but a late answer merely postpones the next ping. `NeedPing()` schedules both transports; `NeedsPingWatchdog()` selects the disconnect policy.
+
+The server pairs `RegisterPingRequest` with `RegisterPingAnswer` and smooths the measured round trip in `GetRoundTrip()`. Unpaired answers are ignored. Because the client answers from its frame loop, this is an upper bound including client scheduling, not pure wire latency. It is zero before the first answer and is never chosen by the client.
+
+### The client reports a movement it finished predicting
+
+The client starts predicting its own movement before its `SendCritterMove` reaches the server. An interrupted plan already sends `SendStopCritterMove` with its final position. When a plan plays to its end, the chosen critter instead sends `SendCritterMoveFinished` with map and critter ids, the plan's end hex, and final position and direction. `Process_MoveFinished` checks that the report names the current plan and reconciles through the same path and blocking checks as a stop. The end hex identifies the plan because the initiating client does not receive the server's `CritterMove` id.
+
+The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
+
+A **held direction** is one plan traced far ahead and *leased*: `SendCritterMove` carries the client's number for
+the plan and a lease in projected path distance, and the server and the observers run the plan only up to the lease. While
+the key stays down the client renews it with `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}`
+a few steps ahead of the critter; the server moves its copy's lease on (shifted by the projected distance its copy's start differs
+from the client's) and passes it to the observers as `CritterMoveLease {critter, movement uid, lease distance, sender
+ms}`, which an observer applies only to the plan it received under that uid
+([ClientRuntime.md](../runtime/client.md#held-direction-movement)). A held run is then one timeline on every side, as a
+click is, while a stall on the player's link stops the server and the observers at the lease end instead of
+carrying them along the trace (a stall that outlasts the connection leaves the critter standing there: the server stops a
+leased plan when it drops the player); a release that reaches the server after its plan ended there is reconciled along the
+player's own finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+
+**Late messages** are measured, not assumed. `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`,
+`CritterMove`, `CritterMoveLease` and both directions of `Ping` end with the sender's monotonic clock in
+milliseconds; `LinkDelayEstimator` turns a stamp into how much later than the link's usual transit (the median over
+the last `Network.LinkDelayWindowMs`) the message arrived. Pings keep that usual transit current while nothing moves, so the
+first move after a stall is measured against the link as it was. A plan or a renewal late by at least
+`Network.MoveLateCatchUpMinMs` is played from where it would be by now ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)).
+`CritterMove` also carries the server's movement uid and the plan's lease (zero when the plan runs to its end). These
+fields changed the wire format of the movement messages and `Ping`; the compatibility version moved with them.
+
+### Movement synchronization trace
+
+`Network.MoveSyncTrace` (off by default, too verbose for production) makes the server and every client write
+one `MOVESYNC` log line per movement synchronization event, so the three views of one critter — where the
+server holds it, where its own client draws it, and where another client sees it — can be laid side by side
+after a run. The line is a format rather than prose, written by `TraceMoveSync` (`Movement.h`):
+
+```text
+MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
+```
+
+`t` is the local monotonic clock, which every process on one machine shares, so a single-machine run aligns
+all three views without estimating any clock offset. Across machines only `st` is common, and a client's
+`st` trails the server's by the delivery of its last time sync, so cross-machine latencies read from it are
+estimates. Every client line carries `viewer=<its chosen critter id>`, which keeps several clients apart
+when they write into one log (embedded clients do).
+
+| Side | `ev` | Written by | Fields |
+|------|------|------------|--------|
+| srv | `move_req` | `Process_Move`, before the plan starts | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms`; `joined` steps of the plan the server's critter had already walked, `late_ms` the message's lateness over the link's usual transit |
+| srv | `move_start` | `StartCritterMoving` (player or script) | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator`; `lease_ms=0` runs to the end |
+| srv | `lease_req` | `Process_MoveLease` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` — a held direction's lease moved on |
+| srv | `step` | `ProcessCritterMovingBySteps`, per hex entered | `cr uid hex elapsed_ms runtime_ms` |
+| srv | `stop` | `StopCritterMoving` | `cr uid reason hex broadcast` (`reason` is the `MovingState` value) |
+| srv | `stopmove_req` | `Process_StopMove`, after reconciliation | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms`; `after_end=1` when the stop arrived after the player's own plan had already run out on the server and was reconciled along that finished plan |
+| srv | `finish_req` | `Process_MoveFinished`, at every exit | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `ChangeCritterMovingSpeed` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms`; `runtime_ms - elapsed_ms` is progress the rebase discards |
+| srv | `send` | `Player::Send_Moving` / `Send_Teleport` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]`; `own=1` is a correction of the recipient's own critter |
+| cl | `move_send` / `stop_send` / `finish_send` / `lease_send` | `Net_SendMove` / `Net_SendStopMove` / `Net_SendMoveFinished` / `Net_SendMoveLease` | what the acting client told the server; `lease_send` is `cr seq lease_dist` |
+| cl | `lease_recv` | `Net_OnCritterMoveLease` | `cr uid lease_ms late_ms catchup_ms` — another critter's held plan may run further |
+| cl | `hold` | `CritterHexView::ProcessMoving`, when a plan reaches or leaves its lease | `cr own on elapsed_ms` — `on=1` the critter stands at the lease waiting for a renewal |
+| cl | `frames` | `ClientEngine::TraceFrameHealth`, once a second | `n ms max_ms` — frames drawn in the window and the longest; movement is processed once a frame, so a starved client measures its host |
+| cl | `dir_plan` | `ClientEngine::PlanDirectMove` | a held direction materialised as a plan: `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex`; `steps=0` is a blocked direction, and every plan with steps is followed by its `move_send` |
+| cl | `move_recv` / `pos_recv` / `teleport_recv` | the three inbound position messages | `cr own …`; `own=1` is a correction; `pos_recv` carries `jump` (hexes moved) and `err_px` (pixels between where the critter was drawn and the received position — a sub-hex re-split moves the hex but not the picture); `move_recv` also carries `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` — steps joined past, the copy's lease, the plan's lateness, how far the server had started it ahead, the time made up and how much of it by running faster |
+| cl | `speed_recv` | `Net_OnCritterMoveSpeed` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` — the client rebases one delivery after the server |
+| cl | `step` / `arrive` | `CritterHexView::ProcessMoving` | where the client draws a critter, hex by hex, and where its plan ended |
+| cl | `in` / `out` | `Net_OnAddCritter` / `Net_OnRemoveCritter` | a critter entered or left this client's view: `cr own hex` (and `moving` on `in`). Between an `out` and the next `in` the client knows nothing about the critter, so a stale last hex is not a disagreement; a client re-entering its own critter on login traces `in` with itself as the viewer |
+| cl | `mark` | project scripts | a scenario boundary (`label=begin:<name>` / `end:<name>`) written through the AI-control bridge |
+| cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
+
+`finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
+`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
+is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
+stable.
+
+### Disconnect reasons
+
+Every close records its cause in `DisconnectReason`, and `HardDisconnect(reason)` requires callers to choose one:
+
+| Reason | Cause |
+|---|---|
+| `None` | still connected |
+| `ClientClosed` | the transport reported that the peer disappeared; voluntary quit and lost network are indistinguishable here |
+| `InactivityTimeout` | no inbound message before `InactivityDisconnectTime` |
+| `PingTimeout` | the previous ping was not answered |
+| `LoginTimeout` | no pre-login progress before `LoginTimeout` |
+| `ProtocolError` | malformed/unexpected data or failed connection publication |
+| `UpdaterError` | invalid update-file request |
+| `ServerShutdown` | orderly server stop |
+| `ScriptRequest` | `Player.HardDisconnect()` from script |
+| `LoginFailed` | login rolled back after a server-side failure |
+| `ReplacedByReconnect` | a new login for the same account replaced this session |
+
+The first recorded reason wins, preventing the transport's later generic `ClientClosed` callback from overwriting the specific cause. The reason appears in the closed-connection log and is available to `OnPlayerLogout` handlers through `Player.GetDisconnectReason()`. `ServerConnectionRecordsWhyItWasDisconnected` pins this contract.
+
+`ServerDisconnectsPreLoginConnectionAfterLoginTimeout` covers the runtime deadline, while
+`NetworkServerInterthreadCopiedListenerRejectsAfterShutdown`, `NetworkServerInterthreadOptsOutOfPingWatchdog`, and the transport shutdown tests cover accepted connection ownership, concurrent accept rejection, and the interthread watchdog exemption.
+
+`NetworkServer` starts transport-specific servers through factories:
+
+On the client side, `ClientConnection` also bounds silence. During secure-channel handshaking, or while a ping is outstanding, receiving no bytes for `ClientNetwork.PingTimeout` milliseconds (default 30000; zero disables the timeout) takes the ordinary disconnect path. Any incoming bytes count as progress, avoiding a false timeout during a large update portion; debugger sessions suppress this watchdog. A reconnect clears the pending ping. `Source/Tests/Test_ClientUpdater.cpp` covers a silent updater server.
+
+Server-side connection owners must call `DropAsyncCallbacks()` before destruction. It clears send, receive, and disconnect callbacks under their locks and waits for a callback already in progress, including a disconnect notification racing transport teardown (`Source/Server/ServerConnection.cpp`).
+
+- `StartInterthreadServer()`;
+- `StartUdpSocketsServer()`;
+- `StartAsioServer()` when `FO_HAVE_ASIO` is enabled;
+- `StartWebSocketsServer()` when `FO_HAVE_WEB_SOCKETS` is enabled;
+- `CreateDummyConnection()` for tests/special paths.
+
+The listen ports and the client connect endpoint are configured per transport:
+
+- **TCP** listens on `Network.ServerPort`; **UDP** on `Network.ServerPort + Network.UdpPortOffset`.
+- **WebSocket(S)** listens on `Network.WebSocketPort`.
+- The client connects plain TCP/UDP to `ClientNetwork.ServerHost`:`Network.ServerPort`, and
+  WebSocket(S) to `ClientNetwork.WebSocketHost`:`Network.WebSocketPort` — so the WebSocket endpoint
+  can keep a hostname (for its TLS certificate) while the TCP/UDP endpoint can be a raw IP, letting a
+  native client connect without DNS resolution.
+
+Each endpoint is configured explicitly: the WebSocket host and port are independent settings, not
+derived from `ServerHost` / `ServerPort`.
+
+Socket diagnostics must not use `std::error_code::message()`, `std::system_error::what()`, `strerror()`,
+or `FormatMessage()` directly because those APIs return text in the host OS locale. Route socket failures
+through `net_sockets::error_text()` instead. It maps common network conditions to stable English names and
+always retains the native category and numeric code; unknown conditions use the English fallback
+`Network error (<category>:<code>)`. Listener startup exceptions must also add the transport and port so
+an occupied TCP or WebSocket endpoint is actionable without relying on localized system text.
+
+Concrete files include:
+
+- `NetworkServer-Interthread.cpp`
+- `NetworkServer-UdpSockets.cpp`
+- `NetworkServer-Asio.cpp`
+- `NetworkServer-WebSockets.cpp`
+
+### Async transport connection lifetime & threading
+
+The socket-based server connections (`Asio`, `WebSockets`) run their io loop on a dedicated thread while
+the engine worker pool drives `Dispatch()`/`Disconnect()` on the connection from other threads, so the
+connection wrapper's lifetime must be disciplined:
+
+- **The wrapper must never be dereferenced by an io-thread callback after the engine drops it.** The Asio
+  transport gets this for free by capturing `shared_from_this()` in every async read/write handler. The
+  WebSockets transport wires its persistent websocketpp handlers post-construction (a `Start()` method,
+  because `weak_from_this()` is unusable in the constructor) and each handler locks a `weak_from_this()`
+  before touching the wrapper — a raw `this` capture is a use-after-free.
+- **Cross-thread teardown must use the transport's thread-safe path.** For WebSockets that is
+  `connection->close()` (it posts to the io service), never the io-thread-only `connection->terminate()`.
+- **The wrapper must not extend the underlying connection's lifetime past its owning io_context.** The
+  websocketpp endpoint owns each connection (with its io_context-bound asio timers) and destroys it on the
+  io thread; the wrapper therefore holds the connection **weak** and locks per use. A strong ref lets a
+  surviving wrapper destroy the connection after the io_context is gone — a shutdown-time use-after-free.
+
+`Test_NetworkServer.cpp` covers each transport end-to-end (interthread, Asio accept-rearm and shutdown with an
+accepted TCP connection, and a real websocketpp client that sends a frame then relies on server shutdown to
+disconnect it); run it under the AddressSanitizer job to guard these lifetime rules.
+
+## Ordered UDP transport
+
+`Source/Common/NetworkUdp.h` implements an ordered/reliable payload layer over UDP.
+
+Packet types:
+
+- `Connect`
+- `Accept`
+- `Payload`
+- `KeepAlive`
+- `Disconnect`
+
+`UdpTransportOptions` controls:
+
+- `MaxPayload`
+- `MaxPendingBytes`
+- `MaxReorderAhead`
+- `ResendTimeoutMs`
+- `ConnectRetryMs`
+- `Redundancy`
+
+`UdpPacketInfo` carries parsed packet data:
+
+- packet type;
+- session ID;
+- sequence number;
+- acknowledgement sequence;
+- acknowledgement bitmask;
+- extra value;
+- payload bytes.
+
+`UdpOrderedChannel` owns session state and reliable ordering:
+
+- session state: `GetSessionId()`, `HasSession()`, `SetSessionId()`, `Reset()`;
+- output readiness: `NeedSend()`, `CanAcceptPayload()`;
+- packet creation/resend: `PrepareOutput()`;
+- incoming sequence handling: `HandleIncomingPayload()`;
+- ordered delivery: `HasReadyData()`, `ExtractReadyData()`;
+- disconnect: `MakeDisconnectPacket()`.
+
+Standalone helpers:
+
+- `MakeUdpConnectPacket()`
+- `MakeUdpAcceptPacket()`
+- `TryParseUdpPacket()`
+
+When changing UDP behavior, validate acknowledgement handling, pending-byte limits, resend timing, packet parsing, disconnect handling, and redundant tail packets.
+
+## Relationship to entity and property state
+
+Entity/property synchronization uses property metadata to decide what can be sent and network buffers to serialize the data.
+
+Relevant property flags from [Entity Model](../entity-and-property-model/):
+
+- `Synced`
+- `OwnerSync`
+- `PublicSync`
+- `NoSync`
+- `ModifiableByClient`
+- `ModifiableByAnyClient`
+
+A network change that affects property replication should be reviewed together with entity/property docs and tests.
+
+## Transport selection
+
+The source tree supports several connection families:
+
+- interthread transports for in-process/test-style communication;
+- socket transports;
+- UDP socket transports backed by `UdpOrderedChannel`;
+- ASIO server support when built with `FO_HAVE_ASIO`;
+- WebSocket server support when built with `FO_HAVE_WEB_SOCKETS`.
+
+Build availability is controlled by compile-time feature toggles and platform dependencies. For build toggles and package workflow, see [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
+
+### A listener that cannot bind is retried before the startup gives up
+
+A restart races the process it replaces for its ports, and the loser used to take the whole startup
+down on its first attempt: the world loaded, a socket that frees itself within seconds was still
+held, and every bit of that work was thrown away. Each remote listener is therefore started through
+`ServerEngine::StartConnectionServer`, which retries until `ServerNetwork.ListenRetryTime` runs out,
+waiting `ServerNetwork.ListenRetryDelay` between attempts.
+
+Past the deadline the original exception is rethrown and the startup fails, because a server nobody
+can reach is not a started server — the retries buy the losing side of the race some time, they do
+not turn a dead port into an acceptable state. The interthread transport is not part of this: it
+binds nothing another process could hold, so a failure there is a defect rather than a race.
+
+## Tests to inspect
+
+Relevant tests include:
+
+- `Source/Tests/Test_NetworkUdp.cpp`
+- `Source/Tests/Test_NetworkClient.cpp`
+- `Source/Tests/Test_NetworkServer.cpp`
+- `Source/Tests/Test_ClientServerIntegration.cpp` for the in-process client/server handshake and connection-event path.
+
+## Change routing
+
+- Binary framing/encryption/hash serialization: `Source/Common/NetBuffer.*`.
+- Ordered UDP behavior: `Source/Common/NetworkUdp.*`.
+- Client transport abstraction and implementations: `Source/Client/NetworkClient*`.
+- Server transport abstraction and implementations: `Source/Server/NetworkServer*`.
+- Entity/property replication semantics: [Entity Model](../entity-and-property-model/) and generated metadata/property code.
+- Build feature toggles: [Build Workflow](../../how-to/build/) and [BuildTools Pipeline](../../reference/cmake-and-buildtools/pipeline.md).
+
+## Validation checklist
+
+1. Run UDP, client, and server network tests relevant to the changed transport.
+2. Validate both connect/accept and disconnect paths.
+3. Validate partial receives and message framing when changing `NetInBuffer` / `NetOutBuffer`.
+4. Validate hash resolution/debug-hash behavior across client and server builds.
+5. Validate property synchronization when message layout or property-data serialization changes.
+6. Validate platform-specific transport availability when touching ASIO/WebSocket/socket code.

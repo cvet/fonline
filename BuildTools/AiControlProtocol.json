@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "description": "Project-neutral transport, envelope, command lifecycle, and safety boundary for opt-in AI control bridges.",
+  "scope": {
+    "surface": "ai-control-protocol",
+    "stability": "experimental",
+    "since": null,
+    "support_note": "The envelope is versioned but experimental; embedding projects must pin an Engine revision and own their observation and action schemas.",
+    "included": [
+      "UTF-8 newline-delimited JSON over a TCP byte stream",
+      "JSON-RPC-shaped request, result, and error envelopes",
+      "authorization, liveness, status, observation, event, and action methods",
+      "bounded transport, command queue, and event history behavior",
+      "accepted-command and asynchronous completion lifecycle",
+      "loopback-first threat boundary and reference validation"
+    ],
+    "excluded": [
+      "a listener compiled into the FOnline core runtime",
+      "project observation fields, game action names, entity semantics, and readiness gates",
+      "MCP tool names, orchestration recipes, game-playing policies, and model prompts",
+      "server authority bypasses, administrator commands, TLS, discovery, and internet exposure"
+    ]
+  },
+  "sources": {
+    "reference_client": "BuildTools/ai_control_client.py",
+    "sample_server": "Examples/AiControlSample/ai_control_sample.py",
+    "sample_smoke": "Examples/AiControlSample/run_protocol_smoke.py",
+    "sample_readme": "Examples/AiControlSample/README.md"
+  },
+  "outputs": {
+    "protocol_version": 1,
+    "jsonrpc_version": "2.0",
+    "default_host": "127.0.0.1",
+    "default_port": 43011,
+    "max_line_bytes": 1048576,
+    "methods": ["auth", "ping", "status", "observe", "events", "act"],
+    "error_codes": {
+      "parse": -32700,
+      "invalid_request": -32600,
+      "method_not_found": -32601,
+      "invalid_params": -32602,
+      "unauthorized": -32001,
+      "queue_full": -32002
+    }
+  },
+  "wire_rules": [
+    {
+      "id": "ai-control-protocol.wire.tcp-stream",
+      "name": "TCP byte stream",
+      "stability": "experimental",
+      "requirement": "A bridge accepts an explicitly configured TCP endpoint; clients must not assume service discovery, TLS, HTTP, or WebSocket framing.",
+      "rationale": "The common project implementations are local tooling channels, not an internet service protocol.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["class AiControlServer(socketserver.TCPServer):"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.ndjson",
+      "name": "One JSON object per line",
+      "stability": "experimental",
+      "requirement": "Each request and response is one JSON object terminated by LF; peers process lines in connection order.",
+      "rationale": "Line framing is streamable, inspectable, and shared by both audited project bridges.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["self._writer.write(payload + b\"\\n\")", "response_line.endswith(b\"\\n\")"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.utf8",
+      "name": "UTF-8 encoding",
+      "stability": "experimental",
+      "requirement": "JSON lines are encoded and decoded as strict UTF-8; malformed input receives a parse error or closes the connection.",
+      "rationale": "Project observations and action payloads may contain localized text.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": [".encode(\"utf-8\")", ".decode(\"utf-8\")"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.line-limit",
+      "name": "Bounded line size",
+      "stability": "experimental",
+      "requirement": "A request or response JSON payload is at most 1 MiB before the LF terminator; oversized input is rejected and the connection may close.",
+      "rationale": "A local automation channel still needs deterministic memory bounds.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["MAX_LINE_BYTES = 1024 * 1024", "request exceeds the configured line limit"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.request-envelope",
+      "name": "Request envelope",
+      "stability": "experimental",
+      "requirement": "A request object carries jsonrpc=2.0, a caller-chosen id, a non-empty method string, and an object-valued params member.",
+      "rationale": "A small JSON-RPC-shaped envelope gives correlation without claiming the full JSON-RPC specification.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["\"jsonrpc\": JSONRPC_VERSION", "\"method\": method", "\"params\": params or {}"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.response-envelope",
+      "name": "Response envelope",
+      "stability": "experimental",
+      "requirement": "A response echoes jsonrpc=2.0 and the request id, then contains exactly one of result or error; error contains an integer code and string message.",
+      "rationale": "Strict correlation prevents one automation step from consuming another step's result.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["response id does not match the request", "response must contain exactly one of result or error"]}]
+    },
+    {
+      "id": "ai-control-protocol.wire.sequential-connection",
+      "name": "Sequential request processing",
+      "stability": "experimental",
+      "requirement": "A client sends a request and consumes its matching response before reusing that connection; clients must not require multiplexing or concurrent in-flight requests.",
+      "rationale": "The contract remains implementable by a single project-owned listener and avoids hidden ordering races.",
+      "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["def request(self, method: str", "response id does not match the request"]}]
+    }
+  ],
+  "methods": [
+    {
+      "id": "ai-control-protocol.method.auth",
+      "name": "auth",
+      "stability": "experimental",
+      "params": "{token: string}",
+      "result": "{authorized: boolean}",
+      "requirement": "Authenticate the current connection with the configured shared token; a failed attempt leaves it unauthorized and a later attempt may succeed.",
+      "rationale": "Authorization state is connection-local and never inferred from a prior connection.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["if method == \"auth\":", "{\"authorized\": authorized}"]}]
+    },
+    {
+      "id": "ai-control-protocol.method.ping",
+      "name": "ping",
+      "stability": "experimental",
+      "params": "{}",
+      "result": "{ok: true}",
+      "requirement": "Report bridge liveness after authorization.",
+      "rationale": "Transport health must be distinguishable from project readiness.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["if method == \"ping\":", "{\"ok\": True}"]}]
+    },
+    {
+      "id": "ai-control-protocol.method.status",
+      "name": "status",
+      "stability": "experimental",
+      "params": "{}",
+      "result": "{running, host, port, queuedCommands, maxQueuedCommands, events, maxEvents, observationSeq, lastError}",
+      "requirement": "Return transport state, queue/event occupancy and limits, latest observation sequence, and the last bridge error.",
+      "rationale": "Operators need bounded health information without parsing a game observation.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["def status(self) -> dict[str, object]:", "\"maxQueuedCommands\": self.max_commands", "\"observationSeq\": self.observation_seq"]}]
+    },
+    {
+      "id": "ai-control-protocol.method.observe",
+      "name": "observe",
+      "stability": "experimental",
+      "params": "{}",
+      "result": "{observationSeq: integer, observation: object}",
+      "requirement": "Return the latest complete project-owned observation snapshot and its monotonically increasing replacement sequence.",
+      "rationale": "The envelope can be stable while every game owns its state schema.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["def observe(self) -> dict[str, object]:", "\"observation\": json.loads(json.dumps(self.observation))"]}]
+    },
+    {
+      "id": "ai-control-protocol.method.events",
+      "name": "events",
+      "stability": "experimental",
+      "params": "{afterSeq?: integer, limit?: integer}",
+      "result": "{latestSeq: integer, events: [{seq: integer, event: object}]}",
+      "requirement": "Return retained events with seq greater than afterSeq in ascending order; clamp limit to 1..500.",
+      "rationale": "A cursor permits resumable polling without forcing observations to retain transient outcomes.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["elif method == \"events\":", "limit = min(max(limit, 1), 500)", "event for event in self.events if int(event[\"seq\"]) > after_seq"]}]
+    },
+    {
+      "id": "ai-control-protocol.method.act",
+      "name": "act",
+      "stability": "experimental",
+      "params": "project command object with non-empty type",
+      "result": "{accepted: true, commandSeq: integer}",
+      "requirement": "Enqueue one project-defined command and return its sequence; acceptance is not completion or gameplay success.",
+      "rationale": "The project client loop, not the socket thread, owns game state mutation.",
+      "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["elif method == \"act\":", "{\"accepted\": True, \"commandSeq\": command_seq}"]}]
+    }
+  ],
+  "error_codes": [
+    {"id": "ai-control-protocol.error.parse", "name": "Parse error", "stability": "experimental", "code": -32700, "requirement": "Reject malformed UTF-8 JSON.", "rationale": "The request cannot be interpreted safely.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_PARSE = -32700"]}]},
+    {"id": "ai-control-protocol.error.invalid-request", "name": "Invalid request", "stability": "experimental", "code": -32600, "requirement": "Reject a non-object, invalid envelope, missing method, or oversized request.", "rationale": "Envelope failures are distinct from project command validation.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_INVALID_REQUEST = -32600"]}]},
+    {"id": "ai-control-protocol.error.method-not-found", "name": "Method not found", "stability": "experimental", "code": -32601, "requirement": "Reject an unknown protocol method.", "rationale": "Project action names belong inside act and are not transport methods.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_METHOD_NOT_FOUND = -32601"]}]},
+    {"id": "ai-control-protocol.error.invalid-params", "name": "Invalid params", "stability": "experimental", "code": -32602, "requirement": "Reject missing command type or structurally invalid method parameters.", "rationale": "Malformed calls must not enter the project command queue.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_INVALID_PARAMS = -32602"]}]},
+    {"id": "ai-control-protocol.error.unauthorized", "name": "Unauthorized", "stability": "experimental", "code": -32001, "requirement": "Reject every method except auth until the connection is authorized when a token is configured.", "rationale": "A connection must never inherit authorization from another socket.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_UNAUTHORIZED = -32001", "if not authorized:"]}]},
+    {"id": "ai-control-protocol.error.queue-full", "name": "Command queue full", "stability": "experimental", "code": -32002, "requirement": "Reject act when the bounded project command queue has no capacity.", "rationale": "Back-pressure is explicit and cannot silently discard commands.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["ERROR_QUEUE_FULL = -32002", "Command queue full"]}]}
+  ],
+  "command_fields": [
+    {"id": "ai-control-protocol.command.type", "name": "type", "stability": "experimental", "value_type": "string", "requirement": "Required non-empty project command discriminator.", "rationale": "The transport routes commands without owning their names.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["command.type must be a non-empty string"]}]},
+    {"id": "ai-control-protocol.command.target-id", "name": "targetId", "stability": "experimental", "value_type": "project identifier", "requirement": "Optional primary target identifier.", "rationale": "Common convenience field; interpretation remains project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"target_id\", \"targetId\")"]}]},
+    {"id": "ai-control-protocol.command.item-id", "name": "itemId", "stability": "experimental", "value_type": "project identifier", "requirement": "Optional item identifier.", "rationale": "Common convenience field; interpretation remains project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"item_id\", \"itemId\")"]}]},
+    {"id": "ai-control-protocol.command.aux-id", "name": "auxId", "stability": "experimental", "value_type": "project identifier", "requirement": "Optional auxiliary identifier.", "rationale": "Common convenience field; interpretation remains project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"aux_id\", \"auxId\")"]}]},
+    {"id": "ai-control-protocol.command.x", "name": "x", "stability": "experimental", "value_type": "integer", "requirement": "Optional project world or grid X coordinate.", "rationale": "Coordinate system and units remain project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"x\", \"x\")"]}]},
+    {"id": "ai-control-protocol.command.y", "name": "y", "stability": "experimental", "value_type": "integer", "requirement": "Optional project world or grid Y coordinate.", "rationale": "Coordinate system and units remain project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"y\", \"y\")"]}]},
+    {"id": "ai-control-protocol.command.screen-x", "name": "screenX", "stability": "experimental", "value_type": "integer", "requirement": "Optional screen-space X coordinate.", "rationale": "Pixel origin and UI semantics remain project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"screen_x\", \"screenX\")"]}]},
+    {"id": "ai-control-protocol.command.screen-y", "name": "screenY", "stability": "experimental", "value_type": "integer", "requirement": "Optional screen-space Y coordinate.", "rationale": "Pixel origin and UI semantics remain project-owned.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"screen_y\", \"screenY\")"]}]},
+    {"id": "ai-control-protocol.command.int-arg", "name": "intArg", "stability": "experimental", "value_type": "integer", "requirement": "Optional project-defined integer payload.", "rationale": "A generic slot avoids transport changes for narrow scalar arguments.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"int_arg\", \"intArg\")"]}]},
+    {"id": "ai-control-protocol.command.string-arg", "name": "stringArg", "stability": "experimental", "value_type": "string", "requirement": "Optional project-defined string payload.", "rationale": "A generic slot avoids transport changes for narrow text arguments.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["(\"string_arg\", \"stringArg\")"]}]},
+    {"id": "ai-control-protocol.command.append", "name": "append", "stability": "experimental", "value_type": "boolean", "requirement": "Optional request for project-defined append rather than replace semantics.", "rationale": "Queue semantics are advisory until the project action handler defines them.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["result[\"append\"] = True"]}]}
+  ],
+  "security_rules": [
+    {"id": "ai-control-protocol.security.disabled-default", "name": "Disabled by default", "stability": "experimental", "requirement": "An embedding project must require explicit configuration to start a listener.", "rationale": "A control listener is a security-sensitive development feature.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["compile the listener out of shipping"]}]},
+    {"id": "ai-control-protocol.security.loopback-default", "name": "Loopback first", "stability": "experimental", "requirement": "Listeners and clients default to 127.0.0.1 and refuse non-loopback operation without explicit operator opt-in.", "rationale": "The protocol has no transport encryption or peer identity beyond a shared token.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["DEFAULT_HOST = \"127.0.0.1\"", "non-loopback AiControl endpoints require explicit allow_remote=True"]}]},
+    {"id": "ai-control-protocol.security.remote-token", "name": "Remote token required", "stability": "experimental", "requirement": "A sample or project listener exposed beyond loopback requires a non-empty token in addition to explicit remote opt-in.", "rationale": "An empty-token remote listener is an unauthenticated process-control channel.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["non-loopback listeners require a non-empty token"]}]},
+    {"id": "ai-control-protocol.security.plaintext", "name": "No TLS", "stability": "experimental", "requirement": "Treat the shared token and all payloads as plaintext on the TCP path; use an authenticated encrypted tunnel if non-loopback transport is unavoidable.", "rationale": "Token authentication is not confidentiality or replay protection.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["The transport has no TLS"]}]},
+    {"id": "ai-control-protocol.security.secret-input", "name": "Environment-backed token", "stability": "experimental", "requirement": "Reference tools read tokens from a named environment variable and do not accept or print raw token arguments.", "rationale": "Command lines, process listings, shell history, and reports are common secret leak paths.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["default=\"FONLINE_AI_TOKEN\"", "token = os.environ.get(args.token_env, \"\")"]}]},
+    {"id": "ai-control-protocol.security.shipping-build", "name": "Compile out shipping surface", "stability": "experimental", "requirement": "Projects should compile the listener and remote-command path out of production clients, not merely disable them in a runtime config.", "rationale": "Removing the socket and command path reduces attack and antivirus heuristic surface.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["compile the listener out"]}]},
+    {"id": "ai-control-protocol.security.server-authority", "name": "Preserve server authority", "stability": "experimental", "requirement": "Project actions use normal client input or authenticated gameplay RPC paths; the bridge does not grant server authority or administrator capability by default.", "rationale": "AI QA should exercise the same validation boundary as a player.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["preserve normal server authority"]}]}
+  ],
+  "integration_rules": [
+    {"id": "ai-control-protocol.integration.native-extension", "name": "Project-owned listener", "stability": "experimental", "requirement": "Implement the listener as an opt-in embedding-project native extension unless and until a reviewed Engine runtime owner is introduced.", "rationale": "The current protocol is reusable, but listener policy and shipping risk remain project responsibilities.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["does not embed FOnline"]}]},
+    {"id": "ai-control-protocol.integration.loop-ownership", "name": "Game-loop command drain", "stability": "experimental", "requirement": "The network thread only validates and queues act requests; the owning project client loop drains commands and mutates client state.", "rationale": "Game objects and script runtime state are not socket-thread safe.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["def _game_loop(state: SampleState) -> None:", "state.process_one()"]}]},
+    {"id": "ai-control-protocol.integration.observation-schema", "name": "Version project observations", "stability": "experimental", "requirement": "The observation object carries a project-owned schema version and enough readiness/action metadata for its adapter; the Engine protocol does not define game fields.", "rationale": "Last Frontier and TLA legitimately expose different game models.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["\"schemaVersion\": 1", "\"availableActions\": [\"echo\", \"move\", \"fail\"]"]}]},
+    {"id": "ai-control-protocol.integration.command-completion", "name": "Completion event", "stability": "experimental", "requirement": "Every accepted command eventually emits command_completed with commandSeq, success, and message, including unsupported or failed project actions.", "rationale": "Acceptance only proves queue insertion; agents need a correlated terminal result.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["\"type\": \"command_completed\"", "\"commandSeq\": command_seq", "\"success\": success", "\"message\": message"]}]},
+    {"id": "ai-control-protocol.integration.mcp-boundary", "name": "MCP adapter boundary", "stability": "experimental", "requirement": "An MCP adapter may map project observations/actions into semantic tools, but its tool namespace, launch orchestration, memory, prompts, and gameplay policies are project-owned.", "rationale": "Transport compatibility must not falsely standardize one game's QA surface.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["without borrowing Last Frontier or TLA gameplay schemas"]}]},
+    {"id": "ai-control-protocol.integration.bounded-state", "name": "Bounded queues and history", "stability": "experimental", "requirement": "Command queues and retained event history have positive configured limits exposed through status; full queues reject rather than overwrite commands.", "rationale": "A stalled client loop must not create unbounded memory growth or silent command loss.", "source": [{"path": "Examples/AiControlSample/ai_control_sample.py", "anchors": ["self.commands: deque", "self.events: deque[dict[str, object]] = deque(maxlen=max_events)"]}]}
+  ],
+  "validation_rules": [
+    {"id": "ai-control-protocol.validation.protocol-smoke", "name": "Protocol smoke", "stability": "experimental", "requirement": "Run the reference client against the sample server and prove auth, liveness, status, observation, invalid input, action acceptance, completion, state update, and event cursor behavior.", "rationale": "A rendered schema alone cannot prove connection state and asynchronous lifecycle behavior.", "source": [{"path": "Examples/AiControlSample/run_protocol_smoke.py", "anchors": ["def run_smoke(timeout: float = 10.0)", "\"event-cursor\""]}]},
+    {"id": "ai-control-protocol.validation.malformed-peer", "name": "Malformed peer responses", "stability": "experimental", "requirement": "Client tests reject malformed JSON, unsupported envelopes, mismatched ids, dual result/error responses, and oversized lines.", "rationale": "Automation must fail closed instead of consuming ambiguous data.", "source": [{"path": "BuildTools/ai_control_client.py", "anchors": ["response is not valid UTF-8 JSON", "response has an unsupported jsonrpc value"]}]},
+    {"id": "ai-control-protocol.validation.security", "name": "Security boundary tests", "stability": "experimental", "requirement": "Tests prove non-loopback refusal, per-connection authorization, wrong-token rejection, and absence of token command-line arguments.", "rationale": "Security prose must remain executable as the helper evolves.", "source": [{"path": "Examples/AiControlSample/run_protocol_smoke.py", "anchors": ["wrong-token-rejected", "unauthorized-method-rejected"]}]},
+    {"id": "ai-control-protocol.validation.project-native", "name": "Project native integration", "stability": "experimental", "requirement": "A real project separately builds its native bridge, starts an actual client, verifies queue draining on the client loop, and checks clean shutdown/reconnect behavior.", "rationale": "The Python sample is protocol proof, not FOnline native runtime proof.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["test the resulting native/script integration separately"]}]},
+    {"id": "ai-control-protocol.validation.gameplay-authority", "name": "Normal gameplay path", "stability": "experimental", "requirement": "Project tests show representative actions pass through ordinary server validation and that rejected gameplay actions complete as failures.", "rationale": "A successful protocol smoke cannot prove game authorization or anti-cheat boundaries.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["preserve normal server authority"]}]},
+    {"id": "ai-control-protocol.validation.shipping-artifact", "name": "Shipping artifact inspection", "stability": "experimental", "requirement": "Release validation confirms production clients cannot open the AiControl listener and do not contain the project remote-command implementation.", "rationale": "A disabled default is weaker than absence from the shipped binary.", "source": [{"path": "Examples/AiControlSample/README.md", "anchors": ["compile the listener out"]}]}
+  ]
+}

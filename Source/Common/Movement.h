@@ -39,23 +39,24 @@
 
 FO_BEGIN_NAMESPACE
 
+// Terminal or in-progress result reported by pathfinding and critter movement operations
 ///@ ExportEnum
 enum class MovingState : uint8_t
 {
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    GenericError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    Deadlock = 10,
-    TraceFailed = 11,
-    NotAlive = 12,
-    Attached = 13,
-    Stopped = 14,
+    InProgress = 0, // Movement is active and has not produced a terminal result
+    Success = 1, // Movement reached its requested destination successfully
+    TargetNotFound = 2, // Movement could not resolve the requested target
+    CantMove = 3, // Movement could not start because the critter cannot move
+    GagCritter = 4, // Movement was blocked by a critter occupancy callback
+    GagItem = 5, // Movement was blocked by an item occupancy callback
+    GenericError = 6, // Movement failed without a more specific result
+    HexTooFar = 7, // The requested destination is beyond the accepted movement range
+    HexBusy = 8, // The requested destination hex is occupied or otherwise unavailable
+    Deadlock = 10, // Path construction encountered a movement deadlock
+    TraceFailed = 11, // Path tracing could not produce a valid route
+    NotAlive = 12, // Movement was rejected because the critter is not alive
+    Attached = 13, // Independent movement was rejected because the critter is attached to another critter
+    Stopped = 14, // Movement was cancelled or stopped before reaching the destination
 };
 
 struct MovingMetrics
@@ -83,6 +84,7 @@ struct MovingRawProgress
     bool Found {};
 };
 
+// Shared movement-path state containing route geometry, timing, offsets, blocking information, and current completion progress
 ///@ ExportRefType Common RefCounted Export = GetSpeed, GetStartHex, GetEndHex, GetStartHexOffset, GetEndHexOffset, GetPreBlockHex, GetBlockHex, GetWholeTime, GetWholeDist, GetElapsedTime, IsCompleted, GetCompleteReason, EvaluateProjectedHex, EvaluateNearestPathHex, EvaluatePathHexes
 class MovingContext final : public refcounted<MovingContext>
 {
@@ -96,28 +98,43 @@ public:
     ~MovingContext() = default;
 
     [[nodiscard]] auto GetMapSize() const noexcept -> msize { return _mapSize; }
+    // Returns the movement speed used to derive route timing
     [[nodiscard]] auto GetSpeed() const noexcept -> uint16_t { return _speed; }
     [[nodiscard]] auto GetSteps() const noexcept -> const_span<mdir> { return _steps; }
     [[nodiscard]] auto GetControlSteps() const noexcept -> const_span<uint16_t> { return _controlSteps; }
+    // Returns the first map hex of the stored route
     [[nodiscard]] auto GetStartHex() const noexcept -> mpos { return _startHex; }
+    // Returns the final map hex obtained from the stored route steps
     [[nodiscard]] auto GetEndHex() const noexcept -> mpos { return _endHex; }
+    // Returns the last reachable hex recorded immediately before a blocking hex
     [[nodiscard]] auto GetPreBlockHex() const noexcept -> mpos { return _preBlockHex; }
+    // Returns the blocking hex recorded for the route
     [[nodiscard]] auto GetBlockHex() const noexcept -> mpos { return _blockHex; }
+    // Returns the total route duration in milliseconds after speed and endpoint offsets are applied
     [[nodiscard]] auto GetWholeTime() const noexcept -> float32_t { return _wholeTime; }
+    // Returns the total projected map-pixel distance across all control-step segments
     [[nodiscard]] auto GetWholeDist() const noexcept -> float32_t { return _wholeDist; }
+    // Returns the map-pixel offset applied at the route's starting hex
     [[nodiscard]] auto GetStartHexOffset() const noexcept -> ipos16 { return _startHexOffset; }
+    // Returns the map-pixel offset applied at the route's final hex
     [[nodiscard]] auto GetEndHexOffset() const noexcept -> ipos16 { return _endHexOffset; }
+    // Returns the stored elapsed movement time in milliseconds
     [[nodiscard]] auto GetElapsedTime() const noexcept -> float32_t { return _elapsedTime; }
     [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t;
     // Plan time the plan may run to, zero when it may run to its end; see SetLeaseTime
     [[nodiscard]] auto GetLeaseTime() const noexcept -> float32_t { return _leaseTime; }
     [[nodiscard]] auto IsHeldByLease() const noexcept -> bool { return _leaseTime > 0.0f && _elapsedTime >= _leaseTime && _elapsedTime < _wholeTime; }
+    // Returns whether the movement has been explicitly completed
     [[nodiscard]] auto IsCompleted() const noexcept -> bool { return _completed; }
+    // Returns the reason supplied when the movement was completed
     [[nodiscard]] auto GetCompleteReason() const noexcept -> MovingState { return _completeReason; }
 
     [[nodiscard]] auto EvaluateMetrics() const -> MovingMetrics;
+    // Evaluates the route hex at the stored elapsed time plus a nonnegative look-ahead interval in milliseconds
     [[nodiscard]] auto EvaluateProjectedHex(float32_t look_ahead_ms) const -> mpos;
+    // Returns the route hex at or after current_hex nearest to from_hex, falling back to fallback_hex when no closer path point exists
     [[nodiscard]] auto EvaluateNearestPathHex(mpos current_hex, mpos from_hex, mpos fallback_hex) const -> mpos;
+    // Returns route hexes from current_hex through the available path end, or a current/end pair for a route without stored steps
     [[nodiscard]] auto EvaluatePathHexes(mpos current_hex) const -> vector<mpos>;
     [[nodiscard]] auto EvaluateProgress() const -> MovingProgress;
     [[nodiscard]] auto EvaluateProgress(mpos current_hex) const -> MovingProgress;
