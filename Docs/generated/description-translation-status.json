@@ -7,8 +7,8 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4821,
-    "current_count": 4821,
+    "entry_count": 4826,
+    "current_count": 4826,
     "missing_count": 0,
     "complete": true
   },
@@ -840,8 +840,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2558,
-      "current_count": 2558,
+      "entry_count": 2563,
+      "current_count": 2563,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -14710,6 +14710,30 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.Client.Multithreading/description",
+          "source": "If true, eligible per-frame CPU work is spread across worker threads whose number the engine chooses from the machine at startup; off keeps it all on the application thread, and a build that cannot start threads (Web) stays serial either way. Independent of the audio, logging and managed-runtime threads",
+          "source_sha256": "dbd58395b351da90bcdcb8dd44ddef17fdfa33a69ea022fb1f30743ce72d6826",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.MultithreadingHeadroomMinCores/description",
+          "source": "From this many logical cores up one more core is left free beside the application thread, for the driver, audio and managed-runtime threads every client keeps",
+          "source_sha256": "f311bf367d583cb1f7fc763d94aad4c880d237d4d9ce46d798d61c2a3e38c030",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.MultithreadingMaxMobileWorkers/description",
+          "source": "Most worker threads on a phone CPU (Android, iOS), 0..64, on top of Client.MultithreadingMaxWorkers: a phone mixes fast and slow cores on a thermal budget, and a chunk on a slow core holds the whole batch back; 0 keeps phones serial",
+          "source_sha256": "785811e1b359b82baf178894111ccbb3663908568f35ca704fe7cb88ecd6fe57",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.MultithreadingMaxWorkers/description",
+          "source": "Most worker threads Client.Multithreading starts on any machine, 0..64: past it a frame batch splits into chunks too small to pay for the extra wake and join",
+          "source_sha256": "001a82f1dd82fbb98fcd3beefee2238f34e6fcd279556c93685204480a24ad4f",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.Client.UpdaterInfoDelay/description",
           "source": "Updater info delay in milliseconds",
           "source_sha256": "8f04e4c40399a8205fb57107f09e40a61620a15a9ebd1c90d8805ad505abd2b4",
@@ -15811,6 +15835,12 @@
           "locator": "/symbols/@id=setting.common.Render.NullRenderer/description",
           "source": "If true, null renderer is used",
           "source_sha256": "5fa4323150c42ed136c2e451204ff83952651661633de8674dc03b16e5fbb922",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Render.ParallelSpriteUpdateMinCount/description",
+          "source": "Minimum number of sprites with prepared CPU work in a frame before Client.Multithreading spreads that work; below it the batch costs more than it saves",
+          "source_sha256": "e949d9b0347a75278ad7243d475d747ad14a5d56eb06a6d4900f4af148df6b9e",
           "status": "current"
         },
         {

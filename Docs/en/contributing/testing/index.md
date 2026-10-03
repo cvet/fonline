@@ -428,3 +428,5 @@ runtime invoke and skips transports that need compiled code.
 - [Profiling](../../how-to/quality/profiling.md) for Tracy build modes, workload isolation, and
   performance captures.
 - [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md) for backend-specific diagnosis.
+
+`Test_WorkScheduler.cpp` covers client worker selection, synchronous batches, failure propagation, and sprite phase order. `Test_ModelAnimationPoseProcedural.cpp` covers bit-identical parallel poses; `ModelPosePhasesMatchTheSinglePassPose` in `Test_ClientEngine.cpp` additionally requires AngelScript. See [client multithreading](../../explanation/runtime/client-multithreading.md).

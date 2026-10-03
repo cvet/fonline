@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 123,
+    "test_file_count": 124,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -203,12 +203,13 @@
       "Source/Tests/Test_TransparentEgg.cpp",
       "Source/Tests/Test_TwoDimensionalGrid.cpp",
       "Source/Tests/Test_UpdaterBackend.cpp",
+      "Source/Tests/Test_WorkScheduler.cpp",
       "Source/Tests/Test_WorkThread.cpp",
       "Source/Tests/Test_WorkerPool.cpp"
     ]
   },
   "settings": {
-    "declaration_count": 279,
+    "declaration_count": 284,
     "source": "Source/Common/Settings.inc"
   }
 }

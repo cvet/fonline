@@ -576,3 +576,5 @@ When changing client runtime code, verify:
 - Map presentation changes do not duplicate coordinate/pathfinding rules already owned by [Maps, Movement, and Geometry](../maps-and-movement.md).
 - Resource changes describe whether they affect `ResourceManager`, `SpriteManager`, a sprite factory, `EffectManager`, or `RenderTargetManager`.
 - Platform-specific rendering/input implications are reflected in [Frontend and Rendering](../rendering/), [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md), or [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md) as appropriate.
+
+Optional CPU workers: [client multithreading](client-multithreading.md) owns worker selection, model pose phases, and validation.

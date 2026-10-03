@@ -81,8 +81,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
         second = docs_localization.generate_localization_status(ENGINE_ROOT)
         self.assertEqual(first, second)
         self.assertGreater(first["summary"]["required_document_count"], 100)
-        self.assertEqual(first["summary"]["required_document_count"], 192)
-        self.assertEqual(first["summary"]["current_translation_count"], 192)
+        self.assertEqual(first["summary"]["required_document_count"], 193)
+        self.assertEqual(first["summary"]["current_translation_count"], 193)
         self.assertEqual(
             first["summary"]["missing_translation_count"],
             0,
@@ -116,6 +116,7 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "buildtools-pipeline",
                 "buildtools-readme",
                 "client-runtime",
+                "client-multithreading",
                 "client-updater",
                 "configuration-data-sources",
                 "documentation-snippet-validation",

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"a9fe5bca15faa9112954cbe03f1d4ccbc6031ba837df1bd6102170005003c739"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -362,3 +362,5 @@ transport checks остаются assertions. На browser/device client зад�
 
 - [Profiling](../../how-to/quality/profiling.md) — Tracy build modes и captures.
 - [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.
+
+`Test_WorkScheduler.cpp` проверяет выбор клиентских потоков, синхронные пакеты, передачу ошибок и порядок фаз спрайтов. `Test_ModelAnimationPoseProcedural.cpp` проверяет битовую идентичность параллельных поз; `ModelPosePhasesMatchTheSinglePassPose` в `Test_ClientEngine.cpp` дополнительно требует AngelScript. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md).

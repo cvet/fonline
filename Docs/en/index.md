@@ -175,3 +175,5 @@ Normative Engine procedures must be executable from an Engine checkout and must
 not depend on Last Frontier, TLA, or another project's files. External projects
 may provide version-pinned evidence, but reusable helpers and regressions cited
 as the source of an Engine guarantee belong in this repository.
+
+- [Client multithreading](explanation/runtime/client-multithreading.md).

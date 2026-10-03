@@ -372,6 +372,7 @@
           "engine-architecture",
           "entity-model",
           "client-runtime",
+          "client-multithreading",
           "server-runtime",
           "networking",
           "persistence",
@@ -1717,6 +1718,8 @@
       "owner": "runtime", "state": "redirect", "disposition": "replace", "target": "Docs/en/explanation/entity-and-property-model/index.md", "redirect_to": "entity-model",
       "sources": ["Docs/en/explanation/entity-and-property-model/index.md", "Docs/ru/explanation/entity-and-property-model/index.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"]
     },
+    "Docs/en/explanation/runtime/client-multithreading.md": {"id": "client-multithreading", "title": "Optional Client Multithreading", "audiences": ["game-developer", "engine-contributor", "ai-agent"], "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"}, "owner": "runtime", "state": "current", "disposition": "retain", "target": "Docs/en/explanation/runtime/client-multithreading.md", "sources": ["Source/Client/WorkScheduler.h", "Source/Client/WorkScheduler.cpp", "Source/Client/Client.cpp", "Source/Client/SpriteManager.cpp", "Source/Client/ModelSprites.cpp", "Source/Client/ModelInstance.cpp", "Source/Common/Settings.inc", "Source/Tests/Test_WorkScheduler.cpp", "Source/Tests/Test_ModelAnimationPoseProcedural.cpp", "Source/Tests/Test_ClientEngine.cpp"]},
+    "Docs/ClientMultithreading.md": {"id": "legacy-client-multithreading-route", "title": "Optional Client Multithreading", "audiences": ["game-developer", "engine-contributor", "ai-agent"], "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"}, "owner": "runtime", "state": "redirect", "disposition": "replace", "target": "Docs/en/explanation/runtime/client-multithreading.md", "redirect_to": "client-multithreading", "sources": ["Docs/en/explanation/runtime/client-multithreading.md", "Docs/ru/explanation/runtime/client-multithreading.md"]},
     "Docs/en/explanation/runtime/client.md": {
       "id": "client-runtime",
       "title": "Client Runtime",

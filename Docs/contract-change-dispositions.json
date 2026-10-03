@@ -7320,6 +7320,18 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current client runtime guide and generated API document the complete signature.",
       "compatibility": "Use matching generated bindings, native binaries and metadata; the conservative machine signature diff does not require a source-call rewrite.",
       "owner": "rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.eb235ee339d8e677",
+      "baseline_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
+      "current_contract_sha256": "31d79a825b730eeac4175b30eb041a92cce6ffa00af83c3f61c7c134b818eda1",
+      "classification": "breaking",
+      "rationale": "The inventory adds five experimental settings from the client multithreading branch. Existing API IDs, signatures, and stability labels remain unchanged; only the scope fingerprint changes.",
+      "migration": "No existing script calls require migration. Rebuild generated bindings with the updated Engine. Client.Multithreading defaults to false and existing configs remain serial.",
+      "release_note": "The bilingual client multithreading guide describes worker selection, ownership, sprite pose phases, and pending performance/platform qualification.",
+      "compatibility": "These additive startup settings change no persisted data or network/resource format. Native binaries and generated metadata must use the same Engine revision; no compatibility marker bump is required.",
+      "owner": "client-runtime"
     }
   ]
 }

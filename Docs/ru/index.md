@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"1d75241084f4b71fd5e44d7fb9ae02b386a2afa615ddb1cd4faf7100e895c407"} -->
 # Документация движка FOnline
 
 Это главная страница пользовательской документации переиспользуемого движка
@@ -185,3 +185,5 @@ FOnline. Она предназначена для разработчиков и�
 проекты могут давать привязанные к ревизии доказательства, но переиспользуемые
 helpers и регрессионные тесты, на которых основана гарантия Engine, должны
 находиться в этом репозитории.
+
+- [Многопоточность клиента](explanation/runtime/client-multithreading.md).

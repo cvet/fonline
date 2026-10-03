@@ -1646,14 +1646,14 @@ Symbol ID: <code>script.enum.TransparentEggSlot</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:62](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L62)
+Source: [Source/Client/SpriteManager.h:63](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L63)
 
 Selects one of the two simultaneous transparency-egg masks supported by sprite rendering
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:65](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L65) | First transparency-egg mask evaluated for map sprites |
-| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:66](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L66) | Second independent transparency-egg mask evaluated for map sprites |
+| <code>Primary</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggslot-primary-7b4e6a047a"></a><code>script.enum-value.TransparentEggSlot.Primary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:66](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L66) | First transparency-egg mask evaluated for map sprites |
+| <code>Secondary</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggslot-secondary-2be87e7211"></a><code>script.enum-value.TransparentEggSlot.Secondary</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:67](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L67) | Second independent transparency-egg mask evaluated for map sprites |
 
 <a id="symbol-script-enum-transparenteggtarget-980d792f08"></a>
 ### <code>TransparentEggTarget</code>
@@ -1663,14 +1663,14 @@ Symbol ID: <code>script.enum.TransparentEggTarget</code><br>
 Runtime: server, client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: -<br>
-Source: [Source/Client/SpriteManager.h:70](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L70)
+Source: [Source/Client/SpriteManager.h:71](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L71)
 
 Which of the sprites standing in front of an egg&#x27;s hex the egg cuts
 
 | Value | Declared | Numeric | Symbol ID | Contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:73](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L73) | Cut every sprite whose egg appearance places it before the egg |
-| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:74](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L74) | Cut walls and roofs only, leaving foreground props drawn |
+| <code>AnyOccluder</code> | <code>0</code> | 0 | <a id="symbol-script-enum-value-transparenteggtarget-anyoccluder-e8664b68e6"></a><code>script.enum-value.TransparentEggTarget.AnyOccluder</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:74](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L74) | Cut every sprite whose egg appearance places it before the egg |
+| <code>Structure</code> | <code>1</code> | 1 | <a id="symbol-script-enum-value-transparenteggtarget-structure-fa4786d402"></a><code>script.enum-value.TransparentEggTarget.Structure</code> | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/SpriteManager.h:75](https://github.com/cvet/fonline/blob/master/Source/Client/SpriteManager.h#L75) | Cut walls and roofs only, leaving foreground props drawn |
 
 ## Value Types
 
@@ -2219,10 +2219,10 @@ Symbol ID: <code>script.ref-type.client.VideoPlayback</code><br>
 Runtime: client, mapper<br>
 Contract: <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47)<br>
 Flags: <code>RefCounted</code>, <code>Export</code>, <code>=</code>, <code>Stopped</code><br>
-Source: [Source/Client/Client.h:77](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L77)
+Source: [Source/Client/Client.h:78](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L78)
 
 Script-owned controller for a video clip and render texture created by Game.CreateVideoPlayback and advanced by Game.DrawVideoPlayback
 
 | Kind | Member | Symbol ID | Member contract | API contract | Source | Description |
 | --- | --- | --- | --- | --- | --- | --- |
-| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/Client.h:77](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L77) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |
+| ref-field | <code>bool VideoPlayback.Stopped</code> | <a id="symbol-script-ref-field-client-videoplayback-stopped-941befb4f8"></a><code>script.ref-field.client.VideoPlayback.Stopped</code> | mutable | <code>experimental</code> (scope)<br>since <code>2022.1.0.wip</code><br>contract source: [Source/Common/Common.h:47](https://github.com/cvet/fonline/blob/master/Source/Common/Common.h#L47) | [Source/Client/Client.h:78](https://github.com/cvet/fonline/blob/master/Source/Client/Client.h#L78) | Becomes true after DrawVideoPlayback observes that the underlying clip has stopped and releases its playback resources |
