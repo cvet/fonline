@@ -46,51 +46,53 @@ class Sprite;
 class ItemHexView;
 class MapSpriteList;
 
+// Ordered map-render layers spanning flat sprites, lighting, normal objects, particles, and roofs
 ///@ ExportEnum
 enum class DrawOrderType : uint8_t
 {
     // Flat sprites pre-light
-    Tile = 0,
-    Tile1 = 1,
-    Tile2 = 2,
-    Tile3 = 3,
-    Tile4 = 4,
-    FlatItemPreLight = 6,
-    HexGrid = 8,
+    Tile = 0, // Base flat tile layer rendered before map lighting
+    Tile1 = 1, // First additional flat tile layer rendered before map lighting
+    Tile2 = 2, // Second additional flat tile layer rendered before map lighting
+    Tile3 = 3, // Third additional flat tile layer rendered before map lighting
+    Tile4 = 4, // Fourth additional flat tile layer rendered before map lighting
+    FlatItemPreLight = 6, // Flat item layer rendered before map lighting
+    HexGrid = 8, // Hex-grid overlay layer rendered before lighting primitives
     // Light primitives
-    PreLight = 9,
-    Light = 10,
-    AfterLight = 11,
+    PreLight = 9, // Primitive layer rendered immediately before map light accumulation
+    Light = 10, // Map light accumulation layer
+    AfterLight = 11, // Primitive layer rendered immediately after map light accumulation
     // Flat sprites post-light
-    DeadCritter = 13,
-    FlatItemAfterLight = 16,
-    FlatEnd = 18,
+    DeadCritter = 13, // Flat dead-critter layer rendered after lighting
+    FlatItemAfterLight = 16, // Flat item layer rendered after map lighting
+    FlatEnd = 18, // Upper ordering boundary for flat post-light sprites
     // Normal sprites
-    NormalBegin = 19,
-    Item = 22,
-    Critter = 25,
-    Particles = 28,
-    NormalEnd = 31,
+    NormalBegin = 19, // Lower ordering boundary for depth-sorted normal sprites
+    Item = 22, // Depth-sorted normal item layer
+    Critter = 25, // Depth-sorted critter layer
+    Particles = 28, // Depth-sorted map-particle layer
+    NormalEnd = 31, // Upper ordering boundary for depth-sorted normal sprites
     // Roof sprites
-    Roof = 33,
-    Roof1 = 34,
-    Roof2 = 35,
-    Roof3 = 36,
-    Roof4 = 37,
-    RoofParticles = 38,
+    Roof = 33, // Base roof-sprite layer
+    Roof1 = 34, // First additional roof-sprite layer
+    Roof2 = 35, // Second additional roof-sprite layer
+    Roof3 = 36, // Third additional roof-sprite layer
+    Roof4 = 37, // Fourth additional roof-sprite layer
+    RoofParticles = 38, // Particle layer rendered with roof sprites
     // Count: 40
-    Last = 39,
+    Last = 39, // Highest valid draw-order marker reserved by the map-sprite sorter
 };
 
+// Conditions under which a map sprite participates in the transparency-egg cutout around the player
 ///@ ExportEnum
 enum class EggAppearenceType : uint8_t
 {
-    None,
-    Always,
-    ByX,
-    ByY,
-    ByXAndY,
-    ByXOrY,
+    None, // Never applies a transparency-egg mask to this sprite
+    Always, // Applies a valid transparency-egg mask regardless of relative map hex
+    ByX, // Applies the mask when the sprite hex X is at or beyond the egg hex X
+    ByY, // Applies the mask when the sprite hex Y is at or beyond the egg hex Y
+    ByXAndY, // Applies the mask when either adjusted X or Y is at or beyond the corresponding egg coordinate
+    ByXOrY, // Applies the mask only when both adjusted X and Y are at or beyond the corresponding egg coordinates
 };
 
 class MapSprite final
@@ -224,6 +226,7 @@ private:
     array<uint32_t, DrawOrderRangeSize> _drawOrderRangeBegin {};
 };
 
+// Script-configured holder for a client-local map sprite added by Map.DrawMapSprite and kept alive until invalidated or stopped
 ///@ ExportRefType Client RefCounted HasFactory Export = Valid, SprId, Hex, ProtoId, Offset, IsFlat, NoLight, DrawOrder, DrawOrderSubLayer, Corner, DisableEgg, Color, IsTweakOffs, TweakOffset, IsTweakAlpha, TweakAlpha, Angle, MapProjected, StopDraw
 class MapSpriteHolder : public refcounted<MapSpriteHolder>
 {
@@ -235,25 +238,44 @@ public:
     auto operator=(MapSpriteHolder&&) noexcept = delete;
     ~MapSpriteHolder();
 
+    // Invalidates the attached map sprite, sets Valid to false through its callback, and detaches this holder; repeated calls are harmless
     void StopDraw();
 
+    // Reports whether the attached map sprite remains valid; the sprite writes false when invalidated
     bool Valid {};
+    // Sprite resource handle resolved when Map.DrawMapSprite attaches the holder
     uint32_t SprId {};
+    // Map hex used as the sprite anchor and visibility test
     mpos Hex {};
+    // Optional item prototype whose color, flattening, lighting, draw order, corner, and egg settings override the corresponding holder fields
     hstring ProtoId {};
+    // Base map-pixel offset applied when the sprite is attached
     ipos32 Offset {};
+    // Manual flat-sprite selection used when ProtoId is empty
     bool IsFlat {};
+    // Manual lighting bypass used when ProtoId is empty
     bool NoLight {};
+    // Manual draw-order slot used when ProtoId is empty
     DrawOrderType DrawOrder {DrawOrderType::Item};
+    // Fine ordering within DrawOrder used when ProtoId is empty
     int8_t DrawOrderSubLayer {};
+    // Manual corner classification used for lighting and egg appearance when ProtoId is empty
     CornerType Corner {};
+    // Manual switch that suppresses egg appearance when ProtoId is empty
     bool DisableEgg {};
+    // Optional packed color and fixed alpha applied at attachment; clear leaves the sprite color unchanged
     ucolor Color {};
+    // Enables live offset tracking through TweakOffset after attachment
     bool IsTweakOffs {};
+    // Mutable map-pixel offset read by the attached sprite while IsTweakOffs was enabled at attachment
     ipos32 TweakOffset {};
+    // Enables live alpha tracking through TweakAlpha after attachment
     bool IsTweakAlpha {};
+    // Mutable alpha read by the attached sprite while IsTweakAlpha was enabled at attachment
     uint8_t TweakAlpha {};
+    // Initial sprite angle in degrees applied when nonzero
     int16_t Angle {};
+    // Requests map-projected rendering when the sprite is attached
     bool MapProjected {};
     nptr<MapSprite> MSpr {};
 };

@@ -120,8 +120,8 @@ def positive_job_count(value: str) -> int:
 	return jobs
 
 
-def parse_args() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description='FOnline packager')
+def create_parser() -> argparse.ArgumentParser:
+	parser = argparse.ArgumentParser(prog='package.py', description='FOnline packager')
 	parser.add_argument('-maincfg', dest='maincfg', required=True, help='Main config path')
 	parser.add_argument('-buildhash', dest='buildhash', required=True, help='build hash')
 	parser.add_argument('-devname', dest='devname', required=True, help='Dev game name')
@@ -152,7 +152,11 @@ def parse_args() -> argparse.Namespace:
 	parser.add_argument('-resource-pack-jobs', type=positive_job_count, default=os.environ.get(RESOURCE_PACK_JOBS_ENV, '1'), help='maximum concurrent resource archives (default: FO_RESOURCE_PACK_JOBS or 1)')
 	parser.add_argument('-resource-pack-hash-library', help='explicit host FNV-1a library; otherwise discover it under input Binaries/BuildTools-*')
 	parser.add_argument('-bundle-compress-level', dest='bundle_compress_level', type=int, choices=range(0, 10), help='override the bundle compression level (zlib scale: 0 stores, 9 is the strongest)')
-	return parser.parse_args()
+	return parser
+
+
+def parse_args() -> argparse.Namespace:
+	return create_parser().parse_args()
 
 
 def parse_include_args(arguments: Sequence[str]) -> argparse.Namespace:

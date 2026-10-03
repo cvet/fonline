@@ -1,0 +1,136 @@
+{% assign docs_locale = page.locale | default: site.data.docs-site.canonical_locale | default: 'en' %}
+{% assign current_locale_pair = nil %}
+{% for pair in site.data.docs-site.locale_pairs %}
+  {% if pair.en.path == page.path or pair.ru.path == page.path %}
+    {% assign current_locale_pair = pair %}
+  {% endif %}
+{% endfor %}
+<!doctype html>
+<html lang="{{ docs_locale }}" data-theme="light">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#176d54">
+    <meta name="fonline-docs-version-channel" content="{{ site.data.docs-site.version.channel }}">
+    <meta name="fonline-docs-version" content="{{ site.data.docs-site.version.value }}">
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.data.docs-site.title | default: site.title }}</title>
+    <meta name="description" content="{{ site.data.docs-site.description | default: site.description | escape }}">
+    <link rel="canonical" href="{{ page.url | absolute_url }}">
+    <link rel="icon" type="image/png" href="{{ '/assets/images/fonline-mark.png' | relative_url }}">
+    <link rel="stylesheet" href="{{ '/assets/css/docs.css' | relative_url }}">
+    <script>
+      (function () {
+        var savedTheme = localStorage.getItem("fonline-docs-theme");
+        var preferredTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = savedTheme || preferredTheme;
+      }());
+    </script>
+  </head>
+  <body data-page-path="{{ page.path }}">
+    <a class="skip-link" href="#main-content">{% if docs_locale == 'ru' %}К содержимому{% else %}Skip to content{% endif %}</a>
+
+    <header class="docs-header">
+      <button class="icon-button nav-toggle" type="button" data-nav-toggle aria-label="{% if docs_locale == 'ru' %}Открыть навигацию{% else %}Open navigation{% endif %}" aria-controls="docs-sidebar" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </button>
+
+      <a class="docs-brand" href="{{ '/' | relative_url }}">
+        <img src="{{ '/assets/images/fonline-mark.png' | relative_url }}" width="36" height="36" alt="">
+        <span>FOnline Engine</span>
+      </a>
+
+      <div class="docs-header-actions">
+        {% if current_locale_pair %}
+        <nav class="locale-switch" aria-label="{% if docs_locale == 'ru' %}Язык документации{% else %}Documentation language{% endif %}">
+          <a href="{{ current_locale_pair.en.url | relative_url }}" lang="en" hreflang="en"{% if docs_locale == 'en' %} class="is-active" aria-current="page"{% endif %}>EN</a>
+          <a href="{{ current_locale_pair.ru.url | relative_url }}" lang="ru" hreflang="ru"{% if docs_locale == 'ru' %} class="is-active" aria-current="page"{% endif %}>RU</a>
+        </nav>
+        {% endif %}
+        <span class="version-indicator" title="{% if docs_locale == 'ru' %}Текущая документация соответствует обновляемой ветке репозитория{% else %}Current documentation follows the rolling repository branch{% endif %}">
+          <span class="version-label">{{ site.data.docs-site.version.label }}</span>
+          <strong>{{ site.data.docs-site.version.value }}</strong>
+        </span>
+        <button class="icon-button search-open header-search" type="button" data-search-open aria-label="{% if docs_locale == 'ru' %}Поиск по документации{% else %}Search documentation{% endif %}"></button>
+        <a class="header-link" href="https://github.com/{{ site.data.docs-site.repository }}" aria-label="{% if docs_locale == 'ru' %}Репозиторий FOnline на GitHub{% else %}FOnline repository on GitHub{% endif %}">GitHub</a>
+        <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="{% if docs_locale == 'ru' %}Использовать тёмную тему{% else %}Use dark theme{% endif %}"></button>
+      </div>
+    </header>
+
+    <div class="nav-scrim" data-nav-scrim></div>
+
+    <div class="docs-shell">
+      <aside class="docs-sidebar" id="docs-sidebar" aria-label="{% if docs_locale == 'ru' %}Навигация по документации{% else %}Documentation navigation{% endif %}">
+        <button class="sidebar-search search-open" type="button" data-search-open>
+          <span class="search-mark" aria-hidden="true"></span>
+          <span>{% if docs_locale == 'ru' %}Поиск по документации{% else %}Search documentation{% endif %}</span>
+        </button>
+
+        <nav class="docs-navigation" aria-label="{% if docs_locale == 'ru' %}Основная документация{% else %}Primary documentation{% endif %}">
+          {% for group in site.data.docs-site.navigation %}
+          <details class="nav-group" open>
+            <summary>{% if docs_locale == 'ru' %}{{ group.titles.ru }}{% else %}{{ group.titles.en }}{% endif %}</summary>
+            <ul>
+              {% for item in group.items %}
+              {% assign item_title = item.title %}
+              {% assign item_path = item.path %}
+              {% assign item_url = item.url %}
+              {% if docs_locale == 'ru' and item.locales.ru %}
+                {% assign item_title = item.locales.ru.title %}
+                {% assign item_path = item.locales.ru.path %}
+                {% assign item_url = item.locales.ru.url %}
+              {% endif %}
+              <li>
+                <a href="{{ item_url | relative_url }}"{% if item_path == page.path %} class="is-active" aria-current="page"{% endif %}>{{ item_title }}</a>
+              </li>
+              {% endfor %}
+            </ul>
+          </details>
+          {% endfor %}
+        </nav>
+
+        <div class="sidebar-footer">
+          <a href="{{ '/llms.txt' | relative_url }}">AI index</a>
+          <a href="{{ '/docs-manifest.json' | relative_url }}">Manifest</a>
+        </div>
+      </aside>
+
+      <main class="docs-main" id="main-content" tabindex="-1">
+        <div class="docs-reading-grid">
+          <article class="docs-content">
+            <div class="page-context">
+              <a href="{{ '/Docs/README.html' | relative_url }}">{% if docs_locale == 'ru' %}Документация{% else %}Documentation{% endif %}</a>
+              <span aria-hidden="true">/</span>
+              <span>{{ page.path | default: 'README.md' }}</span>
+            </div>
+
+            {{ content }}
+
+            <footer class="page-footer">
+              <span>{% if docs_locale == 'ru' %}Документация движка FOnline{% else %}FOnline Engine documentation{% endif %}</span>
+              <a href="https://github.com/{{ site.data.docs-site.repository }}/blob/{{ site.data.docs-site.source_ref }}/{{ page.path | default: 'README.md' }}">{% if docs_locale == 'ru' %}Исходный файл{% else %}View source{% endif %}</a>
+            </footer>
+          </article>
+
+          <aside class="page-toc" aria-label="{% if docs_locale == 'ru' %}На этой странице{% else %}On this page{% endif %}" data-page-toc hidden>
+            <div class="page-toc-title">{% if docs_locale == 'ru' %}На этой странице{% else %}On this page{% endif %}</div>
+            <nav data-page-toc-links></nav>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <dialog class="search-dialog" data-search-dialog data-search-url="{{ '/assets/docs-search.json' | relative_url }}" data-search-url-ru="{{ '/assets/docs-search.ru.json' | relative_url }}">
+      <div class="search-dialog-header">
+        <label for="docs-search-input">{% if docs_locale == 'ru' %}Поиск по документации FOnline{% else %}Search FOnline documentation{% endif %}</label>
+        <button class="icon-button search-close" type="button" data-search-close aria-label="{% if docs_locale == 'ru' %}Закрыть поиск{% else %}Close search{% endif %}">&times;</button>
+      </div>
+      <input id="docs-search-input" class="search-input" type="search" autocomplete="off" spellcheck="false" placeholder="{% if docs_locale == 'ru' %}API, карты, скрипты, сборка...{% else %}API, maps, scripting, build...{% endif %}" data-search-input>
+      <div class="search-status" role="status" aria-live="polite" data-search-status>{% if docs_locale == 'ru' %}Введите запрос.{% else %}Start typing to search.{% endif %}</div>
+      <ol class="search-results" data-search-results></ol>
+    </dialog>
+
+    <script src="{{ '/assets/js/docs.js' | relative_url }}" defer></script>
+  </body>
+</html>

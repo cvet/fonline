@@ -23,6 +23,11 @@
 *.spk      binary
 *.efk      binary
 
+# Byte-addressed Content Showcase authoring inputs
+Examples/ContentShowcase/ShowcaseAssets/Showcase/Effects/ShowcaseParticle.fofx text eol=lf
+Examples/ContentShowcase/ShowcaseAssets/Showcase/Particles/Showcase.spark text eol=lf
+Examples/ContentShowcase/ShowcaseAssets/Showcase/Sprites/Beacon.fofrm text eol=lf
+
 # Syntax highlighting
 *.fos      linguist-language=AngelScript
 *.fopro    linguist-language=INI
