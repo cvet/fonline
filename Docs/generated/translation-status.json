@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa",
-      "source_bytes": 30355,
+      "source_sha256": "831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601",
+      "source_bytes": 30695,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "0b1994e8dc88621fde498c302f20c87ff72537b28812537877c7e78b0752a056",
-      "source_bytes": 35330,
+      "source_sha256": "a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b",
+      "source_bytes": 35840,
       "status": "current"
     },
     {

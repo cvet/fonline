@@ -44,7 +44,7 @@ namespace
 {
     auto MakeMapViewHitTestResources() -> FileSystem
     {
-        const auto metadata = BakerTests::MakeEmptyMetadataBlob();
+        auto metadata = BakerTests::MakeEmptyMetadataBlob();
         auto compiler_source = safe_alloc::make_unique<BakerTests::MemoryDataSource>("MapViewHitTestCompiler");
         compiler_source->AddFile("Metadata.fometa-client", metadata);
         FileSystem compiler_resources;
@@ -98,8 +98,8 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
     ptr<MapSprite> wall_sprite = wall->GetMapSprite();
     wall_sprite->SetEggAppearence(EggAppearenceType::Always);
     wall_sprite->SetEggStructure(true);
-    const irect32 rect = wall_sprite->GetDrawRect();
-    const ipos32 pixel = map->MapToScreenPos({rect.x + rect.width / 2, rect.y + rect.height / 2});
+    irect32 rect = wall_sprite->GetDrawRect();
+    ipos32 pixel = map->MapToScreenPos({rect.x + rect.width / 2, rect.y + rect.height / 2});
     bool item_egg = false;
     CHECK(map->GetItemAtScreen(pixel, item_egg, 0, true).first == wall);
 
