@@ -15428,7 +15428,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 97f9ae21a0bfdd24658f0b859eb4bd0e6bbe09bbbde0316d54ce15466f13f419
+Content SHA-256: 87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8
 
 ---
 layout: default
@@ -15566,7 +15566,7 @@ Current target responsibilities:
 - `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-Baking.ForceBaking False`.
 - `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-Baking.ForceBaking True`.
 - Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
-- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`. The marker uses the same configured `FO_BUILD_HASH` as the native baker and applications; a later Git HEAD change cannot relabel the completed bake. Reconfigure, rebuild and rebake when the source revision changes.
 - `CompileAngelScript` and `CompileManagedScripts` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind either script backend or a bake invocation.
 
 After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:
@@ -23420,7 +23420,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 47bd6d7432e89ff391572ec1fd74bf49165e4084dd2f52ea20f0f036a6961036
+Content SHA-256: 05ae26c07fc194a4c4af68e6c2f1b28f746bb0963972f0785e8f4fca69e9f6bb
 
 ---
 layout: default
@@ -23712,7 +23712,13 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `Options.cmake` — option/value helpers.
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
-- `WriteBuildHash.cmake` — writes build-hash state used by generation/baking flows.
+- `WriteBuildHash.cmake` — writes the configured `FO_BUILD_HASH` supplied as `BUILD_HASH`
+  into native and resource markers. It does not reread Git HEAD or choose a new
+  random identity when the marker is written. Markers therefore match the build
+  identity embedded in the configured native applications, including source
+  archives without Git and output paths containing spaces.
+  `BuildTools/tests/test_cmake_build_hash.py` verifies actual compiled applications
+  and both standard baking targets before and after a Git revision change.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
 

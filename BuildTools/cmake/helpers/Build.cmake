@@ -464,17 +464,17 @@ macro(WriteBuildHash target)
 
 	set(buildHashCommand
 		${CMAKE_COMMAND}
-		-DHASH_FILE="${outputDir}/${target}.build-hash"
-		-DGIT_ROOT="${FO_GIT_ROOT}"
+		"-DHASH_FILE=${outputDir}/${target}.build-hash"
+		"-DBUILD_HASH=${FO_BUILD_HASH}"
 		-P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
 	set(removeBuildHashCommand
 		${CMAKE_COMMAND}
 		-E remove -f "${outputDir}/${target}.build-hash")
 
 	AddCustomCommand(TARGET ${target} PRE_BUILD
-		COMMAND ${removeBuildHashCommand})
+		COMMAND ${removeBuildHashCommand} VERBATIM)
 	AddCustomCommand(TARGET ${target} POST_BUILD
-		COMMAND ${buildHashCommand})
+		COMMAND ${buildHashCommand} VERBATIM)
 endmacro()
 
 macro(SetBuildPlatformInfo buildPlatform monoOs monoArch)
