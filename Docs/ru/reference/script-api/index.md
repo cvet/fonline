@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"4682ce981459989f6c44c8184a07dd6636df660a5fd0855e27bc00a2b665b958"} -->
+<!-- docs-translation: {"document_id":"generated-api-index","locale":"ru","source_path":"Docs/en/reference/script-api/index.md","source_sha256":"f8077af26fb95a7075c5eff6aef86badd111b9cf4ee3c76fc05f554b8c563bf9"} -->
 
 # Сгенерированный справочник API
 
@@ -30,7 +30,7 @@ generated: true
 | Символы с описаниями | 2555 |
 | Символы без описаний | 0 |
 | Символы без provenance исходника | 14 |
-| Файлы-источники metadata | 45 |
+| Файлы-источники metadata | 43 |
 | Явные объявления контракта | 3 |
 | Явно классифицированные символы | 2555 |
 | Неклассифицированные символы по умолчанию | 0 |

@@ -43,35 +43,21 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEnum
 enum class MovingState : uint8_t
 {
-    InProgress = 0,
-    Success = 1,
-    TargetNotFound = 2,
-    CantMove = 3,
-    GagCritter = 4,
-    GagItem = 5,
-    GenericError = 6,
-    HexTooFar = 7,
-    HexBusy = 8,
-    Deadlock = 10,
-    TraceFailed = 11,
-    NotAlive = 12,
-    Attached = 13,
-    Stopped = 14,
+    InProgress = 0, // Movement is active and has not produced a terminal result
+    Success = 1, // Movement reached its requested destination successfully
+    TargetNotFound = 2, // Movement could not resolve the requested target
+    CantMove = 3, // Movement could not start because the critter cannot move
+    GagCritter = 4, // Movement was blocked by a critter occupancy callback
+    GagItem = 5, // Movement was blocked by an item occupancy callback
+    GenericError = 6, // Movement failed without a more specific result
+    HexTooFar = 7, // The requested destination is beyond the accepted movement range
+    HexBusy = 8, // The requested destination hex is occupied or otherwise unavailable
+    Deadlock = 10, // Path construction encountered a movement deadlock
+    TraceFailed = 11, // Path tracing could not produce a valid route
+    NotAlive = 12, // Movement was rejected because the critter is not alive
+    Attached = 13, // Independent movement was rejected because the critter is attached to another critter
+    Stopped = 14, // Movement was cancelled or stopped before reaching the destination
 };
-///@ EnumValueDoc MovingState InProgress // Movement is active and has not produced a terminal result.
-///@ EnumValueDoc MovingState Success // Movement reached its requested destination successfully.
-///@ EnumValueDoc MovingState TargetNotFound // Movement could not resolve the requested target.
-///@ EnumValueDoc MovingState CantMove // Movement could not start because the critter cannot move.
-///@ EnumValueDoc MovingState GagCritter // Movement was blocked by a critter occupancy callback.
-///@ EnumValueDoc MovingState GagItem // Movement was blocked by an item occupancy callback.
-///@ EnumValueDoc MovingState GenericError // Movement failed without a more specific result.
-///@ EnumValueDoc MovingState HexTooFar // The requested destination is beyond the accepted movement range.
-///@ EnumValueDoc MovingState HexBusy // The requested destination hex is occupied or otherwise unavailable.
-///@ EnumValueDoc MovingState Deadlock // Path construction encountered a movement deadlock.
-///@ EnumValueDoc MovingState TraceFailed // Path tracing could not produce a valid route.
-///@ EnumValueDoc MovingState NotAlive // Movement was rejected because the critter is not alive.
-///@ EnumValueDoc MovingState Attached // Independent movement was rejected because the critter is attached to another critter.
-///@ EnumValueDoc MovingState Stopped // Movement was cancelled or stopped before reaching the destination.
 
 struct MovingMetrics
 {

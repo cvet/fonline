@@ -15,17 +15,17 @@ generated: true
 
 | Name | Value | Source behavior |
 | --- | --- | --- |
-| <code>None</code> | <code>0x0000</code> | No additional behavior |
-| <code>NoWrap</code> | <code>0x0001</code> | On rect-width overflow truncate the rest of the text instead of wrapping it to the next line |
-| <code>TruncateLine</code> | <code>0x0002</code> | On rect-width overflow skip remaining glyphs until the next '\n' instead of wrapping |
-| <code>CenterX</code> | <code>0x0004</code> | Horizontally center each line within the rect |
-| <code>CenterY</code> | <code>0x0008</code> | Vertically center the text block within the rect |
-| <code>AlignRight</code> | <code>0x0010</code> | Right-align each line within the rect |
-| <code>AlignBottom</code> | <code>0x0020</code> | Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from "skip from top" to "skip from bottom" |
-| <code>KeepTail</code> | <code>0x0040</code> | When the text block is taller than the rect, render its tail (skip the leading overflowing lines) |
-| <code>NoColorize</code> | <code>0x0080</code> | Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is |
-| <code>Justify</code> | <code>0x0100</code> | Justify each line: distribute extra spaces between words to fill the rect width |
-| <code>Bordered</code> | <code>0x0200</code> | Render glyphs from the bordered/outlined font texture variant instead of the regular one |
+| <code>None</code> | <code>0x0000</code> | Applies no optional text-layout or glyph-rendering flags |
+| <code>NoWrap</code> | <code>0x0001</code> | Truncates the remaining text at rectangle-width overflow instead of wrapping it |
+| <code>TruncateLine</code> | <code>0x0002</code> | Skips overflowing glyphs through the next newline instead of wrapping the current line |
+| <code>CenterX</code> | <code>0x0004</code> | Horizontally centers each rendered line within the target rectangle |
+| <code>CenterY</code> | <code>0x0008</code> | Vertically centers the complete text block within the target rectangle |
+| <code>AlignRight</code> | <code>0x0010</code> | Right-aligns each rendered line within the target rectangle |
+| <code>AlignBottom</code> | <code>0x0020</code> | Aligns the text block to the bottom and makes SkipLines count from the trailing lines |
+| <code>KeepTail</code> | <code>0x0040</code> | Renders the tail of a text block that is taller than the target rectangle |
+| <code>NoColorize</code> | <code>0x0080</code> | Removes inline color tags while retaining the supplied base text color |
+| <code>Justify</code> | <code>0x0100</code> | Distributes extra spacing between words to fill each line's target width |
+| <code>Bordered</code> | <code>0x0200</code> | Uses the bordered or outlined font-texture variant for glyph rendering |
 
 ## Layout rules
 

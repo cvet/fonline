@@ -28,7 +28,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | Symbols with descriptions | 2555 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
-| Metadata source files | 45 |
+| Metadata source files | 43 |
 | Explicit contract declarations | 3 |
 | Explicitly classified symbols | 2555 |
 | Unclassified default symbols | 0 |

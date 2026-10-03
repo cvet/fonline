@@ -100,16 +100,16 @@ class DocumentationApiModelTests(unittest.TestCase):
                 "Restores the initial sample state.",
             )
 
-    def test_value_field_doc_describes_layout_fields_without_changing_the_runtime_hash(self) -> None:
+    def test_pre_export_comments_describe_layout_fields_without_changing_the_runtime_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             source_path = root / "Source/Common/TestValueType.h"
             source_path.parent.mkdir(parents=True)
             source_path.write_text(
                 "// Script-visible sample pair.\n"
+                "// x: Horizontal sample component.\n"
+                "// y: Vertical sample component.\n"
                 "///@ ExportValueType Layout = int32-x+int32-y\n"
-                "///@ ValueFieldDoc SamplePair x // Horizontal sample component.\n"
-                "///@ ValueFieldDoc SamplePair y // Vertical sample component.\n"
                 "struct SamplePair\n"
                 "{\n"
                 "    int32_t x {};\n"
@@ -125,8 +125,9 @@ class DocumentationApiModelTests(unittest.TestCase):
             self.assertEqual(descriptions["script.value-field.SamplePair.y"], "Vertical sample component.")
             self.assertEqual(
                 next(symbol for symbol in model["symbols"] if symbol["id"] == "script.value-field.SamplePair.x")["source"]["line"],
-                3,
+                2,
             )
+            self.assertEqual(descriptions["script.value-type.SamplePair"], "Script-visible sample pair.")
 
             source_path.write_text(
                 "// Script-visible sample pair.\n"
@@ -143,8 +144,8 @@ class DocumentationApiModelTests(unittest.TestCase):
 
             source_path.write_text(
                 "// Script-visible sample pair.\n"
+                "// z: Unknown component.\n"
                 "///@ ExportValueType Layout = int32-x+int32-y\n"
-                "///@ ValueFieldDoc SamplePair z // Unknown component.\n"
                 "struct SamplePair\n"
                 "{\n"
                 "    int32_t x {};\n"
@@ -155,7 +156,7 @@ class DocumentationApiModelTests(unittest.TestCase):
             with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(AssertionError, "Unknown layout field SamplePair.z"):
                 docs_api.generate_api_model(root)
 
-    def test_enum_value_doc_describes_values_without_changing_the_runtime_hash(self) -> None:
+    def test_inline_enum_comments_describe_values_without_changing_the_runtime_hash(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             root = Path(temporary_directory)
             source_path = root / "Source/Common/TestEnum.h"
@@ -165,11 +166,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                 "///@ ExportEnum\n"
                 "enum class SampleMode : uint8_t\n"
                 "{\n"
-                "    None = 0,\n"
-                "    Active = 1,\n"
-                "};\n"
-                "///@ EnumValueDoc SampleMode None // No sample mode is selected.\n"
-                "///@ EnumValueDoc SampleMode Active // Sample processing is enabled.\n",
+                "    None = 0, // No sample mode is selected.\n"
+                "\n"
+                "    // A standalone note is not an enum-value description.\n"
+                "    Active = 1, // Sample processing is enabled.\n"
+                "    Automatic, // Automatic sample processing is enabled.\n"
+                "};\n",
                 encoding="utf-8",
             )
 
@@ -188,7 +190,12 @@ class DocumentationApiModelTests(unittest.TestCase):
                 values["script.enum-value.SampleMode.Active"]["description"],
                 "Sample processing is enabled.",
             )
-            self.assertEqual(values["script.enum-value.SampleMode.None"]["source"]["line"], 8)
+            self.assertEqual(values["script.enum-value.SampleMode.None"]["source"]["line"], 5)
+            self.assertEqual(values["script.enum-value.SampleMode.Active"]["source"]["line"], 8)
+            self.assertEqual(values["script.enum-value.SampleMode.Automatic"]["source"]["line"], 9)
+            self.assertEqual(values["script.enum-value.SampleMode.Automatic"]["value"], "2")
+            self.assertEqual(values["script.enum-value.SampleMode.Automatic"]["description"],
+                             "Automatic sample processing is enabled.")
 
             source_path.write_text(
                 "// Sample operating mode.\n"
@@ -197,27 +204,61 @@ class DocumentationApiModelTests(unittest.TestCase):
                 "{\n"
                 "    None = 0,\n"
                 "    Active = 1,\n"
+                "    Automatic,\n"
                 "};\n",
                 encoding="utf-8",
             )
             docs_api.generate_api_model(root)
             self.assertEqual(docs_api.codegen.compatibility_hasher.hexdigest(), hash_with_docs)
 
+    def test_pre_export_field_comments_support_aliases_and_validate_labels(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source_path = root / "Source/Common/TestAlias.h"
+            source_path.parent.mkdir(parents=True)
             source_path.write_text(
-                "// Sample operating mode.\n"
-                "///@ ExportEnum\n"
-                "enum class SampleMode : uint8_t\n"
-                "{\n"
-                "    None = 0,\n"
-                "};\n"
-                "///@ EnumValueDoc SampleMode Missing // Unknown value.\n",
+                "// Script-visible alias.\n"
+                "\n"
+                "// value: Stored sample value.\n"
+                "///@ ExportValueType Name = SampleAlias Layout = int32-value\n"
+                "using NativeAlias = SomeStrongType;\n",
                 encoding="utf-8",
             )
-            with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(
-                AssertionError,
-                "Unknown enum value SampleMode.Missing",
+            model = docs_api.generate_api_model(root)
+            value_type = next(symbol for symbol in model["symbols"] if symbol["kind"] == "value-type")
+            value_field = next(symbol for symbol in model["symbols"] if symbol["kind"] == "value-field")
+            self.assertEqual(value_type["description"], "Script-visible alias.")
+            self.assertEqual(value_type["native_type"], "NativeAlias")
+            self.assertEqual(value_field["description"], "Stored sample value.")
+            self.assertEqual(value_field["source"]["line"], 3)
+
+            for comments, message in (
+                ("// value: First value.\n// value: Second value.\n", "Duplicate value field documentation"),
+                ("// value: \n", "Value field documentation comment is required"),
+                ("// unknown: Unknown value.\n", "Unknown layout field SampleAlias.unknown"),
             ):
-                docs_api.generate_api_model(root)
+                with self.subTest(comments=comments):
+                    source_path.write_text(
+                        comments + "///@ ExportValueType Name = SampleAlias Layout = int32-value\n"
+                        "using NativeAlias = SomeStrongType;\n",
+                        encoding="utf-8",
+                    )
+                    with contextlib.redirect_stdout(io.StringIO()), self.assertRaisesRegex(AssertionError, message):
+                        docs_api.generate_api_model(root)
+
+    def test_removed_description_tags_are_not_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            source_path = root / "Source/Common/TestRemovedTag.h"
+            source_path.parent.mkdir(parents=True)
+            for tag in ("EnumValueDoc", "ValueFieldDoc"):
+                with self.subTest(tag=tag):
+                    source_path.write_text(f"///@ {tag} Sample Entry // Rejected description.\n", encoding="utf-8")
+                    output = io.StringIO()
+                    with contextlib.redirect_stdout(output), self.assertRaises(SystemExit) as failure:
+                        docs_api.generate_api_model(root)
+                    self.assertEqual(failure.exception.code, 1)
+                    self.assertIn("Invalid tag " + tag, output.getvalue())
 
     def test_engine_model_matches_independent_source_inventory(self) -> None:
         model = docs_api.generate_api_model(ENGINE_ROOT)
@@ -294,18 +335,14 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertEqual(len(imgui_values), 303)
         self.assertEqual([symbol["id"] for symbol in imgui_values if not symbol["description"]], [])
         self.assertEqual(
-            sum(symbol["source"]["path"] == "ThirdParty/imgui/imgui.h" for symbol in imgui_values),
-            235,
-        )
-        self.assertEqual(
             sum(symbol["source"]["path"] == "Source/Common/ImGuiExt/ImGuiStuff.h" for symbol in imgui_values),
-            68,
+            303,
         )
         style_alpha = next(
             symbol for symbol in imgui_values if symbol["id"] == "script.enum-value.ImGui_StyleVar.Alpha"
         )
-        self.assertEqual(style_alpha["description"], "Global alpha applies to everything in Dear ImGui.")
-        self.assertEqual(style_alpha["source"]["path"], "ThirdParty/imgui/imgui.h")
+        self.assertEqual(style_alpha["description"].rstrip("."), "Global alpha applies to everything in Dear ImGui")
+        self.assertEqual(style_alpha["source"]["path"], "Source/Common/ImGuiExt/ImGuiStuff.h")
         key_codes = [
             symbol
             for symbol in model["symbols"]
@@ -314,12 +351,8 @@ class DocumentationApiModelTests(unittest.TestCase):
         self.assertEqual(len(key_codes), 105)
         self.assertEqual([symbol["id"] for symbol in key_codes if not symbol["description"]], [])
         self.assertEqual(
-            sum(symbol["source"]["path"] == "Source/Frontend/Application.cpp" for symbol in key_codes),
-            103,
-        )
-        self.assertEqual(
             sum(symbol["source"]["path"] == "Source/Frontend/Application.h" for symbol in key_codes),
-            2,
+            105,
         )
         self.assertEqual(
             [symbol["id"] for symbol in model["symbols"] if not symbol["description"]],

@@ -9924,3 +9924,45 @@ Current receipts and open gates:
 - Remote PR descriptions/checks need reconciliation with committed and published
   final candidates before an Engine-first merge. No push or remote PR mutation
   was performed in this review.
+
+## 2026-10-03 — ordinary source comments for enum and value-field descriptions
+
+The owner removed the experimental per-member documentation-tag approach recorded
+in earlier snapshots above. Current descriptions use ordinary source comments:
+enum entries take their trailing declaration comment, and value-layout fields take
+`// fieldName: description` lines before ExportValueType. The additional tag grammar
+and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
+
+- Migrated 518 explicit enum descriptions and 62 value-field descriptions in fifteen
+  Engine headers. ImGui and KeyCode prose now lives at the declaration itself;
+  generated entity-property enum values still inherit owning property provenance.
+  The native header comparison finds no noncomment changes.
+- Retained all 2555 API symbols, their identities, layouts, enum values and stability
+  contracts, with zero missing descriptions. The 580 API-description changes only
+  drop the final period according to native comment style. Updated the reviewed
+  Russian source hashes without changing their meanings. Font reference descriptors
+  now use the same source enum comments and reviewed Russian API translations.
+- Both old-parser regressions fail before correction and pass afterward. The API
+  suite passes twelve cases, including implicit enum values, blank/standalone
+  comment lines, exact declaration provenance, aliases, invalid/empty/duplicate
+  field labels and rejection of removed tags. Default-argument tests pass eight.
+- Compatibility SHA-256 remains
+  `d92ae336fc1c4c36ca778cc9b366cf4b55106245ec9e9bd40f6490b327f04cd4`.
+  A structural project-configuration comparison emits the same compatibility
+  version and all ten runtime files after normalizing only the output path; this
+  is not project runtime acceptance or normative dependence on project fixtures.
+  The aggregate model diff classifies 580 changes as documentation-only, with zero
+  required or missing public dispositions across seventeen domains.
+- Refreshed affected API, font/map references, locale, screenshot provenance,
+  snippets, site/search and AI artifacts through owners. No screenshot capture
+  trigger fired: native declarations/values and generated runtime behavior are
+  unchanged, so catalog updates are provenance only, not new visual acceptance.
+  Description coverage is 4821/4821; all 67 retrieval checks pass (MRR 0.930).
+- Standalone documentation validation passes 408 entries. Full documentation
+  discovery passes 558 tests (692.156s); all three CMake interfaces and the remaining
+  standalone gameplay-runner/package/AiControl/security/AngelScript checks pass.
+  Final API/reference, description/locale, snippets, screenshots, site/search,
+  retrieval and AI-delivery freshness checks pass. No remote CI,
+  Jekyll/browser, fresh native build/bake, physical GUI, Pages or production claim
+  is made. The separate pre-existing Visual Studio unchanged-reconfigure gate is
+  not changed or hidden by this source-comment convention update.

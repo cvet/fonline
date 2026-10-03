@@ -34,8 +34,6 @@ ENGINE_HOOK_NAMES = (
     'CheckCritterVisibilityHook',
     'CheckItemVisibilityHook',
 )
-IMGUI_HEADER_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'ThirdParty', 'imgui', 'imgui.h'))
-APPLICATION_SOURCE_PATH = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'Source', 'Frontend', 'Application.cpp'))
 INTERNAL_CONFIG_CAPACITY = 20000
 
 
@@ -46,6 +44,7 @@ class TagMetaRecord:
     tag_info: str | None
     tag_context: TagContext
     comment: CommentLines
+    comment_sources: list[SourceLocation] = field(default_factory=list)
 
 
 @dataclass(frozen=True, slots=True)
@@ -118,7 +117,7 @@ class MethodRegistrationInfo:
 
 
 @dataclass(slots=True)
-class EnumValueDoc:
+class EnumValueDocumentation:
     comment: CommentLines
     source: SourceLocation | None
 
@@ -130,7 +129,7 @@ class ExportEnumTag:
     key_values: list[EnumKeyValue]
     flags: list[str]
     comment: CommentLines
-    value_docs: dict[str, EnumValueDoc] = field(default_factory=dict)
+    value_docs: dict[str, EnumValueDocumentation] = field(default_factory=dict)
 
 
 @dataclass(slots=True)
@@ -276,7 +275,6 @@ class CodeGenTagStore(TypedDict):
 
 class TagMetaStore(TypedDict):
     ExportEnum: list[TagMetaRecord]
-    EnumValueDoc: list[TagMetaRecord]
     ExportValueType: list[TagMetaRecord]
     ExportProperty: list[TagMetaRecord]
     ExportMethod: list[TagMetaRecord]
@@ -287,7 +285,6 @@ class TagMetaStore(TypedDict):
     EngineHook: list[TagMetaRecord]
     MigrationRule: list[TagMetaRecord]
     ApiContract: list[TagMetaRecord]
-    ValueFieldDoc: list[TagMetaRecord]
     CodeGen: list[TagMetaRecord]
 
 
@@ -318,7 +315,6 @@ def create_codegen_tag_source_store() -> CodeGenTagSourceStore:
 def create_tag_meta_store() -> TagMetaStore:
     return {
         'ExportEnum': [],
-        'EnumValueDoc': [],
         'ExportValueType': [],
         'ExportProperty': [],
         'ExportMethod': [],
@@ -329,7 +325,6 @@ def create_tag_meta_store() -> TagMetaStore:
         'EngineHook': [],
         'MigrationRule': [],
         'ApiContract': [],
-        'ValueFieldDoc': [],
         'CodeGen': [],
     }
 
@@ -610,6 +605,7 @@ def parse_meta_file(abs_path: str) -> None:
         return
         
     last_comment: CommentLines = []
+    last_comment_sources: list[SourceLocation] = []
     
     for line_index in range(len(lines)):
         line = lines[line_index]
@@ -622,6 +618,7 @@ def parse_meta_file(abs_path: str) -> None:
             tag_pos = find_comment_start(line)
             if tag_pos == -1 or line_len - tag_pos <= 2 or line[tag_pos] != '/' or line[tag_pos + 1] != '/':
                 last_comment = []
+                last_comment_sources = []
                 continue
             
             if line_len - tag_pos >= 4 and line[tag_pos + 2] == '/' and line[tag_pos + 3] == '@':
@@ -630,6 +627,7 @@ def parse_meta_file(abs_path: str) -> None:
                 comment_pos = tag_str.find('//')
                 if comment_pos != -1:
                     last_comment = [tag_str[comment_pos + 2:].strip()]
+                    last_comment_sources = [SourceLocation(abs_path, line_index + 1)]
                     tag_str = tag_str[:comment_pos].rstrip()
 
                 comment = last_comment if last_comment else []
@@ -638,6 +636,7 @@ def parse_meta_file(abs_path: str) -> None:
                 tag_name = tag_split[0]
                 if tag_name in script_metadata_tags and os.path.splitext(abs_path)[1].lower() in ('.cs', '.fos'):
                     last_comment = []
+                    last_comment_sources = []
                     continue
 
                 if tag_name not in tag_metas:
@@ -648,13 +647,16 @@ def parse_meta_file(abs_path: str) -> None:
 
                 tag_context = resolve_tag_context(tag_name, lines, line_index, tag_pos)
 
-                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment))
+                tag_metas[tag_name].append(TagMetaRecord(abs_path, line_index, tag_info, tag_context, comment, last_comment_sources))
                 last_comment = []
+                last_comment_sources = []
 
             elif line_len - tag_pos >= 3 and line[tag_pos + 2] != '/':
                 last_comment.append(line[tag_pos + 2:].strip())
+                last_comment_sources.append(SourceLocation(abs_path, line_index + 1))
             else:
                 last_comment = []
+                last_comment_sources = []
 
         except Exception as ex:
             show_error('Invalid tag format', abs_path + ' (' + str(line_index + 1) + ')', line.strip(), ex)
@@ -1130,6 +1132,7 @@ def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
     assert enum_lines[1].startswith('{')
     for raw_line in enum_lines[2:]:
         comment_position = raw_line.find('//')
+        comment = [raw_line[comment_position + 2:].strip()] if comment_position != -1 and raw_line[comment_position + 2:].strip() else []
         line = raw_line[:comment_position].rstrip() if comment_position != -1 else raw_line
         stripped = line.strip()
         if not stripped or stripped.startswith('}'):
@@ -1139,9 +1142,9 @@ def parse_enum_key_values(enum_lines: list[str]) -> list[EnumKeyValue]:
         separator = line.find('=')
         if separator == -1:
             next_value = str(int(require_enum_value_text(key_values[-1]), 0) + 1) if key_values else '0'
-            key_values.append(EnumKeyValue(line.rstrip(','), next_value, []))
+            key_values.append(EnumKeyValue(line.rstrip(','), next_value, comment))
         else:
-            key_values.append(EnumKeyValue(line[:separator].rstrip(), line[separator + 1:].lstrip().rstrip(','), []))
+            key_values.append(EnumKeyValue(line[:separator].rstrip(), line[separator + 1:].lstrip().rstrip(','), comment))
     return key_values
 
 
@@ -1273,7 +1276,8 @@ def create_valid_types() -> set[str]:
 
 def register_export_enum(group_name: str, underlying_type: str, key_values: list[EnumKeyValue], export_flags: list[str], comment: CommentLines, valid_types: set[str], source: SourceLocation | None = None) -> None:
     add_codegen_tag('ExportEnum', ExportEnumTag(group_name, underlying_type, key_values, export_flags, comment), source)
-    hash_recursive(compatibility_hasher, (group_name, underlying_type, key_values, export_flags))
+    runtime_values = [EnumKeyValue(value.key, value.value, []) for value in key_values]
+    hash_recursive(compatibility_hasher, (group_name, underlying_type, runtime_values, export_flags))
 
     assert group_name not in valid_types, 'Enum already in valid types'
     valid_types.add(group_name)
@@ -1411,7 +1415,7 @@ def postprocess_tags() -> None:
     for entity in game_entities:
         key_values = [EnumKeyValue('None', '0', [])]
         value_docs = {
-            'None': EnumValueDoc(
+            'None': EnumValueDocumentation(
                 [f'Sentinel indicating that no {entity} property identifier is selected.'],
                 None,
             )
@@ -1421,7 +1425,7 @@ def postprocess_tags() -> None:
             if prop_tag.entity == entity:
                 key = prop_tag.name.replace('.', '_')
                 key_values.append(EnumKeyValue(key, str(index), []))
-                value_docs[key] = EnumValueDoc(list(prop_tag.comment), prop_source)
+                value_docs[key] = EnumValueDocumentation(list(prop_tag.comment), prop_source)
                 index += 1
         property_enum_comment = [
             f'Generated identifiers for properties exported by the {entity} script entity. '
@@ -1472,6 +1476,18 @@ def parse_enum_tags(valid_types: set[str]) -> None:
 
             key_values = parse_enum_key_values(enum_lines)
             register_export_enum(group_name, underlying_type, key_values, export_flags, comment, valid_types, get_tag_source(tag_meta))
+            value_docs = codegen_tags['ExportEnum'][-1].value_docs
+            values_by_name = {value.key: value for value in key_values}
+            with open(abs_path, 'r', encoding='utf-8-sig') as source_file:
+                source_lines = source_file.readlines()
+            for value_line_index in range(line_index + 1, len(source_lines)):
+                declaration = source_lines[value_line_index].split('//', 1)[0].strip()
+                if declaration.startswith('};'):
+                    break
+                value_name = declaration.split('=', 1)[0].strip().rstrip(',')
+                if value_name in values_by_name:
+                    value_docs[value_name] = EnumValueDocumentation(
+                        list(values_by_name[value_name].comment), SourceLocation(abs_path, value_line_index + 1))
 
         except Exception as ex:
             show_error('Invalid tag ExportEnum', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
@@ -1509,7 +1525,9 @@ def parse_export_value_type_tags(valid_types: set[str]) -> None:
             assert 'Layout' in export_flags, 'No Layout specified in ExportValueType'
             assert export_flags[export_flags.index('Layout') + 1] == '=', 'Expected "=" after Layout tag'
 
-            add_codegen_tag('ExportValueType', ExportValueTypeTag(abs_path, type_name, native_type, export_flags, comment, {}), get_tag_source(tag_meta))
+            value_type = ExportValueTypeTag(abs_path, type_name, native_type, export_flags, comment, {})
+            parse_value_type_field_comments(value_type, tag_meta)
+            add_codegen_tag('ExportValueType', value_type, get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, (type_name, native_type, export_flags))
 
             assert type_name not in valid_types, 'Type already in valid types'
@@ -1523,156 +1541,22 @@ def parse_export_value_type_tags(valid_types: set[str]) -> None:
             show_error('Invalid tag ExportValueType', abs_path + ' (' + str(line_index + 1) + ')', get_context_preview(tag_context), ex)
 
 
-def parse_enum_value_doc_tags() -> None:
-    enum_types = {tag.group_name: tag for tag in codegen_tags['ExportEnum']}
-
-    for tag_meta in tag_metas['EnumValueDoc']:
-        abs_path = tag_meta.abs_path
-        line_index = tag_meta.line_index
-
-        try:
-            tokens = tokenize(tag_meta.tag_info or '')
-            assert len(tokens) == 2, 'Expected enum type and value name'
-            type_name, value_name = tokens
-            assert type_name in enum_types, 'Unknown exported enum type ' + type_name
-            enum_type = enum_types[type_name]
-            value_names = {value.key for value in enum_type.key_values}
-            assert value_name in value_names, 'Unknown enum value ' + type_name + '.' + value_name
-            assert tag_meta.comment, 'Enum value documentation comment is required'
-            assert value_name not in enum_type.value_docs, 'Duplicate enum value documentation for ' + type_name + '.' + value_name
-            enum_type.value_docs[value_name] = EnumValueDoc(tag_meta.comment, get_tag_source(tag_meta))
-
-        except Exception as ex:
-            show_error('Invalid tag EnumValueDoc', abs_path + ' (' + str(line_index + 1) + ')', ex)
-
-
-def load_imgui_enum_value_docs() -> dict[str, EnumValueDoc]:
-    result: dict[str, EnumValueDoc] = {}
-
-    with open(IMGUI_HEADER_PATH, 'r', encoding='utf-8-sig') as imgui_file:
-        lines = imgui_file.readlines()
-
-    style_field_docs: dict[str, EnumValueDoc] = {}
-    for line_index, raw_line in enumerate(lines):
-        field_match = re.match(r'^\s*(?:float|ImVec2)\s+([A-Za-z0-9_]+);', raw_line)
-        comment_position = raw_line.find('//')
-        if field_match is None or comment_position == -1:
+def parse_value_type_field_comments(value_type: ExportValueTypeTag, tag_meta: TagMetaRecord) -> None:
+    layout_fields = {name for _, name in get_value_type_layout(value_type)}
+    type_comment: CommentLines = []
+    for index, comment_line in enumerate(tag_meta.comment):
+        field_match = re.fullmatch(r'([A-Za-z_][A-Za-z0-9_]*):\s*(.*)', comment_line)
+        if field_match is None:
+            type_comment.append(comment_line)
             continue
 
-        comment = raw_line[comment_position + 2:].strip()
-        if comment:
-            style_field_docs[field_match.group(1)] = EnumValueDoc([comment], SourceLocation(IMGUI_HEADER_PATH, line_index + 1))
-
-    for line_index, raw_line in enumerate(lines):
-        alias_match = re.match(r'^\s*(ImGui[A-Za-z0-9_]+)\b', raw_line)
-        first_comment_position = raw_line.find('//')
-        if alias_match is None or first_comment_position == -1 or ',' not in raw_line[:first_comment_position]:
-            continue
-
-        final_comment_position = raw_line.rfind('//')
-        comment = raw_line[final_comment_position + 2:].strip()
-        if not comment or comment == '"':
-            continue
-
-        alias = alias_match.group(1)
-        assert alias not in result, 'Duplicate Dear ImGui enum value documentation for ' + alias
-        style_field_match = re.fullmatch(r'(?:float|ImVec2)\s+([A-Za-z0-9_]+)', comment)
-        if alias.startswith('ImGuiStyleVar_') and style_field_match is not None:
-            field_name = style_field_match.group(1)
-            assert field_name in style_field_docs, 'Missing Dear ImGui style-field documentation for ' + alias
-            result[alias] = style_field_docs[field_name]
-        else:
-            result[alias] = EnumValueDoc([comment], SourceLocation(IMGUI_HEADER_PATH, line_index + 1))
-
-    return result
-
-
-def apply_imgui_enum_value_docs() -> None:
-    enum_types = {tag.group_name: tag for tag in codegen_tags['ExportEnum']}
-    vendor_docs = load_imgui_enum_value_docs()
-
-    for tag_meta in tag_metas['ExportEnum']:
-        enum_lines = require_list_context(tag_meta.tag_context, 'ExportEnum')
-        first_line = enum_lines[0]
-        separator = first_line.find(':')
-        group_name = first_line[len('enum class '):separator if separator != -1 else len(first_line)].strip()
-        if not group_name.startswith('ImGui_'):
-            continue
-
-        enum_type = enum_types[group_name]
-        aliases: dict[str, str] = {}
-        for raw_line in enum_lines[2:]:
-            comment_position = raw_line.find('//')
-            if comment_position == -1:
-                continue
-
-            declaration = raw_line[:comment_position].strip()
-            if not declaration or declaration.startswith('}'):
-                continue
-
-            value_name = declaration.split('=', 1)[0].strip().rstrip(',')
-            alias = raw_line[comment_position + 2:].strip()
-            assert re.fullmatch(r'ImGui[A-Za-z0-9_]+', alias), 'Invalid Dear ImGui enum alias for ' + group_name + '.' + value_name
-            assert value_name not in aliases, 'Duplicate Dear ImGui enum alias for ' + group_name + '.' + value_name
-            aliases[value_name] = alias
-
-        for key_value in enum_type.key_values:
-            assert key_value.key in aliases, 'Missing Dear ImGui enum alias for ' + group_name + '.' + key_value.key
-            if key_value.key in enum_type.value_docs:
-                continue
-
-            alias = aliases[key_value.key]
-            assert alias in vendor_docs, 'Dear ImGui value requires an EnumValueDoc fallback: ' + group_name + '.' + key_value.key + ' (' + alias + ')'
-            enum_type.value_docs[key_value.key] = vendor_docs[alias]
-
-        missing_values = [value.key for value in enum_type.key_values if value.key not in enum_type.value_docs]
-        assert not missing_values, 'Missing Dear ImGui enum value documentation for ' + group_name + ': ' + ', '.join(missing_values)
-
-
-def apply_key_code_value_docs() -> None:
-    enum_types = {tag.group_name: tag for tag in codegen_tags['ExportEnum']}
-    if 'KeyCode' not in enum_types:
-        return
-
-    key_code = enum_types['KeyCode']
-    with open(APPLICATION_SOURCE_PATH, 'r', encoding='utf-8-sig') as application_file:
-        for line_index, raw_line in enumerate(application_file):
-            mapping_match = re.search(r'\{(SDL_SCANCODE_[A-Z0-9_]+),\s*KeyCode::([A-Za-z0-9_]+)\}', raw_line)
-            if mapping_match is None:
-                continue
-
-            scancode, value_name = mapping_match.groups()
-            assert value_name not in key_code.value_docs, 'Duplicate KeyCode documentation mapping for ' + value_name
-            key_code.value_docs[value_name] = EnumValueDoc(
-                [f'Identifies the physical keyboard key mapped from `{scancode}` by the application input layer.'],
-                SourceLocation(APPLICATION_SOURCE_PATH, line_index + 1),
-            )
-
-    missing_values = [value.key for value in key_code.key_values if value.key not in key_code.value_docs]
-    assert not missing_values, 'Missing KeyCode documentation or SDL mapping: ' + ', '.join(missing_values)
-
-
-def parse_value_field_doc_tags() -> None:
-    value_types = {tag.name: tag for tag in codegen_tags['ExportValueType']}
-
-    for tag_meta in tag_metas['ValueFieldDoc']:
-        abs_path = tag_meta.abs_path
-        line_index = tag_meta.line_index
-
-        try:
-            tokens = tokenize(tag_meta.tag_info or '')
-            assert len(tokens) == 2, 'Expected value type and field name'
-            type_name, field_name = tokens
-            assert type_name in value_types, 'Unknown exported value type ' + type_name
-            value_type = value_types[type_name]
-            layout_fields = {name for _, name in get_value_type_layout(value_type)}
-            assert field_name in layout_fields, 'Unknown layout field ' + type_name + '.' + field_name
-            assert tag_meta.comment, 'Value field documentation comment is required'
-            assert field_name not in value_type.field_docs, 'Duplicate value field documentation for ' + type_name + '.' + field_name
-            value_type.field_docs[field_name] = ValueTypeFieldDoc(tag_meta.comment, get_tag_source(tag_meta))
-
-        except Exception as ex:
-            show_error('Invalid tag ValueFieldDoc', abs_path + ' (' + str(line_index + 1) + ')', ex)
+        field_name, description = field_match.groups()
+        assert field_name in layout_fields, 'Unknown layout field ' + value_type.name + '.' + field_name
+        assert description, 'Value field documentation comment is required for ' + value_type.name + '.' + field_name
+        assert field_name not in value_type.field_docs, 'Duplicate value field documentation for ' + value_type.name + '.' + field_name
+        source = tag_meta.comment_sources[index] if index < len(tag_meta.comment_sources) else get_tag_source(tag_meta)
+        value_type.field_docs[field_name] = ValueTypeFieldDoc([description], source)
+    value_type.comment = type_comment
 
 
 def parse_export_entity_tags(valid_types: set[str]) -> None:
@@ -1728,7 +1612,6 @@ def parse_export_entity_tags(valid_types: set[str]) -> None:
 
 def parse_foundation_tags(valid_types: set[str]) -> None:
     parse_export_value_type_tags(valid_types)
-    parse_value_field_doc_tags()
     parse_export_entity_tags(valid_types)
 
 
@@ -2046,9 +1929,6 @@ def parse_tags() -> None:
     valid_types = create_valid_types()
 
     parse_enum_tags(valid_types)
-    parse_enum_value_doc_tags()
-    apply_imgui_enum_value_docs()
-    apply_key_code_value_docs()
     parse_foundation_tags(valid_types)
     parse_ref_type_tags(valid_types)
     parse_runtime_tags(valid_types)

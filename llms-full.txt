@@ -11036,7 +11036,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: e2010dab6d047112b763f17df08a0a1d80cc41fbd7ec87367d780cc23500260e
+Content SHA-256: a0ddae586a823fc78fa92f18bc58631bf7f32b7835aefac051b599ace508d1e3
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11212,6 +11212,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 ## Style Notes
 
 - Prefer existing engine idioms over new local abstractions.
+- Enum-entry descriptions use trailing declaration comments; value-layout field descriptions use `// field: ...` lines immediately before `ExportValueType`. These field lines are metadata, not multi-line prose; type-description prose retains the two-line limit. See [generated metadata](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
 - Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.
 - **The code is the documentation; a comment carries only what the code cannot.** Names, types, and structure already state *what* happens, so a comment that re-tells them is deleted, not shortened — and the default state of a line of engine code is *no* comment. Write one only for what the reader cannot see: why the code sits here rather than elsewhere, why this approach instead of the obvious alternative, the gist of a genuinely dense block, or a contract that is not derivable from the code (sentinel meanings and units, threshold calibration, concurrency/ownership/lifetime requirements, edge-case exemptions, why a plausible alternative is unsafe). **One line is the default and two is the ceiling** — no multi-line essays. When the explanation genuinely needs more room, it belongs in the owning `Docs/` page with a short link from the code; never link a temporary plan. Do not narrate the next statement, restate a signature or parameter list, enumerate steps the code already spells out, or record history, fixed-bug stories, or benchmark numbers (those belong in commit messages and docs). **A comment points at code, never at bookkeeping**: no task, ticket, issue, or PR numbers, no dates or "as of" wording, no version or release markers, no author names — that metadata lives in the commit and the tracker, and in code it only rots. Refer to a symbol, a function, a file, or the test that pins the behavior; the sole non-code target is the owning `Docs/` page named above. Short structural headings are allowed when they materially improve navigation in long flat code. Only the concluding sentence of a comment drops its period (the single line of a one-line comment, the final line of a two-line block, or a trailing comment); every preceding sentence keeps its period. Capitalize prose, not symbols (a leading lowercase code identifier stays as written). Fixed-text banners such as the license header, and commented-out code, are exempt.
 - **A type whose whole content is static members is a namespace, not a class.** A deleted constructor plus nothing but statics is a namespace written in class syntax: it can never be instantiated, it has no state and no invariant, and `X::f()` reads the same either way — so write `namespace X { ... }` and drop the `static`, which at namespace scope would mean internal linkage instead. Two things change with the spelling and are worth knowing: a namespace resolves names in **declaration order** (a class body does not, so a helper called from an inline function above it must be declared first), and a namespace **cannot be a friend**. That second point is the exception: `safe_alloc` keeps its class shape precisely because a dozen types declare `friend class safe_alloc` so its factories can reach their private constructors. There, the class-ness is load-bearing rather than accidental.
@@ -23882,7 +23883,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-font-format-index =====
 Source: Docs/en/reference/font-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/font-format/
-Content SHA-256: 78c72d9a2acdae3c9b7c682c2fadb11f1e6eefa8099fcd7afbdf994fb8b78cf4
+Content SHA-256: 24e8595468791e361c68b28977f13457590df37506c0da4e14cd132b72962e1b
 
 ---
 title: Generated Font Format Reference
@@ -23906,7 +23907,7 @@ This reference describes Engine-owned font descriptors, client binding, text lay
 | Stability | <code>experimental</code> |
 | Support policy | The two runtime descriptor formats and client layout behavior are supported but still experimental; embedding projects own font choice, glyph coverage, typography, GUI slots, and visual acceptance. |
 | Source manifest | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Contract digest | <code>e33164f542401b7620f44ee7ca7dfb62ed0014c0f88b18116103cf78830627ad</code> |
+| Contract digest | <code>76258828339a7603add4ae984ecf8d557484940d4d92fdadd8e0d950135ec3bc</code> |
 | Runtime descriptors | <code>.fofnt</code>, <code>.fnt</code> |
 | FOFNT maximum version | <code>2</code> |
 | BMFont binary version | <code>3</code> |
@@ -24068,7 +24069,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: c5cab5631e0bbfe2bed53282866fa771bc72570b43ad3c413c95da89bcce8171
+Content SHA-256: bdba97c410422375c71d4f6bff910a20874cc74e7d555a57355594294252d94e
 
 ---
 title: Generated Map Format Reference
@@ -24092,7 +24093,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>15a1b6ba93fb54d5a797a8869dda10a5858bec01f49127fba15c1181a4cfe01e</code> |
+| Contract digest | <code>35f4ea32a142689ce484edb9288b933c0bdf8940050d2d70013fe4169d1b33b1</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -24124,7 +24125,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: b9be8ba2ab758154b5960750b2e37912773155010bbf1fb92016011b564ad21e
+Content SHA-256: aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24
 
 ---
 layout: default
@@ -24400,13 +24401,12 @@ Reader-facing descriptions stay with the export metadata that defines each symbo
 
 - an ordinary adjacent comment or an inline export-tag comment describes the exported type, entity, method, event, property, or setting;
 - fields and methods inside `///@ ExportRefType` blocks use their adjacent or inline member comments;
-- explicit enum values use `///@ EnumValueDoc <Enum> <Value> // <description>` after their `ExportEnum` declaration when the C++ initializer itself has no suitable documentation surface;
-- value-layout fields use `///@ ValueFieldDoc <Type> <Field> // <description>` after their `ExportValueType` tag. This form also works for aliases and strong types whose script layout has no matching field declaration at the alias site.
+- explicit enum values use the trailing comment on their declaration: `Entry = 10, // Entry description`;
+- value-layout fields use ordinary `// fieldName: description` comments immediately before their `ExportValueType` tag, alongside the type description. This also works for aliases and strong types whose script layout has no matching field declaration at the alias site; field lines are excluded from the type's own description.
 - generated `GameProperty` through `LocationProperty` enum values inherit the exact description and source location of their owning `ExportProperty`; each generated `None` value explicitly means that no property identifier is selected.
-- the 23 `ImGui_*` enum wrappers resolve each inline Dear ImGui alias against the pinned `ThirdParty/imgui/imgui.h`. Values with an upstream comment inherit that prose and exact source line; `ImGui_StyleVar` aliases resolve to the semantic comment on the corresponding `ImGuiStyle` field. Zero, composite, corrected, or otherwise independently undocumented values require an explicit `EnumValueDoc` fallback.
-- the 103 physical `KeyCode` values resolve to their exact `SDL_SCANCODE_*` mapping lines in `Source/Frontend/Application.cpp`; the no-key sentinel and synthetic UTF-8 `Text` event remain explicit `EnumValueDoc` records in the declaration header.
+- `ImGui_*` wrappers and `KeyCode` follow the same trailing-comment rule, including zero/composite values and synthetic input events. Their descriptions live in the Engine declaration headers; the parser does not resolve prose through vendored aliases or application mapping tables.
 
-`EnumValueDoc` and `ValueFieldDoc` reject unknown types, unknown members, duplicates, and empty descriptions. The Dear ImGui resolver also rejects missing or malformed wrapper aliases and any value that has neither usable vendored prose nor an explicit fallback; the key-code resolver rejects a declared value without either an exact SDL mapping or an explicit synthetic-value description. Documentation records the exact owning tag, property, mapping, vendored value, or `ImGuiStyle` field source line and is excluded from the runtime compatibility hash. Generated property-enum documentation is attached only after the compatibility contribution has been hashed, so documentation changes cannot alter client/server compatibility. A description explains current behavior; stability comes only from the separate exact, family, or scope contract.
+Field-comment labels reject unknown layout fields, duplicates, and empty descriptions. Documentation records the exact declaration/comment or owning property source line and is excluded from the runtime compatibility hash. Generated property-enum documentation is attached only after the compatibility contribution has been hashed, so documentation changes cannot alter client/server compatibility. A description explains current behavior; stability comes only from the separate exact, family, or scope contract.
 
 ### API contract annotations
 
@@ -26409,7 +26409,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: 4682ce981459989f6c44c8184a07dd6636df660a5fd0855e27bc00a2b665b958
+Content SHA-256: f8077af26fb95a7075c5eff6aef86badd111b9cf4ee3c76fc05f554b8c563bf9
 
 ---
 title: Generated API Reference
@@ -26441,7 +26441,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | Symbols with descriptions | 2555 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
-| Metadata source files | 45 |
+| Metadata source files | 43 |
 | Explicit contract declarations | 3 |
 | Explicitly classified symbols | 2555 |
 | Unclassified default symbols | 0 |

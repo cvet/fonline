@@ -51,80 +51,49 @@ class MapSpriteList;
 enum class DrawOrderType : uint8_t
 {
     // Flat sprites pre-light
-    Tile = 0,
-    Tile1 = 1,
-    Tile2 = 2,
-    Tile3 = 3,
-    Tile4 = 4,
-    FlatItemPreLight = 6,
-    HexGrid = 8,
+    Tile = 0, // Base flat tile layer rendered before map lighting
+    Tile1 = 1, // First additional flat tile layer rendered before map lighting
+    Tile2 = 2, // Second additional flat tile layer rendered before map lighting
+    Tile3 = 3, // Third additional flat tile layer rendered before map lighting
+    Tile4 = 4, // Fourth additional flat tile layer rendered before map lighting
+    FlatItemPreLight = 6, // Flat item layer rendered before map lighting
+    HexGrid = 8, // Hex-grid overlay layer rendered before lighting primitives
     // Light primitives
-    PreLight = 9,
-    Light = 10,
-    AfterLight = 11,
+    PreLight = 9, // Primitive layer rendered immediately before map light accumulation
+    Light = 10, // Map light accumulation layer
+    AfterLight = 11, // Primitive layer rendered immediately after map light accumulation
     // Flat sprites post-light
-    DeadCritter = 13,
-    FlatItemAfterLight = 16,
-    FlatEnd = 18,
+    DeadCritter = 13, // Flat dead-critter layer rendered after lighting
+    FlatItemAfterLight = 16, // Flat item layer rendered after map lighting
+    FlatEnd = 18, // Upper ordering boundary for flat post-light sprites
     // Normal sprites
-    NormalBegin = 19,
-    Item = 22,
-    Critter = 25,
-    Particles = 28,
-    NormalEnd = 31,
+    NormalBegin = 19, // Lower ordering boundary for depth-sorted normal sprites
+    Item = 22, // Depth-sorted normal item layer
+    Critter = 25, // Depth-sorted critter layer
+    Particles = 28, // Depth-sorted map-particle layer
+    NormalEnd = 31, // Upper ordering boundary for depth-sorted normal sprites
     // Roof sprites
-    Roof = 33,
-    Roof1 = 34,
-    Roof2 = 35,
-    Roof3 = 36,
-    Roof4 = 37,
-    RoofParticles = 38,
+    Roof = 33, // Base roof-sprite layer
+    Roof1 = 34, // First additional roof-sprite layer
+    Roof2 = 35, // Second additional roof-sprite layer
+    Roof3 = 36, // Third additional roof-sprite layer
+    Roof4 = 37, // Fourth additional roof-sprite layer
+    RoofParticles = 38, // Particle layer rendered with roof sprites
     // Count: 40
-    Last = 39,
+    Last = 39, // Highest valid draw-order marker reserved by the map-sprite sorter
 };
-///@ EnumValueDoc DrawOrderType Tile // Base flat tile layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType Tile1 // First additional flat tile layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType Tile2 // Second additional flat tile layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType Tile3 // Third additional flat tile layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType Tile4 // Fourth additional flat tile layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType FlatItemPreLight // Flat item layer rendered before map lighting.
-///@ EnumValueDoc DrawOrderType HexGrid // Hex-grid overlay layer rendered before lighting primitives.
-///@ EnumValueDoc DrawOrderType PreLight // Primitive layer rendered immediately before map light accumulation.
-///@ EnumValueDoc DrawOrderType Light // Map light accumulation layer.
-///@ EnumValueDoc DrawOrderType AfterLight // Primitive layer rendered immediately after map light accumulation.
-///@ EnumValueDoc DrawOrderType DeadCritter // Flat dead-critter layer rendered after lighting.
-///@ EnumValueDoc DrawOrderType FlatItemAfterLight // Flat item layer rendered after map lighting.
-///@ EnumValueDoc DrawOrderType FlatEnd // Upper ordering boundary for flat post-light sprites.
-///@ EnumValueDoc DrawOrderType NormalBegin // Lower ordering boundary for depth-sorted normal sprites.
-///@ EnumValueDoc DrawOrderType Item // Depth-sorted normal item layer.
-///@ EnumValueDoc DrawOrderType Critter // Depth-sorted critter layer.
-///@ EnumValueDoc DrawOrderType Particles // Depth-sorted map-particle layer.
-///@ EnumValueDoc DrawOrderType NormalEnd // Upper ordering boundary for depth-sorted normal sprites.
-///@ EnumValueDoc DrawOrderType Roof // Base roof-sprite layer.
-///@ EnumValueDoc DrawOrderType Roof1 // First additional roof-sprite layer.
-///@ EnumValueDoc DrawOrderType Roof2 // Second additional roof-sprite layer.
-///@ EnumValueDoc DrawOrderType Roof3 // Third additional roof-sprite layer.
-///@ EnumValueDoc DrawOrderType Roof4 // Fourth additional roof-sprite layer.
-///@ EnumValueDoc DrawOrderType RoofParticles // Particle layer rendered with roof sprites.
-///@ EnumValueDoc DrawOrderType Last // Highest valid draw-order marker reserved by the map-sprite sorter.
 
 // Conditions under which a map sprite participates in the transparency-egg cutout around the player
 ///@ ExportEnum
 enum class EggAppearenceType : uint8_t
 {
-    None,
-    Always,
-    ByX,
-    ByY,
-    ByXAndY,
-    ByXOrY,
+    None, // Never applies a transparency-egg mask to this sprite
+    Always, // Applies a valid transparency-egg mask regardless of relative map hex
+    ByX, // Applies the mask when the sprite hex X is at or beyond the egg hex X
+    ByY, // Applies the mask when the sprite hex Y is at or beyond the egg hex Y
+    ByXAndY, // Applies the mask when either adjusted X or Y is at or beyond the corresponding egg coordinate
+    ByXOrY, // Applies the mask only when both adjusted X and Y are at or beyond the corresponding egg coordinates
 };
-///@ EnumValueDoc EggAppearenceType None // Never applies a transparency-egg mask to this sprite.
-///@ EnumValueDoc EggAppearenceType Always // Applies a valid transparency-egg mask regardless of relative map hex.
-///@ EnumValueDoc EggAppearenceType ByX // Applies the mask when the sprite hex X is at or beyond the egg hex X.
-///@ EnumValueDoc EggAppearenceType ByY // Applies the mask when the sprite hex Y is at or beyond the egg hex Y.
-///@ EnumValueDoc EggAppearenceType ByXAndY // Applies the mask when either adjusted X or Y is at or beyond the corresponding egg coordinate.
-///@ EnumValueDoc EggAppearenceType ByXOrY // Applies the mask only when both adjusted X and Y are at or beyond the corresponding egg coordinates.
 
 class MapSprite final
 {

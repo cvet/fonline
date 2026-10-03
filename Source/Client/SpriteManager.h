@@ -62,21 +62,17 @@ class AtlasSprite;
 ///@ ExportEnum
 enum class TransparentEggSlot : uint8_t
 {
-    Primary = 0,
-    Secondary = 1,
+    Primary = 0, // First transparency-egg mask evaluated for map sprites
+    Secondary = 1, // Second independent transparency-egg mask evaluated for map sprites
 };
-///@ EnumValueDoc TransparentEggSlot Primary // First transparency-egg mask evaluated for map sprites.
-///@ EnumValueDoc TransparentEggSlot Secondary // Second independent transparency-egg mask evaluated for map sprites.
 
 // Which of the sprites standing in front of an egg's hex the egg cuts
 ///@ ExportEnum
 enum class TransparentEggTarget : uint8_t
 {
-    AnyOccluder = 0, // Every sprite whose egg appearance puts it in front of the egg hex
-    Structure = 1, // Only wall pieces and roof tiles, so props standing in front of a wall stay drawn
+    AnyOccluder = 0, // Cut every sprite whose egg appearance places it before the egg
+    Structure = 1, // Cut walls and roofs only, leaving foreground props drawn
 };
-///@ EnumValueDoc TransparentEggTarget AnyOccluder // Cut every sprite whose egg appearance places it before the egg.
-///@ EnumValueDoc TransparentEggTarget Structure // Cut walls and roofs only, leaving foreground props drawn.
 
 // Whether an egg of this target standing on egg_hex fades a sprite standing on hex
 auto IsCutByTransparentEgg(TransparentEggTarget target, mpos egg_hex, EggAppearenceType appearence, bool egg_structure, mpos hex) -> bool;

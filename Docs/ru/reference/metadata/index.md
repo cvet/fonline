@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"b9be8ba2ab758154b5960750b2e37912773155010bbf1fb92016011b564ad21e"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -273,13 +273,12 @@ Generated `summary` сообщает число symbols по kind и stability, 
 
 - обычный соседний комментарий или inline-комментарий export-тега описывает экспортируемый type, entity, method, event, property или setting;
 - fields и methods внутри блоков `///@ ExportRefType` используют соседние или inline-комментарии своих members;
-- явные enum values используют `///@ EnumValueDoc <Enum> <Value> // <description>` после своей декларации `ExportEnum`, когда в C++ initializer нет подходящей поверхности документации;
-- fields layout value type используют `///@ ValueFieldDoc <Type> <Field> // <description>` после своего тега `ExportValueType`. Эта форма работает и для alias или strong type, у которых script layout не имеет соответствующего field declaration рядом с alias.
+- явные enum values используют trailing comment в строке своего объявления: `Entry = 10, // Entry description`;
+- fields layout value type используют обычные комментарии `// fieldName: description` непосредственно перед тегом `ExportValueType`, рядом с описанием типа. Это работает и для alias или strong type, у которых script layout не имеет соответствующего field declaration рядом с alias; строки fields не попадают в описание самого типа.
 - сгенерированные enum values от `GameProperty` до `LocationProperty` наследуют точное описание и source location своего owning `ExportProperty`; каждое сгенерированное значение `None` явно означает, что идентификатор свойства не выбран.
-- 23 enum wrapper `ImGui_*` сопоставляют каждый inline alias Dear ImGui с закреплённым `ThirdParty/imgui/imgui.h`. Значения с upstream-комментарием наследуют его текст и точную source line; alias `ImGui_StyleVar` сопоставляется с содержательным комментарием соответствующего field `ImGuiStyle`. Для нулевого, составного, исправленного или иного значения без самостоятельного описания обязателен явный fallback `EnumValueDoc`.
-- 103 физических значения `KeyCode` сопоставляются с точными строками mapping `SDL_SCANCODE_*` в `Source/Frontend/Application.cpp`; sentinel отсутствия клавиши и синтетическое UTF-8 событие `Text` остаются явными records `EnumValueDoc` в header декларации.
+- wrappers `ImGui_*` и `KeyCode` следуют тому же правилу trailing comment, включая нулевые/составные значения и synthetic input events. Их описания находятся в headers деклараций Engine; parser не извлекает prose через vendored aliases или таблицы application mapping.
 
-`EnumValueDoc` и `ValueFieldDoc` отклоняют неизвестные types, неизвестные members, дубликаты и пустые descriptions. Resolver Dear ImGui также отклоняет отсутствующий или malformed alias wrapper и любое значение без пригодного vendored prose или явного fallback; resolver key code отклоняет объявленное значение без точного SDL mapping или явного описания synthetic value. Документация сохраняет точную source line owning tag, property, mapping, vendored value или field `ImGuiStyle` и исключена из runtime compatibility hash. Документация generated property enum присоединяется только после вычисления compatibility contribution, поэтому её изменение не влияет на client/server compatibility. Description объясняет текущее поведение; stability задаётся только отдельным exact, family или scope contract.
+Labels комментариев fields отклоняют неизвестные layout fields, дубликаты и пустые descriptions. Документация сохраняет точную source line объявления/комментария или owning property и исключена из runtime compatibility hash. Документация generated property enum присоединяется только после вычисления compatibility contribution, поэтому её изменение не влияет на client/server compatibility. Description объясняет текущее поведение; stability задаётся только отдельным exact, family или scope contract.
 
 ### Аннотации контрактов API
 

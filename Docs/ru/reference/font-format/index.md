@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-font-format-index","locale":"ru","source_path":"Docs/en/reference/font-format/index.md","source_sha256":"78c72d9a2acdae3c9b7c682c2fadb11f1e6eefa8099fcd7afbdf994fb8b78cf4"} -->
+<!-- docs-translation: {"document_id":"generated-font-format-index","locale":"ru","source_path":"Docs/en/reference/font-format/index.md","source_sha256":"24e8595468791e361c68b28977f13457590df37506c0da4e14cd132b72962e1b"} -->
 
 # Сгенерированный справочник форматов шрифтов
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Два runtime-формата дескрипторов и поведение клиентской компоновки поддерживаются, но остаются экспериментальными; подключаемые проекты владеют выбором шрифтов, покрытием глифов, типографикой, слотами GUI и визуальной приёмкой. |
 | Исходный манифест | [BuildTools/FontFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/FontFormatInterface.json) |
-| Дайджест контракта | <code>e33164f542401b7620f44ee7ca7dfb62ed0014c0f88b18116103cf78830627ad</code> |
+| Дайджест контракта | <code>76258828339a7603add4ae984ecf8d557484940d4d92fdadd8e0d950135ec3bc</code> |
 | Runtime-дескрипторы | <code>.fofnt</code>, <code>.fnt</code> |
 | Максимальная версия FOFNT | <code>2</code> |
 | Версия binary BMFont | <code>3</code> |

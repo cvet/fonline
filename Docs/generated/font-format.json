@@ -92,64 +92,64 @@
       {
         "name": "Default",
         "value": 0,
-        "description": "No additional behavior"
+        "description": "Built-in default font slot used when no project-defined slot is selected"
       }
     ],
     "font_flags": [
       {
         "name": "None",
         "value": 0,
-        "description": "No additional behavior"
+        "description": "Applies no optional text-layout or glyph-rendering flags"
       },
       {
         "name": "NoWrap",
         "value": 1,
-        "description": "On rect-width overflow truncate the rest of the text instead of wrapping it to the next line"
+        "description": "Truncates the remaining text at rectangle-width overflow instead of wrapping it"
       },
       {
         "name": "TruncateLine",
         "value": 2,
-        "description": "On rect-width overflow skip remaining glyphs until the next '\\n' instead of wrapping"
+        "description": "Skips overflowing glyphs through the next newline instead of wrapping the current line"
       },
       {
         "name": "CenterX",
         "value": 4,
-        "description": "Horizontally center each line within the rect"
+        "description": "Horizontally centers each rendered line within the target rectangle"
       },
       {
         "name": "CenterY",
         "value": 8,
-        "description": "Vertically center the text block within the rect"
+        "description": "Vertically centers the complete text block within the target rectangle"
       },
       {
         "name": "AlignRight",
         "value": 16,
-        "description": "Right-align each line within the rect"
+        "description": "Right-aligns each rendered line within the target rectangle"
       },
       {
         "name": "AlignBottom",
         "value": 32,
-        "description": "Vertically align the text block to the rect's bottom edge; also flips TextFormat::SkipLines from \"skip from top\" to \"skip from bottom\""
+        "description": "Aligns the text block to the bottom and makes SkipLines count from the trailing lines"
       },
       {
         "name": "KeepTail",
         "value": 64,
-        "description": "When the text block is taller than the rect, render its tail (skip the leading overflowing lines)"
+        "description": "Renders the tail of a text block that is taller than the target rectangle"
       },
       {
         "name": "NoColorize",
         "value": 128,
-        "description": "Strip inline color tags (@color:0x...@ / @color@), but render text with the base color as-is"
+        "description": "Removes inline color tags while retaining the supplied base text color"
       },
       {
         "name": "Justify",
         "value": 256,
-        "description": "Justify each line: distribute extra spaces between words to fill the rect width"
+        "description": "Distributes extra spacing between words to fill each line's target width"
       },
       {
         "name": "Bordered",
         "value": 512,
-        "description": "Render glyphs from the bordered/outlined font texture variant instead of the regular one"
+        "description": "Uses the bordered or outlined font-texture variant for glyph rendering"
       }
     ],
     "default_scale": 1.0,
@@ -1250,5 +1250,5 @@
       "internal": 2
     }
   },
-  "contract_digest": "e33164f542401b7620f44ee7ca7dfb62ed0014c0f88b18116103cf78830627ad"
+  "contract_digest": "76258828339a7603add4ae984ecf8d557484940d4d92fdadd8e0d950135ec3bc"
 }

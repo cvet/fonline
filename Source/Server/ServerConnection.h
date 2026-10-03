@@ -46,29 +46,18 @@ FO_BEGIN_NAMESPACE
 ///@ ExportEnum
 enum class DisconnectReason : uint8_t
 {
-    None = 0,
-    ClientClosed = 1,
-    InactivityTimeout = 2,
-    PingTimeout = 3,
-    LoginTimeout = 4,
-    ProtocolError = 5,
-    UpdaterError = 6,
-    ServerShutdown = 7,
-    ScriptRequest = 8,
-    LoginFailed = 9,
-    ReplacedByReconnect = 10,
+    None = 0, // Indicates that the connection has not recorded a close cause
+    ClientClosed = 1, // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable
+    InactivityTimeout = 2, // Indicates that no inbound message arrived before the configured inactivity deadline
+    PingTimeout = 3, // Indicates that the peer did not answer the previous server ping
+    LoginTimeout = 4, // Indicates that a pre-login connection made no progress before the configured login deadline
+    ProtocolError = 5, // Indicates malformed or unexpected protocol data or failed connection publication
+    UpdaterError = 6, // Indicates that the client requested an invalid updater file or range
+    ServerShutdown = 7, // Indicates an orderly server shutdown
+    ScriptRequest = 8, // Indicates that server script called Player.HardDisconnect()
+    LoginFailed = 9, // Indicates that login was rolled back after a server-side failure
+    ReplacedByReconnect = 10, // Indicates that a new login for the same account replaced this session
 };
-///@ EnumValueDoc DisconnectReason None // Indicates that the connection has not recorded a close cause.
-///@ EnumValueDoc DisconnectReason ClientClosed // Indicates that the transport reported the peer disappearing; voluntary quit and network loss are indistinguishable.
-///@ EnumValueDoc DisconnectReason InactivityTimeout // Indicates that no inbound message arrived before the configured inactivity deadline.
-///@ EnumValueDoc DisconnectReason PingTimeout // Indicates that the peer did not answer the previous server ping.
-///@ EnumValueDoc DisconnectReason LoginTimeout // Indicates that a pre-login connection made no progress before the configured login deadline.
-///@ EnumValueDoc DisconnectReason ProtocolError // Indicates malformed or unexpected protocol data or failed connection publication.
-///@ EnumValueDoc DisconnectReason UpdaterError // Indicates that the client requested an invalid updater file or range.
-///@ EnumValueDoc DisconnectReason ServerShutdown // Indicates an orderly server shutdown.
-///@ EnumValueDoc DisconnectReason ScriptRequest // Indicates that server script called Player.HardDisconnect().
-///@ EnumValueDoc DisconnectReason LoginFailed // Indicates that login was rolled back after a server-side failure.
-///@ EnumValueDoc DisconnectReason ReplacedByReconnect // Indicates that a new login for the same account replaced this session.
 
 auto GetDisconnectReasonName(DisconnectReason reason) noexcept -> string_view;
 

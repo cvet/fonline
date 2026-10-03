@@ -145,11 +145,9 @@ public:
     ///@ ExportEnum
     enum class EventResult : int32_t
     {
-        ContinueChain,
-        StopChain,
+        ContinueChain, // Continues dispatching callbacks with lower priority
+        StopChain, // Stops the current event callback chain immediately
     };
-    ///@ EnumValueDoc EventResult ContinueChain // Continues dispatching callbacks with lower priority
-    ///@ EnumValueDoc EventResult StopChain // Stops the current event callback chain immediately
 
     using EventCallback = copyable_function<EventResult(FuncCallData&)>;
 
@@ -157,17 +155,12 @@ public:
     ///@ ExportEnum
     enum class EventPriority : int32_t
     {
-        Lowest = 0,
-        Low = 1000000,
-        Normal = 2000000,
-        High = 3000000,
-        Highest = 4000000,
+        Lowest = 0, // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band
+        Low = 1000000, // Runs after normal-priority callbacks and before the lowest callback
+        Normal = 2000000, // Default callback priority between the low and high bands
+        High = 3000000, // Runs after the highest callback and before normal-priority callbacks
+        Highest = 4000000, // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band
     };
-    ///@ EnumValueDoc EventPriority Lowest // Runs after callbacks with higher numeric priority; only one callback may occupy the lowest band
-    ///@ EnumValueDoc EventPriority Low // Runs after normal-priority callbacks and before the lowest callback
-    ///@ EnumValueDoc EventPriority Normal // Default callback priority between the low and high bands
-    ///@ EnumValueDoc EventPriority High // Runs after the highest callback and before normal-priority callbacks
-    ///@ EnumValueDoc EventPriority Highest // Runs before callbacks with lower numeric priority; only one callback may occupy the highest band
 
     struct EventCallbackData
     {

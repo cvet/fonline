@@ -98,17 +98,12 @@ enum class EffectUsage : uint8_t
 ///@ ExportEnum
 enum class RenderPrimitiveType : uint8_t
 {
-    PointList,
-    LineList,
-    LineStrip,
-    TriangleList,
-    TriangleStrip,
+    PointList, // Draws each submitted vertex as an independent point primitive
+    LineList, // Draws each pair of submitted vertices as an independent line segment
+    LineStrip, // Draws connected line segments and enables primitive restart where supported
+    TriangleList, // Draws each group of three submitted vertices as an independent triangle
+    TriangleStrip, // Draws a connected triangle strip and enables primitive restart where supported
 };
-///@ EnumValueDoc RenderPrimitiveType PointList // Draws each submitted vertex as an independent point primitive.
-///@ EnumValueDoc RenderPrimitiveType LineList // Draws each pair of submitted vertices as an independent line segment.
-///@ EnumValueDoc RenderPrimitiveType LineStrip // Draws connected line segments and enables primitive restart where supported.
-///@ EnumValueDoc RenderPrimitiveType TriangleList // Draws each group of three submitted vertices as an independent triangle.
-///@ EnumValueDoc RenderPrimitiveType TriangleStrip // Draws a connected triangle strip and enables primitive restart where supported.
 
 enum class BlendFuncType : uint8_t
 {
