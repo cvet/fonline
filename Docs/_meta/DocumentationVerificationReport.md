@@ -2,6 +2,12 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-03 - AsyncMove documentation follow-up
+
+- Integrate feature/published head `8e4ab14c2a2e44db5bc8c1eb7d41665ed6a9901b` with master through `27b776db6d5b486756e936c252471b65f5c5e6cc` using an ordinary merge. Audited all seven incoming paths: README Russian parity, historical verification evidence and five generated snippet/locale/search/delivery artifacts. No native source, test, build helper, setting, API or compatibility change is introduced.
+- The README source and reviewed Russian badge removal already agree with the feature. Preserve both histories' verification evidence and the feature's canonical explanations; resolve the three generated conflicts with their owning generators. Upstream's earlier build acceptance is historical evidence, not fresh validation of this merged revision or an embedding project's newer content.
+- Fresh source/API/CMake/inventory/public-index and all affected snippet/locale/site/AI artifact checks passed. Aggregate documentation validation passed for 408 Markdown entries. The five focused documentation suites passed 39 tests and twelve subtests; the seventeen-domain contract comparison has zero changes, required dispositions or missing dispositions. Regenerate and check final delivery after this evidence update. No fresh native build, runtime, resource-bake, visible gameplay or external CI acceptance is claimed by this follow-up.
+
 ## 2026-10-03 - AsyncMove build-marker refresh
 
 - Reconciled feature head `833556527629fbe6ae46cc292aee4bdc957dc3fc` with master through `4e8e60b4b2d2927de932f86f7009a1a05061d3c1` using an ordinary merge. Audited all 25 incoming paths, including the native test, CMake marker macros/writer, Python DLL-loader changes, their fixtures, both locales of the four owning docs and the incoming diagnostic variable snapshot. No production native source, API, setting or compatibility change is introduced.
@@ -10011,3 +10017,14 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
 - Embedding-project configuration, fresh native compilation, resource baking,
   and dependent runtime acceptance are being verified separately. This entry
   does not claim Windows-native qualification or remote CI acceptance.
+
+- Follow-up native acceptance: fresh configuration, Baker and server compilation,
+  and resource baking complete. The compiled macro and all three corresponding
+  markers retain their configured value when live Git HEAD advances during the
+  build. The historical artifact scope and changed source inputs are recorded by
+  the embedding project; no later game-change acceptance is inferred from that
+  build. A separate fresh managed unit build passes all eight selected top-level
+  ManagedScriptBaker/MapView cases (982 assertions, 19 JUnit case/section entries).
+- Reconciled the owner's subsequent English README badge removal with the Russian
+  README, reviewed its normalized English source hash, and regenerated downstream
+  locale/site/AI artifacts. This is navigation parity, not a runtime change.
