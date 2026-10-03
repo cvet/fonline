@@ -191,7 +191,7 @@ happen on demand, inside drawing, where no batch boundary exists.
 | Particles | SPARK and Effekseer share managers, random state and resource callbacks across systems. Middleware threading and client workers also have to be counted against one CPU budget, not enabled independently. |
 | Network | Stream decompression is stateful and ordered, and packet handlers mutate client entities. A transport offload needs an ordered byte handoff, not a parallel loop. |
 | Resource preparation | `ReadSpriteResource` is a usable CPU contract, but publication touches the cache, the atlas and the GPU. This is a cross-frame lane with generations, not a frame batch. |
-| Scripts, renderer, GPU objects | Single-owner by design. Concurrent C# callbacks and a render thread are outside this feature. |
+| Scripts, renderer, GPU objects | Single-owner by design. Concurrent C# callbacks and a render thread are outside this feature. The frame path no longer reads the GPU back synchronously — a model's hit mask arrives through a non-blocking readback ([FrontendAndRendering.md](FrontendAndRendering.md#reading-a-texture-back)) — so a future render thread would not be stalled by picking. |
 
 SDL documents event polling and GL context selection as main-thread operations, so the portable renderer stays
 there regardless of what the CPU workers do.
