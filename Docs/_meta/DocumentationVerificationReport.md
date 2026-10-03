@@ -9988,3 +9988,14 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
 - Embedding-project configuration, fresh native compilation, resource baking,
   and dependent runtime acceptance are being verified separately. This entry
   does not claim Windows-native qualification or remote CI acceptance.
+
+- Follow-up native acceptance: fresh configuration, Baker and server compilation,
+  and resource baking complete. The compiled macro and all three corresponding
+  markers retain their configured value when live Git HEAD advances during the
+  build. The historical artifact scope and changed source inputs are recorded by
+  the embedding project; no later game-change acceptance is inferred from that
+  build. A separate fresh managed unit build passes all eight selected top-level
+  ManagedScriptBaker/MapView cases (982 assertions, 19 JUnit case/section entries).
+- Reconciled the owner's subsequent English README badge removal with the Russian
+  README, reviewed its normalized English source hash, and regenerated downstream
+  locale/site/AI artifacts. This is navigation parity, not a runtime change.
