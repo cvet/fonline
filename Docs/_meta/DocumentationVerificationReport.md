@@ -9989,6 +9989,17 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   and dependent runtime acceptance are being verified separately. This entry
   does not claim Windows-native qualification or remote CI acceptance.
 
+- Follow-up native acceptance: fresh configuration, Baker and server compilation,
+  and resource baking complete. The compiled macro and all three corresponding
+  markers retain their configured value when live Git HEAD advances during the
+  build. The historical artifact scope and changed source inputs are recorded by
+  the embedding project; no later game-change acceptance is inferred from that
+  build. A separate fresh managed unit build passes all eight selected top-level
+  ManagedScriptBaker/MapView cases (982 assertions, 19 JUnit case/section entries).
+- Reconciled the owner's subsequent English README badge removal with the Russian
+  README, reviewed its normalized English source hash, and regenerated downstream
+  locale/site/AI artifacts. This is navigation parity, not a runtime change.
+
 ## 2026-10-03: client multithreading branch reconciliation
 
 - Engine range: `79de0aa920b71ac3bd817fb9e3aaf6d99f1769c9` to merge `ac355929d5f156cc9a94635652ed91e5acae5ee2`, integrating `origin/master` at `1b545229da5eb7a00d3a7c0b62cd2f73a037f748`. Embedding project range: `8bdcb19583` to merge `27d6ccd286`, integrating `origin/main` at `a3243889c95d207d0ae6d5c85bfe31a883cdb356`. Published and local branch commits remain ancestors.
@@ -10006,3 +10017,7 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
 - Reviewed the complete additional Engine range: Windows native hash-loader thread error mode restoration, configured native/resource build-marker consistency with quoted CMake commands, owning tests and paired docs, local const removal in the map-hit fixture, and README badge removal. Reconciled the Russian README badge/source binding as well. Runtime multithreading and timing-test implementations are unchanged. Regenerated all owners and retained the fixed delivery limit by shortening repeated English prose without changing contracts or translation meaning.
 - The selected additional Engine/project Python set passes 331 cases with 31 skips. Eighteen new build-marker fixtures initially failed because their temporary source root was on C: and the checkout on H:; unchanged fixtures pass all eighteen cases with a new Workspace temporary root on H:. The Engine-owned marker fixtures still check three targets, configured/advanced/no-Git revisions and paths with/without spaces. Selected affected documentation suites pass 35 cases; final standalone validation passes 410 entries. Contract diff remains six changes across seventeen domains, one required disposition and none missing; retrieval passes 67 checks. Current full-context delivery is 2162621 bytes below the unchanged 2162688-byte limit.
 - Fresh embedding-project configuration, baking and unit-target compilation pass without warnings; its native and resource markers both match the configured root SHA. Final selected native execution passes 28 assertions in three cases: the changed transparent-egg hit fixture plus Threading and CommonFrameBalancer. The earlier full-suite timing failures remain documented; this focused result is not a clean full default-suite or performance verdict. Exception/link audits pass again (7328 functions / 3156 documents). No new rendered-site, player-path or platform qualification is claimed.
+
+### Owner-authorized commit and documentation-only upstream refresh
+
+- Committed the previously validated client multithreading reconciliation as `a1319fecebef1bd7c0305a35cd092b200d769a08`, then integrated master snapshot `27b776db6d5b486756e936c252471b65f5c5e6cc`. The complete incoming range only adds prior acceptance evidence and reconciles README translation/provenance; native source, tests, contract models, runtime and build behavior do not change. Both report histories are retained; conflicted projections are regenerated through their owning tools. Earlier acceptance entries retain their original revision scope.
