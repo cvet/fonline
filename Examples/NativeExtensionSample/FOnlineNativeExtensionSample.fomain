@@ -20,7 +20,8 @@ Baking.ServerResources = ServerResources
 Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
-Baking.ZipCompressLevel = 1
+Baking.ResourcePackCompressLevel = 1
+Baking.BundleCompressLevel = 1
 
 SpriteMesh.Enabled = False
 SpriteMesh.AlphaThreshold = 0

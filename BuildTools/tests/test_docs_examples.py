@@ -4,6 +4,8 @@ import hashlib
 import json
 import re
 import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -15,7 +17,6 @@ BUILD_TOOLS = ENGINE_ROOT / "BuildTools"
 GUIDE_PATH = "Docs/en/how-to/build/public-example-repositories.md"
 RUSSIAN_PATH = "Docs/ru/how-to/build/public-example-repositories.md"
 LEGACY_PATH = "Docs/PublicExampleRepositories.md"
-import sys
 
 sys.path.insert(0, str(BUILD_TOOLS))
 
@@ -24,6 +25,33 @@ import docs_localization
 
 
 class PublicExampleDocumentationTests(unittest.TestCase):
+    def test_generated_example_configs_are_current(self) -> None:
+        for example in ("MinimalMultiplayer", "ContentShowcase", "PackagingMatrix"):
+            with self.subTest(example=example):
+                result = subprocess.run(
+                    [sys.executable, "generate_config.py", "--check"],
+                    cwd=ENGINE_ROOT / "Examples" / example,
+                    capture_output=True,
+                    text=True,
+                    encoding="utf-8",
+                    check=False,
+                )
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_example_configs_use_current_compression_settings(self) -> None:
+        for relative in (
+            "MinimalProject/FOnlineStarter.fomain",
+            "MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
+            "NativeExtensionSample/FOnlineNativeExtensionSample.fomain",
+            "ContentShowcase/FOnlineContentShowcase.fomain",
+            "PackagingMatrix/FOnlinePackagingMatrix.fomain",
+        ):
+            with self.subTest(example=relative):
+                config = (ENGINE_ROOT / "Examples" / relative).read_text(encoding="utf-8")
+                self.assertNotIn("Baking.ZipCompressLevel", config)
+                self.assertIn("Baking.ResourcePackCompressLevel = 1", config)
+                self.assertIn("Baking.BundleCompressLevel = 1", config)
+
     def make_fixture(self) -> Path:
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)

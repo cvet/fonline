@@ -9868,3 +9868,59 @@ Current local receipts and limits:
   remains open and was not retested or hidden. No remote CI, Pages publication,
   live AngelScript, physical GPU, Web/Android device or production acceptance is
   claimed. The owner authorizes logical commits, not a push.
+
+## 2026-10-03 — pre-merge example and documentation regression review
+
+Source review and fixes:
+
+- Reviewed the candidate against `origin/master` at
+  `fd4294cb866f5c32528e6301eefb2599fe79e57a`; committed candidate HEAD remains
+  `d9112672d8da0f852fd4f965929d2d1d6682729a`. The fixes below are uncommitted.
+  The published PR head is older and still conflicts; local checks are not its CI.
+- All five Engine example configs retained removed `Baking.ZipCompressLevel`.
+  Corrected the owning generators/manual configs to separate current resource-pack
+  and bundle settings. Regenerated the three full configs from current settings.
+  ContentShowcase also still parsed removed FIXED_SETTING/VARIABLE_SETTING macros;
+  corrected it to SETTING. New five-example and executable-generator regressions
+  reproduce these failures before the fixes and pass after them.
+- The structural CMake fixture expected 44 options while the owned contract and
+  Init stage correctly contain 45, including default-OFF FO_MEMORY_DIAGNOSTICS.
+  Reconciled the exact expectation; the per-option/source/stage/helper checks remain.
+- Corrected EN/RU revision-update instructions from rebase to normal merge and
+  independent published-tip ancestry. Added a bilingual regression, preserving
+  published history and without adding a pre-release prose breaking-change ledger.
+- Corrected terminal punctuation in three maintained Engine source/tool comments
+  and the ContentShowcase generated header at its generator. No C++ runtime
+  implementation changed. Refreshed locale, snippets, search and AI delivery through
+  their owners. Screenshot catalog changes record example-source provenance only:
+  both Mapper capture subconfigs, map/particle fixture, renderer/viewport and visible
+  UI source are unchanged; refreshed full-config values restate current defaults.
+  No capture trigger fired in this slice, and no image was recaptured or promoted
+  as fresh physical visual acceptance.
+
+Current receipts and open gates:
+
+- Full documentation discovery passes 556 tests (422.654s), after an initial
+  553-test pass. Standalone documentation validation passes 408 Markdown entries.
+  Reviewed generated descriptions remain 4821/4821; locale parity remains 192 pairs.
+  Snippets pass 307 normative, 159 evidence and 181 external-parser checks;
+  all 67 deterministic retrieval checks across 28 tasks pass (MRR 0.930).
+- Minimal Multiplayer package/config checks pass five cases; PackagingMatrix passes
+  three. Gameplay-runner and AiControl-client structural suites pass four and eight
+  cases respectively. Package-security/AngelScript-CMake/packaging selection passes
+  seven pytest cases. All three CMake interface scripts pass after correction.
+- Reproduced the previously open Visual Studio unchanged-reconfigure failure:
+  default-generator Codegen dependencies invoke the generator three times instead
+  of two. The combined Codegen/default-argument selection reports 14 passes,
+  six unavailable-generator skips and one failure. Diagnostic MSBuild evidence
+  shows the unchanged stamp custom-build rule being scheduled again; arguments,
+  generated contents and consumer data remain correct. Neither Codegen stage nor
+  output-repair helper differs from master, and neither was changed or its test
+  weakened here. A discovered Visual Studio-bundled Ninja passes all six selected
+  dependency regressions on Windows; this is not Linux or default-MSBuild proof.
+- Ruby/Bundler are unavailable in this environment; no fresh Jekyll artifact,
+  pinned browser/axe run, Pages publication or live native/AngelScript/Web/Android
+  example runtime/package qualification is claimed. These remain separate gates.
+- Remote PR descriptions/checks need reconciliation with committed and published
+  final candidates before an Engine-first merge. No push or remote PR mutation
+  was performed in this review.

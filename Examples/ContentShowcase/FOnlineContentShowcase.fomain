@@ -7,13 +7,35 @@ Common.GameVersion = 0.1.0
 Common.AsyncLogWrite = False
 Common.SecretSettingTokens = secret token password apikey
 
-# Script
-Script.OverrunReportTime = 0
-Script.DebuggerEnabled = False
-Script.DebuggerBindHost = 127.0.0.1
-Script.MutableGlobalsAllowedNamespaces =
-Script.AttributedFunctionDirectCallAllowedNamespaces =
-Script.ExtraDirectCallBlockingAttributes =
+# AngelScript
+AngelScript.OverrunReportTime = 0
+AngelScript.DebuggerEnabled = False
+AngelScript.DebuggerBindHost = 127.0.0.1
+AngelScript.MutableGlobalsAllowedNamespaces =
+AngelScript.AttributedFunctionDirectCallAllowedNamespaces =
+AngelScript.ExtraDirectCallBlockingAttributes =
+
+# ManagedScript
+ManagedScript.OverrunReportTime = 0
+ManagedScript.InteropProbeOnStart = False
+ManagedScript.DeepTrackEntityWrappers = False
+ManagedScript.Assemblies = FOnline
+ManagedScript.ProjectName = FOnline
+ManagedScript.TargetFramework = net10.0
+ManagedScript.MsBuild = dotnet msbuild
+ManagedScript.Dirs = Engine/Source/Scripting/Managed/CoreScripts Scripts
+ManagedScript.GeneratedDir =
+ManagedScript.ExtraSources =
+ManagedScript.ExtraReferences =
+ManagedScript.Analyzers =
+ManagedScript.AnalyzerPackages =
+ManagedScript.AdditionalFiles =
+ManagedScript.AnalysisLevel =
+ManagedScript.AnalysisMode =
+ManagedScript.BakerDryRun = False
+ManagedScript.PatchPointWeaver =
+ManagedScript.ServerPatchesEnabled = False
+ManagedScript.ClientPatchesEnabled = False
 
 # Network
 Network.ServerPort = 4020
@@ -34,6 +56,7 @@ Network.DisableZlibCompression = False
 Network.DisableInterthreadCommunication = False
 Network.ArtificalLags = 0
 Network.ArtificalLagsJitter = 0
+Network.MoveSyncTrace = False
 Network.ForceCompatibilityVersion =
 Network.ForceMetadataVersion =
 
@@ -46,18 +69,24 @@ ServerNetwork.ClientPingTime = 10000
 ServerNetwork.InactivityDisconnectTime = 0
 ServerNetwork.LoginTimeout = 0
 ServerNetwork.MaxMessageSize = 1048576
+ServerNetwork.MaxBufferedInputSize = 4194304
+ServerNetwork.MaxRemoteCallPayloadSize = 1048576
 ServerNetwork.MaxMessagesPerProcessPass = 256
 ServerNetwork.MaxUdpReorderAhead = 1024
 ServerNetwork.MaxConnections = 0
 ServerNetwork.MaxPlayers = 0
 ServerNetwork.NewConnectionRatePerSec = 0
+ServerNetwork.ListenRetryTime = 30000
+ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
+ServerNetwork.ChannelSecretKey =
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
 ClientNetwork.WebSocketHost = localhost
 ClientNetwork.PingPeriod = 2000
+ClientNetwork.PingTimeout = 30000
 ClientNetwork.UseUdp = False
 ClientNetwork.ProxyType = 0
 ClientNetwork.ProxyHost =
@@ -65,11 +94,14 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
+ClientNetwork.ChannelServerKeys =
 
 # Audio
 Audio.DisableAudio = False
 Audio.SoundVolume = 100
 Audio.MusicVolume = 100
+Audio.SoundFileExtensions = wav ogg
+Audio.MixRate = 44100
 
 # View
 View.ScreenWidth = 1280
@@ -97,6 +129,8 @@ Geometry.MapSmoothPath = True
 Geometry.MapDataPrefix = Geometry
 Geometry.CritterBlockHex = False
 Geometry.MaxPathFindLength = 400
+Geometry.PathFindEnclosureProbe = 1024
+Geometry.PathFindCritterDetour = 12
 
 # SpriteMesh
 SpriteMesh.Enabled = False
@@ -120,8 +154,7 @@ Render.ForceMetal = False
 Render.ForceVulkan = False
 Render.ForceSDLGpu = False
 Render.ForceGlslEsProfile = False
-Render.Direct3DVertexShaderProfile = vs_4_0_level_9_3
-Render.Direct3DPixelShaderProfile = ps_4_0_level_9_3
+Render.AllowSoftwareRenderer = False
 Render.SDLGpuDriver =
 Render.DrawWireframe = False
 Render.VSync = False
@@ -193,20 +226,28 @@ Timer.DeltaTimeCap = 100
 Baking.ForceBaking = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
+Baking.PrebakeOnStartup = True
+Baking.IgnoreInputDirs =
+Baking.PreciseModelBounds = False
 Baking.ModelAttachmentMinExtent = 0.01f
 Baking.ModelAttachmentMaxExtent = 50.0f
 Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
+Baking.AudioVorbisQuality = 0.5f
+Baking.Direct3DLevel9Shaders = False
 Baking.ProtoFileExtensions = fopro fomap
+Baking.AllowRepeatedProtoParents = True
 Baking.BakeLanguages = engl russ
 Baking.BakeOutput = Baking
 Baking.ServerResources = ServerResources
 Baking.ClientResources = Resources-Baked
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
-Baking.ZipCompressLevel = 1
+Baking.ResourcePackCompressLevel = 1
+Baking.ResourcePackMinCompressGain = 5
+Baking.BundleCompressLevel = 1
+Baking.BootstrapGameSettings =
 
 # Critter
-Critter.MaxAddUnstackableItems = 10
 Critter.CritterSlotEnabled = true true
 Critter.CritterSlotSendData = false true
 Critter.CritterSlotMultiItem = true false
@@ -220,14 +261,6 @@ Hex.ScrollSpeed = 1200
 Hex.ZoomSpeed = 100
 Hex.FullscreenMouseScroll = True
 Hex.WindowedMouseScroll = False
-Hex.RoofAlpha = 200
-Hex.ShowTile = True
-Hex.ShowRoof = True
-Hex.ShowItem = True
-Hex.ShowScen = True
-Hex.ShowWall = True
-Hex.ShowCrit = True
-Hex.ShowFast = True
 Hex.ScrollBlockSize = 1
 
 # DataBase
@@ -242,14 +275,12 @@ DataBase.CustomCollections =
 
 # Input
 Input.DisableGamepad = False
-Input.DoubleClickTime = 500
 Input.ConsoleHistorySize = 100
 
 # Mapper
 Mapper.StartMap =
 Mapper.StartHexX = -1
 Mapper.StartHexY = -1
-Mapper.SplitTilesCollection = True
 Mapper.ParticlePreviewEffect =
 Mapper.ParticlePreviewSeed = 0
 Mapper.ParticlePreviewScale = 1.0f
@@ -263,9 +294,6 @@ Client.DefaultSplashPack =
 Client.ClientPropertiesPackData = True
 Client.ForceEmbeddedRuntime = False
 Client.Language = engl
-Client.WinNotify = True
-Client.SoundNotify = False
-Client.HelpInfo = False
 
 # Server
 Server.DbStorage = Memory
@@ -278,6 +306,7 @@ Server.CollapseLogOnStart = False
 Server.MaxServerLogLines = 1000
 Server.LockMaxWaitTime = 100
 Server.WorkerThreads = 2
+Server.SingleThreadedLogic = False
 Server.WriteHealthFile = False
 Server.ProtoMapStaticGrid = False
 Server.MapInstanceStaticGrid = False
@@ -287,6 +316,8 @@ Server.SyncPeriodMs = 10
 Server.FrameTimePeriodNs = 900
 Server.ConnectionProcessPeriodMs = 100
 Server.CritterMovingPeriodMs = 50
+Server.MoveBridgeReportHexes = 2
+Server.MoveFinishCatchUpMaxMs = 300
 Server.HealthFilePeriodMs = 300
 Server.ShutdownGraceMs = 5000
 

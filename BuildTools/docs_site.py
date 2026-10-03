@@ -1007,7 +1007,7 @@ def render_search(
         else:
             # Common body terms still identify pages named after them. Dropping
             # Tools/Source entirely lets prefix fallback match unrelated rare
-            # compounds instead of the exact document title.
+            # compounds instead of the exact document title
             if identity_terms.get(token):
                 filtered_postings[token] = token_postings
     postings = filtered_postings

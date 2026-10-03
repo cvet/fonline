@@ -21,6 +21,19 @@ DECISION_ROOT = ROOT / "Docs/en/contributing/decisions"
 
 
 class DocumentationGovernanceFoundationsTests(unittest.TestCase):
+    def test_revision_update_guides_preserve_published_history(self) -> None:
+        guides = {
+            "en": ("After the normal merge", "Do not rewrite published history"),
+            "ru": ("После обычного merge", "Не переписывайте опубликованную историю"),
+        }
+        for locale, markers in guides.items():
+            with self.subTest(locale=locale):
+                guide = (ROOT / f"Docs/{locale}/contributing/documentation/index.md").read_text(encoding="utf-8")
+                section = guide.split("<old-engine-sha>", 1)[0].rsplit("\n## ", 1)[-1]
+                self.assertNotIn("fast-forward/rebase", section)
+                for marker in markers:
+                    self.assertIn(marker, section)
+
     def test_contract_guide_covers_every_live_comparator_domain(self) -> None:
         guide = CONTRACT_GUIDE.read_text(encoding="utf-8")
 

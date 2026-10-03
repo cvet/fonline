@@ -33,6 +33,9 @@ ManagedScript.AdditionalFiles =
 ManagedScript.AnalysisLevel =
 ManagedScript.AnalysisMode =
 ManagedScript.BakerDryRun = False
+ManagedScript.PatchPointWeaver =
+ManagedScript.ServerPatchesEnabled = False
+ManagedScript.ClientPatchesEnabled = False
 
 # Network
 Network.ServerPort = 4010
@@ -53,6 +56,7 @@ Network.DisableZlibCompression = False
 Network.DisableInterthreadCommunication = False
 Network.ArtificalLags = 0
 Network.ArtificalLagsJitter = 0
+Network.MoveSyncTrace = False
 Network.ForceCompatibilityVersion =
 Network.ForceMetadataVersion =
 
@@ -76,11 +80,13 @@ ServerNetwork.ListenRetryTime = 30000
 ServerNetwork.ListenRetryDelay = 500
 ServerNetwork.WssPrivateKey =
 ServerNetwork.WssCertificate =
+ServerNetwork.ChannelSecretKey =
 
 # ClientNetwork
 ClientNetwork.ServerHost = 127.0.0.1
 ClientNetwork.WebSocketHost = localhost
 ClientNetwork.PingPeriod = 2000
+ClientNetwork.PingTimeout = 30000
 ClientNetwork.UseUdp = False
 ClientNetwork.ProxyType = 0
 ClientNetwork.ProxyHost =
@@ -88,6 +94,7 @@ ClientNetwork.ProxyPort = 8080
 ClientNetwork.ProxyUser =
 ClientNetwork.ProxyPass =
 ClientNetwork.DebugNet = False
+ClientNetwork.ChannelServerKeys =
 
 # Audio
 Audio.DisableAudio = False
@@ -122,6 +129,8 @@ Geometry.MapSmoothPath = True
 Geometry.MapDataPrefix = Geometry
 Geometry.CritterBlockHex = False
 Geometry.MaxPathFindLength = 400
+Geometry.PathFindEnclosureProbe = 1024
+Geometry.PathFindCritterDetour = 12
 
 # SpriteMesh
 SpriteMesh.Enabled = False
@@ -146,8 +155,6 @@ Render.ForceVulkan = False
 Render.ForceSDLGpu = False
 Render.ForceGlslEsProfile = False
 Render.AllowSoftwareRenderer = False
-Render.Direct3DVertexShaderProfile = vs_4_0_level_9_3
-Render.Direct3DPixelShaderProfile = ps_4_0_level_9_3
 Render.SDLGpuDriver =
 Render.DrawWireframe = False
 Render.VSync = False
@@ -219,12 +226,14 @@ Timer.DeltaTimeCap = 100
 Baking.ForceBaking = False
 Baking.SingleThreadBaking = False
 Baking.IgnoreMissingBakerWarning = False
+Baking.PrebakeOnStartup = True
 Baking.IgnoreInputDirs =
 Baking.PreciseModelBounds = False
 Baking.ModelAttachmentMinExtent = 0.01f
 Baking.ModelAttachmentMaxExtent = 50.0f
 Baking.RawCopyFileExtensions = fofnt bmfc fnt acm ogg wav ogv json ini
 Baking.AudioVorbisQuality = 0.5f
+Baking.Direct3DLevel9Shaders = False
 Baking.ProtoFileExtensions = fopro fomap
 Baking.AllowRepeatedProtoParents = True
 Baking.BakeLanguages = engl russ
@@ -233,7 +242,9 @@ Baking.ServerResources = ServerResources
 Baking.ClientResources = Resources
 Baking.PlatformBinaries = PlatformBinaries
 Baking.CacheResources = Cache
-Baking.ZipCompressLevel = 1
+Baking.ResourcePackCompressLevel = 1
+Baking.ResourcePackMinCompressGain = 5
+Baking.BundleCompressLevel = 1
 Baking.BootstrapGameSettings =
 
 # Critter
@@ -305,6 +316,8 @@ Server.SyncPeriodMs = 10
 Server.FrameTimePeriodNs = 900
 Server.ConnectionProcessPeriodMs = 100
 Server.CritterMovingPeriodMs = 50
+Server.MoveBridgeReportHexes = 2
+Server.MoveFinishCatchUpMaxMs = 300
 Server.HealthFilePeriodMs = 300
 Server.ShutdownGraceMs = 5000
 

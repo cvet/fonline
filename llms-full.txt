@@ -13833,7 +13833,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: b3fe2ab600bd540e2de1bf1f684ecc9a4be887f50ef448b724fff8ac4828112d
+Content SHA-256: 2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865
 
 ---
 layout: default
@@ -14101,7 +14101,11 @@ Before updating:
 2. Preserve a dirty worktree with a named stash or separate worktree, including untracked generated documentation, and retain that safety copy until validation passes.
 3. Preserve the current generated JSON model under ignored `Workspace/` when it is not available from a committed baseline.
 
-After the fast-forward/rebase:
+Integrate upstream with a normal merge (a fast-forward is fine when possible).
+Do not rewrite published history: keep each published branch tip as an ancestor
+of the updated tip, independently for the Engine and any embedding project.
+
+After the normal merge:
 
 ```bash
 git log --oneline <old-engine-sha>..<new-engine-sha>
