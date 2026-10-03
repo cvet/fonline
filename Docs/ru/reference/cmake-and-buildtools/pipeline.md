@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"47bd6d7432e89ff391572ec1fd74bf49165e4084dd2f52ea20f0f036a6961036"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -444,8 +444,16 @@ diagnostics, а не для source ownership или проверки build featu
 - `RunAndLog.cmake` — внутренний script-mode process runner, сохраняющий test
   output и передающий exit code.
 - `State.cmake` — поддержка состояния и hooks поэтапного pipeline.
-- `WriteBuildHash.cmake` — записывает состояние build hash для
-  generation/baking flows.
+- `WriteBuildHash.cmake` — записывает настроенный `FO_BUILD_HASH`, переданный
+  как `BUILD_HASH`, в маркеры native binaries и ресурсов. При записи он не
+  перечитывает Git HEAD и не выбирает новую случайную идентичность. Поэтому
+  маркеры совпадают с идентичностью, встроенной в native applications при
+  конфигурации, в том числе для исходных архивов без Git и путей с пробелами.
+  `BuildTools/tests/test_cmake_build_hash.py` проверяет реальные скомпилированные
+  приложения и обе стандартные цели baking до и после смены Git revision.
+  Во временное дерево исходников копируются неизменённые helpers из checkout
+  Engine, поэтому fixture работает и тогда, когда Windows хранит checkout и
+  временные файлы на разных дисках.
 
 Если стадии нужно переиспользуемое поведение, добавляйте helper здесь вместо
 копирования логики между stages.

@@ -821,8 +821,8 @@
         "BuildTools/managed_runtime_payload.py",
         "Source/Tests/Test_BakerSetup.cpp"
       ],
-      "content_sha256": "97f9ae21a0bfdd24658f0b859eb4bd0e6bbe09bbbde0316d54ce15466f13f419",
-      "byte_size": 83947
+      "content_sha256": "87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8",
+      "byte_size": 84162
     },
     {
       "id": "build-workflow",
@@ -912,8 +912,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "47bd6d7432e89ff391572ec1fd74bf49165e4084dd2f52ea20f0f036a6961036",
-      "byte_size": 30056
+      "content_sha256": "b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070",
+      "byte_size": 30703
     },
     {
       "id": "buildtools-readme",
@@ -12636,8 +12636,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "0b1994e8dc88621fde498c302f20c87ff72537b28812537877c7e78b0752a056",
-      "byte_size": 35330
+      "content_sha256": "a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b",
+      "byte_size": 35840
     },
     {
       "id": "particle-authoring-tools",
@@ -13112,8 +13112,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "f63eff04305974ea21a14693ddadad7104661b92d679ed3debad338eee92633b",
-      "byte_size": 18065
+      "content_sha256": "b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38",
+      "byte_size": 17980
     },
     {
       "id": "resource-pack-format",
@@ -13762,8 +13762,8 @@
         "Docs/generated/source-inventory.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa",
-      "byte_size": 30355
+      "content_sha256": "831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601",
+      "byte_size": 30695
     },
     {
       "id": "text-and-localization-guide",
@@ -14086,8 +14086,8 @@
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "38b2e1e2be3a10aef8035ebce7c1d8e0ccc8e141c01bc6c6a3a5f42021ee9734",
-      "byte_size": 2158173
+      "content_sha256": "f9fb8d52a265842c1f8b0bcb21a3571a34625cd3d51a82962cf7aea9c21d3515",
+      "byte_size": 2159800
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14240,7 +14240,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "54fe9cdcc9e5089c72a88a9b02306b32c8c3173712ed600c406203e245604623",
+      "content_sha256": "8c2e71d9a1104a6dd00890c4a8655ac230fbb10caba387af0f4652cfb7f826ef",
       "byte_size": 267388
     },
     {
@@ -14268,7 +14268,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "394c688daab6126f6b5d5fc00ae6d7e9faace260603e612826bdb665102ca424",
+      "content_sha256": "2aeeaed0ff388fde91524428dec67365c77f128975800b82e39516c542bd3a73",
       "byte_size": 105169
     },
     {
@@ -14289,15 +14289,15 @@
       "id": "site-docs-search",
       "path": "assets/docs-search.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "008dc651f7237abb4f6139914dd14d9675e1a3d1023ad8ae58382af5ea165043",
-      "byte_size": 1293045
+      "content_sha256": "9f585e15bde26835cddff2c22710f5d69ce48d0a00a99b15c0894d7f1bcfc52f",
+      "byte_size": 1293595
     },
     {
       "id": "site-docs-search.ru",
       "path": "assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "3473122a94ec3023cd773955c1362f9fc9863475d72001248a814a8528b914b4",
-      "byte_size": 1816454
+      "content_sha256": "3f5c88f9e91227ef0eb22636cf020cdb32c81914cbb531ee841c9be4fd160d49",
+      "byte_size": 1817231
     }
   ]
 }

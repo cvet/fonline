@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"37cc81003bbeb39e8e2c0aee607d83dc81188764fc39498b62ddb15aed3369aa"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -187,6 +187,12 @@ containers освобождаются при shutdown. Новые утечки �
 `CleanCodeCoverageData`, `RunCodeCoverage`, `GenerateCodeCoverageReport` и
 `AnalyzeCodeCoverage`. Результат находится под
 `CodeCoverage/<Toolchain>/<Platform-Config>/`.
+Изолированные фикстуры стадии Applications в
+`BuildTools/tests/test_codecoverage_llvm_objects.py` включают настоящие исходники
+помощника хеширования пакетов ресурсов и проверяют его сборку без флагов LLVM
+coverage на нативных платформах хоста. Они также сохраняют сбор профилей реально
+инструментированных процессов, повторное использование core library и проверки
+сброса профиля при quick exit.
 
 В denominator входят first-party production sources из `Engine/Source/`;
 `Source/Tests/`, `ThirdParty/`, `GeneratedSource/` и `Applications/` исключены.

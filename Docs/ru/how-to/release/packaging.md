@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"0b1994e8dc88621fde498c302f20c87ff72537b28812537877c7e78b0752a056"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -406,12 +406,20 @@ Native host build создаёт необязательную библиотек
 в порядке inputs; `-resource-pack-hash-library <path>` выбирает явный путь.
 Без найденной библиотеки используется Python. Найденная, но незагружаемая library
 или неверный known-vector/streaming-seed check — ошибка, а не fallback.
+На Windows загрузка временно включает `SEM_FAILCRITICALERRORS` у вызывающего
+потока, сохраняя остальные флаги и восстанавливая прежний режим при успехе и при
+ошибке. Повреждённая DLL вызывает `OSError` без интерактивного окна загрузчика;
+режим ошибок процесса не меняется. Ошибка установки или восстановления режима
+потока тоже считается ошибкой.
 Каждый packager, включая spawned workers, отдельно загружает backend. Оба используют
 одинаковый streaming FNV-1a 64 и сохраняют header, physical, decoded-payload и logical
 content validation, включая cache hits. Байты архива, compression settings и cache
 keys не зависят от ускорителя. Это host tooling, не игровой payload.
 `test_resource_pack_hash.py` собирает настоящую library, сравнивает Python/native
 и serial/parallel Raw results и отклоняет повреждённые payloads.
+Корректная и повреждённая библиотеки загружаются в дочерних процессах с ограниченным
+таймаутом; на Windows также проверяются восстановление флагов потока и неизменность
+режима ошибок процесса.
 
 Архивы ресурсов по умолчанию создаются последовательно. `package.py -resource-pack-jobs N` переопределяет `FO_RESOURCE_PACK_JOBS` (по умолчанию `1`); допустимы только положительные целые. Независимые `.fores` создаются не более чем в `N` процессах с `spawn` на любом host. Задачи с общим именем pack или физическим destination выполняются по порядку в одном worker, сохраняя локальное повторное использование и исключая конкурентную запись. Группы распределяются по объёму source bytes, начиная с самых крупных. Каждый worker использует полный writer, cache protocol и payload validation; недоступность optional cache сохраняется внутри batch, ограничивая неудачные probes числом workers. Parent принимает проверенные archive identities и дожидается workers до переписывания runtime-specific packs или очистки неудавшегося package. Embedded resources и конечные distribution bundles не входят в эту worker lane. Выбирайте лимит по доступным CPU и памяти; это не изменение формата и не гарантия измеренного ускорения.
 

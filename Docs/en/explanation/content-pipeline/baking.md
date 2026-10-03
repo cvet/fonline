@@ -134,7 +134,7 @@ Current target responsibilities:
 - `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-Baking.ForceBaking False`.
 - `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-Baking.ForceBaking True`.
 - Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
-- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`. The marker uses the same configured `FO_BUILD_HASH` as the native baker and applications; a later Git HEAD change cannot relabel the completed bake. Reconfigure, rebuild and rebake when the source revision changes.
 - `CompileAngelScript` and `CompileManagedScripts` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind either script backend or a bake invocation.
 
 After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:

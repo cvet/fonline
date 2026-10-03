@@ -288,7 +288,16 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
 - `Options.cmake` — option/value helpers.
 - `RunAndLog.cmake` — internal script-mode process runner that captures test output and propagates the exit code.
 - `State.cmake` — staged pipeline state/hook support.
-- `WriteBuildHash.cmake` — writes build-hash state used by generation/baking flows.
+- `WriteBuildHash.cmake` — writes the configured `FO_BUILD_HASH` supplied as `BUILD_HASH`
+  into native and resource markers. It does not reread Git HEAD or choose a new
+  random identity when the marker is written. Markers therefore match the build
+  identity embedded in the configured native applications, including source
+  archives without Git and output paths containing spaces.
+  `BuildTools/tests/test_cmake_build_hash.py` verifies actual compiled applications
+  and both standard baking targets before and after a Git revision change.
+  Its temporary source tree stages the unchanged helpers from the Engine checkout,
+  so the fixture also works when Windows stores the checkout and temporary files
+  on different drives.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
 

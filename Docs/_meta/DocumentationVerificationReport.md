@@ -2,6 +2,14 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-03 - AsyncMove build-marker refresh
+
+- Reconciled feature head `833556527629fbe6ae46cc292aee4bdc957dc3fc` with master through `4e8e60b4b2d2927de932f86f7009a1a05061d3c1` using an ordinary merge. Audited all 25 incoming paths, including the native test, CMake marker macros/writer, Python DLL-loader changes, their fixtures, both locales of the four owning docs and the incoming diagnostic variable snapshot. No production native source, API, setting or compatibility change is introduced.
+- Preserved AsyncMove's canonical documentation and generated it together with the new build-marker, packaging and coverage explanations. Removed the obsolete DeepWiki badge from the Russian README as well as English and refreshed reviewed locale metadata. All four generated-file conflicts are resolved by their owning generators.
+- The initial Windows build-marker fixture failed all eighteen variants before compilation because `os.path.relpath` cannot cross the Engine's H: drive and the C: temporary drive. It now stages unchanged copies of the three real CMake helpers beside the fixture; the compiled-revision and sidecar assertions remain intact. The bilingual pipeline owner records this fixture boundary.
+- Windows Auto configure and the fresh native unit build passed. The full unit suite passed all 666233 assertions in 534 cases, exit 0. Hash-library/coverage fixtures passed 79 cases with thirteen LLVM-toolchain skips; all eighteen corrected marker variants then passed on Windows with the checkout and temporary tree on different drives, including paths with spaces and all three revision states. Project-only fixtures are recorded in the embedding project's plan, not used as normative Engine proof.
+- Aggregate contract diff is empty across seventeen domains with no required dispositions. Aggregate documentation validation passed for 408 Markdown entries, and all nine affected/API artifact checks passed. Regenerate delivery after this final evidence update and require its freshness before committing. No full resource bake, managed-script compilation, visible gameplay, browser/device acceptance, production package, publication or remote CI result is claimed.
+
 ## 2026-10-03 - AsyncMove integration with canonical documentation
 
 Scope and source reconciliation:
@@ -9981,3 +9989,25 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   Jekyll/browser, fresh native build/bake, physical GUI, Pages or production claim
   is made. The separate pre-existing Visual Studio unchanged-reconfigure gate is
   not changed or hidden by this source-comment convention update.
+
+## 2026-10-03 — Configured native and resource build markers
+
+- Scope: `BuildTools/cmake/helpers/Build.cmake`, `WriteBuildHash.cmake`, and
+  `stages/ScriptsAndBaking.cmake`; reviewed the actual command aliases and both
+  canonical EN/RU CMake pipeline and resource-baking pages.
+- The marker writer previously read Git HEAD after compilation. A revision change
+  between configuration and compilation could label a binary with a revision
+  different from its embedded `FO_BUILD_HASH`; source archives also generated a
+  separate random value for each marker. Pass the configured hash explicitly,
+  require it to be nonempty, and quote complete arguments with `VERBATIM`.
+- The engine-owned `test_cmake_build_hash.py` compiles and executes a native
+  fixture through the real marker macro and both actual resource-baking targets.
+  Before the fix, all three revision-change cases failed and all three unchanged
+  controls passed. After the fix, all eighteen cases pass: three targets, unchanged
+  or advanced Git revision or no Git checkout, and paths with or without spaces.
+  Every sidecar must match the value compiled into the executable; baking also
+  checks the fixture's resource artifact. This changes build provenance markers,
+  not the resource-pack metadata compatibility hash.
+- Embedding-project configuration, fresh native compilation, resource baking,
+  and dependent runtime acceptance are being verified separately. This entry
+  does not claim Windows-native qualification or remote CI acceptance.
