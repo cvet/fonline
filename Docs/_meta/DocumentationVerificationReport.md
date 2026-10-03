@@ -2,6 +2,37 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-03 - revision reconciliation and Russian repository-home freshness
+
+Scope and reconciliation:
+
+- Audited incoming source/test changes from `e8c8da0a9b6c19243b804d94e0aa468b8e1e6758` through
+  `bcdbd02013c3b6da340738b5120226c4dddd4008`, then the two-commit refresh through
+  `4e8e60b4b2d2927de932f86f7009a1a05061d3c1`. Retained the incoming owners for navigation,
+  rendering/cache lifetime, decoded-resource ownership, allocator statistics, string-pool publication,
+  packaging/patch bounds, build CPU budgets and coverage qualification.
+- The refresh changes `WriteBuildHash.cmake` and its native/baking callers to use configured `FO_BUILD_HASH`
+  with correctly quoted arguments. Reviewed the engine-owned compiled-probe test across standard bake
+  targets, source paths with spaces, advanced Git HEAD and source archives without Git.
+- Removing the DeepWiki badge from canonical `README.md` left `README.ru.md` stale. Removed the matching
+  Russian badge after reviewing the exact English delta and refreshed translation metadata through
+  `docs_localization` helpers. Regenerated snippets, translation status, site/search/routes, AI evaluation
+  and AI delivery in dependency order; no translation or inventory gate was weakened.
+
+Validation and limits:
+
+- `test_cmake_build_hash.py`: 18 passed on Windows. The existing
+  `test_codegen_cmake_dependencies.py::test_reconfigured_codegen_arguments_invalidate_outputs[None]`
+  still fails on the default Visual Studio generator: an identical third configure/build runs codegen
+  again (3 invocations instead of 2). Output and argument invalidation assertions remain intact.
+- The preceding focused BuildTools pass recorded 114 passed / 19 skipped / 1 failed. The repeated failure
+  is not treated as flaky and no skip or baseline was introduced.
+- CMake model/reference checks are current. Documentation validation passes 408 Markdown entries;
+  locale/site/AI checks are current (396 public routes / 192 documents per search locale). Focused
+  localization/site/AI tests pass 29 tests and 2 subtests. This pass does not claim a rendered
+  Jekyll/browser audit, a full native unit pass or binary-metadata qualification.
+- Published history was preserved; safety stashes are retained while the known codegen failure remains.
+
 ## 2026-10-01 - map storage retirement, decoded-resource ownership and Windows x86
 
 Scope and reconciliation:
