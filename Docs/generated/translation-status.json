@@ -248,7 +248,7 @@
       "english_path": "Docs/en/contributing/documentation/translation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/translation.md",
-      "source_sha256": "97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f",
+      "source_sha256": "6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c",
       "source_bytes": 11130,
       "status": "current"
     },
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "8a5301b9f66b6a8929c90f0ec7de851f0df20d1527930eeedd63acdf20d8ab8a",
-      "source_bytes": 7467,
+      "source_sha256": "e14a24f58b636083d05a409d4f3668947b0fcd6cef2601bb23f0c37a4ae56055",
+      "source_bytes": 9192,
       "status": "current"
     },
     {
@@ -2367,8 +2367,8 @@
       "english_path": "Docs/en/troubleshooting/debugging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/troubleshooting/debugging.md",
-      "source_sha256": "6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba",
-      "source_bytes": 50792,
+      "source_sha256": "a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e",
+      "source_bytes": 51128,
       "status": "current"
     },
     {

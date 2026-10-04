@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.2-dev (CalVer from VERSION)
+Engine version: 2026.1.4-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 8a5301b9f66b6a8929c90f0ec7de851f0df20d1527930eeedd63acdf20d8ab8a
+Content SHA-256: e14a24f58b636083d05a409d4f3668947b0fcd6cef2601bb23f0c37a4ae56055
 
 ---
 layout: default
@@ -2021,7 +2021,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## 2026.1.2-dev - 2026-10-04
+## 2026.1.4-dev - 2026-10-04
 
 ### Changed
 
@@ -2039,6 +2039,30 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - When maintaining a copied build-hash test fixture, stage the three actual CMake helper files beside that fixture instead of deriving a cross-drive relative path. Production build-marker behavior is unchanged.
 - Regenerate the MinimalMultiplayer, ContentShowcase and PackagingMatrix configurations with their `generate_config.py` owners so the fourteen movement settings are present. The maintained native test inventory includes `Test_LinkDelay.cpp`; bilingual documentation and snippet coverage fixtures now include the two version-policy pages.
 - Documentation search consumers must honor the manifest's reviewed per-locale `max_bytes`, increased from 1,835,008 to 1,867,776 bytes for the complete movement/settings and migration corpus. Membership, token policy and fail-closed enforcement remain intact; the AI full-context limit is unchanged.
+
+## 2026.1.3-dev - 2026-10-04
+
+### Fixed
+
+- The configuration/tools documentation test counts all 194 required current translations, including the versioning and changelog pages. Exact inventory, zero missing translations and complete localization remain required.
+- Both translation workflow guides report the same current page inventory as the generated localization model.
+
+### Migration
+
+- No project migration or data conversion is required: only documentation and its test expectations change. Game APIs, settings, persisted properties, native ABI, network compatibility and resource formats retain their existing contracts.
+
+## 2026.1.2-dev - 2026-10-04
+
+### Fixed
+
+- Saved native stack-trace context storage on macOS now accommodates the SDK libunwind context. Its sixteen-byte alignment is preserved; other supported platforms keep their existing storage size.
+- Native and managed source formatting and explanatory comments conform to the maintained style checks. The English and Russian debugging guides describe the platform context boundary.
+- Documentation coverage tests include the new versioning and changelog pages and their normative examples while retaining exact inventory and completeness checks.
+
+### Migration
+
+- No game API, setting, persisted property, protocol, ABI or resource format is replaced. Existing valid inputs and runtime compatibility markers keep their meanings, so no project data migration is required.
+- Reconfigure and rebuild native targets after updating the Engine revision. macOS compilation must use its platform SDK to check the saved-context size assertion; Linux tests do not qualify this macOS branch. Project versions and package/updater build hashes remain project-owned.
 
 ## 2026.1.1-dev - 2026-10-04
 
@@ -14611,7 +14635,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f
+Content SHA-256: 6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c
 
 ---
 layout: default
@@ -14637,7 +14661,7 @@ explicit entrypoint mapping below. Every public human page has:
 - one derived `Docs/ru/...` mirror path, or an explicit README pair;
 - one canonical English content hash in the generated translation-status model.
 
-All 197 required Russian counterparts are present, and
+All 194 required Russian counterparts are present, and
 `localization.enforcement` is `complete`. Every page must remain complete,
 hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
@@ -14645,7 +14669,7 @@ without its Russian counterpart fails validation immediately.
 
 The current machine report is [translation-status.json](../../../generated/translation-status.json).
 
-This 197/197 result proves physical page parity. Generated Russian pages can
+This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
 Markdown template. That semantic layer has a separate catalog and gate,
 described below; physical parity must not be reported as complete semantic
@@ -27532,7 +27556,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba
+Content SHA-256: a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e
 
 ---
 layout: default
@@ -27773,6 +27797,11 @@ For MSVC CMake generators, a target should be created while its intended `CMAKE_
 The Engine captures a bounded native return-address array and optional pre-resolved script layers in `StackTraceData`. Native symbol resolution is deferred until formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address under a bounded cache so repeated reports do not reload the same symbol information unnecessarily.
 
 Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
+
+On macOS, resume-point storage reserves the system libunwind universal context of
+167 64-bit words for both Intel and ARM64 builds. When resume contexts are enabled,
+Linux and Windows keep their 72-word storage. The native compile-time assertion checks context size
+and alignment against the unwinder headers used by the actual build.
 
 Native call stacks come from platform capture when `GetStackTrace()` runs. `FO_TRACE_ZONE(Category)` is a separate, category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
 

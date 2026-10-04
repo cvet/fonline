@@ -5,7 +5,7 @@ locale: ru
 document_id: debugging
 permalink: /Docs/ru/troubleshooting/debugging.html
 ---
-<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba"} -->
+<!-- docs-translation: {"document_id":"debugging","locale":"ru","source_path":"Docs/en/troubleshooting/debugging.md","source_sha256":"a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e"} -->
 # Нативная отладка, AngelScript и Managed C#
 
 Это принадлежащий Engine маршрут для диагностики нативных сбоев, смешанных нативных и скриптовых стеков, фатальных завершений процесса, просмотра данных в Visual Studio, живого выполнения AngelScript и ошибок compile/load/callback Managed C#. Он следует текущим конфигурациям сборки, платформенным helper-функциям, реализации исключений и стеков, endpoint AngelScript, исходникам managed baker/runtime, комплектному адаптеру VS Code, тестам Engine и проверенным evidence встраивающих проектов.
@@ -237,6 +237,11 @@ Engine записывает crash diagnostics в свой лог. Сейчас �
 Engine захватывает ограниченный массив нативных return addresses и необязательные заранее разрешённые скриптовые слои в `StackTraceData`. Разрешение нативных символов откладывается до форматирования или явного resolve. Разрешённые нативные кадры кэшируются для всего процесса по instruction address в ограниченном cache, чтобы повторные reports не загружали одинаковую symbol information заново.
 
 Native capture теперь использует bundled LLVM libunwind на Linux, системный libunwind на macOS, Windows unwind tables на 64-bit и frame pointers на 32-bit; crash может начинаться с сохранённого POSIX/SEH register context. На Linux symbols разрешает bundled libbacktrace с fallback `dladdr` для позже загруженных modules; macOS использует `dladdr`, Windows — DbgHelp с каталогами executable/module в search path. Неопознанный frame сохраняет `module+offset` для offline lookup. Обычный trace начинается с вызвавшего capture кода, crash trace — с faulting instruction. Birth stacks managed entries сохраняются как resume points и разворачиваются только при подготовке отчёта, пока opening frame активен.
+
+На macOS память resume point вмещает универсальный контекст системного libunwind
+из 167 64-битных слов в сборках для Intel и ARM64. При включённом сохранении
+контекстов Linux и Windows используют буфер из 72 слов. Нативный compile-time assertion
+сверяет размер и выравнивание контекста с заголовками unwinder фактической сборки.
 
 Нативный call stack захватывается платформой в момент вызова `GetStackTrace()`. `FO_TRACE_ZONE(Category)` — отдельная зона измерения Tracy с фильтрацией по категориям, а не ручная запись в call stack; см. [размещение зон](../how-to/quality/profiling.md#размещение-зон).
 

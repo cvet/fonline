@@ -2,6 +2,12 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-04 - Latest master refresh during AsyncMove preparation
+
+- Merge master through `53b9e71bfb20573b6ae12d79eb7bd493bef297f9` into `2a6b3818c0c2d88483140b6c343a075322efbf92` without rewriting either published branch. Audit both incoming commits: macOS saved libunwind context expands to 167 words while other platforms retain 72; native and managed source formatting changes; exact localization inventory and bilingual translation-guide counts are reconciled to 194.
+- Preserve upstream `2026.1.2-dev` and `2026.1.3-dev` notes. Prepare the feature as the next `2026.1.4-dev` step, retaining complete movement and integration migration guidance in both languages and compatibility `0.0.68`. No additional game API, setting, property, wire format or resource migration is introduced by these two incoming commits.
+- Resolve generated conflicts through their owning generators, preserving the reviewed search capacity and unchanged AI-context budget. Earlier qualification below belongs to the earlier merge. Fresh affected-documentation regression tests passed all 57 cases, exit 0; aggregate validation passed 410 Markdown entries; the seventeen-domain contract comparison retains sixteen changes, two required dispositions and none missing. The next-step version/migration check passes for `2026.1.4-dev`. Regenerated artifacts are checked again after this evidence update. Fresh Windows native qualification is pending. No macOS SDK build or external new-head CI is claimed.
+
 ## 2026-10-04 - AsyncMove merge preparation
 
 - Reconcile feature `e6069bfddcacae03e1ea881fb0e6cb73cc7bed22` with master `f622638fc97aa3c48925441895849749b73c9026` by ordinary merge. Audit all four incoming commits: finite test/control timeouts, physical-only mesh anchors and complete mesh-door collision recaching, site relocation and mandatory Engine identity/version/changelog policy.
