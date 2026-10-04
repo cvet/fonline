@@ -12,6 +12,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.4-dev - 2026-10-04
+
+### Fixed
+
+- POSIX crash-handler setup and default-signal re-raise compile when Darwin SDK signal-set operations are function-like macros. The five calls preserve their masks, flags and signal values; Linux retains its existing function behavior.
+
+### Migration
+
+- Rebuild affected macOS native targets after updating the Engine revision. No project API, setting, persisted data, ABI, protocol or resource format changes, so no caller or data migration is required.
+
 ## 2026.1.3-dev - 2026-10-04
 
 ### Fixed

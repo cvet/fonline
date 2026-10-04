@@ -5,7 +5,7 @@
 Canonical site: https://fonline.ru
 Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.
 Current documentation: `master` rolling branch.
-Engine version: `2026.1.3-dev` (CalVer from VERSION).
+Engine version: `2026.1.4-dev` (CalVer from VERSION).
 Machine-readable document index: https://fonline.ru/docs-manifest.json
 Bounded full-context bundle: https://fonline.ru/llms-full.txt
 

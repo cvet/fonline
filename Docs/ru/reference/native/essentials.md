@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"9ac2088d8e634c7e03cd59cdc9adce033065b1a0eca868d3294b92a2b7372dc4"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"af288529c00cb552626535a9ccb17ef6b05698f16d8bef343a6b473c7268f7af"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -165,6 +165,14 @@ test Essentials не обходит contract-change gate.
 реализации Essentials, которые не могут зависеть от этих модулей из-за порядка
 слоёв (`BasicCore.cpp`, `BaseLogging.cpp`, `StringUtils.cpp`), а также
 `NetSockets.*` и `ServerServiceApp.cpp`, сами являющиеся OS wrappers.
+
+В Darwin SDK операции над наборами сигналов могут быть функциональными макросами.
+Внутри `Posix.cpp` вызывайте `sigfillset`, `sigdelset`, `sigemptyset` и `sigaddset`
+без квалификатора `::`, чтобы эти определения раскрывались корректно; в Linux
+по-прежнему находятся глобальные функции. Маски, флаги, альтернативный стек и
+повторное возбуждение сигнала с действием по умолчанию в обработчике сбоев
+сохраняют прежнее поведение. Обычные потребители продолжают использовать обёртки
+`posix::`, а не напрямую подключать заголовки ОС или вызывать её функции.
 
 Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Единый registry Windows build platforms владеет архитектурой CMake, toolset и канонической packaging-архитектурой обычных вариантов, `-clang` и `-win7`. Пара Win7 фиксирует MSVC 14.44, а `FO_BINARY_OUTPUT_POSTFIX` остаётся независимым от платформы. В package DSL конкретная запись `BINARY` может выбрать собственный postfix, например `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, не затрагивая соседние binaries. Проверки совместимости находятся вне application targets.
 

@@ -166,6 +166,13 @@ order cannot depend on (`BasicCore.cpp`, `BaseLogging.cpp`, and
 `StringUtils.cpp`) plus `NetSockets.*` and `ServerServiceApp.cpp`, which are OS
 wrappers themselves rather than ordinary consumers.
 
+Darwin SDK signal-set operations can be function-like macros. Inside `Posix.cpp`,
+call `sigfillset`, `sigdelset`, `sigemptyset` and `sigaddset` without a `::`
+qualifier so those definitions expand correctly; Linux still resolves its global
+functions. The crash handler's masks, flags, alternate stack and default-signal
+re-raise keep their existing behavior. Ordinary consumers continue using the
+`posix::` wrappers rather than accessing OS headers or calls directly.
+
 Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows build-platform registry owns the CMake architecture, toolset, and canonical packaging architecture for the regular, `-clang`, and `-win7` variants. The Win7 pair pins MSVC 14.44, while `FO_BINARY_OUTPUT_POSTFIX` remains independent of the platform. In the package DSL the corresponding `BINARY` entry can select its own postfix, for example `BINARY Client Windows win32-win7 Raw+Zip+Wix POSTFIX Win7`, without affecting sibling binaries in the package. Compatibility checks are kept outside application targets.
 
 `platform::process_identity` pairs PID with process start time. An ID alone can be reused, so client-session diagnostics match both values. On Windows the liveness check polls the process handle with zero timeout rather than reading exit code `259` (`STILL_ACTIVE`), which a terminated process can retain while another process holds its handle. `BuildTools/tests/test_process_identity.py` covers live and terminated retained-handle cases when `clang++` is available.

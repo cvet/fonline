@@ -7,10 +7,20 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e5e3520173b86f73b31c61f08d5dd1646b1c37b174709ee0a6830248aae7bd3a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d17fa0407c403c7cfadc7c1bb553c66b6f47ee919bbd489545a9f1ef2a7df753"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## 2026.1.4-dev - 2026-10-04
+
+### Исправлено
+
+- Установка POSIX-обработчиков сбоев и повторное возбуждение сигнала с действием по умолчанию компилируются, когда операции над наборами сигналов в Darwin SDK заданы функциональными макросами. Пять вызовов сохраняют маски, флаги и значения сигналов; прежнее поведение функций в Linux сохранено.
+
+### Миграция
+
+- После обновления ревизии движка пересоберите затронутые нативные цели macOS. API проекта, настройки, сохранённые данные, ABI, протокол и формат ресурсов не меняются, поэтому миграция вызывающего кода и данных не требуется.
 
 ## 2026.1.3-dev - 2026-10-04
 
