@@ -10031,7 +10031,7 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   README, reviewed its normalized English source hash, and regenerated downstream
   locale/site/AI artifacts. This is navigation parity, not a runtime change.
 
-## 2026-10-04 ? published timeout and physical mesh fixes
+## 2026-10-04 — published timeout and physical mesh fixes
 
 - Reconcile the normal merge from 6558fcf966c969c45cfba9911b3888d3068e278b
   with published origin/master e8111f9e77554a099c703755f6fbf7f9fde77657.
@@ -10053,6 +10053,16 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
   The generated source digest changes; the original capture bytes, date and
   capture claims remain unchanged. No new visual capture is claimed.
 - Python runtime tests pass 17/17; focused documentation/model tests pass 49/49;
-  documentation validation passes all 408 Markdown entries. Native Mapper and
-  MapHexOperations acceptance and embedding-project rebake/runtime checks are
-  still pending in the project integration record. Retain all safety stashes.
+  documentation validation passes all 408 Markdown entries.
+- Native acceptance uses an isolated copy of the engine-owned MinimalProject
+  template with its canonical AngelScript and 3D settings. All four selected
+  top-level cases (MapperMultihexMeshMerge, MapperAnyUniqueMeshMerge,
+  MapHexOperations and MapPathOperations) pass: 422 assertions, 40 JUnit
+  case/section entries, exit 0, no failures, errors or skips. This includes the
+  new physical-only round-trip and MultihexItemFlagChanges regressions.
+  The fresh unit build passes in 1159.72 s and the test process in 8.26 s.
+- A prior unnecessary 3D-off variant failed in existing, unchanged unguarded
+  Test_ClientEngine model sections. The canonical 3D-on run retains every test;
+  no 3D-off qualification or source fix is claimed. Embedding-project acceptance
+  is recorded by that project and is not normative reusable Engine evidence.
+  Retain all safety stashes while the larger quest task remains incomplete.
