@@ -94,6 +94,8 @@ class DocumentationValidatorTests(unittest.TestCase):
             "repository: cvet/fonline\n"
             "theme: jekyll-theme-slate\n"
             "strict_front_matter: true\n"
+            "layouts_dir: Docs/Site/Layouts\n"
+            "data_dir: Docs/Site/Data\n"
             "plugins:\n"
             "  - jekyll-relative-links\n"
             "defaults:\n"
@@ -105,10 +107,10 @@ class DocumentationValidatorTests(unittest.TestCase):
             encoding="utf-8",
         )
         fixture_assets = {
-            "_layouts/default.html": "<!doctype html><main>{{ content }}</main>\n",
-            "assets/css/docs.css": "body { color: black; }\n",
-            "assets/js/docs.js": "'use strict';\n",
-            "assets/images/fonline-mark.png": "fixture image\n",
+            "Docs/Site/Layouts/default.html": "<!doctype html><main>{{ content }}</main>\n",
+            "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
+            "Docs/Site/Assets/js/docs.js": "'use strict';\n",
+            "Docs/Site/Assets/images/fonline-mark.png": "fixture image\n",
         }
         for relative_path, content in fixture_assets.items():
             path = root / relative_path
@@ -616,11 +618,11 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "generator": docs_site.GENERATED_BY,
                     "schema_version": docs_site.SCHEMA_VERSION,
                     "paths": list(docs_site.OUTPUT_PATHS),
-                    "layout": "_layouts/default.html",
+                    "layout": "Docs/Site/Layouts/default.html",
                     "assets": [
-                        "assets/css/docs.css",
-                        "assets/js/docs.js",
-                        "assets/images/fonline-mark.png",
+                        "Docs/Site/Assets/css/docs.css",
+                        "Docs/Site/Assets/js/docs.js",
+                        "Docs/Site/Assets/images/fonline-mark.png",
                     ],
                     "artifact_validator": "BuildTools/docs_site_artifact.py",
                     "artifact_report": "Workspace/docs-site-artifact-report.json",
@@ -1687,7 +1689,10 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(ai_control_manifest, indent=2) + "\n",
             encoding="utf-8",
         )
-        for relative_path in ai_control_manifest["sources"].values():
+        ai_control_source_paths = set(ai_control_manifest["sources"].values())
+        for entry in ai_control_manifest["validation_rules"]:
+            ai_control_source_paths.update(source["path"] for source in entry["source"])
+        for relative_path in sorted(ai_control_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
             target_path = root / relative_path
             target_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1859,7 +1864,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "source_paths": [
                         "Source/example.txt",
                         "CNAME",
-                        "_layouts/default.html",
+                        "Docs/Site/Layouts/default.html",
                     ],
                     "recapture_triggers": [
                         "The fixture source changes.",
@@ -2190,6 +2195,30 @@ class DocumentationValidatorTests(unittest.TestCase):
         errors, _ = docs_validate.validate_documentation(root)
 
         self.assertIn("GitHub Pages CNAME does not match manifest domain: fonline.ru", errors)
+
+    def test_site_source_directories_must_match_documentation_layout(self) -> None:
+        for key, expected, obsolete in (
+            ("layouts_dir", "Docs/Site/Layouts", "_layouts"),
+            ("data_dir", "Docs/Site/Data", "_data"),
+        ):
+            with self.subTest(key=key):
+                temporary_directory, root = self._create_tree()
+                self.addCleanup(temporary_directory.cleanup)
+                (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
+                self._write_manifest(root, {"Docs/Guide.md": self._document()})
+                config_path = root / "_config.yml"
+                config = config_path.read_text(encoding="utf-8")
+                config_path.write_text(
+                    config.replace(f"{key}: {expected}", f"{key}: {obsolete}"),
+                    encoding="utf-8",
+                )
+
+                errors, _ = docs_validate.validate_documentation(root)
+
+                self.assertIn(
+                    f"GitHub Pages _config.yml {key} must match the publishing manifest",
+                    errors,
+                )
 
     def test_pages_gem_pin_must_match_manifest(self) -> None:
         temporary_directory, root = self._create_tree()
@@ -2585,7 +2614,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         errors, _ = docs_validate.validate_documentation(root)
 
         self.assertIn(
-            "generated documentation site artifact is stale: assets/docs-search.json; "
+            "generated documentation site artifact is stale: Docs/Site/Assets/docs-search.json; "
             "run python BuildTools/docs_site.py --write",
             errors,
         )
@@ -2604,7 +2633,7 @@ class DocumentationValidatorTests(unittest.TestCase):
 
         self.assertIn(
             "generated documentation site artifact is stale: "
-            "assets/docs-search.ru.json; run python BuildTools/docs_site.py --write",
+            "Docs/Site/Assets/docs-search.ru.json; run python BuildTools/docs_site.py --write",
             errors,
         )
 

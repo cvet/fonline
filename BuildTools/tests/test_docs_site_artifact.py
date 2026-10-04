@@ -27,15 +27,15 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             '<meta name="viewport" content="width=device-width, initial-scale=1">\n'
             f"<title>{canonical}</title>\n"
             f'<link rel="canonical" href="{canonical}">\n'
-            '<link rel="stylesheet" href="/assets/css/docs.css">\n'
+            '<link rel="stylesheet" href="/Docs/Site/Assets/css/docs.css">\n'
             "</head>\n"
             "<body>\n"
             '<a class="skip-link" href="#main-content">Skip</a>\n'
             '<button type="button" aria-label="Search"></button>\n'
-            '<img src="/assets/images/fonline-mark.png" alt="">\n'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.png" alt="">\n'
             '<main id="main-content"><h1 id="heading">Heading</h1>\n'
             f"{body}</main>\n"
-            '<script src="/assets/js/docs.js"></script>\n'
+            '<script src="/Docs/Site/Assets/js/docs.js"></script>\n'
             "</body>\n"
             "</html>\n"
         )
@@ -53,10 +53,10 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             },
             "site_delivery": {
                 "search": {
-                    "path": "assets/docs-search.json",
+                    "path": "Docs/Site/Assets/docs-search.json",
                     "locale_paths": {
-                        "en": "assets/docs-search.json",
-                        "ru": "assets/docs-search.ru.json",
+                        "en": "Docs/Site/Assets/docs-search.json",
+                        "ru": "Docs/Site/Assets/docs-search.ru.json",
                     },
                 },
                 "routing": {"path": "Docs/generated/document-routes.json"},
@@ -71,11 +71,13 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "routes": [
                 {
                     "id": "home",
+                    "current_locale": "en",
                     "current_path": "/",
                     "current_url": "https://fonline.ru/",
                 },
                 {
                     "id": "guide",
+                    "current_locale": "en",
                     "current_path": "/Docs/Guide.html",
                     "current_url": "https://fonline.ru/Docs/Guide.html",
                 },
@@ -94,11 +96,11 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "llms.txt": "# Docs\n",
             "llms-full.txt": "# Full docs\n",
             "docs-manifest.json": json.dumps({"documents": []}) + "\n",
-            "assets/docs-search.json": json.dumps(search) + "\n",
-            "assets/docs-search.ru.json": json.dumps(russian_search) + "\n",
-            "assets/css/docs.css": "body { color: black; }\n",
-            "assets/js/docs.js": "'use strict';\n",
-            "assets/images/fonline-mark.png": "image\n",
+            "Docs/Site/Assets/docs-search.json": json.dumps(search) + "\n",
+            "Docs/Site/Assets/docs-search.ru.json": json.dumps(russian_search) + "\n",
+            "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
+            "Docs/Site/Assets/js/docs.js": "'use strict';\n",
+            "Docs/Site/Assets/images/fonline-mark.png": "image\n",
             "Docs/generated/document-routes.json": json.dumps(routes) + "\n",
             "Docs/generated/support-matrix.json": json.dumps({"profiles": []}) + "\n",
             "Docs/generated/translation-status.json": json.dumps({"documents": []}) + "\n",
@@ -220,7 +222,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         broken = (
             "<html><head><title></title></head><body>"
             '<main id="main-content"><h1 id="same">One</h1><h1 id="same">Two</h1>'
-            '<img src="/assets/images/fonline-mark.png"><button></button></main>'
+            '<img src="/Docs/Site/Assets/images/fonline-mark.png"><button></button></main>'
             "</body></html>"
         )
         (root / "_site/Docs/Guide.html").write_text(broken, encoding="utf-8")
@@ -302,8 +304,8 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         }
         rendered_search = json.dumps(russian_search) + "\n"
         for search_path in (
-            root / "assets/docs-search.ru.json",
-            root / "_site/assets/docs-search.ru.json",
+            root / "Docs/Site/Assets/docs-search.ru.json",
+            root / "_site/Docs/Site/Assets/docs-search.ru.json",
         ):
             search_path.write_text(rendered_search, encoding="utf-8")
 
@@ -311,6 +313,49 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
 
         self.assertEqual(report["error_count"], 0)
         self.assertEqual(report["rendered_route_count"], 3)
+
+    def test_primary_russian_pointer_route_keeps_its_declared_language(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        for path in (
+            root / "Docs/generated/document-routes.json",
+            root / "_site/Docs/generated/document-routes.json",
+        ):
+            routes = json.loads(path.read_text(encoding="utf-8"))
+            routes["routes"].append({
+                "id": "retired-russian-guide",
+                "current_locale": "ru",
+                "current_path": "/Docs/ru/Legacy.html",
+                "current_url": "https://fonline.ru/Docs/ru/Legacy.html",
+            })
+            path.write_text(json.dumps(routes) + "\n", encoding="utf-8")
+        page = root / "_site/Docs/ru/Legacy.html"
+        page.parent.mkdir(parents=True)
+        page.write_text(
+            self._page("https://fonline.ru/Docs/ru/Legacy.html", body="", locale="ru"),
+            encoding="utf-8",
+        )
+
+        report = docs_site_artifact.audit_site(root, root / "_site")
+
+        self.assertEqual(report["error_count"], 0)
+        self.assertEqual(report["rendered_route_count"], 3)
+
+    def test_source_only_site_directories_are_not_published(self) -> None:
+        for relative_path in ("Docs/Site/Data/docs-site.json", "Docs/Site/Layouts/default.html"):
+            with self.subTest(relative_path=relative_path):
+                temporary_directory, root = self._create_fixture()
+                self.addCleanup(temporary_directory.cleanup)
+                path = root / "_site" / relative_path
+                path.parent.mkdir(parents=True)
+                path.write_text("source-only\n", encoding="utf-8")
+
+                report = docs_site_artifact.audit_site(root, root / "_site")
+
+                self.assertIn(
+                    f"source-only site directory was published: /{Path(relative_path).parent.as_posix()}/",
+                    report["errors"],
+                )
 
     def test_cli_writes_report_on_validation_failure(self) -> None:
         temporary_directory, root = self._create_fixture()

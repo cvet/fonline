@@ -2238,8 +2238,7 @@
           "rank": 1,
           "passed": true,
           "top_document_ids": [
-            "release-operations",
-            "packaging-and-release"
+            "release-operations"
           ]
         }
       ],

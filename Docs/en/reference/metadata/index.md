@@ -177,9 +177,9 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/assets/diagrams/*.svg`
 - `Docs/generated/screenshots.json`
 - `Docs/assets/screenshots/*.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
@@ -812,7 +812,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `_data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 

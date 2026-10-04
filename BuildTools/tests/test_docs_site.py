@@ -287,12 +287,22 @@ class DocumentationSiteTests(unittest.TestCase):
         alias["target"] = "Docs/en/guide.md"
         alias["redirect_to"] = "guide"
         manifest["documents"]["Docs/Alias.md"] = alias
+        russian_alias_path = root / "Docs/ru/Alias.md"
+        russian_alias_path.parent.mkdir(parents=True, exist_ok=True)
+        russian_alias_path.write_text(
+            "> Legacy route.\n\n# Russian alias\n",
+            encoding="utf-8",
+        )
+        russian_alias = dict(alias, id="ru-guide-alias")
+        manifest["documents"]["Docs/ru/Alias.md"] = russian_alias
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
         routes = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_ROUTES_OUTPUT])
         routes_by_id = {route["id"]: route for route in routes["routes"]}
         self.assertEqual(routes_by_id["guide-alias"]["canonical_document_id"], "guide")
         self.assertEqual(routes_by_id["guide-alias"]["planned_path"], "/Docs/en/guide.html")
+        self.assertEqual(routes_by_id["guide-alias"]["current_locale"], "en")
+        self.assertEqual(routes_by_id["ru-guide-alias"]["current_locale"], "ru")
 
         manifest["documents"]["Docs/Alias.md"]["redirect_to"] = "repository-home"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

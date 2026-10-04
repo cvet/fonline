@@ -132,7 +132,7 @@ async function loadRoutes(siteDir) {
       {
         id: document.id,
         documentId: document.id,
-        locale: catalog.canonical_locale || "en",
+        locale: document.current_locale,
         path: document.current_path
       },
       ...(document.locale_routes || [])
@@ -145,6 +145,9 @@ async function loadRoutes(siteDir) {
         }))
     ];
     for (const route of candidates) {
+      if (!["en", "ru"].includes(route.locale)) {
+        throw new Error(`rendered route ${route.id} has an unsupported locale: ${route.locale}`);
+      }
       if (!route.path || seen.has(route.path)) {
         continue;
       }
@@ -251,9 +254,9 @@ async function inspectLayout(page, profile) {
       return errors;
     }
     const initialScrollX = window.scrollX;
-    window.scrollTo(documentElement.scrollWidth, window.scrollY);
+    window.scrollTo({ left: documentElement.scrollWidth, top: window.scrollY, behavior: "instant" });
     const reachableScrollX = window.scrollX;
-    window.scrollTo(initialScrollX, window.scrollY);
+    window.scrollTo({ left: initialScrollX, top: window.scrollY, behavior: "instant" });
     if (reachableScrollX > 1) {
       const offenders = Array.from(document.querySelectorAll("body *"))
         .filter((element) => {
@@ -521,6 +524,7 @@ async function auditProfile(browser, profile, routes, baseUrl, axeSource) {
     }
   });
 
+  let completedRoutes = 0;
   for (const route of routes) {
     activeRoute = route;
     runtimeErrors = [];
@@ -615,6 +619,13 @@ async function auditProfile(browser, profile, routes, baseUrl, axeSource) {
       });
     } else {
       report.passed_route_count += 1;
+    }
+    completedRoutes += 1;
+    if (completedRoutes % 50 === 0 || completedRoutes === routes.length) {
+      process.stdout.write(
+        `Browser profile ${profile.id}: ${completedRoutes}/${routes.length} routes checked, `
+          + `${report.errors.length} route finding groups.\n`
+      );
     }
   }
   report.axe_incomplete = Array.from(incompleteRules.values())
@@ -1056,10 +1067,9 @@ async function main() {
       : allRoutes.slice(0, options.routeLimit);
     server = await createSiteServer(siteDir);
     browser = await chromium.launch({ headless: true });
-    const profiles = [];
-    for (const profile of PROFILES) {
-      profiles.push(await auditProfile(browser, profile, routes, server.baseUrl, axe.default.source));
-    }
+    const profiles = await Promise.all(PROFILES.map(
+      (profile) => auditProfile(browser, profile, routes, server.baseUrl, axe.default.source)
+    ));
     const representative = allRoutes.find((route) => route.path === "/Docs/README.html") || allRoutes[0];
     const architecture = allRoutes.find(
       (route) => route.locale === "en" && route.documentId === "engine-architecture"

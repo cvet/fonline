@@ -74,6 +74,10 @@ Important consequences:
 - Prefer stage responsibilities and option names over hard-coded generated target names.
 - Validate build changes through an embedding project preset whenever possible.
 
+`BuildTools/cmake/helpers/State.cmake` obtains the configuration-variable list
+from `cmake --help-variable-list` in memory. Configuration and script-mode
+checks must not create a `cmake-vars.txt` snapshot in the source tree.
+
 ## Stage files
 
 The staged pipeline lives in `BuildTools/cmake/stages/`. Configure-time stage order, entrypoint names, and hook checks are implemented in `BuildTools/Init.cmake`. `BuildTools/cmake/ProjectInterface.json` mirrors that surface for the generated [stage reference](../cmake/stages.md), and `validate_project_interface.cmake` rejects drift in stage order, entrypoints, hook points, and source paths.

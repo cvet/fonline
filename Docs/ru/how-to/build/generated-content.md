@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"86fcf1f50512470c47e1872dc285c4c1db18ac8206ee0bf54cdd199e7e83c62f"} -->
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.
@@ -34,7 +34,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings и internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models и `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models и `Docs/documentation-manifest.json` |
 
 Generated output является evidence, а не editing surface. Исправьте source
 annotation, interface model, project config, generator или authored asset,

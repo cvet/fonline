@@ -89,10 +89,10 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             json.dumps({"schema_version": 1}) + "\n",
             encoding="utf-8",
         )
-        (root / "_data").mkdir()
-        (root / "assets").mkdir()
-        (root / "_data/docs-site.json").write_text('{"navigation":[]}\n', encoding="utf-8")
-        (root / "assets/docs-search.json").write_text('{"documents":[]}\n', encoding="utf-8")
+        (root / "Docs/Site/Data").mkdir(parents=True)
+        (root / "Docs/Site/Assets").mkdir(parents=True)
+        (root / "Docs/Site/Data/docs-site.json").write_text('{"navigation":[]}\n', encoding="utf-8")
+        (root / "Docs/Site/Assets/docs-search.json").write_text('{"documents":[]}\n', encoding="utf-8")
         (root / "Docs/generated/document-routes.json").write_text(
             '{"routes":[]}\n',
             encoding="utf-8",
@@ -188,8 +188,8 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                     "generator": "BuildTools/docs_site.py",
                     "schema_version": 2,
                     "paths": [
-                        "_data/docs-site.json",
-                        "assets/docs-search.json",
+                        "Docs/Site/Data/docs-site.json",
+                        "Docs/Site/Assets/docs-search.json",
                         "Docs/generated/document-routes.json",
                     ],
                 },
@@ -290,7 +290,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         self.assertIn("site-document-routes", artifacts)
         self.assertNotIn("internal_model", artifacts)
         self.assertNotIn("Docs/generated/internal.json", llms)
-        self.assertIn("assets/docs-search.json", llms)
+        self.assertIn("Docs/Site/Assets/docs-search.json", llms)
         self.assertIn("Docs/generated/document-routes.json", llms)
 
     def test_outputs_are_byte_deterministic(self) -> None:

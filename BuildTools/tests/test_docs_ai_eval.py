@@ -18,7 +18,7 @@ class DocumentationAiEvaluationTests(unittest.TestCase):
         root = Path(temporary_directory.name)
         (root / "Docs").mkdir()
         (root / "Source").mkdir()
-        (root / "assets").mkdir()
+        (root / "Docs/Site/Assets").mkdir(parents=True)
         (root / "Docs/Guide.md").write_text(
             "# Guide\n\nFixture evidence.\n\n## Details\n\nStable contract.\n",
             encoding="utf-8",

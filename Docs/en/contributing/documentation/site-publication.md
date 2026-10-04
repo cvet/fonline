@@ -41,13 +41,13 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/docs_site_artifact.py`
 - `BuildTools/tests/test_docs_site_artifact.py`
-- `_layouts/default.html`
-- `assets/css/docs.css`
-- `assets/js/docs.js`
-- `assets/images/fonline-mark.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Layouts/default.html`
+- `Docs/Site/Assets/css/docs.css`
+- `Docs/Site/Assets/js/docs.js`
+- `Docs/Site/Assets/images/fonline-mark.png`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Docs/ai-evaluation.json`
 - `Docs/generated/ai-evaluation-report.json`
@@ -75,8 +75,8 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 | Custom-domain source | Root `CNAME`, containing only `fonline.ru` |
 | Site configuration | Root `_config.yml` |
 | Rendering layer | GitHub Pages-supported themes, plugins, layouts, includes, data, and static assets only |
-| Reader navigation | Generated `_data/docs-site.json`, consumed by the repository-owned default layout |
-| Static search | Generated locale-scoped `assets/docs-search.json` and `assets/docs-search.ru.json`, queried entirely in the browser |
+| Reader navigation | Generated `Docs/Site/Data/docs-site.json`, consumed by the repository-owned default layout |
+| Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, queried entirely in the browser |
 | Teaching diagrams | Source-owned local SVG under `Docs/assets/diagrams/`, with exact provenance and hashes in `Docs/generated/diagrams.json` |
 | Tool screenshots | Source-owned local PNG under `Docs/assets/screenshots/`, with capture environment, interactions, source/image hashes, and recapture triggers in `Docs/generated/screenshots.json` |
 | Version, locale, and route map | Generated `Docs/generated/document-routes.json`, derived from stable document IDs and manifest targets |
@@ -84,6 +84,22 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 | AI delivery | Root `llms.txt`, bounded `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation, and complete snippet coverage reports |
 
 The publication route is intentionally independent from any embedding game project. Last Frontier, TLA, and public example games may link to this site, but they neither build nor define it.
+
+## Website source ownership
+
+The website implementation lives under `Docs/Site/`: `Layouts/` owns the
+HTML shell, `Data/` owns generated navigation, and `Assets/` owns styles,
+scripts, branding, and generated locale search indexes. `_config.yml` sets
+`layouts_dir: Docs/Site/Layouts` and `data_dir: Docs/Site/Data`; both source-only
+directories are excluded from the published tree. The static asset URLs use
+`/Docs/Site/Assets/` and are checked against the same generated manifest.
+
+Jekyll still reads canonical Markdown from the repository root. Root
+`_config.yml` and `CNAME` preserve the existing GitHub Pages source and domain
+contract; `Gemfile` and `.ruby-version` preserve automatic local dependency
+discovery. The root AI endpoints remain directly discoverable at their
+documented URLs. Repository layout changes must update generators, source
+provenance, locale mirrors, and rendered-site checks together.
 
 <figure class="docs-diagram">
 <picture>
@@ -111,15 +127,15 @@ GitHub source URL, but it must not promise a same-domain route for them.
 
 ## Reader navigation and static search
 
-The public site wraps normal Jekyll-rendered Markdown in `_layouts/default.html`. The layout adds a persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, a visible rolling `master` indicator, and an EN/RU switch for current locale pairs. Markdown remains complete and readable when opened directly in GitHub; the layout owns no technical prose.
+The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/default.html`. The layout adds a persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, a visible rolling `master` indicator, and an EN/RU switch for current locale pairs. Markdown remains complete and readable when opened directly in GitHub; the layout owns no technical prose.
 
 `Docs/documentation-manifest.json` owns the navigation groups by stable document ID. `BuildTools/docs_site.py` resolves those IDs to current titles and paths and writes:
 
 | Artifact | Contents |
 |---|---|
-| `_data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes, and current stable-ID locale pairs |
-| `assets/docs-search.json` | Compact weighted English token postings and result metadata for every public current English human document |
-| `assets/docs-search.ru.json` | Compact weighted Russian token postings and result metadata for every current translated human document |
+| `Docs/Site/Data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes, and current stable-ID locale pairs |
+| `Docs/Site/Assets/docs-search.json` | Compact weighted English token postings and result metadata for every public current English human document |
+| `Docs/Site/Assets/docs-search.ru.json` | Compact weighted Russian token postings and result metadata for every current translated human document |
 | `Docs/generated/document-routes.json` | Current public URLs, canonical future owners, planned English/Russian paths, route availability, and every required legacy redirect |
 
 Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
@@ -164,6 +180,11 @@ The localization policy is also source-owned:
 - stable-ID language switching and locale-scoped search are active for every required pair; manifest enforcement is `complete`.
 
 `Docs/generated/document-routes.json` freezes the migration map before files move. Each public record carries its current route, planned canonical owner/path, locale paths, and redirect requirement. Multiple legacy pages may converge only when exactly one non-`replace` record owns the destination.
+
+Each current route declares `current_locale`, including retired Russian
+pointer pages that have no translation pair. Both artifact and browser checks
+use that declaration when validating the rendered HTML language. An
+`index.md` pointer pins the directory permalink, matching the route catalog.
 
 Former flat Markdown files remain durable pointers to their canonical pages, including links for old heading anchors. This preserves routes in both the GitHub repository UI and Jekyll without generated HTML or an additional redirect plugin. The generated route inventory rejects missing owners, route collisions, and stale pointer records.
 
@@ -283,6 +304,16 @@ Automated axe results cover only machine-detectable criteria. Raw incomplete nod
 This job validates and previews the production-compatible render. It does not deploy, alter Pages settings, write a branch, or change DNS. The existing GitHub Pages source remains the only production publication route.
 
 Reviewers should inspect every retained screenshot, including the dedicated Russian 200-percent reflow image, then inspect at least the landing page and changed pages interactively. Check the rolling version indicator, locale switch, page table of contents, code blocks, tables, local assets, keyboard order, and one screen-reader landmark/headings pass. Repeat 200-percent zoom on the landed artifact or production domain before release; the local profile does not replace that environment check. A green source, artifact, or axe check does not by itself prove that the rendered page is readable by every user.
+
+The three route profiles run concurrently in separate browser contexts. Each
+keeps its own page, error listeners, and accessibility counters; results retain
+the manifest profile order. Progress reports completed routes every 50 pages.
+Interaction scenarios run after all route profiles complete.
+
+Long unbroken prose tokens wrap within the reading column. Preformatted code
+keeps its own horizontal scrolling. The layout probe uses instant scrolling
+so the site's smooth-scroll preference cannot hide reachable horizontal
+overflow from the check.
 
 ## Production verification
 

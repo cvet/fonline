@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-documentation-version-locale-routing
 permalink: /Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.html
 ---
-<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962"} -->
+<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"73105acf69b98966d3cf6dcc6ed7f54c3f5485bf16a218f73f63ed9c3d6ac955"} -->
 # ADR-0006: версия, локали и стабильные маршруты документации
 
 - Статус: принято
@@ -37,7 +37,7 @@ FOnline публикует Markdown репозитория через GitHub Pag
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`

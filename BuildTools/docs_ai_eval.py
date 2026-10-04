@@ -17,7 +17,7 @@ SCHEMA_VERSION = 1
 GENERATED_BY = "BuildTools/docs_ai_eval.py"
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
 DEFAULT_SOURCE = "Docs/ai-evaluation.json"
-DEFAULT_SEARCH = "assets/docs-search.json"
+DEFAULT_SEARCH = "Docs/Site/Assets/docs-search.json"
 DEFAULT_OUTPUT = "Docs/generated/ai-evaluation-report.json"
 REQUIRED_CATEGORIES = (
     "architecture",

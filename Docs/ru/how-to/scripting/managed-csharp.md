@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -161,7 +161,7 @@ cycles разрастаться экспоненциально. Analyzer self-te
 
 `FOSYNC010` запрещает отбрасывать boolean результат acquisition, включая отдельный вызов или присваивание `_`: отказ должен влиять на control flow. `FOSYNC011` требует, чтобы helper `Sync`, меняющий удерживаемый cover напрямую либо через другой effectful helper, объявил собственный `[CoverEffect]`. Analyzer считает эти findings ошибками сборки, а не advisory warnings; предложенные redundancy diagnostics `FOSYNC012`–`FOSYNC014` были отозваны.
 
-`FOSYNC015` отвергает пустое расширение `[CoversOnlyArguments]`: аргументы `[ProvidesCover]` уже покрыты, cover не освобождён, поздний `Sync.Snapshot` не требует собственной блокировки. Лишняя приостановка может нарушить синхронный handler. Подробности — в [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` отвергает пустое расширение `[CoversOnlyArguments]`: аргументы `[ProvidesCover]` уже покрыты, cover не освобождён, поздний `Sync.Snapshot` не требует собственной блокировки. Лишняя приостановка может нарушить синхронный handler. Подробности — в [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 При изменении связи `Sync.Yield()` передаёт все блокировки через `Game.SyncYield()`; связь нужно перечитать. Недоступная сущность требует `ScriptTask.Delay(0)` до следующего кадра для удаления. `Sync.OnRetry` и `Sync.ReportRetry(reason)` сообщают о попытках, не отказах.
 

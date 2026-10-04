@@ -161,7 +161,7 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 
-`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 For changed relations, `Sync.Yield()` hands off thread locks via `Game.SyncYield()`; re-read afterward. Unavailable entities defer to the next frame for teardown. `Sync.OnRetry` and `Sync.ReportRetry(reason)` report attempts, not failures.
 

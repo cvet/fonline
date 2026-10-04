@@ -137,8 +137,8 @@ class DocumentationBrowserAuditTests(unittest.TestCase):
         )
 
     def test_layout_and_ci_enforce_the_accessible_interaction_contract(self) -> None:
-        script = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
-        stylesheet = (ROOT / "assets/css/docs.css").read_text(encoding="utf-8")
+        script = (ROOT / "Docs/Site/Assets/js/docs.js").read_text(encoding="utf-8")
+        stylesheet = (ROOT / "Docs/Site/Assets/css/docs.css").read_text(encoding="utf-8")
         workflow = (ROOT / ".github/workflows/validate.yml").read_text(
             encoding="utf-8"
         )

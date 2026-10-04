@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"62510930bbdd0856d2d12e806313431c03787789afdd93cac519f74ddfc5f73c"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -177,9 +177,9 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/assets/diagrams/*.svg`
 - `Docs/generated/screenshots.json`
 - `Docs/assets/screenshots/*.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
@@ -800,7 +800,7 @@ Public files являются discovery/transport artifacts, а не owners ко
 
 ## Данные сайта документации
 
-Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `_data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `Docs/generated/document-routes.json` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
+Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `Docs/Site/Data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `Docs/generated/document-routes.json` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
 
 Navigation model требует точного покрытия top-level reader pages, оставляя generated detail pages за их generated indexes. Search включает detail pages, повышает вес titles/headings относительно body tokens, сохраняет technical identifiers и хранит только compact postings и result metadata. Он не копирует полные Markdown bodies в browser artifact и не создаёт hosted search contract.
 

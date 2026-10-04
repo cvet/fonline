@@ -410,6 +410,7 @@ html[data-theme="dark"] .theme-toggle::before {
 
 .docs-content {
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .page-context {

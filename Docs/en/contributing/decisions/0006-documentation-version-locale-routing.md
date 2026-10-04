@@ -37,7 +37,7 @@ Moving files or beginning translation without that contract would make redirects
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`

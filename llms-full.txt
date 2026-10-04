@@ -1458,7 +1458,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b
+Content SHA-256: 4dd1c2eb25a0f7c564bf44241e17084381f9bc5cadcf1e16b5968c34dfee6869
 
 ---
 layout: default
@@ -1676,7 +1676,7 @@ closed tab loop under both linker rules. On `wixl`, path controls remain
 editable with the mouse and through the folder browser even though they are
 outside its tab loop. Validate an actual installer on each supported host.
 
-The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](../../../../BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
+The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
 
 ### Linux client or server
 
@@ -2679,7 +2679,7 @@ When Engine or the embedding project is updated, inspect changes to `Settings.in
 ===== BEGIN DOCUMENT generated-content-workflow =====
 Source: Docs/en/how-to/build/generated-content.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/generated-content.html
-Content SHA-256: 4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6
+Content SHA-256: 86fcf1f50512470c47e1872dc285c4c1db18ac8206ee0bf54cdd199e7e83c62f
 
 ---
 layout: default
@@ -2715,7 +2715,7 @@ FOnline has three distinct generated layers:
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings and internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
 
 Generated output is evidence, not an editing surface. Fix the source annotation, interface model, project config, generator, or authored asset, then regenerate.
 
@@ -3598,7 +3598,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f
+Content SHA-256: 6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26
 
 ---
 layout: default
@@ -3763,7 +3763,7 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 
-`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 For changed relations, `Sync.Yield()` hands off thread locks via `Game.SyncYield()`; re-read afterward. Unavailable entities defer to the next frame for teardown. `Sync.OnRetry` and `Sync.ReportRetry(reason)` report attempts, not failures.
 
@@ -11051,7 +11051,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: a0ddae586a823fc78fa92f18bc58631bf7f32b7835aefac051b599ace508d1e3
+Content SHA-256: 931d3ed7f78a30b30ac1619be8251294dc3fc5382193fc95b09d3408d395fdfc
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11107,7 +11107,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [BuildTools/SnippetPolicy.json](BuildTools/SnippetPolicy.json) and [Docs/generated/snippets.json](Docs/generated/snippets.json) - reviewed fence/harness policy and generated complete coverage report; regenerate with `BuildTools/docs_snippets.py`, never edit the report manually.
 - [BuildTools/DocumentationDiagrams.json](BuildTools/DocumentationDiagrams.json), [Docs/generated/diagrams.json](Docs/generated/diagrams.json), and [Docs/assets/diagrams/](Docs/assets/diagrams/) - source-owned accessible teaching diagrams, provenance, and exact SVG hashes; regenerate with `BuildTools/docs_diagrams.py`, never edit the SVG or catalog manually.
 - [BuildTools/DocumentationScreenshots.json](BuildTools/DocumentationScreenshots.json), [Docs/generated/screenshots.json](Docs/generated/screenshots.json), and [Docs/assets/screenshots/](Docs/assets/screenshots/) - versioned tool screenshots, exact capture inputs, recapture triggers, and source/image hashes; regenerate the catalog with `BuildTools/docs_screenshots.py`, never replace an image without updating its provenance record.
-- [_data/docs-site.json](_data/docs-site.json), [assets/docs-search.json](assets/docs-search.json), [assets/docs-search.ru.json](assets/docs-search.ru.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
+- [Docs/Site/Data/docs-site.json](Docs/Site/Data/docs-site.json), [Docs/Site/Assets/docs-search.json](Docs/Site/Assets/docs-search.json), [Docs/Site/Assets/docs-search.ru.json](Docs/Site/Assets/docs-search.ru.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
 - [Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md](Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md) - rolling/current documentation identity, deferred release snapshots, planned English/Russian paths, and durable Markdown redirect policy.
 - [ThirdParty Maintenance](Docs/en/contributing/third-party/) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/en/explanation/runtime/client-updater.md](Docs/en/explanation/runtime/client-updater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
@@ -13228,7 +13228,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 ===== BEGIN DOCUMENT adr-manifest-backed-site-navigation-search =====
 Source: Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.html
-Content SHA-256: 101041e8482c80bf60bd0a221a3ea5eedd5ecab70c696e3c6c985b0b7e7d40df
+Content SHA-256: 9e21f5e3a669871aa94bdf8acc96774f7cb7101c8535c456943b6f72145c75e8
 
 ---
 layout: default
@@ -13255,12 +13255,12 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 
 1. `Docs/documentation-manifest.json` owns site navigation groups and search policy in `site_delivery`. Navigation entries refer to stable document IDs, never copied titles or handwritten URLs.
 2. `BuildTools/docs_site.py` deterministically generates:
-   - `_data/docs-site.json`, consumed by Jekyll/Liquid for navigation, site identity, repository identity, and the rolling source-ref indicator;
-   - `assets/docs-search.json` for English and `assets/docs-search.ru.json` for Russian, consumed by the local browser script for locale-scoped static search.
+   - `Docs/Site/Data/docs-site.json`, consumed by Jekyll/Liquid for navigation, site identity, repository identity, and the rolling source-ref indicator;
+   - `Docs/Site/Assets/docs-search.json` for English and `Docs/Site/Assets/docs-search.ru.json` for Russian, consumed by the local browser script for locale-scoped static search.
 3. Main navigation contains every public, current, human-facing top-level document exactly once. Generated reference detail pages stay behind their generated index pages so the sidebar remains scannable.
 4. Each locale index includes every public, current, human-facing document available in that locale, including generated detail pages. Internal records, placeholders, AI-only maintainer routes, and missing translations are excluded. Russian navigation falls back to the English route only where no current Russian counterpart exists; search results never cross locales.
 5. Each search artifact stores compact weighted token postings and result metadata, not full document bodies. Titles and headings receive higher weight than body terms; technical identifiers and their camel-case components remain searchable. Pure numeric tokens and terms present in more than 60% of that locale's documents are omitted because they cannot distinguish results. The manifest declares a 1.75 MiB (1,835,008 byte) hard limit for each locale index and generation fails instead of silently dropping documents. Separate limits keep a complete Russian mirror from competing with English for one shared payload budget. The budget was raised from 1.25 MiB when the reviewed Russian mirror reached 163 of 195 documents and the complete current corpus no longer fit; no document or token class was silently removed to make the index pass.
-6. `_layouts/default.html`, `assets/css/docs.css`, and `assets/js/docs.js` form a thin rendering layer over <code>&#123;&#123; content &#125;&#125;</code>. They may provide responsive navigation, search, page table of contents, copy controls, source links, and a persisted light/dark preference, but they do not own technical prose.
+6. `Docs/Site/Layouts/default.html`, `Docs/Site/Assets/css/docs.css`, and `Docs/Site/Assets/js/docs.js` form a thin rendering layer over <code>&#123;&#123; content &#125;&#125;</code>. They may provide responsive navigation, search, page table of contents, copy controls, source links, and a persisted light/dark preference, but they do not own technical prose.
 7. The interface uses only repository-owned static assets and browser APIs. It has no hosted search, remote JavaScript/CSS dependency, application build, server API, or generated HTML checked into source.
 8. The visible version indicator is `master`, explicitly a rolling branch rather than a stable engine release. Versioned documentation remains blocked on the release/tag support decision.
 9. The published FOnline mark is a byte-for-byte copy of the engine-owned `Resources/Radiation.png`. It is presentation-only and may be replaced later through a reviewed branding change without affecting document identity.
@@ -13400,7 +13400,7 @@ Rejected because silent drift would make security, compatibility, and support cl
 ===== BEGIN DOCUMENT adr-documentation-version-locale-routing =====
 Source: Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0006-documentation-version-locale-routing.html
-Content SHA-256: 6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962
+Content SHA-256: 73105acf69b98966d3cf6dcc6ed7f54c3f5485bf16a218f73f63ed9c3d6ac955
 
 ---
 layout: default
@@ -13441,7 +13441,7 @@ Moving files or beginning translation without that contract would make redirects
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`
@@ -13541,7 +13541,7 @@ The tests reject version/source-ref drift, malformed locale policy, missing READ
 ===== BEGIN DOCUMENT ai-documentation-evaluation =====
 Source: Docs/en/contributing/documentation/ai-evaluation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/ai-evaluation.html
-Content SHA-256: ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5
+Content SHA-256: 4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf
 
 ---
 layout: default
@@ -13648,7 +13648,7 @@ The current browser/Python ranking contract:
 6. ranks by matched-token count, weighted document score, and title.
 
 The Python implementation in `docs_site.search_documents` and the browser
-implementation in `assets/js/docs.js` must change together. Focused tests pin
+implementation in `Docs/Site/Assets/js/docs.js` must change together. Focused tests pin
 long-query, absent-token, prefix, and static-layout markers.
 
 ## Run model-family evaluations
@@ -13849,7 +13849,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: 2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865
+Content SHA-256: 0c71b7c0af8a7d2bd1ad6176c88725405d88098aa9305577fe12ed926a812494
 
 ---
 layout: default
@@ -13978,9 +13978,9 @@ Use this page when adding, verifying, or reorganizing engine docs. It is the mai
 - `BuildTools/tests/test_docs_browser.py`
 - `BuildTools/web/default-index.html`
 - `BuildTools/web/simple-web-server.py`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `llms.txt`
 - `llms-full.txt`
@@ -14086,7 +14086,7 @@ The manifest also owns one review contract for every domain owner. A documentati
 5. Add a validation checklist to deep subsystem docs.
 6. Review the owning structured contract when a generated surface changes. For native API changes, update `///@ ApiContract` metadata as needed and use `BuildTools/docs_api_diff.py` for symbol-level diagnosis. For project-facing CMake changes, update `BuildTools/cmake/ProjectInterface.json` and run the structural CMake test. For main BuildTools CLI changes, keep `create_parser()` authoritative. For helper-script CLI changes, keep the executable `create_parser()` authoritative, update `BuildTools/HelperCliInterface.json` when ownership/audience/invocation changes, and regenerate the helper reference. For native-extension role/hook/binding changes, update `BuildTools/NativeExtensionInterface.json`, run its structural test, and validate the minimal starter or affected project. For prototype parser/property/metadata changes, update `BuildTools/PrototypeFormatInterface.json` and [PrototypeFormat.md](../../../PrototypeFormat.md), regenerate its model/reference, run the focused test, and rebake an affected project. For map parser/baker/mapper/materialization changes, update `BuildTools/MapFormatInterface.json` and [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run focused map tests, and rebake an affected project. For `.fo3d` parser state/tokens, FBX/OBJ import, model layers, attachments, particles, transforms, materials, cuts, rendering flags, or model limits, update `BuildTools/ModelFormatInterface.json` and [Model Format](../../how-to/content/model-format.md), regenerate its model/reference, run focused model tests, and validate a visible client scene. For `.fotxt`, language normalization, prototype `$Text`, text script methods, or inline color tags, update `BuildTools/TextFormatInterface.json` and [Text and Localization](../../how-to/content/text-and-localization.md), regenerate its model/reference, run focused text tests, and rebake an affected project. For `.fofx`, effect state, shader resources, `EffectBaker`, backend bindings, `EffectManager`, script values, or `FO_EFFECT_*` limits, update `BuildTools/EffectFormatInterface.json` and [Effect Format](../../how-to/content/effect-format.md), regenerate its model/reference, run focused effect tests, and validate every affected backend/profile in a visible client scene. For `ImageBaker`, FOFRM, built-in image loaders, baked sprite records, default factory coverage, atlas upload, or image caches, update `BuildTools/ImageFormatInterface.json` and [Image And Sprite Formats](../../how-to/content/image-format.md), regenerate its model/reference, run focused image documentation/native tests, and rebake plus visibly inspect an affected project. For `FO_*_PARTICLES`, `.spark`/`.efkproj` parsing, `.spk`/`.efk` baking, backend composition, SPARK/Effekseer rendering, Mapper particle tools, particle caches, script methods, or model-particle links, update `BuildTools/ParticleFormatInterface.json` and [Particle Format And Runtime](../../how-to/content/particle-format.md), regenerate its model/reference, run focused particle documentation and baker/runtime tests, and rebake plus visibly inspect every affected backend and integration path. For `.fofnt`/`.fnt`, raw-copy selection, `FontManager`, slot/flag enums, bind-time scale, measurement, wrapping, or inline colors, update `BuildTools/FontFormatInterface.json` and [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run focused font documentation and native tests, and rebake plus visibly inspect an affected project. For `AudioManager`, WAV/Ogg decoding, sound-name indexing, `Game.PlaySound`/`Game.PlayMusic`, audio settings, `AppAudio`, or AudioBaker delivery, update `BuildTools/AudioInterface.json` and [Audio.md](../../../Audio.md), regenerate its model/reference, run focused audio documentation and native tests, and rebake plus audibly inspect an affected project on every claimed platform. For `VideoClip`, Ogg/Theora decoding, fullscreen queue/input/music/drawing, `VideoPlayback`, script drawing, or raw-copy OGV delivery, update `BuildTools/VideoInterface.json` and [Video.md](../../../Video.md), regenerate its model/reference, run focused video documentation and native tests, and rebake plus visibly inspect an affected project on every claimed platform. For native GUI render/input primitives or their script exports, update [Frontend and Rendering](../../explanation/rendering/) and [GUI Integration Boundary](../../how-to/runtime/gui.md), regenerate the script API, run focused native tests, and validate every affected scripting backend and screen visibly in an embedding project; high-level libraries, formats, generators, and their references remain project-owned. For AiControl framing, methods, errors, common command fields, authorization, bounds, lifecycle, threat policy, reference client, or sample behavior, update `BuildTools/AiControlProtocol.json` and [AiControl Protocol](../../how-to/ai-control-protocol.md), regenerate the AiControl protocol plus helper-CLI references, run both focused AiControl suites, and validate every affected project-native/client/MCP path; project observations, game actions, administrator commands, and MCP namespaces stay project-owned. For model animation tokens, clip durations, aliases, baked duration metadata, or script lookup changes, also update [Model Animation](../../how-to/content/model-animation.md), run its focused source test, regenerate the native API/reference when needed, and rebake an affected project. For image-frame offsets, baked sprite offset transport, or client walk/run phase behavior, update [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), run its focused source test and image-baker tests, and validate the affected locomotion in a visible client scene. For package declarations or payload behavior, update `BuildTools/PackageInterface.json` and run the structural package test. For the public example portfolio, shared repository files, source scaffold, compatibility boundaries, or publication state, update `Examples/PublicRepositories.json` and [PublicExampleRepositories.md](../../../PublicExampleRepositories.md), regenerate its model/reference, and validate affected external repositories in both Engine modes. Regenerate every affected runtime model, compare all seventeen generated contract domains with `BuildTools/docs_contract_diff.py`, regenerate the root contract index with `BuildTools/docs_public_api.py`, and complete [Contract Change Management](../contract-change-management.md) dispositions for baseline-public or model-contract breaks. Project-authored remote calls remain project-owned: bake both sides and regenerate/check their catalog with `BuildTools/docs_metadata.py`.
    For the current 3D subsystem, treat `ModelSourceLoader`, `ModelAnimationConverter`, `ModelAnimationData`, `ModelMeshData`, `ModelManager`, `ModelInformation`, `ModelInstance`, and `ModelAnimation` as co-owners with the two bakers. A parser, source, compatibility, mesh/rig wire, Ozz runtime, or ownership change updates both model guides and the structured model contract, runs the focused model/Ozz native suites, force-rebakes an affected project, proves the following incremental bake is clean, and validates the affected pose/composition visibly.
-7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `_data/docs-site.json`, both `assets/docs-search.json` and `assets/docs-search.ru.json`, and `Docs/generated/document-routes.json` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
+7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `Docs/Site/Data/docs-site.json`, both `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, and `Docs/generated/document-routes.json` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
 8. Update the [documentation index](../../index.md) when a new user-facing page is added.
 9. Promote backlog status only after semantic source review, not just link checks.
 10. Add a dated section to the [verification report](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationVerificationReport.md) with scope, sources, fixes, and checks.
@@ -14175,7 +14175,7 @@ Generated-surface triggers:
 | A fenced block in public/current/human Markdown or `BuildTools/SnippetPolicy.json` | Declare a supported language, update [Documentation Snippet Validation](snippets.md) when policy changes, regenerate/check `Docs/generated/snippets.json`, run `test_docs_snippets.py` plus `docs_snippets.py --check --external`, and run the semantic compile/bake/smoke owner for every claimed outcome. Untyped/ignored fences are not allowed. |
 | Export methods, native test files, or settings declarations | Regenerate/check `Docs/generated/source-inventory.json`. |
 | Any inventoried Markdown, its visibility/state/owner/target/sources, publication URL, versioning policy, locale policy, or canonical generated model path | Update `Docs/documentation-manifest.json` as needed, regenerate/check snippets first when fenced content/scope changed, site delivery next, AI evaluation after search when affected, then root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `docs_ai_delivery.py`. A context-budget failure requires an explicit manifest/policy review, never truncation. |
-| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `_data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
+| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
 | `Docs/ai-evaluation.json`, a task-owning stable ID, an answer-evidence heading/term, compact-search tokenization/ranking, or the current source ref | Update [AI Documentation Evaluation](ai-evaluation.md), regenerate/check `Docs/generated/ai-evaluation-report.json` with `docs_ai_eval.py` after `docs_site.py`, run its focused test, and record model-family findings separately. Never add irrelevant keywords or lower a threshold merely to make a rank green. |
 | Metadata baker or remote-call format/runtime | Update [Remote Calls](../../reference/scripting/remote-calls.md); an embedding project must rebake both sides and regenerate its project-owned remote-call catalog. |
 | Module init, callback attributes, `Yield`, server script scheduling/synchronization, mutable-global policy, or entity callback teardown | Update [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), run `test_docs_script_lifecycle.py`, and run the narrow source/runtime tests named by the guide. |
@@ -14244,7 +14244,7 @@ Planned future docs should be written as plain prose unless the checker intentio
 
 ## AI maintainer notes
 
-[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `_data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` are the matching human navigation/search/routing projection. All seven must stay derived from the same manifest/corpus.
+[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` are the matching human navigation/search/routing projection. All seven must stay derived from the same manifest/corpus.
 
 If a future AI agent continues this roadmap, it should re-anchor from git status, the backlog, and the verification report before editing. Context from chat is secondary to the repository state.
 
@@ -14401,7 +14401,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8
+Content SHA-256: 97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f
 
 ---
 layout: default
@@ -14590,8 +14590,8 @@ Within a Russian page:
 
 The site language switcher must resolve by stable document ID and fall back visibly when a counterpart is still missing. It must not silently send a Russian reader to an unrelated index.
 
-Search is locale-scoped. English pages load `assets/docs-search.json`; Russian
-pages load `assets/docs-search.ru.json`. Each index has the same fail-closed
+Search is locale-scoped. English pages load `Docs/Site/Assets/docs-search.json`; Russian
+pages load `Docs/Site/Assets/docs-search.ru.json`. Each index has the same fail-closed
 byte limit, contains only documents available in that locale, and must return
 locale-preserving result URLs. This keeps the complete future Russian mirror
 bounded independently from the English corpus.
@@ -23439,7 +23439,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: 05ae26c07fc194a4c4af68e6c2f1b28f746bb0963972f0785e8f4fca69e9f6bb
+Content SHA-256: c0e1e07b02bd2ecaba0481d10db7578111448bfa44dbf5bd1a860757c568d981
 
 ---
 layout: default
@@ -23516,6 +23516,10 @@ Important consequences:
 - Do not document one game's final target list as universal engine behavior.
 - Prefer stage responsibilities and option names over hard-coded generated target names.
 - Validate build changes through an embedding project preset whenever possible.
+
+`BuildTools/cmake/helpers/State.cmake` obtains the configuration-variable list
+from `cmake --help-variable-list` in memory. Configuration and script-mode
+checks must not create a `cmake-vars.txt` snapshot in the source tree.
 
 ## Stage files
 
@@ -24162,7 +24166,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24
+Content SHA-256: 62510930bbdd0856d2d12e806313431c03787789afdd93cac519f74ddfc5f73c
 
 ---
 layout: default
@@ -24343,9 +24347,9 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/assets/diagrams/*.svg`
 - `Docs/generated/screenshots.json`
 - `Docs/assets/screenshots/*.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
@@ -24978,7 +24982,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `_data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 

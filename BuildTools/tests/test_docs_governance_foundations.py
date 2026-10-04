@@ -101,7 +101,7 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
         self.assertEqual(search["max_bytes"], 1_835_008)
         self.assertEqual(
             search["locale_paths"],
-            {"en": "assets/docs-search.json", "ru": "assets/docs-search.ru.json"},
+            {"en": "Docs/Site/Assets/docs-search.json", "ru": "Docs/Site/Assets/docs-search.ru.json"},
         )
         self.assertIn("1.75 MiB (1,835,008 byte)", adr4)
         self.assertIn("authoritative coverage snapshot", adr6)

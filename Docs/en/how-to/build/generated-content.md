@@ -32,7 +32,7 @@ FOnline has three distinct generated layers:
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings and internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
 
 Generated output is evidence, not an editing surface. Fix the source annotation, interface model, project config, generator, or authored asset, then regenerate.
 

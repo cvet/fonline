@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"4dd1c2eb25a0f7c564bf44241e17084381f9bc5cadcf1e16b5968c34dfee6869"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -297,7 +297,7 @@ emitted artifact.
 path controls остаются доступны мышью и через просмотр папок, хотя не входят
 в его tab loop. Реальный installer проверяйте на каждом поддерживаемом host.
 
-Диалог выбора каталога должен выполняться после `CostFinalize`, когда Windows Installer уже вычислил путь `INSTALLDIR`. Иначе `wixl` может поставить диалог, ограниченный только `Before="ProgressDlg"`, перед costing из-за изменчивого порядка обхода зависимостей; `msiexec` тогда прерывает установку с internal error 2343 из-за пустого пути. Генератор закрепляет диалог `After="CostFinalize"` для WiX и `wixl`. [Руководство MSI creator](../../../../BuildTools/msicreator/readme.md) и регрессионные тесты описывают проверку порядка у обоих компоновщиков. Успешная линковка MSI не заменяет видимую проверку установки на поддерживаемом host.
+Диалог выбора каталога должен выполняться после `CostFinalize`, когда Windows Installer уже вычислил путь `INSTALLDIR`. Иначе `wixl` может поставить диалог, ограниченный только `Before="ProgressDlg"`, перед costing из-за изменчивого порядка обхода зависимостей; `msiexec` тогда прерывает установку с internal error 2343 из-за пустого пути. Генератор закрепляет диалог `After="CostFinalize"` для WiX и `wixl`. [Руководство MSI creator](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/readme.md) и регрессионные тесты описывают проверку порядка у обоих компоновщиков. Успешная линковка MSI не заменяет видимую проверку установки на поддерживаемом host.
 
 ### Linux client или server
 

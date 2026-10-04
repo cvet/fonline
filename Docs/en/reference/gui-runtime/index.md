@@ -3,7 +3,7 @@ layout: default
 title: Generated GUI Runtime Reference (Retired)
 locale: en
 document_id: generated-gui-runtime-index
-permalink: /Docs/en/reference/gui-runtime/index.html
+permalink: /Docs/en/reference/gui-runtime/
 ---
 > Legacy route.
 

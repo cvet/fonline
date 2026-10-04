@@ -103,7 +103,7 @@ The current browser/Python ranking contract:
 6. ranks by matched-token count, weighted document score, and title.
 
 The Python implementation in `docs_site.search_documents` and the browser
-implementation in `assets/js/docs.js` must change together. Focused tests pin
+implementation in `Docs/Site/Assets/js/docs.js` must change together. Focused tests pin
 long-query, absent-token, prefix, and static-layout markers.
 
 ## Run model-family evaluations

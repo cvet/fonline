@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"c27667ed0e339de120f2e4c1d94207973748435dfbdd948417d28503a45875c0"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"f9cd69943367c6f5c8b611b7a2235c8074f1002667c6c4d0513da153c934d36f"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -41,13 +41,13 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/docs_site_artifact.py`
 - `BuildTools/tests/test_docs_site_artifact.py`
-- `_layouts/default.html`
-- `assets/css/docs.css`
-- `assets/js/docs.js`
-- `assets/images/fonline-mark.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Layouts/default.html`
+- `Docs/Site/Assets/css/docs.css`
+- `Docs/Site/Assets/js/docs.js`
+- `Docs/Site/Assets/images/fonline-mark.png`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Docs/ai-evaluation.json`
 - `Docs/generated/ai-evaluation-report.json`
@@ -75,8 +75,8 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 | Источник custom domain | Root `CNAME`, содержащий только `fonline.ru` |
 | Конфигурация сайта | Root `_config.yml` |
 | Rendering layer | Только поддерживаемые GitHub Pages themes, plugins, layouts, includes, data и static assets |
-| Навигация читателя | Generated `_data/docs-site.json`, используемый default layout репозитория |
-| Static search | Generated locale-scoped `assets/docs-search.json` и `assets/docs-search.ru.json`, полностью выполняемые в браузере |
+| Навигация читателя | Generated `Docs/Site/Data/docs-site.json`, используемый default layout репозитория |
+| Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` и `Docs/Site/Assets/docs-search.ru.json`, полностью выполняемые в браузере |
 | Обучающие диаграммы | Source-owned local SVG в `Docs/assets/diagrams/` с provenance и hashes в `Docs/generated/diagrams.json` |
 | Скриншоты инструментов | Source-owned local PNG в `Docs/assets/screenshots/` с environment, interactions, source/image hashes и recapture triggers в `Docs/generated/screenshots.json` |
 | Карта version, locale и routes | Generated `Docs/generated/document-routes.json`, выведенный из stable document IDs и manifest targets |
@@ -84,6 +84,23 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 | AI delivery | Root `llms.txt`, ограниченный `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation и complete snippet coverage reports |
 
 Маршрут публикации намеренно не зависит от подключаемого игрового проекта. Last Frontier, TLA и public example games могут ссылаться на этот сайт, но не собирают и не определяют его.
+
+## Размещение исходников сайта
+
+Реализация сайта находится в `Docs/Site/`: `Layouts/` содержит HTML-шаблон,
+`Data/` — сгенерированную навигацию, а `Assets/` — стили, скрипты, логотип и
+поисковые индексы локалей. В `_config.yml` заданы
+`layouts_dir: Docs/Site/Layouts` и `data_dir: Docs/Site/Data`; оба служебных
+каталога исключены из опубликованного дерева. URL статических ресурсов
+используют `/Docs/Site/Assets/` и проверяются по тому же манифесту.
+
+Jekyll по-прежнему читает канонический Markdown из корня репозитория.
+Корневые `_config.yml` и `CNAME` сохраняют действующий контракт источника
+GitHub Pages и домена; `Gemfile` и `.ruby-version` обеспечивают автоматическое
+обнаружение зависимостей при локальной работе. Корневые точки входа для ИИ
+остаются доступными по документированным URL. Изменения структуры требуют
+одновременного обновления генераторов, сведений об исходниках, переводов и
+проверок собранного сайта.
 
 <figure class="docs-diagram">
 <picture>
@@ -110,15 +127,15 @@ GitHub Pages использует `jekyll-readme-index`, который обыч
 
 ## Навигация читателя и статический поиск
 
-Public site оборачивает обычный Markdown, отрендеренный Jekyll, в `_layouts/default.html`. Layout добавляет persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, видимый rolling `master` indicator и EN/RU switch для текущих locale pairs. Markdown остаётся полным и читаемым при открытии непосредственно в GitHub; layout не владеет технической prose.
+Public site оборачивает обычный Markdown, отрендеренный Jekyll, в `Docs/Site/Layouts/default.html`. Layout добавляет persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, видимый rolling `master` indicator и EN/RU switch для текущих locale pairs. Markdown остаётся полным и читаемым при открытии непосредственно в GitHub; layout не владеет технической prose.
 
 `Docs/documentation-manifest.json` задаёт navigation groups через stable document ID. `BuildTools/docs_site.py` разрешает ID в текущие titles и paths и записывает:
 
 | Артефакт | Содержимое |
 |---|---|
-| `_data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes и current stable-ID locale pairs |
-| `assets/docs-search.json` | Compact weighted English token postings и result metadata для каждого public current English human document |
-| `assets/docs-search.ru.json` | Compact weighted Russian token postings и result metadata для каждого current translated human document |
+| `Docs/Site/Data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes и current stable-ID locale pairs |
+| `Docs/Site/Assets/docs-search.json` | Compact weighted English token postings и result metadata для каждого public current English human document |
+| `Docs/Site/Assets/docs-search.ru.json` | Compact weighted Russian token postings и result metadata для каждого current translated human document |
 | `Docs/generated/document-routes.json` | Current public URLs, canonical future owners, planned English/Russian paths, route availability и required legacy redirects |
 
 Каждая public current human top-level page должна ровно один раз входить в navigation. Generated detail pages не попадают в sidebar, но доступны в поиске через generated index pages. Internal plans, placeholders и AI-only maintainer routes отсутствуют в обеих reader surfaces.
@@ -151,6 +168,11 @@ Localization policy также принадлежит исходному код�
 - stable-ID language switching и locale-scoped search активны для каждой обязательной пары; режим manifest enforcement равен `complete`.
 
 `Docs/generated/document-routes.json` фиксирует migration map до перемещения файлов. Каждая public record содержит current route, planned canonical owner/path, locale paths и redirect requirement. Несколько legacy pages могут сходиться только к одному non-`replace` owner destination.
+
+Каждый текущий маршрут объявляет `current_locale`, включая старые русские
+страницы-указатели, у которых нет пары переводов. Проверки артефакта и браузера
+используют это поле для проверки языка HTML. Указатель `index.md` закрепляет
+permalink каталога, совпадающий с каталогом маршрутов.
 
 Прежние плоские Markdown-файлы остаются долговечными указателями на канонические страницы, включая ссылки для старых якорей заголовков. Это сохраняет маршруты и в интерфейсе репозитория GitHub, и в Jekyll без сгенерированного HTML и дополнительного redirect-плагина. Сгенерированный реестр маршрутов отклоняет отсутствующих владельцев, коллизии маршрутов и устаревшие записи указателей.
 
@@ -270,6 +292,17 @@ Automated axe results покрывают только machine-detectable criteri
 Job проверяет и предварительно показывает production-compatible render. Он не deploy, не меняет Pages settings, branch или DNS. Существующий GitHub Pages source остаётся единственным production route.
 
 Reviewers должны просмотреть каждый retained screenshot, включая отдельное русское изображение reflow при 200 процентах, затем интерактивно landing page и changed pages. Проверьте rolling version indicator, locale switch, page TOC, code blocks, tables, local assets, keyboard order и один screen-reader landmarks/headings pass. Перед выпуском повторите 200 percent zoom на landed artifact или production domain; локальный profile не заменяет проверку этой среды. Green source/artifact/axe check сам по себе не доказывает читаемость для каждого пользователя.
+
+Три профиля проверки маршрутов выполняются параллельно в отдельных браузерных
+контекстах. У каждого своя страница, обработчики ошибок и счётчики доступности;
+результаты сохраняют порядок профилей из манифеста. Каждые 50 страниц выводится
+число проверенных маршрутов. Интерактивные сценарии выполняются после завершения
+всех трёх профилей.
+
+Длинные неразрывные слова в обычном тексте переносятся по ширине колонки.
+Блоки кода сохраняют собственную горизонтальную прокрутку. Проверка геометрии
+использует мгновенную прокрутку, чтобы плавная прокрутка сайта не скрывала
+доступное читателю горизонтальное переполнение.
 
 ## Проверка production
 

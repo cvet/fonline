@@ -148,11 +148,13 @@ SetDefaultVariables(0
 	FO_HAVE_SDL_GPU)
 
 # Configuration duplication
-SetValue(configVarsFile "${CMAKE_CURRENT_BINARY_DIR}/cmake-vars.txt")
 ExecuteProcess(
 	COMMAND ${CMAKE_COMMAND} --help-variable-list
-	OUTPUT_FILE "${configVarsFile}")
-FileReadStrings("${configVarsFile}" configVarFullList)
+	OUTPUT_VARIABLE configVarOutput
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+	COMMAND_ERROR_IS_FATAL ANY)
+StringReplace("\r" "" configVarOutput "${configVarOutput}")
+StringReplace("\n" ";" configVarFullList "${configVarOutput}")
 
 foreach(configVar ${configVarFullList})
 	if("${configVar}" MATCHES "<CONFIG>")

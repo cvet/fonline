@@ -221,6 +221,9 @@ Bounded full-context bundle: https://fonline.ru/llms-full.txt
 
 ## Machine-readable references
 
+- [site-docs-search](https://fonline.ru/Docs/Site/Assets/docs-search.json): canonical generated JSON at `Docs/Site/Assets/docs-search.json`.
+- [site-docs-search.ru](https://fonline.ru/Docs/Site/Assets/docs-search.ru.json): canonical generated JSON at `Docs/Site/Assets/docs-search.ru.json`.
+- [site-docs-site](https://fonline.ru/Docs/Site/Data/docs-site.json): canonical generated JSON at `Docs/Site/Data/docs-site.json`.
 - [ai_control_protocol_reference](https://fonline.ru/Docs/generated/ai-control-protocol.json): canonical generated JSON at `Docs/generated/ai-control-protocol.json`.
 - [ai_evaluation](https://fonline.ru/Docs/generated/ai-evaluation-report.json): canonical generated JSON at `Docs/generated/ai-evaluation-report.json`.
 - [api_model](https://fonline.ru/Docs/generated/api.json): canonical generated JSON at `Docs/generated/api.json`.
@@ -248,7 +251,4 @@ Bounded full-context bundle: https://fonline.ru/llms-full.txt
 - [text_format_reference](https://fonline.ru/Docs/generated/text-format.json): canonical generated JSON at `Docs/generated/text-format.json`.
 - [localization_status](https://fonline.ru/Docs/generated/translation-status.json): canonical generated JSON at `Docs/generated/translation-status.json`.
 - [video_reference](https://fonline.ru/Docs/generated/video.json): canonical generated JSON at `Docs/generated/video.json`.
-- [site-docs-site](https://fonline.ru/_data/docs-site.json): canonical generated JSON at `_data/docs-site.json`.
-- [site-docs-search](https://fonline.ru/assets/docs-search.json): canonical generated JSON at `assets/docs-search.json`.
-- [site-docs-search.ru](https://fonline.ru/assets/docs-search.ru.json): canonical generated JSON at `assets/docs-search.ru.json`.
 - [public documentation manifest](https://fonline.ru/docs-manifest.json): public paths, stable IDs, provenance, URLs, and content hashes.
