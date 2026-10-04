@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"0c71b7c0af8a7d2bd1ad6176c88725405d88098aa9305577fe12ed926a812494"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -223,6 +223,8 @@ Markdown-ссылки документации движка должны раз�
 Манифест также задаёт единый review contract для каждого владельца домена. Изменение документации требует primary owner страницы или структурированного контракта, evidence этого владельца и всех co-reviews, вызванных изменённой границей. `localization` владеет parity локалей документации и проверкой носителем языка; `content-data` по-прежнему владеет форматом текста движка и механикой authored data. Build/release, runtime, scripting, content, frontend, networking, tooling, platform, quality, localization и documentation остаются разными обязанностями, даже если сейчас их выполняет один maintainer.
 
 [Инвентарь внешних проектных доказательств и их продвижения](https://github.com/cvet/fonline/blob/master/Docs/generated/external-project-evidence/index.md) является проверяемым внутренним discovery ledger для Last Frontier и TLA. Каждая запись должна указывать точный snapshot source, disposition, priority, Engine или project target, primary owner, required reviews и promotion gate. Наличие записи само по себе не делает внешний проект нормативным: утверждение `promoted` заново выводится из исходного кода и тестов Engine, `boundary-owned` оставляет конкретную реализацию вне Engine, `promotion-candidate` фиксирует недостающие повторно используемые артефакты, а `project-owned` запрещает выдумывать контракт Engine. Обновляйте и проверяйте по исходникам этот ledger, если evidence любого проекта меняет решение о promotion или выявляет новую общую задачу; сам ledger исключён из публичного сайта и AI delivery.
+
+Каждое обновление master, включая правки только документации, также следует [обязательному контракту обновления Engine](../../how-to/release/versioning.md#каждое-обновление-master): рост версии, датированные двуязычные заметки изменений/миграции, сохранение смысла и полные генерируемые данные. Перед разрешённой интеграцией выполните `BuildTools/docs_engine_version.py` относительно фактической исходной ревизии.
 
 ## Стандартный процесс работы над группой документов
 

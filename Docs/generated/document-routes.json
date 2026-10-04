@@ -2,6 +2,13 @@
   "schema_version": 3,
   "generated_by": "BuildTools/docs_site.py",
   "canonical_base_url": "https://fonline.ru",
+  "engine": {
+    "scheme": "calver",
+    "source": "VERSION",
+    "master_format": "YEAR.MAJOR.MINOR-dev",
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
+    "value": "2026.1.1-dev"
+  },
   "version": {
     "channel": "current",
     "kind": "rolling-branch",
@@ -44,10 +51,10 @@
     "legacy_route_strategy": "durable-markdown-pointer",
     "migration_status": "planned"
   },
-  "route_count": 396,
+  "route_count": 398,
   "redirect_count": 203,
-  "translation_target_count": 192,
-  "translation_complete_count": 192,
+  "translation_target_count": 194,
+  "translation_complete_count": 194,
   "routes": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -1157,6 +1164,40 @@
       ]
     },
     {
+      "id": "engine-changelog",
+      "canonical_document_id": "engine-changelog",
+      "title": "Engine Changelog",
+      "state": "current",
+      "human": true,
+      "translation": "required",
+      "disposition": "retain",
+      "source_path": "Docs/en/reference/changelog.md",
+      "current_path": "/Docs/en/reference/changelog.html",
+      "current_locale": "en",
+      "current_url": "https://fonline.ru/Docs/en/reference/changelog.html",
+      "planned_source_path": "Docs/en/reference/changelog.md",
+      "planned_path": "/Docs/en/reference/changelog.html",
+      "planned_url": "https://fonline.ru/Docs/en/reference/changelog.html",
+      "migration_status": "current",
+      "redirect_required": false,
+      "locale_routes": [
+        {
+          "locale": "en",
+          "source_path": "Docs/en/reference/changelog.md",
+          "path": "/Docs/en/reference/changelog.html",
+          "url": "https://fonline.ru/Docs/en/reference/changelog.html",
+          "availability": "available"
+        },
+        {
+          "locale": "ru",
+          "source_path": "Docs/ru/reference/changelog.md",
+          "path": "/Docs/ru/reference/changelog.html",
+          "url": "https://fonline.ru/Docs/ru/reference/changelog.html",
+          "availability": "available"
+        }
+      ]
+    },
+    {
       "id": "engine-upgrade-guide",
       "canonical_document_id": "engine-upgrade-guide",
       "title": "Upgrade an Embedding Project",
@@ -1186,6 +1227,40 @@
           "source_path": "Docs/ru/how-to/migration/engine-upgrade.md",
           "path": "/Docs/ru/how-to/migration/engine-upgrade.html",
           "url": "https://fonline.ru/Docs/ru/how-to/migration/engine-upgrade.html",
+          "availability": "available"
+        }
+      ]
+    },
+    {
+      "id": "engine-versioning",
+      "canonical_document_id": "engine-versioning",
+      "title": "Engine Versioning and Release Notes",
+      "state": "current",
+      "human": true,
+      "translation": "required",
+      "disposition": "retain",
+      "source_path": "Docs/en/how-to/release/versioning.md",
+      "current_path": "/Docs/en/how-to/release/versioning.html",
+      "current_locale": "en",
+      "current_url": "https://fonline.ru/Docs/en/how-to/release/versioning.html",
+      "planned_source_path": "Docs/en/how-to/release/versioning.md",
+      "planned_path": "/Docs/en/how-to/release/versioning.html",
+      "planned_url": "https://fonline.ru/Docs/en/how-to/release/versioning.html",
+      "migration_status": "current",
+      "redirect_required": false,
+      "locale_routes": [
+        {
+          "locale": "en",
+          "source_path": "Docs/en/how-to/release/versioning.md",
+          "path": "/Docs/en/how-to/release/versioning.html",
+          "url": "https://fonline.ru/Docs/en/how-to/release/versioning.html",
+          "availability": "available"
+        },
+        {
+          "locale": "ru",
+          "source_path": "Docs/ru/how-to/release/versioning.md",
+          "path": "/Docs/ru/how-to/release/versioning.html",
+          "url": "https://fonline.ru/Docs/ru/how-to/release/versioning.html",
           "availability": "available"
         }
       ]

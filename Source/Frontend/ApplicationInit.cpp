@@ -121,6 +121,7 @@ static void InitAppImpl(CommandLineArgs args, AppInitFlags flags, bool unit_test
     auto settings = unit_testing ? LoadTestingAppSettings() : LoadAppSettings(args);
 
     logging::write("Version: {}", settings.Common.GameVersion);
+    logging::write("Engine: {} (revision {})", FO_ENGINE_VERSION, FO_ENGINE_REVISION);
 
     // Disable message box on exception if headless window is used
     if (is_enum_set(flags, AppInitFlags::ShowMessageOnException) && settings.Render.HeadlessWindow) {

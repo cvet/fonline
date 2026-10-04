@@ -11,8 +11,8 @@
     "term_count": 34
   },
   "summary": {
-    "required_document_count": 192,
-    "current_translation_count": 192,
+    "required_document_count": 194,
+    "current_translation_count": 194,
     "missing_translation_count": 0,
     "coverage_percent": 100.0,
     "complete": true
@@ -105,8 +105,8 @@
       "english_path": "Docs/en/contributing/contract-change-management.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/contract-change-management.md",
-      "source_sha256": "36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526",
-      "source_bytes": 23606,
+      "source_sha256": "2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1",
+      "source_bytes": 25220,
       "status": "current"
     },
     {
@@ -131,8 +131,8 @@
       "english_path": "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0002-public-api-stability-contract.md",
-      "source_sha256": "664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417",
-      "source_bytes": 11911,
+      "source_sha256": "d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc",
+      "source_bytes": 13838,
       "status": "current"
     },
     {
@@ -144,8 +144,8 @@
       "english_path": "Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
-      "source_sha256": "8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00",
-      "source_bytes": 8314,
+      "source_sha256": "104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85",
+      "source_bytes": 8568,
       "status": "current"
     },
     {
@@ -183,8 +183,8 @@
       "english_path": "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.md",
-      "source_sha256": "73105acf69b98966d3cf6dcc6ed7f54c3f5485bf16a218f73f63ed9c3d6ac955",
-      "source_bytes": 8381,
+      "source_sha256": "ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6",
+      "source_bytes": 8719,
       "status": "current"
     },
     {
@@ -209,8 +209,8 @@
       "english_path": "Docs/en/contributing/documentation/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/index.md",
-      "source_sha256": "0c71b7c0af8a7d2bd1ad6176c88725405d88098aa9305577fe12ed926a812494",
-      "source_bytes": 53449,
+      "source_sha256": "a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548",
+      "source_bytes": 53828,
       "status": "current"
     },
     {
@@ -222,8 +222,8 @@
       "english_path": "Docs/en/contributing/documentation/site-publication.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/site-publication.md",
-      "source_sha256": "f9cd69943367c6f5c8b611b7a2235c8074f1002667c6c4d0513da153c934d36f",
-      "source_bytes": 30683,
+      "source_sha256": "74684213187e12b5da6b33f3300a2da1ad9042f4212b5f4e1d9b4d90d804c9bc",
+      "source_bytes": 30980,
       "status": "current"
     },
     {
@@ -469,8 +469,8 @@
       "english_path": "Docs/en/how-to/build/generated-content.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/generated-content.md",
-      "source_sha256": "86fcf1f50512470c47e1872dc285c4c1db18ac8206ee0bf54cdd199e7e83c62f",
-      "source_bytes": 11051,
+      "source_sha256": "ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c",
+      "source_bytes": 11480,
       "status": "current"
     },
     {
@@ -677,8 +677,8 @@
       "english_path": "Docs/en/how-to/migration/engine-upgrade.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/migration/engine-upgrade.md",
-      "source_sha256": "c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4",
-      "source_bytes": 9879,
+      "source_sha256": "5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374",
+      "source_bytes": 10940,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "4dd1c2eb25a0f7c564bf44241e17084381f9bc5cadcf1e16b5968c34dfee6869",
-      "source_bytes": 35872,
+      "source_sha256": "bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e",
+      "source_bytes": 36208,
       "status": "current"
     },
     {
@@ -796,6 +796,19 @@
       "russian_path": "Docs/ru/how-to/release/security-and-secrets.md",
       "source_sha256": "e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5",
       "source_bytes": 17884,
+      "status": "current"
+    },
+    {
+      "id": "engine-versioning",
+      "title": "Engine Versioning and Release Notes",
+      "owner": "build-release",
+      "diataxis": "how-to",
+      "source_path": "Docs/en/how-to/release/versioning.md",
+      "english_path": "Docs/en/how-to/release/versioning.md",
+      "english_path_state": "migrated",
+      "russian_path": "Docs/ru/how-to/release/versioning.md",
+      "source_sha256": "f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7",
+      "source_bytes": 13147,
       "status": "current"
     },
     {
@@ -924,8 +937,8 @@
       "english_path": "Docs/en/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/index.md",
-      "source_sha256": "7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673",
-      "source_bytes": 9654,
+      "source_sha256": "e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f",
+      "source_bytes": 9803,
       "status": "current"
     },
     {
@@ -1121,6 +1134,19 @@
       "russian_path": "Docs/ru/reference/buildtools/index.md",
       "source_sha256": "37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2",
       "source_bytes": 3160,
+      "status": "current"
+    },
+    {
+      "id": "engine-changelog",
+      "title": "Engine Changelog",
+      "owner": "build-release",
+      "diataxis": "reference",
+      "source_path": "Docs/en/reference/changelog.md",
+      "english_path": "Docs/en/reference/changelog.md",
+      "english_path_state": "migrated",
+      "russian_path": "Docs/ru/reference/changelog.md",
+      "source_sha256": "626f4a6354f07f457aad0869456703c1c64580c833a78ea14615faac69ae58c2",
+      "source_bytes": 3860,
       "status": "current"
     },
     {
@@ -1574,8 +1600,8 @@
       "english_path": "Docs/en/reference/metadata/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/metadata/index.md",
-      "source_sha256": "62510930bbdd0856d2d12e806313431c03787789afdd93cac519f74ddfc5f73c",
-      "source_bytes": 80533,
+      "source_sha256": "d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd",
+      "source_bytes": 80746,
       "status": "current"
     },
     {
@@ -2484,8 +2510,8 @@
       "english_path": "README.md",
       "english_path_state": "migrated",
       "russian_path": "README.ru.md",
-      "source_sha256": "b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38",
-      "source_bytes": 17980,
+      "source_sha256": "4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7",
+      "source_bytes": 18086,
       "status": "current"
     },
     {

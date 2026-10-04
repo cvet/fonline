@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"86fcf1f50512470c47e1872dc285c4c1db18ac8206ee0bf54cdd199e7e83c62f"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c"} -->
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.
@@ -74,6 +74,8 @@ bake.
 Повторите configure после изменения CMake options, source registration, stage
 hooks, generated templates или Engine pin. Соберите самый узкий target, который
 компилирует затронутый generated source.
+
+Файл `VERSION` движка также участвует в конфигурации и генерации кода. Его номер CalVer и точная ревизия Engine становятся `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` в `EngineConfig.gen.h`; хеш сборки игрового проекта сохраняет отдельный смысл. Изменение `VERSION` автоматически инвалидирует конфигурацию и генерацию кода. См. [правила версий движка](../release/versioning.md) и [историю изменений](../../reference/changelog.md).
 
 ## Компиляция scripts
 

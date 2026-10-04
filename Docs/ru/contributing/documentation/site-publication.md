@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"f9cd69943367c6f5c8b611b7a2235c8074f1002667c6c4d0513da153c934d36f"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"74684213187e12b5da6b33f3300a2da1ad9042f4212b5f4e1d9b4d90d804c9bc"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -127,7 +127,7 @@ GitHub Pages использует `jekyll-readme-index`, который обыч
 
 ## Навигация читателя и статический поиск
 
-Public site оборачивает обычный Markdown, отрендеренный Jekyll, в `Docs/Site/Layouts/default.html`. Layout добавляет persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, видимый rolling `master` indicator и EN/RU switch для текущих locale pairs. Markdown остаётся полным и читаемым при открытии непосредственно в GitHub; layout не владеет технической prose.
+Public site оборачивает обычный Markdown, отрендеренный Jekyll, в `Docs/Site/Layouts/default.html`. Layout добавляет persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, ссылку CalVer движка на историю изменений выбранного языка и EN/RU switch для текущих locale pairs. Метка `Current` и подсказка сохраняют идентичность обновляемого канала `master`. Markdown остаётся полным и читаемым при открытии непосредственно в GitHub; layout не владеет технической prose. [Правила версий движка](../../how-to/release/versioning.md) задают источник `VERSION`; генерируемые манифесты сайта, маршрутов и данных для ИИ содержат его в объекте `engine` отдельно от `version` канала документации.
 
 `Docs/documentation-manifest.json` задаёт navigation groups через stable document ID. `BuildTools/docs_site.py` разрешает ID в текущие titles и paths и записывает:
 

@@ -9999,3 +9999,59 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
 - Reconciled the owner's subsequent English README badge removal with the Russian
   README, reviewed its normalized English source hash, and regenerated downstream
   locale/site/AI artifacts. This is navigation parity, not a runtime change.
+
+## 2026-10-04 - Engine version, current-only API and complete master updates
+
+Scope and reconciliation:
+
+- Continued the authorized local version/changelog change against Engine HEAD
+  `0e05c8abdd2cc5db81d722a73a56796edf8b4866`. The historical unused
+  `2022.1.0.wip` becomes `2026.1.1-dev`; this is the first policy adoption,
+  not a reconstructed release history.
+- The owner's notation is `YEAR.MAJOR.MINOR-dev` on master and
+  `YEAR.MAJOR.MINOR.PATCH[-rc]` on `release/YEAR.MAJOR`. Major is the release-line
+  ordinal within the year; month belongs to the dated note. Every first-parent
+  master update, including documentation/tests/CI/dependencies/reverts, increments
+  minor. Release cuts freeze year/major/minor, stabilization increments patch,
+  and candidate promotion only removes `-rc` with documentation/metadata changes.
+- Reconciled AGENTS, ADR-0002, contract-change review, documentation maintenance,
+  upgrade guidance, paired EN/RU versioning/changelog pages and generated delivery.
+  Existing valid meanings must be preserved. Replacements remove the old API and
+  explicitly reject affected old use at compile/bake/validation time. Existing
+  persisted-property/entity-reference MigrationRule conversions remain the narrow
+  exception. Migration records specify detection, exact transformations, ordered
+  rebuild/bake/data operations, compatibility/deployment/rollback and acceptance.
+- A shared strict parser feeds CMake/native metadata and documentation. Engine
+  version/revision, project build identity and runtime compatibility remain separate.
+  CI checks the exact incoming first-parent publication range and rejects skipped
+  bumps, missing dated bilingual migration sections and code changes during a
+  same-patch rc promotion. Static contract diffs do not prove semantic preservation;
+  explicit review and negative/positive acceptance checks remain mandatory.
+- Versioning metadata advances to schema 3 with exact master/release formats. The
+  reviewed full-context cap increases by 32 KiB to 2195456 bytes; the final bundle
+  is 2170598 bytes. Whole-document inclusion and fail-closed enforcement remain.
+
+Completed local validation:
+
+- Version/history fixtures: 10 passed. Governance: 5; site: 13; AI evaluation: 4;
+  AI delivery: 11. The complete documentation-validator fixture suite passes all
+  50 cases (2023.840 seconds). Codegen/CMake dependency fixtures pass 15 cases,
+  with 10 unavailable-generator skips in the ignored non-TEMP workspace tree.
+- Fresh configured Windows native unit build and execution pass 528 cases and
+  662749 assertions. Startup prints Engine `2026.1.1-dev` and its tracked-dirty
+  revision; compatibility digest remains `4e12d840c7db909c`. This is local native
+  acceptance using an embedding configuration, not a project-owned normative test.
+- The aggregate generated-contract diff reports zero changes across seventeen
+  domains, with zero required or missing dispositions. CMake/API, external snippet,
+  complete translation, site/search, AI evaluation/delivery and browser-harness
+  freshness checks pass. Source documentation validation passes 410 Markdown entries.
+- Safe Jekyll rendering completes in 74.488 seconds. Rendered validation passes
+  592 routes, 42 static endpoints and 85490 local references. The browser audit
+  passes 1776 page checks, 15 interaction profiles and 23 fresh screenshots.
+  Desktop/mobile/200% zoom each pass all 592 routes; axe reports zero violations,
+  and contrast fallback leaves zero failed or unresolved nodes. All 23 captures
+  were freshness-checked and visually reviewed, including six EN/RU changelog
+  views and their version/locale navigation.
+- No repository commit, push, release branch/tag creation, Pages publication,
+  remote CI or production qualification was performed. Release operations remain
+  a future owner-authorized procedure.

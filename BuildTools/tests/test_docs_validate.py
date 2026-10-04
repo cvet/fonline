@@ -51,6 +51,7 @@ class DocumentationValidatorTests(unittest.TestCase):
     def _create_tree(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
+        (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs").mkdir()
         (root / "BuildTools").mkdir()
         (root / docs_description_translations.DEFAULT_CATALOG).write_text(
@@ -273,6 +274,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             },
             "versioning": {
                 "schema_version": docs_ai_delivery.VERSIONING_SCHEMA_VERSION,
+                "engine": dict(docs_ai_delivery.ENGINE_VERSION_POLICY),
                 "current": {
                     "channel": "current",
                     "kind": "rolling-branch",

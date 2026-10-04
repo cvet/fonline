@@ -1033,6 +1033,57 @@ async function auditDiagramRendering(browser, baseUrl, routePath, screenshotDir,
   };
 }
 
+async function auditEngineVersionInteractions(browser, baseUrl, engineVersion, screenshotDir, screenshotPaths) {
+  const errors = [];
+  for (const profile of PROFILES) {
+    const context = await browser.newContext({
+      viewport: profile.viewport,
+      deviceScaleFactor: profile.deviceScaleFactor || 1,
+      colorScheme: profile.colorScheme,
+      isMobile: profile.isMobile,
+      hasTouch: profile.hasTouch || false,
+      reducedMotion: "reduce"
+    });
+    const page = await context.newPage();
+    try {
+      for (const locale of ["en", "ru"]) {
+        await page.goto(`${baseUrl}/Docs/${locale}/`, { waitUntil: "load" });
+        const indicator = page.locator(".version-indicator");
+        if (!await indicator.isVisible() || await indicator.locator("strong").innerText() !== engineVersion) {
+          throw new Error(`${profile.id}/${locale}: visible Engine version differs from VERSION`);
+        }
+        await indicator.click();
+        await page.waitForLoadState("load");
+        const changelogPath = `/Docs/${locale}/reference/changelog.html`;
+        if (new URL(page.url()).pathname !== changelogPath
+            || await page.locator("html").getAttribute("lang") !== locale) {
+          throw new Error(`${profile.id}/${locale}: version link did not open its locale's changelog`);
+        }
+        errors.push(...(await inspectLayout(page, profile)).map((error) => `${profile.id}/${locale}: ${error}`));
+        const screenshotName = `engine-changelog-${locale}-${profile.id}.png`;
+        await page.screenshot({ path: join(screenshotDir, screenshotName), fullPage: true });
+        screenshotPaths.push(screenshotName);
+        const pairedLocale = locale === "en" ? "ru" : "en";
+        await page.locator(`.locale-switch a[lang="${pairedLocale}"]`).click();
+        await page.waitForLoadState("load");
+        if (new URL(page.url()).pathname !== `/Docs/${pairedLocale}/reference/changelog.html`) {
+          throw new Error(`${profile.id}/${locale}: changelog language switch lost the paired route`);
+        }
+      }
+    } catch (error) {
+      errors.push(`Engine version interaction audit failed: ${error.message}`);
+    } finally {
+      await context.close();
+    }
+  }
+  return {
+    id: "engine-version-changelog",
+    path: "/Docs/en/reference/changelog.html",
+    passed: errors.length === 0,
+    errors
+  };
+}
+
 async function main() {
   const root = ENGINE_ROOT;
   let options;
@@ -1125,6 +1176,13 @@ async function main() {
       });
     }
     const interactions = [
+      await auditEngineVersionInteractions(
+        browser,
+        server.baseUrl,
+        (await readFile(join(root, "VERSION"), "utf8")).trim(),
+        screenshotDir,
+        screenshots
+      ),
       await auditDesktopInteractions(
         browser,
         server.baseUrl,

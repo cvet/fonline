@@ -9,7 +9,7 @@ concurrency:
 
 on:
   push:
-    branches: [master]
+    branches: [master, 'release/**']
   pull_request:
   workflow_dispatch:
     inputs:
@@ -22,6 +22,43 @@ on:
           - managed-apple
 
 jobs:
+  engine-update:
+    name: Validate Engine update versions and migration notes
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+    - run: python3 BuildTools/tests/test_engine_version.py
+    - name: Check the exact publication range
+      env:
+        VERSION_BRANCH: ${{ github.event_name == 'pull_request' && github.base_ref || github.ref_name }}
+        VERSION_BASE_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        VERSION_TARGET_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+        VERSION_EVENT: ${{ github.event_name }}
+      run: |
+        python3 - <<'PY'
+        import os
+        import sys
+        from pathlib import Path
+        sys.path.insert(0, 'BuildTools')
+        from docs_engine_version import git, validate_committed_update, validate_history
+        root = Path('.')
+        target = os.environ['VERSION_TARGET_REF']
+        baseline = os.environ['VERSION_BASE_REF']
+        branch = os.environ['VERSION_BRANCH']
+        if not baseline or set(baseline) == {'0'}:
+            baseline = git(root, 'rev-parse', '--verify', f'{target}^')
+        if os.environ['VERSION_EVENT'] == 'push':
+            count = validate_history(root, baseline, target, branch)
+        else:
+            validate_committed_update(root, baseline, target, branch)
+            count = 1
+        print(f'Engine update contract passed: {count} publication step(s) on {branch}')
+        PY
   check-formatting:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Check formatting
@@ -56,6 +93,7 @@ jobs:
       with:
         fetch-depth: 0
     - run: python3 BuildTools/tests/test_docs_api.py
+    - run: python3 BuildTools/tests/test_engine_version.py
     - run: python3 BuildTools/tests/test_docs_api_diff.py
     - run: python3 BuildTools/tests/test_docs_ai_delivery.py
     - run: python3 BuildTools/tests/test_docs_ai_eval.py

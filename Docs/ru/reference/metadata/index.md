@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"62510930bbdd0856d2d12e806313431c03787789afdd93cac519f74ddfc5f73c"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -227,7 +227,7 @@ binary.
 `Codegen.cmake` объявляет generated outputs в `GeneratedSource/`, включая:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — единый macro-only header, подключаемый в начале `Source/Essentials/BasicCore.h`. Он содержит конфигурационные макросы движка и строковые build/version macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Заменяет прежний `Version-Include.h`.
+- `EngineConfig.gen.h` — единый macro-only header, подключаемый в начале `Source/Essentials/BasicCore.h`. Он содержит конфигурационные макросы движка и строковые build/version macros `FO_BUILD_HASH` / `FO_ENGINE_VERSION` / `FO_ENGINE_REVISION` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Заменяет прежний `Version-Include.h`. [Правила версий движка](../../how-to/release/versioning.md) разделяют номер выпуска и ревизию Engine, хеш сборки проекта и идентификатор совместимости выполнения.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`

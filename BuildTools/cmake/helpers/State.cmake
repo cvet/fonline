@@ -3,6 +3,7 @@ include_guard()
 # Temporary variables
 SetDefaultVariables(""
 	FO_ENGINE_ROOT
+	FO_ENGINE_VERSION
 	FO_BUILD_HASH
 	FO_GIT_ROOT
 	FO_GIT_HASH_RESULT

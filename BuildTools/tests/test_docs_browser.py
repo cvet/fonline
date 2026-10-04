@@ -51,6 +51,7 @@ class DocumentationBrowserAuditTests(unittest.TestCase):
             "WCAG 2.2 Level AA automated axe-core subset",
             '"wcag22aa"',
             "auditDesktopInteractions",
+            "auditEngineVersionInteractions",
             "auditMobileInteractions",
             "auditZoomInteractions",
             "auditLocaleInteractions",

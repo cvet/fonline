@@ -127,7 +127,7 @@ GitHub source URL, but it must not promise a same-domain route for them.
 
 ## Reader navigation and static search
 
-The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/default.html`. The layout adds a persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, a visible rolling `master` indicator, and an EN/RU switch for current locale pairs. Markdown remains complete and readable when opened directly in GitHub; the layout owns no technical prose.
+The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/default.html`. The layout adds a persistent desktop sidebar, mobile navigation, page-local table of contents, source link, code-copy controls, light/dark preference, the Engine CalVer link to the locale's changelog, and an EN/RU switch for current locale pairs. Its `Current` label and tooltip retain the rolling `master` channel identity. Markdown remains complete and readable when opened directly in GitHub; the layout owns no technical prose. [Engine versioning](../../how-to/release/versioning.md) defines the `VERSION` source; generated site/route and AI manifests carry it in their `engine` object separately from documentation-channel `version`.
 
 `Docs/documentation-manifest.json` owns the navigation groups by stable document ID. `BuildTools/docs_site.py` resolves those IDs to current titles and paths and writes:
 

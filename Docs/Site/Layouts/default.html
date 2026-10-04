@@ -36,7 +36,7 @@
         <span aria-hidden="true"></span>
       </button>
 
-      <a class="docs-brand" href="{{ '/' | relative_url }}">
+      <a class="docs-brand" href="{{ '/' | relative_url }}" aria-label="FOnline Engine">
         <img src="{{ '/Docs/Site/Assets/images/fonline-mark.png' | relative_url }}" width="36" height="36" alt="">
         <span>FOnline Engine</span>
       </a>
@@ -48,10 +48,10 @@
           <a href="{{ current_locale_pair.ru.url | relative_url }}" lang="ru" hreflang="ru"{% if docs_locale == 'ru' %} class="is-active" aria-current="page"{% endif %}>RU</a>
         </nav>
         {% endif %}
-        <span class="version-indicator" title="{% if docs_locale == 'ru' %}Текущая документация соответствует обновляемой ветке репозитория{% else %}Current documentation follows the rolling repository branch{% endif %}">
+        <a class="version-indicator" href="{% if docs_locale == 'ru' %}{{ '/Docs/ru/reference/changelog.html' | relative_url }}{% else %}{{ '/Docs/en/reference/changelog.html' | relative_url }}{% endif %}" title="{% if docs_locale == 'ru' %}Версия движка из VERSION; текущая документация соответствует ветке {{ site.data.docs-site.version.value }}. Открыть историю изменений{% else %}Engine version from VERSION; current documentation follows {{ site.data.docs-site.version.value }}. Open the changelog{% endif %}">
           <span class="version-label">{{ site.data.docs-site.version.label }}</span>
-          <strong>{{ site.data.docs-site.version.value }}</strong>
-        </span>
+          <strong>{{ site.data.docs-site.engine.value }}</strong>
+        </a>
         <button class="icon-button search-open header-search" type="button" data-search-open aria-label="{% if docs_locale == 'ru' %}Поиск по документации{% else %}Search documentation{% endif %}"></button>
         <a class="header-link" href="https://github.com/{{ site.data.docs-site.repository }}" aria-label="{% if docs_locale == 'ru' %}Репозиторий FOnline на GitHub{% else %}FOnline repository on GitHub{% endif %}">GitHub</a>
         <button class="icon-button theme-toggle" type="button" data-theme-toggle aria-label="{% if docs_locale == 'ru' %}Использовать тёмную тему{% else %}Use dark theme{% endif %}"></button>

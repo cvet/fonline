@@ -226,7 +226,7 @@ from the generated binary markers before writing the bootstrap config.
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_ENGINE_VERSION` / `FO_ENGINE_REVISION` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`. [Engine versioning](../../how-to/release/versioning.md) defines the separate Engine release, Engine revision, project build hash, and runtime compatibility identities.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`

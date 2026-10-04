@@ -5,6 +5,7 @@
 Canonical site: https://fonline.ru
 Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.
 Current documentation: `master` rolling branch.
+Engine version: `2026.1.1-dev` (CalVer from VERSION).
 Machine-readable document index: https://fonline.ru/docs-manifest.json
 Bounded full-context bundle: https://fonline.ru/llms-full.txt
 
@@ -21,6 +22,8 @@ Bounded full-context bundle: https://fonline.ru/llms-full.txt
 - [Engine Architecture](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/explanation/architecture/index.md): `engine-architecture`; explanation; game-developer, engine-contributor, ai-agent; [HTML](https://fonline.ru/Docs/en/explanation/architecture/).
 - [Build Workflow](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/build/index.md): `build-workflow`; how-to; game-developer, engine-contributor, release-operator, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/build/).
 - [Packaging and Release](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/packaging.md): `packaging-and-release`; how-to; game-developer, release-operator, engine-contributor, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/release/packaging.html).
+- [Engine Versioning and Release Notes](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/versioning.md): `engine-versioning`; how-to; game-developer, engine-contributor, release-operator, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/release/versioning.html).
+- [Engine Changelog](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/changelog.md): `engine-changelog`; reference; game-developer, engine-contributor, release-operator, ai-agent; [HTML](https://fonline.ru/Docs/en/reference/changelog.html).
 - [Release Operations](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/operations.md): `release-operations`; how-to; release-operator, game-developer, engine-contributor, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/release/operations.html).
 - [Backup and Recovery](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/backup-and-recovery.md): `backup-and-recovery`; how-to; release-operator, game-developer, engine-contributor, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/release/backup-and-recovery.html).
 - [Security and Secrets](https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/security-and-secrets.md): `security-and-secrets`; how-to; game-developer, release-operator, engine-contributor, ai-agent; [HTML](https://fonline.ru/Docs/en/how-to/release/security-and-secrets.html).

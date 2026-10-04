@@ -80,6 +80,8 @@ Record one row for every artifact the game intends to ship. Do not infer rows fr
 
 Treat the exact game and Engine revisions, package declaration, package config, dependency pins, SDK/tool versions, and build image as one input set. Changing any member creates a different release candidate.
 
+Record the Engine CalVer from `VERSION` with the exact Engine revision in the release evidence and review the [changelog](../../reference/changelog.md). [Engine versioning](versioning.md) keeps these identities separate from the game version and package/updater build hash; it does not overwrite project Android or installer versions.
+
 ## Declare packages
 
 Call `DefinePackage(...)` after project sources are registered and before `BuildPackages()`. Keep separate package IDs when their build hosts, credentials, acceptance lanes, or publication destinations differ.

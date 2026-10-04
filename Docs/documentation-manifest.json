@@ -63,7 +63,12 @@
     }
   },
   "versioning": {
-    "schema_version": 1,
+    "schema_version": 3,
+    "engine": {
+      "scheme": "calver", "source": "VERSION",
+      "master_format": "YEAR.MAJOR.MINOR-dev",
+      "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]"
+    },
     "current": {
       "channel": "current",
       "kind": "rolling-branch",
@@ -162,6 +167,8 @@
         "engine-architecture",
         "build-workflow",
         "packaging-and-release",
+        "engine-versioning",
+        "engine-changelog",
         "release-operations",
         "backup-and-recovery",
         "security-and-secrets",
@@ -195,7 +202,7 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2162688,
+      "max_bytes": 2195456,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
@@ -294,6 +301,8 @@
       "document_ids": [
         "build-workflow",
         "packaging-and-release",
+        "engine-versioning",
+        "engine-changelog",
         "release-operations",
         "backup-and-recovery",
         "security-and-secrets",
@@ -1213,6 +1222,20 @@
     }
   },
   "documents": {
+    "Docs/en/how-to/release/versioning.md": {
+      "id": "engine-versioning", "title": "Engine Versioning and Release Notes",
+      "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
+      "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/release/versioning.md",
+      "sources": ["VERSION", "BuildTools/engine_version.py", "BuildTools/docs_engine_version.py", ".github/workflows/validate.yml", "AGENTS.md", "BuildTools/cmake/helpers/EngineVersion.cmake", "BuildTools/cmake/stages/Codegen.cmake", "BuildTools/codegen.py", "Source/Frontend/ApplicationInit.cpp", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/documentation-manifest.json", "BuildTools/tests/test_engine_version.py", "Docs/en/reference/changelog.md", "Docs/contract-change-dispositions.json"]
+    },
+    "Docs/en/reference/changelog.md": {
+      "id": "engine-changelog", "title": "Engine Changelog",
+      "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
+      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/reference/changelog.md",
+      "sources": ["VERSION", "BuildTools/engine_version.py", "BuildTools/docs_engine_version.py", ".github/workflows/validate.yml", "AGENTS.md", "BuildTools/tests/test_engine_version.py", "Docs/en/how-to/release/versioning.md", "BuildTools/cmake/stages/Codegen.cmake", "BuildTools/codegen.py", "Source/Frontend/ApplicationInit.cpp", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/contract-change-dispositions.json"]
+    },
     "README.md": {
       "id": "repository-home",
       "title": "FOnline Engine",

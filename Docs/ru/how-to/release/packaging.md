@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"4dd1c2eb25a0f7c564bf44241e17084381f9bc5cadcf1e16b5968c34dfee6869"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -90,6 +90,8 @@ IDs, когда различаются build hosts, credentials, acceptance lane
 publication destinations.
 
 ## Объявите packages
+
+В свидетельствах выпуска запишите CalVer движка из `VERSION` вместе с точной ревизией Engine и проверьте [историю изменений](../../reference/changelog.md). [Правила версий движка](versioning.md) отделяют эти идентификаторы от версии игры и хеша сборки пакетов и обновления клиента; они не подменяют версии Android или установщиков игрового проекта.
 
 Вызывайте `DefinePackage(...)` после регистрации project sources и до
 `BuildPackages()`. Используйте отдельные package IDs, если различаются build

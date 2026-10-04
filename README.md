@@ -8,6 +8,8 @@ permalink: /
 
 # FOnline Engine
 
+[Engine versioning](Docs/en/how-to/release/versioning.md) · [Changelog](Docs/en/reference/changelog.md)
+
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
 [![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)

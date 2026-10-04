@@ -53,6 +53,8 @@ Moving files or beginning translation without that contract would make redirects
 4. Source links use the same `master` ref as the displayed documentation.
 5. Historical review uses commit-addressable GitHub Actions `_site` artifacts and repository revisions.
 
+The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is displayed alongside this rolling channel and links to the locale's [changelog](../../reference/changelog.md). It identifies Engine development/release metadata, not a supported documentation snapshot. Source links continue to use the channel's `master` ref.
+
 ### Release documentation
 
 1. Tagged release snapshots remain deferred while the engine has no supported tag series and support matrix.

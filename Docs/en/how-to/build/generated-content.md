@@ -65,6 +65,8 @@ FinalizeProjectGeneration()
 
 Reconfigure after changing CMake options, source registration, stage hooks, generated templates, or the Engine pin. Build the smallest target that compiles the affected generated source.
 
+Engine `VERSION` also feeds configuration and code generation. Its CalVer identifier and exact Engine revision become `FO_ENGINE_VERSION` and `FO_ENGINE_REVISION` in `EngineConfig.gen.h`; the embedding-project build hash retains its separate meaning. Changing `VERSION` automatically invalidates configuration/code generation. See [Engine versioning](../release/versioning.md) and the [changelog](../../reference/changelog.md).
+
 ## Compile scripts
 
 For AngelScript projects:

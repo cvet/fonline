@@ -224,6 +224,8 @@ The manifest also owns one review contract for every domain owner. A documentati
 
 [External Project Evidence And Promotion Inventory](https://github.com/cvet/fonline/blob/master/Docs/generated/external-project-evidence/index.md) is the checked internal discovery ledger for Last Frontier and TLA. Its records must name an exact snapshot source, disposition, priority, Engine or project target, primary owner, required reviews, and promotion gate. External projects never become normative merely because a record exists: a `promoted` claim is re-derived from Engine source/tests, `boundary-owned` keeps the concrete implementation outside Engine, `promotion-candidate` names missing reusable artifacts, and `project-owned` forbids an invented Engine contract. Update and source-verify this ledger when either project's evidence changes a promotion decision or reveals a new reusable concern; the ledger itself is excluded from the public site and AI delivery.
 
+Every master update, including documentation-only work, also follows the [mandatory Engine update contract](../../how-to/release/versioning.md#every-master-update): version progression, dated bilingual change/migration notes, preserved semantics and complete generated delivery. Run `BuildTools/docs_engine_version.py` against the actual baseline before authorized integration.
+
 ## Standard doc slice workflow
 
 1. Pick a coherent slice from the [documentation backlog](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationBacklog.md).

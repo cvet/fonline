@@ -5,6 +5,13 @@
   "canonical_base_url": "https://fonline.ru",
   "repository": "cvet/fonline",
   "source_ref": "master",
+  "engine": {
+    "scheme": "calver",
+    "source": "VERSION",
+    "master_format": "YEAR.MAJOR.MINOR-dev",
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
+    "value": "2026.1.1-dev"
+  },
   "version": {
     "channel": "current",
     "kind": "rolling-branch",
@@ -41,7 +48,7 @@
     ]
   },
   "full_context": {
-    "max_bytes": 2162688,
+    "max_bytes": 2195456,
     "generated_pages": "indexes-only",
     "excluded_document_ids": [
       "tools",
@@ -50,7 +57,7 @@
       "documentation-site-publication"
     ]
   },
-  "document_count": 396,
+  "document_count": 398,
   "documents": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -96,8 +103,8 @@
         "Docs/generated/document-routes.json",
         "Docs/generated/translation-status.json"
       ],
-      "content_sha256": "73105acf69b98966d3cf6dcc6ed7f54c3f5485bf16a218f73f63ed9c3d6ac955",
-      "byte_size": 8381
+      "content_sha256": "ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6",
+      "byte_size": 8719
     },
     {
       "id": "adr-github-pages-markdown-publication",
@@ -176,8 +183,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00",
-      "byte_size": 8314
+      "content_sha256": "104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85",
+      "byte_size": 8568
     },
     {
       "id": "adr-manifest-backed-site-navigation-search",
@@ -272,8 +279,8 @@
         "Docs/generated/source-inventory.json",
         "PUBLIC_API.md"
       ],
-      "content_sha256": "664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417",
-      "byte_size": 11911
+      "content_sha256": "d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc",
+      "byte_size": 13838
     },
     {
       "id": "adr-public-example-repository-ownership",
@@ -500,8 +507,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "931d3ed7f78a30b30ac1619be8251294dc3fc5382193fc95b09d3408d395fdfc",
-      "byte_size": 70880
+      "content_sha256": "782b908f4f0b9ec6c8382a1bc28d558f0d74506d372d53fc3bc105ac4b010345",
+      "byte_size": 72280
     },
     {
       "id": "android-debugging",
@@ -671,8 +678,8 @@
         "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526",
-      "byte_size": 23606
+      "content_sha256": "2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1",
+      "byte_size": 25220
     },
     {
       "id": "applications-entry-points",
@@ -1253,8 +1260,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673",
-      "byte_size": 9654
+      "content_sha256": "e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f",
+      "byte_size": 9803
     },
     {
       "id": "documentation-maintenance",
@@ -1361,8 +1368,8 @@
         "Docs/_meta/DocumentationVerificationReport.md",
         "AGENTS.md"
       ],
-      "content_sha256": "0c71b7c0af8a7d2bd1ad6176c88725405d88098aa9305577fe12ed926a812494",
-      "byte_size": 53449
+      "content_sha256": "a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548",
+      "byte_size": 53828
     },
     {
       "id": "documentation-site-publication",
@@ -1439,8 +1446,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "f9cd69943367c6f5c8b611b7a2235c8074f1002667c6c4d0513da153c934d36f",
-      "byte_size": 30683
+      "content_sha256": "74684213187e12b5da6b33f3300a2da1ad9042f4212b5f4e1d9b4d90d804c9bc",
+      "byte_size": 30980
     },
     {
       "id": "documentation-snippet-validation",
@@ -1630,6 +1637,48 @@
       "byte_size": 11915
     },
     {
+      "id": "engine-changelog",
+      "path": "Docs/en/reference/changelog.md",
+      "title": "Engine Changelog",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "release-operator",
+        "ai-agent"
+      ],
+      "diataxis": "reference",
+      "visibility": "public",
+      "human": true,
+      "translation": "required",
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/reference/changelog.md",
+      "stability": "current-revision",
+      "canonical_url": "https://fonline.ru/Docs/en/reference/changelog.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/changelog.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/changelog.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/changelog.md",
+      "source_paths": [
+        "VERSION",
+        "BuildTools/engine_version.py",
+        "BuildTools/docs_engine_version.py",
+        ".github/workflows/validate.yml",
+        "AGENTS.md",
+        "BuildTools/tests/test_engine_version.py",
+        "Docs/en/how-to/release/versioning.md",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/codegen.py",
+        "Source/Frontend/ApplicationInit.cpp",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site.py",
+        "Docs/contract-change-dispositions.json"
+      ],
+      "content_sha256": "626f4a6354f07f457aad0869456703c1c64580c833a78ea14615faac69ae58c2",
+      "byte_size": 3860
+    },
+    {
       "id": "engine-upgrade-guide",
       "path": "Docs/en/how-to/migration/engine-upgrade.md",
       "title": "Upgrade an Embedding Project",
@@ -1664,8 +1713,52 @@
         "Docs/en/reference/platforms/support-matrix.md",
         "Docs/en/contributing/documentation/index.md"
       ],
-      "content_sha256": "c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4",
-      "byte_size": 9879
+      "content_sha256": "5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374",
+      "byte_size": 10940
+    },
+    {
+      "id": "engine-versioning",
+      "path": "Docs/en/how-to/release/versioning.md",
+      "title": "Engine Versioning and Release Notes",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "release-operator",
+        "ai-agent"
+      ],
+      "diataxis": "how-to",
+      "visibility": "public",
+      "human": true,
+      "translation": "required",
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/release/versioning.md",
+      "stability": "current-revision",
+      "canonical_url": "https://fonline.ru/Docs/en/how-to/release/versioning.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/how-to/release/versioning.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/versioning.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/versioning.md",
+      "source_paths": [
+        "VERSION",
+        "BuildTools/engine_version.py",
+        "BuildTools/docs_engine_version.py",
+        ".github/workflows/validate.yml",
+        "AGENTS.md",
+        "BuildTools/cmake/helpers/EngineVersion.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/codegen.py",
+        "Source/Frontend/ApplicationInit.cpp",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site.py",
+        "Docs/documentation-manifest.json",
+        "BuildTools/tests/test_engine_version.py",
+        "Docs/en/reference/changelog.md",
+        "Docs/contract-change-dispositions.json"
+      ],
+      "content_sha256": "f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7",
+      "byte_size": 13147
     },
     {
       "id": "entity-model",
@@ -2303,8 +2396,8 @@
         "Source/Tools/MetadataBaker.cpp",
         "Source/Scripting"
       ],
-      "content_sha256": "62510930bbdd0856d2d12e806313431c03787789afdd93cac519f74ddfc5f73c",
-      "byte_size": 80533
+      "content_sha256": "d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd",
+      "byte_size": 80746
     },
     {
       "id": "generated-api-methods",
@@ -2902,8 +2995,8 @@
         "Docs/en/explanation/content-pipeline/baking.md",
         "Docs/GeneratedApiAndMetadata.md"
       ],
-      "content_sha256": "86fcf1f50512470c47e1872dc285c4c1db18ac8206ee0bf54cdd199e7e83c62f",
-      "byte_size": 11051
+      "content_sha256": "ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c",
+      "byte_size": 11480
     },
     {
       "id": "generated-effect-format-baking",
@@ -12636,8 +12729,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "4dd1c2eb25a0f7c564bf44241e17084381f9bc5cadcf1e16b5968c34dfee6869",
-      "byte_size": 35872
+      "content_sha256": "bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e",
+      "byte_size": 36208
     },
     {
       "id": "particle-authoring-tools",
@@ -13112,8 +13205,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38",
-      "byte_size": 17980
+      "content_sha256": "4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7",
+      "byte_size": 18086
     },
     {
       "id": "resource-pack-format",
@@ -14079,36 +14172,36 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "e8a14363d7b0f0627a14322423a4f945c63fcddd2d5218e645655fc0f12c2dfc",
-      "byte_size": 62805
+      "content_sha256": "b4434275f3b51231dda05ea57baba57727eac90ab5c6a47774daa7e51c9eba56",
+      "byte_size": 63416
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "a4f2d7dab90616d0d05695b4a5658a9379a0b1fd280bef5d4aecd06cab9c9e9c",
-      "byte_size": 2144768
+      "content_sha256": "a531844555b343873ec00b4d27f4cf4c4a51ba715835154974a22b0cdde1b3c3",
+      "byte_size": 2170598
     },
     {
       "id": "site-docs-search",
       "path": "Docs/Site/Assets/docs-search.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.json",
-      "content_sha256": "9b7a1f2812f32af5d2054fdccc9b3689ca2d2dc6de8e44af7c6f82aaea29d93e",
-      "byte_size": 1289009
+      "content_sha256": "5ca57b7faeb5ed8dd331b61be09b38a78b510fd2fe2655e064db2e99d4907026",
+      "byte_size": 1300074
     },
     {
       "id": "site-docs-search.ru",
       "path": "Docs/Site/Assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.ru.json",
-      "content_sha256": "f53d8ee85b9a6bca52e7b2f7b4d2b3814ab1d4653c97c4cb2f30517d53049879",
-      "byte_size": 1813218
+      "content_sha256": "a05a6c747ec68d3b83cd7d9ee3ad1b45ef366be68380bd2015ad739fde5dae1c",
+      "byte_size": 1829189
     },
     {
       "id": "site-docs-site",
       "path": "Docs/Site/Data/docs-site.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Data/docs-site.json",
-      "content_sha256": "a95f555654b6c8e129f9a3ccd7b55038e3cc9d24179cad5ede09b59d014d397a",
-      "byte_size": 209912
+      "content_sha256": "bb2f9072d2aa820df5aeb2f29bdb91500f32f6e81e6384ea8201eb5f8fd0397f",
+      "byte_size": 212840
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14121,8 +14214,8 @@
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "e6777c0dcf1aac8ed145c3b03485a387eb88369c487e21769f975fc6c82c48de",
-      "byte_size": 113199
+      "content_sha256": "7ceceab16a8c6e911ec5e2e310c836ba7e2cbbcb718c86498c696ed919189c88",
+      "byte_size": 113193
     },
     {
       "id": "api_model",
@@ -14170,8 +14263,8 @@
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "25fc45b3d0c1c0b55ea500c1320e42715f65af23ed3f4afe6d8202ff955db0bf",
-      "byte_size": 532821
+      "content_sha256": "cdae8f3619614c54fd2a330e2e249e42e4de4b3913006d2bd3c7e7813762ea52",
+      "byte_size": 535718
     },
     {
       "id": "effect_format_reference",
@@ -14261,8 +14354,8 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "aa021813d3492842ffd2f17cb46e8b95728858d6c0414f7b3b5600f3d57aa401",
-      "byte_size": 267388
+      "content_sha256": "7ed402b3779f052f5ecb8c582c53e4d9ba170cfda358fe71ae23b87277530d47",
+      "byte_size": 268488
     },
     {
       "id": "source_inventory",
@@ -14289,8 +14382,8 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "143b477ac65cce8a18ac6e04add18450942f11c9ac85ea383f3fdbcae2702eb8",
-      "byte_size": 105169
+      "content_sha256": "add3bb67deea4af2ee35d10a4dce9d4edfb417a28693ef7193f9f08bf9d22ddc",
+      "byte_size": 106196
     },
     {
       "id": "video_reference",

@@ -197,6 +197,7 @@ a {
   font-size: 12px;
   line-height: 1.3;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .version-indicator strong {
@@ -829,7 +830,7 @@ html[data-theme="dark"] .theme-toggle::before {
 }
 
 @media (max-width: 520px) {
-  .version-indicator {
+  .docs-brand span {
     display: none;
   }
 

@@ -36,6 +36,8 @@ Record before touching the submodule or vendored Engine checkout:
 
 An Engine update is not a pointer-only change. The complete incoming Engine range and the project changes made to adopt it form one review unit.
 
+Record the old/new Engine `VERSION` identifiers alongside the exact SHAs and review the [changelog](../../reference/changelog.md). [CalVer](../release/versioning.md) identifies the year, release line, master change and optional release patch; compatibility still requires the source/contract audit below. Historical changes predating the maintained log require the complete revision-range review.
+
 ## Preserve the starting state
 
 1. Fetch the project and Engine remotes.
@@ -72,6 +74,10 @@ Classify changes by owner and consequence:
 | Documentation/example | Engine/project ownership, links, commands, pins, and translation freshness |
 
 Use Last Frontier or TLA only as integration evidence. The Engine source, tests, interfaces, and generated models remain normative.
+
+## Apply explicit migration notes
+
+Review every dated Engine change between the old/new identifiers, oldest first. Detect affected usage by each record's exact searches and diagnostics, execute all listed transformations and intermediate data/bake steps, and record the negative old-usage plus positive unaffected/migrated-use checks. Current-only API support means an unmigrated affected use must fail at compile/bake/validation; unchanged used values keep their original meaning. A generated shape diff cannot detect semantic reinterpretation. The [exhaustive migration record](../release/versioning.md#exhaustive-migration-record) is the acceptance contract.
 
 ## Compare generated contracts
 

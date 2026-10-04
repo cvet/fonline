@@ -476,6 +476,7 @@ def render_routes(
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,
         "canonical_base_url": base_url,
+        "engine": docs_ai_delivery._engine_version(root, manifest),
         "version": current_version_output,
         "release_versions": dict(releases),
         "localization": {
@@ -868,6 +869,7 @@ def search_documents(
 
 
 def render_navigation(
+    root: Path,
     manifest: dict[str, object],
     config: dict[str, object],
     records: list[dict[str, object]],
@@ -922,6 +924,7 @@ def render_navigation(
             "documentation publishing repository",
         ),
         "source_ref": current_version["source_ref"],
+        "engine": docs_ai_delivery._engine_version(root, manifest),
         "version": {
             "channel": current_version["channel"],
             "kind": current_version["kind"],
@@ -1058,7 +1061,7 @@ def render_outputs(
     )
     translations = _current_translations(root, localization_status, records)
     navigation, document_groups = render_navigation(
-        manifest, config, records, translations
+        root, manifest, config, records, translations
     )
     english_search = render_search(
         manifest, config, records, document_groups, translations, "en"

@@ -15,6 +15,17 @@ import docs_site  # noqa: E402
 
 
 class DocumentationSiteTests(unittest.TestCase):
+    def test_version_file_updates_site_and_routes_without_changing_channel(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        for version in ("2026.1.1-dev", "2026.1.2-dev"):
+            (root / "VERSION").write_text(version + "\n", encoding="utf-8")
+            outputs = docs_site.render_outputs(root)
+            for path in (docs_site.DEFAULT_NAVIGATION_OUTPUT, docs_site.DEFAULT_ROUTES_OUTPUT):
+                artifact = json.loads(outputs[path])
+                self.assertEqual(artifact["engine"], {**docs_ai_delivery.ENGINE_VERSION_POLICY, "value": version})
+                self.assertEqual(artifact["version"]["value"], "master")
+
     def test_repository_search_uses_reviewed_budget(self) -> None:
         root = BUILDTOOLS_DIR.parent
         manifest = json.loads((root / docs_site.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
@@ -59,6 +70,7 @@ class DocumentationSiteTests(unittest.TestCase):
     def _create_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
+        (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs/generated/api").mkdir(parents=True)
         (root / "Source").mkdir()
         (root / "Source/example.txt").write_text("fixture source\n", encoding="utf-8")
@@ -104,6 +116,7 @@ class DocumentationSiteTests(unittest.TestCase):
             },
             "versioning": {
                 "schema_version": docs_ai_delivery.VERSIONING_SCHEMA_VERSION,
+                "engine": dict(docs_ai_delivery.ENGINE_VERSION_POLICY),
                 "current": {
                     "channel": "current",
                     "kind": "rolling-branch",
