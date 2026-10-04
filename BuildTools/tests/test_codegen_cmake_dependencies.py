@@ -24,6 +24,11 @@ class CodegenProject:
         self.generator = generator
         self.metadata = source / 'metadata.txt'
         self.metadata.write_text('first metadata')
+        self.engine = source / 'engine'
+        (self.engine / 'BuildTools').mkdir(parents=True)
+        shutil.copyfile(Path(__file__).resolve().parents[2] / 'BuildTools/engine_version.py',
+                        self.engine / 'BuildTools/engine_version.py')
+        (self.engine / 'VERSION').write_text('2026.1.1-dev\n')
         fake_generator = source / 'generator.py'
         fake_generator.write_text('''from pathlib import Path
 import sys
@@ -33,6 +38,7 @@ output.mkdir(exist_ok=True)
 if (output / 'reject-generation').exists():
     sys.exit(42)
 content = '\\n'.join(args) + '\\n' + Path(args[args.index('-meta') + 1]).read_text()
+content += Path(__file__).parent.joinpath('engine/VERSION').read_text()
 for name in ('EngineConfig.gen.h', 'EmbeddedResources.gen.inc', 'InternalConfig.gen.inc',
              'GenericCode-Common.gen.cpp',
              *(f'MetadataRegistration-{side}{stub}.gen.cpp' for side in ('Server','Client','Mapper') for stub in ('','Stub'))):
@@ -68,6 +74,7 @@ function(AddCommandTarget name)
     add_custom_target(${name} ${ARG_UNPARSED_ARGUMENTS})
 endfunction()
 set(FO_GEOMETRY HEXAGONAL)
+set(FO_ENGINE_ROOT engine)
 set(FO_MAIN_CONFIG Test.fomain)
 set(FO_DEV_NAME Test)
 set(FO_NICE_NAME Test)
@@ -104,6 +111,55 @@ add_dependencies(Consumer CodeGeneration)
 
     def mtimes(self) -> dict[str, int]:
         return {name: self.output(name).stat().st_mtime_ns for name in OUTPUTS}
+
+
+@pytest.mark.parametrize('generator', (None, *GENERATORS))
+def test_invalid_engine_version_stops_before_reusing_header(tmp_path: Path, generator: str | None) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    initial_invocations = project.invocations()
+    (project.engine / 'VERSION').write_text('2026.13.0\n')
+    result = project.build(check=False)
+    assert result.returncode != 0
+    assert 'Invalid Engine VERSION' in result.stdout + result.stderr
+    assert project.invocations() == initial_invocations
+
+
+@pytest.mark.skipif(shutil.which('git') is None, reason='Git is required')
+@pytest.mark.parametrize('generator', (None, *GENERATORS))
+@pytest.mark.parametrize('packed', (False, True))
+def test_engine_commit_invalidates_codegen_without_source_edits(
+    tmp_path: Path, generator: str | None, packed: bool,
+) -> None:
+    project = CodegenProject(tmp_path, generator)
+    git = ['git', '-C', str(project.engine), '-c', 'user.name=Version Test',
+           '-c', 'user.email=version@example.invalid']
+    subprocess.run([*git, 'init'], check=True, capture_output=True)
+    subprocess.run([*git, 'add', '.'], check=True, capture_output=True)
+    subprocess.run([*git, 'commit', '-m', 'engine'], check=True, capture_output=True)
+    if packed:
+        subprocess.run([*git, 'pack-refs', '--all', '--prune'], check=True, capture_output=True)
+    project.configure()
+    project.build()
+    initial_invocations = project.invocations()
+    subprocess.run([*git, 'commit', '--allow-empty', '-m', 'next engine revision'],
+                   check=True, capture_output=True)
+    project.build()
+    assert project.invocations() > initial_invocations
+
+
+@pytest.mark.parametrize('generator', (None, *GENERATORS))
+def test_engine_version_edit_reconfigures_and_regenerates(tmp_path: Path, generator: str | None) -> None:
+    project = CodegenProject(tmp_path, generator)
+    project.configure()
+    project.build()
+    version_file = project.engine / 'VERSION'
+    initial_invocations = project.invocations()
+    version_file.write_text('2026.1.2-dev\n')
+    project.build()
+    assert project.invocations() > initial_invocations
+    assert '2026.1.2-dev' in project.output('EngineConfig.gen.h').read_text()
 
 
 @pytest.mark.parametrize('generator', (None, *GENERATORS))

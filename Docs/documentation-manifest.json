@@ -63,7 +63,12 @@
     }
   },
   "versioning": {
-    "schema_version": 1,
+    "schema_version": 3,
+    "engine": {
+      "scheme": "calver", "source": "VERSION",
+      "master_format": "YEAR.MAJOR.MINOR-dev",
+      "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]"
+    },
     "current": {
       "channel": "current",
       "kind": "rolling-branch",
@@ -162,6 +167,8 @@
         "engine-architecture",
         "build-workflow",
         "packaging-and-release",
+        "engine-versioning",
+        "engine-changelog",
         "release-operations",
         "backup-and-recovery",
         "security-and-secrets",
@@ -195,7 +202,7 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2162688,
+      "max_bytes": 2195456,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
@@ -211,14 +218,14 @@
   "site_delivery": {
     "schema_version": 3,
     "layout": "default",
-    "navigation_data_path": "_data/docs-site.json",
+    "navigation_data_path": "Docs/Site/Data/docs-site.json",
     "search": {
-      "path": "assets/docs-search.json",
+      "path": "Docs/Site/Assets/docs-search.json",
       "locale_paths": {
-        "en": "assets/docs-search.json",
-        "ru": "assets/docs-search.ru.json"
+        "en": "Docs/Site/Assets/docs-search.json",
+        "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1835008,
+      "max_bytes": 1867776,
       "minimum_query_length": 2
     },
     "browser_validation": {
@@ -294,6 +301,8 @@
       "document_ids": [
         "build-workflow",
         "packaging-and-release",
+        "engine-versioning",
+        "engine-changelog",
         "release-operations",
         "backup-and-recovery",
         "security-and-secrets",
@@ -1049,7 +1058,7 @@
     },
     "ai_evaluation": {
       "source": "Docs/ai-evaluation.json",
-      "search": "assets/docs-search.json",
+      "search": "Docs/Site/Assets/docs-search.json",
       "path": "Docs/generated/ai-evaluation-report.json",
       "generator": "BuildTools/docs_ai_eval.py",
       "schema_version": 1,
@@ -1068,16 +1077,16 @@
       "generator": "BuildTools/docs_site.py",
       "schema_version": 3,
       "paths": [
-        "_data/docs-site.json",
-        "assets/docs-search.json",
-        "assets/docs-search.ru.json",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
+        "Docs/Site/Assets/docs-search.ru.json",
         "Docs/generated/document-routes.json"
       ],
-      "layout": "_layouts/default.html",
+      "layout": "Docs/Site/Layouts/default.html",
       "assets": [
-        "assets/css/docs.css",
-        "assets/js/docs.js",
-        "assets/images/fonline-mark.png"
+        "Docs/Site/Assets/css/docs.css",
+        "Docs/Site/Assets/js/docs.js",
+        "Docs/Site/Assets/images/fonline-mark.png"
       ],
       "artifact_validator": "BuildTools/docs_site_artifact.py",
       "artifact_report": "Workspace/docs-site-artifact-report.json",
@@ -1213,13 +1222,27 @@
     }
   },
   "documents": {
+    "Docs/en/how-to/release/versioning.md": {
+      "id": "engine-versioning", "title": "Engine Versioning and Release Notes",
+      "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
+      "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/release/versioning.md",
+      "sources": ["VERSION", "BuildTools/engine_version.py", "BuildTools/docs_engine_version.py", ".github/workflows/validate.yml", "AGENTS.md", "BuildTools/cmake/helpers/EngineVersion.cmake", "BuildTools/cmake/stages/Codegen.cmake", "BuildTools/codegen.py", "Source/Frontend/ApplicationInit.cpp", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/documentation-manifest.json", "BuildTools/tests/test_engine_version.py", "Docs/en/reference/changelog.md", "Docs/contract-change-dispositions.json"]
+    },
+    "Docs/en/reference/changelog.md": {
+      "id": "engine-changelog", "title": "Engine Changelog",
+      "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
+      "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
+      "owner": "build-release", "state": "current", "disposition": "retain", "target": "Docs/en/reference/changelog.md",
+      "sources": ["VERSION", "BuildTools/engine_version.py", "BuildTools/docs_engine_version.py", ".github/workflows/validate.yml", "AGENTS.md", "BuildTools/tests/test_engine_version.py", "Docs/en/how-to/release/versioning.md", "BuildTools/cmake/stages/Codegen.cmake", "BuildTools/codegen.py", "Source/Frontend/ApplicationInit.cpp", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/contract-change-dispositions.json"]
+    },
     "README.md": {
       "id": "repository-home",
       "title": "FOnline Engine",
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "README.md",
-      "sources": ["Docs/en/index.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/generated/api/index.md", "Docs/en/reference/cmake/index.md", "Docs/en/reference/buildtools/index.md", "Docs/en/reference/helper-cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "BuildTools/README.md", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "_layouts/default.html", "_data/docs-site.json", "assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["Docs/en/index.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/generated/api/index.md", "Docs/en/reference/cmake/index.md", "Docs/en/reference/buildtools/index.md", "Docs/en/reference/helper-cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "BuildTools/README.md", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/Site/Layouts/default.html", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "AGENTS.md": {
       "id": "ai-maintainer-entry",
@@ -1227,7 +1250,7 @@
       "audiences": ["ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": false, "translation": "not-required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "AGENTS.md",
-      "sources": ["Docs/en/explanation/architecture/index.md", "Docs/en/contributing/documentation/index.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/cmake/ProjectInterface.json", "Docs/generated/api.json", "Docs/generated/api/index.md", "Docs/generated/cmake.json", "Docs/generated/cmake/index.md", "Docs/generated/cli.json", "Docs/generated/cli/index.md", "Docs/generated/helper-cli.json", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/generated/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format.json", "Docs/generated/text-format/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "_data/docs-site.json", "assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["Docs/en/explanation/architecture/index.md", "Docs/en/contributing/documentation/index.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/cmake/ProjectInterface.json", "Docs/generated/api.json", "Docs/generated/api/index.md", "Docs/generated/cmake.json", "Docs/generated/cmake/index.md", "Docs/generated/cli.json", "Docs/generated/cli/index.md", "Docs/generated/helper-cli.json", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/generated/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format.json", "Docs/generated/text-format/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "Docs/en/tutorials/first-project.md": {
       "id": "legacy-tutorial-entry",
@@ -1267,7 +1290,7 @@
       "audiences": ["game-developer", "tool-developer", "release-operator"],
       "classification": {"diataxis": "reference", "visibility": "public", "human": true, "translation": "required"},
       "owner": "build-release", "state": "current", "disposition": "route", "target": "BuildTools/README.md",
-      "sources": ["BuildTools/buildtools.py", "BuildTools/codegen.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_cmake.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "_data/docs-site.json", "assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["BuildTools/buildtools.py", "BuildTools/codegen.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/cmake", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_text_format.py", "BuildTools/docs_cmake.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md", "Docs/generated/document-routes.json", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "Examples/MinimalProject/README.md": {
       "id": "minimal-project-readme",
@@ -1339,7 +1362,7 @@
       "audiences": ["game-developer", "engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/index.md",
-      "sources": ["Docs", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/generated/document-routes.json", "_data/docs-site.json", "assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["Docs", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "Docs/generated/document-routes.json", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "Docs/README.md": {
       "id": "legacy-documentation-home-route",
@@ -4227,7 +4250,7 @@
       "audiences": ["engine-contributor", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/documentation/index.md",
-      "sources": ["Docs/documentation-manifest.json", "Docs/generated/api.json", "Docs/generated/api/index.md", "Docs/generated/cmake.json", "Docs/generated/cmake/index.md", "Docs/generated/cli.json", "Docs/generated/cli/index.md", "Docs/generated/helper-cli.json", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/generated/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/snippets.json", "Docs/generated/translation-status.json", "Docs/generated/document-routes.json", "Docs/generated/ai-evaluation-report.json", "Docs/contract-change-dispositions.json", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_cmake.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_snippets.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "BuildTools/tests/test_docs_external_evidence.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "Docs/generated/external-project-evidence.json", "Docs/generated/external-project-evidence/index.md", "BuildTools/cmake/ProjectInterface.json", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_validate.py", "BuildTools/tests/test_docs_prototype_format.py", "BuildTools/tests/test_docs_map_format.py", "BuildTools/tests/validate_native_extension_interface.cmake", ".github/workflows/validate.yml", "_layouts/default.html", "assets/css/docs.css", "assets/js/docs.js", "_data/docs-site.json", "assets/docs-search.json", "assets/docs-search.ru.json", "llms.txt", "llms-full.txt", "docs-manifest.json", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/_meta/DocumentationVerificationReport.md", "AGENTS.md"]
+      "sources": ["Docs/documentation-manifest.json", "Docs/generated/api.json", "Docs/generated/api/index.md", "Docs/generated/cmake.json", "Docs/generated/cmake/index.md", "Docs/generated/cli.json", "Docs/generated/cli/index.md", "Docs/generated/helper-cli.json", "Docs/generated/helper-cli/index.md", "Docs/generated/native-extension.json", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format.json", "Docs/generated/prototype-format/index.md", "Docs/generated/map-format.json", "Docs/en/reference/map-format/index.md", "Docs/generated/package.json", "Docs/generated/package/index.md", "Docs/generated/snippets.json", "Docs/generated/translation-status.json", "Docs/generated/document-routes.json", "Docs/generated/ai-evaluation-report.json", "Docs/contract-change-dispositions.json", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/HelperCliInterface.json", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_api_diff.py", "BuildTools/docs_contract_diff.py", "BuildTools/docs_cli.py", "BuildTools/docs_helper_cli.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_cmake.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_snippets.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "BuildTools/tests/test_docs_external_evidence.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "Docs/generated/external-project-evidence.json", "Docs/generated/external-project-evidence/index.md", "BuildTools/cmake/ProjectInterface.json", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_validate.py", "BuildTools/tests/test_docs_prototype_format.py", "BuildTools/tests/test_docs_map_format.py", "BuildTools/tests/validate_native_extension_interface.cmake", ".github/workflows/validate.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "llms.txt", "llms-full.txt", "docs-manifest.json", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/_meta/DocumentationVerificationReport.md", "AGENTS.md"]
     },
     "Docs/DocumentationMaintenance.md": {
       "id": "legacy-documentation-maintenance-route",
@@ -4243,7 +4266,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/documentation/ai-evaluation.md",
-      "sources": ["Docs/ai-evaluation.json", "BuildTools/docs_ai_eval.py", "BuildTools/docs_ai_model_eval.py", "BuildTools/docs_ai_model_review.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/tests/test_docs_ai_model_eval.py", "BuildTools/tests/test_docs_ai_model_review.py", "BuildTools/docs_site.py", "assets/js/docs.js", "assets/docs-search.json", "Docs/generated/ai-evaluation-report.json", "Docs/_meta/ai-evaluation/2026-08-04-qwen3.5-9b.review.json", "Docs/_meta/ai-evaluation/2026-08-04-gpt-oss-20b.review.json", "Docs/documentation-manifest.json", ".github/workflows/validate.yml"]
+      "sources": ["Docs/ai-evaluation.json", "BuildTools/docs_ai_eval.py", "BuildTools/docs_ai_model_eval.py", "BuildTools/docs_ai_model_review.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/tests/test_docs_ai_model_eval.py", "BuildTools/tests/test_docs_ai_model_review.py", "BuildTools/docs_site.py", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/docs-search.json", "Docs/generated/ai-evaluation-report.json", "Docs/_meta/ai-evaluation/2026-08-04-qwen3.5-9b.review.json", "Docs/_meta/ai-evaluation/2026-08-04-gpt-oss-20b.review.json", "Docs/documentation-manifest.json", ".github/workflows/validate.yml"]
     },
     "Docs/AiEvaluation.md": {
       "id": "legacy-ai-documentation-evaluation-route",
@@ -4291,7 +4314,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/documentation/site-publication.md",
-      "sources": ["_config.yml", "CNAME", ".ruby-version", "Gemfile", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "_layouts/default.html", "assets/css/docs.css", "assets/js/docs.js", "assets/images/fonline-mark.png", "_data/docs-site.json", "assets/docs-search.json", "assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "Docs/generated/translation-status.json", "Docs/generated/document-routes.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["_config.yml", "CNAME", ".ruby-version", "Gemfile", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "Docs/generated/translation-status.json", "Docs/generated/document-routes.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "Docs/SitePublication.md": {
       "id": "legacy-documentation-site-publication-route",
@@ -4355,7 +4378,7 @@
       "audiences": ["game-developer", "engine-contributor", "tool-developer", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md",
-      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "_config.yml", "_layouts/default.html", "assets/css/docs.css", "assets/js/docs.js", "assets/images/fonline-mark.png", "_data/docs-site.json", "assets/docs-search.json", "assets/docs-search.ru.json"]
+      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "_config.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json"]
     },
     "Docs/Decisions/0004-manifest-backed-site-navigation-search.md": {
       "id": "legacy-adr-manifest-backed-site-navigation-search-route",
@@ -4387,7 +4410,7 @@
       "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md",
-      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_validate.py", "_config.yml", "_layouts/default.html", "Docs/en/contributing/documentation/site-publication.md", "Docs/ProductionDocumentationPlan.md", "Docs/generated/document-routes.json", "Docs/generated/translation-status.json"]
+      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_validate.py", "_config.yml", "Docs/Site/Layouts/default.html", "Docs/en/contributing/documentation/site-publication.md", "Docs/ProductionDocumentationPlan.md", "Docs/generated/document-routes.json", "Docs/generated/translation-status.json"]
     },
     "Docs/Decisions/0006-documentation-version-locale-routing.md": {
       "id": "legacy-adr-documentation-version-locale-routing-route",
@@ -4411,7 +4434,7 @@
       "audiences": ["engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "internal", "human": true, "translation": "not-required"},
       "owner": "documentation", "state": "historical", "disposition": "retain", "target": "Docs/_meta/DocumentationBacklog.md",
-      "sources": ["Docs/_meta/DocumentationVerificationReport.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/docs_site.py", "BuildTools/docs_text_format.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "_data/docs-site.json", "assets/docs-search.json", "Docs/generated/document-routes.json", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md"]
+      "sources": ["Docs/_meta/DocumentationVerificationReport.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/docs_site.py", "BuildTools/docs_text_format.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/generated/document-routes.json", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md"]
     },
     "Docs/DocumentationExpansionPlan.md": {
       "id": "legacy-documentation-expansion-plan-route",
@@ -4459,7 +4482,7 @@
       "audiences": ["engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "internal", "human": true, "translation": "not-required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/_meta/DocumentationVerificationReport.md",
-      "sources": ["Docs/documentation-manifest.json", "Docs/_meta/DocumentationBacklog.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_cli.py", "BuildTools/docs_cmake.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "BuildTools/cmake/ProjectInterface.json", "Examples/MinimalProject", "_layouts/default.html", "assets/css/docs.css", "assets/js/docs.js", "_data/docs-site.json", "assets/docs-search.json", "Docs/generated/document-routes.json", "Source/Common/MapLoader.cpp", "Source/Tools/MapBaker.cpp", "Source/Tools/Mapper.cpp", "Source/Server/MapManager.cpp", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Docs/generated/api/index.md", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/package/index.md"]
+      "sources": ["Docs/documentation-manifest.json", "Docs/_meta/DocumentationBacklog.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/codegen.py", "BuildTools/buildtools.py", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "BuildTools/docs_api.py", "BuildTools/docs_cli.py", "BuildTools/docs_cmake.py", "BuildTools/docs_native_extension.py", "BuildTools/docs_prototype_format.py", "BuildTools/docs_map_format.py", "BuildTools/docs_package.py", "BuildTools/docs_reference.py", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "BuildTools/cmake/ProjectInterface.json", "Examples/MinimalProject", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/generated/document-routes.json", "Source/Common/MapLoader.cpp", "Source/Tools/MapBaker.cpp", "Source/Tools/Mapper.cpp", "Source/Server/MapManager.cpp", "Source/Scripting/CommonGlobalScriptMethods.cpp", "Docs/generated/api/index.md", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/package/index.md"]
     },
     "Docs/generated/external-project-evidence/index.md": {
       "id": "generated-external-project-evidence",
@@ -4475,7 +4498,7 @@
       "audiences": ["engine-contributor", "ai-agent"],
       "classification": {"diataxis": "none", "visibility": "internal", "human": true, "translation": "not-required"},
       "owner": "documentation", "state": "active-plan", "disposition": "move-meta", "target": "Docs/_meta/ProductionDocumentationPlan.md",
-      "sources": ["Docs/documentation-manifest.json", "Docs/_meta/DocumentationVerificationReport.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/docs_text_format.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "_layouts/default.html", "assets/css/docs.css", "assets/js/docs.js", "_data/docs-site.json", "assets/docs-search.json", "Docs/generated/document-routes.json", "BuildTools/cmake/ProjectInterface.json", "BuildTools/buildtools.py", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md"]
+      "sources": ["Docs/documentation-manifest.json", "Docs/_meta/DocumentationVerificationReport.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/docs_text_format.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/generated/document-routes.json", "BuildTools/cmake/ProjectInterface.json", "BuildTools/buildtools.py", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md"]
     }
   }
 }

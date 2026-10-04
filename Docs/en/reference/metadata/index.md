@@ -177,9 +177,9 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/assets/diagrams/*.svg`
 - `Docs/generated/screenshots.json`
 - `Docs/assets/screenshots/*.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
@@ -226,7 +226,7 @@ from the generated binary markers before writing the bootstrap config.
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_ENGINE_VERSION` / `FO_ENGINE_REVISION` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`. [Engine versioning](../../how-to/release/versioning.md) defines the separate Engine release, Engine revision, project build hash, and runtime compatibility identities.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`
@@ -812,7 +812,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `_data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 

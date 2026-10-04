@@ -5,6 +5,13 @@
   "canonical_base_url": "https://fonline.ru",
   "repository": "cvet/fonline",
   "source_ref": "master",
+  "engine": {
+    "scheme": "calver",
+    "source": "VERSION",
+    "master_format": "YEAR.MAJOR.MINOR-dev",
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
+    "value": "2026.1.2-dev"
+  },
   "version": {
     "channel": "current",
     "kind": "rolling-branch",
@@ -41,7 +48,7 @@
     ]
   },
   "full_context": {
-    "max_bytes": 2162688,
+    "max_bytes": 2195456,
     "generated_pages": "indexes-only",
     "excluded_document_ids": [
       "tools",
@@ -50,7 +57,7 @@
       "documentation-site-publication"
     ]
   },
-  "document_count": 396,
+  "document_count": 398,
   "documents": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -90,14 +97,14 @@
         "BuildTools/tests/test_docs_site_artifact.py",
         "BuildTools/tests/test_docs_validate.py",
         "_config.yml",
-        "_layouts/default.html",
+        "Docs/Site/Layouts/default.html",
         "Docs/en/contributing/documentation/site-publication.md",
         "Docs/ProductionDocumentationPlan.md",
         "Docs/generated/document-routes.json",
         "Docs/generated/translation-status.json"
       ],
-      "content_sha256": "6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962",
-      "byte_size": 8372
+      "content_sha256": "ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6",
+      "byte_size": 8719
     },
     {
       "id": "adr-github-pages-markdown-publication",
@@ -176,8 +183,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00",
-      "byte_size": 8314
+      "content_sha256": "104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85",
+      "byte_size": 8568
     },
     {
       "id": "adr-manifest-backed-site-navigation-search",
@@ -215,16 +222,16 @@
         "BuildTools/docs_validate.py",
         ".github/workflows/validate.yml",
         "_config.yml",
-        "_layouts/default.html",
-        "assets/css/docs.css",
-        "assets/js/docs.js",
-        "assets/images/fonline-mark.png",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
-        "assets/docs-search.ru.json"
+        "Docs/Site/Layouts/default.html",
+        "Docs/Site/Assets/css/docs.css",
+        "Docs/Site/Assets/js/docs.js",
+        "Docs/Site/Assets/images/fonline-mark.png",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
+        "Docs/Site/Assets/docs-search.ru.json"
       ],
-      "content_sha256": "101041e8482c80bf60bd0a221a3ea5eedd5ecab70c696e3c6c985b0b7e7d40df",
-      "byte_size": 8091
+      "content_sha256": "3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3",
+      "byte_size": 8369
     },
     {
       "id": "adr-public-api-stability-contract",
@@ -272,8 +279,8 @@
         "Docs/generated/source-inventory.json",
         "PUBLIC_API.md"
       ],
-      "content_sha256": "664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417",
-      "byte_size": 11911
+      "content_sha256": "d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc",
+      "byte_size": 13838
     },
     {
       "id": "adr-public-example-repository-ownership",
@@ -352,8 +359,8 @@
         "Docs/en/how-to/testing/gameplay-and-integration.md",
         "BuildTools/ExternalProjectEvidence.json"
       ],
-      "content_sha256": "7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe",
-      "byte_size": 15923
+      "content_sha256": "d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7",
+      "byte_size": 16341
     },
     {
       "id": "ai-control-sample-readme",
@@ -424,16 +431,16 @@
         "BuildTools/tests/test_docs_ai_model_eval.py",
         "BuildTools/tests/test_docs_ai_model_review.py",
         "BuildTools/docs_site.py",
-        "assets/js/docs.js",
-        "assets/docs-search.json",
+        "Docs/Site/Assets/js/docs.js",
+        "Docs/Site/Assets/docs-search.json",
         "Docs/generated/ai-evaluation-report.json",
         "Docs/_meta/ai-evaluation/2026-08-04-qwen3.5-9b.review.json",
         "Docs/_meta/ai-evaluation/2026-08-04-gpt-oss-20b.review.json",
         "Docs/documentation-manifest.json",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5",
-      "byte_size": 15481
+      "content_sha256": "4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf",
+      "byte_size": 15491
     },
     {
       "id": "ai-maintainer-entry",
@@ -494,14 +501,14 @@
         "Docs/generated/package.json",
         "Docs/generated/package/index.md",
         "Docs/generated/document-routes.json",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
         "llms.txt",
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "a0ddae586a823fc78fa92f18bc58631bf7f32b7835aefac051b599ace508d1e3",
-      "byte_size": 70822
+      "content_sha256": "782b908f4f0b9ec6c8382a1bc28d558f0d74506d372d53fc3bc105ac4b010345",
+      "byte_size": 72280
     },
     {
       "id": "android-debugging",
@@ -671,8 +678,8 @@
         "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526",
-      "byte_size": 23606
+      "content_sha256": "2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1",
+      "byte_size": 25220
     },
     {
       "id": "applications-entry-points",
@@ -912,8 +919,8 @@
         "Docs/en/reference/helper-cli/index.md",
         "Docs/generated/package/index.md"
       ],
-      "content_sha256": "b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070",
-      "byte_size": 30703
+      "content_sha256": "d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d",
+      "byte_size": 30929
     },
     {
       "id": "buildtools-readme",
@@ -976,8 +983,8 @@
         "Docs/generated/text-format/index.md",
         "Docs/generated/package/index.md",
         "Docs/generated/document-routes.json",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
         "llms.txt",
         "llms-full.txt",
         "docs-manifest.json"
@@ -1247,14 +1254,14 @@
         "BuildTools/docs_ai_delivery.py",
         "BuildTools/docs_site.py",
         "Docs/generated/document-routes.json",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
         "llms.txt",
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673",
-      "byte_size": 9654
+      "content_sha256": "e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f",
+      "byte_size": 9803
     },
     {
       "id": "documentation-maintenance",
@@ -1344,12 +1351,12 @@
         "BuildTools/tests/test_docs_map_format.py",
         "BuildTools/tests/validate_native_extension_interface.cmake",
         ".github/workflows/validate.yml",
-        "_layouts/default.html",
-        "assets/css/docs.css",
-        "assets/js/docs.js",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
-        "assets/docs-search.ru.json",
+        "Docs/Site/Layouts/default.html",
+        "Docs/Site/Assets/css/docs.css",
+        "Docs/Site/Assets/js/docs.js",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
+        "Docs/Site/Assets/docs-search.ru.json",
         "llms.txt",
         "llms-full.txt",
         "docs-manifest.json",
@@ -1361,8 +1368,8 @@
         "Docs/_meta/DocumentationVerificationReport.md",
         "AGENTS.md"
       ],
-      "content_sha256": "2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865",
-      "byte_size": 53373
+      "content_sha256": "a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548",
+      "byte_size": 53828
     },
     {
       "id": "documentation-site-publication",
@@ -1422,13 +1429,13 @@
         "BuildTools/tests/test_docs_browser.py",
         "BuildTools/tests/test_docs_documentation_operations_foundations.py",
         "BuildTools/tests/test_docs_validate.py",
-        "_layouts/default.html",
-        "assets/css/docs.css",
-        "assets/js/docs.js",
-        "assets/images/fonline-mark.png",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
-        "assets/docs-search.ru.json",
+        "Docs/Site/Layouts/default.html",
+        "Docs/Site/Assets/css/docs.css",
+        "Docs/Site/Assets/js/docs.js",
+        "Docs/Site/Assets/images/fonline-mark.png",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
+        "Docs/Site/Assets/docs-search.ru.json",
         "Docs/generated/diagrams.json",
         "Docs/generated/screenshots.json",
         "Docs/generated/snippets.json",
@@ -1439,8 +1446,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "c27667ed0e339de120f2e4c1d94207973748435dfbdd948417d28503a45875c0",
-      "byte_size": 28787
+      "content_sha256": "62b626cd810fc359bd79b51e039375a9c07a35a0b14a885156100e1e8279c12a",
+      "byte_size": 30983
     },
     {
       "id": "documentation-snippet-validation",
@@ -1517,8 +1524,8 @@
         ".github/workflows/validate.yml",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8",
-      "byte_size": 11110
+      "content_sha256": "97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f",
+      "byte_size": 11130
     },
     {
       "id": "effect-format-guide",
@@ -1630,6 +1637,48 @@
       "byte_size": 11915
     },
     {
+      "id": "engine-changelog",
+      "path": "Docs/en/reference/changelog.md",
+      "title": "Engine Changelog",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "release-operator",
+        "ai-agent"
+      ],
+      "diataxis": "reference",
+      "visibility": "public",
+      "human": true,
+      "translation": "required",
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/reference/changelog.md",
+      "stability": "current-revision",
+      "canonical_url": "https://fonline.ru/Docs/en/reference/changelog.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/reference/changelog.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/changelog.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/reference/changelog.md",
+      "source_paths": [
+        "VERSION",
+        "BuildTools/engine_version.py",
+        "BuildTools/docs_engine_version.py",
+        ".github/workflows/validate.yml",
+        "AGENTS.md",
+        "BuildTools/tests/test_engine_version.py",
+        "Docs/en/how-to/release/versioning.md",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/codegen.py",
+        "Source/Frontend/ApplicationInit.cpp",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site.py",
+        "Docs/contract-change-dispositions.json"
+      ],
+      "content_sha256": "8a5301b9f66b6a8929c90f0ec7de851f0df20d1527930eeedd63acdf20d8ab8a",
+      "byte_size": 7467
+    },
+    {
       "id": "engine-upgrade-guide",
       "path": "Docs/en/how-to/migration/engine-upgrade.md",
       "title": "Upgrade an Embedding Project",
@@ -1664,8 +1713,52 @@
         "Docs/en/reference/platforms/support-matrix.md",
         "Docs/en/contributing/documentation/index.md"
       ],
-      "content_sha256": "c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4",
-      "byte_size": 9879
+      "content_sha256": "5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374",
+      "byte_size": 10940
+    },
+    {
+      "id": "engine-versioning",
+      "path": "Docs/en/how-to/release/versioning.md",
+      "title": "Engine Versioning and Release Notes",
+      "locale": "en",
+      "audiences": [
+        "game-developer",
+        "engine-contributor",
+        "release-operator",
+        "ai-agent"
+      ],
+      "diataxis": "how-to",
+      "visibility": "public",
+      "human": true,
+      "translation": "required",
+      "owner": "build-release",
+      "state": "current",
+      "disposition": "retain",
+      "target": "Docs/en/how-to/release/versioning.md",
+      "stability": "current-revision",
+      "canonical_url": "https://fonline.ru/Docs/en/how-to/release/versioning.html",
+      "source_url": "https://github.com/cvet/fonline/blob/master/Docs/en/how-to/release/versioning.md",
+      "markdown_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/versioning.md",
+      "raw_url": "https://raw.githubusercontent.com/cvet/fonline/master/Docs/en/how-to/release/versioning.md",
+      "source_paths": [
+        "VERSION",
+        "BuildTools/engine_version.py",
+        "BuildTools/docs_engine_version.py",
+        ".github/workflows/validate.yml",
+        "AGENTS.md",
+        "BuildTools/cmake/helpers/EngineVersion.cmake",
+        "BuildTools/cmake/stages/Codegen.cmake",
+        "BuildTools/codegen.py",
+        "Source/Frontend/ApplicationInit.cpp",
+        "BuildTools/docs_ai_delivery.py",
+        "BuildTools/docs_site.py",
+        "Docs/documentation-manifest.json",
+        "BuildTools/tests/test_engine_version.py",
+        "Docs/en/reference/changelog.md",
+        "Docs/contract-change-dispositions.json"
+      ],
+      "content_sha256": "f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7",
+      "byte_size": 13147
     },
     {
       "id": "entity-model",
@@ -1947,8 +2040,8 @@
         "Examples/MinimalMultiplayer/Scripts/Tutorial.fos",
         ".github/workflows/validate.yml"
       ],
-      "content_sha256": "c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121",
-      "byte_size": 12881
+      "content_sha256": "2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271",
+      "byte_size": 13408
     },
     {
       "id": "generated-ai-control-protocol-commands-events",
@@ -2014,7 +2107,7 @@
         "BuildTools/docs_ai_control_protocol.py",
         "Docs/generated/ai-control-protocol.json"
       ],
-      "content_sha256": "a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f",
+      "content_sha256": "ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643",
       "byte_size": 2719
     },
     {
@@ -2051,8 +2144,8 @@
         "Examples/AiControlSample/run_protocol_smoke.py",
         "Docs/generated/ai-control-protocol.json"
       ],
-      "content_sha256": "c6f6bbc9e6bbe2bb595d916db335ed897e8561ef0727b45693fc8ba81b8c7af2",
-      "byte_size": 7366
+      "content_sha256": "79853c27575a72342dcee8c5e8d5569b1d41c61110afef72337c7e0ddeaa9e51",
+      "byte_size": 8020
     },
     {
       "id": "generated-ai-control-protocol-methods",
@@ -2303,8 +2396,8 @@
         "Source/Tools/MetadataBaker.cpp",
         "Source/Scripting"
       ],
-      "content_sha256": "aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24",
-      "byte_size": 80495
+      "content_sha256": "d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd",
+      "byte_size": 80746
     },
     {
       "id": "generated-api-methods",
@@ -2902,8 +2995,8 @@
         "Docs/en/explanation/content-pipeline/baking.md",
         "Docs/GeneratedApiAndMetadata.md"
       ],
-      "content_sha256": "4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6",
-      "byte_size": 11042
+      "content_sha256": "ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c",
+      "byte_size": 11480
     },
     {
       "id": "generated-effect-format-baking",
@@ -3439,8 +3532,8 @@
         "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "0c9eb6c9489a7fff4c6cb140097584d699a627af46bfe814af7c80c7c16a15c4",
-      "byte_size": 539,
+      "content_sha256": "2ab55feda5a2b3baec7a419373a8bbf7bd861851b6dff05c7a4fae5736a2f43c",
+      "byte_size": 529,
       "redirect_to": "gui-runtime-guide"
     },
     {
@@ -7021,8 +7114,8 @@
         "Docs/ru/reference/ai-control-protocol/integration-validation.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "90578b8e7f110471e684a765f436a65570153c16129292b0adfd5f521c4d5cbb",
-      "byte_size": 4011,
+      "content_sha256": "6237630b7177e552344681438121875db5255cee5015161f0bf48550929e1446",
+      "byte_size": 4286,
       "redirect_to": "generated-ai-control-protocol-integration-validation"
     },
     {
@@ -12057,8 +12150,8 @@
         "Source/Tests/Test_ManagedScriptBaker.cpp",
         "BuildTools/tests/test_docs_managed_csharp.py"
       ],
-      "content_sha256": "b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f",
-      "byte_size": 51750
+      "content_sha256": "6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26",
+      "byte_size": 51790
     },
     {
       "id": "map-format-guide",
@@ -12187,8 +12280,8 @@
         "Examples/MinimalMultiplayer/FOnlineMinimalMultiplayer.fomain",
         "BuildTools/tests/test_docs_mapper_tools.py"
       ],
-      "content_sha256": "7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a",
-      "byte_size": 20437
+      "content_sha256": "43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a",
+      "byte_size": 20980
     },
     {
       "id": "maps-movement-geometry",
@@ -12218,8 +12311,8 @@
         "Source/Server",
         "Source/Client"
       ],
-      "content_sha256": "88068087190998027cefe9f61d5d2160e0675c43b5c66a0fcb5080a8c00e8536",
-      "byte_size": 28382
+      "content_sha256": "c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077",
+      "byte_size": 28934
     },
     {
       "id": "minimal-multiplayer-readme",
@@ -12636,8 +12729,8 @@
         "Docs/en/how-to/platforms/android-debugging.md",
         "Docs/en/explanation/runtime/client-updater.md"
       ],
-      "content_sha256": "a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b",
-      "byte_size": 35840
+      "content_sha256": "bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e",
+      "byte_size": 36208
     },
     {
       "id": "particle-authoring-tools",
@@ -13105,15 +13198,15 @@
         "BuildTools/README.md",
         "BuildTools/docs_ai_delivery.py",
         "BuildTools/docs_site.py",
-        "_layouts/default.html",
-        "_data/docs-site.json",
-        "assets/docs-search.json",
+        "Docs/Site/Layouts/default.html",
+        "Docs/Site/Data/docs-site.json",
+        "Docs/Site/Assets/docs-search.json",
         "llms.txt",
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38",
-      "byte_size": 17980
+      "content_sha256": "4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7",
+      "byte_size": 18086
     },
     {
       "id": "resource-pack-format",
@@ -13179,8 +13272,8 @@
         "Docs/ru/how-to/runtime/gui.md",
         "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md"
       ],
-      "content_sha256": "91dcdf0fa97070fcb6b00aebb4913179401aee1602bc23a0477b95729a7f765f",
-      "byte_size": 854,
+      "content_sha256": "e19ff994076c988c93ab16f6046369a741758eba25a62ff91acaf5d5e31b79a6",
+      "byte_size": 844,
       "redirect_to": "gui-runtime-guide"
     },
     {
@@ -13927,8 +14020,8 @@
         "Source/Tests",
         "Docs/Testing.md"
       ],
-      "content_sha256": "89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6",
-      "byte_size": 11724
+      "content_sha256": "613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc",
+      "byte_size": 11828
     },
     {
       "id": "video-guide",
@@ -14079,29 +14172,50 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "d0da61cca603986d3b7869617c52a478430b62b1462e4b9a084b5fdbf63bc7f5",
-      "byte_size": 62747
+      "content_sha256": "533dd7644c90416894d5b28d2279043e37df82b42461e1703dc2b1d590ecc89c",
+      "byte_size": 63416
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "f9fb8d52a265842c1f8b0bcb21a3571a34625cd3d51a82962cf7aea9c21d3515",
-      "byte_size": 2159800
+      "content_sha256": "c33659b5327187a571909a943b864800ef145f5f769812cf53cbcf1dd0ea0724",
+      "byte_size": 2192177
+    },
+    {
+      "id": "site-docs-search",
+      "path": "Docs/Site/Assets/docs-search.json",
+      "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.json",
+      "content_sha256": "df8c6eff87d579f602a558adcb3fc4976e47cd99e58051f358b116a1915ce47f",
+      "byte_size": 1308166
+    },
+    {
+      "id": "site-docs-search.ru",
+      "path": "Docs/Site/Assets/docs-search.ru.json",
+      "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.ru.json",
+      "content_sha256": "f780b1ea347596c871f59c643d912da9e719da81000fc2545dedd7c92a11bdce",
+      "byte_size": 1838839
+    },
+    {
+      "id": "site-docs-site",
+      "path": "Docs/Site/Data/docs-site.json",
+      "canonical_url": "https://fonline.ru/Docs/Site/Data/docs-site.json",
+      "content_sha256": "8cc0962ef401c40908861fc888041ca16506c28bffe7708400d92b4b0d4dbd99",
+      "byte_size": 212840
     },
     {
       "id": "ai_control_protocol_reference",
       "path": "Docs/generated/ai-control-protocol.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-control-protocol.json",
-      "content_sha256": "cc45c6d2a772716e8b5df9515445ab8e8bfe37a30aad81df77a0fd2773b367f9",
-      "byte_size": 31811
+      "content_sha256": "cd878176636823ebe6bfbe686678dc65887e67a788bca95d135af87e7f71c4fe",
+      "byte_size": 32748
     },
     {
       "id": "ai_evaluation",
       "path": "Docs/generated/ai-evaluation-report.json",
       "canonical_url": "https://fonline.ru/Docs/generated/ai-evaluation-report.json",
-      "content_sha256": "9e001aac2b99cb20a57491c674f3fbce39c70a815179c8520eb7a5f43ad13c04",
-      "byte_size": 113236
+      "content_sha256": "7ceceab16a8c6e911ec5e2e310c836ba7e2cbbcb718c86498c696ed919189c88",
+      "byte_size": 113193
     },
     {
       "id": "api_model",
@@ -14135,22 +14249,22 @@
       "id": "description_translation_status",
       "path": "Docs/generated/description-translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/description-translation-status.json",
-      "content_sha256": "165b9838411a7494e0f9d1d1fa653977124fc1a6624d9f32f716a012f0ead1eb",
-      "byte_size": 1681484
+      "content_sha256": "c13c4ffbb5a910a6e3d4d66a7118efd005cb38db6e675f055356b2633f48bafc",
+      "byte_size": 1682553
     },
     {
       "id": "documentation_diagrams",
       "path": "Docs/generated/diagrams.json",
       "canonical_url": "https://fonline.ru/Docs/generated/diagrams.json",
-      "content_sha256": "fe4c4786fff4082888863d49dfa2af4978d6735067b03a14a2a556987e42caad",
-      "byte_size": 5611
+      "content_sha256": "6b08107cd20962c7b9a57552d01e89773dac679e7a70e081a5541e67d18df193",
+      "byte_size": 5620
     },
     {
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "3e61ce2eba05abcc32d76f88a9885ba6d226695cd3b825a557618463f80875fc",
-      "byte_size": 520941
+      "content_sha256": "5ee68c053f22f6cd390ddd211bf33b303d3014c6035d6c87e6c3d6d3b4084b24",
+      "byte_size": 535718
     },
     {
       "id": "effect_format_reference",
@@ -14233,15 +14347,15 @@
       "id": "documentation_screenshots",
       "path": "Docs/generated/screenshots.json",
       "canonical_url": "https://fonline.ru/Docs/generated/screenshots.json",
-      "content_sha256": "fd4a2a388b58bc6f6a8eb791584dcefb8f235390400f686fade6055f4c5e8a63",
+      "content_sha256": "2ac1b4f0298db2e6c265e4d340d16e2c2f1a76689067bb8760837b536ef85954",
       "byte_size": 8225
     },
     {
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "8c2e71d9a1104a6dd00890c4a8655ac230fbb10caba387af0f4652cfb7f826ef",
-      "byte_size": 267388
+      "content_sha256": "9d1304da8c1e9230aa125bbecc9ddcbfbb759791c94328be739cde66353863db",
+      "byte_size": 268488
     },
     {
       "id": "source_inventory",
@@ -14268,8 +14382,8 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "2aeeaed0ff388fde91524428dec67365c77f128975800b82e39516c542bd3a73",
-      "byte_size": 105169
+      "content_sha256": "526b2dc95ffe5ed55742a0e1f87b33a171c9b1aa8e946481d824acbf8282a556",
+      "byte_size": 106196
     },
     {
       "id": "video_reference",
@@ -14277,27 +14391,6 @@
       "canonical_url": "https://fonline.ru/Docs/generated/video.json",
       "content_sha256": "e33bf563efd3ec6b46db696492bcc64610b91d0ca2670d6c001037bdc0637387",
       "byte_size": 26444
-    },
-    {
-      "id": "site-docs-site",
-      "path": "_data/docs-site.json",
-      "canonical_url": "https://fonline.ru/_data/docs-site.json",
-      "content_sha256": "a95f555654b6c8e129f9a3ccd7b55038e3cc9d24179cad5ede09b59d014d397a",
-      "byte_size": 209912
-    },
-    {
-      "id": "site-docs-search",
-      "path": "assets/docs-search.json",
-      "canonical_url": "https://fonline.ru/assets/docs-search.json",
-      "content_sha256": "9f585e15bde26835cddff2c22710f5d69ce48d0a00a99b15c0894d7f1bcfc52f",
-      "byte_size": 1293595
-    },
-    {
-      "id": "site-docs-search.ru",
-      "path": "assets/docs-search.ru.json",
-      "canonical_url": "https://fonline.ru/assets/docs-search.ru.json",
-      "content_sha256": "3f5c88f9e91227ef0eb22636cf020cdb32c81914cbb531ee841c9be4fd160d49",
-      "byte_size": 1817231
     }
   ]
 }

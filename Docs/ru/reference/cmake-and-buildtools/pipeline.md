@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -81,6 +81,11 @@ revision-pinned implementation interfaces: автоматизация обяза
 - `BuildTools/msicreator/createmsi.py`
 
 Важные следствия:
+
+`BuildTools/cmake/helpers/State.cmake` получает список переменных конфигурации
+командой `cmake --help-variable-list` и сохраняет его только в памяти.
+Конфигурирование и проверки в script mode не должны создавать снимок
+`cmake-vars.txt` в дереве исходников.
 
 - Не документируйте итоговый список targets одной игры как универсальное
   поведение Engine.

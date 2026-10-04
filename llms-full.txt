@@ -5,13 +5,14 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Documents: 110
+Engine version: 2026.1.2-dev (CalVer from VERSION)
+Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
 ===== BEGIN DOCUMENT repository-home =====
 Source: README.md
 Canonical URL: https://fonline.ru/
-Content SHA-256: b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38
+Content SHA-256: 4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7
 
 ---
 layout: default
@@ -22,6 +23,8 @@ permalink: /
 ---
 
 # FOnline Engine
+
+[Engine versioning](Docs/en/how-to/release/versioning.md) · [Changelog](Docs/en/reference/changelog.md)
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
@@ -176,7 +179,7 @@ When behavior changes in a noticeable way, the owning document is updated in the
 ===== BEGIN DOCUMENT documentation-home =====
 Source: Docs/en/index.md
 Canonical URL: https://fonline.ru/Docs/en/
-Content SHA-256: 7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673
+Content SHA-256: e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f
 
 ---
 layout: default
@@ -187,6 +190,8 @@ permalink: /Docs/en/
 ---
 
 # FOnline Engine Documentation
+
+The Engine [versioning policy](how-to/release/versioning.md) and [changelog](reference/changelog.md) identify releases and required migration work.
 
 This is the human documentation entry point for the reusable FOnline engine.
 It is written for game developers, tool authors, release operators, and engine
@@ -1458,7 +1463,7 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b
+Content SHA-256: bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e
 
 ---
 layout: default
@@ -1541,6 +1546,8 @@ Record one row for every artifact the game intends to ship. Do not infer rows fr
 | Rollback unit | previous immutable artifact/config/data set | Rehearsed restore route |
 
 Treat the exact game and Engine revisions, package declaration, package config, dependency pins, SDK/tool versions, and build image as one input set. Changing any member creates a different release candidate.
+
+Record the Engine CalVer from `VERSION` with the exact Engine revision in the release evidence and review the [changelog](../../reference/changelog.md). [Engine versioning](versioning.md) keeps these identities separate from the game version and package/updater build hash; it does not overwrite project Android or installer versions.
 
 ## Declare packages
 
@@ -1676,7 +1683,7 @@ closed tab loop under both linker rules. On `wixl`, path controls remain
 editable with the mouse and through the folder browser even though they are
 outside its tab loop. Validate an actual installer on each supported host.
 
-The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](../../../../BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
+The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
 
 ### Linux client or server
 
@@ -1882,6 +1889,186 @@ Promote a package row to project-qualified only when the named lane is versioned
 - [Engine Upgrade Guide](../migration/engine-upgrade.md)
 
 ===== END DOCUMENT packaging-and-release =====
+
+===== BEGIN DOCUMENT engine-versioning =====
+Source: Docs/en/how-to/release/versioning.md
+Canonical URL: https://fonline.ru/Docs/en/how-to/release/versioning.html
+Content SHA-256: f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7
+
+---
+layout: default
+title: Engine Versioning and Release Notes
+locale: en
+document_id: engine-versioning
+permalink: /Docs/en/how-to/release/versioning.html
+---
+
+# Engine Versioning and Release Notes
+
+The root [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the Engine identifier. This year-based CalVer policy, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md), and the [contract-change workflow](../../contributing/contract-change-management.md) are mandatory for every master update. Read the [changelog](../../reference/changelog.md) before upgrading a game.
+
+## Notation
+
+The logical fields are `YEAR.MAJOR.MINOR.PATCH`. `YEAR` is the four-digit UTC year. `MAJOR` is the positive release-line ordinal within that year, beginning at `1`; it is not a month or a SemVer compatibility promise. `MINOR` counts published master changes within that line. `PATCH` belongs only to a release branch. Counters have no leading zeroes; minor and patch begin at `0`.
+
+| Context | Identifier | Meaning |
+|---|---|---|
+| master | `2026.1.21-dev` | Master change 21 in the first release line of 2026; patch is omitted |
+| first cut | `2026.1.21.0-rc` | Stabilization cut from that exact master version |
+| stabilization patch | `2026.1.21.1-rc` | First patch on the frozen cut |
+| release | `2026.1.21.1` | Promotion of that tested candidate; only the suffix is removed |
+| release patch | `2026.1.21.2` | Next patch on the same cut |
+| next master line | `2026.2.0-dev`, `2026.2.1-dev`, `2026.2.2-dev` | Independent development after the first cut |
+
+`VERSION` contains exactly one identifier, optionally one newline. Master always has three numeric fields and `-dev`; a release branch always has four fields and either `-rc` or no suffix. There are no numbered rc, alpha, beta, build-time, or Git suffixes. Git tags use `v<version>` and are immutable.
+
+The calendar month is recorded in the UTC change/release date, not in `MAJOR`. Set the current UTC year when preparing a master update. At the first update in a new year, start `YEAR.1.0-dev`; otherwise increment minor by exactly one. After an owner-approved cut, advance major by one and reset minor to zero. Never roll a release branch's year, major, or cut minor forward: even a patch delivered in a later calendar year retains its cut identity.
+
+## Every master update
+
+One published change is one first-parent commit on master, including a merge commit, a documentation-only update, tests, CI, dependencies, and reversions. Each such step owns one new minor and one dated bilingual note. Feature-branch fixup commits are not separate master updates; before integration reconcile the final change with the latest master tip. A multi-commit direct push must satisfy the rule at every first-parent step. Concurrent changes must merge the latest published tip and recalculate their next version before publication; never rewrite published history.
+
+1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
+2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
+3. Increment `VERSION` from the current master tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
+4. Add `## 2026.1.21-dev - 2026-10-04` in both changelog locales for the exact new identifier. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
+5. For every removal/replacement, write the exhaustive migration record below and bind any required generated-contract disposition to its exact base/current digests. Review semantic changes even when the static diff is empty.
+6. Update each owning guide, examples, both locales, and `AGENTS.md` routing in the same change. Regenerate affected source-owned models/references, diagrams/screenshots, snippets, translation state, site/search/routes, AI evaluation, and AI delivery in dependency order. [Documentation maintenance](../../contributing/documentation/) owns the complete route.
+7. Run affected native/script/configuration/content/package checks plus negative old-usage and positive unaffected/new-usage tests. Run version/changelog and full relevant documentation/site gates. Record exact results, compatibility/ABI/resource decisions, and residual limits; a version bump alone never changes runtime compatibility.
+8. Before an authorized commit/publication run the update validator against the actual baseline. CI validates each incoming master step, not only the final version. Publish only with the owner's authorization and retain the published tip as an ancestor.
+
+```bash
+python BuildTools/docs_engine_version.py --check --branch master --baseline-git-ref HEAD
+python BuildTools/tests/test_engine_version.py
+```
+
+For committed publication-range evidence:
+
+```bash
+python BuildTools/docs_engine_version.py --check --branch master   --baseline-git-ref <previous-master-sha> --target-git-ref <new-master-sha> --history
+```
+
+The source-only `--check` works without Git. A comparison requires the exact available Git baseline and target. Do not bypass a missing/shallow baseline. CI compares a PR's final head to its target base; a push validates the complete incoming first-parent range. Old pre-policy revisions require the ordinary complete-range source audit.
+
+## Exhaustive migration record
+
+Write a separate record for each removed or replaced contract, covering all of these. Use exact symbols, files, searches, ordering, values and expected outputs; an agent must not guess a replacement or product choice.
+
+1. Exact introducing version and affected old/new revision range; all affected backends, roles, platforms, overloads, settings, fields, content formats and persisted properties.
+2. Old name/signature/key/value and its original meaning; new declaration and meaning; removal rationale. State what remains invariant, including units, numeric IDs, sentinels, defaults, ordering, ownership and side effects.
+3. Detection commands/patterns and the precise compiler/analyzer/baker/validator diagnostic, including dynamically declared config/content references. Explain how to prove that the project does not use the affected surface.
+4. Complete before/after examples and deterministic transformations, including imports/callbacks, each scripting backend, native extension, configuration and authored content that the change touches. Resolve overloads and edge cases explicitly; list a removed feature's disposition when no replacement exists.
+5. Ordered regeneration, configure, compile, bake, cache invalidation and packaging steps with all affected sides/roles. Link maintained runnable owners rather than a private game's tools.
+6. Persisted-data conversions, exact `MigrationRule` operations where applicable, backup/isolated restore, default/missing/legacy values, idempotency, and rollback boundary. State explicitly when no data migration is needed.
+7. Network compatibility marker, ABI/updater/resource-schema consequences, mixed-version restrictions, deployment order and rollback. State explicitly which identities do not change.
+8. Acceptance checks: affected old usage must fail before gameplay, unaffected usage must retain results, migrated/new usage must pass, and required save/restore/backend paths must be exercised. Record exact completion evidence and any owner decision that still blocks adoption.
+
+Keep English/Russian instructions semantically identical. For multiple skipped updates execute their records oldest to newest, honoring intermediate data and bake boundaries. Do not replace concrete migration instructions with a Git diff, ledger link, or “update callers.”
+
+## Current API and database migrations
+
+Engine supports only the current API at the selected revision. There are no old API aliases, permissive old-key parsing, fallback semantics, or general legacy runtime modes. Existing values retain their original meanings; a retired enum/property ID must not be reused to reinterpret stored values. A documented defect fix restores that meaning and includes evidence of the invariant; intentionally changing a valid old case is a replacement.
+
+Existing `MigrationRule` handling is the narrow persisted-entity/property conversion exception. It does not preserve the old callable/configuration/content API and does not authorize general database business-data migration. Document the exact old/new stored property or reference and prove the conversion on isolated data; project-specific business transformations remain project-owned. The central `MigrationRule Version` marker is a separate compatibility-hash input, not the public version counter. Necessary old-build refusals carry the existing temporary-compatibility marker; that marker never licenses an old API shim.
+
+An upgrade without project migration either preserves all used contracts or fails explicitly during compilation/baking/validation for affected usage. A same-shape semantic reinterpretation, silent coercion, default substitution, or failure only after normal gameplay begins is unacceptable. If the compiler cannot distinguish old use, introduce a distinct identifier/type/format plus a source-owned validator.
+
+## Cut, stabilize and patch
+
+1. The owner selects and records an exact tested master SHA/version, supported platform matrix and stabilization/patch authority. Cut `release/YEAR.MAJOR` at that SHA and use `YEAR.MAJOR.MINOR.0-rc`; record the frozen cut and its cumulative migration notes in both locales. Branch/tag creation and publication require the owner's command.
+2. Independently start the next master major at minor zero. Release fixes keep cut year/major/minor and increment patch once per first-parent change, retaining `-rc` throughout stabilization. Document and validate every patch as completely as master changes.
+3. Promote the tested candidate by dropping `-rc` without changing its patch. That promotion may change only `VERSION` and documentation/delivery; a code/build/test change needs another stabilization patch and requalification.
+4. Later release fixes increment patch with no suffix. Apply/backport only the approved fixes, with tests, migration notes and documentation for the actual branch behavior; do not merge later master API additions wholesale into the frozen cut. If a fix needs new incompatible semantics, give it a distinct contract and explicit migration rather than repurposing existing values.
+5. Run `docs_engine_version.py --check --branch release/YEAR.MAJOR` against the actual baseline and complete qualification matrix. Publish immutable `v<version>` tags and GitHub notes only after explicit authorization. Keep release provenance and supported/backport policy explicit; these future procedures do not claim that release branches or historical site snapshots already exist.
+
+## Identities and consumers
+
+| Identity | Meaning |
+|---|---|
+| `FO_ENGINE_VERSION` | Engine `VERSION`, validated by the shared parser |
+| `FO_ENGINE_REVISION` | Engine SHA, tracked `-dirty` state, or `unknown` for a source archive |
+| `FO_BUILD_HASH` | Embedding-project revision used by packages/updater |
+| `Common.GameVersion` | Project-owned game version |
+| `FO_COMPATIBILITY_VERSION` | Runtime contract digest including the separate manual migration marker |
+| ABI/resource-schema versions | Their source-owned serialization/protocol contracts |
+
+`BuildTools/engine_version.py` is shared by CMake, native codegen and documentation. `VERSION` and Engine Git-ref changes invalidate generated metadata. Startup logs print the Engine identifier/revision separately from game metadata; a nested archive cannot inherit the parent project's Git identity. Site navigation/routes and AI delivery use the same version, and the site version link opens the selected locale's changelog. Documentation still follows rolling `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshot policy. Historical `Since` annotations retain their original values. Project branding, Android/installer versions and package hashes remain project-owned.
+
+## Source ownership
+
+- `VERSION`, `BuildTools/engine_version.py`, `BuildTools/docs_engine_version.py`, `BuildTools/tests/test_engine_version.py`
+- `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
+- `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
+
+===== END DOCUMENT engine-versioning =====
+
+===== BEGIN DOCUMENT engine-changelog =====
+Source: Docs/en/reference/changelog.md
+Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
+Content SHA-256: 8a5301b9f66b6a8929c90f0ec7de851f0df20d1527930eeedd63acdf20d8ab8a
+
+---
+layout: default
+title: Engine Changelog
+locale: en
+document_id: engine-changelog
+permalink: /Docs/en/reference/changelog.html
+---
+
+# Engine Changelog
+
+Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+
+## Unreleased
+
+## 2026.1.2-dev - 2026-10-04
+
+### Changed
+
+- Held-direction movement traces and extends plans, retargets on turns and can slide along obstacles. Step leases bound how far the server and observers continue when the controlling client's link stalls.
+- Shared movement synchronization measures usual link transit, catches up late plans and joins plans at an already traversed step. These changes also apply to point-and-click movement; destination pathfinding remains in place. Observer catch-up can play smoothly instead of immediately jumping ahead. See [movement](../explanation/maps-and-movement.md) and [networking](../explanation/authority-and-networking/index.md).
+- The build-hash regression fixture stages the real CMake helpers beside its temporary project, supporting Windows checkouts and temporary directories on different drives.
+
+### Migration
+
+- Upgrade the server, controlling clients and observers together. `SendCritterMoveLease` and `CritterMoveLease` extend the wire protocol; the compatibility marker advances from `0.0.66` to `0.0.68`. Reconfigure, rebuild native hosts/runtime libraries and rebake both sides from the same source revision. Do not bypass the compatibility check to run mixed revisions. No persistent property/prototype rename or save conversion is introduced by this movement change.
+- Review new `Network.LinkDelayWindowMs`, `Network.LinkDelayRebaseMs`, `Network.MoveLateCatchUpMinMs`, `Network.MoveLateCatchUpMaxMs` and `Network.MovePlanJoinMaxSteps` in every affected configuration. Existing settings retain their meaning. Search configuration sources for these exact keys; absent keys use the documented defaults. A zero join bound disables joining.
+- Review new `Client.DirectMoveTraceSteps`, `Client.DirectMoveExtendAheadSteps`, `Client.DirectMoveLeaseSteps`, `Client.DirectMoveLeaseRenewSteps`, `Client.DirectMoveRetargetMinMs`, `Client.DirectMoveRetargetImmediateAngle` and `Client.DirectMoveSlide`. Keep extension/renewal bounds below their trace/lease bounds. No authored movement destination or ordinary point-and-click call requires rewriting.
+- Review new `Client.MoveCatchUpRate` and `Client.MoveCatchUpSmoothMaxMs` for remote playback. Regenerate script API/settings references and compile affected scripts; all fourteen additions are read-only settings, not mutable script state.
+- Validate held straight movement, turns, stopping and blocked edges with controlling and observing clients, then ordinary point-and-click destinations and interruptions. Repeat with delay/jitter/stalls, checking lease expiry and late-plan reconciliation. Existing `Network.MoveSyncTrace` can collect diagnostic evidence; keep it disabled outside diagnostic runs. These checks qualify behavior separately from performance.
+- When maintaining a copied build-hash test fixture, stage the three actual CMake helper files beside that fixture instead of deriving a cross-drive relative path. Production build-marker behavior is unchanged.
+- Regenerate the MinimalMultiplayer, ContentShowcase and PackagingMatrix configurations with their `generate_config.py` owners so the fourteen movement settings are present. The maintained native test inventory includes `Test_LinkDelay.cpp`; bilingual documentation and snippet coverage fixtures now include the two version-policy pages.
+- Documentation search consumers must honor the manifest's reviewed per-locale `max_bytes`, increased from 1,835,008 to 1,867,776 bytes for the complete movement/settings and migration corpus. Membership, token policy and fail-closed enforcement remain intact; the AI full-context limit is unchanged.
+
+## 2026.1.1-dev - 2026-10-04
+
+### Added
+
+- Engine CalVer from `VERSION` is validated during CMake configuration, compiled into `FO_ENGINE_VERSION`, and recorded in native startup logs. `FO_ENGINE_REVISION` records the Engine SHA and tracked-file `-dirty` state separately from the embedding project's build hash.
+- The documentation version link opens this changelog in the selected language. Navigation/route data and AI delivery expose the Engine version from the same source file.
+- Bilingual change notes and release checks establish an owner for developer-visible changes and required migration instructions.
+
+### Changed
+
+- Current-only Engine API support preserves the original meaning of existing values. Replacements remove the old API and provide actionable compile/bake/validation failures plus exhaustive bilingual migration records; existing persisted-property `MigrationRule` conversion remains the narrow exception.
+- Every published master step increments minor and records its UTC year/date; release lines freeze year/major/minor and advance patch, using `-rc` for stabilization. Documentation-only, CI, test and dependency updates are included.
+
+- The historical `2022.1.0.wip` placeholder in `VERSION` is replaced by a CalVer development identifier. Existing historical API `Since` annotations retain their original values.
+
+### Migration
+
+- The bounded full-context delivery limit increases from 2,162,688 to 2,195,456 bytes to include the complete mandatory update/migration policy. Delivery consumers must honor the declared `full_context.max_bytes` rather than a fixed previous buffer; whole-document inclusion and fail-closed validation remain.
+
+- The earlier draft `YYYY.M.PATCH` notation is superseded. Use `YEAR.MAJOR.MINOR-dev` on master and `YEAR.MAJOR.MINOR.PATCH[-rc]` on `release/YEAR.MAJOR`; major is the line ordinal, and the month is in the note date. Initial policy adoption sets `2026.1.1-dev`. Consumers parsing the earlier version syntax must accept these exact forms and reject obsolete suffixes/final three-field forms; `BuildTools/engine_version.py` is the shared parser. See the [complete update checklist](../how-to/release/versioning.md#every-master-update), release-cut sequence and migration record before preparing any update.
+
+- Documentation-manifest versioning policy now uses schema version `3` and declares `engine: {scheme: calver, source: VERSION, master_format: YEAR.MAJOR.MINOR-dev, release_format: YEAR.MAJOR.MINOR.PATCH[-rc]}`. Custom consumers regenerating these artifacts must include that policy and provide the Engine `VERSION` file. Rolling documentation still follows `master`.
+- Reconfigure and rebuild native binaries to obtain the Engine identifiers. Project game versions, package/updater build hashes, runtime compatibility digests, ABI versions, and resource-schema versions keep their own contracts; this change requires no data migration or resource-schema bump.
+
+## Earlier history
+
+This maintained log begins with the adoption of Engine versioning. Earlier work is available in the [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound contract-change ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json). They are audit evidence, not a reconstructed series of published Engine releases.
+
+===== END DOCUMENT engine-changelog =====
 
 ===== BEGIN DOCUMENT release-operations =====
 Source: Docs/en/how-to/release/operations.md
@@ -2679,7 +2866,7 @@ When Engine or the embedding project is updated, inspect changes to `Settings.in
 ===== BEGIN DOCUMENT generated-content-workflow =====
 Source: Docs/en/how-to/build/generated-content.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/generated-content.html
-Content SHA-256: 4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6
+Content SHA-256: ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c
 
 ---
 layout: default
@@ -2715,7 +2902,7 @@ FOnline has three distinct generated layers:
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings and internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
 
 Generated output is evidence, not an editing surface. Fix the source annotation, interface model, project config, generator, or authored asset, then regenerate.
 
@@ -2747,6 +2934,8 @@ FinalizeProjectGeneration()
 `SetupCodeGeneration()` consumes Engine and project native sources, code-generation tags, templates, and project options. `ForceCodeGeneration` is the dependency used by script compilation and baking targets, so stale native metadata cannot be hidden behind an unrelated incremental resource bake.
 
 Reconfigure after changing CMake options, source registration, stage hooks, generated templates, or the Engine pin. Build the smallest target that compiles the affected generated source.
+
+Engine `VERSION` also feeds configuration and code generation. Its CalVer identifier and exact Engine revision become `FO_ENGINE_VERSION` and `FO_ENGINE_REVISION` in `EngineConfig.gen.h`; the embedding-project build hash retains its separate meaning. Changing `VERSION` automatically invalidates configuration/code generation. See [Engine versioning](../release/versioning.md) and the [changelog](../../reference/changelog.md).
 
 ## Compile scripts
 
@@ -3031,7 +3220,7 @@ When Engine or an embedding project is updated, audit the complete incoming rang
 ===== BEGIN DOCUMENT engine-upgrade-guide =====
 Source: Docs/en/how-to/migration/engine-upgrade.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/migration/engine-upgrade.html
-Content SHA-256: c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4
+Content SHA-256: 5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374
 
 ---
 layout: default
@@ -3071,6 +3260,8 @@ Record before touching the submodule or vendored Engine checkout:
 
 An Engine update is not a pointer-only change. The complete incoming Engine range and the project changes made to adopt it form one review unit.
 
+Record the old/new Engine `VERSION` identifiers alongside the exact SHAs and review the [changelog](../../reference/changelog.md). [CalVer](../release/versioning.md) identifies the year, release line, master change and optional release patch; compatibility still requires the source/contract audit below. Historical changes predating the maintained log require the complete revision-range review.
+
 ## Preserve the starting state
 
 1. Fetch the project and Engine remotes.
@@ -3107,6 +3298,10 @@ Classify changes by owner and consequence:
 | Documentation/example | Engine/project ownership, links, commands, pins, and translation freshness |
 
 Use Last Frontier or TLA only as integration evidence. The Engine source, tests, interfaces, and generated models remain normative.
+
+## Apply explicit migration notes
+
+Review every dated Engine change between the old/new identifiers, oldest first. Detect affected usage by each record's exact searches and diagnostics, execute all listed transformations and intermediate data/bake steps, and record the negative old-usage plus positive unaffected/migrated-use checks. Current-only API support means an unmigrated affected use must fail at compile/bake/validation; unchanged used values keep their original meaning. A generated shape diff cannot detect semantic reinterpretation. The [exhaustive migration record](../release/versioning.md#exhaustive-migration-record) is the acceptance contract.
 
 ## Compare generated contracts
 
@@ -3598,7 +3793,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f
+Content SHA-256: 6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26
 
 ---
 layout: default
@@ -3763,7 +3958,7 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 
-`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 For changed relations, `Sync.Yield()` hands off thread locks via `Game.SyncYield()`; re-read afterward. Unavailable entities defer to the next frame for teardown. `Sync.OnRetry` and `Sync.ReportRetry(reason)` report attempts, not failures.
 
@@ -5178,7 +5373,7 @@ runtime invoke and skips transports that need compiled code.
 ===== BEGIN DOCUMENT gameplay-testing =====
 Source: Docs/en/how-to/testing/gameplay-and-integration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/testing/gameplay-and-integration.html
-Content SHA-256: c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121
+Content SHA-256: 2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271
 
 ---
 layout: default
@@ -5256,6 +5451,8 @@ Schema version 1 has this ownership:
 - process: stable `id`, command array, optional working directory/environment, readiness contract, required/forbidden markers, and expected exit code.
 
 Unknown fields, duplicate ids or markers, invalid types, and unresolved placeholders are configuration errors. Environment values are added to the inherited process environment. Do not put secrets in manifests, placeholder values, commands, markers, or reports: command lines and process environments can be observable outside the runner.
+
+`default_timeout_seconds`, scenario `timeout_seconds`, and process `ready_timeout_seconds` must be finite positive numbers representable as Python floats; booleans and strings are invalid. The runner rejects `NaN`, either infinity, overflowing JSON numbers such as `1e309`, and integers too large for a float during manifest validation, before starting any process, with configuration exit code `2`. Omitted scenario timeouts inherit the validated suite deadline; omitted readiness timeouts use the remaining scenario budget.
 
 A minimal ordered server/client scenario looks like this:
 
@@ -5382,7 +5579,7 @@ enforced normal authority.
 ===== BEGIN DOCUMENT ai-control-protocol-guide =====
 Source: Docs/en/how-to/ai-control-protocol.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/ai-control-protocol.html
-Content SHA-256: 7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe
+Content SHA-256: d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7
 
 ---
 layout: default
@@ -5701,6 +5898,8 @@ invalid params, unknown methods, action acceptance, asynchronous completion,
 updated observation, and exclusive event cursors. Focused malformed-peer tests
 also reject mismatched ids, ambiguous responses, invalid JSON, and oversized
 lines.
+
+The reference `AiControlClient` requires `timeout` to be a finite positive number representable as a Python float. Construction rejects `NaN`, either infinity, overflow, booleans, and non-numeric values with `ValueError("timeout must be a finite positive number")` before any socket connection. Focused constructor tests cover invalid inputs and accepted positive integer/fractional timeouts without opening sockets.
 
 This sample is **not a FOnline runtime proof**. A project integration must also:
 
@@ -11047,7 +11246,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: a0ddae586a823fc78fa92f18bc58631bf7f32b7835aefac051b599ace508d1e3
+Content SHA-256: 782b908f4f0b9ec6c8382a1bc28d558f0d74506d372d53fc3bc105ac4b010345
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11068,6 +11267,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 5. Do not commit or push unless explicitly asked by the repository owner.
 6. When pulling, rebasing, or changing the engine revision, follow [documentation revision reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation): record old/new SHAs, audit every incoming source/test change, regenerate affected models, and document the reconciliation before dropping any safety stash.
 7. Treat published branch history as immutable. Once the branch has a remote tip, do not rebase, reset, amend, or force-push it; merge upstream and the published tip so every publication is a fast-forward. Verify with `git merge-base --is-ancestor <remote-tip> HEAD` before pushing, and stop instead of rewriting history when that check fails.
+8. Every master update follows the mandatory [Engine update/version contract](Docs/en/how-to/release/versioning.md#every-master-update): increment minor from the latest published master tip, use the current UTC year and `YEAR.MAJOR.MINOR-dev`, add dated EN/RU change and exhaustive migration notes, reconcile every affected owning/generated doc, and validate the exact publication range. Documentation, test, CI, dependency and revert changes count too. Release branches freeze the cut and advance only patch; do not create or publish them without the owner's command.
 
 ## Documentation Map
 
@@ -11082,6 +11282,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [Docs/en/explanation/content-pipeline/baking.md](Docs/en/explanation/content-pipeline/baking.md) - resource-pack execution, built-in baker ordering, incremental/full rebuilds, reports, payload ownership, and project composition practices.
 - [Docs/en/how-to/release/security-and-secrets.md](Docs/en/how-to/release/security-and-secrets.md) - config substitution timing, command-line masking limits, package signing handoff, CI trust boundaries, rotation, revocation, and incident routing.
 - [Docs/en/how-to/release/operations.md](Docs/en/how-to/release/operations.md) - server process selection, readiness/health evidence, staged rollout, graceful shutdown, and rollback boundaries.
+- [Engine versioning and release notes](Docs/en/how-to/release/versioning.md) and [changelog](Docs/en/reference/changelog.md) - Engine `VERSION` ownership, CalVer, bilingual change notes, and release/migration rules. Update both changelog locales with developer-visible changes.
 - [Docs/en/how-to/release/backup-and-recovery.md](Docs/en/how-to/release/backup-and-recovery.md) - backend-aware backup sets, oplog limits, isolated restore, disaster-recovery drills, and project-owned recovery policy.
 - [Docs/en/how-to/build/generated-content.md](Docs/en/how-to/build/generated-content.md) - generated source/resource/metadata/documentation dependency order and recovery.
 - [Docs/en/how-to/migration/engine-upgrade.md](Docs/en/how-to/migration/engine-upgrade.md) - complete Engine-update, migration, compatibility, and documentation reconciliation route.
@@ -11103,7 +11304,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [BuildTools/SnippetPolicy.json](BuildTools/SnippetPolicy.json) and [Docs/generated/snippets.json](Docs/generated/snippets.json) - reviewed fence/harness policy and generated complete coverage report; regenerate with `BuildTools/docs_snippets.py`, never edit the report manually.
 - [BuildTools/DocumentationDiagrams.json](BuildTools/DocumentationDiagrams.json), [Docs/generated/diagrams.json](Docs/generated/diagrams.json), and [Docs/assets/diagrams/](Docs/assets/diagrams/) - source-owned accessible teaching diagrams, provenance, and exact SVG hashes; regenerate with `BuildTools/docs_diagrams.py`, never edit the SVG or catalog manually.
 - [BuildTools/DocumentationScreenshots.json](BuildTools/DocumentationScreenshots.json), [Docs/generated/screenshots.json](Docs/generated/screenshots.json), and [Docs/assets/screenshots/](Docs/assets/screenshots/) - versioned tool screenshots, exact capture inputs, recapture triggers, and source/image hashes; regenerate the catalog with `BuildTools/docs_screenshots.py`, never replace an image without updating its provenance record.
-- [_data/docs-site.json](_data/docs-site.json), [assets/docs-search.json](assets/docs-search.json), [assets/docs-search.ru.json](assets/docs-search.ru.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
+- [Docs/Site/Data/docs-site.json](Docs/Site/Data/docs-site.json), [Docs/Site/Assets/docs-search.json](Docs/Site/Assets/docs-search.json), [Docs/Site/Assets/docs-search.ru.json](Docs/Site/Assets/docs-search.ru.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
 - [Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md](Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md) - rolling/current documentation identity, deferred release snapshots, planned English/Russian paths, and durable Markdown redirect policy.
 - [ThirdParty Maintenance](Docs/en/contributing/third-party/) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/en/explanation/runtime/client-updater.md](Docs/en/explanation/runtime/client-updater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
@@ -11213,7 +11414,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 - **Script callers own the complete native entity cover.** Before an ordinary server `FO_SCRIPT_API` call, AngelScript must acquire every existing entity the native call graph can read or mutate, including transitive map/location, holder, controlled-critter, and group dependencies. A native path reachable from that call may validate the prepared package with `ValidateEntityAccess()` and may call `EnsureEntitySynced()` freely and repeatedly to retain the own lock of an entity already covered by the current context. Both operations are idempotent no-ops once their condition is satisfied, so loops, repeated same-target calls, `catch` handlers, and recursion carry no call-count restriction. Each actual `EnsureEntitySynced()` acquisition never releases/reacquires the caller cover and never parks on a lock: it only ADDS the target's own lock plus the intermediate ancestor marks, as one all-or-nothing state-mutex transaction. Because the covering ancestor is held exclusively, any block it meets is a foreign thread mid-flight through its own non-blocking pass (releasing marks by lock address rather than hierarchy, or rolling back an ascending-address try-prefix), which clears in microseconds — so the acquisition is MANDATORY and retries the whole batch with bounded back-off until it lands, retaining nothing across the back-off. It throws only when the target is not actually covered or the covered-cover invariant is corrupt, never for ordinary transient contention, and a failure leaves the caller cover intact. It cannot repair an omitted unrelated existing dependency. Fresh parentless entities are captured only by the private trusted registration boundary before publication; that boundary never authorizes discovery or acquisition of pre-existing dependencies. Native code must not call `SyncEntity()` / `SyncEntities()` or otherwise obtain missing existing cover on the script's behalf. The explicit synchronization primitives `Game.Sync`, `Game.SyncRelease`, `Game.Lock`, and `Game.Unlock` are the exceptions because changing synchronization state is their script-visible purpose. The whole contract is opt-out: with the `Server.SingleThreadedLogic` setting the engine runs its logic on one worker, the cover model is bypassed, and scripts need no synchronization at all (see [Docs/ServerRuntime.md](Docs/ServerRuntime.md)).
 - **Fix the source, never mask.** When a lower layer returns a wrong result, swallows an error, or silently coerces bad input into "looks fine", fix it at the source (throw / validate / propagate) instead of papering over it from the caller with pre-checks, try/catch that fabricates a "good" value, default substitutes, or other workarounds. If you find yourself adding a guard that compensates for a bug elsewhere, stop and fix the bug instead.
-- **No permanent legacy compatibility in the reusable engine.** When an engine API, configuration key, data format, or internal contract is replaced, remove the old surface completely. Do not retain deprecated aliases, fallback parsing, or migration shims. A narrow refusal of an older build or transitional bridge needs a documented reason and a dated removal marker below; migration of database-persisted game data belongs to the embedding project.
+- **Only the current API; preserve existing meaning.** Add or extend a contract without changing the meaning of existing valid values, inputs, outputs, units, IDs, defaults or side effects. A replacement uses a distinct name/type/key/format and removes the old surface. No deprecated aliases, fallback parsing, old-API shims or permissive coercions. An unmigrated affected consumer must fail explicitly during compilation/baking/validation; unaffected usage must retain its behavior. This applies to experimental and internal surfaces too. The narrow persisted-property conversion exception is existing `MigrationRule` handling; project-specific database business migrations remain project-owned. An old-build refusal may carry the temporary marker below, which never authorizes an old API bridge. [ADR-0002](Docs/en/contributing/decisions/0002-public-api-stability-contract.md) and the [exhaustive migration record](Docs/en/how-to/release/versioning.md#exhaustive-migration-record) own the full rules.
 - **Code that knows an old format carries its removal date.** Mark every necessary old-build refusal or transition point, tests included, with `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or `[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed). One id and date cover all places of one compatibility. `BuildTools/temporary_compat.py` fails after the date and is run by the Engine validation workflow; embedding projects can pass their own source directories too. See [temporary compatibility](Docs/en/reference/native/essentials.md#temporary-compatibility).
 - **Keep engine invariants stable under exceptions.** An exception thrown partway through a multi-step engine mutation (entity create/register/destroy/invalidate, cross-entity links) must never leave a half-mutated, restart-only state. Engine allocation terminates on OOM (`safe_alloc`/`safe_allocator`), so `bad_alloc` is not a recoverable error and never a reason to build a rollback. A post-mutation invariant that "can only be false if the world is already corrupt" is a `FO_STRONG_ASSERT` (always-on, deterministic exit), not a swallowable `FO_VERIFY_AND_THROW`. Entity create/destroy is throw-as-signal, not transactional rollback (events may legitimately destroy or relocate the entity; the function throws but the entity is left in a valid state) — pinned by `Source/Tests/Test_EntityLifecycle.cpp` and `Test_ServerMapOperations.cpp`, so do not add a blanket create-time rollback. Full rules: [Docs/en/contributing/coding-contracts/exception-safety.md](Docs/en/contributing/coding-contracts/exception-safety.md).
 - **No singletons. No hidden global / static state for engine-semantic data.** State with *per-engine semantics* (lock sets, entity registries, ticket allocators tied to one engine's wait queues, mutable runtime caches that could be mixed across engines) lives on an owning instance reachable through the engine object graph — typically `ServerEngine` (managers), `ServerEntity` (per-entity locks, properties, parent), or `BaseEngine` (`ScriptSystem`, settings). Do not introduce file-scope mutable statics, `static` data members on engine classes, function-local statics that cache cross-call state, or unnamed-namespace mutable variables. Multiple engine instances may coexist in one process (embedding projects run parallel test suites this way), so hidden globals silently share state across engines, hide cross-test pollution, and turn lifetime-ordering bugs into timing windows.
@@ -12518,7 +12719,7 @@ this file owns only the reusable mechanism.
 ===== BEGIN DOCUMENT api-change-management =====
 Source: Docs/en/contributing/contract-change-management.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/contract-change-management.html
-Content SHA-256: 36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526
+Content SHA-256: 2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1
 
 ---
 layout: default
@@ -12790,8 +12991,8 @@ Example:
   "current_contract_sha256": "<64 lowercase hex characters>",
   "classification": "breaking",
   "rationale": "Why the change is intentional and what embedding projects observe.",
-  "migration": "Docs/Migrations/Next.md#changed-option",
-  "release_note": "Docs/ReleaseNotes/Next.md#changed-option",
+  "migration": "Docs/en/how-to/migration/engine-upgrade.md#<exact-migration-anchor>",
+  "release_note": "Docs/en/reference/changelog.md#<exact-version-and-change-anchor>",
   "compatibility": "Pinned projects must update the option and engine revision together.",
   "owner": "build-release"
 }
@@ -12811,6 +13012,12 @@ The `Validate documentation` job checks out full history and selects:
 After model/reference freshness checks, CI runs `docs_contract_diff.py --write --enforce`. A missing required disposition fails the job. The `if: always()` upload step preserves both reports for diagnosis.
 
 A multi-commit pull request is compared with its base branch commit, not the previous feature-branch commit. A multi-commit push uses the complete pushed range. The standalone validator rejects removal of the shared ledger, seventeen-model manifest contract, full-history checkout, base-ref argument, aggregate test, or enforcement switch.
+
+## Semantic review and every-update obligations
+
+The static gate below is structural and stability-based; it does not implement the complete acceptance policy. Every integration surface, including internal/experimental entries, must preserve the original meaning of existing values and reject unmigrated affected usage during compilation/baking/validation. Remove the obsolete API; never preserve it with aliases or change same-shaped semantics. Review behavior behind unchanged declarations, and supply negative old-usage plus positive unaffected/migrated-usage evidence. Existing persisted-property `MigrationRule` conversion is the narrow exception.
+
+Every published master step increments its development minor and carries dated EN/RU notes, exhaustive migration records and all affected owning/generated documentation. Follow [the mandatory update checklist](../how-to/release/versioning.md#every-master-update) and [migration record](../how-to/release/versioning.md#exhaustive-migration-record). A green seventeen-domain diff does not waive these requirements.
 
 ## What requires human review
 
@@ -12849,6 +13056,7 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 
 ## Validation checklist
 
+0. Complete the version/changelog and exhaustive semantic migration review from the Engine update contract; run `BuildTools/docs_engine_version.py` against the exact publication baseline.
 1. Regenerate and check all seventeen canonical models plus generated Markdown.
 2. Run `test_docs_api_diff.py` and `test_docs_contract_diff.py`.
 3. Compare against the intended base with `--write --enforce`.
@@ -12859,6 +13067,8 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 8. Keep staging empty unless staging or commit was explicitly requested.
 
 ## See also
+
+New `release_note` dispositions link to the bilingual [Engine changelog](../reference/changelog.md) and the detailed migration guide. [Engine versioning](../how-to/release/versioning.md) owns the CalVer release process; older revision-bound ledger entries keep their historical release-note disposition.
 
 - [GeneratedApiAndMetadata.md](../reference/metadata/index.md) - canonical models and generated-reference ownership.
 - [ADR-0002](decisions/0002-public-api-stability-contract.md) - accepted stability and change policy.
@@ -12972,7 +13182,7 @@ Introducing a separate site application would duplicate ownership and move the p
 ===== BEGIN DOCUMENT adr-public-api-stability-contract =====
 Source: Docs/en/contributing/decisions/0002-public-api-stability-contract.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0002-public-api-stability-contract.html
-Content SHA-256: 664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417
+Content SHA-256: d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc
 
 ---
 layout: default
@@ -12987,6 +13197,7 @@ permalink: /Docs/en/contributing/decisions/0002-public-api-stability-contract.ht
 - Status: Accepted
 - Date: 2026-07-10
 - Amended: 2026-08-02 after the native-codegen inventory received an owner-reviewed experimental scope contract
+- Amended: 2026-10-04 for current-only API, preserved semantics, fail-closed migration and per-master-update versions
 - Owners: scripting, runtime, build-release, documentation
 
 ## Context
@@ -13006,9 +13217,9 @@ Every generated public contract uses one of these labels:
 | Label | Meaning |
 |---|---|
 | `stable` | Supported for documented release lines; incompatible changes require migration and release disposition. |
-| `experimental` | Publicly usable for evaluation, but signature/behavior may change with explicit release notes. |
-| `internal` | Reachable implementation detail with no compatibility promise. |
-| `deprecated` | Previously supported surface scheduled for removal, with replacement and removal window documented. |
+| `experimental` | Revision-pinned evaluation surface; removal/replacement requires explicit diagnostics and exhaustive migration; existing meaning is preserved. |
+| `internal` | Implementation scope without a release-line support promise; integration uses still obey semantic preservation and fail-closed migration. |
+| `deprecated` | Lifecycle metadata for planned retirement; not permission to retain an obsolete API alias or change its meaning. |
 
 Until a symbol or surface is explicitly classified, it is `internal`. Existing reachability, an example in a project, or inclusion in generated bindings does not implicitly make it stable.
 
@@ -13017,7 +13228,7 @@ Until a symbol or surface is explicitly classified, it is `internal`. Existing r
 1. Source declarations, metadata annotations, parsers, settings declarations, CMake helpers, and tests are authoritative for current behavior.
 2. Generated canonical contract models normalize those sources into stable IDs and machine-readable JSON.
 3. Human reference pages, the locale-specific public contract indexes, and the root `PUBLIC_API.md` legacy route are generated from those models and supplemented with task-oriented examples and explanations.
-4. Manual prose must not maintain declaration counts, signatures, or cross-domain inventories that can be generated. `Docs/generated/source-inventory.json` remains the independent source inventory; the eighteen contract models own their respective reusable surfaces.
+4. Manual prose must not maintain declaration counts, signatures, or cross-domain inventories that can be generated. `Docs/generated/source-inventory.json` remains the independent source inventory; the seventeen contract models own their respective reusable surfaces.
 5. Project documentation may describe how it consumes an engine API but cannot upgrade that API's stability label.
 
 ### Source-owned classification
@@ -13026,7 +13237,7 @@ Native-codegen symbols use a separate `///@ ApiContract <selector> <label> ...` 
 
 Without a valid scope contract, unannotated symbols remain `internal (default)`. A valid scope contract applies its reviewed label only while both inventory pins match; any symbol addition, removal, or stable-ID change fails generation until an owner updates the pins. An exact symbol declaration may override the scope, while overlapping exact/family declarations remain invalid. An explicit `internal` tag records a reviewed decision without promoting the symbol. `stable`/`experimental` require `Since`; `deprecated` requires deprecation version, live replacement, and removal target.
 
-Contract tags are not a shortcut around owner review. The current scope declaration classifies all 2,527 generated symbols as revision-pinned `experimental` since `2022.1.0.wip`, then keeps the development-only `Game.BreakIntoDebugger` helper explicitly `internal`. This makes the integration surface usable and change-tracked without claiming any broad `stable` compatibility promise.
+Contract tags do not replace owner review. The source-owned inventory pins classify the current native-codegen scope as revision-pinned `experimental`, with exact internal overrides. Historical `Since` annotations retain their original values; no label waives semantic preservation.
 
 ### Contract domains
 
@@ -13046,22 +13257,19 @@ A release can support one domain without promising stability for every domain.
 
 ### Change policy
 
-For a `stable` surface, an incompatible change requires:
+Only the current API at the selected revision is supported. This rule applies to every integration surface and every stability label, including `experimental` and `internal`. Labels still route generated review and describe scope; none permits silent semantic reinterpretation or a legacy compatibility layer.
 
-1. an API diff or equivalent source-backed detection;
-2. an explicit breaking-change classification;
-3. migration instructions and replacement where applicable;
-4. release-note and support-policy disposition;
-5. compatibility-version or migration metadata updates when the network/serialized contract requires them;
-6. updates to generated reference, examples, and tests in the same change.
+Existing valid values keep their original meaning: names and numeric IDs, units/signs, sentinels/defaults, input/output behavior, ownership, ordering and side effects. Additions and extensions preserve existing cases. Never reuse a retired value to reinterpret existing source, content or stored data. Fixing a documented defect restores its established meaning and requires a regression showing that invariant; a deliberate change to a valid old case is a replacement.
 
-Silent fallback aliases, undocumented compatibility shims, and stale duplicate overloads are not the default migration strategy. Add a compatibility layer only when the support policy requires it and give it an owner/removal condition.
+A replacement must expose a distinct identifier/type/key or explicit format boundary, remove the obsolete surface and fail closed for affected old use during compilation, baking or validation. If a same-shaped call cannot be diagnosed, redesign the boundary and add a source-owned validator. An unmigrated project either retains correct behavior for its used contracts or receives actionable errors before normal gameplay. Runtime surprises, permissive parsing, automatic defaults, fallback aliases and deprecated API shims are forbidden.
 
-For an `experimental` surface, breaking changes still require an explicit changelog/release note so users and AI agents can select the correct revision.
+Existing `MigrationRule` conversion of persisted properties/entity references is the narrow data-migration exception. It does not keep an old callable/configuration API alive; project business-data migrations remain project-owned. Compatibility hashes/ABI/schema changes are separate explicit decisions. An expiring old-build refusal marker does not authorize a transitional old API.
+
+Every removal or replacement carries exhaustive bilingual [migration records](../../how-to/release/versioning.md#exhaustive-migration-record): exact affected versions/surfaces, detection and diagnostics, complete transformations and examples, ordered rebuild/bake steps, persisted-data handling, compatibility/deployment/rollback and acceptance evidence. Include negative affected-old-use and positive unaffected/migrated-use checks. An empty generated diff is not evidence of unchanged semantics. Every master step also satisfies the mandatory version/changelog/documentation update checklist in that guide.
 
 ### Automated generated-contract enforcement
 
-`BuildTools/docs_contract_diff.py` compares all eighteen modeled domains with the same paths at the pull request base SHA or pre-push revision: native API, CMake, main BuildTools CLI, package, helper CLI, native extension, prototype, map, model, text, effect, image, particle, font, audio, video, GUI runtime, and AiControl protocol. The specialized native layer in `BuildTools/docs_api_diff.py` retains symbol/overload semantics; the other models match their source-owned stable IDs. All domains classify additions, documentation, policy, and breaking changes against baseline stability so a simultaneous downgrade to `internal` cannot bypass review.
+`BuildTools/docs_contract_diff.py` compares all seventeen modeled domains with the same paths at the pull request base SHA or pre-push revision: native API, CMake, main BuildTools CLI, package, helper CLI, native extension, prototype, map, model, text, effect, image, particle, font, audio, video, and AiControl protocol. The specialized native layer in `BuildTools/docs_api_diff.py` retains symbol/overload semantics; the other models match their source-owned stable IDs. All domains classify additions, documentation, policy, and breaking changes against baseline stability so a simultaneous downgrade to `internal` cannot bypass review.
 
 For helper scripts, each executable `create_parser()` remains the syntax source of truth while `BuildTools/HelperCliInterface.json` owns stable helper identity, purpose, audience, invocation owner, and explicit exclusions. AST inventory validation rejects a newly exposed helper parser that is neither modeled nor assigned to another canonical domain. The helper CLI domain is `internal` until an owner approves a versioned support policy.
 
@@ -13072,6 +13280,8 @@ A breaking `stable`, `experimental`, or `deprecated` declaration change requires
 CI writes JSON/Markdown revision-pair reports under `Workspace/`, enforces missing dispositions, and uploads the report even on failure. The current site does not publish historical snapshots merely to support this gate.
 
 ### Versioning
+
+Every master and release-branch update follows [Engine versioning](../../how-to/release/versioning.md), including branch-specific counters, dated EN/RU migration notes, generated documentation and validation. Future release patches preserve the frozen cut; support does not reintroduce old APIs into master.
 
 Documentation describes the current branch until the engine has meaningful release tags and a support matrix. Historical API snapshots are not created merely because the publication layer can host them. When supported release lines exist, generated models and pages are pinned to immutable tags/revisions.
 
@@ -13105,8 +13315,8 @@ Documentation describes the current branch until the engine has meaningful relea
 - `BuildTools/docs_api.py --check` pins the canonical native-codegen model, including family/symbol IDs, descriptions, explicit/default contract provenance, lifecycle metadata, signatures, and declaration provenance.
 - `BuildTools/docs_reference.py --check` pins the generated human pages for the native-codegen model.
 - Focused tests prove that `ApiContract` family selectors cover overloads, stale scope counts and inventory hashes fail closed, exact scope overrides work, deprecated replacements resolve, invalid selectors fail, and docs-only annotations do not change the compatibility hash.
-- `BuildTools/docs_contract_diff.py --enforce`, the specialized API comparator, and their focused tests reject undisposed baseline-public removals, shape changes, stability withdrawals, stale digests, and model/parser contract changes across all eighteen generated domains.
-- `BuildTools/docs_public_api.py --check` regenerates the root contract index from those eighteen models and rejects stale domain links, labels, or native summary counts.
+- `BuildTools/docs_contract_diff.py --enforce`, the specialized API comparator, and their focused tests reject undisposed baseline-public removals, shape changes, stability withdrawals, stale digests, and model/parser contract changes across all seventeen generated domains.
+- `BuildTools/docs_public_api.py --check` regenerates the root contract index from those seventeen models and rejects stale domain links, labels, or native summary counts.
 - Broad stable classifications remain owner and release-policy work; the inventory-pinned `experimental` scope does not itself claim cross-revision stable compatibility.
 - Code review must reject prose that presents an unclassified reachable symbol as stable.
 
@@ -13123,7 +13333,7 @@ Documentation describes the current branch until the engine has meaningful relea
 ===== BEGIN DOCUMENT adr-manifest-backed-ai-documentation-delivery =====
 Source: Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
-Content SHA-256: 8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00
+Content SHA-256: 104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85
 
 ---
 layout: default
@@ -13166,7 +13376,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
-4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 64 KiB (2,162,688 bytes). After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
+4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 96 KiB (2,195,456 bytes). The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.
@@ -13224,7 +13434,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 ===== BEGIN DOCUMENT adr-manifest-backed-site-navigation-search =====
 Source: Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.html
-Content SHA-256: 101041e8482c80bf60bd0a221a3ea5eedd5ecab70c696e3c6c985b0b7e7d40df
+Content SHA-256: 3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3
 
 ---
 layout: default
@@ -13251,12 +13461,12 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 
 1. `Docs/documentation-manifest.json` owns site navigation groups and search policy in `site_delivery`. Navigation entries refer to stable document IDs, never copied titles or handwritten URLs.
 2. `BuildTools/docs_site.py` deterministically generates:
-   - `_data/docs-site.json`, consumed by Jekyll/Liquid for navigation, site identity, repository identity, and the rolling source-ref indicator;
-   - `assets/docs-search.json` for English and `assets/docs-search.ru.json` for Russian, consumed by the local browser script for locale-scoped static search.
+   - `Docs/Site/Data/docs-site.json`, consumed by Jekyll/Liquid for navigation, site identity, repository identity, and the rolling source-ref indicator;
+   - `Docs/Site/Assets/docs-search.json` for English and `Docs/Site/Assets/docs-search.ru.json` for Russian, consumed by the local browser script for locale-scoped static search.
 3. Main navigation contains every public, current, human-facing top-level document exactly once. Generated reference detail pages stay behind their generated index pages so the sidebar remains scannable.
 4. Each locale index includes every public, current, human-facing document available in that locale, including generated detail pages. Internal records, placeholders, AI-only maintainer routes, and missing translations are excluded. Russian navigation falls back to the English route only where no current Russian counterpart exists; search results never cross locales.
-5. Each search artifact stores compact weighted token postings and result metadata, not full document bodies. Titles and headings receive higher weight than body terms; technical identifiers and their camel-case components remain searchable. Pure numeric tokens and terms present in more than 60% of that locale's documents are omitted because they cannot distinguish results. The manifest declares a 1.75 MiB (1,835,008 byte) hard limit for each locale index and generation fails instead of silently dropping documents. Separate limits keep a complete Russian mirror from competing with English for one shared payload budget. The budget was raised from 1.25 MiB when the reviewed Russian mirror reached 163 of 195 documents and the complete current corpus no longer fit; no document or token class was silently removed to make the index pass.
-6. `_layouts/default.html`, `assets/css/docs.css`, and `assets/js/docs.js` form a thin rendering layer over <code>&#123;&#123; content &#125;&#125;</code>. They may provide responsive navigation, search, page table of contents, copy controls, source links, and a persisted light/dark preference, but they do not own technical prose.
+5. Each search artifact stores compact weighted token postings and result metadata, not full document bodies. Titles and headings receive higher weight than body terms; technical identifiers and their camel-case components remain searchable. Pure numeric tokens and terms present in more than 60% of that locale's documents are omitted because they cannot distinguish results. The manifest declares a 1.78125 MiB (1,867,776 byte) hard limit for each locale index and generation fails instead of silently dropping documents. Separate limits keep a complete Russian mirror from competing with English for one shared payload budget. The budget was raised from 1.25 MiB when the reviewed Russian mirror reached 163 of 195 documents and the complete current corpus no longer fit; no document or token class was silently removed to make the index pass. The capacity increases by another 32,768 bytes when held-direction settings and mandatory version/migration notes exceed the previous Russian bound; complete corpus coverage and rejection of overflow remain required.
+6. `Docs/Site/Layouts/default.html`, `Docs/Site/Assets/css/docs.css`, and `Docs/Site/Assets/js/docs.js` form a thin rendering layer over <code>&#123;&#123; content &#125;&#125;</code>. They may provide responsive navigation, search, page table of contents, copy controls, source links, and a persisted light/dark preference, but they do not own technical prose.
 7. The interface uses only repository-owned static assets and browser APIs. It has no hosted search, remote JavaScript/CSS dependency, application build, server API, or generated HTML checked into source.
 8. The visible version indicator is `master`, explicitly a rolling branch rather than a stable engine release. Versioned documentation remains blocked on the release/tag support decision.
 9. The published FOnline mark is a byte-for-byte copy of the engine-owned `Resources/Radiation.png`. It is presentation-only and may be replaced later through a reviewed branding change without affecting document identity.
@@ -13396,7 +13606,7 @@ Rejected because silent drift would make security, compatibility, and support cl
 ===== BEGIN DOCUMENT adr-documentation-version-locale-routing =====
 Source: Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0006-documentation-version-locale-routing.html
-Content SHA-256: 6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962
+Content SHA-256: ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6
 
 ---
 layout: default
@@ -13437,7 +13647,7 @@ Moving files or beginning translation without that contract would make redirects
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`
@@ -13452,6 +13662,8 @@ Moving files or beginning translation without that contract would make redirects
 3. Current public URLs remain unversioned and stable while their content follows the latest published `master` revision.
 4. Source links use the same `master` ref as the displayed documentation.
 5. Historical review uses commit-addressable GitHub Actions `_site` artifacts and repository revisions.
+
+The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is displayed alongside this rolling channel and links to the locale's [changelog](../../reference/changelog.md). It identifies Engine development/release metadata, not a supported documentation snapshot. Source links continue to use the channel's `master` ref.
 
 ### Release documentation
 
@@ -13537,7 +13749,7 @@ The tests reject version/source-ref drift, malformed locale policy, missing READ
 ===== BEGIN DOCUMENT ai-documentation-evaluation =====
 Source: Docs/en/contributing/documentation/ai-evaluation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/ai-evaluation.html
-Content SHA-256: ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5
+Content SHA-256: 4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf
 
 ---
 layout: default
@@ -13644,7 +13856,7 @@ The current browser/Python ranking contract:
 6. ranks by matched-token count, weighted document score, and title.
 
 The Python implementation in `docs_site.search_documents` and the browser
-implementation in `assets/js/docs.js` must change together. Focused tests pin
+implementation in `Docs/Site/Assets/js/docs.js` must change together. Focused tests pin
 long-query, absent-token, prefix, and static-layout markers.
 
 ## Run model-family evaluations
@@ -13845,7 +14057,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: 2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865
+Content SHA-256: a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548
 
 ---
 layout: default
@@ -13974,9 +14186,9 @@ Use this page when adding, verifying, or reorganizing engine docs. It is the mai
 - `BuildTools/tests/test_docs_browser.py`
 - `BuildTools/web/default-index.html`
 - `BuildTools/web/simple-web-server.py`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `llms.txt`
 - `llms-full.txt`
@@ -14073,6 +14285,8 @@ The manifest also owns one review contract for every domain owner. A documentati
 
 [External Project Evidence And Promotion Inventory](https://github.com/cvet/fonline/blob/master/Docs/generated/external-project-evidence/index.md) is the checked internal discovery ledger for Last Frontier and TLA. Its records must name an exact snapshot source, disposition, priority, Engine or project target, primary owner, required reviews, and promotion gate. External projects never become normative merely because a record exists: a `promoted` claim is re-derived from Engine source/tests, `boundary-owned` keeps the concrete implementation outside Engine, `promotion-candidate` names missing reusable artifacts, and `project-owned` forbids an invented Engine contract. Update and source-verify this ledger when either project's evidence changes a promotion decision or reveals a new reusable concern; the ledger itself is excluded from the public site and AI delivery.
 
+Every master update, including documentation-only work, also follows the [mandatory Engine update contract](../../how-to/release/versioning.md#every-master-update): version progression, dated bilingual change/migration notes, preserved semantics and complete generated delivery. Run `BuildTools/docs_engine_version.py` against the actual baseline before authorized integration.
+
 ## Standard doc slice workflow
 
 1. Pick a coherent slice from the [documentation backlog](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationBacklog.md).
@@ -14082,7 +14296,7 @@ The manifest also owns one review contract for every domain owner. A documentati
 5. Add a validation checklist to deep subsystem docs.
 6. Review the owning structured contract when a generated surface changes. For native API changes, update `///@ ApiContract` metadata as needed and use `BuildTools/docs_api_diff.py` for symbol-level diagnosis. For project-facing CMake changes, update `BuildTools/cmake/ProjectInterface.json` and run the structural CMake test. For main BuildTools CLI changes, keep `create_parser()` authoritative. For helper-script CLI changes, keep the executable `create_parser()` authoritative, update `BuildTools/HelperCliInterface.json` when ownership/audience/invocation changes, and regenerate the helper reference. For native-extension role/hook/binding changes, update `BuildTools/NativeExtensionInterface.json`, run its structural test, and validate the minimal starter or affected project. For prototype parser/property/metadata changes, update `BuildTools/PrototypeFormatInterface.json` and [PrototypeFormat.md](../../../PrototypeFormat.md), regenerate its model/reference, run the focused test, and rebake an affected project. For map parser/baker/mapper/materialization changes, update `BuildTools/MapFormatInterface.json` and [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run focused map tests, and rebake an affected project. For `.fo3d` parser state/tokens, FBX/OBJ import, model layers, attachments, particles, transforms, materials, cuts, rendering flags, or model limits, update `BuildTools/ModelFormatInterface.json` and [Model Format](../../how-to/content/model-format.md), regenerate its model/reference, run focused model tests, and validate a visible client scene. For `.fotxt`, language normalization, prototype `$Text`, text script methods, or inline color tags, update `BuildTools/TextFormatInterface.json` and [Text and Localization](../../how-to/content/text-and-localization.md), regenerate its model/reference, run focused text tests, and rebake an affected project. For `.fofx`, effect state, shader resources, `EffectBaker`, backend bindings, `EffectManager`, script values, or `FO_EFFECT_*` limits, update `BuildTools/EffectFormatInterface.json` and [Effect Format](../../how-to/content/effect-format.md), regenerate its model/reference, run focused effect tests, and validate every affected backend/profile in a visible client scene. For `ImageBaker`, FOFRM, built-in image loaders, baked sprite records, default factory coverage, atlas upload, or image caches, update `BuildTools/ImageFormatInterface.json` and [Image And Sprite Formats](../../how-to/content/image-format.md), regenerate its model/reference, run focused image documentation/native tests, and rebake plus visibly inspect an affected project. For `FO_*_PARTICLES`, `.spark`/`.efkproj` parsing, `.spk`/`.efk` baking, backend composition, SPARK/Effekseer rendering, Mapper particle tools, particle caches, script methods, or model-particle links, update `BuildTools/ParticleFormatInterface.json` and [Particle Format And Runtime](../../how-to/content/particle-format.md), regenerate its model/reference, run focused particle documentation and baker/runtime tests, and rebake plus visibly inspect every affected backend and integration path. For `.fofnt`/`.fnt`, raw-copy selection, `FontManager`, slot/flag enums, bind-time scale, measurement, wrapping, or inline colors, update `BuildTools/FontFormatInterface.json` and [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run focused font documentation and native tests, and rebake plus visibly inspect an affected project. For `AudioManager`, WAV/Ogg decoding, sound-name indexing, `Game.PlaySound`/`Game.PlayMusic`, audio settings, `AppAudio`, or AudioBaker delivery, update `BuildTools/AudioInterface.json` and [Audio.md](../../../Audio.md), regenerate its model/reference, run focused audio documentation and native tests, and rebake plus audibly inspect an affected project on every claimed platform. For `VideoClip`, Ogg/Theora decoding, fullscreen queue/input/music/drawing, `VideoPlayback`, script drawing, or raw-copy OGV delivery, update `BuildTools/VideoInterface.json` and [Video.md](../../../Video.md), regenerate its model/reference, run focused video documentation and native tests, and rebake plus visibly inspect an affected project on every claimed platform. For native GUI render/input primitives or their script exports, update [Frontend and Rendering](../../explanation/rendering/) and [GUI Integration Boundary](../../how-to/runtime/gui.md), regenerate the script API, run focused native tests, and validate every affected scripting backend and screen visibly in an embedding project; high-level libraries, formats, generators, and their references remain project-owned. For AiControl framing, methods, errors, common command fields, authorization, bounds, lifecycle, threat policy, reference client, or sample behavior, update `BuildTools/AiControlProtocol.json` and [AiControl Protocol](../../how-to/ai-control-protocol.md), regenerate the AiControl protocol plus helper-CLI references, run both focused AiControl suites, and validate every affected project-native/client/MCP path; project observations, game actions, administrator commands, and MCP namespaces stay project-owned. For model animation tokens, clip durations, aliases, baked duration metadata, or script lookup changes, also update [Model Animation](../../how-to/content/model-animation.md), run its focused source test, regenerate the native API/reference when needed, and rebake an affected project. For image-frame offsets, baked sprite offset transport, or client walk/run phase behavior, update [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), run its focused source test and image-baker tests, and validate the affected locomotion in a visible client scene. For package declarations or payload behavior, update `BuildTools/PackageInterface.json` and run the structural package test. For the public example portfolio, shared repository files, source scaffold, compatibility boundaries, or publication state, update `Examples/PublicRepositories.json` and [PublicExampleRepositories.md](../../../PublicExampleRepositories.md), regenerate its model/reference, and validate affected external repositories in both Engine modes. Regenerate every affected runtime model, compare all seventeen generated contract domains with `BuildTools/docs_contract_diff.py`, regenerate the root contract index with `BuildTools/docs_public_api.py`, and complete [Contract Change Management](../contract-change-management.md) dispositions for baseline-public or model-contract breaks. Project-authored remote calls remain project-owned: bake both sides and regenerate/check their catalog with `BuildTools/docs_metadata.py`.
    For the current 3D subsystem, treat `ModelSourceLoader`, `ModelAnimationConverter`, `ModelAnimationData`, `ModelMeshData`, `ModelManager`, `ModelInformation`, `ModelInstance`, and `ModelAnimation` as co-owners with the two bakers. A parser, source, compatibility, mesh/rig wire, Ozz runtime, or ownership change updates both model guides and the structured model contract, runs the focused model/Ozz native suites, force-rebakes an affected project, proves the following incremental bake is clean, and validates the affected pose/composition visibly.
-7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `_data/docs-site.json`, both `assets/docs-search.json` and `assets/docs-search.ru.json`, and `Docs/generated/document-routes.json` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
+7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `Docs/Site/Data/docs-site.json`, both `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, and `Docs/generated/document-routes.json` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
 8. Update the [documentation index](../../index.md) when a new user-facing page is added.
 9. Promote backlog status only after semantic source review, not just link checks.
 10. Add a dated section to the [verification report](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationVerificationReport.md) with scope, sources, fixes, and checks.
@@ -14171,7 +14385,7 @@ Generated-surface triggers:
 | A fenced block in public/current/human Markdown or `BuildTools/SnippetPolicy.json` | Declare a supported language, update [Documentation Snippet Validation](snippets.md) when policy changes, regenerate/check `Docs/generated/snippets.json`, run `test_docs_snippets.py` plus `docs_snippets.py --check --external`, and run the semantic compile/bake/smoke owner for every claimed outcome. Untyped/ignored fences are not allowed. |
 | Export methods, native test files, or settings declarations | Regenerate/check `Docs/generated/source-inventory.json`. |
 | Any inventoried Markdown, its visibility/state/owner/target/sources, publication URL, versioning policy, locale policy, or canonical generated model path | Update `Docs/documentation-manifest.json` as needed, regenerate/check snippets first when fenced content/scope changed, site delivery next, AI evaluation after search when affected, then root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `docs_ai_delivery.py`. A context-budget failure requires an explicit manifest/policy review, never truncation. |
-| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `_data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
+| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
 | `Docs/ai-evaluation.json`, a task-owning stable ID, an answer-evidence heading/term, compact-search tokenization/ranking, or the current source ref | Update [AI Documentation Evaluation](ai-evaluation.md), regenerate/check `Docs/generated/ai-evaluation-report.json` with `docs_ai_eval.py` after `docs_site.py`, run its focused test, and record model-family findings separately. Never add irrelevant keywords or lower a threshold merely to make a rank green. |
 | Metadata baker or remote-call format/runtime | Update [Remote Calls](../../reference/scripting/remote-calls.md); an embedding project must rebake both sides and regenerate its project-owned remote-call catalog. |
 | Module init, callback attributes, `Yield`, server script scheduling/synchronization, mutable-global policy, or entity callback teardown | Update [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), run `test_docs_script_lifecycle.py`, and run the narrow source/runtime tests named by the guide. |
@@ -14240,7 +14454,7 @@ Planned future docs should be written as plain prose unless the checker intentio
 
 ## AI maintainer notes
 
-[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `_data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` are the matching human navigation/search/routing projection. All seven must stay derived from the same manifest/corpus.
+[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` are the matching human navigation/search/routing projection. All seven must stay derived from the same manifest/corpus.
 
 If a future AI agent continues this roadmap, it should re-anchor from git status, the backlog, and the verification report before editing. Context from chat is secondary to the repository state.
 
@@ -14397,7 +14611,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8
+Content SHA-256: 97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f
 
 ---
 layout: default
@@ -14586,8 +14800,8 @@ Within a Russian page:
 
 The site language switcher must resolve by stable document ID and fall back visibly when a counterpart is still missing. It must not silently send a Russian reader to an unrelated index.
 
-Search is locale-scoped. English pages load `assets/docs-search.json`; Russian
-pages load `assets/docs-search.ru.json`. Each index has the same fail-closed
+Search is locale-scoped. English pages load `Docs/Site/Assets/docs-search.json`; Russian
+pages load `Docs/Site/Assets/docs-search.ru.json`. Each index has the same fail-closed
 byte limit, contains only documents available in that locale, and must return
 locale-preserving result URLs. This keeps the complete future Russian mirror
 bounded independently from the English corpus.
@@ -16942,7 +17156,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 88068087190998027cefe9f61d5d2160e0675c43b5c66a0fcb5080a8c00e8536
+Content SHA-256: c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077
 
 ---
 layout: default
@@ -17179,6 +17393,14 @@ For multihex actors, `CheckHexWithMultihex()` checks the directional front arc a
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+Map item blocking flags are cached across the item's entire registered footprint:
+the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
+Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.
+Recaching only the sprite origin leaves stale server blockers after a wide door
+opens even when the client already admits the route. The `MapHexOperations`
+`MultihexItemFlagChanges` regression covers movement/shooting transitions and
+retains blocking contributed by a different item on a shared cell.
 
 `DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
 `MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
@@ -22836,7 +23058,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a
+Content SHA-256: 43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a
 
 ---
 layout: default
@@ -22944,6 +23166,14 @@ Prefer `SaveMapToPath` for generated or sandboxed authoring because its destinat
 | `Game.SetEntityProperty` | Apply a property by name and text through the same parser/refresh path as the inspector. |
 
 Placement returns a live view so scripts can immediately apply direction and per-instance fields. `SetEntityProperty` is the generic route when a tool does not have a generated typed accessor; it returns `false` when the property name/value cannot be applied.
+
+`MergeItemsToMultihexMeshes` sorts coverage cells and normalizes the origin for
+meshes drawn at every cell (`DrawMultihexMesh=True`). A physical-only mesh
+(`DrawMultihexMesh=False`) retains its authored origin: extra cells contribute
+blocking, while only the origin anchors the sprite. Moving it to the smallest
+covered cell would shift doors or other single pictures during load/save.
+The `MapperMultihexMeshMerge` regression covers loading, repeated normalization,
+and a save/reload without changing the physical coverage or sprite origin.
 
 Do not put authoritative gameplay policy in mapper automation. The mapper authors serialized inputs, while runtime authority and persistence remain server-owned; see [Server Runtime](../../explanation/runtime/server.md), [Entity Model](../../explanation/entity-and-property-model/), and [Persistence](../../explanation/persistence/).
 
@@ -23149,7 +23379,7 @@ Use [Script Methods Map](../../reference/script-api/method-ownership.md) as the 
 ===== BEGIN DOCUMENT generated-ai-control-protocol-index =====
 Source: Docs/en/reference/ai-control-protocol/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/ai-control-protocol/
-Content SHA-256: a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f
+Content SHA-256: ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643
 
 ---
 title: Generated AiControl Protocol Reference
@@ -23176,9 +23406,9 @@ This reference defines the Engine-owned, project-neutral envelope for opt-in AI 
 | JSON-RPC marker | <code>2.0</code> |
 | Default endpoint | <code>127.0.0.1:43011</code> |
 | Maximum JSON payload | <code>1048576</code> |
-| Stable entries | 49 |
+| Stable entries | 50 |
 | Source manifest | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Contract digest | <code>d23079d2dda2357f9293250a395817f576437531c970245e710c436880bf8c65</code> |
+| Contract digest | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
 
 | Reference | Purpose |
 | --- | --- |
@@ -23507,7 +23737,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070
+Content SHA-256: d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d
 
 ---
 layout: default
@@ -23584,6 +23814,10 @@ Important consequences:
 - Do not document one game's final target list as universal engine behavior.
 - Prefer stage responsibilities and option names over hard-coded generated target names.
 - Validate build changes through an embedding project preset whenever possible.
+
+`BuildTools/cmake/helpers/State.cmake` obtains the configuration-variable list
+from `cmake --help-variable-list` in memory. Configuration and script-mode
+checks must not create a `cmake-vars.txt` snapshot in the source tree.
 
 ## Stage files
 
@@ -24233,7 +24467,7 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24
+Content SHA-256: d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd
 
 ---
 layout: default
@@ -24414,9 +24648,9 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/assets/diagrams/*.svg`
 - `Docs/generated/screenshots.json`
 - `Docs/assets/screenshots/*.png`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
@@ -24463,7 +24697,7 @@ from the generated binary markers before writing the bootstrap config.
 `Codegen.cmake` declares generated outputs under `GeneratedSource/`, including:
 
 - `CodeGenTouch`
-- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`.
+- `EngineConfig.gen.h` — one macro-only header consumed at the top of `Source/Essentials/BasicCore.h`. It contains both the engine configuration macros and the build/version string macros `FO_BUILD_HASH` / `FO_ENGINE_VERSION` / `FO_ENGINE_REVISION` / `FO_DEV_NAME` / `FO_NICE_NAME` / `FO_COMPATIBILITY_VERSION` / `FO_GIT_BRANCH`. Replaces the former `Version-Include.h`. [Engine versioning](../../how-to/release/versioning.md) defines the separate Engine release, Engine revision, project build hash, and runtime compatibility identities.
 - `EmbeddedResources.gen.inc`
 - `InternalConfig.gen.inc`
 - `MetadataRegistration-Server.gen.cpp`
@@ -25049,7 +25283,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `_data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 
@@ -28655,7 +28889,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6
+Content SHA-256: 613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc
 
 ---
 layout: default
@@ -28765,6 +28999,8 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_TwoDimensionalGrid.cpp`
 
 ### Networking and server/client integration
+
+- `Source/Tests/Test_LinkDelay.cpp` (usual transit, sustained slowdown and bounded late-plan catch-up)
 
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`

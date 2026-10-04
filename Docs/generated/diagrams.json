@@ -2,7 +2,7 @@
   "schema_version": 1,
   "generated_by": "BuildTools/docs_diagrams.py",
   "source_manifest": "BuildTools/DocumentationDiagrams.json",
-  "source_manifest_sha256": "cc8325b410ddf364a2c1b74c1cfd00d839821b3c87a9638ba95f7f285c05c131",
+  "source_manifest_sha256": "7087a1759308d40cb62cd16fa59a080157613494ed55d9a6a870ef5257663b91",
   "diagram_count": 3,
   "diagrams": [
     {
@@ -82,7 +82,7 @@
         "BuildTools/docs_ai_delivery.py",
         "BuildTools/docs_site_artifact.py",
         "BuildTools/docs-browser/audit.mjs",
-        "_layouts/default.html",
+        "Docs/Site/Layouts/default.html",
         ".github/workflows/validate.yml"
       ],
       "variants": [

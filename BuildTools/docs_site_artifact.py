@@ -187,7 +187,7 @@ class RenderedPageParser(HTMLParser):
 
 
 def _expected_static_paths(manifest: dict[str, object]) -> list[str]:
-    paths = {"CNAME", "assets/css/docs.css", "assets/js/docs.js", "assets/images/fonline-mark.png"}
+    paths = {"CNAME", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png"}
     ai_delivery = _required_object(manifest.get("ai_delivery"), "documentation manifest ai_delivery")
     for field in ("llms", "full_context", "public_manifest"):
         config = _required_object(ai_delivery.get(field), f"documentation manifest ai_delivery.{field}")
@@ -346,6 +346,9 @@ def audit_site(
         raise ValueError("documentation route model routes must be an array")
 
     errors: list[str] = []
+    for relative_path in ("Docs/Site/Data", "Docs/Site/Layouts"):
+        if (site_dir / relative_path).exists():
+            errors.append(f"source-only site directory was published: /{relative_path}/")
     expected_route_files: dict[Path, dict[str, object]] = {}
 
     def add_expected_route(
@@ -380,11 +383,12 @@ def audit_site(
         route_id = _required_string(route.get("id"), f"route[{index}].id")
         current_path = _required_string(route.get("current_path"), f"route[{index}].current_path")
         current_url = _required_string(route.get("current_url"), f"route[{index}].current_url")
+        current_locale = _required_string(route.get("current_locale"), f"route[{index}].current_locale")
         add_expected_route(
             route_id=route_id,
             current_path=current_path,
             canonical_url=current_url,
-            locale="en",
+            locale=current_locale,
         )
         locale_routes = route.get("locale_routes", [])
         if not isinstance(locale_routes, list):

@@ -813,10 +813,12 @@ namespace MapperMergeTest
 
         auto configure_tile = [tile_pic](ProtoItem& proto) {
             proto.SetMultihexGeneration(MultihexGenerationType::SameSibling);
+            proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
         };
         auto configure_unique = [tile_pic](ProtoItem& proto) {
             proto.SetMultihexGeneration(MultihexGenerationType::AnyUnique);
+            proto.SetDrawMultihexMesh(true);
             proto.SetPicMap(tile_pic);
         };
 
@@ -1037,6 +1039,32 @@ TEST_CASE("MapperMultihexMeshMerge")
         REQUIRE(!mesh.empty());
         CHECK(std::ranges::is_sorted(mesh, HexLess));
         CHECK(HexLess(survivor->GetHex(), mesh.front()));
+    }
+
+    SECTION("Physical-only mesh retains its single sprite origin during normalization and save")
+    {
+        string props = "MultihexGeneration = None\nDrawMultihexMesh = False\nOffset = 7 -9\nMultihexMesh = \"6 5\" \"7 6\"";
+        auto map = mapper->LoadMapFromText("PhysicalMesh", "PhysicalMesh.fomap", MakeMapText(MakeItemBlock(50, TILE_A, 8, 5, props)));
+        REQUIRE(map);
+        REQUIRE(map->GetItems().size() == 1);
+
+        auto item = map->GetItems().front().as_ptr();
+        CHECK(item->GetHex() == mpos {8, 5});
+        CHECK(item->GetOffset().x == 7);
+        CHECK(item->GetOffset().y == -9);
+        CHECK(CollectMeshHexes(item) == vector<mpos> {{6, 5}, {8, 5}, {7, 6}});
+
+        size_t extra_merges = mapper->MergeItemsToMultihexMeshes(map);
+        CHECK(extra_merges == 0);
+        CHECK(item->GetHex() == mpos {8, 5});
+
+        string saved = map->SaveToText("PhysicalMeshSaved");
+        auto reloaded = mapper->LoadMapFromText("PhysicalMeshSaved", "PhysicalMeshSaved.fomap", saved);
+        REQUIRE(reloaded);
+        REQUIRE(reloaded->GetItems().size() == 1);
+        CHECK(reloaded->GetItems().front()->GetHex() == mpos {8, 5});
+        CHECK(reloaded->GetItems().front()->GetOffset() == item->GetOffset());
+        CHECK(CollectMeshHexes(reloaded->GetItems().front().as_ptr()) == CollectMeshHexes(item));
     }
 
     SECTION("Idempotent: re-running the merge changes nothing")

@@ -377,7 +377,7 @@
         "BuildTools/docs_ai_delivery.py",
         "BuildTools/docs_site_artifact.py",
         "BuildTools/docs-browser/audit.mjs",
-        "_layouts/default.html",
+        "Docs/Site/Layouts/default.html",
         ".github/workflows/validate.yml"
       ],
       "bands": [

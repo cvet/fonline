@@ -5,7 +5,7 @@ locale: ru
 document_id: api-change-management
 permalink: /Docs/ru/contributing/contract-change-management.html
 ---
-<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526"} -->
+<!-- docs-translation: {"document_id":"api-change-management","locale":"ru","source_path":"Docs/en/contributing/contract-change-management.md","source_sha256":"2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1"} -->
 # Управление изменениями генерируемых контрактов
 
 > Руководство для сопровождающих движок. Используйте эту страницу, чтобы сравнивать между ревизиями генерируемые контракты native API, CMake, основного и вспомогательного BuildTools CLI, package, native extensions, форматов prototype, map, model, text, effect, image, particle и font, audio, video и протокола AiControl и принимать решения по изменениям, чувствительным к совместимости, до слияния.
@@ -269,8 +269,8 @@ Directory baseline обязан содержать все семнадцать �
   "current_contract_sha256": "<64 lowercase hex characters>",
   "classification": "breaking",
   "rationale": "Why the change is intentional and what embedding projects observe.",
-  "migration": "Docs/Migrations/Next.md#changed-option",
-  "release_note": "Docs/ReleaseNotes/Next.md#changed-option",
+  "migration": "Docs/en/how-to/migration/engine-upgrade.md#<exact-migration-anchor>",
+  "release_note": "Docs/en/reference/changelog.md#<exact-version-and-change-anchor>",
   "compatibility": "Pinned projects must update the option and engine revision together.",
   "owner": "build-release"
 }
@@ -290,6 +290,12 @@ Validator доказывает форму реестра и точную при�
 После проверки актуальности моделей и справочников CI выполняет `docs_contract_diff.py --write --enforce`. Отсутствующее обязательное disposition завершает задание ошибкой. Шаг upload с `if: always()` сохраняет оба отчёта для диагностики.
 
 Pull request с несколькими commits сравнивается с commit базовой ветки, а не с предыдущим commit feature branch. Push с несколькими commits использует полный отправленный диапазон. Standalone validator отклоняет удаление общего реестра, контракта манифеста с семнадцатью моделями, checkout полной истории, аргумента base ref, aggregate test или enforcement switch.
+
+## Семантическая проверка и обязанности каждого обновления
+
+Статический шлюз ниже проверяет структуру и метки стабильности; это не полная политика приёмки. Все интеграционные поверхности, включая internal/experimental, сохраняют первоначальный смысл существующих значений и завершают затронутое старое использование ошибкой компиляции/перепекания/валидации. Удаляйте прежний API; не сохраняйте его алиасами и не меняйте смысл прежней формы. Проверяйте поведение неизменённых деклараций, отрицательные случаи старого использования и положительные незатронутого/мигрированного. Существующее преобразование сохранённых свойств через `MigrationRule` — узкое исключение.
+
+Каждый опубликованный шаг master увеличивает minor разработки и содержит датированные заметки EN/RU, исчерпывающие миграции и всю затронутую документацию во владении исходников/генераторов. Следуйте [обязательному списку обновления](../how-to/release/versioning.md#каждое-обновление-master) и [записи миграции](../how-to/release/versioning.md#исчерпывающая-запись-миграции). Успешный diff семнадцати доменов не отменяет эти обязанности.
 
 ## Что требует проверки человеком
 
@@ -328,6 +334,7 @@ Aggregate report не может обнаружить:
 
 ## Контрольный список проверки
 
+0. Выполните проверку версии/чейнджлогов и исчерпывающую семантическую миграцию из контракта обновления Engine; запустите `BuildTools/docs_engine_version.py` относительно точной исходной ревизии публикации.
 1. Пересоберите и проверьте все семнадцать канонических моделей и сгенерированный Markdown.
 2. Выполните `test_docs_api_diff.py` и `test_docs_contract_diff.py`.
 3. Сравните с целевой базой при помощи `--write --enforce`.
@@ -338,6 +345,8 @@ Aggregate report не может обнаружить:
 8. Не добавляйте файлы в staging, если staging или commit явно не запрошены.
 
 ## См. также
+
+Новые решения с полем `release_note` ссылаются на двуязычную [историю изменений Engine](../reference/changelog.md) и подробное руководство миграции. [Правила версий движка](../how-to/release/versioning.md) определяют выпуск по CalVer; старые записи реестра, привязанные к ревизиям, сохраняют историческое решение о заметках выпуска.
 
 - [GeneratedApiAndMetadata.md](../reference/metadata/index.md): владение каноническими моделями и сгенерированными справочниками.
 - [ADR-0002](decisions/0002-public-api-stability-contract.md): принятая политика стабильности и изменений.

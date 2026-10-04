@@ -56,6 +56,11 @@ Network.DisableZlibCompression = False
 Network.DisableInterthreadCommunication = False
 Network.ArtificalLags = 0
 Network.ArtificalLagsJitter = 0
+Network.LinkDelayWindowMs = 30000
+Network.LinkDelayRebaseMs = 3000
+Network.MoveLateCatchUpMinMs = 150
+Network.MoveLateCatchUpMaxMs = 10000
+Network.MovePlanJoinMaxSteps = 3
 Network.MoveSyncTrace = False
 Network.ForceCompatibilityVersion =
 Network.ForceMetadataVersion =
@@ -294,6 +299,15 @@ Client.DefaultSplashPack =
 Client.ClientPropertiesPackData = True
 Client.ForceEmbeddedRuntime = False
 Client.Language = engl
+Client.DirectMoveTraceSteps = 24
+Client.DirectMoveExtendAheadSteps = 4
+Client.DirectMoveLeaseSteps = 4
+Client.DirectMoveLeaseRenewSteps = 2
+Client.DirectMoveRetargetMinMs = 100
+Client.DirectMoveRetargetImmediateAngle = 60
+Client.DirectMoveSlide = True
+Client.MoveCatchUpRate = 3.0f
+Client.MoveCatchUpSmoothMaxMs = 1500
 
 # Server
 Server.DbStorage = Memory

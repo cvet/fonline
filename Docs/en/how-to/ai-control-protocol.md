@@ -316,6 +316,8 @@ updated observation, and exclusive event cursors. Focused malformed-peer tests
 also reject mismatched ids, ambiguous responses, invalid JSON, and oversized
 lines.
 
+The reference `AiControlClient` requires `timeout` to be a finite positive number representable as a Python float. Construction rejects `NaN`, either infinity, overflow, booleans, and non-numeric values with `ValueError("timeout must be a finite positive number")` before any socket connection. Focused constructor tests cover invalid inputs and accepted positive integer/fractional timeouts without opening sockets.
+
 This sample is **not a FOnline runtime proof**. A project integration must also:
 
 - build every native role that includes or excludes the bridge;

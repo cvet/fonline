@@ -1072,6 +1072,58 @@ namespace MapOpsTest
  )") + R"(
     // ========== Map Hex Operations ==========
 
+    int TestMapMultihexItemFlagChanges()
+    {
+        Location loc = CreateTestLocation();
+        if (loc is null) return -1;
+        Map map = loc.GetMapByIndex(0);
+        if (map is null) return -2;
+        Item item = map.AddItem(mpos(10, 10), "TestMultihexItem".hstr());
+        if (item is null) return -3;
+        array<mpos> cells = {item.Hex};
+        cells.insertAt(cells.length(), item.MultihexMesh);
+        uint origins = cells.length();
+        for (uint i = 0; i < origins; i++) {
+            mpos lineHex = cells[i];
+            map.MoveHexByDir(lineHex, hdir(0), 1);
+            cells.insertLast(lineHex);
+        }
+        for (uint i = 0; i < cells.length(); i++) {
+            if (map.IsHexMovable(cells[i]) || map.IsHexShootable(cells[i])) return -4;
+        }
+        item.NoBlock = true;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (map.IsHexMovable(cells[i]) || map.IsHexShootable(cells[i])) return -5;
+        }
+        item.ShootThru = true;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (!map.IsHexMovable(cells[i]) || !map.IsHexShootable(cells[i])) return -6;
+        }
+        // A different owner on one cell must retain its blocking contribution
+        Item other = map.AddItem(cells[1], "TestMultihexBlocker".hstr());
+        if (other is null) return -7;
+        item.NoBlock = false;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (map.IsHexMovable(cells[i]) || !map.IsHexShootable(cells[i])) return -8;
+        }
+        item.NoBlock = true;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (map.IsHexMovable(cells[i]) != (cells[i] != cells[1])) return -9;
+        }
+        Game.DestroyItem(other);
+        item.ShootThru = false;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (map.IsHexMovable(cells[i]) || map.IsHexShootable(cells[i])) return -10;
+        }
+        item.ShootThru = true;
+        for (uint i = 0; i < cells.length(); i++) {
+            if (!map.IsHexMovable(cells[i]) || !map.IsHexShootable(cells[i])) return -11;
+        }
+        Game.DestroyLocation(loc);
+        return 0;
+    }
+
+ )" + R"(
     int TestMapHexMovable()
     {
         Location loc = CreateTestLocation();
@@ -4865,6 +4917,18 @@ namespace MapOpsTest
         auto static_critter_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoCritter>(proto_engine, critter_type, "TestStaticCritter");
         auto item_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem");
         auto item2_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoItem>(proto_engine, item_type, "TestItem2");
+        vector<pair<string, function<void(ProtoItem&)>>> multihex_items;
+        multihex_items.emplace_back("TestMultihexItem", [](ProtoItem& proto) {
+            proto.SetMultihexMesh({{12, 10}, {15, 13}});
+            proto.SetMultihexLines({0, 1});
+            proto.SetNoBlock(false);
+            proto.SetShootThru(false);
+        });
+        multihex_items.emplace_back("TestMultihexBlocker", [](ProtoItem& proto) {
+            proto.SetNoBlock(false);
+            proto.SetShootThru(true);
+        });
+        auto multihex_item_blob = BakerTests::MakeMultiProtoResourceBlob<ProtoItem>(proto_engine, item_type, multihex_items);
         auto static_item_blob = MakeStaticItemProtoBlob(proto_engine, item_type, true);
         auto static_item_client_blob = MakeStaticItemProtoBlob(client_proto_engine, client_item_type, false);
         auto location_blob = BakerTests::MakeSingleProtoResourceBlob<ProtoLocation>(proto_engine, location_type, "TestLocation");
@@ -4881,6 +4945,7 @@ namespace MapOpsTest
         runtime_source->AddFile("MapOpsStaticCritter.fopro-bin-server", static_critter_blob);
         runtime_source->AddFile("MapOpsItem.fopro-bin-server", item_blob);
         runtime_source->AddFile("MapOpsItem2.fopro-bin-server", item2_blob);
+        runtime_source->AddFile("MapOpsMultihexItems.fopro-bin-server", multihex_item_blob);
         runtime_source->AddFile("MapOpsStaticItems.fopro-bin-server", static_item_blob);
         runtime_source->AddFile("MapOpsLocation.fopro-bin-server", location_blob);
         runtime_source->AddFile("TestMap.fopro-bin-server", map_blob);
@@ -5112,6 +5177,11 @@ TEST_CASE("MapCritterOperations")
 TEST_CASE("MapHexOperations")
 {
     MAKE_SERVER;
+
+    SECTION("MultihexItemFlagChanges")
+    {
+        RUN_FUNC("MapOpsTest::TestMapMultihexItemFlagChanges");
+    }
 
     SECTION("HexMovable")
     {

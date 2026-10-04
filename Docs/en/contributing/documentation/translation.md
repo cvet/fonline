@@ -185,8 +185,8 @@ Within a Russian page:
 
 The site language switcher must resolve by stable document ID and fall back visibly when a counterpart is still missing. It must not silently send a Russian reader to an unrelated index.
 
-Search is locale-scoped. English pages load `assets/docs-search.json`; Russian
-pages load `assets/docs-search.ru.json`. Each index has the same fail-closed
+Search is locale-scoped. English pages load `Docs/Site/Assets/docs-search.json`; Russian
+pages load `Docs/Site/Assets/docs-search.ru.json`. Each index has the same fail-closed
 byte limit, contains only documents available in that locale, and must return
 locale-preserving result URLs. This keeps the complete future Russian mirror
 bounded independently from the English corpus.

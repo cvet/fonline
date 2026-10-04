@@ -112,7 +112,7 @@ class DocumentationOperationsFoundationsTests(unittest.TestCase):
         self.assertEqual(positions, sorted(positions))
         for marker in (
             "Regenerate translation status after these source assets",
-            "Then regenerate `_data/docs-site.json`",
+            "Then regenerate `Docs/Site/Data/docs-site.json`",
             "Regenerate `Docs/generated/ai-evaluation-report.json`",
             "Finally regenerate `llms.txt`",
         ):

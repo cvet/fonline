@@ -12,7 +12,10 @@ import time
 import uuid
 from collections.abc import Callable, Iterable, Mapping
 from dataclasses import astuple, dataclass, field, is_dataclass
+from pathlib import Path
 from typing import Any, TypeAlias, TypedDict, cast
+
+from engine_version import read_engine_revision, read_engine_version
 
 
 GeneratedFileMap = dict[str, list[str]]
@@ -2802,6 +2805,9 @@ def write_engine_config() -> None:
             generated_output.write_line('#define ' + name.strip() + (' ' + value if separator else ''))
 
         generated_output.write_line('#define FO_BUILD_HASH "' + args.buildhash + '"')
+        engine_root = Path(__file__).resolve().parents[1]
+        generated_output.write_line('#define FO_ENGINE_VERSION "' + read_engine_version(engine_root) + '"')
+        generated_output.write_line('#define FO_ENGINE_REVISION "' + read_engine_revision(engine_root) + '"')
         generated_output.write_line('#define FO_DEV_NAME "' + args.devname + '"')
         generated_output.write_line('#define FO_NICE_NAME "' + args.nicename + '"')
         generated_output.write_line('#define FO_GENERATED_SOURCE_DIR "' + args.genoutput.replace('\\', '/') + '"')

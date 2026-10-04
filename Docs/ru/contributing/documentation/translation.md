@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
@@ -214,7 +214,7 @@ python BuildTools/docs_description_translations.py --check --enforce-complete
 Он не должен незаметно отправлять русскоязычного читателя на посторонний индекс.
 
 Поиск разделён по локалям. Английские страницы загружают
-`assets/docs-search.json`, русские — `assets/docs-search.ru.json`. У каждого
+`Docs/Site/Assets/docs-search.json`, русские — `Docs/Site/Assets/docs-search.ru.json`. У каждого
 индекса одинаковый fail-closed лимит размера; он содержит только доступные в
 этой локали документы и должен возвращать URL с сохранением языка. Благодаря
 этому полный будущий русский перевод ограничивается независимо от английского

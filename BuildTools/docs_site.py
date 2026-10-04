@@ -15,9 +15,9 @@ import docs_localization
 SCHEMA_VERSION = 3
 GENERATED_BY = "BuildTools/docs_site.py"
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
-DEFAULT_NAVIGATION_OUTPUT = "_data/docs-site.json"
-DEFAULT_SEARCH_OUTPUT = "assets/docs-search.json"
-DEFAULT_RUSSIAN_SEARCH_OUTPUT = "assets/docs-search.ru.json"
+DEFAULT_NAVIGATION_OUTPUT = "Docs/Site/Data/docs-site.json"
+DEFAULT_SEARCH_OUTPUT = "Docs/Site/Assets/docs-search.json"
+DEFAULT_RUSSIAN_SEARCH_OUTPUT = "Docs/Site/Assets/docs-search.ru.json"
 DEFAULT_ROUTES_OUTPUT = "Docs/generated/document-routes.json"
 OUTPUT_PATHS = (
     DEFAULT_NAVIGATION_OUTPUT,
@@ -346,6 +346,14 @@ def render_routes(
     for record in public_records:
         document_id = str(record["id"])
         source_path = str(record["path"])
+        current_locale = str(localization["canonical_locale"])
+        for locale in localization["locales"]:
+            if source_path.startswith(str(locale["path_prefix"]).rstrip("/") + "/"):
+                current_locale = str(locale["id"])
+        for targets in entrypoint_targets.values():
+            for locale_id, locale_source_path in targets.items():
+                if source_path == locale_source_path:
+                    current_locale = locale_id
         current_path = _site_path(source_path)
         previous_current_owner = seen_current_paths.get(current_path)
         if previous_current_owner is not None:
@@ -430,6 +438,7 @@ def render_routes(
             "disposition": record["disposition"],
             "source_path": source_path,
             "current_path": current_path,
+            "current_locale": current_locale,
             "current_url": base_url.rstrip("/") + current_path,
             "planned_source_path": canonical_target_source_path,
             "planned_path": planned_path,
@@ -467,6 +476,7 @@ def render_routes(
         "schema_version": SCHEMA_VERSION,
         "generated_by": GENERATED_BY,
         "canonical_base_url": base_url,
+        "engine": docs_ai_delivery._engine_version(root, manifest),
         "version": current_version_output,
         "release_versions": dict(releases),
         "localization": {
@@ -859,6 +869,7 @@ def search_documents(
 
 
 def render_navigation(
+    root: Path,
     manifest: dict[str, object],
     config: dict[str, object],
     records: list[dict[str, object]],
@@ -913,6 +924,7 @@ def render_navigation(
             "documentation publishing repository",
         ),
         "source_ref": current_version["source_ref"],
+        "engine": docs_ai_delivery._engine_version(root, manifest),
         "version": {
             "channel": current_version["channel"],
             "kind": current_version["kind"],
@@ -1049,7 +1061,7 @@ def render_outputs(
     )
     translations = _current_translations(root, localization_status, records)
     navigation, document_groups = render_navigation(
-        manifest, config, records, translations
+        root, manifest, config, records, translations
     )
     english_search = render_search(
         manifest, config, records, document_groups, translations, "en"

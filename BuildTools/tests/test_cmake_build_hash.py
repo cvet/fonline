@@ -52,7 +52,7 @@ int main(int argc, char**)
 }
 ''', encoding='utf-8')
     # Stage the real helpers beside the fixture: Windows cannot make a relative
-    # path between an Engine checkout and a temporary directory on another drive.
+    # path between an Engine checkout and a temporary directory on another drive
     fixture_engine = source / 'Engine'
     for relative in (
         'BuildTools/cmake/helpers/Build.cmake',

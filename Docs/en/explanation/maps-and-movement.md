@@ -234,6 +234,14 @@ When gameplay code changes blocker semantics, update the callback provider and t
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
 
+Map item blocking flags are cached across the item's entire registered footprint:
+the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
+Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.
+Recaching only the sprite origin leaves stale server blockers after a wide door
+opens even when the client already admits the route. The `MapHexOperations`
+`MultihexItemFlagChanges` regression covers movement/shooting transitions and
+retains blocking contributed by a different item on a shared cell.
+
 `DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
 `MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
 when every movement blocker on that hex is a gag item—and a caller predicate

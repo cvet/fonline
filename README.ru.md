@@ -5,8 +5,10 @@ locale: ru
 document_id: repository-home
 permalink: /README.ru.html
 ---
-<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38"} -->
+<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7"} -->
 # FOnline Engine
+
+[Правила версий движка](Docs/ru/how-to/release/versioning.md) · [История изменений](Docs/ru/reference/changelog.md)
 
 [![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
 [![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)

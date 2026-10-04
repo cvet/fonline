@@ -32,7 +32,7 @@ FOnline has three distinct generated layers:
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings and internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models and `Docs/documentation-manifest.json` |
 
 Generated output is evidence, not an editing surface. Fix the source annotation, interface model, project config, generator, or authored asset, then regenerate.
 
@@ -64,6 +64,8 @@ FinalizeProjectGeneration()
 `SetupCodeGeneration()` consumes Engine and project native sources, code-generation tags, templates, and project options. `ForceCodeGeneration` is the dependency used by script compilation and baking targets, so stale native metadata cannot be hidden behind an unrelated incremental resource bake.
 
 Reconfigure after changing CMake options, source registration, stage hooks, generated templates, or the Engine pin. Build the smallest target that compiles the affected generated source.
+
+Engine `VERSION` also feeds configuration and code generation. Its CalVer identifier and exact Engine revision become `FO_ENGINE_VERSION` and `FO_ENGINE_REVISION` in `EngineConfig.gen.h`; the embedding-project build hash retains its separate meaning. Changing `VERSION` automatically invalidates configuration/code generation. See [Engine versioning](../release/versioning.md) and the [changelog](../../reference/changelog.md).
 
 ## Compile scripts
 

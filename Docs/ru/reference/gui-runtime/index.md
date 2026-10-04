@@ -3,7 +3,7 @@ layout: default
 title: Сгенерированный справочник GUI Runtime (выведен из эксплуатации)
 locale: ru
 document_id: generated-gui-runtime-index
-permalink: /Docs/ru/reference/gui-runtime/index.html
+permalink: /Docs/ru/reference/gui-runtime/
 ---
 > Legacy route.
 

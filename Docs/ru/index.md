@@ -5,8 +5,10 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f"} -->
 # Документация движка FOnline
+
+[Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
 
 Это главная страница пользовательской документации переиспользуемого движка
 FOnline. Она предназначена для разработчиков игр, авторов инструментов,

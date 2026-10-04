@@ -11,8 +11,8 @@
     "term_count": 34
   },
   "summary": {
-    "required_document_count": 192,
-    "current_translation_count": 192,
+    "required_document_count": 194,
+    "current_translation_count": 194,
     "missing_translation_count": 0,
     "coverage_percent": 100.0,
     "complete": true
@@ -105,8 +105,8 @@
       "english_path": "Docs/en/contributing/contract-change-management.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/contract-change-management.md",
-      "source_sha256": "36c2126f621391f6b8472a6ad6c7e119febc14f381ec276525488819b8d46526",
-      "source_bytes": 23606,
+      "source_sha256": "2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1",
+      "source_bytes": 25220,
       "status": "current"
     },
     {
@@ -131,8 +131,8 @@
       "english_path": "Docs/en/contributing/decisions/0002-public-api-stability-contract.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0002-public-api-stability-contract.md",
-      "source_sha256": "664b3ee699d8df18d02744182d1d93e447ef99d4ec654318695139785c7ca417",
-      "source_bytes": 11911,
+      "source_sha256": "d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc",
+      "source_bytes": 13838,
       "status": "current"
     },
     {
@@ -144,8 +144,8 @@
       "english_path": "Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
-      "source_sha256": "8556e05b1370c168b553f59860b3138c4579456b96521cf3c73f719038582a00",
-      "source_bytes": 8314,
+      "source_sha256": "104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85",
+      "source_bytes": 8568,
       "status": "current"
     },
     {
@@ -157,8 +157,8 @@
       "english_path": "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-search.md",
-      "source_sha256": "101041e8482c80bf60bd0a221a3ea5eedd5ecab70c696e3c6c985b0b7e7d40df",
-      "source_bytes": 8091,
+      "source_sha256": "3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3",
+      "source_bytes": 8369,
       "status": "current"
     },
     {
@@ -183,8 +183,8 @@
       "english_path": "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.md",
-      "source_sha256": "6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962",
-      "source_bytes": 8372,
+      "source_sha256": "ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6",
+      "source_bytes": 8719,
       "status": "current"
     },
     {
@@ -196,8 +196,8 @@
       "english_path": "Docs/en/contributing/documentation/ai-evaluation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/ai-evaluation.md",
-      "source_sha256": "ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5",
-      "source_bytes": 15481,
+      "source_sha256": "4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf",
+      "source_bytes": 15491,
       "status": "current"
     },
     {
@@ -209,8 +209,8 @@
       "english_path": "Docs/en/contributing/documentation/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/index.md",
-      "source_sha256": "2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865",
-      "source_bytes": 53373,
+      "source_sha256": "a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548",
+      "source_bytes": 53828,
       "status": "current"
     },
     {
@@ -222,8 +222,8 @@
       "english_path": "Docs/en/contributing/documentation/site-publication.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/site-publication.md",
-      "source_sha256": "c27667ed0e339de120f2e4c1d94207973748435dfbdd948417d28503a45875c0",
-      "source_bytes": 28787,
+      "source_sha256": "62b626cd810fc359bd79b51e039375a9c07a35a0b14a885156100e1e8279c12a",
+      "source_bytes": 30983,
       "status": "current"
     },
     {
@@ -248,8 +248,8 @@
       "english_path": "Docs/en/contributing/documentation/translation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/documentation/translation.md",
-      "source_sha256": "07d9cdd15c9a4ca2b5477fc9ea7fe9d4ad7fc6d9019297c1fdbedef71881f6c8",
-      "source_bytes": 11110,
+      "source_sha256": "97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f",
+      "source_bytes": 11130,
       "status": "current"
     },
     {
@@ -352,8 +352,8 @@
       "english_path": "Docs/en/explanation/maps-and-movement.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/maps-and-movement.md",
-      "source_sha256": "88068087190998027cefe9f61d5d2160e0675c43b5c66a0fcb5080a8c00e8536",
-      "source_bytes": 28382,
+      "source_sha256": "c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077",
+      "source_bytes": 28934,
       "status": "current"
     },
     {
@@ -443,8 +443,8 @@
       "english_path": "Docs/en/how-to/ai-control-protocol.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/ai-control-protocol.md",
-      "source_sha256": "7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe",
-      "source_bytes": 15923,
+      "source_sha256": "d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7",
+      "source_bytes": 16341,
       "status": "current"
     },
     {
@@ -469,8 +469,8 @@
       "english_path": "Docs/en/how-to/build/generated-content.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/build/generated-content.md",
-      "source_sha256": "4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6",
-      "source_bytes": 11042,
+      "source_sha256": "ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c",
+      "source_bytes": 11480,
       "status": "current"
     },
     {
@@ -677,8 +677,8 @@
       "english_path": "Docs/en/how-to/migration/engine-upgrade.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/migration/engine-upgrade.md",
-      "source_sha256": "c0e5519a74ffe4d8bba9e9dff36a9673095fee0ac855095375d9e26bee13fdb4",
-      "source_bytes": 9879,
+      "source_sha256": "5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374",
+      "source_bytes": 10940,
       "status": "current"
     },
     {
@@ -781,8 +781,8 @@
       "english_path": "Docs/en/how-to/release/packaging.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/packaging.md",
-      "source_sha256": "a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b",
-      "source_bytes": 35840,
+      "source_sha256": "bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e",
+      "source_bytes": 36208,
       "status": "current"
     },
     {
@@ -796,6 +796,19 @@
       "russian_path": "Docs/ru/how-to/release/security-and-secrets.md",
       "source_sha256": "e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5",
       "source_bytes": 17884,
+      "status": "current"
+    },
+    {
+      "id": "engine-versioning",
+      "title": "Engine Versioning and Release Notes",
+      "owner": "build-release",
+      "diataxis": "how-to",
+      "source_path": "Docs/en/how-to/release/versioning.md",
+      "english_path": "Docs/en/how-to/release/versioning.md",
+      "english_path_state": "migrated",
+      "russian_path": "Docs/ru/how-to/release/versioning.md",
+      "source_sha256": "f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7",
+      "source_bytes": 13147,
       "status": "current"
     },
     {
@@ -833,8 +846,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f",
-      "source_bytes": 51750,
+      "source_sha256": "6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26",
+      "source_bytes": 51790,
       "status": "current"
     },
     {
@@ -859,8 +872,8 @@
       "english_path": "Docs/en/how-to/testing/gameplay-and-integration.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/testing/gameplay-and-integration.md",
-      "source_sha256": "c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121",
-      "source_bytes": 12881,
+      "source_sha256": "2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271",
+      "source_bytes": 13408,
       "status": "current"
     },
     {
@@ -898,8 +911,8 @@
       "english_path": "Docs/en/how-to/tools/mapper.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/tools/mapper.md",
-      "source_sha256": "7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a",
-      "source_bytes": 20437,
+      "source_sha256": "43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a",
+      "source_bytes": 20980,
       "status": "current"
     },
     {
@@ -924,8 +937,8 @@
       "english_path": "Docs/en/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/index.md",
-      "source_sha256": "7161150c42f6987c0309cc3f45ab0e8c8f1a71309525c5cfcaec9eedec376673",
-      "source_bytes": 9654,
+      "source_sha256": "e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f",
+      "source_bytes": 9803,
       "status": "current"
     },
     {
@@ -950,7 +963,7 @@
       "english_path": "Docs/en/reference/ai-control-protocol/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/ai-control-protocol/index.md",
-      "source_sha256": "a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f",
+      "source_sha256": "ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643",
       "source_bytes": 2719,
       "status": "current"
     },
@@ -963,8 +976,8 @@
       "english_path": "Docs/en/reference/ai-control-protocol/integration-validation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/ai-control-protocol/integration-validation.md",
-      "source_sha256": "c6f6bbc9e6bbe2bb595d916db335ed897e8561ef0727b45693fc8ba81b8c7af2",
-      "source_bytes": 7366,
+      "source_sha256": "79853c27575a72342dcee8c5e8d5569b1d41c61110afef72337c7e0ddeaa9e51",
+      "source_bytes": 8020,
       "status": "current"
     },
     {
@@ -1124,6 +1137,19 @@
       "status": "current"
     },
     {
+      "id": "engine-changelog",
+      "title": "Engine Changelog",
+      "owner": "build-release",
+      "diataxis": "reference",
+      "source_path": "Docs/en/reference/changelog.md",
+      "english_path": "Docs/en/reference/changelog.md",
+      "english_path_state": "migrated",
+      "russian_path": "Docs/ru/reference/changelog.md",
+      "source_sha256": "8a5301b9f66b6a8929c90f0ec7de851f0df20d1527930eeedd63acdf20d8ab8a",
+      "source_bytes": 7467,
+      "status": "current"
+    },
+    {
       "id": "buildtools-pipeline",
       "title": "BuildTools Pipeline",
       "owner": "build-release",
@@ -1132,8 +1158,8 @@
       "english_path": "Docs/en/reference/cmake-and-buildtools/pipeline.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/cmake-and-buildtools/pipeline.md",
-      "source_sha256": "b4a4e2af5a72fc74fe8389dd9e293814a6d1efa41a21609141ff663735190070",
-      "source_bytes": 30703,
+      "source_sha256": "d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d",
+      "source_bytes": 30929,
       "status": "current"
     },
     {
@@ -1574,8 +1600,8 @@
       "english_path": "Docs/en/reference/metadata/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/metadata/index.md",
-      "source_sha256": "aa8ed922758f0c922dc746e76d2497ed295decf0868dde49841b3b6fe654ad24",
-      "source_bytes": 80495,
+      "source_sha256": "d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd",
+      "source_bytes": 80746,
       "status": "current"
     },
     {
@@ -2484,8 +2510,8 @@
       "english_path": "README.md",
       "english_path_state": "migrated",
       "russian_path": "README.ru.md",
-      "source_sha256": "b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38",
-      "source_bytes": 17980,
+      "source_sha256": "4e8a6b403265a9da3e13ecd9cacaa26736e246ee6b5bee4f5201c9b7623977e7",
+      "source_bytes": 18086,
       "status": "current"
     },
     {
@@ -2510,8 +2536,8 @@
       "english_path": "Source/Tests/README.md",
       "english_path_state": "migrated",
       "russian_path": "Source/Tests/README.ru.md",
-      "source_sha256": "89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6",
-      "source_bytes": 11724,
+      "source_sha256": "613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc",
+      "source_bytes": 11828,
       "status": "current"
     }
   ]
