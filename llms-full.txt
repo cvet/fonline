@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.2-dev (CalVer from VERSION)
+Engine version: 2026.1.3-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 8e62fdbf74a2b282b212d31d1b7648a1c387fb30097482558a4f4871b7cd2664
+Content SHA-256: e5e3520173b86f73b31c61f08d5dd1646b1c37b174709ee0a6830248aae7bd3a
 
 ---
 layout: default
@@ -2020,6 +2020,17 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.3-dev - 2026-10-04
+
+### Fixed
+
+- The configuration/tools documentation test counts all 194 required current translations, including the versioning and changelog pages. Exact inventory, zero missing translations and complete localization remain required.
+- Both translation workflow guides report the same current page inventory as the generated localization model.
+
+### Migration
+
+- No project migration or data conversion is required: only documentation and its test expectations change. Game APIs, settings, persisted properties, native ABI, network compatibility and resource formats retain their existing contracts.
 
 ## 2026.1.2-dev - 2026-10-04
 
@@ -14605,7 +14616,7 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f
+Content SHA-256: 6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c
 
 ---
 layout: default
@@ -14631,7 +14642,7 @@ explicit entrypoint mapping below. Every public human page has:
 - one derived `Docs/ru/...` mirror path, or an explicit README pair;
 - one canonical English content hash in the generated translation-status model.
 
-All 197 required Russian counterparts are present, and
+All 194 required Russian counterparts are present, and
 `localization.enforcement` is `complete`. Every page must remain complete,
 hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
@@ -14639,7 +14650,7 @@ without its Russian counterpart fails validation immediately.
 
 The current machine report is [translation-status.json](../../../generated/translation-status.json).
 
-This 197/197 result proves physical page parity. Generated Russian pages can
+This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
 Markdown template. That semantic layer has a separate catalog and gate,
 described below; physical parity must not be reported as complete semantic

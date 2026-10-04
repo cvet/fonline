@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"97c023675c74c84e7bd617a28e979a3404852d7dbe123bb7a3c4f8a861b5277f"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
@@ -27,7 +27,7 @@ permalink: /Docs/ru/contributing/documentation/translation.html
 - один хэш канонического английского содержимого в сгенерированной модели
   состояния переводов.
 
-Все 197 обязательных русских соответствий присутствуют, а
+Все 194 обязательных русских соответствий присутствуют, а
 `localization.enforcement` имеет значение `complete`. Каждая страница должна
 оставаться полной, соответствовать текущему хэшу, сохранять код и иметь
 правильную пару. Authoritative-инвентарём является сгенерированный отчёт;
@@ -36,7 +36,7 @@ permalink: /Docs/ru/contributing/documentation/translation.html
 
 Текущий машинный отчёт: [translation-status.json](../../../generated/translation-status.json).
 
-Результат 197/197 доказывает физический паритет страниц. Русские генерируемые
+Результат 194/194 доказывает физический паритет страниц. Русские генерируемые
 страницы также могут содержать обращённый к читателю текст из машинных моделей,
 а не из Markdown-шаблона. Для этого семантического слоя существуют отдельные
 каталог и gate, описанные ниже; физический паритет нельзя представлять как

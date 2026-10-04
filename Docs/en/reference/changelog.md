@@ -12,6 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.3-dev - 2026-10-04
+
+### Fixed
+
+- The configuration/tools documentation test counts all 194 required current translations, including the versioning and changelog pages. Exact inventory, zero missing translations and complete localization remain required.
+- Both translation workflow guides report the same current page inventory as the generated localization model.
+
+### Migration
+
+- No project migration or data conversion is required: only documentation and its test expectations change. Game APIs, settings, persisted properties, native ABI, network compatibility and resource formats retain their existing contracts.
+
 ## 2026.1.2-dev - 2026-10-04
 
 ### Fixed
