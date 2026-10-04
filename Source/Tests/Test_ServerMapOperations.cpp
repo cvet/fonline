@@ -1099,7 +1099,7 @@ namespace MapOpsTest
         for (uint i = 0; i < cells.length(); i++) {
             if (!map.IsHexMovable(cells[i]) || !map.IsHexShootable(cells[i])) return -6;
         }
-        // A different owner on one cell must retain its blocking contribution.
+        // A different owner on one cell must retain its blocking contribution
         Item other = map.AddItem(cells[1], "TestMultihexBlocker".hstr());
         if (other is null) return -7;
         item.NoBlock = false;

@@ -4309,7 +4309,7 @@ void ServerEngine::OnSetItemRecacheHex(ptr<Entity> entity, ptr<const Property> p
         map->RecacheHexFlags(item->GetHex());
 
         // The item contributes flags at every registered footprint cell, not
-        // only its sprite origin. Opening a mesh door must clear them all.
+        // only its sprite origin. Opening a mesh door must clear them all
         if (auto entries = item->GetMultihexEntries()) {
             for (auto hex : *entries) {
                 map->RecacheHexFlags(hex);

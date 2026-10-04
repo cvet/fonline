@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.1-dev (CalVer from VERSION)
+Engine version: 2026.1.2-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 626f4a6354f07f457aad0869456703c1c64580c833a78ea14615faac69ae58c2
+Content SHA-256: 8e62fdbf74a2b282b212d31d1b7648a1c387fb30097482558a4f4871b7cd2664
 
 ---
 layout: default
@@ -2020,6 +2020,19 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.2-dev - 2026-10-04
+
+### Fixed
+
+- Saved native stack-trace context storage on macOS now accommodates the SDK libunwind context. Its sixteen-byte alignment is preserved; other supported platforms keep their existing storage size.
+- Native and managed source formatting and explanatory comments conform to the maintained style checks. The English and Russian debugging guides describe the platform context boundary.
+- Documentation coverage tests include the new versioning and changelog pages and their normative examples while retaining exact inventory and completeness checks.
+
+### Migration
+
+- No game API, setting, persisted property, protocol, ABI or resource format is replaced. Existing valid inputs and runtime compatibility markers keep their meanings, so no project data migration is required.
+- Reconfigure and rebuild native targets after updating the Engine revision. macOS compilation must use its platform SDK to check the saved-context size assertion; Linux tests do not qualify this macOS branch. Project versions and package/updater build hashes remain project-owned.
 
 ## 2026.1.1-dev - 2026-10-04
 
@@ -27422,7 +27435,7 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: 6e4b31608ae78ebc60581c403958844c2ab4ed07e5df690f6dc912bef962abba
+Content SHA-256: a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e
 
 ---
 layout: default
@@ -27663,6 +27676,11 @@ For MSVC CMake generators, a target should be created while its intended `CMAKE_
 The Engine captures a bounded native return-address array and optional pre-resolved script layers in `StackTraceData`. Native symbol resolution is deferred until formatting or explicit resolution. Resolved native frames are cached process-wide by instruction address under a bounded cache so repeated reports do not reload the same symbol information unnecessarily.
 
 Native capture now uses bundled LLVM libunwind on Linux, system libunwind on macOS, Windows unwind tables on 64-bit and frame pointers on 32-bit; a crash can start from its saved POSIX/SEH register context. Linux symbolization uses bundled libbacktrace with `dladdr` fallback for newly loaded modules; macOS uses `dladdr`, Windows DbgHelp with executable/module directories in its search path. An unresolved frame retains `module+offset` for offline lookup. A normal trace starts at its requesting caller; a crash trace starts at the faulting instruction. Managed entry birth stacks are saved as resume points and unwound only if a report needs them, while the opening frame remains active.
+
+On macOS, resume-point storage reserves the system libunwind universal context of
+167 64-bit words for both Intel and ARM64 builds. When resume contexts are enabled,
+Linux and Windows keep their 72-word storage. The native compile-time assertion checks context size
+and alignment against the unwinder headers used by the actual build.
 
 Native call stacks come from platform capture when `GetStackTrace()` runs. `FO_TRACE_ZONE(Category)` is a separate, category-filtered Tracy timing zone, not a manual call-stack entry; see [placing zones](../how-to/quality/profiling.md#placing-zones).
 

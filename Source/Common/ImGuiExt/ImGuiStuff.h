@@ -511,7 +511,6 @@ enum class ImGui_StyleVar : int32_t
     SelectableTextAlign = 39, // Alignment of selectable text. Defaults to (0.0f, 0.0f) (top-left aligned). It's generally important to keep this left-aligned if you want to lay multiple items on a same line
 };
 
-
 inline void ImGuiTextUnformatted(string_view text)
 {
     if (text.empty()) {

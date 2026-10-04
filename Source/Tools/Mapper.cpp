@@ -4602,7 +4602,7 @@ auto MapperEngine::MergeItemsToMultihexMeshes(ptr<MapView> map) -> size_t
             std::ranges::sort(multihex_mesh, hex_less);
 
             // A physical-only mesh does not draw at its extra cells. Its origin
-            // anchors the single sprite, so normalizing it would move the art.
+            // anchors the single sprite, so normalizing it would move the art
             if (item->GetDrawMultihexMesh() && hex_less(multihex_mesh.front(), item->GetHex())) {
                 auto hex = multihex_mesh.front();
                 multihex_mesh.front() = item->GetHex();

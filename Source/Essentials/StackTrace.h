@@ -48,7 +48,12 @@ FO_BEGIN_NAMESPACE
 namespace stack_trace
 {
     inline constexpr size_t MAX_NATIVE_FRAMES = 128;
+#if FO_MAC
+    // System libunwind uses its universal 167-word context on macOS, including native Intel and ARM64 builds
+    inline constexpr size_t RESUME_CONTEXT_WORDS = 167;
+#else
     inline constexpr size_t RESUME_CONTEXT_WORDS = 72;
+#endif
     inline constexpr size_t RESOLVE_CACHE_MAX_ENTRIES = 4096;
 
     using native_frame_address = uintptr_t;
