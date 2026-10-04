@@ -10030,3 +10030,29 @@ and ImGui/KeyCode fallback resolvers are removed, with no legacy parsing alias.
 - Reconciled the owner's subsequent English README badge removal with the Russian
   README, reviewed its normalized English source hash, and regenerated downstream
   locale/site/AI artifacts. This is navigation parity, not a runtime change.
+
+## 2026-10-04 ? published timeout and physical mesh fixes
+
+- Reconcile the normal merge from 6558fcf966c969c45cfba9911b3888d3068e278b
+  with published origin/master e8111f9e77554a099c703755f6fbf7f9fde77657.
+  Incoming commits are 367aa1889c (finite timeout validation) and e8111f9e77
+  (physical mesh anchors and footprint recaching); the existing local
+  documentation/build-provenance history remains an ancestor.
+- Reviewed every incoming source/test change and the EN/RU owning guides.
+  The reference client and scenario runner reject invalid deadlines before
+  connection/process creation. Physical-only Mapper meshes retain the authored
+  sprite anchor; server flag changes recache all registered multihex cells while
+  preserving other blockers. No new serialized format or native API is claimed.
+- Regenerated AI protocol, helper and map models, public indexes, snippets,
+  description/localization status, site/routes/search, AI evaluation and delivery
+  in dependency order. The seventeen-domain enforced diff contains one new
+  experimental AI timeout rule, zero breaking dispositions and zero native API
+  changes. PUBLIC_API.md remains current without a content delta.
+- Both screenshot trigger lists were reviewed: this range changes neither
+  particle tooling/visible layout nor its fixture, renderer or viewport.
+  The generated source digest changes; the original capture bytes, date and
+  capture claims remain unchanged. No new visual capture is claimed.
+- Python runtime tests pass 17/17; focused documentation/model tests pass 49/49;
+  documentation validation passes all 408 Markdown entries. Native Mapper and
+  MapHexOperations acceptance and embedding-project rebake/runtime checks are
+  still pending in the project integration record. Retain all safety stashes.

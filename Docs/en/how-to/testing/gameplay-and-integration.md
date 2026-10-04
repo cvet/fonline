@@ -75,6 +75,8 @@ Schema version 1 has this ownership:
 
 Unknown fields, duplicate ids or markers, invalid types, and unresolved placeholders are configuration errors. Environment values are added to the inherited process environment. Do not put secrets in manifests, placeholder values, commands, markers, or reports: command lines and process environments can be observable outside the runner.
 
+`default_timeout_seconds`, scenario `timeout_seconds`, and process `ready_timeout_seconds` must be finite positive numbers representable as Python floats; booleans and strings are invalid. The runner rejects `NaN`, either infinity, overflowing JSON numbers such as `1e309`, and integers too large for a float during manifest validation, before starting any process, with configuration exit code `2`. Omitted scenario timeouts inherit the validated suite deadline; omitted readiness timeouts use the remaining scenario budget.
+
 A minimal ordered server/client scenario looks like this:
 
 ```json

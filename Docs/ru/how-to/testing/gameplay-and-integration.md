@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/testing/gameplay-and-integration.html
 ---
 
 # Gameplay- и integration-тестирование
-<!-- docs-translation: {"document_id":"gameplay-testing","locale":"ru","source_path":"Docs/en/how-to/testing/gameplay-and-integration.md","source_sha256":"c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121"} -->
+<!-- docs-translation: {"document_id":"gameplay-testing","locale":"ru","source_path":"Docs/en/how-to/testing/gameplay-and-integration.md","source_sha256":"2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271"} -->
 > Документация принадлежит движку. Руководство задает переиспользуемые правила
 > выбора test boundary, детерминированных fixtures, process runner, markers,
 > deadline, cleanup и evidence для игр на FOnline.
@@ -93,6 +93,8 @@ Unknown fields, duplicate ids/markers, неверные типы и unresolved p
 являются configuration errors. Environment расширяет inherited process env.
 Secrets не помещаются в manifest, values, command, markers или report: command
 line и process environment могут наблюдаться извне.
+
+`default_timeout_seconds`, `timeout_seconds` сценария и `ready_timeout_seconds` процесса должны быть конечными положительными числами, представимыми как Python float; логические значения и строки недопустимы. При проверке манифеста runner отклоняет `NaN`, обе бесконечности, JSON-числа с переполнением вроде `1e309` и целые числа, слишком большие для float, с кодом ошибки конфигурации `2` до запуска любого процесса. Если таймаут сценария пропущен, он наследует проверенный срок всего набора; если пропущен таймаут готовности, используется оставшееся время сценария.
 
 ```json
 {

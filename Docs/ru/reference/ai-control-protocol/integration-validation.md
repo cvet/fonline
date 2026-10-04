@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-ai-control-protocol-integration-validation","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/integration-validation.md","source_sha256":"c6f6bbc9e6bbe2bb595d916db335ed897e8561ef0727b45693fc8ba81b8c7af2"} -->
+<!-- docs-translation: {"document_id":"generated-ai-control-protocol-integration-validation","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/integration-validation.md","source_sha256":"79853c27575a72342dcee8c5e8d5569b1d41c61110afef72337c7e0ddeaa9e51"} -->
 
 # Интеграция и проверка AiControl
 
@@ -28,6 +28,7 @@ generated: true
 
 | Стабильный ID | Правило | Требование | Обоснование | Источник |
 | --- | --- | --- | --- | --- |
+| <a id="entry-ai-control-protocol-validation-finite-timeout-37eca66ebd"></a><code>ai-control-protocol.validation.finite-timeout</code> | Конечный таймаут клиента | Конструктор эталонного клиента требует конечный положительный числовой таймаут, представимый как Python float, и отклоняет неверные значения с ValueError до подключения. | NaN и бесконечность не задают ограниченный срок подключения или ожидания ответа. | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py), [BuildTools/tests/test_ai_control_protocol.py](https://github.com/cvet/fonline/blob/master/BuildTools/tests/test_ai_control_protocol.py) |
 | <a id="entry-ai-control-protocol-validation-protocol-smoke-cb6a17829f"></a><code>ai-control-protocol.validation.protocol-smoke</code> | Smoke-тест протокола | Запустите эталонный клиент с примером сервера и докажите auth, liveness, status, наблюдение, неверный ввод, принятие действия, завершение, обновление состояния и поведение event cursor. | Одна отрисованная схема не доказывает состояние соединения и асинхронный жизненный цикл. | [Examples/AiControlSample/run_protocol_smoke.py](https://github.com/cvet/fonline/blob/master/Examples/AiControlSample/run_protocol_smoke.py) |
 | <a id="entry-ai-control-protocol-validation-malformed-peer-87c73605b1"></a><code>ai-control-protocol.validation.malformed-peer</code> | Неверные ответы peer | Клиентские тесты отклоняют неверный JSON, неподдерживаемые конверты, несовпадающие id, одновременные result/error и слишком длинные строки. | Автоматизация должна завершаться закрыто, а не принимать неоднозначные данные. | [BuildTools/ai_control_client.py](https://github.com/cvet/fonline/blob/master/BuildTools/ai_control_client.py) |
 | <a id="entry-ai-control-protocol-validation-security-30298ca936"></a><code>ai-control-protocol.validation.security</code> | Тесты границы безопасности | Тесты доказывают отказ для non-loopback, отдельную для соединения авторизацию, отклонение неверного token и отсутствие token в аргументах командной строки. | Требования безопасности должны оставаться исполняемыми при развитии helper. | [Examples/AiControlSample/run_protocol_smoke.py](https://github.com/cvet/fonline/blob/master/Examples/AiControlSample/run_protocol_smoke.py) |

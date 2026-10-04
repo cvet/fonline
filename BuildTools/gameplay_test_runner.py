@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import re
 import subprocess
@@ -68,9 +69,15 @@ def _string_list(value: Any, label: str) -> list[str]:
 def _positive_seconds(value: Any, label: str, default: float | None = None) -> float:
     if value is None and default is not None:
         return default
-    if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
-        raise ManifestError(f"{label} must be a positive number")
-    return float(value)
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ManifestError(f"{label} must be a finite positive number")
+    try:
+        seconds = float(value)
+    except OverflowError as error:
+        raise ManifestError(f"{label} must be a finite positive number") from error
+    if not math.isfinite(seconds) or seconds <= 0:
+        raise ManifestError(f"{label} must be a finite positive number")
+    return seconds
 
 
 def load_manifest(path: Path) -> dict[str, Any]:

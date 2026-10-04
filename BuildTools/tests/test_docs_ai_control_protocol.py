@@ -32,7 +32,7 @@ class AiControlProtocolDocumentationTests(unittest.TestCase):
         self.assertEqual(self.model, second)
         self.assertEqual(self.model["schema_version"], 1)
         self.assertEqual(self.model["scope"]["stability"], "experimental")
-        self.assertEqual(self.model["summary"]["entry_count"], 49)
+        self.assertEqual(self.model["summary"]["entry_count"], 50)
         self.assertEqual(self.model["summary"]["method_count"], 6)
         self.assertEqual(self.model["summary"]["command_field_count"], 11)
         self.assertEqual(

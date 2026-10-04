@@ -8,6 +8,7 @@ import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from io import StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
@@ -27,6 +28,58 @@ class GameplayTestRunnerTests(unittest.TestCase):
     def _run(self, manifest: dict[str, object]) -> dict[str, object]:
         with redirect_stdout(StringIO()), redirect_stderr(StringIO()):
             return gameplay_test_runner.run_manifest(manifest, self.values)
+
+    def _manifest_with_timeout(self, field: str, token: str) -> str:
+        manifest = copy.deepcopy(self.manifest)
+        target = manifest
+        if field != "default_timeout_seconds":
+            target = manifest["scenarios"][0]
+        if field == "ready_timeout_seconds":
+            target = target["processes"][0]
+        target[field] = "__TIMEOUT__"
+        return json.dumps(manifest).replace('"__TIMEOUT__"', token)
+
+    def test_timeout_fields_reject_invalid_numbers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "timeout.json"
+            for field in ("default_timeout_seconds", "timeout_seconds", "ready_timeout_seconds"):
+                for token in ("NaN", "Infinity", "1e309", "-Infinity", "0", "-1", "true", '"5"', "1" + "0" * 400):
+                    with self.subTest(field=field, token=token):
+                        path.write_text(self._manifest_with_timeout(field, token), encoding="utf-8")
+                        with self.assertRaises(gameplay_test_runner.ManifestError) as error:
+                            gameplay_test_runner.load_manifest(path)
+                        self.assertIn(field, str(error.exception))
+
+    def test_invalid_timeouts_return_two_before_process_startup(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "timeout.json"
+            for field in ("default_timeout_seconds", "timeout_seconds", "ready_timeout_seconds"):
+                for token in ("NaN", "Infinity", "1e309", "-Infinity", "0", "-1", "true", '"5"', "1" + "0" * 400):
+                    with self.subTest(field=field, token=token):
+                        path.write_text(self._manifest_with_timeout(field, token), encoding="utf-8")
+                        with patch.object(gameplay_test_runner, "run_manifest", return_value={"status": "passed"}) as run, \
+                                patch.object(gameplay_test_runner.subprocess, "Popen") as popen, \
+                                redirect_stdout(StringIO()), redirect_stderr(StringIO()) as stderr:
+                            self.assertEqual(gameplay_test_runner.main(["--manifest", str(path)]), 2)
+                            self.assertIn(field, stderr.getvalue())
+                            self.assertIn("finite positive number", stderr.getvalue())
+                            run.assert_not_called()
+                            popen.assert_not_called()
+
+    def test_timeout_fields_accept_finite_positive_numbers(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "timeout.json"
+            for field in ("default_timeout_seconds", "timeout_seconds", "ready_timeout_seconds"):
+                for token in ("1", "0.25", "1e308"):
+                    with self.subTest(field=field, token=token):
+                        path.write_text(self._manifest_with_timeout(field, token), encoding="utf-8")
+                        manifest = gameplay_test_runner.load_manifest(path)
+                        target = manifest
+                        if field != "default_timeout_seconds":
+                            target = manifest["scenarios"][0]
+                        if field == "ready_timeout_seconds":
+                            target = target["processes"][0]
+                        self.assertEqual(target[field], json.loads(token))
 
     def test_synthetic_server_client_scenario_passes_and_reports(self) -> None:
         report = self._run(self.manifest)

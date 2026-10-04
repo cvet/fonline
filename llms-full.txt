@@ -5178,7 +5178,7 @@ runtime invoke and skips transports that need compiled code.
 ===== BEGIN DOCUMENT gameplay-testing =====
 Source: Docs/en/how-to/testing/gameplay-and-integration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/testing/gameplay-and-integration.html
-Content SHA-256: c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121
+Content SHA-256: 2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271
 
 ---
 layout: default
@@ -5256,6 +5256,8 @@ Schema version 1 has this ownership:
 - process: stable `id`, command array, optional working directory/environment, readiness contract, required/forbidden markers, and expected exit code.
 
 Unknown fields, duplicate ids or markers, invalid types, and unresolved placeholders are configuration errors. Environment values are added to the inherited process environment. Do not put secrets in manifests, placeholder values, commands, markers, or reports: command lines and process environments can be observable outside the runner.
+
+`default_timeout_seconds`, scenario `timeout_seconds`, and process `ready_timeout_seconds` must be finite positive numbers representable as Python floats; booleans and strings are invalid. The runner rejects `NaN`, either infinity, overflowing JSON numbers such as `1e309`, and integers too large for a float during manifest validation, before starting any process, with configuration exit code `2`. Omitted scenario timeouts inherit the validated suite deadline; omitted readiness timeouts use the remaining scenario budget.
 
 A minimal ordered server/client scenario looks like this:
 
@@ -5382,7 +5384,7 @@ enforced normal authority.
 ===== BEGIN DOCUMENT ai-control-protocol-guide =====
 Source: Docs/en/how-to/ai-control-protocol.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/ai-control-protocol.html
-Content SHA-256: 7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe
+Content SHA-256: d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7
 
 ---
 layout: default
@@ -5701,6 +5703,8 @@ invalid params, unknown methods, action acceptance, asynchronous completion,
 updated observation, and exclusive event cursors. Focused malformed-peer tests
 also reject mismatched ids, ambiguous responses, invalid JSON, and oversized
 lines.
+
+The reference `AiControlClient` requires `timeout` to be a finite positive number representable as a Python float. Construction rejects `NaN`, either infinity, overflow, booleans, and non-numeric values with `ValueError("timeout must be a finite positive number")` before any socket connection. Focused constructor tests cover invalid inputs and accepted positive integer/fractional timeouts without opening sockets.
 
 This sample is **not a FOnline runtime proof**. A project integration must also:
 
@@ -16886,7 +16890,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 7e723cce461b59f8e9fb42ea8d75a0c6cdfd7814100e33b512c476d98759ed20
+Content SHA-256: 7b4f1410f655d28e5a20c2a86afe0981695eda4ff54126e93a3cb080365198ee
 
 ---
 layout: default
@@ -17123,6 +17127,14 @@ For multihex actors, `CheckHexWithMultihex()` checks the directional front arc a
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+Map item blocking flags are cached across the item's entire registered footprint:
+the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
+Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.
+Recaching only the sprite origin leaves stale server blockers after a wide door
+opens even when the client already admits the route. The `MapHexOperations`
+`MultihexItemFlagChanges` regression covers movement/shooting transitions and
+retains blocking contributed by a different item on a shared cell.
 
 `DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
 `MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
@@ -22748,7 +22760,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a
+Content SHA-256: 43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a
 
 ---
 layout: default
@@ -22856,6 +22868,14 @@ Prefer `SaveMapToPath` for generated or sandboxed authoring because its destinat
 | `Game.SetEntityProperty` | Apply a property by name and text through the same parser/refresh path as the inspector. |
 
 Placement returns a live view so scripts can immediately apply direction and per-instance fields. `SetEntityProperty` is the generic route when a tool does not have a generated typed accessor; it returns `false` when the property name/value cannot be applied.
+
+`MergeItemsToMultihexMeshes` sorts coverage cells and normalizes the origin for
+meshes drawn at every cell (`DrawMultihexMesh=True`). A physical-only mesh
+(`DrawMultihexMesh=False`) retains its authored origin: extra cells contribute
+blocking, while only the origin anchors the sprite. Moving it to the smallest
+covered cell would shift doors or other single pictures during load/save.
+The `MapperMultihexMeshMerge` regression covers loading, repeated normalization,
+and a save/reload without changing the physical coverage or sprite origin.
 
 Do not put authoritative gameplay policy in mapper automation. The mapper authors serialized inputs, while runtime authority and persistence remain server-owned; see [Server Runtime](../../explanation/runtime/server.md), [Entity Model](../../explanation/entity-and-property-model/), and [Persistence](../../explanation/persistence/).
 
@@ -23061,7 +23081,7 @@ Use [Script Methods Map](../../reference/script-api/method-ownership.md) as the 
 ===== BEGIN DOCUMENT generated-ai-control-protocol-index =====
 Source: Docs/en/reference/ai-control-protocol/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/ai-control-protocol/
-Content SHA-256: a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f
+Content SHA-256: ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643
 
 ---
 title: Generated AiControl Protocol Reference
@@ -23088,9 +23108,9 @@ This reference defines the Engine-owned, project-neutral envelope for opt-in AI 
 | JSON-RPC marker | <code>2.0</code> |
 | Default endpoint | <code>127.0.0.1:43011</code> |
 | Maximum JSON payload | <code>1048576</code> |
-| Stable entries | 49 |
+| Stable entries | 50 |
 | Source manifest | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Contract digest | <code>d23079d2dda2357f9293250a395817f576437531c970245e710c436880bf8c65</code> |
+| Contract digest | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
 
 | Reference | Purpose |
 | --- | --- |

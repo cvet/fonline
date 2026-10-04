@@ -7,16 +7,16 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4821,
-    "current_count": 4821,
+    "entry_count": 4824,
+    "current_count": 4824,
     "missing_count": 0,
     "complete": true
   },
   "domains": {
     "ai-control-protocol": {
       "source_model": "Docs/generated/ai-control-protocol.json",
-      "entry_count": 134,
-      "current_count": 134,
+      "entry_count": 137,
+      "current_count": 137,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -600,6 +600,24 @@
           "locator": "/security_rules/@id=ai-control-protocol.security.shipping-build/requirement",
           "source": "Projects should compile the listener and remote-command path out of production clients, not merely disable them in a runtime config.",
           "source_sha256": "c4c0a7e64217d19cad9f65a0291860caacd73395d33ed41c3ad67c4aaae5dbfc",
+          "status": "current"
+        },
+        {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/name",
+          "source": "Finite client timeout",
+          "source_sha256": "a3077be97043e969565ceba5ff277345428b7579c7d4e3dd936af9d6a9cf582e",
+          "status": "current"
+        },
+        {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/rationale",
+          "source": "NaN and infinity cannot define a bounded connection or response wait.",
+          "source_sha256": "b2773bf6e8f3f9dfb32767a1ef41235e04b3db05a2ecc0386a7f751df1a2392f",
+          "status": "current"
+        },
+        {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/requirement",
+          "source": "Reference-client construction requires a finite positive numeric timeout representable as a Python float and rejects invalid values with ValueError before connecting.",
+          "source_sha256": "b02d063f5fab45aff4227d528d9e79f0408fd81d4729f76191a5ff677fcd06c4",
           "status": "current"
         },
         {

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import math
 import os
 import socket
 import sys
@@ -55,8 +56,14 @@ class AiControlClient:
     ) -> None:
         if not 1 <= port <= 65535:
             raise ValueError("port must be between 1 and 65535")
-        if timeout <= 0:
-            raise ValueError("timeout must be positive")
+        if isinstance(timeout, bool) or not isinstance(timeout, (int, float)):
+            raise ValueError("timeout must be a finite positive number")
+        try:
+            timeout = float(timeout)
+        except OverflowError as error:
+            raise ValueError("timeout must be a finite positive number") from error
+        if not math.isfinite(timeout) or timeout <= 0:
+            raise ValueError("timeout must be a finite positive number")
         if max_line_bytes < 256:
             raise ValueError("max_line_bytes must be at least 256")
         if not allow_remote and not is_loopback_host(host):

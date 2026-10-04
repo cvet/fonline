@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f"} -->
+<!-- docs-translation: {"document_id":"generated-ai-control-protocol-index","locale":"ru","source_path":"Docs/en/reference/ai-control-protocol/index.md","source_sha256":"ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643"} -->
 
 # Сгенерированный справочник протокола AiControl
 
@@ -25,9 +25,9 @@ generated: true
 | Маркер JSON-RPC | <code>2.0</code> |
 | Endpoint по умолчанию | <code>127.0.0.1:43011</code> |
 | Максимальный JSON payload | <code>1048576</code> |
-| Стабильные элементы | 49 |
+| Стабильные элементы | 50 |
 | Манифест-источник | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Digest контракта | <code>d23079d2dda2357f9293250a395817f576437531c970245e710c436880bf8c65</code> |
+| Digest контракта | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
 
 | Справочник | Назначение |
 | --- | --- |
