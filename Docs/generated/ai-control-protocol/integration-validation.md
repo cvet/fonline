@@ -32,6 +32,9 @@ Continue with the [canonical reference](../../en/reference/ai-control-protocol/i
 
 Continue with the [canonical reference](../../en/reference/ai-control-protocol/integration-validation.md).
 
+<a id="entry-ai-control-protocol-validation-finite-timeout-37eca66ebd"></a>
+- [`entry-ai-control-protocol-validation-finite-timeout-37eca66ebd`](../../en/reference/ai-control-protocol/integration-validation.md#entry-ai-control-protocol-validation-finite-timeout-37eca66ebd)
+
 <a id="entry-ai-control-protocol-validation-protocol-smoke-cb6a17829f"></a>
 - [`entry-ai-control-protocol-validation-protocol-smoke-cb6a17829f`](../../en/reference/ai-control-protocol/integration-validation.md#entry-ai-control-protocol-validation-protocol-smoke-cb6a17829f)
 

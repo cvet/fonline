@@ -767,6 +767,29 @@
   ],
   "validation_rules": [
     {
+      "id": "ai-control-protocol.validation.finite-timeout",
+      "name": "Finite client timeout",
+      "stability": "experimental",
+      "requirement": "Reference-client construction requires a finite positive numeric timeout representable as a Python float and rejects invalid values with ValueError before connecting.",
+      "rationale": "NaN and infinity cannot define a bounded connection or response wait.",
+      "source": [
+        {
+          "path": "BuildTools/ai_control_client.py",
+          "anchors": [
+            "math.isfinite(timeout)",
+            "timeout must be a finite positive number"
+          ]
+        },
+        {
+          "path": "BuildTools/tests/test_ai_control_protocol.py",
+          "anchors": [
+            "def test_reference_client_rejects_invalid_timeouts_before_connection",
+            "def test_reference_client_accepts_finite_positive_timeouts"
+          ]
+        }
+      ]
+    },
+    {
       "id": "ai-control-protocol.validation.protocol-smoke",
       "name": "Protocol smoke",
       "stability": "experimental",
@@ -861,17 +884,17 @@
     }
   ],
   "summary": {
-    "entry_count": 49,
+    "entry_count": 50,
     "wire_rule_count": 7,
     "method_count": 6,
     "error_code_count": 6,
     "command_field_count": 11,
     "security_rule_count": 7,
     "integration_rule_count": 6,
-    "validation_rule_count": 6,
+    "validation_rule_count": 7,
     "entries_by_stability": {
-      "experimental": 49
+      "experimental": 50
     }
   },
-  "contract_digest": "d23079d2dda2357f9293250a395817f576437531c970245e710c436880bf8c65"
+  "contract_digest": "cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd"
 }

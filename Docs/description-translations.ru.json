@@ -398,6 +398,18 @@
           "source_sha256": "c4c0a7e64217d19cad9f65a0291860caacd73395d33ed41c3ad67c4aaae5dbfc",
           "translation": "Проекты должны исключать listener и путь удалённых команд из production-клиентов на этапе компиляции, а не только выключать runtime-настройкой."
         },
+        "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/name": {
+          "source_sha256": "a3077be97043e969565ceba5ff277345428b7579c7d4e3dd936af9d6a9cf582e",
+          "translation": "Конечный таймаут клиента"
+        },
+        "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/rationale": {
+          "source_sha256": "b2773bf6e8f3f9dfb32767a1ef41235e04b3db05a2ecc0386a7f751df1a2392f",
+          "translation": "NaN и бесконечность не задают ограниченный срок подключения или ожидания ответа."
+        },
+        "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/requirement": {
+          "source_sha256": "b02d063f5fab45aff4227d528d9e79f0408fd81d4729f76191a5ff677fcd06c4",
+          "translation": "Конструктор эталонного клиента требует конечный положительный числовой таймаут, представимый как Python float, и отклоняет неверные значения с ValueError до подключения."
+        },
         "/validation_rules/@id=ai-control-protocol.validation.gameplay-authority/name": {
           "source_sha256": "ce52d1913f1e5de0a81214a678b26f70c09567c4ad5f5cc5e76928166fa28e12",
           "translation": "Обычный игровой путь"

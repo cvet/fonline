@@ -443,8 +443,8 @@
       "english_path": "Docs/en/how-to/ai-control-protocol.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/ai-control-protocol.md",
-      "source_sha256": "7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe",
-      "source_bytes": 15923,
+      "source_sha256": "d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7",
+      "source_bytes": 16341,
       "status": "current"
     },
     {
@@ -859,8 +859,8 @@
       "english_path": "Docs/en/how-to/testing/gameplay-and-integration.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/testing/gameplay-and-integration.md",
-      "source_sha256": "c7d9307bc33c73e7a286d3e384222b191f1807108a2ba0481e5e1df707387121",
-      "source_bytes": 12881,
+      "source_sha256": "2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271",
+      "source_bytes": 13408,
       "status": "current"
     },
     {
@@ -950,7 +950,7 @@
       "english_path": "Docs/en/reference/ai-control-protocol/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/ai-control-protocol/index.md",
-      "source_sha256": "a1f6f9a775bcf4a0eb628b4db2e839395014ac8d2a597d5770d49728ca6f114f",
+      "source_sha256": "ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643",
       "source_bytes": 2719,
       "status": "current"
     },
@@ -963,8 +963,8 @@
       "english_path": "Docs/en/reference/ai-control-protocol/integration-validation.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/ai-control-protocol/integration-validation.md",
-      "source_sha256": "c6f6bbc9e6bbe2bb595d916db335ed897e8561ef0727b45693fc8ba81b8c7af2",
-      "source_bytes": 7366,
+      "source_sha256": "79853c27575a72342dcee8c5e8d5569b1d41c61110afef72337c7e0ddeaa9e51",
+      "source_bytes": 8020,
       "status": "current"
     },
     {

@@ -23,9 +23,9 @@ This reference defines the Engine-owned, project-neutral envelope for opt-in AI 
 | JSON-RPC marker | <code>2.0</code> |
 | Default endpoint | <code>127.0.0.1:43011</code> |
 | Maximum JSON payload | <code>1048576</code> |
-| Stable entries | 49 |
+| Stable entries | 50 |
 | Source manifest | [BuildTools/AiControlProtocol.json](https://github.com/cvet/fonline/blob/master/BuildTools/AiControlProtocol.json) |
-| Contract digest | <code>d23079d2dda2357f9293250a395817f576437531c970245e710c436880bf8c65</code> |
+| Contract digest | <code>cea32aa5325a0f7601c93c0b40d599865eac7b5471093ec61ade8eb4baf070dd</code> |
 
 | Reference | Purpose |
 | --- | --- |
