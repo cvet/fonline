@@ -352,8 +352,8 @@
       "english_path": "Docs/en/explanation/maps-and-movement.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/maps-and-movement.md",
-      "source_sha256": "7e723cce461b59f8e9fb42ea8d75a0c6cdfd7814100e33b512c476d98759ed20",
-      "source_bytes": 26427,
+      "source_sha256": "7b4f1410f655d28e5a20c2a86afe0981695eda4ff54126e93a3cb080365198ee",
+      "source_bytes": 26979,
       "status": "current"
     },
     {
@@ -898,8 +898,8 @@
       "english_path": "Docs/en/how-to/tools/mapper.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/tools/mapper.md",
-      "source_sha256": "7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a",
-      "source_bytes": 20437,
+      "source_sha256": "43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a",
+      "source_bytes": 20980,
       "status": "current"
     },
     {

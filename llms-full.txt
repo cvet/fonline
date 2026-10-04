@@ -16890,7 +16890,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 7e723cce461b59f8e9fb42ea8d75a0c6cdfd7814100e33b512c476d98759ed20
+Content SHA-256: 7b4f1410f655d28e5a20c2a86afe0981695eda4ff54126e93a3cb080365198ee
 
 ---
 layout: default
@@ -17127,6 +17127,14 @@ For multihex actors, `CheckHexWithMultihex()` checks the directional front arc a
 When gameplay code changes blocker semantics, update the callback provider and tests; do not bake game-specific blocking rules into the generic path algorithm.
 
 Server-side `Map::IsHexMovable()` / `IsHexShootable()` combine two grids: the map's own `Field`, recomputed by `RecacheHexFlags()` from dynamic items and manual blocks, and the static `StaticMap::Field` for the same hex. The static half is read through `Map::GetStaticField()`, which is where per-instance static item removal is applied — see below.
+
+Map item blocking flags are cached across the item's entire registered footprint:
+the origin, `MultihexMesh` cells and the `MultihexLines` expanded from each origin.
+Changes to `NoBlock`, `ShootThru`, `IsGag` or `IsTrigger` recache all those fields.
+Recaching only the sprite origin leaves stale server blockers after a wide door
+opens even when the client already admits the route. The `MapHexOperations`
+`MultihexItemFlagChanges` regression covers movement/shooting transitions and
+retains blocking contributed by a different item on a shared cell.
 
 `DeferGag` is opt-in for each server or client search. `Map::CheckGagItem()` and
 `MapView::CheckGagItem()` require the field's `MovableWithGag` flag—set only
@@ -22752,7 +22760,7 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 7973b244bac2931f2c94ca39ebd07c05370523d15d02d446f1e3c3e35d0c2e9a
+Content SHA-256: 43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a
 
 ---
 layout: default
@@ -22860,6 +22868,14 @@ Prefer `SaveMapToPath` for generated or sandboxed authoring because its destinat
 | `Game.SetEntityProperty` | Apply a property by name and text through the same parser/refresh path as the inspector. |
 
 Placement returns a live view so scripts can immediately apply direction and per-instance fields. `SetEntityProperty` is the generic route when a tool does not have a generated typed accessor; it returns `false` when the property name/value cannot be applied.
+
+`MergeItemsToMultihexMeshes` sorts coverage cells and normalizes the origin for
+meshes drawn at every cell (`DrawMultihexMesh=True`). A physical-only mesh
+(`DrawMultihexMesh=False`) retains its authored origin: extra cells contribute
+blocking, while only the origin anchors the sprite. Moving it to the smallest
+covered cell would shift doors or other single pictures during load/save.
+The `MapperMultihexMeshMerge` regression covers loading, repeated normalization,
+and a save/reload without changing the physical coverage or sprite origin.
 
 Do not put authoritative gameplay policy in mapper automation. The mapper authors serialized inputs, while runtime authority and persistence remain server-owned; see [Server Runtime](../../explanation/runtime/server.md), [Entity Model](../../explanation/entity-and-property-model/), and [Persistence](../../explanation/persistence/).
 
