@@ -2,6 +2,12 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-04 - Final POSIX upstream refresh
+
+- Merge `63f99ab6b98972af4a62677127da7c0650dec462` into `2f856d0c25d6d984a4c167d5115b28f755ad9354`, preserving both published tips. Audit all fifteen incoming paths: five unqualified Darwin signal-set macro calls retain the original arguments, masks and flags; bilingual essentials/changelog owners and generated projections describe this build correction. These calls are excluded from the Windows platform branch.
+- Prepare `2026.1.5-dev` against published master `2026.1.4-dev`, preserving upstream change notes and exhaustive feature migration. No API, setting, wire, property or resource schema changes beyond the earlier movement feature. All 64 affected documentation regression cases pass, exit 0. Affected owner checks and the next-step version/migration comparison pass; macOS SDK compilation and new-head CI remain separate qualifications.
+- The preceding native, bake and embedding-project runtime qualification uses Engine 2f856d0c25. It does not qualify the new macOS branch or claim final-version package artifacts. Arrival acceptance findings remain embedding-project blockers; no arrival guard or acceptance assertion is relaxed.
+
 ## 2026-10-04 - Latest master refresh during AsyncMove preparation
 
 - Merge master through `53b9e71bfb20573b6ae12d79eb7bd493bef297f9` into `2a6b3818c0c2d88483140b6c343a075322efbf92` without rewriting either published branch. Audit both incoming commits: macOS saved libunwind context expands to 167 words while other platforms retain 72; native and managed source formatting changes; exact localization inventory and bilingual translation-guide counts are reconciled to 194.

@@ -10,7 +10,7 @@
     "source": "VERSION",
     "master_format": "YEAR.MAJOR.MINOR-dev",
     "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
-    "value": "2026.1.4-dev"
+    "value": "2026.1.5-dev"
   },
   "version": {
     "channel": "current",
@@ -1675,8 +1675,8 @@
         "BuildTools/docs_site.py",
         "Docs/contract-change-dispositions.json"
       ],
-      "content_sha256": "e14a24f58b636083d05a409d4f3668947b0fcd6cef2601bb23f0c37a4ae56055",
-      "byte_size": 9192
+      "content_sha256": "94398c2df17f9cf38802e3b32ddbaae6012918dfc011510b5ad6b62e01d5cd39",
+      "byte_size": 9689
     },
     {
       "id": "engine-upgrade-guide",
@@ -12532,8 +12532,8 @@
         "Source/Tests/Test_CommonHelpers.cpp",
         "Source/Tests/Test_WorkThread.cpp"
       ],
-      "content_sha256": "9ac2088d8e634c7e03cd59cdc9adce033065b1a0eca868d3294b92a2b7372dc4",
-      "byte_size": 42320
+      "content_sha256": "af288529c00cb552626535a9ccb17ef6b05698f16d8bef343a6b473c7268f7af",
+      "byte_size": 42789
     },
     {
       "id": "native-extension-sample-readme",
@@ -14172,35 +14172,35 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "19ebf96d59d8315f2de7b4c63a8f79ef030e7f7973256ea6d10574f05db3aa10",
+      "content_sha256": "840a342a2b870b70903521091cc6645a8fff3cb8b8401f0e33035f990b4c4f48",
       "byte_size": 63416
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "404330159f340ef511d0a88e0b8debf78db72c74fd7f3f54c8e7248da3a35aa7",
-      "byte_size": 2194239
+      "content_sha256": "f0d58629987d4f6389634b57072a3cbb31b39dff3dfd14dd6a04c10957791b1a",
+      "byte_size": 2195205
     },
     {
       "id": "site-docs-search",
       "path": "Docs/Site/Assets/docs-search.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.json",
-      "content_sha256": "1183bf5639a5bdf37a7e0a2fd0b6134eb8796723673853ab95ced92880d43228",
-      "byte_size": 1308894
+      "content_sha256": "dbe618c35e359f947ab36e22427795ebbb01b3923651d1ed1b59cf45ada80e9d",
+      "byte_size": 1309422
     },
     {
       "id": "site-docs-search.ru",
       "path": "Docs/Site/Assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.ru.json",
-      "content_sha256": "4afdf8a4cb7f20eb0b04df9c1f0362950321def3dfa35f0a2b89c615b5310068",
-      "byte_size": 1839872
+      "content_sha256": "b0ae0004dc326aff4304688df1ea6a2abcec7529413983503177b35b4fdbb46d",
+      "byte_size": 1840507
     },
     {
       "id": "site-docs-site",
       "path": "Docs/Site/Data/docs-site.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Data/docs-site.json",
-      "content_sha256": "1e1efddf1d0ac4eeaa3d631c1e062e66bc3967e34910cd6d84c600b50f3ff75b",
+      "content_sha256": "d2f78f64eec49af6ffc6fe3b2b99227071805c8b8aeb221f15e309923bbae353",
       "byte_size": 212840
     },
     {
@@ -14263,7 +14263,7 @@
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "5c26a00f1f61a8670bcd022468f642c8ac751f83a719cd45f0cf96b502b34581",
+      "content_sha256": "98c818570dac31a6e0330efa3abc1473e822763e120c1f271a18ba28814b79f3",
       "byte_size": 535718
     },
     {
@@ -14354,7 +14354,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "dd29cac5111e9586d88a0758f0eeddedfc40013afbc2f5ed825f9a5611778ed8",
+      "content_sha256": "ce830756fdf0ed157affec54dc74f9beb2c8465a24aa79dfc9e9a3a3baebdcd8",
       "byte_size": 268488
     },
     {
@@ -14382,7 +14382,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "b73453e07daac0facee1fb8b16a933e627c00bab23e24be428056a082e815673",
+      "content_sha256": "d3b8a605376114e0163ead681ad5279b52c15e959b05bdc997a36d9d6e83d64c",
       "byte_size": 106196
     },
     {

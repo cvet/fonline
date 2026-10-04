@@ -839,8 +839,8 @@ void posix::install_crash_signal_handlers(crash_signal_handler handler) noexcept
         struct sigaction action {};
         action.sa_flags = SA_SIGINFO | SA_ONSTACK | SA_NODEFER | SA_RESETHAND;
         action.sa_sigaction = &on_crash_signal;
-        (void)::sigfillset(&action.sa_mask);
-        (void)::sigdelset(&action.sa_mask, signum);
+        (void)sigfillset(&action.sa_mask);
+        (void)sigdelset(&action.sa_mask, signum);
         (void)::sigaction(signum, &action, nullptr);
     }
 
@@ -900,12 +900,12 @@ static void on_crash_signal(int32_t signum, siginfo_t* info, void* context)
     // default action is put back explicitly before the signal is raised again
     struct sigaction default_action {};
     default_action.sa_handler = SIG_DFL;
-    (void)::sigemptyset(&default_action.sa_mask);
+    (void)sigemptyset(&default_action.sa_mask);
     (void)::sigaction(signum, &default_action, nullptr);
 
     sigset_t unblocked {};
-    (void)::sigemptyset(&unblocked);
-    (void)::sigaddset(&unblocked, signum);
+    (void)sigemptyset(&unblocked);
+    (void)sigaddset(&unblocked, signum);
     (void)::pthread_sigmask(SIG_UNBLOCK, &unblocked, nullptr);
 
     (void)::raise(signum);

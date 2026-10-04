@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "e14a24f58b636083d05a409d4f3668947b0fcd6cef2601bb23f0c37a4ae56055",
-      "source_bytes": 9192,
+      "source_sha256": "94398c2df17f9cf38802e3b32ddbaae6012918dfc011510b5ad6b62e01d5cd39",
+      "source_bytes": 9689,
       "status": "current"
     },
     {
@@ -1756,8 +1756,8 @@
       "english_path": "Docs/en/reference/native/essentials.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/native/essentials.md",
-      "source_sha256": "9ac2088d8e634c7e03cd59cdc9adce033065b1a0eca868d3294b92a2b7372dc4",
-      "source_bytes": 42320,
+      "source_sha256": "af288529c00cb552626535a9ccb17ef6b05698f16d8bef343a6b473c7268f7af",
+      "source_bytes": 42789,
       "status": "current"
     },
     {
