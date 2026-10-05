@@ -2270,11 +2270,13 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         logging::write("Disconnected player {}", player->GetName());
 
         ValidateEntityAccess(player);
-        ValidateEntityAccess(player->GetControlledCritter());
+
+        auto cr = player->GetControlledCritter();
+        ValidateEntityAccess(cr);
 
         // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
         // plan left waiting at its lease would wait there for good and the player would find it still under way on return
-        if (auto cr = player->GetControlledCritter(); cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
             StopCritterMoving(cr);
         }
 
@@ -3067,7 +3069,7 @@ void ServerEngine::Process_Ping(ptr<Player> player)
 
     // Pings keep the link's usual transit current while the player stands still, so the first move after a stall
     // is measured against the link as it was, not against nothing
-    (void)connection->RegisterSenderTime(sender_ms, nanotime::now());
+    connection->RegisterSenderTime(sender_ms, nanotime::now());
 
     if (answer) {
         connection->RegisterPingAnswer(GameTime.GetFrameTime());
