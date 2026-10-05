@@ -10,7 +10,7 @@
     "source": "VERSION",
     "master_format": "YEAR.MAJOR.MINOR-dev",
     "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
-    "value": "2026.1.9-dev"
+    "value": "2026.1.10-dev"
   },
   "version": {
     "channel": "current",
@@ -507,8 +507,8 @@
         "llms-full.txt",
         "docs-manifest.json"
       ],
-      "content_sha256": "4169e08d7d47274ad2c726ff9f20f4bc981a026a1d11ce59cfa3451907b48c55",
-      "byte_size": 72317
+      "content_sha256": "96fc6d4078b31d90918639904b01aadbac84039893c74f00f4643972d101358f",
+      "byte_size": 72256
     },
     {
       "id": "android-debugging",
@@ -1675,8 +1675,8 @@
         "BuildTools/docs_site.py",
         "Docs/contract-change-dispositions.json"
       ],
-      "content_sha256": "2686bc2321687f2d65d3e5bd77bf74d4ca308e34a6224e6856a87da570296339",
-      "byte_size": 11113
+      "content_sha256": "284efab7c7d99c42fd93f0ed4ccd6fc212a240f03257cd5dd5985b2291aa1ee7",
+      "byte_size": 11205
     },
     {
       "id": "engine-upgrade-guide",
@@ -14172,36 +14172,36 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "722a5dde69f125ec60096701fea81ddc5af84bfcba8d85c2601c4a89f04cf061",
-      "byte_size": 63416
+      "content_sha256": "35d523c7b1bf2b977f06e042b9d31d12c14ed2c1d7ecdd9a03ee84596e7c44ce",
+      "byte_size": 63417
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "f05982cc654a0ae6d6b9a0503cfcc5e5eea072c12375f46f50785571c319de98",
-      "byte_size": 2195418
+      "content_sha256": "280e8fa828961f877d71bce3ccaaad03bf9cc5b69fe577c3041822c1f7a7638f",
+      "byte_size": 2195450
     },
     {
       "id": "site-docs-search",
       "path": "Docs/Site/Assets/docs-search.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.json",
-      "content_sha256": "02106e8135915f1b2d29db9844552d6e933f189213bf706f955375872d515ccb",
-      "byte_size": 1310114
+      "content_sha256": "5f555868cf7b459293d90ecee114e92b6666acf8488fc5b041ca5136a17d0031",
+      "byte_size": 1310106
     },
     {
       "id": "site-docs-search.ru",
       "path": "Docs/Site/Assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.ru.json",
-      "content_sha256": "6c0655b1146ceff026594bc86372be1580688acdc598323696faa6d0624efbc6",
-      "byte_size": 1841483
+      "content_sha256": "4dc80e74d09be4391163a1ccd8a3679af6ecb143193e2bcb6449febd1604bd4a",
+      "byte_size": 1841584
     },
     {
       "id": "site-docs-site",
       "path": "Docs/Site/Data/docs-site.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Data/docs-site.json",
-      "content_sha256": "35b865f6d51e35778bc471c41b0a98dd619d84d5ef8f5aa9a1c2efb4a8b3f40d",
-      "byte_size": 212840
+      "content_sha256": "652ce089711a37f716ca5cb124e119ac726fc7597931b7dd8ce139f43f2fe8fb",
+      "byte_size": 212841
     },
     {
       "id": "ai_control_protocol_reference",
@@ -14263,8 +14263,8 @@
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "643b798a2113a9206a46449e6ee635019a161e02030731c4fdde006b83d96853",
-      "byte_size": 535718
+      "content_sha256": "c4ca792f696f54775f2748127c2fde2fc9bd3eb7a8ae37e0329eb08fdd9579f2",
+      "byte_size": 535719
     },
     {
       "id": "effect_format_reference",
@@ -14354,7 +14354,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "03ef95080969306ee62fbfbfce0a241153983062b4d20b7ef0836505dd5a4bf4",
+      "content_sha256": "3e2efd47097f2730a07d66a7169689e57d9c1df20bd0837728b1ce339ca4ca6b",
       "byte_size": 268488
     },
     {
@@ -14382,7 +14382,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "c2e52629e25415e5237231cb3a9f2956b557fc532ee4fb8166a0c72f325bc9e3",
+      "content_sha256": "80a935f44cdafd828d1c58b754d7133c1ee78f1f0bbcbf4600307c34e505f557",
       "byte_size": 106197
     },
     {

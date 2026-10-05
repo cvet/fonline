@@ -8,9 +8,19 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+FOnline change/migration notes in English and Russian. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns development identity; [versioning](../how-to/release/versioning.md) defines CalVer, release dates, immutable tags and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.10-dev - 2026-10-05
+
+### Changed
+
+- Merge retained documentation reconciliation and refresh derived references.
+
+### Migration
+
+- No new API, setting, protocol, resource or saved-data changes. Reconfigure/rebuild version metadata. Upgrades from `d24190c9d0` also require the coordinated `2026.1.5-dev` movement migration below.
 
 ## 2026.1.9-dev - 2026-10-05
 
@@ -118,7 +128,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Current-only Engine API support preserves the original meaning of existing values. Replacements remove the old API and provide actionable compile/bake/validation failures plus exhaustive bilingual migration records; existing persisted-property `MigrationRule` conversion remains the narrow exception.
 - Every published master step increments minor and records its UTC year/date; release lines freeze year/major/minor and advance patch, using `-rc` for stabilization. Documentation-only, CI, test and dependency updates are included.
 
-- The historical `2022.1.0.wip` placeholder in `VERSION` is replaced by a CalVer development identifier. Existing historical API `Since` annotations retain their original values.
+- `VERSION` replaces `2022.1.0.wip` with development CalVer; historical API `Since` values stay unchanged.
 
 ### Migration
 
@@ -131,4 +141,4 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Earlier history
 
-This maintained log begins with the adoption of Engine versioning. Earlier work is available in the [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound contract-change ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json). They are audit evidence, not a reconstructed series of published Engine releases.
+This log starts with Engine versioning. Earlier [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json) are audit evidence, not reconstructed release history.

@@ -2,6 +2,81 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-05 - Retained-history reconciliation with current master
+
+- Merge retained `d24190c9d0edbc5bb17bfaff7b54bf7bdd116491` into published `b1e3fa58021a171877177a19c3d26127abf486be`, preserving both ancestors and the published first-parent chain. Audit the twelve-commit incoming range from common base `e8111f9e77554a099c703755f6fbf7f9fde77657`; keep both local acceptance records without carrying their earlier native results onto this revision.
+- Incoming native changes cover held-direction traces/leases, sender-clock delay estimation, bounded catch-up, prefix joining, finished-player-plan reconciliation, fourteen read-only settings and compatibility `0.0.68`; native movement/link-delay/lifecycle/secure-channel tests are the reusable proof owners. Darwin signal macros/context storage remain separate platform boundaries. Version/codegen/CMake invalidation, site locale/layout routes, bilingual owners, generated references and governance fixtures are also in scope. No additional native behavior or protocol change is introduced by this merge.
+- Prepare `2026.1.10-dev` against published `2026.1.9-dev`, retain all earlier dated migration notes, remove obsolete CLAUDE pointer guidance, regenerate affected models/references and site/route/AI projections in dependency order. Incoming historical missing-version publications remain visible; validate this new forward step against the exact current published tip. The embedding owner's explicit history-preservation instruction authorizes ordinary merge here.
+- All 103 fixed Python commands from the documentation job, its three structural CMake checks and the working-tree version check pass: 561 unittest cases and aggregate validation of 410 Markdown entries. The enforced seventeen-domain comparison against `d24190c9d0` passes with fourteen added read-only settings, the scope fingerprint and compatibility-marker changes; both required dispositions are satisfied. The first comparison invocation rejected an output path outside the Engine root before comparison; the corrected Engine-local invocation passes without relaxing the path boundary.
+- All 31 reference/delivery writers pass in dependency order. Earlier attempts retained the context-budget overflow and stale translation hash; equivalent bilingual wording and the canonical normalized hash correct both. Complete delivery is 2,195,450 bytes under the unchanged 2,195,456-byte cap; no corpus exclusion or budget increase is introduced. PUBLIC_API, source inventory, complete localization, site routes/search and AI evaluation/delivery checks are current.
+- Native compilation, runtime-network behavior and rendered-browser qualification remain pending for this reconciled revision. No new platform, package or publication acceptance is claimed. Preserve the starting artifacts and all safety copies until both repositories validate.
+
+## 2026-10-03 - revision reconciliation and Russian repository-home freshness
+
+Scope and reconciliation:
+
+- Audited incoming source/test changes from `e8c8da0a9b6c19243b804d94e0aa468b8e1e6758` through
+  `bcdbd02013c3b6da340738b5120226c4dddd4008`, then the two-commit refresh through
+  `4e8e60b4b2d2927de932f86f7009a1a05061d3c1`. Retained the incoming owners for navigation,
+  rendering/cache lifetime, decoded-resource ownership, allocator statistics, string-pool publication,
+  packaging/patch bounds, build CPU budgets and coverage qualification.
+- The refresh changes `WriteBuildHash.cmake` and its native/baking callers to use configured `FO_BUILD_HASH`
+  with correctly quoted arguments. Reviewed the engine-owned compiled-probe test across standard bake
+  targets, source paths with spaces, advanced Git HEAD and source archives without Git.
+- Removing the DeepWiki badge from canonical `README.md` left `README.ru.md` stale. Removed the matching
+  Russian badge after reviewing the exact English delta and refreshed translation metadata through
+  `docs_localization` helpers. Regenerated snippets, translation status, site/search/routes, AI evaluation
+  and AI delivery in dependency order; no translation or inventory gate was weakened.
+
+Validation and limits:
+
+- `test_cmake_build_hash.py`: 18 passed on Windows. The existing
+  `test_codegen_cmake_dependencies.py::test_reconfigured_codegen_arguments_invalidate_outputs[None]`
+  still fails on the default Visual Studio generator: an identical third configure/build runs codegen
+  again (3 invocations instead of 2). Output and argument invalidation assertions remain intact.
+- The preceding focused BuildTools pass recorded 114 passed / 19 skipped / 1 failed. The repeated failure
+  is not treated as flaky and no skip or baseline was introduced.
+- CMake model/reference checks are current. Documentation validation passes 408 Markdown entries;
+  locale/site/AI checks are current (396 public routes / 192 documents per search locale). Focused
+  localization/site/AI tests pass 29 tests and 2 subtests. This pass does not claim a rendered
+  Jekyll/browser audit, a full native unit pass or binary-metadata qualification.
+- Published history was preserved; safety stashes are retained while the known codegen failure remains.
+
+## 2026-10-04 — published timeout and physical mesh fixes
+
+- Reconcile the normal merge from 6558fcf966c969c45cfba9911b3888d3068e278b
+  with published origin/master e8111f9e77554a099c703755f6fbf7f9fde77657.
+  Incoming commits are 367aa1889c (finite timeout validation) and e8111f9e77
+  (physical mesh anchors and footprint recaching); the existing local
+  documentation/build-provenance history remains an ancestor.
+- Reviewed every incoming source/test change and the EN/RU owning guides.
+  The reference client and scenario runner reject invalid deadlines before
+  connection/process creation. Physical-only Mapper meshes retain the authored
+  sprite anchor; server flag changes recache all registered multihex cells while
+  preserving other blockers. No new serialized format or native API is claimed.
+- Regenerated AI protocol, helper and map models, public indexes, snippets,
+  description/localization status, site/routes/search, AI evaluation and delivery
+  in dependency order. The seventeen-domain enforced diff contains one new
+  experimental AI timeout rule, zero breaking dispositions and zero native API
+  changes. PUBLIC_API.md remains current without a content delta.
+- Both screenshot trigger lists were reviewed: this range changes neither
+  particle tooling/visible layout nor its fixture, renderer or viewport.
+  The generated source digest changes; the original capture bytes, date and
+  capture claims remain unchanged. No new visual capture is claimed.
+- Python runtime tests pass 17/17; focused documentation/model tests pass 49/49;
+  documentation validation passes all 408 Markdown entries.
+- Native acceptance uses an isolated copy of the engine-owned MinimalProject
+  template with its canonical AngelScript and 3D settings. All four selected
+  top-level cases (MapperMultihexMeshMerge, MapperAnyUniqueMeshMerge,
+  MapHexOperations and MapPathOperations) pass: 422 assertions, 40 JUnit
+  case/section entries, exit 0, no failures, errors or skips. This includes the
+  new physical-only round-trip and MultihexItemFlagChanges regressions.
+  The fresh unit build passes in 1159.72 s and the test process in 8.26 s.
+- A prior unnecessary 3D-off variant failed in existing, unchanged unguarded
+  Test_ClientEngine model sections. The canonical 3D-on run retains every test;
+  no 3D-off qualification or source fix is claimed. Embedding-project acceptance
+  is recorded by that project and is not normative reusable Engine evidence.
+  Retain all safety stashes while the larger quest task remains incomplete.
 ## 2026-10-05 - Unpublished-history policy CI reconciliation
 
 - Baseline: published master `8697fcd9d9ebb592f73f1a9244b77142f9290e62` (`2026.1.8-dev`). Its documentation-governance test still required the old mandatory-merge wording; its Git-policy publication omitted the mandatory minor increment. Both failures reproduce locally. Preserve that published commit.
