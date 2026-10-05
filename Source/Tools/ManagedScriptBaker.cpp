@@ -141,8 +141,8 @@ static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> s
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool;
 static auto CountMutableArgs(const_span<ArgDesc> args) -> size_t;
 static void AppendObjectArrayDeclaration(ostringstream& out, string_view indent, string_view variable_name, const_span<ArgDesc> args);
-static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix);
-static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret);
+static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix, bool keep_receiver = false);
+static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret, bool keep_receiver = false);
 static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const ComplexTypeDesc& type, string_view value_name) -> string;
 static void AppendSingleMutableArgAssignment(ostringstream& out, const_span<ArgDesc> args, string_view source_name);
 static void AppendMutableArgAssignments(ostringstream& out, const_span<ArgDesc> args, string_view source_name, size_t source_offset);
@@ -605,8 +605,15 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
             }
             else if (type->IsRefType && type->RefType) {
                 unordered_set<string> member_names;
+                bool ref_counted = !type->RefType->FieldsRegistrar && HasMethodSignature(type->RefType->Methods, "__AddRef", "void", {}) && HasMethodSignature(type->RefType->Methods, "__Release", "void", {});
 
-                out << "public partial class " << EscapeCsIdentifier(type->Name) << "\n";
+                out << "public partial class " << EscapeCsIdentifier(type->Name);
+
+                if (ref_counted) {
+                    out << " : global::System.IDisposable";
+                }
+
+                out << "\n";
                 out << "{\n";
 
                 if (type->RefType->FieldsRegistrar) {
@@ -619,21 +626,68 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
                 }
                 else {
                     out << CS_INDENT << "private IntPtr _refPtr;\n\n";
-                    out << CS_INDENT << "public " << EscapeCsIdentifier(type->Name) << "()\n";
-                    out << CS_INDENT << "{\n";
-                    out << CS_INDENT << "    _refPtr = IntPtr.Zero;\n";
-                    out << CS_INDENT << "}\n\n";
+
+                    if (ref_counted) {
+                        out << CS_INDENT << "private readonly global::FOnline.NativeRefTypeLifetime _refLifetime;\n\n";
+                    }
+
+                    if (HasMethodSignature(type->RefType->Methods, "__Factory", EscapeCsIdentifier(type->Name), {})) {
+                        out << CS_INDENT << "public " << EscapeCsIdentifier(type->Name) << "()\n";
+                        out << CS_INDENT << "{\n";
+                        out << CS_INDENT << "    var __created = __Factory();\n";
+                        out << CS_INDENT << "    _refPtr = __created.RefPtr;\n";
+
+                        if (ref_counted) {
+                            // The temporary wrapper shares the lease; collecting it cannot release the constructed object.
+                            out << CS_INDENT << "    _refLifetime = __created._refLifetime;\n";
+                        }
+
+                        out << CS_INDENT << "}\n\n";
+                    }
+
                     out << CS_INDENT << "internal " << EscapeCsIdentifier(type->Name) << "(IntPtr refPtr)\n";
                     out << CS_INDENT << "{\n";
                     out << CS_INDENT << "    _refPtr = refPtr;\n";
+
+                    if (ref_counted) {
+                        auto add_ref_method = std::ranges::find_if(abi.Methods, [&](const auto& method) { return method.Owner == type->Name && method.Name == "__AddRef"; });
+                        auto release_method = std::ranges::find_if(abi.Methods, [&](const auto& method) { return method.Owner == type->Name && method.Name == "__Release"; });
+                        auto dispose_method = HasMethodSignature(type->RefType->Methods, "Dispose", "void", {}) ? std::ranges::find_if(abi.Methods, [&](const auto& method) { return method.Owner == type->Name && method.Name == "Dispose" && method.Args.empty(); }) : abi.Methods.end();
+                        FO_VERIFY_AND_THROW(add_ref_method != abi.Methods.end() && release_method != abi.Methods.end(), "Managed RefType reference methods are missing from the ABI", type->Name);
+                        out << CS_INDENT << "    _refLifetime = new global::FOnline.NativeRefTypeLifetime(refPtr, " << add_ref_method->Id << ", " << release_method->Id << ", " << (dispose_method != abi.Methods.end() ? dispose_method->Id : -1) << ");\n";
+                    }
+
                     out << CS_INDENT << "}\n\n";
                     out << CS_INDENT << "internal IntPtr RefPtr\n";
                     out << CS_INDENT << "{\n";
                     out << CS_INDENT << "    get\n";
                     out << CS_INDENT << "    {\n";
+
+                    if (ref_counted) {
+                        out << CS_INDENT << "        _refLifetime.VerifyAlive();\n";
+                    }
+
                     out << CS_INDENT << "        return _refPtr;\n";
                     out << CS_INDENT << "    }\n";
                     out << CS_INDENT << "}\n\n";
+
+                    if (ref_counted) {
+                        bool dispose_name_used = type->Name == "Dispose" || std::ranges::any_of(type->RefType->Methods, [](const auto& method) { return method.Name == "Dispose" && (method.Getter || method.Setter || method.GlobalGetter || (method.Args.empty() && method.Ret)); });
+                        out << CS_INDENT << (dispose_name_used ? "void global::System.IDisposable.Dispose()\n" : "public void Dispose()\n");
+                        out << CS_INDENT << "{\n";
+                        out << CS_INDENT << "    _refLifetime.Dispose();\n";
+                        out << CS_INDENT << "}\n\n";
+                        out << CS_INDENT << "[global::FOnline.CallableByEngine]\n";
+                        out << CS_INDENT << "private void __AdoptNativeReference()\n";
+                        out << CS_INDENT << "{\n";
+                        out << CS_INDENT << "    _refLifetime.AdoptReference();\n";
+                        out << CS_INDENT << "}\n\n";
+                        out << CS_INDENT << "[global::FOnline.CallableByEngine]\n";
+                        out << CS_INDENT << "private void __AcquireNativeReference()\n";
+                        out << CS_INDENT << "{\n";
+                        out << CS_INDENT << "    _refLifetime.AddReference();\n";
+                        out << CS_INDENT << "}\n\n";
+                    }
                 }
 
                 AppendMethods(out, type->RefType->Methods, type->Name, false, !type->RefType->FieldsRegistrar, !type->RefType->FieldsRegistrar, false, member_names, abi);
@@ -3416,7 +3470,7 @@ static auto MakeTargetPtrExpression(bool is_static, bool is_ref_type_owner) -> s
         return "IntPtr.Zero";
     }
 
-    return is_ref_type_owner ? "_refPtr" : "_entityPtr";
+    return is_ref_type_owner ? "RefPtr" : "_entityPtr";
 }
 
 static auto HasMutableArgs(const_span<ArgDesc> args) -> bool
@@ -3448,12 +3502,16 @@ static void AppendObjectArrayDeclaration(ostringstream& out, string_view indent,
     out << indent << "};\n";
 }
 
-static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix)
+static void AppendNativeCallMethodExpression(ostringstream& out, string_view indent, string_view prefix, int32_t method_id, string_view entity_ptr, string_view object_args_variable, string_view suffix, bool keep_receiver)
 {
     out << indent << prefix << "global::FOnline.Native.CallMethodBoxed(\n";
     out << indent << "    " << method_id << ",\n";
     out << indent << "    " << entity_ptr << ",\n";
     out << indent << "    " << object_args_variable << ")" << suffix << "\n";
+
+    if (keep_receiver) {
+        out << indent << "global::System.GC.KeepAlive(this);\n";
+    }
 }
 
 // What a frame slot stores for a managed value: the value itself, or for a handle slot the wrapper's native pointer,
@@ -3473,7 +3531,7 @@ static auto MakeCsFrameValueExpression(const ManagedAbiSlot& slot, const Complex
     return strex("(long){}.{}", value_name, ptr_member).str();
 }
 
-static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret)
+static void AppendIndexedMethodCall(ostringstream& out, string_view indent, const ManagedAbiMethodEntry& method, string_view entity_ptr, const_span<ArgDesc> args, string_view ret, bool keep_receiver)
 {
     vector<string> arg_names = MakeCsArgumentNames(args);
     out << indent << "global::FOnline.ScalarCallFrame __frame = default;\n";
@@ -3483,6 +3541,17 @@ static void AppendIndexedMethodCall(ostringstream& out, string_view indent, cons
     }
 
     out << indent << "global::FOnline.Native.CallMethodIndexed(" << method.Id << ", " << entity_ptr << ", ref __frame[0], " << method.FrameSize << ");\n";
+
+    if (keep_receiver) {
+        out << indent << "global::System.GC.KeepAlive(this);\n";
+    }
+
+    // A packed handle is not a GC root; keep native RefType arguments alive through the native call.
+    for (size_t i = 0; i < args.size(); i++) {
+        if (args[i].Type.BaseType.IsRefType && !IsDynamicManagedRefType(args[i].Type.BaseType)) {
+            out << indent << "global::System.GC.KeepAlive(" << arg_names[i] << ");\n";
+        }
+    }
 
     for (size_t i = 0; i < args.size(); i++) {
         if (!args[i].Type.IsMutable) {
@@ -3798,7 +3867,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
     }
 
     bool is_method_static = is_static || (is_ref_type_owner && method.Name == "__Factory");
-    string declaration_prefix = "public ";
+    string declaration_prefix = is_ref_type_owner && method.Name == "__Factory" ? "private " : "public ";
 
     if (is_method_static) {
         declaration_prefix += "static ";
@@ -3866,7 +3935,7 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
 
         if (abi_method->UsesScalarFrame) {
             out << CS_INDENT << "{\n";
-            AppendIndexedMethodCall(out, body_indent, *abi_method, entity_ptr, method.Args, ret);
+            AppendIndexedMethodCall(out, body_indent, *abi_method, entity_ptr, method.Args, ret, is_ref_type_owner && !is_method_static);
             out << CS_INDENT << "}\n";
         }
         else if (has_mutable_args) {
@@ -3875,11 +3944,11 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
             out << "\n";
 
             if (ret == "void" && mutable_args_count == 1) {
-                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
                 AppendSingleMutableArgAssignment(out, method.Args, "__result");
             }
             else {
-                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", abi_method->Id, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "object[] __result = (object[])", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
 
                 if (ret == "void") {
                     AppendMutableArgAssignments(out, method.Args, "__result", 0);
@@ -3896,14 +3965,14 @@ static void AppendMethod(ostringstream& out, const MethodDesc& method, size_t me
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "", abi_method->Id, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
             out << CS_INDENT << "}\n";
         }
         else {
             out << CS_INDENT << "{\n";
             AppendObjectArrayDeclaration(out, body_indent, "__args", method.Args);
             out << "\n";
-            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";");
+            AppendNativeCallMethodExpression(out, body_indent, "object __result = ", abi_method->Id, entity_ptr, "__args", ";", is_ref_type_owner && !is_method_static);
             out << CS_INDENT << "    return (" << ret << ")__result;\n";
             out << CS_INDENT << "}\n";
         }
@@ -4051,12 +4120,12 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
             out << CS_INDENT << "    {\n";
 
             if (getter_abi->UsesScalarFrame) {
-                AppendIndexedMethodCall(out, body_indent, *getter_abi, entity_ptr, getter->Args, getter_ret);
+                AppendIndexedMethodCall(out, body_indent, *getter_abi, entity_ptr, getter->Args, getter_ret, is_ref_type_owner);
             }
             else {
                 AppendObjectArrayDeclaration(out, body_indent, "__args", getter->Args);
                 out << "\n";
-                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", getter_abi->Id, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "object __result = ", getter_abi->Id, entity_ptr, "__args", ";", is_ref_type_owner);
                 out << body_indent << "return (" << getter_ret << ")__result;\n";
             }
 
@@ -4075,11 +4144,19 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
                 out << body_indent << "global::FOnline.ScalarCallFrame __frame = default;\n";
                 out << body_indent << "global::System.Runtime.CompilerServices.Unsafe.WriteUnaligned(ref __frame[" << setter_abi->Args[0].Offset << "], " << MakeCsFrameValueExpression(setter_abi->Args[0], setter->Args.front().Type, "value") << ");\n";
                 out << body_indent << "global::FOnline.Native.CallMethodIndexed(" << setter_abi->Id << ", " << entity_ptr << ", ref __frame[0], " << setter_abi->FrameSize << ");\n";
+
+                if (is_ref_type_owner) {
+                    out << body_indent << "global::System.GC.KeepAlive(this);\n";
+                }
+
+                if (setter->Args.front().Type.BaseType.IsRefType && !IsDynamicManagedRefType(setter->Args.front().Type.BaseType)) {
+                    out << body_indent << "global::System.GC.KeepAlive(value);\n";
+                }
             }
             else {
                 out << body_indent << "object?[] __args = new object?[] { value };\n";
                 out << "\n";
-                AppendNativeCallMethodExpression(out, body_indent, "", setter_abi->Id, entity_ptr, "__args", ";");
+                AppendNativeCallMethodExpression(out, body_indent, "", setter_abi->Id, entity_ptr, "__args", ";", is_ref_type_owner);
             }
 
             out << CS_INDENT << "    }\n";
@@ -4092,11 +4169,18 @@ static void AppendMethodProperties(ostringstream& out, const vector<MethodDesc>&
 static void AppendMethods(ostringstream& out, const vector<MethodDesc>& methods, string_view owner_type_name, bool is_static, bool is_ref_type_owner, bool allow_native_bridge, bool is_synced_entity_owner, unordered_set<string>& member_names, const ManagedAbiManifest& abi)
 {
     unordered_set<string> signatures;
+    bool ref_counted = is_ref_type_owner && HasMethodSignature(methods, "__AddRef", "void", {}) && HasMethodSignature(methods, "__Release", "void", {});
 
     AppendMethodProperties(out, methods, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, member_names, abi);
 
     for (size_t method_index = 0; method_index < methods.size(); method_index++) {
         const MethodDesc& method = methods[method_index];
+
+        // Reference operations belong to the managed lease; native Dispose is composed with its cleanup.
+        if (ref_counted && method.Args.empty() && !method.Ret && (method.Name == "__AddRef" || method.Name == "__Release" || method.Name == "Dispose")) {
+            continue;
+        }
+
         nptr<const ManagedAbiMethodEntry> abi_method = FindManagedAbiMethod(abi, owner_type_name, method.Name, method_index);
         AppendMethod(out, method, method_index, owner_type_name, is_static, is_ref_type_owner, allow_native_bridge, is_synced_entity_owner, member_names, signatures, false, abi_method);
         bool is_timer_method = method.Name == "StartTimeEvent" || method.Name == "CountTimeEvent" || method.Name == "StopTimeEvent" || method.Name == "RepeatTimeEvent" || method.Name == "SetTimeEventData";

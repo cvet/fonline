@@ -1179,7 +1179,35 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(client_settings.find("global::FOnline.Native.SetSettingValue<") == string::npos);
 
     string client_types = ReadTextFile(script_dir / "ClientTypes.gen.cs");
-    CHECK(client_types.find("public static MapSpriteHolder __Factory()") != string::npos);
+    CHECK(client_types.find("private static MapSpriteHolder __Factory()") != string::npos);
+    CHECK(client_types.find("public static MapSpriteHolder __Factory()") == string::npos);
+    CHECK(client_types.find("void __AddRef()") == string::npos);
+    CHECK(client_types.find("void __Release()") == string::npos);
+    CHECK(client_types.find("public MapSpriteHolder()\n    {\n        var __created = __Factory();\n        _refPtr = __created.RefPtr;\n        _refLifetime = __created._refLifetime;\n    }") != string::npos);
+    CHECK(client_types.find("internal MapSpriteHolder(IntPtr refPtr)") != string::npos);
+    CHECK(client_types.find("private void __AdoptNativeReference()") != string::npos);
+    CHECK(client_types.find("private void __AcquireNativeReference()") != string::npos);
+    CHECK(client_types.find("_refLifetime.AdoptReference();") != string::npos);
+    CHECK(client_types.find("_refLifetime.AddReference();") != string::npos);
+    CHECK(client_types.find("_refLifetime.ReleaseReference();") == string::npos);
+    CHECK(client_types.find("_refLifetime.VerifyAlive();") != string::npos);
+    CHECK(client_types.find("global::System.GC.KeepAlive(this);") != string::npos);
+    CHECK(client_types.find("public partial class MapSpriteHolder : global::System.IDisposable\n") != string::npos);
+    CHECK(client_types.find("public void Dispose()\n    {\n        _refLifetime.Dispose();\n    }") != string::npos);
+    CHECK(client_types.find("public partial class FogLayer : global::System.IDisposable\n") != string::npos);
+    CHECK(client_types.find("void global::System.IDisposable.Dispose()\n") == string::npos);
+    size_t fog_begin = client_types.find("public partial class FogLayer : global::System.IDisposable\n");
+    REQUIRE(fog_begin != string::npos);
+    string fog_type = client_types.substr(fog_begin, client_types.find("public partial class ", fog_begin + 1) - fog_begin);
+    CHECK(fog_type.find("public void Dispose()\n") != string::npos);
+    CHECK(fog_type.find("public void Dispose()\n") == fog_type.rfind("public void Dispose()\n"));
+
+    for (string_view native_type : {"SpritePattern", "FogLayer", "VideoPlayback", "TimeEventContext", "MovingContext"}) {
+        INFO(native_type);
+        CHECK(client_types.find(strex("public {}()", native_type)) == string::npos);
+        CHECK(client_types.find(strex("internal {}(IntPtr refPtr)", native_type)) != string::npos);
+    }
+
     CHECK(client_types.find("global::FOnline.Native.CallMethodBoxed(") != string::npos);
     CHECK(client_types.find("\"__Factory\"") == string::npos);
 

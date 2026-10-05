@@ -16,6 +16,27 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Factory-backed Managed C# constructors create usable native objects and share their factory lease. Native types without a factory have no public default constructor; dynamic DTOs keep ordinary construction.
+- Refcounted wrappers automatically retain one native reference. Factories and `PassOwnership` transfer it; other results, callback/event arguments and collection elements acquire it. Forgotten leases queue engine-thread cleanup; shutdown cleans queued/live leases before entity collection/unbind. Native calls keep wrappers alive.
+
+### Added
+
+- Standard `IDisposable`/`using` ownership hides `__Factory`, `__AddRef` and `__Release` from the public managed API. Native zero-argument `Dispose` actions run before reference release: `FogLayer.Dispose()` removes its layer and closes the wrapper in one call.
+
+### Migration
+
+- Baseline: `6a1f03880a84e097cfedee6d331178aad89e390d` (`2026.1.28-dev`); apply versions 26–28 below first. The earlier audited `16f1608794` sources have the zero-pointer constructor defect. All managed roles change; native/AngelScript signatures, IDs, defaults and property/data schemas stay unchanged.
+- Replace `__Factory()` with `new`, remove manual `__AddRef()`, and replace `__Release()` with `Dispose()`/`using`. Engine-returned wrappers retain their native targets automatically. C# aliases share disposal; independent wrappers have independent ownership. Dynamic DTOs and non-refcounted wrappers lack this interface.
+- Find default construction of `SpritePattern`, `FogLayer`, `VideoPlayback`, `TimeEventContext` and `MovingContext` and use their creating APIs. Compile every role to catch aliases and target-typed `new()`.
+- Keep `Map.DrawMapSprite` holders through the last rendered frame, then `StopDraw()` and `Dispose()`. A `using` scope must cover that frame; GC timing is unspecified. Direct `fog.Dispose()` and `using` perform both native and wrapper cleanup; remove former two-step cleanup. Repeated disposal and disposal after shutdown are harmless. Disposed pointer access and boxed/packed arguments reject use. Cleanup failures retain ownership for retry without repeating a completed native action.
+- Rebuild matching native components and rebake every role with ABI generator identity `9`. Runtime compatibility advances from `0.0.70` to `0.0.71`; binaries/resources and client/server sides upgrade together. The preceding unpublished ABI `8`/runtime `0.0.70` bindings also require rebuilding. Follow [rebuild ordering](../how-to/build/generated-content.md). No persisted-data or backup conversion is needed.
+- Rollback rebuilds/rebakes matching previous sources for all sides, restoring their prior manual ownership and constructor behavior. Earlier component, storage, baking-lock, document-migration and server-grid requirements below still apply.
+- Generator tests verify the public surface; lifetime tests cover automatic acquisition, native cleanup, GC, retries, aliases, constructor leases, shutdown and backend isolation. Runtime acceptance covers properties, drawing, `using`/disposal and orderly shutdown. See [lifetime rules and validation](../how-to/scripting/managed-csharp.md).
+
+## 2026.1.28-dev - 2026-10-11
+
+### Fixed
+
 - Normalize six display-query EOFs and make metadata `hstring` locals explicit; keep both read-only proxy const containers and analyzer reasons.
 - Sync the snippet regression with the reviewed 470-example/311-normative corpus; condense config prose and normalize four CMake comments. Full normative coverage and rejection tests remain enabled.
 - Reconcile image-import source ownership and native custom-loader migration guidance with the extracted modules.
