@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.5-dev (CalVer from VERSION)
+Engine version: 2026.1.6-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 94398c2df17f9cf38802e3b32ddbaae6012918dfc011510b5ad6b62e01d5cd39
+Content SHA-256: cd5d9afabb465f18c8d31d66b31dd9558bc30f15bb8d6b1e930d605485111e1e
 
 ---
 layout: default
@@ -2021,7 +2021,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## 2026.1.5-dev - 2026-10-04
+## 2026.1.6-dev - 2026-10-05
+
+### Fixed
+
+- Correct EN/RU movement-entry dates to 2026-10-05 UTC.
+
+### Migration
+
+- Rebuild version metadata; apply the movement migration below from `2026.1.4-dev`. No runtime/data changes.
+
+## 2026.1.5-dev - 2026-10-05
 
 ### Changed
 

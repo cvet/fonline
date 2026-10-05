@@ -12,7 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## 2026.1.5-dev - 2026-10-04
+## 2026.1.6-dev - 2026-10-05
+
+### Fixed
+
+- Correct EN/RU movement-entry dates to 2026-10-05 UTC.
+
+### Migration
+
+- Rebuild version metadata; apply the movement migration below from `2026.1.4-dev`. No runtime/data changes.
+
+## 2026.1.5-dev - 2026-10-05
 
 ### Changed
 

@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"94398c2df17f9cf38802e3b32ddbaae6012918dfc011510b5ad6b62e01d5cd39"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"cd5d9afabb465f18c8d31d66b31dd9558bc30f15bb8d6b1e930d605485111e1e"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
-## 2026.1.5-dev - 2026-10-04
+## 2026.1.6-dev - 2026-10-05
+
+### Исправлено
+
+- Даты записи движения EN/RU исправлены на 2026-10-05 UTC.
+
+### Миграция
+
+- Пересоберите метаданные версии; для обновления с `2026.1.4-dev` выполните миграцию движения ниже. Выполнение и данные не меняются.
+
+## 2026.1.5-dev - 2026-10-05
 
 ### Изменено
 

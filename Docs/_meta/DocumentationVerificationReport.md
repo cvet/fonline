@@ -10105,3 +10105,11 @@ Completed local validation:
 - No repository commit, push, release branch/tag creation, Pages publication,
   remote CI or production qualification was performed. Release operations remain
   a future owner-authorized procedure.
+
+
+## 2026-10-05 — Correct the published movement migration date
+
+- Baseline: `1e3fcbc86939e469dc3136485bae162867450101` (`2026.1.5-dev`); correction version: `2026.1.6-dev`. The immutable baseline's exact-range check fails because both movement migration headings say 2026-10-04 while its UTC commit date is 2026-10-05.
+- Correct that date in both locales and add this separately versioned correction's migration note. Keep the exact-publication-range validator, historical failure and native/settings/protocol behavior unchanged. No history rewrite or exception is introduced.
+- Regenerate the public index, snippet/localization state, site/search/routes, AI evaluation and delivery artifacts in dependency order. Preserve source-owned classification and limits. The existing version suite passes all ten cases and the working-tree comparison against the exact published baseline accepts the new minor.
+- This documentation correction does not independently qualify the newly published movement implementation or an embedding project's adoption. Native builds, controlling/observing-client movement and delayed-link checks retain their separate evidence boundaries.
