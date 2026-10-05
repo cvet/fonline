@@ -1,6 +1,6 @@
 # FOnline Engine — AI Maintainer Guide
 
-This is the AI entry point for the reusable FOnline engine repository. For the human entry point, start with [README.md](README.md). For the English documentation map, start with [Docs/en/index.md](Docs/en/index.md); the Russian mirror starts at [Docs/ru/index.md](Docs/ru/index.md).
+AI guide; human entry: [README.md](README.md). Docs: [EN](Docs/en/index.md), [RU mirror](Docs/ru/index.md). **Engine authoring is English:** commit subjects/bodies, PRs/issues, comments, diagnostics, docs, plans and release notes. Russian only mirrors docs; chat language does not change this rule.
 
 ## Scope
 
@@ -16,7 +16,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
 5. Do not commit or push unless explicitly asked by the repository owner.
 6. When pulling, rebasing, or changing the engine revision, follow [documentation revision reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation): record old/new SHAs, audit every incoming source/test change, regenerate affected models, and document the reconciliation before dropping any safety stash.
-7. Treat published branch history as immutable. Once the branch has a remote tip, do not rebase, reset, amend, or force-push it; merge upstream and the published tip so every publication is a fast-forward. Verify with `git merge-base --is-ancestor <remote-tip> HEAD` before pushing, and stop instead of rewriting history when that check fails.
+7. Rebase unpublished local commits onto the fetched base, even on branches with an upstream or earlier pushes. Never rewrite already-pushed commits. Use merge only to reconcile diverged published histories. Before pushing, verify `git merge-base --is-ancestor <destination-remote-tip> HEAD`. No reset/amend of pushed commits, force-push, or remote branch deletion.
 8. Every master update follows the mandatory [Engine update/version contract](Docs/en/how-to/release/versioning.md#every-master-update): increment minor from the latest published master tip, use the current UTC year and `YEAR.MAJOR.MINOR-dev`, add dated EN/RU change and exhaustive migration notes, reconcile every affected owning/generated doc, and validate the exact publication range. Documentation, test, CI, dependency and revert changes count too. Release branches freeze the cut and advance only patch; do not create or publish them without the owner's command.
 
 ## Documentation Map

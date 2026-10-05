@@ -266,11 +266,11 @@ Before updating:
 2. Preserve a dirty worktree with a named stash or separate worktree, including untracked generated documentation, and retain that safety copy until validation passes.
 3. Preserve the current generated JSON model under ignored `Workspace/` when it is not available from a committed baseline.
 
-Integrate upstream with a normal merge (a fast-forward is fine when possible).
-Do not rewrite published history: keep each published branch tip as an ancestor
-of the updated tip, independently for the Engine and any embedding project.
+Rebase unpublished commits onto the fetched base, including on branches with an upstream.
+Keep already-pushed tips as ancestors; merge only diverged published histories.
+Apply separately to Engine and embedding projects.
 
-After the normal merge:
+After integration:
 
 ```bash
 git log --oneline <old-engine-sha>..<new-engine-sha>

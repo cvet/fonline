@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"abbef0ec44dd122d8a544b89ef38217dc07ddeb75d219113e68328a03de8a96f"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -266,11 +266,11 @@ Markdown-ссылки документации движка должны раз�
 2. Сохраните dirty worktree в именованном stash или отдельном worktree, включая untracked generated documentation, и не удаляйте safety copy до успешной проверки.
 3. Сохраните текущую generated JSON model в ignored `Workspace/`, если её нет в committed baseline.
 
-Интегрируйте upstream обычным merge (fast-forward допустим, когда он возможен).
-Не переписывайте опубликованную историю: опубликованный tip каждой ветки должен
-оставаться предком обновлённого tip, отдельно для Engine и embedding project.
+Незалитые коммиты обязательно переносите rebase на полученную базу, даже при наличии upstream.
+Уже залитые tip сохраняйте в предках; merge нужен только для разошедшихся опубликованных историй.
+Правило отдельно действует для Engine и embedding project.
 
-После обычного merge:
+После интеграции:
 
 ```bash
 git log --oneline <old-engine-sha>..<new-engine-sha>

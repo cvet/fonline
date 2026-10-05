@@ -11306,11 +11306,11 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 782b908f4f0b9ec6c8382a1bc28d558f0d74506d372d53fc3bc105ac4b010345
+Content SHA-256: 4169e08d7d47274ad2c726ff9f20f4bc981a026a1d11ce59cfa3451907b48c55
 
 # FOnline Engine — AI Maintainer Guide
 
-This is the AI entry point for the reusable FOnline engine repository. For the human entry point, start with [README.md](README.md). For the English documentation map, start with [Docs/en/index.md](Docs/en/index.md); the Russian mirror starts at [Docs/ru/index.md](Docs/ru/index.md).
+AI guide; human entry: [README.md](README.md). Docs: [EN](Docs/en/index.md), [RU mirror](Docs/ru/index.md). **Engine authoring is English:** commit subjects/bodies, PRs/issues, comments, diagnostics, docs, plans and release notes. Russian only mirrors docs; chat language does not change this rule.
 
 ## Scope
 
@@ -11326,7 +11326,7 @@ This is the AI entry point for the reusable FOnline engine repository. For the h
 4. If behavior changes, update the owning engine doc in `Docs/` in the same worktree change.
 5. Do not commit or push unless explicitly asked by the repository owner.
 6. When pulling, rebasing, or changing the engine revision, follow [documentation revision reconciliation](Docs/en/contributing/documentation/index.md#revision-update-reconciliation): record old/new SHAs, audit every incoming source/test change, regenerate affected models, and document the reconciliation before dropping any safety stash.
-7. Treat published branch history as immutable. Once the branch has a remote tip, do not rebase, reset, amend, or force-push it; merge upstream and the published tip so every publication is a fast-forward. Verify with `git merge-base --is-ancestor <remote-tip> HEAD` before pushing, and stop instead of rewriting history when that check fails.
+7. Rebase unpublished local commits onto the fetched base, even on branches with an upstream or earlier pushes. Never rewrite already-pushed commits. Use merge only to reconcile diverged published histories. Before pushing, verify `git merge-base --is-ancestor <destination-remote-tip> HEAD`. No reset/amend of pushed commits, force-push, or remote branch deletion.
 8. Every master update follows the mandatory [Engine update/version contract](Docs/en/how-to/release/versioning.md#every-master-update): increment minor from the latest published master tip, use the current UTC year and `YEAR.MAJOR.MINOR-dev`, add dated EN/RU change and exhaustive migration notes, reconcile every affected owning/generated doc, and validate the exact publication range. Documentation, test, CI, dependency and revert changes count too. Release branches freeze the cut and advance only patch; do not create or publish them without the owner's command.
 
 ## Documentation Map
@@ -14117,7 +14117,7 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: a254fd51f6c2215e4d374814f85a5c3f72a2b4e4c92d4526e34e9b1b811ae548
+Content SHA-256: abbef0ec44dd122d8a544b89ef38217dc07ddeb75d219113e68328a03de8a96f
 
 ---
 layout: default
@@ -14387,11 +14387,11 @@ Before updating:
 2. Preserve a dirty worktree with a named stash or separate worktree, including untracked generated documentation, and retain that safety copy until validation passes.
 3. Preserve the current generated JSON model under ignored `Workspace/` when it is not available from a committed baseline.
 
-Integrate upstream with a normal merge (a fast-forward is fine when possible).
-Do not rewrite published history: keep each published branch tip as an ancestor
-of the updated tip, independently for the Engine and any embedding project.
+Rebase unpublished commits onto the fetched base, including on branches with an upstream.
+Keep already-pushed tips as ancestors; merge only diverged published histories.
+Apply separately to Engine and embedding projects.
 
-After the normal merge:
+After integration:
 
 ```bash
 git log --oneline <old-engine-sha>..<new-engine-sha>
