@@ -141,6 +141,8 @@ public:
     void Connect();
     void Disconnect();
 
+    // A direction is held until a stop or another order and is walked as short plans extended on the fly, not as a
+    // path to a point far ahead; see ProcessDirectMove
     void CritterMoveTo(ptr<CritterHexView> cr, variant<tuple<mpos, ipos16, int32_t>, mdir> pos_or_dir, int32_t speed);
     void CritterLookTo(ptr<CritterHexView> cr, mdir dir);
     void CritterMovingFinished(ptr<CritterHexView> cr, mpos end_hex);
@@ -374,6 +376,32 @@ protected:
         shared_ptr<Sprite> Anim {};
     };
 
+    // A direction the player holds. Plan is the last plan made for it, which tells it apart from one the server sent;
+    // RayHex/RayHexOffset is where the current straight run began, the line every extension of it stays on
+    struct DirectMoveIntent
+    {
+        ident_t CritterId {};
+        mdir Dir {};
+        uint16_t Speed {};
+        refcount_nptr<MovingContext> Plan {};
+        mdir PlanDir {};
+        uint16_t PlanSpeed {};
+        nanotime PlanTime {};
+        // The number the server knows the plan by, and how far into it the server and other players may run it
+        uint32_t PlanSeq {};
+        float32_t LeaseDistance {};
+        bool PlanReachedHorizon {};
+        bool PlanSlid {};
+        mpos RayHex {};
+        ipos16 RayHexOffset {};
+    };
+
+    [[nodiscard]] auto IsDirectPlanPlaying(ptr<CritterHexView> cr) const -> bool;
+    void SteerDirectMove(ptr<CritterHexView> cr, mdir dir, uint16_t speed);
+    void ProcessDirectMove();
+    void PlanDirectMove(ptr<CritterHexView> cr, string_view reason, uint16_t speed, bool extends_run);
+    void TraceFrameHealth();
+
     void CleanupSpriteCache();
     void DestroyInnerEntities();
 
@@ -392,6 +420,7 @@ protected:
     void Net_SendProperty(NetProperty type, ptr<const Property> prop, ptr<const Entity> entity);
     void Net_SendDir(ptr<CritterHexView> cr);
     void Net_SendMove(ptr<CritterHexView> cr);
+    void Net_SendMoveLease(ptr<CritterHexView> cr, uint32_t plan_seq, float32_t lease_distance);
     void Net_SendStopMove(ptr<CritterHexView> cr);
     void Net_SendMoveFinished(ptr<CritterHexView> cr, mpos end_hex);
 
@@ -415,6 +444,7 @@ protected:
     void Net_OnCritterMoveItem();
     void Net_OnCritterTeleport();
     void Net_OnCritterPos();
+    void Net_OnCritterMoveLease();
     void Net_OnCritterAttachments();
     void Net_OnChosenAddItem();
     void Net_OnChosenRemoveItem();
@@ -466,6 +496,13 @@ protected:
     refcount_nptr<LocationView> _curLocation {};
     refcount_nptr<MapView> _curMap {};
     refcount_nptr<CritterView> _chosen {};
+    optional<DirectMoveIntent> _directMove {};
+    uint32_t _directPlanSeq {};
+    // Frames per trace window, so a movement measurement taken on a starved machine can tell itself apart
+    nanotime _frameHealthStart {};
+    nanotime _frameHealthLast {};
+    int32_t _frameHealthFrames {};
+    timespan _frameHealthMaxGap {};
 
     hstring _curMapLocPid {};
     int32_t _curMapIndexInLoc {};

@@ -508,6 +508,27 @@ void Player::Send_MovingSpeed(ptr<const Critter> from_cr)
     out_buf->Write(moving->GetSpeed());
 }
 
+void Player::Send_MovingLease(ptr<const Critter> from_cr)
+{
+    FO_VALIDATE_ENTITY(NONE);
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
+
+    auto moving = from_cr->GetMoving();
+
+    if (!moving) {
+        return;
+    }
+
+    scoped_lock conn_lock {_connectionLock};
+
+    auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveLease);
+
+    out_buf->Write(from_cr->GetId());
+    out_buf->Write(from_cr->GetMovingUid());
+    out_buf->Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
+    out_buf->Write(_engine->GameTime.GetFrameTime().milliseconds());
+}
+
 void Player::Send_Dir(ptr<const Critter> from_cr)
 {
     FO_VALIDATE_ENTITY(NONE);
@@ -727,6 +748,7 @@ void Player::Send_Ping(bool answer)
     auto out_buf = _connection->WriteMsg(NetMessage::Ping);
 
     out_buf->Write(answer);
+    out_buf->Write(nanotime::now().milliseconds());
 }
 
 void Player::Send_HandshakeAnswer(bool compatibility_outdated, bool updater_outdated, bool metadata_outdated, string_view metadata_version)
@@ -992,6 +1014,12 @@ void Player::SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr)
     }
 
     out_buf.Write(moving->GetEndHexOffset());
+    // Which plan of the critter this is, so a later lease update finds it, and how far it may run
+    out_buf.Write(cr->GetMovingUid());
+    out_buf.Write(moving->GetLeaseTime() * numeric_cast<float32_t>(moving->GetSpeed()) / 1000.0f);
+    // The frame the elapsed time above was taken at, by the server's clock: the receiver tells from it how much
+    // later than usual the plan reached it
+    out_buf.Write(_engine->GameTime.GetFrameTime().milliseconds());
 }
 
 FO_END_NAMESPACE

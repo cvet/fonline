@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"74684213187e12b5da6b33f3300a2da1ad9042f4212b5f4e1d9b4d90d804c9bc"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"62b626cd810fc359bd79b51e039375a9c07a35a0b14a885156100e1e8279c12a"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -140,7 +140,7 @@ Public site оборачивает обычный Markdown, отрендерен
 
 Каждая public current human top-level page должна ровно один раз входить в navigation. Generated detail pages не попадают в sidebar, но доступны в поиске через generated index pages. Internal plans, placeholders и AI-only maintainer routes отсутствуют в обеих reader surfaces.
 
-Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому русский бюджет измеряет фактические байты текста. Source manifest независимо применяет reviewed hard limit 1,75 MiB (1 835 008 байт) к каждому generated index. Лимит даёт ёмкость полному двуязычному corpus, но не разрешает исключать документы; при превышении любой локалью generation по-прежнему завершается fail-closed.
+Поиск использует только JavaScript репозитория и browser APIs. Нет hosted index, account, analytics dependency, remote script или server endpoint. Rendered page загружает только index активной локали, а results остаются в ней. Titles и headings имеют больший вес, чем body terms; полные technical identifiers и camel-case components остаются searchable. Чисто числовые components и terms, встречающиеся более чем в 60 процентах locale corpus, исключаются как неразличающие. Компактный JSON записывается как UTF-8 без разворачивания non-ASCII текста в escape-последовательности `\\uXXXX`, поэтому русский бюджет измеряет фактические байты текста. Source manifest независимо применяет reviewed hard limit 1,78125 MiB (1 867 776 байт) к каждому generated index. Лимит даёт ёмкость полному двуязычному corpus, но не разрешает исключать документы; при превышении любой локалью generation по-прежнему завершается fail-closed.
 
 После изменения public Markdown membership, titles, paths, lifecycle state, migration targets, version/localization policy, navigation groups или search policy выполните:
 

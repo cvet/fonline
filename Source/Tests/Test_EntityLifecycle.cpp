@@ -700,6 +700,7 @@ namespace EntityLifecycle
         packet.Write(client_hex);
         packet.Write(client_hex_offset);
         packet.Write(client_dir);
+        packet.Write(nanotime::now().milliseconds());
         packet.EndMsg();
 
         connection->Receive(packet.GetData());

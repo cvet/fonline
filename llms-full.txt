@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.4-dev (CalVer from VERSION)
+Engine version: 2026.1.5-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -366,7 +366,7 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: fb1f17deb0487281984b8d00bfbb4c6650d06eba2b9b7924fc715eb2a3d8833a
+Content SHA-256: 6cada6de5b236d70972f49057fc703f8375b5d7f792928176f982d825171209d
 
 ---
 title: FOnline Public Contract Index
@@ -413,10 +413,10 @@ The current revision contains **17** modeled contract domains: `experimental` 14
 
 ## Native script API status
 
-- Discovered symbols: **2555**
-- Symbols with source-backed descriptions: **2555**
+- Discovered symbols: **2569**
+- Symbols with source-backed descriptions: **2569**
 - Symbols without descriptions: **0**
-- Explicitly classified symbols: **2555**
+- Explicitly classified symbols: **2569**
 - Symbols inheriting the default `internal` classification: **0**
 
 The generated native reference is complete as an inventory of the modeled code-generation surface. Its current inventory-pinned scope is explicitly `experimental` and requires an exact Engine revision pin; it is not a broad `stable` compatibility promise. If the scope is absent or fails validation, unannotated native symbols remain `internal`.
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: d17fa0407c403c7cfadc7c1bb553c66b6f47ee919bbd489545a9f1ef2a7df753
+Content SHA-256: 94398c2df17f9cf38802e3b32ddbaae6012918dfc011510b5ad6b62e01d5cd39
 
 ---
 layout: default
@@ -2020,6 +2020,25 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.5-dev - 2026-10-04
+
+### Changed
+
+- Held-direction movement traces and extends plans, retargets on turns and can slide along obstacles. Step leases bound how far the server and observers continue when the controlling client's link stalls.
+- Shared movement synchronization measures usual link transit, catches up late plans and joins plans at an already traversed step. These changes also apply to point-and-click movement; destination pathfinding remains in place. Observer catch-up can play smoothly instead of immediately jumping ahead. See [movement](../explanation/maps-and-movement.md) and [networking](../explanation/authority-and-networking/index.md).
+- The build-hash regression fixture stages the real CMake helpers beside its temporary project, supporting Windows checkouts and temporary directories on different drives.
+
+### Migration
+
+- Upgrade the server, controlling clients and observers together. `SendCritterMoveLease` and `CritterMoveLease` extend the wire protocol; the compatibility marker advances from `0.0.66` to `0.0.68`. Reconfigure, rebuild native hosts/runtime libraries and rebake both sides from the same source revision. Do not bypass the compatibility check to run mixed revisions. No persistent property/prototype rename or save conversion is introduced by this movement change.
+- Review new `Network.LinkDelayWindowMs`, `Network.LinkDelayRebaseMs`, `Network.MoveLateCatchUpMinMs`, `Network.MoveLateCatchUpMaxMs` and `Network.MovePlanJoinMaxSteps` in every affected configuration. Existing settings retain their meaning. Search configuration sources for these exact keys; absent keys use the documented defaults. A zero join bound disables joining.
+- Review new `Client.DirectMoveTraceSteps`, `Client.DirectMoveExtendAheadSteps`, `Client.DirectMoveLeaseSteps`, `Client.DirectMoveLeaseRenewSteps`, `Client.DirectMoveRetargetMinMs`, `Client.DirectMoveRetargetImmediateAngle` and `Client.DirectMoveSlide`. Keep extension/renewal bounds below their trace/lease bounds. No authored movement destination or ordinary point-and-click call requires rewriting.
+- Review new `Client.MoveCatchUpRate` and `Client.MoveCatchUpSmoothMaxMs` for remote playback. Regenerate script API/settings references and compile affected scripts; all fourteen additions are read-only settings, not mutable script state.
+- Validate held straight movement, turns, stopping and blocked edges with controlling and observing clients, then ordinary point-and-click destinations and interruptions. Repeat with delay/jitter/stalls, checking lease expiry and late-plan reconciliation. Existing `Network.MoveSyncTrace` can collect diagnostic evidence; keep it disabled outside diagnostic runs. These checks qualify behavior separately from performance.
+- When maintaining a copied build-hash test fixture, stage the three actual CMake helper files beside that fixture instead of deriving a cross-drive relative path. Production build-marker behavior is unchanged.
+- Regenerate the MinimalMultiplayer, ContentShowcase and PackagingMatrix configurations with their `generate_config.py` owners so the fourteen movement settings are present. The maintained native test inventory includes `Test_LinkDelay.cpp`; bilingual documentation and snippet coverage fixtures now include the two version-policy pages.
+- Documentation search consumers must honor the manifest's reviewed per-locale `max_bytes`, increased from 1,835,008 to 1,867,776 bytes for the complete movement/settings and migration corpus. Membership, token policy and fail-closed enforcement remain intact; the AI full-context limit is unchanged.
 
 ## 2026.1.4-dev - 2026-10-04
 
@@ -13449,7 +13468,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 ===== BEGIN DOCUMENT adr-manifest-backed-site-navigation-search =====
 Source: Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.html
-Content SHA-256: 9e21f5e3a669871aa94bdf8acc96774f7cb7101c8535c456943b6f72145c75e8
+Content SHA-256: 3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3
 
 ---
 layout: default
@@ -13480,7 +13499,7 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
    - `Docs/Site/Assets/docs-search.json` for English and `Docs/Site/Assets/docs-search.ru.json` for Russian, consumed by the local browser script for locale-scoped static search.
 3. Main navigation contains every public, current, human-facing top-level document exactly once. Generated reference detail pages stay behind their generated index pages so the sidebar remains scannable.
 4. Each locale index includes every public, current, human-facing document available in that locale, including generated detail pages. Internal records, placeholders, AI-only maintainer routes, and missing translations are excluded. Russian navigation falls back to the English route only where no current Russian counterpart exists; search results never cross locales.
-5. Each search artifact stores compact weighted token postings and result metadata, not full document bodies. Titles and headings receive higher weight than body terms; technical identifiers and their camel-case components remain searchable. Pure numeric tokens and terms present in more than 60% of that locale's documents are omitted because they cannot distinguish results. The manifest declares a 1.75 MiB (1,835,008 byte) hard limit for each locale index and generation fails instead of silently dropping documents. Separate limits keep a complete Russian mirror from competing with English for one shared payload budget. The budget was raised from 1.25 MiB when the reviewed Russian mirror reached 163 of 195 documents and the complete current corpus no longer fit; no document or token class was silently removed to make the index pass.
+5. Each search artifact stores compact weighted token postings and result metadata, not full document bodies. Titles and headings receive higher weight than body terms; technical identifiers and their camel-case components remain searchable. Pure numeric tokens and terms present in more than 60% of that locale's documents are omitted because they cannot distinguish results. The manifest declares a 1.78125 MiB (1,867,776 byte) hard limit for each locale index and generation fails instead of silently dropping documents. Separate limits keep a complete Russian mirror from competing with English for one shared payload budget. The budget was raised from 1.25 MiB when the reviewed Russian mirror reached 163 of 195 documents and the complete current corpus no longer fit; no document or token class was silently removed to make the index pass. The capacity increases by another 32,768 bytes when held-direction settings and mandatory version/migration notes exceed the previous Russian bound; complete corpus coverage and rejection of overflow remain required.
 6. `Docs/Site/Layouts/default.html`, `Docs/Site/Assets/css/docs.css`, and `Docs/Site/Assets/js/docs.js` form a thin rendering layer over <code>&#123;&#123; content &#125;&#125;</code>. They may provide responsive navigation, search, page table of contents, copy controls, source links, and a persisted light/dark preference, but they do not own technical prose.
 7. The interface uses only repository-owned static assets and browser APIs. It has no hosted search, remote JavaScript/CSS dependency, application build, server API, or generated HTML checked into source.
 8. The visible version indicator is `master`, explicitly a rolling branch rather than a stable engine release. Versioned documentation remains blocked on the release/tag support decision.
@@ -15214,7 +15233,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 55ec3c020e45684340b6661c04e4e8d49c21d8d0807c252ce546c2c1663de8e0
+Content SHA-256: 477b54e261e068304115b06c2ab219aa851a1778849e55427c461d20c5c9f5d4
 
 ---
 layout: default
@@ -15443,15 +15462,71 @@ The client starts predicting its own movement before its `SendCritterMove` reach
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
+A **held direction** is one plan traced far ahead and *leased*: `SendCritterMove` carries the client's number for
+the plan and a lease in projected path distance, and the server and the observers run the plan only up to the lease. While
+the key stays down the client renews it with `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}`
+a few steps ahead of the critter; the server moves its copy's lease on (shifted by the projected distance its copy's start differs
+from the client's) and passes it to the observers as `CritterMoveLease {critter, movement uid, lease distance, sender
+ms}`, which an observer applies only to the plan it received under that uid
+([ClientRuntime.md](../runtime/client.md#held-direction-movement)). A held run is then one timeline on every side, as a
+click is, while a stall on the player's link stops the server and the observers at the lease end instead of
+carrying them along the trace (a stall that outlasts the connection leaves the critter standing there: the server stops a
+leased plan when it drops the player); a release that reaches the server after its plan ended there is reconciled along the
+player's own finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+
+**Late messages** are measured, not assumed. `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`,
+`CritterMove`, `CritterMoveLease` and both directions of `Ping` end with the sender's monotonic clock in
+milliseconds; `LinkDelayEstimator` turns a stamp into how much later than the link's usual transit (the median over
+the last `Network.LinkDelayWindowMs`) the message arrived. Pings keep that usual transit current while nothing moves, so the
+first move after a stall is measured against the link as it was. A plan or a renewal late by at least
+`Network.MoveLateCatchUpMinMs` is played from where it would be by now ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)).
+`CritterMove` also carries the server's movement uid and the plan's lease (zero when the plan runs to its end). These
+fields changed the wire format of the movement messages and `Ping`; the compatibility version moved with them.
+
 ### Movement synchronization trace
 
-`Network.MoveSyncTrace` (off by default) logs movement synchronization on server and clients. Each event is one stable, machine-readable line:
+`Network.MoveSyncTrace` (off by default, too verbose for production) makes the server and every client write
+one `MOVESYNC` log line per movement synchronization event, so the three views of one critter — where the
+server holds it, where its own client draws it, and where another client sees it — can be laid side by side
+after a run. The line is a format rather than prose, written by `TraceMoveSync` (`Movement.h`):
 
 ```text
 MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
 ```
 
-The local monotonic `t` aligns processes on one machine. Across machines, `st` is shared but client time sync delivery makes latency estimates approximate. Client lines identify their chosen critter with `viewer`. Server events include `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, and `send`; client events include `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, and `out`. `finish_req` records its outcome (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, or `reconcile_failed`) and the reported position, remaining/allowed time, and measured round trip. Embedding projects may add scenario `mark` and scripted `input` events; the engine does not own their runners or interpretation. The trace is too verbose for production.
+`t` is the local monotonic clock, which every process on one machine shares, so a single-machine run aligns
+all three views without estimating any clock offset. Across machines only `st` is common, and a client's
+`st` trails the server's by the delivery of its last time sync, so cross-machine latencies read from it are
+estimates. Every client line carries `viewer=<its chosen critter id>`, which keeps several clients apart
+when they write into one log (embedded clients do).
+
+| Side | `ev` | Written by | Fields |
+|------|------|------------|--------|
+| srv | `move_req` | `Process_Move`, before the plan starts | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms`; `joined` steps of the plan the server's critter had already walked, `late_ms` the message's lateness over the link's usual transit |
+| srv | `move_start` | `StartCritterMoving` (player or script) | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator`; `lease_ms=0` runs to the end |
+| srv | `lease_req` | `Process_MoveLease` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` — a held direction's lease moved on |
+| srv | `step` | `ProcessCritterMovingBySteps`, per hex entered | `cr uid hex elapsed_ms runtime_ms` |
+| srv | `stop` | `StopCritterMoving` | `cr uid reason hex broadcast` (`reason` is the `MovingState` value) |
+| srv | `stopmove_req` | `Process_StopMove`, after reconciliation | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms`; `after_end=1` when the stop arrived after the player's own plan had already run out on the server and was reconciled along that finished plan |
+| srv | `finish_req` | `Process_MoveFinished`, at every exit | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `ChangeCritterMovingSpeed` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms`; `runtime_ms - elapsed_ms` is progress the rebase discards |
+| srv | `send` | `Player::Send_Moving` / `Send_Teleport` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]`; `own=1` is a correction of the recipient's own critter |
+| cl | `move_send` / `stop_send` / `finish_send` / `lease_send` | `Net_SendMove` / `Net_SendStopMove` / `Net_SendMoveFinished` / `Net_SendMoveLease` | what the acting client told the server; `lease_send` is `cr seq lease_dist` |
+| cl | `lease_recv` | `Net_OnCritterMoveLease` | `cr uid lease_ms late_ms catchup_ms` — another critter's held plan may run further |
+| cl | `hold` | `CritterHexView::ProcessMoving`, when a plan reaches or leaves its lease | `cr own on elapsed_ms` — `on=1` the critter stands at the lease waiting for a renewal |
+| cl | `frames` | `ClientEngine::TraceFrameHealth`, once a second | `n ms max_ms` — frames drawn in the window and the longest; movement is processed once a frame, so a starved client measures its host |
+| cl | `dir_plan` | `ClientEngine::PlanDirectMove` | a held direction materialised as a plan: `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex`; `steps=0` is a blocked direction, and every plan with steps is followed by its `move_send` |
+| cl | `move_recv` / `pos_recv` / `teleport_recv` | the three inbound position messages | `cr own …`; `own=1` is a correction; `pos_recv` carries `jump` (hexes moved) and `err_px` (pixels between where the critter was drawn and the received position — a sub-hex re-split moves the hex but not the picture); `move_recv` also carries `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` — steps joined past, the copy's lease, the plan's lateness, how far the server had started it ahead, the time made up and how much of it by running faster |
+| cl | `speed_recv` | `Net_OnCritterMoveSpeed` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` — the client rebases one delivery after the server |
+| cl | `step` / `arrive` | `CritterHexView::ProcessMoving` | where the client draws a critter, hex by hex, and where its plan ended |
+| cl | `in` / `out` | `Net_OnAddCritter` / `Net_OnRemoveCritter` | a critter entered or left this client's view: `cr own hex` (and `moving` on `in`). Between an `out` and the next `in` the client knows nothing about the critter, so a stale last hex is not a disagreement; a client re-entering its own critter on login traces `in` with itself as the viewer |
+| cl | `mark` | project scripts | a scenario boundary (`label=begin:<name>` / `end:<name>`) written through the AI-control bridge |
+| cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
+
+`finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
+`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
+is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
+stable.
 
 ### Disconnect reasons
 
@@ -17115,7 +17190,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: 7b4f1410f655d28e5a20c2a86afe0981695eda4ff54126e93a3cb080365198ee
+Content SHA-256: c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077
 
 ---
 layout: default
@@ -17404,6 +17479,15 @@ On the client there are exactly two paths, and the map view holds no state of it
 `TraceLineOutput` reports whether the trace was full, whether a last movable hex exists, the pre-block hex, block hex, and last movable hex.
 
 Line tracing is used by movement/path logic and by gameplay systems that need visibility, shooting, or straight-line movement checks.
+
+### Direction traces
+
+`TraceDirectionInput` describes a held direction: `StartHex` plus `StartHexOffset` (where the mover is drawn, not its hex centre), `Dir`, a point the direction's line passes through (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, and `Slide`. `PathFinding::TraceDirection()` walks that line one hex at a time: of the neighbour directions either side of the angle it takes the one whose hex centre lies closest to the line, measured in the camera-projected plane `MovingContext` measures in, so the steps hug the line rather than a ray re-aimed at a rounded target. Anything but `Passable` blocks, because a held direction does not route through gags or critters the way a path does. `TraceDirectionOutput` returns the steps, the control steps and `EndHexOffset`:
+
+- A trace that never left the line is one straight segment, and `EndHexOffset` projects its last point back onto the line. The line point is the start for a fresh direction and where the run began when a client extends one, so a chain of traces draws one straight line in the input direction with no rounding carried from link to link.
+- With `Slide`, a blocked next hex is replaced by the free neighbour direction closest to the input angle, and only one strictly under 90° off it; a parallel line then resumes from the hex the side step reached. Every step thus advances along the direction, so a trace can never oscillate or walk back over hexes it came from. A slid trace runs through hex centres (a control step after every side step) and returns a zero `EndHexOffset`. Pushing straight into a flat wall finds no side step and stops, exactly as without `Slide`; the map edge stops a trace without `Slide` and is followed with it.
+
+`MapView::TraceMoveWay()` is the client's wrapper with the map's own blocking; the client's direct-move controller is its only caller (see [ClientRuntime.md](runtime/client.md#held-direction-movement)).
 
 ## Movement contexts
 
@@ -19405,7 +19489,7 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: fc0c9166706ccfd9e4ffc0a30e372e19b2b466112201294691aad715166aa21b
+Content SHA-256: 0b372f256332543a89984f3e705d599220d609a7bd5427d58fdd32e81ea9ea20
 
 ---
 layout: default
@@ -19964,6 +20048,25 @@ Client scripts can synthesize local input through the same runtime path for auto
 
 For local critter movement prediction, `ClientEngine::CritterMoveTo()` synchronizes any active `MovingContext` to the current client frame before starting a new movement or sending a stop request. It then normalizes the local hex/offset pair before the next request is sent, so rapid start/stop input does not report one-frame-stale or overlarge offsets to the server.
 
+### Held-direction movement
+
+`Critter.MoveToDir(dir, speed)` is a held direction — keyboard, D-pad or stick — not a path to a point ahead. It sets or steers the critter's *direct-move intent*, which lasts until `StopMove()`, a path order (`MoveToHex()`), or the critter leaving the current map (`UnloadMap()` drops it). The client materialises the intent itself:
+
+- **One long plan under a lease.** A plan is a `PathFinding::TraceDirection()` of `Client.DirectMoveTraceSteps` hexes along the input ray, sliding along obstacles when `Client.DirectMoveSlide` is on (see [MapsMovementGeometry.md](../maps-and-movement.md#direction-traces)); the player's own critter walks all of it. The plan goes to the server numbered and *leased*: the server and every other player run it only `Client.DirectMoveLeaseSteps` steps ahead of where the player has confirmed holding the direction, and `ProcessDirectMove()` renews the lease with a small `SendCritterMoveLease` once `Client.DirectMoveLeaseRenewSteps` or fewer of it are left ahead of the critter. A held run is therefore one plan with one timeline on every side, while a stall on the player's link stops the server and the observers at the lease end instead of carrying them along the trace. The wire lease names projected path distance, so a speed correction cannot move its boundary and it does not depend on the link's latency: the server trails the player by one uplink transit and meets the lease end only when renewals stop arriving.
+- **The next plan before this one ends.** When the plan has `Client.DirectMoveExtendAheadSteps` or fewer steps left and was traced to its full length, the next one is traced on from where the critter is, projected onto the line the run began on, at the plan's current speed, which the server may have changed.
+- **Turn throttle.** A turn of at least `Client.DirectMoveRetargetImmediateAngle` degrees, a speed change, a start and a stop are planned at once. A smaller turn, including a 45° keyboard change under the default 60° threshold, is applied at most once per `Client.DirectMoveRetargetMinMs`; the latest direction wins when the interval passes.
+- **Server plans play out.** The controller extends only the plan it made itself. A plan the server sends for the critter (a correction, a truncated path) plays out first; a truncated path is finite and has no lease, since its replacement retires the client plan that would renew it; the held direction resumes when it ends, and a blocked direction is retried at the re-plan interval rather than every frame.
+
+An observer applies a leased plan and its renewals (`CritterMoveLease`, matched to the plan by the server's movement uid) to its copy; a copy joined further along its path carries the lease shifted by the projected distance it skipped, converted to time at its current speed. `MovingContext::SetLeaseTime` holds a plan at its lease with the plan's clock stopped, so a longer lease resumes it from where it waited; while it waits the critter is drawn standing (`CritterHexView` switches to the idle animation and back when the plan moves on), not walking in place. With `Network.MoveSyncTrace`, every such plan writes a `dir_plan` line naming its reason (`start`, `turn`, `extend`, `resume`) and every renewal a `lease_send` line, see [Networking.md](../authority-and-networking/index.md#movement-synchronization-trace).
+
+### Late plans catch up
+
+Movement messages carry their sender's clock: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease` and `Ping` from the client, `CritterMove`, `CritterMoveLease` and `Ping` from the server. Each end keeps a `LinkDelayEstimator` for its link (`ClientConnection` for the downlink, `ServerConnection` for the uplink): the median receive-minus-send offset of the link's usual messages over the last `Network.LinkDelayWindowMs` is its usual transit, and a message's excess over it is how long a stall held it — the transit itself would need a clock both ends share, the excess does not. The median, not the best transit, is the reference so that ordinary jitter is not caught up as if it were a stall: a plan caught up to the best transit would put the server ahead of where the player's stop reaches it and walk it past the stop. A message late by `Network.MoveLateCatchUpMinMs` or more is kept out of the usual ones, so every message of a stall's burst is measured against the link as it was before it; a link whose every message stayed that late for `Network.LinkDelayRebaseMs` got slower for good, and its new transit becomes the usual one. The duration of this exceptional run is tracked independently of its bounded sample queue, so frequent messages cannot postpone rebasing. At least a handful of usual samples outlive the window, so a link that fell silent keeps its transit. A plan or a lease renewal late by at least `Network.MoveLateCatchUpMinMs` is played from where it would be by now, up to `Network.MoveLateCatchUpMaxMs`: the server fast-forwards it at once, an observer runs it at `Client.MoveCatchUpRate` times its speed until it has made up the time, up to `Client.MoveCatchUpSmoothMaxMs`, and skips the rest. The same holds for a plan the server itself started ahead because the player's move reached it late: an observer whose copy stands at the plan's start begins there and runs to where the server has it, rather than skipping the steps (`ahead_ms` in the trace); a copy anywhere else, such as a critter just come into view, is placed where the plan has it. The player's own critter is never caught up: its plans are its own input.
+
+### Joining a plan already under way
+
+A plan the receiver's copy of the critter has partly walked already — the continuation of a movement that reached it after a slower transit than the previous plan — is joined where the critter stands, up to `Network.MovePlanJoinMaxSteps` steps in, instead of being walked from its start (`FindPathPrefixSteps` / `DropPathPrefix`). The server does the same, after first bringing the critter's current plan up to the present, since its steps advance only once a movement period.
+
 ## Client-side validation tests
 
 Use the smallest relevant test scope when changing client runtime behavior:
@@ -19991,7 +20094,7 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: ad1fd7d8bc2892efc6eccc3180cb3da1e0e4ac4db66fd453c424e0f5e85b6a77
+Content SHA-256: ca839e139b0a3dcaf352b4e17bb715806274549d3116030d4fb9d279af5b908b
 
 ---
 layout: default
@@ -20419,6 +20522,10 @@ Do not duplicate the Common entity taxonomy here; [Entity Model](../entity-and-p
 Client movement requests enter through `Process_Move()`, `Process_StopMove()`, and `Process_Dir()`. The server validates the request, applies script events such as `OnPlayerMoveCritter` and `OnPlayerDirCritter`, then updates the authoritative `Critter` and broadcasts the resulting state. Stop-move packets include the client's current hex and hex offset; the server normalizes that pair to a canonical in-bounds hex/offset, reconciles positions that lie on the critter's current authoritative `MovingContext` path, and allows a small pathfinding-validated correction for rapid start/stop input that stopped between path centers. Normalization uses the same passability predicate as client movement: if rounding a sub-hex offset would cross into a blocked neighbor, it retains the reported logical hex and clamps the offset instead of snapping toward the blocker. This lets client and server converge without accepting arbitrary stop teleports. If the reported stop position cannot be reconciled, the server stops at its authoritative position and sends that final position back to the controlling player; only a successfully reconciled stop may omit the redundant self-update.
 
 `Process_StopMove()` also fires `OnPlayerDirCritter` during stop reconciliation, before it can stop the active `MovingContext`. Scripts may hard-disconnect the connection, detach or switch the player's controlled critter, or move the critter to another map; the native continuation revalidates those possible outcomes before applying the final stop to avoid completing a stale client command.
+
+A stop can also reach the server after the plan it interrupted has run out there: on a stalled uplink or after a held-direction plan reached its lease boundary (see [Held-direction movement](client.md#held-direction-movement)). The stop still names a point on that plan. When the critter's last movement is a plan its controlling player started — `StartCritterMoving()` with an initiator marks it through `Critter::MarkMovingStartedByPlayer()` — and that plan ended by itself with nothing started or stopped since, `Critter::GetFinishedPlayerMoving()` returns it and the stop is reconciled along it exactly as along a live plan: the server walks back to the reported point and tells the observers where the critter now stands. A plan a script started, a plan that was stopped and a later plan are not the player's to take back, so such a stop is answered with the server position as before. Without this the player was corrected to the plan's end while its next messages were already moving the server on from the point it had stopped at, and the two never met again. A late stop consumes that finished-plan permission before reconciliation; an explicit stop or a map transfer invalidates it even when the critter is already stationary. `ServerCritterMovePositionReconciliation` pins these boundaries.
+
+`Process_Move()` first brings a moving critter's current plan up to the present (`ProcessCritterMovingBySteps`), since its steps advance only once per `Server.CritterMovingPeriodMs`, and then joins the new plan where the critter already stands when that is among the plan's first `Network.MovePlanJoinMaxSteps` steps, instead of bridging back to its start. A plan whose message arrived later than its link's usual transit by at least `Network.MoveLateCatchUpMinMs` is started that far in (`ServerConnection::RegisterSenderTime`, `EvaluateLateCatchUp`), so after a stall the server stands where the player is instead of replaying the way. A held direction's plan carries the player's number for it and a lease: `MovingContext::SetLeaseTime` holds the server's copy at the lease with its clock stopped, `Process_MoveLease()` moves the lease on (shifted by the projected path distance the server's copy starts ahead of or behind the player's, then converted to time at its current speed) and passes it to the other players, and `Critter::GetPlayerPlanMoving()` accepts a renewal only for the plan the player started under that number and still walks. A held direction ends with the session that held it: when the player's connection drops, `ProcessPlayer()` stops a leased plan where the critter stands, because neither its renewals nor its release can arrive any more and a plan waiting at its lease would otherwise wait there for good — and the player, logging back in, would receive it still under way. See [ClientRuntime.md](client.md#held-direction-movement).
 
 ### An arrival the client predicted is reconciled before the request behind it
 
@@ -23664,7 +23771,7 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: c0e1e07b02bd2ecaba0481d10db7578111448bfa44dbf5bd1a860757c568d981
+Content SHA-256: d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d
 
 ---
 layout: default
@@ -23967,6 +24074,9 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
   archives without Git and output paths containing spaces.
   `BuildTools/tests/test_cmake_build_hash.py` verifies actual compiled applications
   and both standard baking targets before and after a Git revision change.
+  Its temporary source tree stages the unchanged helpers from the Engine checkout,
+  so the fixture also works when Windows stores the checkout and temporary files
+  on different drives.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
 
@@ -24335,7 +24445,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: bdba97c410422375c71d4f6bff910a20874cc74e7d555a57355594294252d94e
+Content SHA-256: afb5fb35f28e070ff984888046727a3d966e219ab8d471c99bf0a4ff29055047
 
 ---
 title: Generated Map Format Reference
@@ -24359,7 +24469,7 @@ This reference describes the reusable engine contract for authored `.fomap` file
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned engine revision. Project map catalogs, custom metadata, gameplay semantics, and composition policy remain project-owned. |
 | Source manifest | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Contract digest | <code>35f4ea32a142689ce484edb9288b933c0bdf8940050d2d70013fe4169d1b33b1</code> |
+| Contract digest | <code>85b20a893b8f558e868a7bfb87bdd55ca9d1d778796eab63c5ecb030b9d6d51f</code> |
 
 | Reference | Entries | Purpose |
 | --- | --- | --- |
@@ -26682,7 +26792,7 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: f8077af26fb95a7075c5eff6aef86badd111b9cf4ee3c76fc05f554b8c563bf9
+Content SHA-256: f272765f36bcf89ae52ce6ae0495bd9feaebac14f2cf65efa554177622662215
 
 ---
 title: Generated API Reference
@@ -26703,32 +26813,32 @@ This reference describes the declarations in the model's `engine-native-codegen`
 | [Entity properties](properties.md) | 132 | Generated entity property contracts. |
 | [Engine events](events.md) | 122 | Server, client, common, and mapper events. |
 | [Script types](types.md) | 997 | Entities, enums, value types, reference types, fields, and methods. |
-| [Engine settings](settings.md) | 279 | Read-only engine settings grouped by domain. |
+| [Engine settings](settings.md) | 293 | Read-only engine settings grouped by domain. |
 | [Migration rules](migrations.md) | 28 | Native metadata migration declarations. |
 
 ## Model quality
 
 | Signal | Count |
 | --- | --- |
-| Addressable symbols | 2555 |
-| Symbols with descriptions | 2555 |
+| Addressable symbols | 2569 |
+| Symbols with descriptions | 2569 |
 | Symbols missing descriptions | 0 |
 | Symbols without source provenance | 14 |
 | Metadata source files | 43 |
 | Explicit contract declarations | 3 |
-| Explicitly classified symbols | 2555 |
+| Explicitly classified symbols | 2569 |
 | Unclassified default symbols | 0 |
 
 ## Stability labels
 
 | Label | Symbols |
 | --- | --- |
-| <code>experimental</code> | 2554 |
+| <code>experimental</code> | 2568 |
 | <code>internal</code> | 1 |
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2555 stable IDs with SHA-256 <code>7a8bef24e97c589f0113e44ee76aaacfc531585cd0203ca075b38bbbe8560ccf</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2569 stable IDs with SHA-256 <code>c2a69b7e2f3748942a47b6a446802033cc0ec9e1abfd20f607b4176f2c4341c7</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 
@@ -28825,7 +28935,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6
+Content SHA-256: 613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc
 
 ---
 layout: default
@@ -28935,6 +29045,8 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_TwoDimensionalGrid.cpp`
 
 ### Networking and server/client integration
+
+- `Source/Tests/Test_LinkDelay.cpp` (usual transit, sustained slowdown and bounded late-plan catch-up)
 
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`

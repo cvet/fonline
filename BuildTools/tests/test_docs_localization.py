@@ -115,6 +115,8 @@ class LocalizationDocumentationTests(unittest.TestCase):
                 "build-workflow",
                 "buildtools-pipeline",
                 "buildtools-readme",
+                "engine-changelog",
+                "engine-versioning",
                 "client-runtime",
                 "client-updater",
                 "configuration-data-sources",

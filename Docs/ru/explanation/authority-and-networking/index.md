@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"55ec3c020e45684340b6661c04e4e8d49c21d8d0807c252ce546c2c1663de8e0"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"477b54e261e068304115b06c2ab219aa851a1778849e55427c461d20c5c9f5d4"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -218,6 +218,10 @@ Send callback возвращает outgoing bytes **по значению**, и 
 
 Максимальное ускорение равно `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; до первого измерения применяется только период движения. Слишком ранний, устаревший, недействительный или вытесненный отчёт отклоняется. Порядок сообщений соединения гарантирует, что прибытие будет согласовано до следующего действия. Обычное прибытие не вызывает лишнюю рассылку позиции; коррекция рассылается лишь при расхождении согласованного гекса с концом плана. См. [Серверную среду выполнения](../runtime/server.md).
 
+Удерживаемое направление использует один дальний план с lease. `SendCritterMove` передаёт номер клиентского плана и подтверждённую границу в проецируемом расстоянии. Пока ввод удерживается, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` продлевает её. Сервер учитывает разницу начала своей копии и рассылает `CritterMoveLease {critter, movement uid, lease distance, sender ms}`. Наблюдатель принимает продление только для совпадающего uid. Зависание uplink останавливает сервер и наблюдателей на границе lease; потеря соединения завершает этот план. Позднее отпускание согласуется по завершённому плану игрока, см. [серверное движение](../runtime/server.md#движение-и-авторитетное-состояние) и [прямое управление](../runtime/client.md#движение-при-удержании-направления).
+
+Опоздание измеряет `LinkDelayEstimator`: движение, остановка, продление и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format и требуют отдельной compatibility version.
+
 ### Трассировка синхронизации движения
 
 `Network.MoveSyncTrace` (по умолчанию выключен) записывает события синхронизации движения на сервере и клиентах. Каждое событие — одна машиночитаемая строка стабильного формата:
@@ -227,6 +231,10 @@ MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer
 ```
 
 Локальное монотонное `t` совмещает процессы одной машины. Между машинами используется `st`, но задержка доставки синхронизации времени клиенту делает оценки приблизительными. Клиентские строки содержат `viewer` — id управляемого криттера. Серверные события: `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, `send`; клиентские: `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, `out`. `finish_req` содержит итог (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` или `reconcile_failed`), заявленную позицию, оставшееся/разрешённое время и измеренное время туда-обратно. Проект может добавлять метки сценариев `mark` и события скриптового ввода `input`; их исполнители и интерпретация движку не принадлежат. Трасса слишком подробна для production.
+
+Дополнительные события трассировки удержания: серверный `lease_req`, клиентские `lease_send`, `lease_recv`, `hold` и `dir_plan`. `lease_req` несёт `cr uid seq lease_ms late_ms catchup_ms elapsed_ms`; `lease_send` — `cr seq lease_dist`; `lease_recv` — `cr uid lease_ms late_ms catchup_ms`; `hold` — `cr own on elapsed_ms`, где `on=1` означает ожидание. Причины `dir_plan`: `start`, `turn`, `extend`, `resume`; `steps=0` означает заблокированное направление.
+
+`move_req` дополняют `joined` и `late_ms`; `move_start` — `lease_ms`; `stopmove_req` — `after_end` и `late_ms`; `move_recv` — `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms`. Они показывают пропущенное начало маршрута, границу lease, опоздание, серверное опережение и долю догоняющего времени, проигранную плавно. `frames` раз в секунду передаёт `n ms max_ms`: число кадров, длительность окна и самый долгий кадр.
 
 ### Причины отключения
 

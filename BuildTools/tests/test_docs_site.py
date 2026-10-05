@@ -36,7 +36,7 @@ class DocumentationSiteTests(unittest.TestCase):
             outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 1_835_008)
+        self.assertEqual(max_bytes, 1_867_776)
         self.assertLessEqual(output_bytes, max_bytes)
         self.assertLessEqual(russian_output_bytes, max_bytes)
 

@@ -51,7 +51,18 @@ int main(int argc, char**)
     return 0;
 }
 ''', encoding='utf-8')
-    engine_relative = os.path.relpath(ENGINE, source).replace('\\', '/')
+    # Stage the real helpers beside the fixture: Windows cannot make a relative
+    # path between an Engine checkout and a temporary directory on another drive
+    fixture_engine = source / 'Engine'
+    for relative in (
+        'BuildTools/cmake/helpers/Build.cmake',
+        'BuildTools/cmake/helpers/WriteBuildHash.cmake',
+        'BuildTools/cmake/stages/ScriptsAndBaking.cmake',
+    ):
+        destination = fixture_engine / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(ENGINE / relative, destination)
+    engine_relative = 'Engine'
     (source / 'CMakeLists.txt').write_text(r'''cmake_minimum_required(VERSION 3.22)
 project(BuildHashMarkerTest CXX)
 macro(SetValue name)
@@ -77,7 +88,7 @@ target_compile_features(Probe_Baker PRIVATE cxx_std_17)
 target_compile_definitions(Probe_Baker PRIVATE "FO_BUILD_HASH=\"${FO_BUILD_HASH}\"")
 set_target_properties(Probe_Baker PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${FO_OUTPUT_PATH}")
 ''' + f'''set(FO_ENGINE_ROOT "{engine_relative}")
-include("{ENGINE.as_posix()}/BuildTools/cmake/helpers/Build.cmake")
+include("{fixture_engine.as_posix()}/BuildTools/cmake/helpers/Build.cmake")
 ''' + r'''function(AddCommandTarget name)
     cmake_parse_arguments(ARG "COMMAND_ARGS" "" "" ${ARGN})
     add_custom_target(${name} ${ARG_UNPARSED_ARGUMENTS})

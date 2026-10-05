@@ -286,6 +286,15 @@ On the client there are exactly two paths, and the map view holds no state of it
 
 Line tracing is used by movement/path logic and by gameplay systems that need visibility, shooting, or straight-line movement checks.
 
+### Direction traces
+
+`TraceDirectionInput` describes a held direction: `StartHex` plus `StartHexOffset` (where the mover is drawn, not its hex centre), `Dir`, a point the direction's line passes through (`RayHex` + `RayHexOffset`), `MaxSteps`, `Multihex`, `MapSize`, `CheckHex`, and `Slide`. `PathFinding::TraceDirection()` walks that line one hex at a time: of the neighbour directions either side of the angle it takes the one whose hex centre lies closest to the line, measured in the camera-projected plane `MovingContext` measures in, so the steps hug the line rather than a ray re-aimed at a rounded target. Anything but `Passable` blocks, because a held direction does not route through gags or critters the way a path does. `TraceDirectionOutput` returns the steps, the control steps and `EndHexOffset`:
+
+- A trace that never left the line is one straight segment, and `EndHexOffset` projects its last point back onto the line. The line point is the start for a fresh direction and where the run began when a client extends one, so a chain of traces draws one straight line in the input direction with no rounding carried from link to link.
+- With `Slide`, a blocked next hex is replaced by the free neighbour direction closest to the input angle, and only one strictly under 90° off it; a parallel line then resumes from the hex the side step reached. Every step thus advances along the direction, so a trace can never oscillate or walk back over hexes it came from. A slid trace runs through hex centres (a control step after every side step) and returns a zero `EndHexOffset`. Pushing straight into a flat wall finds no side step and stops, exactly as without `Slide`; the map edge stops a trace without `Slide` and is followed with it.
+
+`MapView::TraceMoveWay()` is the client's wrapper with the map's own blocking; the client's direct-move controller is its only caller (see [ClientRuntime.md](runtime/client.md#held-direction-movement)).
+
 ## Movement contexts
 
 `Source/Common/Movement.h` defines movement state and interpolation:

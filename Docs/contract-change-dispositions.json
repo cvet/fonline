@@ -3,6 +3,30 @@
   "entries": [
     {
       "domain": "api",
+      "change_id": "api-change.model-scope.841bbad2669f18ed",
+      "baseline_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
+      "current_contract_sha256": "cbc46881cbc724744ca3a8701e178e59f94cb83a27aaf707fcf223e127d53e7f",
+      "classification": "breaking",
+      "rationale": "AsyncMove adds fourteen experimental direct-control and shared movement-synchronization settings. The native-codegen scope count and inventory fingerprint include these existing branch settings; existing symbols retain their stability and signatures.",
+      "migration": "No setting is retired or renamed. Regenerate bindings and use the current defaults or explicit project movement overrides; no persisted-data migration is introduced.",
+      "release_note": "The canonical Client Runtime, Server Runtime, Maps and Movement, and Networking guides describe held-direction leases, late-plan catch-up and prefix joining in English and Russian.",
+      "compatibility": "The associated movement and Ping wire changes use compatibility version 0.0.68. Ship matching client/server binaries and metadata from the same branch revision; older movement protocols are rejected.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.dcedddfc57b84f95",
+      "baseline_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
+      "current_contract_sha256": "cbc46881cbc724744ca3a8701e178e59f94cb83a27aaf707fcf223e127d53e7f",
+      "classification": "breaking",
+      "rationale": "Preserve AsyncMove compatibility version 0.0.68 when merging master, which still declares 0.0.66. Leased movement, lease renewals and sender-clock fields change the movement and Ping wire formats.",
+      "migration": "Update client and server binaries together and rebake matching metadata. No legacy movement-wire parser or persisted entity migration is added by this protocol change.",
+      "release_note": "The Networking guide records the movement-message fields and coordinated compatibility boundary; the current Client and Server Runtime guides describe their playback and authority rules.",
+      "compatibility": "0.0.68 distinguishes the combined branch from master 0.0.66 and earlier feature 0.0.67. Mixed gameplay versions must be rejected; updater generation and frozen host ABI are separate boundaries.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
       "change_id": "api-change.model-scope.de8e5b7dd058b178",
       "baseline_contract_sha256": "81702d4ef2ca63001d9048a0649658c03bb2e9160e3cc8c9ff6e03228cdcbf17",
       "current_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",

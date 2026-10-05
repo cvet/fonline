@@ -225,7 +225,7 @@
         "en": "Docs/Site/Assets/docs-search.json",
         "ru": "Docs/Site/Assets/docs-search.ru.json"
       },
-      "max_bytes": 1835008,
+      "max_bytes": 1867776,
       "minimum_query_length": 2
     },
     "browser_validation": {

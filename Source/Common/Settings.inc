@@ -102,6 +102,11 @@ SETTING(bool, Network, DisableZlibCompression, false); // If true, Zlib compress
 SETTING(bool, Network, DisableInterthreadCommunication, false); // If true, server does not register the in-process interthread listener; clients in the same process fall through to TCP/UDP
 SETTING(int32_t, Network, ArtificalLags, 0); // Artificial lags in milliseconds, applied to both directions
 SETTING(int32_t, Network, ArtificalLagsJitter, 0); // Extra per-batch random delay in milliseconds on top of the artificial lag, emulating stalls
+SETTING(int32_t, Network, LinkDelayWindowMs, 30000); // How far back in milliseconds the usual transit of a link is remembered; a message's lateness is its transit over the median usual one
+SETTING(int32_t, Network, LinkDelayRebaseMs, 3000); // A link whose every message was late for this many milliseconds got slower for good: its new transit becomes the usual one
+SETTING(int32_t, Network, MoveLateCatchUpMinMs, 150); // A movement plan that arrived later than the link's usual transit by at least this many milliseconds is played from where it would be by now; such messages never count as usual
+SETTING(int32_t, Network, MoveLateCatchUpMaxMs, 10000); // Upper bound in milliseconds on how far ahead a late movement plan is placed
+SETTING(int32_t, Network, MovePlanJoinMaxSteps, 3); // A received movement plan whose first steps the receiver's critter has already walked is joined where the critter stands, up to this many steps in, instead of walking back to its start; 0 disables
 SETTING(bool, Network, MoveSyncTrace, false); // If true, server and client write one MOVESYNC log line per movement synchronization event, as stable key=value fields for offline analysis; too verbose for production
 SETTING(string, Network, CompatibilityVersion); // Compatibility version (read only)
 SETTING(string, Network, ForceCompatibilityVersion, ""); // Custom compatability version
@@ -382,6 +387,15 @@ SETTING(string, Client, DefaultSplashPack); // Default splash pack
 SETTING(bool, Client, ClientPropertiesPackData, true); // If true, client entities with prototypes use overlay property storage
 SETTING(bool, Client, ForceEmbeddedRuntime, false); // If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved
 SETTING(string, Client, Language, "engl"); // Language setting
+SETTING(int32_t, Client, DirectMoveTraceSteps, 24); // Hexes a held direction is traced ahead as one plan; the next plan is traced before this one runs out
+SETTING(int32_t, Client, DirectMoveExtendAheadSteps, 4); // A held direction's plan is followed by the next one once at most this many of its steps remain; must be below DirectMoveTraceSteps
+SETTING(int32_t, Client, DirectMoveLeaseSteps, 4); // Hexes ahead of the player the server and the other players may run a held direction's plan; this bounds how far they walk on when the player's link stalls
+SETTING(int32_t, Client, DirectMoveLeaseRenewSteps, 2); // The lease is renewed once at most this many of its steps are left ahead of the player; must be below DirectMoveLeaseSteps
+SETTING(int32_t, Client, DirectMoveRetargetMinMs, 100); // Minimum time in milliseconds between re-plans of a held direction for turns smaller than DirectMoveRetargetImmediateAngle
+SETTING(int32_t, Client, DirectMoveRetargetImmediateAngle, 60); // A turn of a held direction of at least this many degrees, like a key change, is planned at once
+SETTING(bool, Client, DirectMoveSlide, true); // If true, a held direction blocked ahead steps along the obstacle toward the direction instead of stopping at it
+SETTING(float32_t, Client, MoveCatchUpRate, 3.0f); // Playback rate at which another critter's late plan catches up with where it would be by now, instead of jumping there
+SETTING(int32_t, Client, MoveCatchUpSmoothMaxMs, 1500); // Largest lateness in milliseconds caught up smoothly; the rest of a later plan is skipped at once
 SETTING_GROUP_END(Client);
 
 ///@ ExportSettings Server

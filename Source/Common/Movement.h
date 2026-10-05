@@ -121,6 +121,9 @@ public:
     // Returns the stored elapsed movement time in milliseconds
     [[nodiscard]] auto GetElapsedTime() const noexcept -> float32_t { return _elapsedTime; }
     [[nodiscard]] auto GetRuntimeElapsedTime(nanotime current_time) const noexcept -> float32_t;
+    // Plan time the plan may run to, zero when it may run to its end; see SetLeaseTime
+    [[nodiscard]] auto GetLeaseTime() const noexcept -> float32_t { return _leaseTime; }
+    [[nodiscard]] auto IsHeldByLease() const noexcept -> bool { return _leaseTime > 0.0f && _elapsedTime >= _leaseTime && _elapsedTime < _wholeTime; }
     // Returns whether the movement has been explicitly completed
     [[nodiscard]] auto IsCompleted() const noexcept -> bool { return _completed; }
     // Returns the reason supplied when the movement was completed
@@ -139,6 +142,10 @@ public:
     void UpdateCurrentTime(nanotime current_time);
     void UpdateCurrentTimeToNextHex(nanotime current_time, mpos current_hex);
     void ChangeSpeed(uint16_t speed, nanotime current_time);
+    void FastForward(timespan time);
+    // A held direction is traced far ahead but runs only as far as its player has confirmed holding it: at the lease
+    // the plan waits with its clock stopped, and a longer lease resumes it from there. Zero lifts the lease
+    void SetLeaseTime(float32_t lease_time, nanotime current_time);
     void Complete(MovingState reason) noexcept;
     void SetBlockHexes(mpos pre_block_hex, mpos block_hex) noexcept;
     void ValidateRuntimeState() const;
@@ -148,6 +155,7 @@ private:
     auto BuildProgress(const MovingRawProgress& raw_progress, mpos current_hex) const -> MovingProgress;
     void EvaluateSegment(uint16_t control_step_begin, uint16_t control_step_end, mpos segment_start_hex, bool is_last, mpos& segment_end_hex, ipos32& offset, float32_t& dist) const;
     void RecalculateMetrics();
+    auto HoldAtLease(nanotime current_time) -> float32_t;
 
     msize _mapSize {};
     uint16_t _speed {};
@@ -160,6 +168,7 @@ private:
     float32_t _wholeTime {};
     float32_t _wholeDist {};
     float32_t _elapsedTime {};
+    float32_t _leaseTime {};
     bool _completed {};
     MovingState _completeReason {MovingState::InProgress};
     ipos16 _startHexOffset {};
@@ -167,6 +176,11 @@ private:
     mpos _preBlockHex {};
     mpos _blockHex {};
 };
+
+// How many steps of the path from start_hex lead to hex, when hex is among its first max_steps hexes, otherwise zero:
+// a receiver whose copy of the critter has already walked into a new plan joins it there instead of walking back
+[[nodiscard]] auto FindPathPrefixSteps(mpos start_hex, const vector<mdir>& steps, mpos hex, msize map_size, size_t max_steps) -> size_t;
+void DropPathPrefix(vector<mdir>& steps, vector<uint16_t>& control_steps, size_t count);
 
 // One MOVESYNC key=value line per movement synchronization event while Network.MoveSyncTrace is on, read by tooling:
 // `t` is the local monotonic clock in microseconds, shared by every process on one machine, `st` the synchronized time

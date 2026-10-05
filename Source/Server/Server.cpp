@@ -2270,7 +2270,16 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
         logging::write("Disconnected player {}", player->GetName());
 
         ValidateEntityAccess(player);
-        ValidateEntityAccess(player->GetControlledCritter());
+
+        auto cr = player->GetControlledCritter();
+        ValidateEntityAccess(cr);
+
+        // A held direction ends with the session that held it: its renewals and its release can no longer arrive, so a
+        // plan left waiting at its lease would wait there for good and the player would find it still under way on return
+        if (cr && cr->IsMoving() && cr->GetMoving()->GetLeaseTime() > 0.0f) {
+            StopCritterMoving(cr);
+        }
+
         OnPlayerLogout.Fire(player);
         FO_VERIFY_AND_THROW(!player->IsDestroyed(), "Player is already destroyed during server operation");
 
@@ -2322,6 +2331,9 @@ void ServerEngine::ProcessPlayer(ptr<Player> player)
             break;
         case NetMessage::SendStopCritterMove:
             Process_StopMove(player);
+            break;
+        case NetMessage::SendCritterMoveLease:
+            Process_MoveLease(player);
             break;
         case NetMessage::SendCritterMoveFinished:
             Process_MoveFinished(player);
@@ -3051,8 +3063,13 @@ void ServerEngine::Process_Ping(ptr<Player> player)
     auto in_buf = connection->ReadBuf();
 
     bool answer = in_buf->Read<bool>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
+
+    // Pings keep the link's usual transit current while the player stands still, so the first move after a stall
+    // is measured against the link as it was, not against nothing
+    connection->RegisterSenderTime(sender_ms, nanotime::now());
 
     if (answer) {
         connection->RegisterPingAnswer(GameTime.GetFrameTime());
@@ -3352,9 +3369,18 @@ void ServerEngine::Process_Move(ptr<Player> player)
     }
 
     auto end_hex_offset = in_buf->Read<ipos16>();
+    auto plan_seq = in_buf->Read<uint32_t>();
+    float32_t lease_distance = in_buf->Read<float32_t>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
 
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
+    mpos client_start_hex = start_hex;
+    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance >= 0.0f, "Movement lease must name a finite non-negative distance", lease_distance);
+    // The lease names progress in the player's path; a bridged or joined copy starts at a different distance
+    vector<mdir> client_steps = lease_distance > 0.0f ? steps : vector<mdir> {};
+    vector<uint16_t> client_control_steps = lease_distance > 0.0f ? control_steps : vector<uint16_t> {};
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3424,8 +3450,40 @@ void ServerEngine::Process_Move(ptr<Player> player)
         return;
     }
 
-    // Fix async errors
+    // The critter's steps advance once a movement period, so between them its hex lags where its plan has it by now;
+    // the plan is brought up to this frame first, or a continuation that arrives in that lag bridges a step it need not
+    if (cr->IsMoving()) {
+        ProcessCritterMovingBySteps(cr, map);
+
+        if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
+            return;
+        }
+        if (cr->IsDestroyed() || map->IsDestroyed() || player->GetControlledCritter() != expected_cr) {
+            return;
+        }
+        if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
+            return;
+        }
+    }
+
     auto cr_hex = cr->GetHex();
+    size_t joined_steps = 0;
+
+    // A plan sent from where the client stood often arrives after the server's critter has walked on along the same
+    // way, a transit's worth further: the plan is joined where the critter stands instead of walking back to its start
+    if (cr_hex != start_hex) {
+        joined_steps = FindPathPrefixSteps(start_hex, steps, cr_hex, map->GetSize(), numeric_cast<size_t>(Settings->Network.MovePlanJoinMaxSteps));
+
+        if (joined_steps != 0 && joined_steps < steps.size()) {
+            DropPathPrefix(steps, control_steps, joined_steps);
+            start_hex = cr_hex;
+        }
+        else {
+            joined_steps = 0;
+        }
+    }
+
+    // Fix async errors
     size_t bridge_steps = 0;
 
     if (cr_hex != start_hex) {
@@ -3516,11 +3574,26 @@ void ServerEngine::Process_Move(ptr<Player> player)
     int16_t clamped_end_hex_oy = std::clamp(end_hex_offset.y, numeric_cast<int16_t>(-GameSettings::MAP_HEX_HEIGHT / 2), numeric_cast<int16_t>(GameSettings::MAP_HEX_HEIGHT / 2));
 
     if (Settings->Network.MoveSyncTrace) {
-        TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} truncated={} speed={} rtt_ms={}", cr_id, player->GetName(), start_hex.x, start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, path_truncated ? 1 : 0, corrected_speed, connection->GetRoundTrip().milliseconds()).strv());
+        TraceMoveSync("move_req", strex("cr={} player={} client_start={},{} server_hex={},{} steps={} bridge={} joined={} truncated={} speed={} late_ms={} rtt_ms={}", cr_id, player->GetName(), client_start_hex.x, client_start_hex.y, cr_hex.x, cr_hex.y, steps.size(), bridge_steps, joined_steps, path_truncated ? 1 : 0, corrected_speed, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
+    }
+
+    // A plan a stall held back is played from where the player has walked it by now rather than from its start:
+    // the server then stands where the player does, instead of replaying the way seconds late
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+
+    auto server_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), steps, control_steps, GameTime.GetFrameTime(), catch_up_time, cr_hex, cr->GetHexOffset(), ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+    float32_t plan_distance_shift = 0.0f;
+
+    // A held direction runs on the server only as far as the player has confirmed holding it
+    // A corrected path replaces the client's held plan; it must finish without renewals for that retired plan
+    if (lease_distance > 0.0f && !client_steps.empty() && !path_truncated) {
+        auto client_moving = safe_alloc::make_refcounted<MovingContext>(map->GetSize(), numeric_cast<uint16_t>(corrected_speed), std::move(client_steps), std::move(client_control_steps), GameTime.GetFrameTime(), timespan {}, client_start_hex, ipos16 {}, ipos16 {clamped_end_hex_ox, clamped_end_hex_oy});
+        plan_distance_shift = server_moving->GetWholeDist() - client_moving->GetWholeDist();
+        server_moving->SetLeaseTime(std::max((lease_distance + plan_distance_shift) * 1000.0f / numeric_cast<float32_t>(corrected_speed), 0.001f), GameTime.GetFrameTime());
     }
 
     nptr<const Player> initiator = player;
-    StartCritterMoving(cr, numeric_cast<uint16_t>(corrected_speed), steps, control_steps, {clamped_end_hex_ox, clamped_end_hex_oy}, initiator);
+    StartCritterMoving(cr, std::move(server_moving), initiator, plan_seq, plan_distance_shift);
 
     if (path_truncated) {
         player->Send_Moving(cr);
@@ -3528,6 +3601,75 @@ void ServerEngine::Process_Move(ptr<Player> player)
     if (corrected_speed != numeric_cast<int32_t>(speed)) {
         player->Send_MovingSpeed(cr);
     }
+}
+
+// The player confirms holding a direction further: the plan it started under this number may run on to the new lease,
+// and so may every other player's copy of it
+void ServerEngine::Process_MoveLease(ptr<Player> player)
+{
+    FO_TRACE_ZONE(Map);
+
+    auto connection = player->GetConnection();
+    auto in_buf = connection->ReadBuf();
+
+    auto map_id = in_buf->Read<ident_t>();
+    auto cr_id = in_buf->Read<ident_t>();
+    auto plan_seq = in_buf->Read<uint32_t>();
+    float32_t lease_distance = in_buf->Read<float32_t>();
+    auto sender_ms = in_buf->Read<int64_t>();
+
+    in_buf.Unlock();
+
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
+    auto map = EntityMngr.GetMap(map_id);
+    auto cr = EntityMngr.GetCritter(cr_id);
+
+    if (!map || !cr) {
+        return;
+    }
+
+    auto ctx = RequireCurrentSyncContext();
+    small_vector<ptr<ServerEntity>, 3> sync_entities {player, map, cr};
+    ctx->SyncEntities(sync_entities);
+
+    if (player->IsDestroyed() || map->IsDestroyed() || cr->IsDestroyed() || player->GetControlledCritter() != cr.get() || cr->GetMapId() != map_id) {
+        return;
+    }
+
+    auto moving = cr->GetPlayerPlanMoving(plan_seq);
+
+    if (!moving) {
+        return;
+    }
+
+    FO_VERIFY_AND_THROW(std::isfinite(lease_distance) && lease_distance > 0.0f, "Movement renewal must name a finite positive distance", lease_distance);
+
+    // An authoritative finite correction has retired this plan's lease, including renewals already in transit
+    if (moving->GetLeaseTime() == 0.0f) {
+        return;
+    }
+
+    float32_t server_lease_time = std::max((lease_distance + cr->GetPlayerPlanDistanceShift()) * 1000.0f / numeric_cast<float32_t>(moving->GetSpeed()), 0.001f);
+
+    if (server_lease_time <= moving->GetLeaseTime()) {
+        return;
+    }
+
+    moving->SetLeaseTime(server_lease_time, GameTime.GetFrameTime());
+
+    // A renewal a stall held back finds the critter waiting at the old lease while the player walked on
+    timespan catch_up_time = EvaluateLateCatchUp(late_time, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMinMs}, std::chrono::milliseconds {Settings->Network.MoveLateCatchUpMaxMs});
+
+    if (catch_up_time > timespan::zero) {
+        moving->FastForward(catch_up_time);
+    }
+
+    if (Settings->Network.MoveSyncTrace) {
+        TraceMoveSync("lease_req", strex("cr={} uid={} seq={} lease_ms={} late_ms={} catchup_ms={} elapsed_ms={}", cr_id, cr->GetMovingUid(), plan_seq, iround<int32_t>(server_lease_time), late_time.milliseconds(), catch_up_time.milliseconds(), iround<int32_t>(moving->GetElapsedTime())).strv());
+    }
+
+    nptr<const Player> ignore_player = player;
+    cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_MovingLease(cr); });
 }
 
 void ServerEngine::Process_StopMove(ptr<Player> player)
@@ -3543,9 +3685,11 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     auto client_hex = in_buf->Read<mpos>();
     auto client_hex_offset = in_buf->Read<ipos16>();
     auto client_dir = in_buf->Read<mdir>();
+    auto sender_ms = in_buf->Read<int64_t>();
 
     in_buf.Unlock();
 
+    timespan late_time = connection->RegisterSenderTime(sender_ms, nanotime::now());
     auto map = EntityMngr.GetMap(map_id);
 
     if (!map) {
@@ -3587,7 +3731,9 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
-    if (!cr->IsMoving()) {
+    // A stop that reaches the server only after the player's own plan has run out there - a stalled uplink, most likely
+    // with the short plans a held direction is walked as - still names a point on that plan: walk back to it
+    if (!cr->IsMoving() && !cr->GetFinishedPlayerMoving()) {
         player->Send_Moving(cr);
         return;
     }
@@ -3614,15 +3760,27 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
         return;
     }
 
+    bool was_moving = cr->IsMoving();
+    refcount_nptr<MovingContext> stop_moving = (was_moving ? cr->GetMoving() : cr->GetFinishedPlayerMoving()).try_hold_ref();
+
+    if (!stop_moving) {
+        player->Send_Moving(cr);
+        return;
+    }
+
     uint32_t stop_moving_uid = cr->GetMovingUid();
     mpos stop_server_hex = cr->GetHex();
 
-    bool stop_position_reconciled = ReconcileCritterStopPosition("Process_StopMove", player, cr, map, client_hex, client_hex_offset, client_dir);
+    if (!was_moving) {
+        cr->StopMoving();
+    }
+
+    bool stop_position_reconciled = ReconcileCritterStopPosition("Process_StopMove", player, cr, map, stop_moving, client_hex, client_hex_offset, client_dir);
 
     if (Settings->Network.MoveSyncTrace && !cr->IsDestroyed()) {
         mpos reconciled_hex = cr->GetHex();
 
-        TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, connection->GetRoundTrip().milliseconds()).strv());
+        TraceMoveSync("stopmove_req", strex("cr={} client_hex={},{} server_hex={},{} reconciled={} final_hex={},{} after_end={} late_ms={} rtt_ms={}", cr_id, client_hex.x, client_hex.y, stop_server_hex.x, stop_server_hex.y, stop_position_reconciled ? 1 : 0, reconciled_hex.x, reconciled_hex.y, was_moving ? 0 : 1, late_time.milliseconds(), connection->GetRoundTrip().milliseconds()).strv());
     }
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
@@ -3634,8 +3792,16 @@ void ServerEngine::Process_StopMove(ptr<Player> player)
     if (cr->GetMapId() != map->GetId() || map->GetCritter(cr_id) != expected_cr) {
         return;
     }
-    if (!cr->IsMoving() || cr->GetMovingUid() != stop_moving_uid) {
+    if (cr->IsMoving() != was_moving || cr->GetMovingUid() != stop_moving_uid) {
         player->Send_Moving(cr);
+        return;
+    }
+
+    // Nothing is left to stop after a finished plan: the others learn where the critter now stands, the player
+    // already stands there - or, when its point was not on the plan, is corrected like everyone else
+    if (!was_moving) {
+        nptr<const Player> ignore_player = stop_position_reconciled ? nptr<const Player> {player} : nptr<const Player> {};
+        cr->SendAndBroadcast(ignore_player, [cr](ptr<Player> p) { p->Send_Moving(cr); });
         return;
     }
 
@@ -3739,7 +3905,7 @@ void ServerEngine::Process_MoveFinished(ptr<Player> player)
     }
 
     uint32_t reported_moving_uid = cr->GetMovingUid();
-    bool position_reconciled = ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, client_hex, client_hex_offset, client_dir);
+    bool position_reconciled = ReconcileCritterStopPosition("Process_MoveFinished", player, cr, map, moving, client_hex, client_hex_offset, client_dir);
 
     if (connection->IsHardDisconnected() || connection->IsGracefulDisconnected()) {
         return;
@@ -4491,12 +4657,8 @@ void ServerEngine::ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map)
     }
 }
 
-auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
+auto ServerEngine::ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool
 {
-    FO_VERIFY_AND_THROW(cr->IsMoving(), "Critter is not moving");
-
-    auto moving = cr->GetMoving();
-    FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
     constexpr int32_t max_path_hex_distance = 2;
@@ -4745,7 +4907,7 @@ auto ServerEngine::MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos targ
     return validate_moved_critter();
 }
 
-void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator)
+void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator, uint32_t plan_seq, float32_t plan_distance_shift)
 {
     FO_TRACE_ZONE(Map);
 
@@ -4763,6 +4925,10 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
     cr->StopMoving(MovingState::Stopped);
     cr->SetMoving(std::move(moving));
 
+    if (initiator) {
+        cr->MarkMovingStartedByPlayer(plan_seq, plan_distance_shift);
+    }
+
     auto moving_context = cr->GetMoving();
     FO_VERIFY_AND_THROW(moving_context, "Missing active movement state");
     moving_context->ValidateRuntimeState();
@@ -4773,7 +4939,7 @@ void ServerEngine::StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContex
         mpos end_hex = moving_context->GetEndHex();
         string_view initiator_name = initiator ? initiator->GetName() : string_view {"none"};
 
-        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
+        TraceMoveSync("move_start", strex("cr={} uid={} start={},{} end={},{} whole_ms={} offset_ms={} lease_ms={} speed={} was_moving={} initiator={}", cr->GetId(), cr->GetMovingUid(), start_hex.x, start_hex.y, end_hex.x, end_hex.y, iround<int32_t>(moving_context->GetWholeTime()), iround<int32_t>(moving_context->GetRuntimeElapsedTime(GameTime.GetFrameTime())), iround<int32_t>(moving_context->GetLeaseTime()), moving_context->GetSpeed(), was_moving ? 1 : 0, initiator_name).strv());
     }
 
     _workerPool->Submit(movement_key, [this, cr_ = cr.hold_ref()]() mutable -> std::optional<timespan> { return CritterMovingJob(cr_); });
@@ -4838,13 +5004,13 @@ auto ServerEngine::CritterMovingJob(ptr<Critter> cr) -> std::optional<timespan>
     return std::chrono::milliseconds {Settings->Server.CritterMovingPeriodMs};
 }
 
-void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator)
+void ServerEngine::StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator, timespan offset_time)
 {
     auto map = require_refcount_ptr(cr->GetParent<Map>());
 
     auto start_hex = cr->GetHex();
 
-    StartCritterMoving(cr, safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), timespan {}, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
+    StartCritterMoving(cr, safe_alloc::make_refcounted<MovingContext>(map->GetSize(), speed, steps, control_steps, GameTime.GetFrameTime(), offset_time, start_hex, cr->GetHexOffset(), end_hex_offset), initiator);
 }
 
 void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, function<void()> customSend)
@@ -4852,6 +5018,7 @@ void ServerEngine::StopCritterMoving(ptr<Critter> cr, MovingState reason, functi
     FO_TRACE_ZONE(Map);
 
     if (!cr->IsMoving()) {
+        cr->StopMoving(reason);
         return;
     }
 

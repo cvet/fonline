@@ -299,6 +299,9 @@ Reusable helpers live in `BuildTools/cmake/helpers/`:
   archives without Git and output paths containing spaces.
   `BuildTools/tests/test_cmake_build_hash.py` verifies actual compiled applications
   and both standard baking targets before and after a Git revision change.
+  Its temporary source tree stages the unchanged helpers from the Engine checkout,
+  so the fixture also works when Windows stores the checkout and temporary files
+  on different drives.
 
 When a stage needs reusable behavior, prefer adding a helper here instead of copy-pasting logic between stages.
 

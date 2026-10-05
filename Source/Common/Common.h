@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2555 InventorySha256=7a8bef24e97c589f0113e44ee76aaacfc531585cd0203ca075b38bbbe8560ccf
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2569 InventorySha256=c2a69b7e2f3748942a47b6a446802033cc0ec9e1abfd20f607b4176f2c4341c7
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 66
+///@ MigrationRule Version 0 0 68
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -499,6 +499,8 @@ enum class NetMessage : uint8_t
     CritterAttachments = 50,
     CritterVisibilityMode = 51,
     CritterTeleport = 52,
+    SendCritterMoveLease = 53,
+    CritterMoveLease = 54,
     ChosenAddItem = 65,
     ChosenRemoveItem = 66,
     AddItemOnMap = 71,

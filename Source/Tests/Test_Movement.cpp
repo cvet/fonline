@@ -245,4 +245,102 @@ TEST_CASE("MovingContext")
     }
 }
 
+TEST_CASE("MovingPathJoin")
+{
+    mpos second_hex = TEST_START_HEX;
+    REQUIRE(GeometryHelper::MoveHexByDir(second_hex, TEST_STEPS[0], TEST_MAP_SIZE));
+    REQUIRE(GeometryHelper::MoveHexByDir(second_hex, TEST_STEPS[1], TEST_MAP_SIZE));
+
+    SECTION("FindsAHexAmongTheFirstSteps")
+    {
+        CHECK(FindPathPrefixSteps(TEST_START_HEX, TEST_STEPS, second_hex, TEST_MAP_SIZE, 3) == 2);
+        CHECK(FindPathPrefixSteps(TEST_START_HEX, TEST_STEPS, second_hex, TEST_MAP_SIZE, 1) == 0);
+        CHECK(FindPathPrefixSteps(TEST_START_HEX, TEST_STEPS, TEST_START_HEX, TEST_MAP_SIZE, 3) == 0);
+        CHECK(FindPathPrefixSteps(TEST_START_HEX, TEST_STEPS, TEST_UNKNOWN_HEX, TEST_MAP_SIZE, 5) == 0);
+    }
+
+    SECTION("DroppedPrefixKeepsControlStepsOnTheirHexes")
+    {
+        vector<mdir> steps = TEST_STEPS;
+        vector<uint16_t> control_steps = TEST_CONTROL_STEPS;
+        DropPathPrefix(steps, control_steps, 3);
+
+        CHECK(steps == vector<mdir> {TEST_STEPS[3], TEST_STEPS[4]});
+        CHECK(control_steps == vector<uint16_t> {1, 2});
+
+        vector<mdir> joined_steps = TEST_STEPS;
+        vector<uint16_t> joined_control_steps = TEST_CONTROL_STEPS;
+        DropPathPrefix(joined_steps, joined_control_steps, 2);
+
+        CHECK(joined_control_steps == vector<uint16_t> {2, 3});
+
+        auto moving = safe_alloc::make_refcounted<MovingContext>(TEST_MAP_SIZE, TEST_SPEED, joined_steps, joined_control_steps, nanotime {}, timespan {}, second_hex, ipos16 {}, ipos16 {});
+        CHECK(moving->GetEndHex() == MakeMovingContext()->GetEndHex());
+    }
+
+    SECTION("DroppingEveryStepIsRejected")
+    {
+        vector<mdir> steps = TEST_STEPS;
+        vector<uint16_t> control_steps = TEST_CONTROL_STEPS;
+        CHECK_THROWS(DropPathPrefix(steps, control_steps, TEST_STEPS.size()));
+        CHECK(steps == TEST_STEPS);
+    }
+}
+
+TEST_CASE("MovingContextLease")
+{
+    auto moving = MakeMovingContext();
+    moving->SetLeaseTime(100.0f, MakeTimePoint(0));
+
+    SECTION("PlanWaitsAtTheLeaseWithItsClockStopped")
+    {
+        moving->UpdateCurrentTime(MakeTimePoint(500));
+        CHECK(moving->GetElapsedTime() == 100.0f);
+        CHECK(moving->IsHeldByLease());
+        CHECK(moving->GetRuntimeElapsedTime(MakeTimePoint(900)) == 100.0f);
+
+        // A longer lease resumes the plan from where it waited, not from where its clock would be
+        moving->SetLeaseTime(400.0f, MakeTimePoint(1000));
+        moving->UpdateCurrentTime(MakeTimePoint(1050));
+        CHECK(std::abs(moving->GetElapsedTime() - 150.0f) < 0.5f);
+        CHECK_FALSE(moving->IsHeldByLease());
+    }
+
+    SECTION("LeaseBeyondTheEndDoesNotHold")
+    {
+        moving->SetLeaseTime(moving->GetWholeTime() * 2.0f, MakeTimePoint(0));
+        moving->UpdateCurrentTime(MakeTimePoint(iround<int32_t>(moving->GetWholeTime()) + 10));
+        CHECK_FALSE(moving->IsHeldByLease());
+        CHECK(moving->EvaluateProgress().Completed);
+    }
+
+    SECTION("ZeroLiftsTheLease")
+    {
+        moving->UpdateCurrentTime(MakeTimePoint(500));
+        moving->SetLeaseTime(0.0f, MakeTimePoint(500));
+        moving->UpdateCurrentTime(MakeTimePoint(600));
+        CHECK(std::abs(moving->GetElapsedTime() - 200.0f) < 0.5f);
+    }
+
+    SECTION("FastForwardStopsAtTheLease")
+    {
+        moving->FastForward(std::chrono::milliseconds {5000});
+        moving->UpdateCurrentTime(MakeTimePoint(10));
+        CHECK(moving->GetElapsedTime() == 100.0f);
+    }
+
+    CHECK_THROWS(moving->SetLeaseTime(-1.0f, MakeTimePoint(0)));
+}
+
+TEST_CASE("MovingContextFastForward")
+{
+    auto moving = MakeMovingContext();
+    moving->FastForward(std::chrono::milliseconds {250});
+    moving->UpdateCurrentTime(MakeTimePoint(100));
+
+    CHECK(moving->GetElapsedTime() == moving->GetRuntimeElapsedTime(MakeTimePoint(100)));
+    CHECK(std::abs(moving->GetElapsedTime() - 350.0f) < 0.5f);
+    CHECK_THROWS(moving->FastForward(std::chrono::milliseconds {-1}));
+}
+
 FO_END_NAMESPACE

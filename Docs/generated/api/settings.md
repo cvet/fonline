@@ -44,11 +44,38 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-client-defaultsplashpack-5f162ae514"></a>
 - [`symbol-setting-client-client-defaultsplashpack-5f162ae514`](../../en/reference/script-api/settings.md#symbol-setting-client-client-defaultsplashpack-5f162ae514)
 
+<a id="symbol-setting-client-client-directmoveextendaheadsteps-7cf5c3f44f"></a>
+- [`symbol-setting-client-client-directmoveextendaheadsteps-7cf5c3f44f`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveextendaheadsteps-7cf5c3f44f)
+
+<a id="symbol-setting-client-client-directmoveleaserenewsteps-780df4a1e4"></a>
+- [`symbol-setting-client-client-directmoveleaserenewsteps-780df4a1e4`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveleaserenewsteps-780df4a1e4)
+
+<a id="symbol-setting-client-client-directmoveleasesteps-38e57748cc"></a>
+- [`symbol-setting-client-client-directmoveleasesteps-38e57748cc`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveleasesteps-38e57748cc)
+
+<a id="symbol-setting-client-client-directmoveretargetimmediateangle-446aa8f580"></a>
+- [`symbol-setting-client-client-directmoveretargetimmediateangle-446aa8f580`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveretargetimmediateangle-446aa8f580)
+
+<a id="symbol-setting-client-client-directmoveretargetminms-6381540461"></a>
+- [`symbol-setting-client-client-directmoveretargetminms-6381540461`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveretargetminms-6381540461)
+
+<a id="symbol-setting-client-client-directmoveslide-20cf0b35fc"></a>
+- [`symbol-setting-client-client-directmoveslide-20cf0b35fc`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmoveslide-20cf0b35fc)
+
+<a id="symbol-setting-client-client-directmovetracesteps-eb169f217d"></a>
+- [`symbol-setting-client-client-directmovetracesteps-eb169f217d`](../../en/reference/script-api/settings.md#symbol-setting-client-client-directmovetracesteps-eb169f217d)
+
 <a id="symbol-setting-client-client-forceembeddedruntime-40af77bdba"></a>
 - [`symbol-setting-client-client-forceembeddedruntime-40af77bdba`](../../en/reference/script-api/settings.md#symbol-setting-client-client-forceembeddedruntime-40af77bdba)
 
 <a id="symbol-setting-client-client-language-1ff7f1a4bb"></a>
 - [`symbol-setting-client-client-language-1ff7f1a4bb`](../../en/reference/script-api/settings.md#symbol-setting-client-client-language-1ff7f1a4bb)
+
+<a id="symbol-setting-client-client-movecatchuprate-028adce880"></a>
+- [`symbol-setting-client-client-movecatchuprate-028adce880`](../../en/reference/script-api/settings.md#symbol-setting-client-client-movecatchuprate-028adce880)
+
+<a id="symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2"></a>
+- [`symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2`](../../en/reference/script-api/settings.md#symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2)
 
 <a id="symbol-setting-client-client-updaterinfodelay-0fc0e5f047"></a>
 - [`symbol-setting-client-client-updaterinfodelay-0fc0e5f047`](../../en/reference/script-api/settings.md#symbol-setting-client-client-updaterinfodelay-0fc0e5f047)
@@ -536,6 +563,21 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-network-forcemetadataversion-10c9cd92bf"></a>
 - [`symbol-setting-common-network-forcemetadataversion-10c9cd92bf`](../../en/reference/script-api/settings.md#symbol-setting-common-network-forcemetadataversion-10c9cd92bf)
+
+<a id="symbol-setting-common-network-linkdelayrebasems-fff70c7666"></a>
+- [`symbol-setting-common-network-linkdelayrebasems-fff70c7666`](../../en/reference/script-api/settings.md#symbol-setting-common-network-linkdelayrebasems-fff70c7666)
+
+<a id="symbol-setting-common-network-linkdelaywindowms-2f38cd347a"></a>
+- [`symbol-setting-common-network-linkdelaywindowms-2f38cd347a`](../../en/reference/script-api/settings.md#symbol-setting-common-network-linkdelaywindowms-2f38cd347a)
+
+<a id="symbol-setting-common-network-movelatecatchupmaxms-5cfd771948"></a>
+- [`symbol-setting-common-network-movelatecatchupmaxms-5cfd771948`](../../en/reference/script-api/settings.md#symbol-setting-common-network-movelatecatchupmaxms-5cfd771948)
+
+<a id="symbol-setting-common-network-movelatecatchupminms-376b1a0966"></a>
+- [`symbol-setting-common-network-movelatecatchupminms-376b1a0966`](../../en/reference/script-api/settings.md#symbol-setting-common-network-movelatecatchupminms-376b1a0966)
+
+<a id="symbol-setting-common-network-moveplanjoinmaxsteps-bcc0720940"></a>
+- [`symbol-setting-common-network-moveplanjoinmaxsteps-bcc0720940`](../../en/reference/script-api/settings.md#symbol-setting-common-network-moveplanjoinmaxsteps-bcc0720940)
 
 <a id="symbol-setting-common-network-movesynctrace-5f9f85e5ca"></a>
 - [`symbol-setting-common-network-movesynctrace-5f9f85e5ca`](../../en/reference/script-api/settings.md#symbol-setting-common-network-movesynctrace-5f9f85e5ca)

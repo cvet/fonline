@@ -72,3 +72,15 @@ Continue with [Change checklist](en/explanation/runtime/client.md#change-checkli
 ### Map unload and native storage lifetime
 
 Continue with [map unload and native storage lifetime](en/explanation/runtime/client.md#map-unload-and-native-storage-lifetime).
+
+### Held-direction movement
+
+Continue with [Held-direction movement](en/explanation/runtime/client.md#held-direction-movement).
+
+### Late plans catch up
+
+Continue with [Late plans catch up](en/explanation/runtime/client.md#late-plans-catch-up).
+
+### Joining a plan already under way
+
+Continue with [Joining a plan already under way](en/explanation/runtime/client.md#joining-a-plan-already-under-way).

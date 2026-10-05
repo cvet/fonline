@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"c0e1e07b02bd2ecaba0481d10db7578111448bfa44dbf5bd1a860757c568d981"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -456,6 +456,9 @@ diagnostics, а не для source ownership или проверки build featu
   конфигурации, в том числе для исходных архивов без Git и путей с пробелами.
   `BuildTools/tests/test_cmake_build_hash.py` проверяет реальные скомпилированные
   приложения и обе стандартные цели baking до и после смены Git revision.
+  Во временное дерево исходников копируются неизменённые helpers из checkout
+  Engine, поэтому fixture работает и тогда, когда Windows хранит checkout и
+  временные файлы на разных дисках.
 
 Если стадии нужно переиспользуемое поведение, добавляйте helper здесь вместо
 копирования логики между stages.

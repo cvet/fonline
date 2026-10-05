@@ -196,6 +196,34 @@ auto Critter::GetMovingState() const noexcept -> MovingState
     return _moving ? MovingState::InProgress : (_lastMoving ? _lastMoving->GetCompleteReason() : MovingState::Success);
 }
 
+// The plan the controlling player started, when the last thing that happened to the critter's movement is that plan
+// running out on its own: no plan since, no stop, no script plan in between
+auto Critter::GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (_moving || !_lastMoving || _playerMovingUid == 0 || _movingUid != _playerMovingUid + 1) {
+        return {};
+    }
+    if (_lastMoving->GetCompleteReason() != MovingState::Success) {
+        return {};
+    }
+
+    return _lastMoving;
+}
+
+// The plan the controlling player started under this number, while the critter still walks it
+auto Critter::GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (!_moving || plan_seq == 0 || _playerPlanSeq != plan_seq || _playerMovingUid != _movingUid) {
+        return {};
+    }
+
+    return _moving;
+}
+
 auto Critter::IsMapTransfersLocked() const noexcept -> bool
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
@@ -405,10 +433,25 @@ void Critter::SetMoving(refcount_ptr<MovingContext> moving)
     SetMovingSpeed(numeric_cast<int32_t>(_moving->GetSpeed()));
 }
 
+void Critter::MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift)
+{
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    FO_VERIFY_AND_THROW(_moving, "Critter has no movement to mark as started by its player");
+
+    _playerMovingUid = _movingUid;
+    _playerPlanSeq = plan_seq;
+    _playerPlanDistanceShift = plan_distance_shift;
+}
+
 void Critter::StopMoving(MovingState reason)
 {
     // NOT NOT_DESTROYING: transfer teardown stops movement after IsDestroying begins
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
+
+    if (reason != MovingState::Success) {
+        _playerMovingUid = 0;
+        _playerPlanSeq = 0;
+    }
 
     if (!_moving) {
         return;

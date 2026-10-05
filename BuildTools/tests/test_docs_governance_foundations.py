@@ -98,12 +98,12 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
         )
 
         search = manifest["site_delivery"]["search"]
-        self.assertEqual(search["max_bytes"], 1_835_008)
+        self.assertEqual(search["max_bytes"], 1_867_776)
         self.assertEqual(
             search["locale_paths"],
             {"en": "Docs/Site/Assets/docs-search.json", "ru": "Docs/Site/Assets/docs-search.ru.json"},
         )
-        self.assertIn("1.75 MiB (1,835,008 byte)", adr4)
+        self.assertIn("1.78125 MiB (1,867,776 byte)", adr4)
         self.assertIn("authoritative coverage snapshot", adr6)
         self.assertNotIn("first two linked tutorials", adr4)
         self.assertNotIn("Five README-style", adr6)

@@ -99,8 +99,26 @@ void CritterHexView::SetMoving(refcount_ptr<MovingContext> moving)
     }
 
     _moving = std::move(moving);
+    _movingCatchUpLeft = {};
+    _movingServerUid = 0;
+    _movingServerDistanceShift = 0.0f;
+    _movingHeld = false;
     _walkAnchorAnim = nullptr;
     _walkAnchorDisp = {};
+}
+
+void CritterHexView::SetMovingServerPlan(uint32_t server_uid, float32_t distance_shift) noexcept
+{
+    _movingServerUid = server_uid;
+    _movingServerDistanceShift = distance_shift;
+}
+
+void CritterHexView::SetMovingCatchUp(timespan time)
+{
+    FO_VERIFY_AND_THROW(_moving, "Catch-up needs a plan to run", GetId());
+
+    _movingCatchUpLeft = time;
+    _movingCatchUpTime = _engine->GameTime.GetFrameTime();
 }
 
 void CritterHexView::StopMoving()
@@ -110,6 +128,10 @@ void CritterHexView::StopMoving()
     }
 
     _moving.reset();
+    _movingCatchUpLeft = {};
+    _movingServerUid = 0;
+    _movingServerDistanceShift = 0.0f;
+    _movingHeld = false;
     _walkAnchorAnim.reset();
     _walkAnchorDisp = {};
 
@@ -280,7 +302,7 @@ void CritterHexView::RefreshView(bool no_smooth)
             moving_speed = iround<int32_t>(numeric_cast<float32_t>(moving->GetSpeed()) / scale);
         }
 
-        _model->SetMovementState(GetCondition() == CritterCondition::Alive, IsMoving(), moving_speed);
+        _model->SetMovementState(GetCondition() == CritterCondition::Alive, IsMoving() && !_movingHeld, moving_speed);
     }
 #endif
 
@@ -294,7 +316,7 @@ void CritterHexView::RefreshView(bool no_smooth)
 
 #if FO_ENABLE_3D
         if (_model) {
-            if (IsMoving() && GetCondition() == CritterCondition::Alive) {
+            if (IsMoving() && !_movingHeld && GetCondition() == CritterCondition::Alive) {
                 action_anim = _model->GetMovingAnim();
             }
 
@@ -321,7 +343,7 @@ void CritterHexView::RefreshView(bool no_smooth)
         {
             ignore_unused(no_smooth);
 
-            if (IsMoving() && GetCondition() == CritterCondition::Alive) {
+            if (IsMoving() && !_movingHeld && GetCondition() == CritterCondition::Alive) {
                 auto moving = GetMoving();
                 FO_VERIFY_AND_THROW(moving, "Critter movement state is missing");
 
@@ -654,6 +676,18 @@ void CritterHexView::ProcessMoving()
     FO_VERIFY_AND_THROW(moving, "Missing active movement state");
     moving->ValidateRuntimeState();
 
+    // A late plan runs faster until it has made up the time it lost on the way, so the critter sprints to where it
+    // would be instead of appearing there
+    if (_movingCatchUpLeft > timespan::zero) {
+        nanotime frame_time = _engine->GameTime.GetFrameTime();
+        float32_t extra_rate = std::max(_engine->Settings->Client.MoveCatchUpRate, 1.0f) - 1.0f;
+        timespan frame_extra = std::chrono::nanoseconds {iround<int64_t>(numeric_cast<float64_t>((frame_time - _movingCatchUpTime).nanoseconds()) * extra_rate)};
+        timespan extra = std::min(_movingCatchUpLeft, frame_extra);
+        _movingCatchUpTime = frame_time;
+        moving->FastForward(extra);
+        _movingCatchUpLeft -= extra;
+    }
+
     moving->UpdateCurrentTime(_engine->GameTime.GetFrameTime());
     auto progress = moving->EvaluateProgress();
     auto prev_hex = GetHex();
@@ -701,6 +735,16 @@ void CritterHexView::ProcessMoving()
 #endif
     {
         ChangeDir(progress.Dir);
+    }
+
+    // Another player's held direction waits at its lease while their renewal is on the way; the critter stands there
+    if (moving->IsHeldByLease() != _movingHeld) {
+        _movingHeld = !_movingHeld;
+        RefreshView();
+
+        if (_engine->Settings->Network.MoveSyncTrace) {
+            _engine->TraceMoveSync("hold", strex("cr={} own={} on={} elapsed_ms={}", GetId(), GetIsChosen() ? 1 : 0, _movingHeld ? 1 : 0, iround<int32_t>(moving->GetElapsedTime())).strv());
+        }
     }
 
     if (progress.Completed && GetHex() == moving->GetEndHex()) {

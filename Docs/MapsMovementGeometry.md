@@ -56,3 +56,7 @@ Continue with [Change routing](en/explanation/maps-and-movement.md#change-routin
 ## Validation checklist
 
 Continue with [Validation checklist](en/explanation/maps-and-movement.md#validation-checklist).
+
+### Direction traces
+
+Continue with [Direction traces](en/explanation/maps-and-movement.md#direction-traces).

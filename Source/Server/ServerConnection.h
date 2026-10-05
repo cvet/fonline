@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "LinkDelay.h"
 #include "NetBuffer.h"
 #include "NetworkServer.h"
 #include "SecureChannel.h"
@@ -154,6 +155,8 @@ public:
     void RegisterLoginProgress(nanotime time) noexcept;
     void RegisterPingRequest(nanotime time) noexcept;
     void RegisterPingAnswer(nanotime time) noexcept;
+    // A client message stamped with the client's clock: how much later than the link usually takes it arrived
+    auto RegisterSenderTime(int64_t sender_ms, nanotime receive_time) -> timespan;
     void BeginUpdateFileTransfer(size_t file_index) noexcept;
     auto PullUpdateFilePortion(size_t file_size, size_t max_portion_size) -> UpdateFilePortion;
 
@@ -208,6 +211,7 @@ private:
     bool _preChannelClient {};
     std::atomic_bool _preChannelRefusalPending {};
     ActivityState _activity {};
+    LinkDelayEstimator _uplinkDelay;
     UpdateFileTransferState _updateFileTransfer {};
     DataArrivedCallback _dataArrivedCallback {};
     bool _gracefulDisconnected {};

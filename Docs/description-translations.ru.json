@@ -14087,14 +14087,6 @@
           "source_sha256": "3db581a240a4a9044c0bb2836762ab57eb407acf4e1286399c233ca10e68e14f",
           "translation": "Сообщает, предназначена ли эта сборка для Android."
         },
-        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/description": {
-          "source_sha256": "27d45edfc63bfe220b251265e41bd9e27ee3f533cb3801a5b94c992697690582",
-          "translation": "Возвращает общие страницы rpmalloc native module и ёмкости классов размера вызывающего потока либо пустой словарь при недоступной диагностике."
-        },
-        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/contract/notes": {
-          "source_sha256": "05a8d37e8d9ca973e37124b10c59b52d27ca58f566e85a0494f818824d145d4b",
-          "translation": "Необязательный диагностический снимок; доступность и область аллокатора не являются контрактом памяти всего процесса."
-        },
         "/symbols/@id=script.method.common.Game.BreakIntoDebugger/contract/notes": {
           "source_sha256": "454a289e2434edc126c92e13fa55a8cc1f5cbb6b7a59ff08d7e7af5eed623a53",
           "translation": "Отладочная ловушка только для разработки; намеренно не является контрактом совместимости встраивающего проекта."
@@ -14151,17 +14143,25 @@
           "source_sha256": "6f3475b6d2717497d0c3e36bf36f8aec12c04704f7177deae64016512c5fe31f",
           "translation": "Декодирует первую кодовую точку UTF-8 из заданного текста, записывает число потребленных байтов и возвращает скалярное значение Unicode."
         },
-        "/symbols/@id=script.method.common.Game.DivRem/description": {
-          "source_sha256": "7aa55c9423e8aa595cbc5fd473494e7eb1a0563fcf84d0a383bd50cb399eefde",
-          "translation": "Делит два знаковых целых числа, записывает остаток и возвращает частное."
-        },
         "/symbols/@id=script.method.common.Game.DesktopBuild/description": {
           "source_sha256": "b68f13b813a20241d166ad7e57864e70fbf9fa30569b225834cef05ee7094535",
           "translation": "Сообщает, предназначена ли эта сборка для настольной платформы."
         },
+        "/symbols/@id=script.method.common.Game.DivRem/description": {
+          "source_sha256": "7aa55c9423e8aa595cbc5fd473494e7eb1a0563fcf84d0a383bd50cb399eefde",
+          "translation": "Делит два знаковых целых числа, записывает остаток и возвращает частное."
+        },
         "/symbols/@id=script.method.common.Game.EncodeUtf8/description": {
           "source_sha256": "5d1baa130db90fde9edb988a67356a1438e054303c3eec497f0fc2def0ef2e8b",
           "translation": "Кодирует одно скалярное значение Unicode в строку UTF-8."
+        },
+        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/contract/notes": {
+          "source_sha256": "05a8d37e8d9ca973e37124b10c59b52d27ca58f566e85a0494f818824d145d4b",
+          "translation": "Необязательный диагностический снимок; доступность и область аллокатора не являются контрактом памяти всего процесса."
+        },
+        "/symbols/@id=script.method.common.Game.GetAllocatorStatistics/description": {
+          "source_sha256": "27d45edfc63bfe220b251265e41bd9e27ee3f533cb3801a5b94c992697690582",
+          "translation": "Возвращает общие страницы rpmalloc native module и ёмкости классов размера вызывающего потока либо пустой словарь при недоступной диагностике."
         },
         "/symbols/@id=script.method.common.Game.GetClipboardText/description": {
           "source_sha256": "630e3699f519aa753d39b7dedb83d2ecc2bcf9f65f6c0fd186b21efa205bfd0e",
@@ -18135,6 +18135,34 @@
           "source_sha256": "fbe8b329b3a6caee5ba7cf9910fea8e24b4ad47f1d8c224c479d4fa5bef0fb1c",
           "translation": "Пакет заставки по умолчанию"
         },
+        "/symbols/@id=setting.client.Client.DirectMoveExtendAheadSteps/description": {
+          "source_sha256": "0d425a53149e8eff65344213c589c7f1775133f12ba4077222e5d23e4938b796",
+          "translation": "План удерживаемого направления продолжается следующим, когда остаётся не больше указанного числа шагов; значение должно быть меньше DirectMoveTraceSteps"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveLeaseRenewSteps/description": {
+          "source_sha256": "cab3546f798fa8c4413def63850dd6cd313469af76525c8c21e10d8d16590ce7",
+          "translation": "Lease продлевается, когда впереди игрока остаётся не больше указанного числа подтверждённых шагов; значение должно быть меньше DirectMoveLeaseSteps"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveLeaseSteps/description": {
+          "source_sha256": "79f9404bf970e3fe628b15e3f0068e1ef669dbc3424001f861225d27de711bb6",
+          "translation": "Число гексов впереди игрока, до которых сервер и наблюдатели могут проиграть план удерживаемого направления; ограничивает движение при зависании линии игрока"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveRetargetImmediateAngle/description": {
+          "source_sha256": "1442855107c6090697512226f1fb446c283b3acf03788eb9e994aec5566b61aa",
+          "translation": "Поворот удерживаемого направления не меньше указанного числа градусов применяется сразу"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveRetargetMinMs/description": {
+          "source_sha256": "94737c867ab89b4a2fe6bc33e3b24a10e0c072cdfa8cb5f1a6e177e9b5956bca",
+          "translation": "Минимальный интервал в миллисекундах между перепланированием поворотов меньше DirectMoveRetargetImmediateAngle"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveSlide/description": {
+          "source_sha256": "2d90cd7c1f1118d9446732cca7d4638fb6119a9c1b6e4877d753493b499defbe",
+          "translation": "Если true, заблокированное удерживаемое направление продолжает движение вдоль препятствия к заданному направлению"
+        },
+        "/symbols/@id=setting.client.Client.DirectMoveTraceSteps/description": {
+          "source_sha256": "34a5383c254d35e4c325eaa4d5f3462b29a0bf6393469cfaf93d6293bbe2ea77",
+          "translation": "Число гексов, протрассированных вперёд одним планом удерживаемого направления; следующий план строится до завершения текущего"
+        },
         "/symbols/@id=setting.client.Client.ForceEmbeddedRuntime/description": {
           "source_sha256": "56fcd7ab7caaf6e89297910cc19a1c8b64f16e35231b5c0aa10fa7250136d85b",
           "translation": "Если true, хост клиента запускает встроенный движок вместо первоначальной загрузки поставляемой runtime DLL (явный --ClientLibPath по-прежнему загружает DLL); читается из командной строки при запуске хоста до разрешения остальных настроек"
@@ -18142,6 +18170,14 @@
         "/symbols/@id=setting.client.Client.Language/description": {
           "source_sha256": "d29c9ab6ebd304db97654cb01d0c8d60d72fc608aab0fc6498f4e4be2b60696f",
           "translation": "Язык"
+        },
+        "/symbols/@id=setting.client.Client.MoveCatchUpRate/description": {
+          "source_sha256": "647c754aa04b2366394cd4e286646c9e6165f5081b09d76e49b00aecf1f099ae",
+          "translation": "Множитель скорости, с которым другой криттер догоняет текущее положение своего запоздавшего плана вместо скачка"
+        },
+        "/symbols/@id=setting.client.Client.MoveCatchUpSmoothMaxMs/description": {
+          "source_sha256": "37ba2ed5744ae7a728bd08899c08550fdc1c94776b53c68715f2067a6ca35d48",
+          "translation": "Наибольшее опоздание в миллисекундах, догоняемое плавно; оставшаяся часть более позднего плана пропускается сразу"
         },
         "/symbols/@id=setting.client.Client.UpdaterInfoDelay/description": {
           "source_sha256": "8f04e4c40399a8205fb57107f09e40a61620a15a9ebd1c90d8805ad505abd2b4",
@@ -18671,6 +18707,26 @@
           "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
           "translation": "Пользовательская версия метаданных для имитации клиента, запечённого отдельно от сервера"
         },
+        "/symbols/@id=setting.common.Network.LinkDelayRebaseMs/description": {
+          "source_sha256": "d09c6a0d9130b6c07624952994d85b23a317abe493f66c3682f4a82fcafdd776",
+          "translation": "Если каждое сообщение линии опаздывает в течение указанного числа миллисекунд, новое время прохода становится обычным"
+        },
+        "/symbols/@id=setting.common.Network.LinkDelayWindowMs/description": {
+          "source_sha256": "737a152857a726f9fda6b4709b9d4d3f85fff46db0e27ff53edbbec52897f775",
+          "translation": "Период в миллисекундах, за который хранится обычное время прохода линии; опоздание измеряется превышением над его медианой"
+        },
+        "/symbols/@id=setting.common.Network.MoveLateCatchUpMaxMs/description": {
+          "source_sha256": "1b44f5d75f35bc52679e723d15692a6e2eee5cdf32b935ac2a1425bfb232f51f",
+          "translation": "Верхняя граница в миллисекундах для перемотки запоздавшего плана движения вперёд"
+        },
+        "/symbols/@id=setting.common.Network.MoveLateCatchUpMinMs/description": {
+          "source_sha256": "ff043e6382d66b3b33930c6eee4f3c428a040cdb08975dd60d87e891b9e665f8",
+          "translation": "План с превышением обычного времени прохода линии не меньше указанного числа миллисекунд проигрывается с текущей временной точки; такие сообщения не входят в обычную оценку"
+        },
+        "/symbols/@id=setting.common.Network.MovePlanJoinMaxSteps/description": {
+          "source_sha256": "f68973bea12f64b4fcd151d4a5609b095da0ca5f890ef5dfd56bb7e1444971b5",
+          "translation": "Принятый план присоединяется с текущей позиции криттера, если тот уже прошёл его начало в пределах указанного числа шагов, без возврата к старту; 0 отключает присоединение"
+        },
         "/symbols/@id=setting.common.Network.MoveSyncTrace/description": {
           "source_sha256": "1fbb1cacbeea4ecd18183ee31942e31d8b782412b0d3569d936d72f270844e96",
           "translation": "Если true, сервер и клиент записывают по одной строке MOVESYNC на событие синхронизации движения со стабильными полями key=value для внешнего анализа; слишком подробно для production"
@@ -19087,6 +19143,10 @@
           "source_sha256": "a04590c27487098ce5b61f7843d6c54d93e4cbdf396af54edf3d9b794d17d980",
           "translation": "Если true, включена статическая сетка экземпляра карты"
         },
+        "/symbols/@id=setting.server.Server.MaxServerLogLines/description": {
+          "source_sha256": "a389080c1c45f52a0298f241fb477dcaf08fa152398d39bdfd3753a40e52be8d",
+          "translation": "Максимальное число строк серверного лога в UI"
+        },
         "/symbols/@id=setting.server.Server.MoveBridgeReportHexes/description": {
           "source_sha256": "739cabff521eafd8c2911bb72cb1602a2ecd294e3efecabf96de3fd345dd5171",
           "translation": "Длина async-fix bridge в гексах, начиная с которой логируется расхождение движения клиента и сервера; 0 отключает отчёт"
@@ -19094,10 +19154,6 @@
         "/symbols/@id=setting.server.Server.MoveFinishCatchUpMaxMs/description": {
           "source_sha256": "3aebb593db4fcd6f4a38b183101dc0dc831f2246be3187869158710779bc99d7",
           "translation": "Верхняя граница в миллисекундах для остатка движения, который можно ускорить по сообщению клиента о прибытии; фактический допуск также ограничен временем пути туда-обратно для соединения"
-        },
-        "/symbols/@id=setting.server.Server.MaxServerLogLines/description": {
-          "source_sha256": "a389080c1c45f52a0298f241fb477dcaf08fa152398d39bdfd3753a40e52be8d",
-          "translation": "Максимальное число строк серверного лога в UI"
         },
         "/symbols/@id=setting.server.Server.NoStart/description": {
           "source_sha256": "0ae880c046794a245346333643eab0a60197b97a6ec8f2427dc1338049c47f8c",
