@@ -2538,6 +2538,37 @@ Frm=one.toy
             });
     }
 
+    SECTION("ScanModeRegistersTheResourceEachSourceBakesTo")
+    {
+        // The master baker keeps the spelling the checker registered, so a critter frame registered under its source
+        // spelling was renamed back to it after baking, where the critter frame lookup never finds it
+        TestRig rig;
+        vector<FrmFrameSpec> frames {FrmFrameSpec {.Width = 1, .Height = 1, .Indices = {1}}};
+        AddSourceBinaryFile(rig, "art/critters/RAT.FRM", MakeFrm(5, frames));
+        AddSourceBinaryFile(rig, "art/scenery/ROCK.FRM", MakeFrm(5, frames));
+
+        for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+            AddSourceBinaryFile(rig, strex("art/critters/DOG.fr{}", dir), MakeFrxDir(5, numeric_cast<uint8_t>(dir), frames, 0, 0));
+            AddSourceBinaryFile(rig, strex("art/misc/FIRE.fr{}", dir), MakeFrxDir(5, numeric_cast<uint8_t>(dir), frames, 0, 0));
+        }
+
+        set<string> checked;
+
+        ImageBaker baker {rig.MakeContext("TestPack", [&checked](string_view path, uint64_t write_time) {
+            ignore_unused(write_time);
+            checked.emplace(path);
+            return true;
+        })};
+        baker.BakeFiles(rig.GetAllSourceFiles(), "");
+
+        CHECK(checked == set<string> {"art/critters/rat.frm", "art/scenery/ROCK.FRM", "art/critters/dog.fofrm", "art/misc/FIRE.frm", "SpriteInfo/TestPack.foinfo"});
+        CHECK(rig.Outputs.size() == checked.size());
+
+        for (const string& path : checked) {
+            CHECK(rig.Outputs.contains(path));
+        }
+    }
+
     SECTION("BakesSpriteInfoIndexAsRuntimeTarget")
     {
         TestRig rig;

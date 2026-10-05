@@ -37,7 +37,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 2_195_456)
+        self.assertEqual(max_bytes, 2_228_224)
         self.assertLessEqual(output_bytes, max_bytes)
 
     def _document(

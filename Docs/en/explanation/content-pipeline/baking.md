@@ -123,6 +123,8 @@ At runtime/source level, baking is owned by:
 
 This exists because a case-only rename of an input is otherwise invisible on a case-insensitive filesystem. The output stream or directory creation reuses the old directory entry, the outdated sweep compares case-folded paths, and incremental baking may then skip the apparently current artifact. Runtime lookup remains exact, so the stale spelling becomes an unresolvable resource.
 
+The expected names come from `BakeChecker`, so a baker whose output differs from its source registers the output path. `ImageBaker` registers Fallout critter `.frm` frames in lowercase and a `.fr0`..`.fr5` direction set as one `.fofrm` for critters or `.frm` elsewhere. This keeps reconciliation from restoring the source spelling over the name runtime lookup expects. `ScanModeRegistersTheResourceEachSourceBakesTo` checks registered names against the written resources.
+
 Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
 
 ## CMake entry points

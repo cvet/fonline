@@ -2807,7 +2807,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 }
 #endif
 
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_ENABLE_3D && FO_ANGELSCRIPT_SCRIPTING
 TEST_CASE("ModelSpriteHitTestReadsItsMaskFromTheAtlas")
 {
     // A model sprite has no pixels on the CPU until its atlas picture comes back from the GPU. The null renderer reads

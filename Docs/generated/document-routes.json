@@ -7,7 +7,7 @@
     "source": "VERSION",
     "master_format": "YEAR.MAJOR.MINOR-dev",
     "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
-    "value": "2026.1.9-dev"
+    "value": "2026.1.10-dev"
   },
   "version": {
     "channel": "current",

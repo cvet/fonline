@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.9-dev (CalVer from VERSION)
+Engine version: 2026.1.10-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 2686bc2321687f2d65d3e5bd77bf74d4ca308e34a6224e6856a87da570296339
+Content SHA-256: e159d4137e456bed348d811ad5118ed567ac0c089600781da8bcf2242e3f770c
 
 ---
 layout: default
@@ -2016,6 +2016,19 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.10-dev - 2026-10-05
+
+### Fixed
+
+- Rebase unpublished TLA integration fixes onto published master `b1e3fa58021a171877177a19c3d26127abf486be`. Consolidate the prior merge-only changes into one local step; preserve the upstream Git-policy, version and bilingual release notes.
+- Retain actual lowercase baked image resource names and frame-composition regression coverage, process-isolated test caches, the 2D/AngelScript fixture guard and ground-item visibility precondition. Client-updater fixtures probe for an unused local TCP port instead of assuming a candidate is free.
+- Reconcile the owning image/baking/testing guides and generated documentation. Complete AI delivery retains the reviewed 2228224-byte bound needed by these local explanations.
+
+### Migration
+
+- Reconfigure and rebuild native clients, servers and version/revision metadata together. No TLA caller, setting, wire, ABI, resource schema or save conversion is introduced by this rebase; compatibility remains `0.0.68`. The natively tested source is unchanged. When upgrading from an earlier published engine, apply the preceding timestamp and movement migrations in order.
+- Delivery consumers must honor the full-context `max_bytes` increase from 2195456 to 2228224 bytes against this published baseline. Whole-document membership and fail-closed budget checks remain required. Test processes use private caches; the user's local settings and mapper history remain intact.
 
 ## 2026.1.9-dev - 2026-10-05
 
@@ -5005,7 +5018,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: 831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601
+Content SHA-256: 973960afa70a184d5e99d40087f0c2b5309b723ad37441cbaecc091092b3ac1c
 
 ---
 layout: default
@@ -5048,6 +5061,10 @@ Use this page when choosing native validation for an engine change or when addin
 - `CodeCoverage` when `FO_CODE_COVERAGE` is enabled.
 
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
+
+Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires both `FO_ENABLE_3D` and `FO_ANGELSCRIPT_SCRIPTING`; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
+
+The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
 
 ## Running tests
 
@@ -13403,7 +13420,7 @@ Documentation describes the current branch until the engine has meaningful relea
 ===== BEGIN DOCUMENT adr-manifest-backed-ai-documentation-delivery =====
 Source: Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
-Content SHA-256: 104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85
+Content SHA-256: 246f18c5d868492bb4ce41d037d7075a0fc219ae7d66add8a2e50d8d51d12750
 
 ---
 layout: default
@@ -13446,7 +13463,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
-4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 96 KiB (2,195,456 bytes). The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
+4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 128 KiB (2,228,224 bytes). On 2026-10-05, the complete integration bundle reached 2,197,968 bytes, including retained baking/testing explanations, migration notes and generated build references. A further bounded 32 KiB extension retains these whole documents and the fail-closed check. The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.
@@ -15753,7 +15770,7 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: 87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8
+Content SHA-256: ba4571caecfd6a506f3a3eec77f5f697ff98f4fc01c768f1249afb348a004ed1
 
 ---
 layout: default
@@ -15879,6 +15896,8 @@ At runtime/source level, baking is owned by:
 2. After the sweep, the same comparison is applied to files, logging `Rename stale-cased file <from> to <to>`.
 
 This exists because a case-only rename of an input is otherwise invisible on a case-insensitive filesystem. The output stream or directory creation reuses the old directory entry, the outdated sweep compares case-folded paths, and incremental baking may then skip the apparently current artifact. Runtime lookup remains exact, so the stale spelling becomes an unresolvable resource.
+
+The expected names come from `BakeChecker`, so a baker whose output differs from its source registers the output path. `ImageBaker` registers Fallout critter `.frm` frames in lowercase and a `.fr0`..`.fr5` direction set as one `.fofrm` for critters or `.frm` elsewhere. This keeps reconciliation from restoring the source spelling over the name runtime lookup expects. `ScanModeRegistersTheResourceEachSourceBakesTo` checks registered names against the written resources.
 
 Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
 
@@ -24407,7 +24426,7 @@ Excluded:
 ===== BEGIN DOCUMENT generated-image-format-index =====
 Source: Docs/en/reference/image-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/image-format/
-Content SHA-256: d6049e57e23cb5727d821486af7b059177a61f4ee85c7b7414f9f78a1fb1480b
+Content SHA-256: 5d7dbce46962f897ffa591707e1c4cce1d19e5c8d903f1e3a89f3f102093eeaa
 
 ---
 title: Generated Image Format Reference
@@ -24431,7 +24450,7 @@ This reference describes the Engine-owned image import, FOFRM composition, baked
 | Stability | <code>experimental</code> |
 | Support policy | The contract is generated for a pinned Engine revision. Projects own asset catalogs, source licensing, visual style, compression policy, resource-pack precedence, animation substitutions, movement tuning, and visible acceptance. |
 | Source manifest | [BuildTools/ImageFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/ImageFormatInterface.json) |
-| Contract digest | <code>1269bc60b487ff594867d59dafb3b23b789b5a9adc8b6ac0630a163cfe8c15c4</code> |
+| Contract digest | <code>3e1fdf7a223bbbe7952868b62c0a6f55d74a3a21e9d77a283cdf8820981e0450</code> |
 | Baker | <code>Image</code>, order 4 |
 | Baked pixels | <code>RGBA8</code> |
 | Runtime side | <code>client</code> |

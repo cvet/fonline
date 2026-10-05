@@ -144,8 +144,8 @@
       "english_path": "Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
-      "source_sha256": "104755a5878519b2ecb7c1e5729ee9ce486388f75fce8d13d1d1708843dc7e85",
-      "source_bytes": 8568,
+      "source_sha256": "246f18c5d868492bb4ce41d037d7075a0fc219ae7d66add8a2e50d8d51d12750",
+      "source_bytes": 8829,
       "status": "current"
     },
     {
@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601",
-      "source_bytes": 30695,
+      "source_sha256": "973960afa70a184d5e99d40087f0c2b5309b723ad37441cbaecc091092b3ac1c",
+      "source_bytes": 31308,
       "status": "current"
     },
     {
@@ -326,8 +326,8 @@
       "english_path": "Docs/en/explanation/content-pipeline/baking.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/content-pipeline/baking.md",
-      "source_sha256": "87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8",
-      "source_bytes": 84162,
+      "source_sha256": "ba4571caecfd6a506f3a3eec77f5f697ff98f4fc01c768f1249afb348a004ed1",
+      "source_bytes": 84635,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "2686bc2321687f2d65d3e5bd77bf74d4ca308e34a6224e6856a87da570296339",
-      "source_bytes": 11113,
+      "source_sha256": "e159d4137e456bed348d811ad5118ed567ac0c089600781da8bcf2242e3f770c",
+      "source_bytes": 12568,
       "status": "current"
     },
     {
@@ -1483,7 +1483,7 @@
       "english_path": "Docs/en/reference/image-format/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/image-format/index.md",
-      "source_sha256": "d6049e57e23cb5727d821486af7b059177a61f4ee85c7b7414f9f78a1fb1480b",
+      "source_sha256": "5d7dbce46962f897ffa591707e1c4cce1d19e5c8d903f1e3a89f3f102093eeaa",
       "source_bytes": 3076,
       "status": "current"
     },
