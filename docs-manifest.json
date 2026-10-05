@@ -10,7 +10,7 @@
     "source": "VERSION",
     "master_format": "YEAR.MAJOR.MINOR-dev",
     "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
-    "value": "2026.1.8-dev"
+    "value": "2026.1.9-dev"
   },
   "version": {
     "channel": "current",
@@ -1675,8 +1675,8 @@
         "BuildTools/docs_site.py",
         "Docs/contract-change-dispositions.json"
       ],
-      "content_sha256": "7d0d35884f6e9e92f0faf468bc2bfb03444b7d0d13b3e1c70b796e70b48a3092",
-      "byte_size": 10680
+      "content_sha256": "2686bc2321687f2d65d3e5bd77bf74d4ca308e34a6224e6856a87da570296339",
+      "byte_size": 11113
     },
     {
       "id": "engine-upgrade-guide",
@@ -1757,8 +1757,8 @@
         "Docs/en/reference/changelog.md",
         "Docs/contract-change-dispositions.json"
       ],
-      "content_sha256": "f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7",
-      "byte_size": 13147
+      "content_sha256": "1425a344a8c2fc7e6c66a6fc9d9b41e8ac996f02492334afd0fcf820b35f9cf6",
+      "byte_size": 12732
     },
     {
       "id": "entity-model",
@@ -14172,35 +14172,35 @@
       "id": "llms-index",
       "path": "llms.txt",
       "canonical_url": "https://fonline.ru/llms.txt",
-      "content_sha256": "06e494806f28d5f0e9a09b916245a1850a56055f3629d714cd6b1127422451b5",
+      "content_sha256": "722a5dde69f125ec60096701fea81ddc5af84bfcba8d85c2601c4a89f04cf061",
       "byte_size": 63416
     },
     {
       "id": "llms-full-context",
       "path": "llms-full.txt",
       "canonical_url": "https://fonline.ru/llms-full.txt",
-      "content_sha256": "b55344a83d922982fb5ea1d88d88bc076fa35f7fdf2e722ecb5e1b46a98a8d39",
-      "byte_size": 2195400
+      "content_sha256": "f05982cc654a0ae6d6b9a0503cfcc5e5eea072c12375f46f50785571c319de98",
+      "byte_size": 2195418
     },
     {
       "id": "site-docs-search",
       "path": "Docs/Site/Assets/docs-search.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.json",
-      "content_sha256": "1b1c4bb720df5f169d3dff2ef7fcb0420ce68b3010508403992ab98af72be818",
-      "byte_size": 1309918
+      "content_sha256": "02106e8135915f1b2d29db9844552d6e933f189213bf706f955375872d515ccb",
+      "byte_size": 1310114
     },
     {
       "id": "site-docs-search.ru",
       "path": "Docs/Site/Assets/docs-search.ru.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Assets/docs-search.ru.json",
-      "content_sha256": "951a67415f09a7f649dccb1591385f9b17b31ccc3c5d14fbea81a583cfa1e479",
-      "byte_size": 1841482
+      "content_sha256": "6c0655b1146ceff026594bc86372be1580688acdc598323696faa6d0624efbc6",
+      "byte_size": 1841483
     },
     {
       "id": "site-docs-site",
       "path": "Docs/Site/Data/docs-site.json",
       "canonical_url": "https://fonline.ru/Docs/Site/Data/docs-site.json",
-      "content_sha256": "3fefd2429bd4b3effd2be4b99f537d829aae1ddbc8f103ddbfdfdfbcde93ae13",
+      "content_sha256": "35b865f6d51e35778bc471c41b0a98dd619d84d5ef8f5aa9a1c2efb4a8b3f40d",
       "byte_size": 212840
     },
     {
@@ -14263,7 +14263,7 @@
       "id": "site-document-routes",
       "path": "Docs/generated/document-routes.json",
       "canonical_url": "https://fonline.ru/Docs/generated/document-routes.json",
-      "content_sha256": "eb9e165e0cb831be3951ad971c4ae86c14e5f8cb71e9b87d8703d25609c123d6",
+      "content_sha256": "643b798a2113a9206a46449e6ee635019a161e02030731c4fdde006b83d96853",
       "byte_size": 535718
     },
     {
@@ -14354,7 +14354,7 @@
       "id": "snippet_validation",
       "path": "Docs/generated/snippets.json",
       "canonical_url": "https://fonline.ru/Docs/generated/snippets.json",
-      "content_sha256": "9d686169652d14929d8ffac0cf22c31270b1322b0eb7f5317aed70bcaee76a41",
+      "content_sha256": "03ef95080969306ee62fbfbfce0a241153983062b4d20b7ef0836505dd5a4bf4",
       "byte_size": 268488
     },
     {
@@ -14382,7 +14382,7 @@
       "id": "localization_status",
       "path": "Docs/generated/translation-status.json",
       "canonical_url": "https://fonline.ru/Docs/generated/translation-status.json",
-      "content_sha256": "7b38b26aa48b8db4f0d109ec0998253691a19a7740ea98036f4b35e5a4bce84a",
+      "content_sha256": "c2e52629e25415e5237231cb3a9f2956b557fc532ee4fb8166a0c72f325bc9e3",
       "byte_size": 106197
     },
     {

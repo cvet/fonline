@@ -12,7 +12,7 @@ The root [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the
 
 ## Notation
 
-The logical fields are `YEAR.MAJOR.MINOR.PATCH`. `YEAR` is the four-digit UTC year. `MAJOR` is the positive release-line ordinal within that year, beginning at `1`; it is not a month or a SemVer compatibility promise. `MINOR` counts published master changes within that line. `PATCH` belongs only to a release branch. Counters have no leading zeroes; minor and patch begin at `0`.
+Fields are `YEAR.MAJOR.MINOR.PATCH`: `YEAR` is the four-digit UTC year; `MAJOR` is the positive release-line ordinal for that year, starting at `1`, not a month or SemVer promise. `MINOR` counts master updates within the line; `PATCH` is release-only. No leading zeroes; minor/patch start at `0`.
 
 | Context | Identifier | Meaning |
 |---|---|---|
@@ -29,7 +29,7 @@ The calendar month is recorded in the UTC change/release date, not in `MAJOR`. S
 
 ## Every master update
 
-One published change is one first-parent commit on master, including a merge commit, a documentation-only update, tests, CI, dependencies, and reversions. Each such step owns one new minor and one dated bilingual note. Feature-branch fixup commits are not separate master updates; before integration reconcile the final change with the latest master tip. A multi-commit direct push must satisfy the rule at every first-parent step. Concurrent changes must merge the latest published tip and recalculate their next version before publication; never rewrite published history.
+Each first-parent master commit owns one minor increment and dated bilingual notes, including merges, docs, tests, CI, dependencies and reverts. Reconcile feature fixups with the latest master before integration; a direct multi-commit push must satisfy every step. Rebase unpublished commits onto the fetched tip; merge only diverged published histories. Recalculate the next version and preserve published ancestry before publication.
 
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
@@ -51,11 +51,11 @@ For committed publication-range evidence:
 python BuildTools/docs_engine_version.py --check --branch master   --baseline-git-ref <previous-master-sha> --target-git-ref <new-master-sha> --history
 ```
 
-The source-only `--check` works without Git. A comparison requires the exact available Git baseline and target. Do not bypass a missing/shallow baseline. CI compares a PR's final head to its target base; a push validates the complete incoming first-parent range. Old pre-policy revisions require the ordinary complete-range source audit.
+Source-only `--check` needs no Git. Comparisons require the exact available baseline and target; do not bypass missing/shallow baselines. PRs compare final head to base; pushes validate every incoming first-parent step. Pre-policy revisions still require a complete-range source audit.
 
 ## Exhaustive migration record
 
-Write a separate record for each removed or replaced contract, covering all of these. Use exact symbols, files, searches, ordering, values and expected outputs; an agent must not guess a replacement or product choice.
+Record each removed/replaced contract separately, covering every requirement below with exact symbols, files, searches, ordering, values and outputs; agents must not guess replacements or product choices.
 
 1. Exact introducing version and affected old/new revision range; all affected backends, roles, platforms, overloads, settings, fields, content formats and persisted properties.
 2. Old name/signature/key/value and its original meaning; new declaration and meaning; removal rationale. State what remains invariant, including units, numeric IDs, sentinels, defaults, ordering, ownership and side effects.
@@ -95,7 +95,7 @@ An upgrade without project migration either preserves all used contracts or fail
 | `FO_COMPATIBILITY_VERSION` | Runtime contract digest including the separate manual migration marker |
 | ABI/resource-schema versions | Their source-owned serialization/protocol contracts |
 
-`BuildTools/engine_version.py` is shared by CMake, native codegen and documentation. `VERSION` and Engine Git-ref changes invalidate generated metadata. Startup logs print the Engine identifier/revision separately from game metadata; a nested archive cannot inherit the parent project's Git identity. Site navigation/routes and AI delivery use the same version, and the site version link opens the selected locale's changelog. Documentation still follows rolling `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshot policy. Historical `Since` annotations retain their original values. Project branding, Android/installer versions and package hashes remain project-owned.
+`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery share the version; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
 
 ## Source ownership
 

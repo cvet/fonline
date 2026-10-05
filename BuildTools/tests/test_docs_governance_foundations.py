@@ -23,8 +23,20 @@ DECISION_ROOT = ROOT / "Docs/en/contributing/decisions"
 class DocumentationGovernanceFoundationsTests(unittest.TestCase):
     def test_revision_update_guides_preserve_published_history(self) -> None:
         guides = {
-            "en": ("After the normal merge", "Do not rewrite published history"),
-            "ru": ("После обычного merge", "Не переписывайте опубликованную историю"),
+            "en": (
+                "Rebase unpublished commits onto the fetched base",
+                "including on branches with an upstream",
+                "Keep already-pushed tips as ancestors",
+                "merge only diverged published histories",
+                "After integration",
+            ),
+            "ru": (
+                "Незалитые коммиты обязательно переносите rebase",
+                "даже при наличии upstream",
+                "Уже залитые tip сохраняйте в предках",
+                "merge нужен только для разошедшихся опубликованных историй",
+                "После интеграции",
+            ),
         }
         for locale, markers in guides.items():
             with self.subTest(locale=locale):

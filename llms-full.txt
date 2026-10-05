@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.8-dev (CalVer from VERSION)
+Engine version: 2026.1.9-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -1889,7 +1889,7 @@ Promote a package row to project-qualified only when the named lane is versioned
 ===== BEGIN DOCUMENT engine-versioning =====
 Source: Docs/en/how-to/release/versioning.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/versioning.html
-Content SHA-256: f6e30ae35841fa2276d8166f26d04fde8a75cb3a78ed0ab6a905ea643933c3e7
+Content SHA-256: 1425a344a8c2fc7e6c66a6fc9d9b41e8ac996f02492334afd0fcf820b35f9cf6
 
 ---
 layout: default
@@ -1905,7 +1905,7 @@ The root [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the
 
 ## Notation
 
-The logical fields are `YEAR.MAJOR.MINOR.PATCH`. `YEAR` is the four-digit UTC year. `MAJOR` is the positive release-line ordinal within that year, beginning at `1`; it is not a month or a SemVer compatibility promise. `MINOR` counts published master changes within that line. `PATCH` belongs only to a release branch. Counters have no leading zeroes; minor and patch begin at `0`.
+Fields are `YEAR.MAJOR.MINOR.PATCH`: `YEAR` is the four-digit UTC year; `MAJOR` is the positive release-line ordinal for that year, starting at `1`, not a month or SemVer promise. `MINOR` counts master updates within the line; `PATCH` is release-only. No leading zeroes; minor/patch start at `0`.
 
 | Context | Identifier | Meaning |
 |---|---|---|
@@ -1922,7 +1922,7 @@ The calendar month is recorded in the UTC change/release date, not in `MAJOR`. S
 
 ## Every master update
 
-One published change is one first-parent commit on master, including a merge commit, a documentation-only update, tests, CI, dependencies, and reversions. Each such step owns one new minor and one dated bilingual note. Feature-branch fixup commits are not separate master updates; before integration reconcile the final change with the latest master tip. A multi-commit direct push must satisfy the rule at every first-parent step. Concurrent changes must merge the latest published tip and recalculate their next version before publication; never rewrite published history.
+Each first-parent master commit owns one minor increment and dated bilingual notes, including merges, docs, tests, CI, dependencies and reverts. Reconcile feature fixups with the latest master before integration; a direct multi-commit push must satisfy every step. Rebase unpublished commits onto the fetched tip; merge only diverged published histories. Recalculate the next version and preserve published ancestry before publication.
 
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
@@ -1944,11 +1944,11 @@ For committed publication-range evidence:
 python BuildTools/docs_engine_version.py --check --branch master   --baseline-git-ref <previous-master-sha> --target-git-ref <new-master-sha> --history
 ```
 
-The source-only `--check` works without Git. A comparison requires the exact available Git baseline and target. Do not bypass a missing/shallow baseline. CI compares a PR's final head to its target base; a push validates the complete incoming first-parent range. Old pre-policy revisions require the ordinary complete-range source audit.
+Source-only `--check` needs no Git. Comparisons require the exact available baseline and target; do not bypass missing/shallow baselines. PRs compare final head to base; pushes validate every incoming first-parent step. Pre-policy revisions still require a complete-range source audit.
 
 ## Exhaustive migration record
 
-Write a separate record for each removed or replaced contract, covering all of these. Use exact symbols, files, searches, ordering, values and expected outputs; an agent must not guess a replacement or product choice.
+Record each removed/replaced contract separately, covering every requirement below with exact symbols, files, searches, ordering, values and outputs; agents must not guess replacements or product choices.
 
 1. Exact introducing version and affected old/new revision range; all affected backends, roles, platforms, overloads, settings, fields, content formats and persisted properties.
 2. Old name/signature/key/value and its original meaning; new declaration and meaning; removal rationale. State what remains invariant, including units, numeric IDs, sentinels, defaults, ordering, ownership and side effects.
@@ -1988,7 +1988,7 @@ An upgrade without project migration either preserves all used contracts or fail
 | `FO_COMPATIBILITY_VERSION` | Runtime contract digest including the separate manual migration marker |
 | ABI/resource-schema versions | Their source-owned serialization/protocol contracts |
 
-`BuildTools/engine_version.py` is shared by CMake, native codegen and documentation. `VERSION` and Engine Git-ref changes invalidate generated metadata. Startup logs print the Engine identifier/revision separately from game metadata; a nested archive cannot inherit the parent project's Git identity. Site navigation/routes and AI delivery use the same version, and the site version link opens the selected locale's changelog. Documentation still follows rolling `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshot policy. Historical `Since` annotations retain their original values. Project branding, Android/installer versions and package hashes remain project-owned.
+`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery share the version; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
 
 ## Source ownership
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 7d0d35884f6e9e92f0faf468bc2bfb03444b7d0d13b3e1c70b796e70b48a3092
+Content SHA-256: 2686bc2321687f2d65d3e5bd77bf74d4ca308e34a6224e6856a87da570296339
 
 ---
 layout: default
@@ -2016,6 +2016,16 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.9-dev - 2026-10-05
+
+### Fixed
+
+- Version the published Git-policy update (`8697fcd9d9`); align governance tests and versioning guidance.
+
+### Migration
+
+- Fetch upstream; rebase only unpublished work, even with an upstream. Merge diverged published histories; preserve published ancestors. No source/data migration: API, settings, protocol `0.0.68`, ABI and resources stay unchanged. Reconfigure/rebuild version metadata.
 
 ## 2026.1.8-dev - 2026-10-05
 

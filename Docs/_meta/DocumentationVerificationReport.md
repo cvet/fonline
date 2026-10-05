@@ -2,6 +2,12 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-05 - Unpublished-history policy CI reconciliation
+
+- Baseline: published master `8697fcd9d9ebb592f73f1a9244b77142f9290e62` (`2026.1.8-dev`). Its documentation-governance test still required the old mandatory-merge wording; its Git-policy publication omitted the mandatory minor increment. Both failures reproduce locally. Preserve that published commit.
+- Require both locales to say that unpublished work is rebased even with an upstream, published tips remain ancestors, and merge is reserved for diverged published histories. Reconcile the remaining versioning-owner wording and add `2026.1.9-dev` with EN/RU change/migration notes. No API, setting, native behavior, ABI, resource, compatibility or persisted-data change is introduced.
+- Condense equivalent EN/RU versioning prose without removing any field, publication, migration, comparison or consumer requirement. All 103 fixed Python source commands in the authoritative documentation job plus the working-tree publication-version check pass on unchanged inputs: 104/104. They report 561 unittest cases, including one external PowerShell-parser skip. The seventeen-domain comparison has zero changes/required dispositions; aggregate validation passes 410 Markdown entries. Complete AI delivery covers 398 public documents / 2195418 bytes within the unchanged 2195456-byte limit. Refresh affected generated evidence after this record update; exact committed publication-range validation follows. No native/runtime, rendered-browser or remote new-head acceptance is claimed.
+
 ## 2026-10-05 - README update version repair
 
 - Preserve published `3904dc3e84e6b6924f82bffdef8003661f58e3ff` as the baseline. Audit the complete eight-path incoming range from `a9f129af36ecceafbe0700e27a7bc10269e25c60`: both README locales, snippets, translation state, both search indexes, full AI context and delivery manifest. Badge removal is retained; no native source, test, API, configuration, ABI, wire, saved-data or resource-schema change occurs. Before this repair, site/search/routes and full AI delivery checks pass on the exact published tree.

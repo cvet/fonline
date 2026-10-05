@@ -12,6 +12,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.9-dev - 2026-10-05
+
+### Fixed
+
+- Version the published Git-policy update (`8697fcd9d9`); align governance tests and versioning guidance.
+
+### Migration
+
+- Fetch upstream; rebase only unpublished work, even with an upstream. Merge diverged published histories; preserve published ancestors. No source/data migration: API, settings, protocol `0.0.68`, ABI and resources stay unchanged. Reconfigure/rebuild version metadata.
+
 ## 2026.1.8-dev - 2026-10-05
 
 ### Fixed
