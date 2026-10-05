@@ -12,6 +12,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.8-dev - 2026-10-05
+
+### Fixed
+
+- Add missing version/notes after README badge removal (`3904dc3e84`).
+
+### Migration
+
+- No source/data migration: documentation-only. Reconfigure/rebuild `2026.1.8-dev` metadata; API, settings, protocol `0.0.68`, ABI and resource schemas stay unchanged.
+
 ## 2026.1.7-dev - 2026-10-05
 
 ### Fixed

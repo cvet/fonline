@@ -7,10 +7,20 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ee9b7a8f3bb946975547084f14ec63bd86c59580a7d4a880871ec3254ae6ff9a"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"7d0d35884f6e9e92f0faf468bc2bfb03444b7d0d13b3e1c70b796e70b48a3092"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## 2026.1.8-dev - 2026-10-05
+
+### Исправлено
+
+- Восстановлена обязательная запись версии и миграции после удаления значков README в `3904dc3e84`.
+
+### Миграция
+
+- Миграция исходников проекта и данных не требуется: входящее изменение затрагивает только документацию. Повторно сконфигурируйте и соберите метаданные `2026.1.8-dev`; API, настройки, протокол `0.0.68`, ABI и схемы ресурсов сохранены.
 
 ## 2026.1.7-dev - 2026-10-05
 

@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.7-dev (CalVer from VERSION)
+Engine version: 2026.1.8-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: ee9b7a8f3bb946975547084f14ec63bd86c59580a7d4a880871ec3254ae6ff9a
+Content SHA-256: 7d0d35884f6e9e92f0faf468bc2bfb03444b7d0d13b3e1c70b796e70b48a3092
 
 ---
 layout: default
@@ -2016,6 +2016,16 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.8-dev - 2026-10-05
+
+### Fixed
+
+- Add missing version/notes after README badge removal (`3904dc3e84`).
+
+### Migration
+
+- No source/data migration: documentation-only. Reconfigure/rebuild `2026.1.8-dev` metadata; API, settings, protocol `0.0.68`, ABI and resource schemas stay unchanged.
 
 ## 2026.1.7-dev - 2026-10-05
 

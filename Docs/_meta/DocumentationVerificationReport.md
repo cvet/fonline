@@ -2,6 +2,13 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-05 - README update version repair
+
+- Preserve published `3904dc3e84e6b6924f82bffdef8003661f58e3ff` as the baseline. Audit the complete eight-path incoming range from `a9f129af36ecceafbe0700e27a7bc10269e25c60`: both README locales, snippets, translation state, both search indexes, full AI context and delivery manifest. Badge removal is retained; no native source, test, API, configuration, ABI, wire, saved-data or resource-schema change occurs. Before this repair, site/search/routes and full AI delivery checks pass on the exact published tree.
+- CI job `111824311813` fails because this documentation-only master step retained `2026.1.7-dev`. Prepare the next ordinary forward step as `2026.1.8-dev` with dated bilingual change/migration notes. Published history is immutable: the historical failed step remains visible; validation of this repair starts at the actual published `3904dc3e84` baseline.
+- Regenerate affected snippets, localization, site/search/routes, AI evaluation and delivery in dependency order. All 563 standalone documentation tests and ten version fixtures pass. External snippet checks pass 309 normative, 159 evidence and 183 parser checks; aggregate validation passes 410 Markdown entries. The seventeen-domain contract diff has zero changes or required dispositions. All eight remaining standalone runner/package/protocol/CMake checks pass. The initial stale Russian changelog source hash is retained as failed evidence, then corrected after reviewing bilingual parity; the fresh complete attempt passes.
+- Recheck final generated delivery after this report update and validate the committed forward step against `3904dc3e84` before ordinary publication. Runtime qualification remains separate because only generated version/revision metadata changes. No native behavior, rendered browser acceptance or new-head remote CI result is claimed here.
+
 ## 2026-10-05 - Representable link-delay timestamps
 
 - Baseline: published master `84efcfedaa46c1c10b12c93f79d9a6c2a1e83a4b` (`2026.1.6-dev`). Inspect `LinkDelay.cpp`, native nanosecond storage in `TimeRelated.h`, `RegisterSenderTime` call paths and `Test_LinkDelay.cpp`. An actual source-linked UBSan probe confirms signed subtraction overflow for sender `INT64_MIN` at receive 1000 ms.
