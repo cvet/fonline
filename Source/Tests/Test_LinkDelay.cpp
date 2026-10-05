@@ -49,6 +49,28 @@ TEST_CASE("LinkDelayEstimator")
 {
     LinkDelayEstimator estimator {std::chrono::milliseconds {30000}, std::chrono::milliseconds {150}, std::chrono::milliseconds {3000}};
 
+    SECTION("RejectsUnrepresentableSenderTimesBeforeChangingSamples")
+    {
+        CHECK_THROWS(estimator.AddSample(std::numeric_limits<int64_t>::min(), At(1000)));
+        CHECK_THROWS(estimator.AddSample(std::numeric_limits<int64_t>::max(), At(1000)));
+        CHECK(estimator.GetSampleCount() == 0);
+
+        CHECK(estimator.AddSample(0, At(1000)) == timespan::zero);
+        CHECK_THROWS(estimator.AddSample(std::numeric_limits<int64_t>::min(), At(1001)));
+        CHECK_THROWS(estimator.AddSample(std::numeric_limits<int64_t>::max(), At(1001)));
+        CHECK(estimator.GetSampleCount() == 1);
+        CHECK(estimator.AddSample(1, At(1001)) == timespan::zero);
+    }
+
+    SECTION("ExtremeNativeClockOffsetsKeepLatenessRepresentable")
+    {
+        constexpr int64_t max_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count();
+        constexpr int64_t min_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count();
+
+        CHECK(estimator.AddSample(max_stamp_ms, At(min_stamp_ms)) == timespan::zero);
+        CHECK(estimator.AddSample(min_stamp_ms, At(min_stamp_ms + 1)) == timespan {std::chrono::milliseconds {max_stamp_ms}});
+    }
+
     SECTION("LatenessIsMeasuredAgainstTheUsualTransitWhateverTheClockOffset")
     {
         // The sender's clock runs 5000 ms behind the receiver's; only the differences between samples matter

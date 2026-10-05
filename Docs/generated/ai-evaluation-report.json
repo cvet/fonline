@@ -1718,9 +1718,9 @@
           "top_document_ids": [
             "engine-upgrade-guide",
             "engine-versioning",
+            "engine-changelog",
             "web-debugging",
-            "debugging",
-            "documentation-maintenance"
+            "debugging"
           ]
         },
         {

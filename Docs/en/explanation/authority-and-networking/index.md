@@ -29,6 +29,9 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Common/LinkDelay.cpp`
+- `Source/Essentials/TimeRelated.h`
+- `Source/Tests/Test_LinkDelay.cpp`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -225,26 +228,9 @@ The client starts predicting its own movement before its `SendCritterMove` reach
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
-A **held direction** is one plan traced far ahead and *leased*: `SendCritterMove` carries the client's number for
-the plan and a lease in projected path distance, and the server and the observers run the plan only up to the lease. While
-the key stays down the client renews it with `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}`
-a few steps ahead of the critter; the server moves its copy's lease on (shifted by the projected distance its copy's start differs
-from the client's) and passes it to the observers as `CritterMoveLease {critter, movement uid, lease distance, sender
-ms}`, which an observer applies only to the plan it received under that uid
-([ClientRuntime.md](../runtime/client.md#held-direction-movement)). A held run is then one timeline on every side, as a
-click is, while a stall on the player's link stops the server and the observers at the lease end instead of
-carrying them along the trace (a stall that outlasts the connection leaves the critter standing there: the server stops a
-leased plan when it drops the player); a release that reaches the server after its plan ended there is reconciled along the
-player's own finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
 
-**Late messages** are measured, not assumed. `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`,
-`CritterMove`, `CritterMoveLease` and both directions of `Ping` end with the sender's monotonic clock in
-milliseconds; `LinkDelayEstimator` turns a stamp into how much later than the link's usual transit (the median over
-the last `Network.LinkDelayWindowMs`) the message arrived. Pings keep that usual transit current while nothing moves, so the
-first move after a stall is measured against the link as it was. A plan or a renewal late by at least
-`Network.MoveLateCatchUpMinMs` is played from where it would be by now ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)).
-`CritterMove` also carries the server's movement uid and the plan's lease (zero when the plan runs to its end). These
-fields changed the wire format of the movement messages and `Ping`; the compatibility version moved with them.
+**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
 
 ### Movement synchronization trace
 

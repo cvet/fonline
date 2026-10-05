@@ -7,10 +7,20 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"cd5d9afabb465f18c8d31d66b31dd9558bc30f15bb8d6b1e930d605485111e1e"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ee9b7a8f3bb946975547084f14ec63bd86c59580a7d4a880871ec3254ae6ff9a"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## 2026.1.7-dev - 2026-10-05
+
+### Исправлено
+
+- Оценка задержки отклоняет непредставимые временные метки отправителя до изменения выборки и ограничивает опоздание перед переводом миллисекунд в наносекунды.
+
+### Миграция
+
+- Пересоберите нативные клиенты и серверы. Допустимые метки и настройки сохраняют смысл; формат сообщений, совместимость `0.0.68`, ABI, ресурсы и сохранённые данные не меняются. Миграция вызовов или данных не требуется. Недопустимая метка вызывает `Sender timestamp is outside the native clock range`; проверьте оба предела знакового 64-битного числа и обычные выборки задержки.
 
 ## 2026.1.6-dev - 2026-10-05
 

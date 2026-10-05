@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.6-dev (CalVer from VERSION)
+Engine version: 2026.1.7-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2005,7 +2005,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: cd5d9afabb465f18c8d31d66b31dd9558bc30f15bb8d6b1e930d605485111e1e
+Content SHA-256: ee9b7a8f3bb946975547084f14ec63bd86c59580a7d4a880871ec3254ae6ff9a
 
 ---
 layout: default
@@ -2020,6 +2020,16 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.7-dev - 2026-10-05
+
+### Fixed
+
+- Link-delay estimation rejects unrepresentable stamps before mutation and bounds nanosecond lateness.
+
+### Migration
+
+- Rebuild native clients and servers. Timestamp/settings semantics, wire layout, compatibility `0.0.68`, ABI, resources and saved data are unchanged. No caller/data migration is needed. Invalid stamps raise `Sender timestamp is outside the native clock range`; test signed-64-bit extremes and ordinary delays.
 
 ## 2026.1.6-dev - 2026-10-05
 
@@ -15243,7 +15253,7 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 477b54e261e068304115b06c2ab219aa851a1778849e55427c461d20c5c9f5d4
+Content SHA-256: 569e96048a420e0b788a66f30ba9eddc1e5820b5e0d8b747a6526c50eefb6930
 
 ---
 layout: default
@@ -15276,6 +15286,9 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Common/LinkDelay.cpp`
+- `Source/Essentials/TimeRelated.h`
+- `Source/Tests/Test_LinkDelay.cpp`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -15472,26 +15485,9 @@ The client starts predicting its own movement before its `SendCritterMove` reach
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
-A **held direction** is one plan traced far ahead and *leased*: `SendCritterMove` carries the client's number for
-the plan and a lease in projected path distance, and the server and the observers run the plan only up to the lease. While
-the key stays down the client renews it with `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}`
-a few steps ahead of the critter; the server moves its copy's lease on (shifted by the projected distance its copy's start differs
-from the client's) and passes it to the observers as `CritterMoveLease {critter, movement uid, lease distance, sender
-ms}`, which an observer applies only to the plan it received under that uid
-([ClientRuntime.md](../runtime/client.md#held-direction-movement)). A held run is then one timeline on every side, as a
-click is, while a stall on the player's link stops the server and the observers at the lease end instead of
-carrying them along the trace (a stall that outlasts the connection leaves the critter standing there: the server stops a
-leased plan when it drops the player); a release that reaches the server after its plan ended there is reconciled along the
-player's own finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
 
-**Late messages** are measured, not assumed. `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`,
-`CritterMove`, `CritterMoveLease` and both directions of `Ping` end with the sender's monotonic clock in
-milliseconds; `LinkDelayEstimator` turns a stamp into how much later than the link's usual transit (the median over
-the last `Network.LinkDelayWindowMs`) the message arrived. Pings keep that usual transit current while nothing moves, so the
-first move after a stall is measured against the link as it was. A plan or a renewal late by at least
-`Network.MoveLateCatchUpMinMs` is played from where it would be by now ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)).
-`CritterMove` also carries the server's movement uid and the plan's lease (zero when the plan runs to its end). These
-fields changed the wire format of the movement messages and `Ping`; the compatibility version moved with them.
+**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
 
 ### Movement synchronization trace
 

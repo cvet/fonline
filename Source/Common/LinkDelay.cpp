@@ -49,6 +49,11 @@ LinkDelayEstimator::LinkDelayEstimator(timespan window, timespan exceptional, ti
 
 auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> timespan
 {
+    constexpr int64_t max_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::max()).count();
+    constexpr int64_t min_stamp_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::nanoseconds::min()).count();
+
+    FO_VERIFY_AND_THROW(sender_ms >= min_stamp_ms && sender_ms <= max_stamp_ms, "Sender timestamp is outside the native clock range", sender_ms);
+
     int64_t receive_ms = receive_time.milliseconds();
     Sample sample {.ReceiveMs = receive_ms, .OffsetMs = receive_ms - sender_ms};
 
@@ -67,7 +72,7 @@ auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> 
         _exceptionalRun.clear();
         _exceptionalSinceMs.reset();
         _usual.emplace_back(sample);
-        return std::chrono::milliseconds {std::max(late_ms, int64_t {0})};
+        return std::chrono::milliseconds {std::clamp(late_ms, int64_t {0}, max_stamp_ms)};
     }
 
     if (!_exceptionalSinceMs.has_value()) {
@@ -88,7 +93,7 @@ auto LinkDelayEstimator::AddSample(int64_t sender_ms, nanotime receive_time) -> 
         late_ms = sample.OffsetMs - EvaluateUsualOffset();
     }
 
-    return std::chrono::milliseconds {std::max(late_ms, int64_t {0})};
+    return std::chrono::milliseconds {std::clamp(late_ms, int64_t {0}, max_stamp_ms)};
 }
 
 void LinkDelayEstimator::Reset() noexcept

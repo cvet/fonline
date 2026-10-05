@@ -313,8 +313,8 @@
       "english_path": "Docs/en/explanation/authority-and-networking/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/authority-and-networking/index.md",
-      "source_sha256": "477b54e261e068304115b06c2ab219aa851a1778849e55427c461d20c5c9f5d4",
-      "source_bytes": 42251,
+      "source_sha256": "569e96048a420e0b788a66f30ba9eddc1e5820b5e0d8b747a6526c50eefb6930",
+      "source_bytes": 41795,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "cd5d9afabb465f18c8d31d66b31dd9558bc30f15bb8d6b1e930d605485111e1e",
-      "source_bytes": 9912,
+      "source_sha256": "ee9b7a8f3bb946975547084f14ec63bd86c59580a7d4a880871ec3254ae6ff9a",
+      "source_bytes": 10383,
       "status": "current"
     },
     {

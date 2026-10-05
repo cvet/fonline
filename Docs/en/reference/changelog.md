@@ -12,6 +12,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.7-dev - 2026-10-05
+
+### Fixed
+
+- Link-delay estimation rejects unrepresentable stamps before mutation and bounds nanosecond lateness.
+
+### Migration
+
+- Rebuild native clients and servers. Timestamp/settings semantics, wire layout, compatibility `0.0.68`, ABI, resources and saved data are unchanged. No caller/data migration is needed. Invalid stamps raise `Sender timestamp is outside the native clock range`; test signed-64-bit extremes and ordinary delays.
+
 ## 2026.1.6-dev - 2026-10-05
 
 ### Fixed

@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 ---
 
 # Сеть и авторитетность
-<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"477b54e261e068304115b06c2ab219aa851a1778849e55427c461d20c5c9f5d4"} -->
+<!-- docs-translation: {"document_id":"networking","locale":"ru","source_path":"Docs/en/explanation/authority-and-networking/index.md","source_sha256":"569e96048a420e0b788a66f30ba9eddc1e5820b5e0d8b747a6526c50eefb6930"} -->
 Этот документ описывает переиспользуемые сетевые слои движка: защищённый канал, буферы сообщений, обработку хешей, клиентские и серверные соединения и упорядоченный UDP-транспорт.
 
 Используйте его при изменении `Source/Common/SecureChannel.*`, `NoiseProtocol.*`, `NetBuffer.*`, `NetworkUdp.*`, клиентских и серверных соединений или сетевых тестов.
@@ -29,6 +29,9 @@ permalink: /Docs/ru/explanation/authority-and-networking/
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Common/LinkDelay.cpp`
+- `Source/Essentials/TimeRelated.h`
+- `Source/Tests/Test_LinkDelay.cpp`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -220,7 +223,7 @@ Send callback возвращает outgoing bytes **по значению**, и 
 
 Удерживаемое направление использует один дальний план с lease. `SendCritterMove` передаёт номер клиентского плана и подтверждённую границу в проецируемом расстоянии. Пока ввод удерживается, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` продлевает её. Сервер учитывает разницу начала своей копии и рассылает `CritterMoveLease {critter, movement uid, lease distance, sender ms}`. Наблюдатель принимает продление только для совпадающего uid. Зависание uplink останавливает сервер и наблюдателей на границе lease; потеря соединения завершает этот план. Позднее отпускание согласуется по завершённому плану игрока, см. [серверное движение](../runtime/server.md#движение-и-авторитетное-состояние) и [прямое управление](../runtime/client.md#движение-при-удержании-направления).
 
-Опоздание измеряет `LinkDelayEstimator`: движение, остановка, продление и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format и требуют отдельной compatibility version.
+Опоздание измеряет `LinkDelayEstimator`: `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` несут монотонные миллисекунды отправителя. Избыток над медианой обычного времени линии за `Network.LinkDelayWindowMs` показывает зависание. Ping поддерживает прежнюю оценку при отсутствии движения. План или продление с опозданием от `Network.MoveLateCatchUpMinMs` догоняет прошедшее время, см. [клиентское воспроизведение](../runtime/client.md#догоняющее-воспроизведение-запоздавших-планов). Метки вне ±9223372036854 мс вызывают `Sender timestamp is outside the native clock range` до изменения выборки; опоздание ограничено диапазоном 0…9223372036854 мс для нативного хранения наносекунд. `CritterMove` передаёт server movement uid и lease; нулевой lease проигрывает обычный план до конца. Эти поля изменяют wire format движения/Ping и требуют отдельной compatibility version.
 
 ### Трассировка синхронизации движения
 
