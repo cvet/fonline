@@ -1040,6 +1040,7 @@ void ManagedScriptBaker::GenerateManagedHostProjectFile(const std::filesystem::p
     file << "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n";
     file << "    <ImplicitUsings>false</ImplicitUsings>\n";
     file << "    <Nullable>enable</Nullable>\n";
+    file << "    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
     // Runs the IDE* code-style analyzers during the build, at whatever severity `.editorconfig` assigns them
@@ -1089,6 +1090,7 @@ void ManagedScriptBaker::GenerateUnifiedProjectFile(const std::filesystem::path&
     file << "    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>\n";
     file << "    <ImplicitUsings>false</ImplicitUsings>\n";
     file << "    <Nullable>enable</Nullable>\n";
+    file << "    <CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>\n";
     file << "    <LangVersion>latest</LangVersion>\n";
     file << "    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>\n";
     // See the host-project emitter above: this is what makes the IDE* code-style analyzers run in the build

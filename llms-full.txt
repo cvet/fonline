@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.10-dev (CalVer from VERSION)
+Engine version: 2026.1.11-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: e159d4137e456bed348d811ad5118ed567ac0c089600781da8bcf2242e3f770c
+Content SHA-256: 8b598dcb09674872ed9691d80252bd662fad16e9c1267201ad4da26bd585f3cd
 
 ---
 layout: default
@@ -2016,6 +2016,38 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.11-dev - 2026-10-06
+
+### Changed
+
+- Managed script projects, the managed host and Engine-owned C# tools compile with integer overflow
+  checking enabled. Runtime fragments and live patches use the same default. Overflowing arithmetic
+  and numeric narrowing now raise `OverflowException`; representable results retain their meaning.
+- `ucolor` packs masked color components in unsigned arithmetic, preserving all existing low-byte
+  values with overflow checking enabled.
+
+### Migration
+
+- The complete checked-arithmetic guide and migration notes fit within the existing reviewed
+  full-context limit of 2,228,224 bytes. AI delivery consumers must honor the declared
+  `full_context.max_bytes`; whole-document inclusion and fail-closed validation remain required.
+- Rebuild the managed baker, regenerate the host and Server/Client/Mapper projects, compile every
+  enabled managed role, rebake resources and package the rebuilt assemblies. Rebuild copied C# tool
+  projects with `CheckForOverflowUnderflow=true`; the Engine projects already declare it. Runtime
+  fragments and patches compiled after the update inherit checked arithmetic automatically.
+- Review intentional integer wrapping and signed/unsigned bit reinterpretations. Search C# sources
+  for hash multiplications and casts of packed RGBA values; use expression-local `unchecked` only
+  where wrapping or bit truncation is the algorithm's contract. For example, change a wrapping hash
+  assignment `hash *= prime` to `hash = unchecked(hash * prime)`, and a packed vertex-color conversion
+  `(int)color.value` to `unchecked((int)color.value)`. Keep ordinary gameplay arithmetic checked.
+- Verify that overflowing addition and narrowing throw `OverflowException`, explicit `unchecked`
+  still wraps, and existing valid color/hash outputs remain unchanged. Floating-point NaN/infinity
+  still require explicit finite-value checks; this compiler option does not reject them.
+- No persisted-property, save, prototype, native ABI, wire protocol or resource-schema conversion is
+  required. Numeric storage widths and runtime compatibility markers are unchanged by this update.
+  Deliver the rebuilt managed assemblies with their matching native build; retain the previous
+  package as the rollback boundary. No old API alias or data migration is introduced.
 
 ## 2026.1.10-dev - 2026-10-05
 
@@ -3876,7 +3908,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26
+Content SHA-256: 3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af
 
 ---
 layout: default
@@ -3958,6 +3990,20 @@ The generated project enables nullable analysis, warnings as errors, Engine code
 - native ref-type wrappers with explicit reference management where a borrow outlives the call.
 
 Unsupported type or member shapes fail baking with `ManagedScriptBakerException`; the baker must not emit a placeholder that fails only when gameplay reaches it.
+
+### Compiler checks
+
+Generated script projects always set `Nullable=enable`, `CheckForOverflowUnderflow=true`,
+`TreatWarningsAsErrors=true` and `EnforceCodeStyleInBuild=true`. The managed host and Engine-owned
+C# projects also enable overflow checking. Optional analysis-level, analysis-mode, analyzer and
+additional-file settings extend the script project's baseline.
+
+Integer arithmetic and numeric narrowing outside the destination range throw `OverflowException`.
+The runtime compiler uses the same checked default for fragments and live patches. Keep `unchecked`
+local to expressions whose intended contract is wrapping or bit truncation, such as a hash or a
+packed RGBA bit pattern. The `ucolor` constructor packs masked bytes directly in unsigned arithmetic,
+preserving the low byte of each component. Floating-point arithmetic still follows IEEE 754 and may
+produce NaN or infinity; validate finiteness at the relevant invariant boundary.
 
 Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. They are written under the baked pack's `Assemblies/<Target>Assemblies/` tree. Helpers and dependencies remain next to the entry assembly.
 
@@ -11333,7 +11379,7 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 4169e08d7d47274ad2c726ff9f20f4bc981a026a1d11ce59cfa3451907b48c55
+Content SHA-256: 2fd3012c1aac3c73a6e5ef344520ce9f3f0a5323af7ea5e583357d023393e821
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11509,6 +11555,9 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - **`static` is otherwise acceptable only for** compile-time constants (`static constexpr`), file-local pure helper functions (`static void Helper(...)`), and `static_assert`. An existing static that holds per-engine state is a bug to migrate to instance ownership, not a precedent to copy.
 
 ## Style Notes
+
+- Managed projects and the runtime C# compiler enable overflow checking by default. Use a local
+  `unchecked` only for intentional wrapping or bit truncation; preserve checked diagnostics elsewhere.
 
 - Prefer existing engine idioms over new local abstractions.
 - Enum-entry descriptions use trailing declaration comments; value-layout field descriptions use `// field: ...` lines immediately before `ExportValueType`. These field lines are metadata, not multi-line prose; type-description prose retains the two-line limit. See [generated metadata](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
@@ -13420,7 +13469,7 @@ Documentation describes the current branch until the engine has meaningful relea
 ===== BEGIN DOCUMENT adr-manifest-backed-ai-documentation-delivery =====
 Source: Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
-Content SHA-256: 246f18c5d868492bb4ce41d037d7075a0fc219ae7d66add8a2e50d8d51d12750
+Content SHA-256: 094d73f0b1e31896ea18c926c9e63383067da95b434970bde31f42417eddd8f7
 
 ---
 layout: default
@@ -13463,7 +13512,7 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
    retaining it in `llms.txt`, search, the human site, and
    `docs-manifest.json`; start documents and unknown/non-current IDs cannot be
    excluded.
-4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 128 KiB (2,228,224 bytes). On 2026-10-05, the complete integration bundle reached 2,197,968 bytes, including retained baking/testing explanations, migration notes and generated build references. A further bounded 32 KiB extension retains these whole documents and the fail-closed check. The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest.
+4. The full-context byte budget is declared in the source manifest and enforced before writing output. Growth beyond the budget fails validation; it is never handled by silently truncating a document or raising the limit without review. The reviewed current budget is 2 MiB + 128 KiB (2,228,224 bytes). On 2026-10-05, the complete integration bundle reached 2,197,968 bytes, including retained baking/testing explanations, migration notes and generated build references. A further bounded 32 KiB extension retains these whole documents and the fail-closed check. The complete bundle reached 2,169,979 bytes after adding mandatory Engine update and exhaustive migration guidance. A bounded 32 KiB extension preserves those complete normative pages; truncation, exclusions and the fail-closed byte check are unchanged. After new synchronization, pathfinding, and rendering guidance reached 2,097,153 bytes, the 64 KiB increase retained complete current pages without excluding another owner; the hard cap and fail-closed behavior remain. It was raised from 1.5 MiB after the complete source-backed bundle reached 1,571,968 bytes and the required backup/recovery runbook could no longer fit; the review retained whole-document inclusion and provides bounded growth room instead of dropping another current owner. The current policy omits the redundant `tools` routing page after its complete Mapper/viewer/particle material gained dedicated owning manuals. It also omits `ScriptMethodsMap.md` after the generated `PUBLIC_API.md`, `GeneratedApiAndMetadata.md`, and generated native API index became the maintained contract and task routes. `BuildTools/README.md` is omitted after the generated CLI/helper/package references plus `Docs/en/how-to/build/index.md`, `Docs/en/reference/cmake-and-buildtools/pipeline.md`, and `Docs/en/how-to/release/packaging.md` became the maintained task and contract routes. All omitted pages remain discoverable through `llms.txt`, search, and the public manifest. The checked managed-arithmetic guide and migration notes share this reviewed bound; their integration introduces no further budget increase or document exclusion.
 5. The public manifest includes every public document, including visible placeholder routes, so clients can distinguish a current contract from a migration route. Internal plans and verification records are excluded.
 6. Document hashes use normalized UTF-8/LF content. Outputs contain no timestamp or checkout-specific commit hash, so Windows, Linux, local checks, and CI produce byte-identical files.
 7. Every public manifest document exposes a canonical HTML URL and a source-ref-pinned `markdown_url`/`raw_url` at GitHub's static raw-content endpoint. `llms.txt` selects the clean Markdown URL as the machine route and keeps canonical HTML as a secondary human route.

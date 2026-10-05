@@ -116,6 +116,25 @@ internal static class Program
             Console.WriteLine("ERRORS succeeded=" + failed.Succeeded + " count=" + failed.Errors.Count + " first=" + failed.Errors[0]);
             return;
         }
+        if (kind == "overflow") {
+            int caught = 0;
+            foreach (string source in new[] {
+                "int value = int.MaxValue; return value + 1;",
+                "int value = 32768; return (short)value;",
+                "int value = 128; return (sbyte)value;",
+            }) {
+                try {
+                    await Execute(Compile(source));
+                }
+                catch (OverflowException) {
+                    caught++;
+                }
+            }
+            object? wrapped = await Execute(Compile("int value = 32768; return unchecked((short)value);"));
+            object? valid = await Execute(Compile("int value = 32767; return (short)value;"));
+            Console.WriteLine("OVERFLOW caught=" + caught + " unchecked=" + wrapped + " valid=" + valid);
+            return;
+        }
         if (kind == "initializers") {
             object? array = await Execute(Compile("new[] { 1, 2 }"));
             object? record = await Execute(Compile("new { Value = 42 }"));
@@ -204,6 +223,10 @@ def test_compile_errors_point_at_the_fragment_line(compiler_probe):
     output = run_probe(compiler_probe, "errors")
     assert "ERRORS succeeded=False count=1 first=fragment(2," in output
     assert "CS0103" in output
+
+
+def test_fragments_check_arithmetic_and_narrowing_unless_explicitly_unchecked(compiler_probe):
+    assert "OVERFLOW caught=3 unchecked=-32768 valid=32767" in run_probe(compiler_probe, "overflow")
 
 
 def test_initializer_expressions_return_their_value(compiler_probe):

@@ -144,8 +144,8 @@
       "english_path": "Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
-      "source_sha256": "246f18c5d868492bb4ce41d037d7075a0fc219ae7d66add8a2e50d8d51d12750",
-      "source_bytes": 8829,
+      "source_sha256": "094d73f0b1e31896ea18c926c9e63383067da95b434970bde31f42417eddd8f7",
+      "source_bytes": 8992,
       "status": "current"
     },
     {
@@ -846,8 +846,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26",
-      "source_bytes": 51790,
+      "source_sha256": "3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af",
+      "source_bytes": 52738,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "e159d4137e456bed348d811ad5118ed567ac0c089600781da8bcf2242e3f770c",
-      "source_bytes": 12568,
+      "source_sha256": "8b598dcb09674872ed9691d80252bd662fad16e9c1267201ad4da26bd585f3cd",
+      "source_bytes": 14896,
       "status": "current"
     },
     {

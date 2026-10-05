@@ -173,6 +173,9 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 
 ## Style Notes
 
+- Managed projects and the runtime C# compiler enable overflow checking by default. Use a local
+  `unchecked` only for intentional wrapping or bit truncation; preserve checked diagnostics elsewhere.
+
 - Prefer existing engine idioms over new local abstractions.
 - Enum-entry descriptions use trailing declaration comments; value-layout field descriptions use `// field: ...` lines immediately before `ExportValueType`. These field lines are metadata, not multi-line prose; type-description prose retains the two-line limit. See [generated metadata](Docs/en/reference/metadata/index.md#source-owned-symbol-descriptions).
 - Use `struct` only for passive data aggregates: no user-defined constructors, methods, or hidden invariants. When behavior or construction logic belongs on the type, make it a `class` and apply full encapsulation with private state and a deliberate public interface. Do not mark such structs `final` — a plain data aggregate needs no inheritance guard, the keyword only complicates it.

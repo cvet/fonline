@@ -7,10 +7,45 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"e159d4137e456bed348d811ad5118ed567ac0c089600781da8bcf2242e3f770c"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"8b598dcb09674872ed9691d80252bd662fad16e9c1267201ad4da26bd585f3cd"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+## 2026.1.11-dev - 2026-10-06
+
+### Изменено
+
+- Managed script projects, managed host и принадлежащие движку C#-инструменты компилируются с
+  проверкой целочисленного переполнения. Runtime fragments и live patches используют тот же
+  профиль. Переполнение арифметики и сужающих приведений теперь вызывает `OverflowException`;
+  результаты, помещающиеся в диапазон, сохраняют смысл.
+- `ucolor` упаковывает маскированные компоненты цвета беззнаковой арифметикой, сохраняя все
+  прежние значения младших байтов при включённой проверке переполнения.
+
+### Миграция
+
+- Полное руководство по checked-арифметике и заметки о миграции помещаются в существующий
+  проверенный лимит full-context 2,228,224 байта. Потребители AI delivery должны соблюдать объявленный
+  `full_context.max_bytes`; включение целых документов и fail-closed validation остаются обязательны.
+- Пересоберите managed baker, пересоздайте проекты host и Server/Client/Mapper, скомпилируйте
+  каждую включённую managed-роль, запеките ресурсы и упакуйте новые assemblies. Скопированные
+  проекты C#-инструментов собирайте с `CheckForOverflowUnderflow=true`; проекты движка уже
+  задают его. Runtime fragments и patches, скомпилированные после обновления, получают checked
+  автоматически.
+- Проверьте намеренное целочисленное оборачивание и битовые приведения signed/unsigned.
+  Найдите в C#-исходниках умножения хешей и приведения упакованных RGBA; используйте локальный
+  `unchecked` только там, где оборачивание или усечение битов является контрактом алгоритма.
+  Например, замените оборачивающее присваивание хеша `hash *= prime` на
+  `hash = unchecked(hash * prime)`, а преобразование цвета вершины `(int)color.value` на
+  `unchecked((int)color.value)`. Обычная игровая арифметика сохраняет checked.
+- Проверьте `OverflowException` при переполнении сложения и сужающих приведений, оборачивание
+  в явном `unchecked` и неизменность прежних корректных цветов/хешей. NaN/infinity floating point
+  по-прежнему требуют явной проверки конечности; эта опция компилятора их не отвергает.
+- Конвертация persisted properties, saves, prototypes, native ABI, wire protocol и resource schema
+  не требуется. Ширина числового хранения и runtime compatibility markers этим обновлением не
+  меняются. Поставляйте новые managed assemblies вместе с соответствующей native-сборкой;
+  предыдущий пакет служит границей rollback. Старые API aliases и миграция данных не добавляются.
 
 ## 2026.1.10-dev - 2026-10-05
 

@@ -2,6 +2,23 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-06 - Complete the paused checked-arithmetic rebase
+
+- Resolve the paused replay of unpublished `2d77a62473` onto published master
+  `3a325a5b4c37a4d8f47557df4b0881aa0a0c8202`. Audit all 33 incoming paths:
+  baked-image output naming and its regression, private native-test caches,
+  client fixture guards and visibility, updater port selection, their owning
+  documentation and generated projections. These changes do not overlap the
+  checked-managed compilation sources; retain both sets of changes.
+- Preserve published `2026.1.10-dev` and every earlier bilingual entry. Prepare
+  checked arithmetic as `2026.1.11-dev`, dated 2026-10-06 UTC. Both integrations
+  independently reviewed the same 2,228,224-byte full-context bound; retain their
+  rationale without another increase, truncation or document exclusion.
+- Regenerate conflicted projections with their owners and check documentation
+  freshness and the exact publication step. Historical runtime results below
+  retain their original tested-source scope; this conflict-resolution pass does
+  not claim a fresh native build, runtime package or platform qualification.
+
 ## 2026-10-05 - TLA unpublished integration rebase
 
 - Fresh rebase checks pass: complete standalone documentation discovery (563 cases), version-parser fixtures (10 cases), external snippets (309 normative, 159 evidence, 183 parser checks), 410-entry aggregate validation and the zero-change seventeen-domain contract comparison. AI retrieval passes 28 tasks / 67 checks at 100% success and 0.930 MRR. Exact results are in the embedding project's ignored `Build/engine-rebase-20261005-doc-tests.log` and `Build/reconcile-engine-rebase-20261005.log`. Run the authoritative embedding `Verify :: All` chain after the rebase commit; its fresh result is recorded separately in `Build/verify-engine-rebase-20261005.log`.
@@ -53,11 +70,57 @@ This report records source-grounded documentation verification passes for the en
 - A separate ordinary-player smoke session reached normal server startup, registered `EngUpdate04`, loaded `repl1` and moved from `(84, 29)` to `(80, 28)`. The saved image shows the map and Fallout critters rendered, and the client exited normally with code 0. Server/client logs contain no warnings, errors, exceptions or script overruns. The smoke server was terminated during bounded cleanup; this is not evidence of its normal shutdown or long-session performance, and no dialog acceptance is claimed. The embedding project's ignored `Build/EngineUpdateSmoke-20261004-013548/` contains its report, image and logs. SHA-256 checks confirm the shared `Cache/LocalSettings.focfg` and `Cache/mapper_console.txt` remained unchanged through the native tests and smoke session.
 - Embedding-project build, script-harness and visible-client evidence is recorded separately from these documentation checks. No package, remote CI, platform-support expansion or production publication is claimed by this update.
 
+## 2026-10-05 - Final origin refresh for checked arithmetic
+
+- During final graph verification, shared origin/master advances to published
+  `b1e3fa58021a171877177a19c3d26127abf486be`. Rebase the single unpublished checked
+  arithmetic commit again. Audit all sixteen incoming paths: governance regression
+  checks, versioning instructions, bilingual release/evidence notes and generated
+  delivery. Retain published `2026.1.9-dev` and prepare checked arithmetic as
+  `2026.1.10-dev`. No executable source changes occur in this incoming range.
+- Regenerate affected projections and retain all upstream authoring/rebase policy
+  changes. Validate the exact new publication step, documentation freshness and
+  unchanged executable sources. Earlier origin snapshots below remain historical
+  evidence; the final branch is one ordinary local commit above this published tip.
+
 ## 2026-10-05 - Unpublished-history policy CI reconciliation
 
 - Baseline: published master `8697fcd9d9ebb592f73f1a9244b77142f9290e62` (`2026.1.8-dev`). Its documentation-governance test still required the old mandatory-merge wording; its Git-policy publication omitted the mandatory minor increment. Both failures reproduce locally. Preserve that published commit.
 - Require both locales to say that unpublished work is rebased even with an upstream, published tips remain ancestors, and merge is reserved for diverged published histories. Reconcile the remaining versioning-owner wording and add `2026.1.9-dev` with EN/RU change/migration notes. No API, setting, native behavior, ABI, resource, compatibility or persisted-data change is introduced.
 - Condense equivalent EN/RU versioning prose without removing any field, publication, migration, comparison or consumer requirement. All 103 fixed Python source commands in the authoritative documentation job plus the working-tree publication-version check pass on unchanged inputs: 104/104. They report 561 unittest cases, including one external PowerShell-parser skip. The seventeen-domain comparison has zero changes/required dispositions; aggregate validation passes 410 Markdown entries. Complete AI delivery covers 398 public documents / 2195418 bytes within the unchanged 2195456-byte limit. Refresh affected generated evidence after this record update; exact committed publication-range validation follows. No native/runtime, rendered-browser or remote new-head acceptance is claimed.
+
+## 2026-10-05 - Rebase unpublished checked arithmetic onto origin
+
+- Preserve published `8697fcd9d9ebb592f73f1a9244b77142f9290e62`. Consolidate only
+  unpublished `69ae2fb2ec` and `9a91d3569d` into one ordinary commit, retaining their
+  complete tree changes, then rebase existing `master` onto that exact origin tip.
+  No branch is created and no pushed commit is rewritten.
+- Audit all nine incoming paths from `fc1d69adb0`: English Engine authoring and the
+  unpublished-commit rebase policy, paired documentation-maintenance instructions,
+  snippets, localization, search and AI delivery. Incoming changes are documentation
+  only. Preserve their current English/Russian owners, `2026.1.8-dev` baseline and
+  checked arithmetic's next `2026.1.9-dev` step. Regenerate conflicted projections
+  with their owning tools; source qualification remains tied to identical executable
+  sources. The previous branch-placement entries below are historical evidence.
+
+## 2026-10-05 - Checked arithmetic on existing master
+
+- Correct the local branch placement by fast-forwarding existing `master` to published
+  `fc1d69adb08d4029ca16e08a3c30c55c9ee21bb9`, then merging the prepared unpublished
+  checked-arithmetic commit `69ae2fb2ec0fba297fc9cbac4b35728c2d01eedf` with published
+  master as the first parent. Neither published history is rewritten.
+- Audit the complete fifteen-path incoming range from `a9f129af36` to `fc1d69adb0`:
+  both README badge removals, the forward version repair, bilingual changelog/evidence
+  and generated snippet/translation/site/AI projections. No executable source differs
+  from the already qualified checked-arithmetic source. Preserve published `2026.1.8-dev`
+  notes and record checked arithmetic as the next `2026.1.9-dev` publication step.
+- Regenerate snippets, localization, site/search/routes, AI evaluation and delivery in
+  dependency order. Version/changelog validation passes for `2026.1.9-dev`; aggregate
+  documentation validation passes 410 Markdown entries. The six affected test modules
+  run 52 cases: 51 pass and one external PowerShell-parser case is skipped. A Git comparison
+  confirms all `Source/` and `BuildTools/` files match qualified `69ae2fb2ec` exactly.
+  Prior native/script qualification above remains evidence for identical executable
+  sources; no new package or native build with the final identity is claimed.
 
 ## 2026-10-05 - README update version repair
 
@@ -65,6 +128,57 @@ This report records source-grounded documentation verification passes for the en
 - CI job `111824311813` fails because this documentation-only master step retained `2026.1.7-dev`. Prepare the next ordinary forward step as `2026.1.8-dev` with dated bilingual change/migration notes. Published history is immutable: the historical failed step remains visible; validation of this repair starts at the actual published `3904dc3e84` baseline.
 - Regenerate affected snippets, localization, site/search/routes, AI evaluation and delivery in dependency order. All 563 standalone documentation tests and ten version fixtures pass. External snippet checks pass 309 normative, 159 evidence and 183 parser checks; aggregate validation passes 410 Markdown entries. The seventeen-domain contract diff has zero changes or required dispositions. All eight remaining standalone runner/package/protocol/CMake checks pass. The initial stale Russian changelog source hash is retained as failed evidence, then corrected after reviewing bilingual parity; the fresh complete attempt passes.
 - Recheck final generated delivery after this report update and validate the committed forward step against `3904dc3e84` before ordinary publication. Runtime qualification remains separate because only generated version/revision metadata changes. No native behavior, rendered browser acceptance or new-head remote CI result is claimed here.
+
+## 2026-10-05 - Checked managed arithmetic upstream integration
+
+- Replay the unpublished managed-overflow change from `fd4294cb866f5c32528e6301eefb2599fe79e57a`
+  onto published master `84efcfedaa46c1c10b12c93f79d9a6c2a1e83a4b`, retaining both published
+  Engine and embedding-project gitlink ancestry. Incoming sources/tests include movement leases,
+  delay estimation and reconciliation, physical-only mesh anchors, platform crash handling,
+  version metadata and source-owned API descriptions. Preserve their current bilingual owners
+  and migration records; no incoming feature is removed by the overflow change.
+- The old scripting document is a durable route after the upstream locale-layout migration.
+  Resolve its conflict by preserving that route and documenting the checked compiler profile in
+  both canonical Managed C# guides. Host/script project generation and the compiler option merge
+  without executable conflicts. Initially prepare `2026.1.7-dev` from published `2026.1.6-dev`, with explicit
+  wrapping/cast migration, unchanged storage/ABI/wire/resource contracts and bilingual notes.
+- Regenerate source/API/inventory models and snippet, translation, site, route, AI-evaluation and
+  delivery projections with their owners. The static contract comparison against master reports
+  zero changes across seventeen domains; checked arithmetic is a documented semantic diagnostic
+  change outside those declaration models. Raise the reviewed full-context delivery bound to
+  2,228,224 bytes to include the complete guide and migration instructions, retaining fail-closed
+  whole-document inclusion.
+- Fresh CoreScripts tests pass 36/36, compiler-fragment tests 7/7 and patch-point tests 12/12.
+  Version/migration tests pass 10/10; AI delivery tests pass 11/11. Aggregate documentation
+  validation passes for 410 Markdown entries. Snippets pass 309/309 normative examples,
+  159 evidence examples and all 183 external-parser checks.
+- The broad documentation run completes 563 cases with one skip, initially reporting two stale
+  budget assertions and five Windows temporary-path alias failures. Update both budget regressions
+  and the bilingual owning ADR; repeat all affected modules and both failing validator cases with
+  a canonical temporary directory. All 33 repeated cases pass; no assertion is relaxed and the
+  alias failures require no source change. The initial broad invocation is not reported as PASS.
+- Fresh Windows Auto native builds pass for unit tests, managed-script baker, server-headless,
+  server, client, Mapper and baker. The full native suite passes all 666234 assertions in 534
+  cases. Other-platform builds, published artifacts, rendered-site acceptance and remote CI
+  remain separate qualifications; embedding-project resource/gameplay acceptance belongs to its
+  integration plan.
+- A final remote-tip check discovers published `a9f129af36ecceafbe0700e27a7bc10269e25c60`
+  after the preceding qualification. Rebase the unpublished change again, preserve the incoming
+  timestamp-range fix, both new LinkDelay test sections and bilingual networking/changelog owners.
+  Rejecting sender timestamps precedes sample mutation; both returned lateness paths clamp to the
+  representable native clock range. Preserve its `2026.1.7-dev` record and prepare our next step
+  as `2026.1.8-dev`. Authored conflicts retain both histories; generated conflicts are regenerated.
+  Static declarations, managed sources and ABI remain unchanged by this refresh. Version fixtures
+  pass 10/10, affected documentation owners/delivery/governance pass 20/20, aggregate validation
+  passes 410 entries and the final seventeen-domain comparison against the new master is empty.
+- On the latest base, the complete Windows native run executes 534 cases and 666244 assertions:
+  533 cases pass; three unchanged sleep-duration bounds fail in Threading during parallel build
+  and managed compilation. After native builds finish, repeat that case without changing its
+  assertions: all eleven checks pass, exit 0. The broad invocation itself is not reported as PASS.
+  Server-headless, server, client, Mapper and Baker builds pass. The overlapping standalone
+  managed compilation initially holds the managed-baker EXE and causes a linker failure. After
+  that process exits successfully, the linker retry passes with the current `2026.1.8-dev`
+  identity. All seven required Windows native targets are built successfully.
 
 ## 2026-10-05 - Representable link-delay timestamps
 

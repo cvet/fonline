@@ -79,6 +79,20 @@ The generated project enables nullable analysis, warnings as errors, Engine code
 
 Unsupported type or member shapes fail baking with `ManagedScriptBakerException`; the baker must not emit a placeholder that fails only when gameplay reaches it.
 
+### Compiler checks
+
+Generated script projects always set `Nullable=enable`, `CheckForOverflowUnderflow=true`,
+`TreatWarningsAsErrors=true` and `EnforceCodeStyleInBuild=true`. The managed host and Engine-owned
+C# projects also enable overflow checking. Optional analysis-level, analysis-mode, analyzer and
+additional-file settings extend the script project's baseline.
+
+Integer arithmetic and numeric narrowing outside the destination range throw `OverflowException`.
+The runtime compiler uses the same checked default for fragments and live patches. Keep `unchecked`
+local to expressions whose intended contract is wrapping or bit truncation, such as a hash or a
+packed RGBA bit pattern. The `ucolor` constructor packs masked bytes directly in unsigned arithmetic,
+preserving the low byte of each component. Floating-point arithmetic still follows IEEE 754 and may
+produce NaN or infinity; validate finiteness at the relevant invariant boundary.
+
 Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. They are written under the baked pack's `Assemblies/<Target>Assemblies/` tree. Helpers and dependencies remain next to the entry assembly.
 
 When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engine-owned Mono.Cecil weaver on the intermediate server and client assemblies after compilation, before the later copy/package steps. The weaver and its sources participate in incremental bake/build inputs, so changing them recompiles and reweaves the scripts. An already woven assembly is left alone. The weaver is built as a tool, not shipped as a script dependency.

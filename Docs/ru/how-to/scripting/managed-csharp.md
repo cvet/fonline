@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"6c6bc6e558cd7fdbeb3a1919181669878c7e3007749527ac91f2b67044d41e26"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -78,6 +78,21 @@ Generated project включает nullable analysis, warnings as errors, сти
 - native ref-type wrappers с явным управлением ссылкой, когда borrow живёт дольше вызова.
 
 Неподдерживаемая форма type/member останавливает baking через `ManagedScriptBakerException`; baker не должен создавать placeholder, который упадёт только при выполнении gameplay.
+
+### Проверки компилятора
+
+Generated script projects всегда задают `Nullable=enable`, `CheckForOverflowUnderflow=true`,
+`TreatWarningsAsErrors=true` и `EnforceCodeStyleInBuild=true`. Managed host и принадлежащие движку
+C#-проекты также включают проверку переполнения. Необязательные настройки analysis level/mode,
+analyzers и additional files расширяют базовый профиль script project.
+
+Целочисленная арифметика и сужающие приведения за пределами диапазона назначения бросают
+`OverflowException`. Runtime compiler использует тот же checked по умолчанию для fragments и live
+patches. Ограничивайте `unchecked` выражениями, чей контракт намеренно включает оборачивание или
+усечение битов, например хеш или упакованный битовый шаблон RGBA. Конструктор `ucolor` упаковывает
+маскированные байты сразу беззнаковой арифметикой, сохраняя младший байт каждого компонента.
+Арифметика floating point сохраняет правила IEEE 754 и может давать NaN или infinity; проверяйте
+конечность числа на соответствующей границе инварианта.
 
 Compiled entry assemblies зависят от target, например `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. Они записываются в `Assemblies/<Target>Assemblies/` внутри baked pack. Helpers и dependencies остаются рядом с entry assembly.
 

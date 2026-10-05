@@ -12,6 +12,38 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.11-dev - 2026-10-06
+
+### Changed
+
+- Managed script projects, the managed host and Engine-owned C# tools compile with integer overflow
+  checking enabled. Runtime fragments and live patches use the same default. Overflowing arithmetic
+  and numeric narrowing now raise `OverflowException`; representable results retain their meaning.
+- `ucolor` packs masked color components in unsigned arithmetic, preserving all existing low-byte
+  values with overflow checking enabled.
+
+### Migration
+
+- The complete checked-arithmetic guide and migration notes fit within the existing reviewed
+  full-context limit of 2,228,224 bytes. AI delivery consumers must honor the declared
+  `full_context.max_bytes`; whole-document inclusion and fail-closed validation remain required.
+- Rebuild the managed baker, regenerate the host and Server/Client/Mapper projects, compile every
+  enabled managed role, rebake resources and package the rebuilt assemblies. Rebuild copied C# tool
+  projects with `CheckForOverflowUnderflow=true`; the Engine projects already declare it. Runtime
+  fragments and patches compiled after the update inherit checked arithmetic automatically.
+- Review intentional integer wrapping and signed/unsigned bit reinterpretations. Search C# sources
+  for hash multiplications and casts of packed RGBA values; use expression-local `unchecked` only
+  where wrapping or bit truncation is the algorithm's contract. For example, change a wrapping hash
+  assignment `hash *= prime` to `hash = unchecked(hash * prime)`, and a packed vertex-color conversion
+  `(int)color.value` to `unchecked((int)color.value)`. Keep ordinary gameplay arithmetic checked.
+- Verify that overflowing addition and narrowing throw `OverflowException`, explicit `unchecked`
+  still wraps, and existing valid color/hash outputs remain unchanged. Floating-point NaN/infinity
+  still require explicit finite-value checks; this compiler option does not reject them.
+- No persisted-property, save, prototype, native ABI, wire protocol or resource-schema conversion is
+  required. Numeric storage widths and runtime compatibility markers are unchanged by this update.
+  Deliver the rebuilt managed assemblies with their matching native build; retain the previous
+  package as the rollback boundary. No old API alias or data migration is introduced.
+
 ## 2026.1.10-dev - 2026-10-05
 
 ### Fixed

@@ -975,6 +975,7 @@ TEST_CASE("ManagedScriptBaker")
     // and the analyzer configuration file as an AdditionalFiles item beside them
     CHECK(unified_project.find("<EnableNETAnalyzers>true</EnableNETAnalyzers>") != string::npos);
     CHECK(unified_project.find("<AnalysisLevel>10.0</AnalysisLevel>") != string::npos);
+    CHECK(unified_project.find("<CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>") != string::npos);
     CHECK(unified_project.find("<AnalysisMode>All</AnalysisMode>") != string::npos);
     CHECK(unified_project.find("<PackageReference Include=\"Unit.Analyzer\" Version=\"1.2.3\" PrivateAssets=\"all\" />") != string::npos);
     CHECK(unified_project.find("<PackageReference Include=\"Unit.Banned.Analyzer\" Version=\"4.5.6\" PrivateAssets=\"all\" />") != string::npos);
@@ -995,6 +996,7 @@ TEST_CASE("ManagedScriptBaker")
     CHECK(managed_host_project.find("<DebugType>embedded</DebugType>") != string::npos);
     // The profile covers the script project only; the host compiles engine-owned source
     CHECK(managed_host_project.find("<AnalysisMode>") == string::npos);
+    CHECK(managed_host_project.find("<CheckForOverflowUnderflow>true</CheckForOverflowUnderflow>") != string::npos);
     CHECK(managed_host_project.find("<PackageReference") == string::npos);
 
     string server_enums = ReadTextFile(script_dir / "ServerEnums.gen.cs");

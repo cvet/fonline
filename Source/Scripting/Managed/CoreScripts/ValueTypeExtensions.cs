@@ -234,7 +234,7 @@ public partial struct ucolor
 {
     public ucolor(int r, int g, int b, int a = 255)
     {
-        value = (uint)((r & 0xFF) | ((g & 0xFF) << 8) | ((b & 0xFF) << 16) | ((a & 0xFF) << 24));
+        value = (uint)(r & 0xFF) | ((uint)(g & 0xFF) << 8) | ((uint)(b & 0xFF) << 16) | ((uint)(a & 0xFF) << 24);
     }
 
     // red/green/blue/alpha are read/write (AngelScript registers them as direct-field properties on ucolor and
