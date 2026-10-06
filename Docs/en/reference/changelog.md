@@ -12,6 +12,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.13-dev - 2026-10-06
+
+### Fixed
+
+- Distinguish managed compilation staging from published assembly resources in the Managed C# guide and startup troubleshooting. The baker, packager and backend use the lowercase role directories documented here.
+
+### Migration
+
+- No project caller, configuration or data conversion is required: this update corrects documentation of existing resource locations. Keep published DLLs in `Assemblies/Assemblies-<target>/` (`server`, `client`, `mapper`); `Assemblies/<Target>Assemblies/` holds MSBuild intermediates. Existing packages remain valid. API, settings, network compatibility `0.0.68`, ABI, resource schemas and saves retain their current meanings. Reconfigure and rebuild native version/revision metadata when adopting `2026.1.13-dev`.
+- Regenerate documentation snippets, translation state, site/search/routes, AI evaluation and AI delivery after integrating the corrected guide and this dated entry.
+
 ## 2026.1.12-dev - 2026-10-06
 
 ### Fixed

@@ -846,8 +846,8 @@
       "english_path": "Docs/en/how-to/scripting/managed-csharp.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/scripting/managed-csharp.md",
-      "source_sha256": "3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af",
-      "source_bytes": 52738,
+      "source_sha256": "464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08",
+      "source_bytes": 53024,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "3c69a12ed28148ee1dd64a1bc87de19c30c2a7cbbfc0c75c4304b3863ea6c977",
-      "source_bytes": 16143,
+      "source_sha256": "b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897",
+      "source_bytes": 17096,
       "status": "current"
     },
     {

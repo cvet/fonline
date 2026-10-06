@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.12-dev (CalVer from VERSION)
+Engine version: 2026.1.13-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 3c69a12ed28148ee1dd64a1bc87de19c30c2a7cbbfc0c75c4304b3863ea6c977
+Content SHA-256: b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897
 
 ---
 layout: default
@@ -2016,6 +2016,17 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.13-dev - 2026-10-06
+
+### Fixed
+
+- Distinguish managed compilation staging from published assembly resources in the Managed C# guide and startup troubleshooting. The baker, packager and backend use the lowercase role directories documented here.
+
+### Migration
+
+- No project caller, configuration or data conversion is required: this update corrects documentation of existing resource locations. Keep published DLLs in `Assemblies/Assemblies-<target>/` (`server`, `client`, `mapper`); `Assemblies/<Target>Assemblies/` holds MSBuild intermediates. Existing packages remain valid. API, settings, network compatibility `0.0.68`, ABI, resource schemas and saves retain their current meanings. Reconfigure and rebuild native version/revision metadata when adopting `2026.1.13-dev`.
+- Regenerate documentation snippets, translation state, site/search/routes, AI evaluation and AI delivery after integrating the corrected guide and this dated entry.
 
 ## 2026.1.12-dev - 2026-10-06
 
@@ -3921,7 +3932,7 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af
+Content SHA-256: 464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08
 
 ---
 layout: default
@@ -4018,7 +4029,7 @@ packed RGBA bit pattern. The `ucolor` constructor packs masked bytes directly in
 preserving the low byte of each component. Floating-point arithmetic still follows IEEE 754 and may
 produce NaN or infinity; validate finiteness at the relevant invariant boundary.
 
-Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. They are written under the baked pack's `Assemblies/<Target>Assemblies/` tree. Helpers and dependencies remain next to the entry assembly.
+Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. MSBuild writes intermediate files under `Assemblies/<Target>Assemblies/`. The baker publishes the entry assembly and its sibling dependencies under the pack's `Assemblies/Assemblies-<target>/` resources, where the target is lowercase: `server`, `client`, or `mapper`. Runtime lookup and packaging use these published resources; the normal baker removes intermediate files during outdated-output cleanup.
 
 When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engine-owned Mono.Cecil weaver on the intermediate server and client assemblies after compilation, before the later copy/package steps. The weaver and its sources participate in incremental bake/build inputs, so changing them recompiles and reweaves the scripts. An already woven assembly is left alone. The weaver is built as a tool, not shipped as a script dependency.
 
@@ -4230,7 +4241,7 @@ First diagnosis routes:
 | --- | --- |
 | Generated type or member is missing | Metadata input, target selection, and `ManagedScriptBaker` diagnostic. |
 | Build sees stale API | Generated directory selection and `CompileManagedScripts` dependency. |
-| Assembly builds but runtime loads none | Baked pack selection and `Assemblies/<Target>Assemblies/`. |
+| Assembly builds but runtime loads none | Baked pack selection and published `Assemblies/Assemblies-<target>/` resources. |
 | Works natively but not on Web/Android | Target-specific runtime payload and platform build, not the host SDK output. |
 | Continuation never resumes | Captured `ScriptSynchronizationContext`, frame pump, and forbidden ThreadPool escape. |
 | Native API fails after `await` | Entity liveness and reacquired synchronization cover. |

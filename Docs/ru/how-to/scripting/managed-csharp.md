@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"3dcd74d8b2fba90add8275002c334de57104c0bd53f46bfb324b3cc0e81880af"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -94,7 +94,7 @@ patches. Ограничивайте `unchecked` выражениями, чей �
 Арифметика floating point сохраняет правила IEEE 754 и может давать NaN или infinity; проверяйте
 конечность числа на соответствующей границе инварианта.
 
-Compiled entry assemblies зависят от target, например `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. Они записываются в `Assemblies/<Target>Assemblies/` внутри baked pack. Helpers и dependencies остаются рядом с entry assembly.
+Основные сборки зависят от роли: например, `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. MSBuild записывает промежуточные файлы в `Assemblies/<Target>Assemblies/`. Baker публикует основную сборку и соседние зависимости в ресурсах пакета `Assemblies/Assemblies-<target>/`, где роль записывается строчными буквами: `server`, `client` или `mapper`. Загрузка при запуске и упаковка используют опубликованные ресурсы; обычный baker удаляет промежуточные файлы при очистке устаревших выходов.
 
 При заданном `ManagedScript.PatchPointWeaver` generated build после компиляции запускает принадлежащий движку Mono.Cecil weaver на промежуточных серверной и клиентской assemblies, до последующего копирования и упаковки. Проект weaver и его исходники входят во входы incremental bake/build: их изменение перекомпилирует и заново обрабатывает скрипты. Уже обработанная assembly не меняется. Weaver собирается как инструмент и не попадает в зависимости скриптов.
 
@@ -307,7 +307,7 @@ Managed backend передаёт фиксированный native context, mana
 | --- | --- |
 | Нет generated type/member | Metadata input, target selection и diagnostic `ManagedScriptBaker`. |
 | Build видит старый API | Выбор generated directory и dependency `CompileManagedScripts`. |
-| Assembly собрана, но runtime ничего не загрузил | Baked pack и `Assemblies/<Target>Assemblies/`. |
+| Assembly собрана, но runtime ничего не загрузил | Выбор baked pack и опубликованные ресурсы `Assemblies/Assemblies-<target>/`. |
 | Работает native, но не Web/Android | Target-specific runtime payload и platform build, а не output host SDK. |
 | Continuation не продолжается | Захваченный `ScriptSynchronizationContext`, frame pump и уход в ThreadPool. |
 | Native API падает после `await` | Liveness entity и заново полученный synchronization cover. |
