@@ -80,9 +80,7 @@ namespace BakerTests
         return SecureChannelIdentity {ParseSecureChannelKey(TEST_CHANNEL_SECRET_KEY, "Test")};
     }
 
-    // A client or mapper engine keeps its cache on disk: the local config a script saves, the console history, the
-    // login. Relative to the working directory that is the cache of the project the tests run beside, which a
-    // test run would overwrite, so every test process gets a directory of its own and removes it when it ends
+    // Isolate persisted client/mapper settings and history from the embedding project's cache
     inline auto GetTestCacheDir() -> string
     {
         struct TestCacheDir

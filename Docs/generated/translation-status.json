@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "973960afa70a184d5e99d40087f0c2b5309b723ad37441cbaecc091092b3ac1c",
-      "source_bytes": 31308,
+      "source_sha256": "acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017",
+      "source_bytes": 31724,
       "status": "current"
     },
     {
@@ -1145,8 +1145,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "8b598dcb09674872ed9691d80252bd662fad16e9c1267201ad4da26bd585f3cd",
-      "source_bytes": 14896,
+      "source_sha256": "3c69a12ed28148ee1dd64a1bc87de19c30c2a7cbbfc0c75c4304b3863ea6c977",
+      "source_bytes": 16143,
       "status": "current"
     },
     {

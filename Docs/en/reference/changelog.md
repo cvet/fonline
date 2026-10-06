@@ -12,6 +12,19 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.12-dev - 2026-10-06
+
+### Fixed
+
+- Update the macro-only generated-configuration regression to check the Engine version and revision introduced by the versioning contract. Use fixed fixture identities so the test does not depend on the current checkout.
+- Run the existing codegen/default-argument regressions in the `engine-update` CI job with an explicit pytest dependency.
+- Shorten the private test-cache explanation to the Engine comment standard; cache ownership and cleanup are unchanged.
+
+### Migration
+
+- No project caller or data conversion is required. Generated macros retain their current names, values and ordering; API, settings, network compatibility `0.0.68`, ABI, resource schemas, saves and package behavior are unchanged. Reconfigure and rebuild native version/revision metadata for this Engine update.
+- The Ubuntu `engine-update` job installs `python3-pytest` and executes `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` before publication-range validation. Local source-only checks need pytest; native and embedding-project validation remain required for runtime changes. Regenerate documentation snippets, translation state, site/search/routes and AI delivery when integrating this revision.
+
 ## 2026.1.11-dev - 2026-10-06
 
 ### Changed

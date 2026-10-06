@@ -46,6 +46,13 @@ The client/server login fixture sets the controlled critter's `LookDistance` to 
 
 ## Running tests
 
+The `engine-update` CI job also runs
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` with
+`python3-pytest`. These source-only regressions check generated configuration,
+default arguments and binding metadata. The macro-only configuration fixture
+uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
+`FO_ENGINE_REVISION` independently of the checkout's current identity.
+
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 
 The repeated-unload storage comparison warms one complete map load/unload

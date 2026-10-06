@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"973960afa70a184d5e99d40087f0c2b5309b723ad37441cbaecc091092b3ac1c"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -76,6 +76,13 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
 
 ## Запуск тестов
+
+Задача CI `engine-update` также выполняет
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с
+`python3-pytest`. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию и метаданные привязок. Заготовка конфигурации только из
+макросов использует фиксированные версию и ревизию Engine и проверяет
+`FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
 Сравнение памяти при повторных unload сначала прогревает один полный цикл
 загрузки/выгрузки карты, затем читает счётчик committed active pages rpmalloc.

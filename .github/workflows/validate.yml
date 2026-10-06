@@ -32,6 +32,12 @@ jobs:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
+    - name: Install codegen regression dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y python3-pytest
+    - name: Check generated configuration and default arguments
+      run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:
