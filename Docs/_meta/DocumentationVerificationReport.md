@@ -2,6 +2,13 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-06 - Unit-test cache ownership reconciliation
+
+- Forward update from `4e1e0585efffb8c0e06dad6290490e7898ddc696` to `2026.1.12-dev`. Encapsulate the existing process-private cache helper as a local class and keep its unchanged path and process-exit cleanup contract. The ownership comment meets the two-line rule. No entity-unload change is included.
+- Regenerate all 31 canonical documentation owners in dependency order. All 108 workflow-derived documentation, CMake, contract-diff and version commands pass against that baseline. The 17 generated contract domains have no changed public meaning and require no dispositions. English/Russian change and migration records agree.
+- Reconfigure the standalone AngelScript qualification fixture (4.68 s), build its native unit target (424.92 s, no compiler warnings), and run the focused baker, updater, client/server, hit-test, movement, networking and lifecycle selection (65.91 s). JUnit contains 271 entries and 88420 assertions, zero errors/failures/skips. Freeze Engine runtime-source delta and fixture SHA256 throughout execution; retain the exact binary digest with the standalone acceptance evidence.
+- These checks qualify the changed native test helper and preserved selected runtime contracts. They do not claim the full native suite, Darwin, a rendered embedding client or resolution of the original-NPC unload defect. Earlier acceptance records remain historical.
+
 ## 2026-10-06 - Retained-history image and fixture integration
 
 - Integrate retained `ee324e195564ffb0c8d13e6a0aef7a157e240c97` and published `3a325a5b4c37a4d8f47557df4b0881aa0a0c8202` by ordinary merge under the embedding owner's explicit immutable-history instruction. Common base: `b1e3fa58021a171877177a19c3d26127abf486be`. Audit the entire one-commit incoming source/test/documentation range; retain both earlier reconciliation records.

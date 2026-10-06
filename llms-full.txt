@@ -5,7 +5,7 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.11-dev (CalVer from VERSION)
+Engine version: 2026.1.12-dev (CalVer from VERSION)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
@@ -2001,7 +2001,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: af0e8d9bd0e715d9a367027808be1315d03443e26e9e4a0637489841b632c56a
+Content SHA-256: 8c4be6dad1ea73dadc56179d19aee1a824478399d75b57f29fc7fd3ac3be3bd2
 
 ---
 layout: default
@@ -2016,6 +2016,17 @@ permalink: /Docs/en/reference/changelog.html
 FOnline change/migration notes in English and Russian. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns development identity; [versioning](../how-to/release/versioning.md) defines CalVer, release dates, immutable tags and compatibility boundaries.
 
 ## Unreleased
+
+## 2026.1.12-dev - 2026-10-06
+
+### Changed
+
+- Encapsulate the process-private unit-test cache directory in a local class with private path storage; shorten its ownership comment to the Engine comment contract. Cache selection and process-exit cleanup retain their existing behavior.
+
+### Migration
+
+- Reconfigure and rebuild Engine revision/version metadata and the unit-test target after `4e1e0585efffb8c0e06dad6290490e7898ddc696`. `BakerTests::GetTestCacheDir()` retains its `string` result, temporary process-specific path, cleanup ownership and all callers. No project source/configuration/content changes or rebake are required by this test-helper change.
+- API, settings, protocol compatibility `0.0.68`, ABI, resource schemas and saved data remain unchanged; no database conversion or mixed-version restriction is introduced. Previous version migrations still apply in order.
 
 ## 2026.1.11-dev - 2026-10-06
 

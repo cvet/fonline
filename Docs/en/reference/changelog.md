@@ -12,6 +12,17 @@ FOnline change/migration notes in English and Russian. [VERSION](https://github.
 
 ## Unreleased
 
+## 2026.1.12-dev - 2026-10-06
+
+### Changed
+
+- Encapsulate the process-private unit-test cache directory in a local class with private path storage; shorten its ownership comment to the Engine comment contract. Cache selection and process-exit cleanup retain their existing behavior.
+
+### Migration
+
+- Reconfigure and rebuild Engine revision/version metadata and the unit-test target after `4e1e0585efffb8c0e06dad6290490e7898ddc696`. `BakerTests::GetTestCacheDir()` retains its `string` result, temporary process-specific path, cleanup ownership and all callers. No project source/configuration/content changes or rebake are required by this test-helper change.
+- API, settings, protocol compatibility `0.0.68`, ABI, resource schemas and saved data remain unchanged; no database conversion or mixed-version restriction is introduced. Previous version migrations still apply in order.
+
 ## 2026.1.11-dev - 2026-10-06
 
 ### Changed
