@@ -191,8 +191,22 @@ void ImageBaker::BakeFiles(const FileCollection& files, string_view target_path)
                 }
                 current_sprite_sources.emplace(file_header.GetPath());
                 maximum_source_write_time = std::max(maximum_source_write_time, file_header.GetWriteTime());
-                if (scan_mode && _context->BakeChecker && !_context->BakeChecker(file_header.GetPath(), file_header.GetWriteTime())) {
-                    continue;
+                // The checker is handed the resource this source bakes to: what it registers is the output the master
+                // baker keeps, and a critter frame registered under its source spelling is renamed back to it
+                if (scan_mode && _context->BakeChecker) {
+                    string resource_path {file_header.GetPath()};
+                    bool is_critter = strvex(resource_path).starts_with("art/critters/");
+
+                    if (file_ext == "frm" && is_critter) {
+                        resource_path = strex(resource_path).lower();
+                    }
+                    else if (file_ext == "fr0") {
+                        resource_path = is_critter ? strex("{}.fofrm", strex(resource_path).erase_file_extension().lower()).str() : strex("{}.frm", strvex(resource_path).erase_file_extension()).str();
+                    }
+
+                    if (!_context->BakeChecker(resource_path, file_header.GetWriteTime())) {
+                        continue;
+                    }
                 }
 
                 files_to_bake.emplace_back(File::Load(file_header), loader);
@@ -794,9 +808,7 @@ auto ImageBaker::LoadFrm(string_view fname, string_view opt, FileReader reader, 
     collection.SequenceSize = frm_count;
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
-    if (strvex(fname).starts_with("art/critters/")) {
-        collection.NewName = strex(fname).lower();
-    }
+    collection.NewName = strvex(fname).starts_with("art/critters/") ? strex(fname).lower().str() : string(fname);
 
     // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20
     uint32_t anim_pix_type = 0;
@@ -1047,10 +1059,10 @@ auto ImageBaker::LoadFrX(string_view fname, string_view opt, FileReader reader, 
     collection.AnimTicks = frm_fps != 0 ? 1000 / frm_fps * frm_count : 0;
 
     if (strvex(fname).starts_with("art/critters/")) {
-        collection.NewName = strex("{}.{}", strex(fname).erase_file_extension().lower(), "fofrm");
+        collection.NewName = strex("{}.fofrm", strex(fname).erase_file_extension().lower());
     }
     else {
-        collection.NewName = strex("{}.{}", strvex(fname).erase_file_extension(), "frm");
+        collection.NewName = strex("{}.frm", strvex(fname).erase_file_extension());
     }
 
     // Animated palette flags: Slime 0x01, Monitors 0x02, FireSlow 0x04, FireFast 0x08, Shoreline 0x10, BlinkingRed 0x20

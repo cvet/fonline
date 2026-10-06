@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"831b0851f5778ed8cf4578b7afb5131af23002a1e283d0f280cbbcb61afb9601"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"973960afa70a184d5e99d40087f0c2b5309b723ad37441cbaecc091092b3ac1c"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -50,6 +50,16 @@ permalink: /Docs/ru/contributing/testing/
 `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`,
 `GenerateCodeCoverageReport`, `AnalyzeCodeCoverage`. Префикс генерирует проект,
 он не является универсальным именем движка.
+
+Тесты отдельных возможностей используют те же compile-time guards, что и их
+runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует одновременно
+`FO_ENABLE_3D` и `FO_ANGELSCRIPT_SCRIPTING`; проект только с 2D продолжает
+собирать и выполнять остальные client, atlas и hit-testing suites.
+
+Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
+равным 20 до входа в мир. Проверки движения и синхронизации предметов на земле
+требуют такого радиуса, когда visibility hooks проекта проверяют расстояние:
+нулевое значение закономерно скрывает проверяемые предметы после движения.
 
 Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
 или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает

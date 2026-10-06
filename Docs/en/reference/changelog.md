@@ -12,15 +12,37 @@ FOnline change/migration notes in English and Russian. [VERSION](https://github.
 
 ## Unreleased
 
+## 2026.1.11-dev - 2026-10-06
+
+### Changed
+
+- Merge retained Engine history `ee324e195564ffb0c8d13e6a0aef7a157e240c97` with published `3a325a5b4c37a4d8f47557df4b0881aa0a0c8202`; preserve both ancestors and their acceptance records. Reconcile generated references and complete documentation delivery.
+
+### Migration
+
+- Reconfigure and rebuild version/revision metadata. The merge introduces no additional API, settings, protocol, ABI or saved-data conversion; compatibility remains `0.0.68`.
+- When upgrading from the retained parent, rebake legacy critter `.frm` and directional `.fr0` resources: scan registration now uses the actual lowercase `.frm` or `.fofrm` output path. Non-critter directional frames retain their `.frm` output. The image schema and frame semantics remain unchanged.
+- Complete AI delivery uses the published 2228224-byte limit. Engine unit fixtures use process-private disk caches, probe available updater ports, require the 3D/AngelScript hit-test types and explicitly establish ground-item visibility. Earlier version migrations still apply in order.
+
 ## 2026.1.10-dev - 2026-10-05
 
 ### Changed
 
 - Merge retained documentation reconciliation and refresh derived references.
 
+### Fixed
+
+- Rebase unpublished TLA integration fixes onto published master `b1e3fa58021a171877177a19c3d26127abf486be`. Consolidate the prior merge-only changes into one local step; preserve the upstream Git-policy, version and bilingual release notes.
+- Retain actual lowercase baked image resource names and frame-composition regression coverage, process-isolated test caches, the 2D/AngelScript fixture guard and ground-item visibility precondition. Client-updater fixtures probe for an unused local TCP port instead of assuming a candidate is free.
+- Reconcile the owning image/baking/testing guides and generated documentation. Complete AI delivery retains the reviewed 2228224-byte bound needed by these local explanations.
+
 ### Migration
 
 - No new API, setting, protocol, resource or saved-data changes. Reconfigure/rebuild version metadata. Upgrades from `d24190c9d0` also require the coordinated `2026.1.5-dev` movement migration below.
+
+
+- Reconfigure and rebuild native clients, servers and version/revision metadata together. No TLA caller, setting, wire, ABI, resource schema or save conversion is introduced by this rebase; compatibility remains `0.0.68`. The natively tested source is unchanged. When upgrading from an earlier published engine, apply the preceding timestamp and movement migrations in order.
+- Delivery consumers must honor the full-context `max_bytes` increase from 2195456 to 2228224 bytes against this published baseline. Whole-document membership and fail-closed budget checks remain required. Test processes use private caches; the user's local settings and mapper history remain intact.
 
 ## 2026.1.9-dev - 2026-10-05
 

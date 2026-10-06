@@ -90,6 +90,8 @@ namespace ClientServerIntegrationServer
         // Handing the session a controlled critter drives the client through the whole world-entry protocol:
         // load map, add critter, initial property sync
         Critter cr = Game.CreateCritter("UnitTestSharedCritter".hstr(), true);
+        // Keep the ground-item probes visible after movement, including in projects with distance-based visibility hooks
+        cr.LookDistance = 20;
         loggedPlayer.SwitchCritter(cr);
         SwitchedCritters++;
 

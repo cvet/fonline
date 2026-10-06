@@ -44,8 +44,25 @@ FO_BEGIN_NAMESPACE
 
 namespace TestClientUpdater
 {
-    // Deliberately away from the ports the other suites bind: this suite wants one nobody listens on
+    // Candidates stay away from other suites; editors and unrelated processes may still own one
     static std::atomic_uint16_t OfflineServerPort {49500};
+
+    static auto FindUnusedServerPort() -> uint16_t
+    {
+        REQUIRE(net_sockets::startup());
+
+        tcp_server probe;
+
+        for (int32_t attempt = 0;; attempt++) {
+            REQUIRE(attempt < 64);
+            uint16_t port = OfflineServerPort.fetch_add(1);
+
+            if (probe.listen("127.0.0.1", port, 1)) {
+                probe.close();
+                return port;
+            }
+        }
+    }
 
     static auto MakeUpdaterClientSettings(uint16_t port) -> GlobalSettings
     {
@@ -112,7 +129,7 @@ TEST_CASE("ClientUpdaterMeetsAnOfflineServerAsAConnectionFailure")
 {
     using namespace TestClientUpdater;
 
-    uint16_t port = OfflineServerPort.fetch_add(1);
+    uint16_t port = FindUnusedServerPort();
     GlobalSettings client_settings = MakeUpdaterClientSettings(port);
     string bake_output = PrepareUpdaterBakeOutput();
     auto cleanup_bake_output = scope_exit([&bake_output]() noexcept { fs::remove_dir_tree(bake_output); });
@@ -135,7 +152,7 @@ TEST_CASE("ClientUpdaterGivesUpOnAServerThatStopsAnswering")
     using namespace TestClientUpdater;
 
     REQUIRE(net_sockets::startup());
-    uint16_t port = OfflineServerPort.fetch_add(1);
+    uint16_t port = FindUnusedServerPort();
 
     // The system accepts the connection and nothing ever serves it, which is what a stopped or hung server, or a peer
     // gone from the network, looks like from the client
@@ -159,7 +176,7 @@ TEST_CASE("ClientUpdaterWaitsForAnotherClientsUpdate")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
     string install = PrepareUpdaterBakeOutput();
     string writable = strex("{}_writable", install).str();
     auto cleanup = scope_exit([&]() noexcept {
@@ -215,7 +232,7 @@ TEST_CASE("ClientUpdaterRecoversNestedBackupsBeforeConnecting")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
     string install = PrepareUpdaterBakeOutput();
     string writable = strex("{}_writable", install).str();
     auto cleanup = scope_exit([&]() noexcept {
@@ -257,7 +274,7 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
 {
     using namespace TestClientUpdater;
 
-    GlobalSettings settings = MakeUpdaterClientSettings(OfflineServerPort.fetch_add(1));
+    GlobalSettings settings = MakeUpdaterClientSettings(FindUnusedServerPort());
     string install = PrepareUpdaterBakeOutput();
     string writable = strex("{}_writable", install).str();
     string remote = strex("{}_remote", install).str();

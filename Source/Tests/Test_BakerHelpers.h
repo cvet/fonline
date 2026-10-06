@@ -80,9 +80,34 @@ namespace BakerTests
         return SecureChannelIdentity {ParseSecureChannelKey(TEST_CHANNEL_SECRET_KEY, "Test")};
     }
 
+    // A client or mapper engine keeps its cache on disk: the local config a script saves, the console history, the
+    // login. Relative to the working directory that is the cache of the project the tests run beside, which a
+    // test run would overwrite, so every test process gets a directory of its own and removes it when it ends
+    inline auto GetTestCacheDir() -> string
+    {
+        struct TestCacheDir
+        {
+            TestCacheDir() :
+                Path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
+            {
+            }
+            TestCacheDir(const TestCacheDir&) = delete;
+            TestCacheDir(TestCacheDir&&) noexcept = delete;
+            auto operator=(const TestCacheDir&) = delete;
+            auto operator=(TestCacheDir&&) noexcept = delete;
+            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(Path)); }
+
+            string Path;
+        };
+
+        static TestCacheDir dir;
+        return dir.Path;
+    }
+
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
         ApplyTestChannelKeys(settings);
+        OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
         OverrideSetting(settings.Audio.DisableAudio, true);
