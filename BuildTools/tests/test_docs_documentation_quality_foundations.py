@@ -51,8 +51,10 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
         status = json.loads((ROOT / generated["path"]).read_text(encoding="utf-8"))
         workflow = (ROOT / ".github/workflows/validate.yml").read_text(encoding="utf-8")
         self.assertEqual(catalog["enforcement"], "complete")
-        self.assertEqual(status["summary"]["entry_count"], 4826)
-        self.assertEqual(status["summary"]["current_count"], 4826)
+        entry_count = sum(len(domain["entries"]) for domain in status["domains"].values())
+        self.assertGreater(entry_count, 0)
+        self.assertEqual(status["summary"]["entry_count"], entry_count)
+        self.assertEqual(status["summary"]["current_count"], entry_count)
         self.assertEqual(status["summary"]["missing_count"], 0)
         self.assertTrue(status["summary"]["complete"])
         for domain in (
@@ -121,7 +123,7 @@ class DocumentationQualityFoundationsTests(unittest.TestCase):
         }
         guide = AI_GUIDE.read_text(encoding="utf-8")
         python_search = (ROOT / "BuildTools/docs_site.py").read_text(encoding="utf-8")
-        browser_search = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
+        browser_search = (ROOT / "Docs/Site/Assets/js/docs.js").read_text(encoding="utf-8")
 
         self.assertEqual(source["minimum_retrieval_success_rate"], 1.0)
         self.assertEqual((len(tasks), query_count, answer_count), (28, 67, 97))

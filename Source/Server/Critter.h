@@ -95,6 +95,9 @@ public:
     [[nodiscard]] auto GetMovingContext() const noexcept -> nptr<const MovingContext>;
     [[nodiscard]] auto GetMovingContext() noexcept -> nptr<MovingContext>;
     [[nodiscard]] auto GetMovingState() const noexcept -> MovingState;
+    [[nodiscard]] auto GetFinishedPlayerMoving() noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanMoving(uint32_t plan_seq) noexcept -> nptr<MovingContext>;
+    [[nodiscard]] auto GetPlayerPlanDistanceShift() const noexcept -> float32_t { return _playerPlanDistanceShift; }
     [[nodiscard]] auto IsMapTransfersLocked() const noexcept -> bool;
     [[nodiscard]] auto HasAttachedCritters() const noexcept -> bool;
     [[nodiscard]] auto GetAttachedCritters() noexcept -> span<ptr<Critter>>;
@@ -118,6 +121,7 @@ public:
     void MarkIsForPlayer();
     void UnmarkIsForPlayer();
     void SetMoving(refcount_ptr<MovingContext> moving);
+    void MarkMovingStartedByPlayer(uint32_t plan_seq, float32_t plan_distance_shift);
     void StopMoving(MovingState reason = MovingState::Stopped);
     void AttachPlayer(ptr<Player> player);
     void DetachPlayer();
@@ -217,6 +221,10 @@ private:
     auto GetBroadcastRecipients(nptr<const Player> ignore_player = nullptr) -> small_vector<refcount_ptr<Player>, 8>;
 
     uint32_t _movingUid {};
+    uint32_t _playerMovingUid {};
+    // The player's plan number and the distance added by bridging its start or removed by joining its prefix
+    uint32_t _playerPlanSeq {};
+    float32_t _playerPlanDistanceShift {};
     refcount_nptr<MovingContext> _moving {};
     refcount_nptr<MovingContext> _lastMoving {};
     mutable atomic_mutex _playerLinkLocker {};

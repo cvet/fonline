@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"89c5c69f2ea81c27baa72d31daefb1f40d673b0902acc1d8e89ea299cd43c5f6"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -98,6 +98,7 @@ python BuildTools/docs_inventory.py --check
 
 ### Сеть и интеграция сервера с клиентом
 
+- `Source/Tests/Test_LinkDelay.cpp` (обычное время передачи, устойчивое замедление и ограниченное догоняние позднего плана)
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`

@@ -80,6 +80,8 @@ Record one row for every artifact the game intends to ship. Do not infer rows fr
 
 Treat the exact game and Engine revisions, package declaration, package config, dependency pins, SDK/tool versions, and build image as one input set. Changing any member creates a different release candidate.
 
+Record the Engine CalVer from `VERSION` with the exact Engine revision in the release evidence and review the [changelog](../../reference/changelog.md). [Engine versioning](versioning.md) keeps these identities separate from the game version and package/updater build hash; it does not overwrite project Android or installer versions.
+
 ## Declare packages
 
 Call `DefinePackage(...)` after project sources are registered and before `BuildPackages()`. Keep separate package IDs when their build hosts, credentials, acceptance lanes, or publication destinations differ.
@@ -214,7 +216,7 @@ closed tab loop under both linker rules. On `wixl`, path controls remain
 editable with the mouse and through the folder browser even though they are
 outside its tab loop. Validate an actual installer on each supported host.
 
-The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](../../../../BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
+The installation-directory dialog must run after `CostFinalize`, when Windows Installer has resolved `INSTALLDIR`. `wixl` can otherwise place a dialog constrained only to run before `ProgressDlg` ahead of costing, depending on dependency iteration order; `msiexec` then aborts with internal error 2343 because the path is empty. The generator anchors it `After="CostFinalize"` for both WiX and `wixl`. The [MSI creator guide](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/readme.md) and regression tests describe the linker-specific sequencing checks. A successfully linked MSI does not replace a visible install test on the supported host.
 
 ### Linux client or server
 

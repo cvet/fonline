@@ -8,6 +8,7 @@ import sys
 import threading
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 
 ENGINE_ROOT = Path(__file__).resolve().parents[2]
@@ -52,6 +53,25 @@ class _OneResponsePeer:
 
 
 class AiControlProtocolTests(unittest.TestCase):
+    def test_reference_client_rejects_invalid_timeouts_before_connection(self) -> None:
+        for timeout in (float("nan"), float("inf"), float("1e309"), float("-inf"), 0, -1, True, "5", 10 ** 400):
+            with self.subTest(timeout=timeout), patch.object(
+                ai_control_client.socket, "create_connection"
+            ) as connection:
+                with self.assertRaisesRegex(ValueError, "timeout must be a finite positive number"):
+                    ai_control_client.AiControlClient(timeout=timeout)
+                connection.assert_not_called()
+
+    def test_reference_client_accepts_finite_positive_timeouts(self) -> None:
+        for timeout in (1, 0.25, 1e308):
+            with self.subTest(timeout=timeout), patch.object(
+                ai_control_client.socket, "create_connection"
+            ) as connection:
+                client = ai_control_client.AiControlClient(timeout=timeout)
+                self.assertEqual(client.timeout, timeout)
+                client.close()
+                connection.assert_not_called()
+
     def test_end_to_end_protocol_smoke(self) -> None:
         report = run_protocol_smoke.run_smoke(timeout=5.0)
 

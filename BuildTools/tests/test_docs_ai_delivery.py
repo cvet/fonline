@@ -14,6 +14,18 @@ import docs_ai_delivery  # noqa: E402
 
 
 class DocumentationAiDeliveryTests(unittest.TestCase):
+    def test_version_file_updates_every_ai_artifact(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        for version in ("2026.1.1-dev", "2026.1.2-dev"):
+            (root / "VERSION").write_text(version + "\n", encoding="utf-8")
+            outputs = docs_ai_delivery.render_outputs(root)
+            manifest = json.loads(outputs[docs_ai_delivery.DEFAULT_PUBLIC_MANIFEST_OUTPUT])
+            self.assertEqual(manifest["engine"], {**docs_ai_delivery.ENGINE_VERSION_POLICY, "value": version})
+            self.assertEqual(manifest["version"]["source_ref"], "master")
+            self.assertIn(version, outputs[docs_ai_delivery.DEFAULT_LLMS_OUTPUT])
+            self.assertIn(version, outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT])
+
     def test_repository_full_context_uses_reviewed_budget(self) -> None:
         root = BUILDTOOLS_DIR.parent
         manifest = json.loads(
@@ -25,7 +37,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 2_162_688)
+        self.assertEqual(max_bytes, 2_228_224)
         self.assertLessEqual(output_bytes, max_bytes)
 
     def _document(
@@ -58,6 +70,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
     def _create_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
+        (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs/generated/api").mkdir(parents=True)
         (root / "Docs/en/reference/api").mkdir(parents=True)
         (root / "Source").mkdir()
@@ -89,10 +102,10 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             json.dumps({"schema_version": 1}) + "\n",
             encoding="utf-8",
         )
-        (root / "_data").mkdir()
-        (root / "assets").mkdir()
-        (root / "_data/docs-site.json").write_text('{"navigation":[]}\n', encoding="utf-8")
-        (root / "assets/docs-search.json").write_text('{"documents":[]}\n', encoding="utf-8")
+        (root / "Docs/Site/Data").mkdir(parents=True)
+        (root / "Docs/Site/Assets").mkdir(parents=True)
+        (root / "Docs/Site/Data/docs-site.json").write_text('{"navigation":[]}\n', encoding="utf-8")
+        (root / "Docs/Site/Assets/docs-search.json").write_text('{"documents":[]}\n', encoding="utf-8")
         (root / "Docs/generated/document-routes.json").write_text(
             '{"routes":[]}\n',
             encoding="utf-8",
@@ -107,6 +120,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             },
             "versioning": {
                 "schema_version": docs_ai_delivery.VERSIONING_SCHEMA_VERSION,
+                "engine": dict(docs_ai_delivery.ENGINE_VERSION_POLICY),
                 "current": {
                     "channel": "current",
                     "kind": "rolling-branch",
@@ -188,8 +202,8 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                     "generator": "BuildTools/docs_site.py",
                     "schema_version": 2,
                     "paths": [
-                        "_data/docs-site.json",
-                        "assets/docs-search.json",
+                        "Docs/Site/Data/docs-site.json",
+                        "Docs/Site/Assets/docs-search.json",
                         "Docs/generated/document-routes.json",
                     ],
                 },
@@ -290,7 +304,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         self.assertIn("site-document-routes", artifacts)
         self.assertNotIn("internal_model", artifacts)
         self.assertNotIn("Docs/generated/internal.json", llms)
-        self.assertIn("assets/docs-search.json", llms)
+        self.assertIn("Docs/Site/Assets/docs-search.json", llms)
         self.assertIn("Docs/generated/document-routes.json", llms)
 
     def test_outputs_are_byte_deterministic(self) -> None:

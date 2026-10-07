@@ -21,7 +21,7 @@ class LandmarkParser(HTMLParser):
 
 class DocumentationSiteLayoutTests(unittest.TestCase):
     def test_layout_has_accessible_documentation_landmarks_and_manifest_data(self) -> None:
-        layout = (ROOT / "_layouts/default.html").read_text(encoding="utf-8")
+        layout = (ROOT / "Docs/Site/Layouts/default.html").read_text(encoding="utf-8")
         parser = LandmarkParser()
         parser.feed(layout)
 
@@ -46,18 +46,18 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         self.assertIn("href=\"#main-content\"", layout)
 
     def test_layout_uses_local_assets_and_generated_search_endpoint(self) -> None:
-        layout = (ROOT / "_layouts/default.html").read_text(encoding="utf-8")
+        layout = (ROOT / "Docs/Site/Layouts/default.html").read_text(encoding="utf-8")
 
-        self.assertIn("/assets/css/docs.css", layout)
-        self.assertIn("/assets/js/docs.js", layout)
-        self.assertIn("/assets/docs-search.json", layout)
-        self.assertIn("/assets/docs-search.ru.json", layout)
-        self.assertIn("/assets/images/fonline-mark.png", layout)
+        self.assertIn("/Docs/Site/Assets/css/docs.css", layout)
+        self.assertIn("/Docs/Site/Assets/js/docs.js", layout)
+        self.assertIn("/Docs/Site/Assets/docs-search.json", layout)
+        self.assertIn("/Docs/Site/Assets/docs-search.ru.json", layout)
+        self.assertIn("/Docs/Site/Assets/images/fonline-mark.png", layout)
         self.assertNotRegex(layout, r"<(?:script|link)[^>]+(?:src|href)=\"https?://")
 
     def test_styles_and_script_cover_responsive_navigation_search_and_theme(self) -> None:
-        stylesheet = (ROOT / "assets/css/docs.css").read_text(encoding="utf-8")
-        script = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
+        stylesheet = (ROOT / "Docs/Site/Assets/css/docs.css").read_text(encoding="utf-8")
+        script = (ROOT / "Docs/Site/Assets/js/docs.js").read_text(encoding="utf-8")
 
         for marker in (
             "@media (max-width: 900px)",
@@ -91,7 +91,7 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         # The search index is parsed from JSON, so its object inherits Object.prototype. A raw
         # terms[token] lookup answers a query of "__proto__" with Object.prototype itself, which
         # is truthy and has no forEach, and the whole search UI reports itself unavailable
-        script = (ROOT / "assets/js/docs.js").read_text(encoding="utf-8")
+        script = (ROOT / "Docs/Site/Assets/js/docs.js").read_text(encoding="utf-8")
 
         self.assertIn(
             "Object.prototype.hasOwnProperty.call(terms, token) ? terms[token] : null",
@@ -702,7 +702,7 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
 
     def test_engine_owned_mark_is_published_byte_for_byte(self) -> None:
         source = (ROOT / "Resources/Radiation.png").read_bytes()
-        published = (ROOT / "assets/images/fonline-mark.png").read_bytes()
+        published = (ROOT / "Docs/Site/Assets/images/fonline-mark.png").read_bytes()
 
         self.assertEqual(hashlib.sha256(published).digest(), hashlib.sha256(source).digest())
         self.assertGreater(len(published), 1024)

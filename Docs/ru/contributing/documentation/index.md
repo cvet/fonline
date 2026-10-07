@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"2f48b279dadf216a3e881d036d0a2cd809ff2c7cc08c46b82b0fe8d1ea7bd865"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"abbef0ec44dd122d8a544b89ef38217dc07ddeb75d219113e68328a03de8a96f"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -125,9 +125,9 @@ permalink: /Docs/ru/contributing/documentation/
 - `BuildTools/tests/test_docs_browser.py`
 - `BuildTools/web/default-index.html`
 - `BuildTools/web/simple-web-server.py`
-- `_data/docs-site.json`
-- `assets/docs-search.json`
-- `assets/docs-search.ru.json`
+- `Docs/Site/Data/docs-site.json`
+- `Docs/Site/Assets/docs-search.json`
+- `Docs/Site/Assets/docs-search.ru.json`
 - `Docs/generated/document-routes.json`
 - `llms.txt`
 - `llms-full.txt`
@@ -224,6 +224,8 @@ Markdown-ссылки документации движка должны раз�
 
 [Инвентарь внешних проектных доказательств и их продвижения](https://github.com/cvet/fonline/blob/master/Docs/generated/external-project-evidence/index.md) является проверяемым внутренним discovery ledger для Last Frontier и TLA. Каждая запись должна указывать точный snapshot source, disposition, priority, Engine или project target, primary owner, required reviews и promotion gate. Наличие записи само по себе не делает внешний проект нормативным: утверждение `promoted` заново выводится из исходного кода и тестов Engine, `boundary-owned` оставляет конкретную реализацию вне Engine, `promotion-candidate` фиксирует недостающие повторно используемые артефакты, а `project-owned` запрещает выдумывать контракт Engine. Обновляйте и проверяйте по исходникам этот ledger, если evidence любого проекта меняет решение о promotion или выявляет новую общую задачу; сам ledger исключён из публичного сайта и AI delivery.
 
+Каждое обновление master, включая правки только документации, также следует [обязательному контракту обновления Engine](../../how-to/release/versioning.md#каждое-обновление-master): рост версии, датированные двуязычные заметки изменений/миграции, сохранение смысла и полные генерируемые данные. Перед разрешённой интеграцией выполните `BuildTools/docs_engine_version.py` относительно фактической исходной ревизии.
+
 ## Стандартный процесс работы над группой документов
 
 1. Выберите связную группу из [бэклога документации](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationBacklog.md).
@@ -233,7 +235,7 @@ Markdown-ссылки документации движка должны раз�
 5. Добавляйте validation checklist в глубокие документы подсистем.
 6. При изменении генерируемой поверхности проверяйте owning structured contract. Для native API обновляйте `///@ ApiContract` и используйте `BuildTools/docs_api_diff.py`; для project-facing CMake меняйте `BuildTools/cmake/ProjectInterface.json`; для main BuildTools CLI сохраняйте `create_parser()` авторитетным; для helper CLI обновляйте `BuildTools/HelperCliInterface.json`; для native extensions - `BuildTools/NativeExtensionInterface.json`. Изменения prototype, map, model, text, effect, image, particle, font, audio, video и [AiControl](../../how-to/ai-control-protocol.md) требуют соответствующего `BuildTools/*Interface.json`, owning guide, генератора, focused tests и реального bake/runtime review подключаемого проекта. Для native GUI render/input primitives обновляйте [Frontend и рендеринг](../../explanation/rendering/) и [границу интеграции GUI](../../how-to/runtime/gui.md), generated script API, native tests и видимую проектную проверку; high-level GUI остаётся проектным. Изменения model animation также затрагивают [Model Animation](../../how-to/content/model-animation.md), sprite offsets и movement phase - [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), package grammar - `BuildTools/PackageInterface.json`, а public example portfolio - `Examples/PublicRepositories.json` и [PublicExampleRepositories.md](../../../PublicExampleRepositories.md). Перегенерируйте все затронутые runtime models, сравните все семнадцать generated contract domains через `BuildTools/docs_contract_diff.py`, обновите root contract index через `BuildTools/docs_public_api.py` и заполните dispositions из [управления изменениями контрактов](../contract-change-management.md) для baseline-public и model-contract breaks. Project-authored remote calls остаются ответственностью проекта: bake обеих сторон и их каталог выполняются там.
    Для текущей 3D-подсистемы совладельцами двух bakers считаются `ModelSourceLoader`, `ModelAnimationConverter`, `ModelAnimationData`, `ModelMeshData`, `ModelManager`, `ModelInformation`, `ModelInstance` и `ModelAnimation`. Изменение parser, source, compatibility, mesh/rig wire, Ozz runtime или ownership требует обновления обоих model guides и structured contract, focused model/Ozz native suites, force rebake проекта, чистого следующего incremental bake и визуальной проверки pose/composition.
-7. Добавьте или обновите запись в `Docs/documentation-manifest.json`, сохраняйте stable ID и locale target авторитетными и назначьте каждую public current human top-level page ровно одной группе `site_delivery.navigation`. Сначала регенерируйте source-owned diagrams через `BuildTools/docs_diagrams.py`, затем переснимайте triggered screenshots и обновляйте `Docs/generated/screenshots.json` через `BuildTools/docs_screenshots.py`. После этого обновляйте `Docs/generated/snippets.json` через `BuildTools/docs_snippets.py`. После семнадцати source models и references регенерируйте канонические EN/RU индексы публичных контрактов и корневой legacy-маршрут. Затем обновляйте translation status; каждая существующая русская страница должна содержать новый normalized English hash. Далее `BuildTools/docs_site.py` создаёт `_data/docs-site.json`, оба search indexes и `Docs/generated/document-routes.json`. При изменении evaluation ownership/evidence или English search обновляйте `Docs/generated/ai-evaluation-report.json` через `BuildTools/docs_ai_eval.py`. В конце `BuildTools/docs_ai_delivery.py` создаёт `llms.txt`, `llms-full.txt` и `docs-manifest.json`. Public manifest хеширует diagram, screenshot, snippet, site и evaluation data; эти файлы нельзя редактировать вручную.
+7. Добавьте или обновите запись в `Docs/documentation-manifest.json`, сохраняйте stable ID и locale target авторитетными и назначьте каждую public current human top-level page ровно одной группе `site_delivery.navigation`. Сначала регенерируйте source-owned diagrams через `BuildTools/docs_diagrams.py`, затем переснимайте triggered screenshots и обновляйте `Docs/generated/screenshots.json` через `BuildTools/docs_screenshots.py`. После этого обновляйте `Docs/generated/snippets.json` через `BuildTools/docs_snippets.py`. После семнадцати source models и references регенерируйте канонические EN/RU индексы публичных контрактов и корневой legacy-маршрут. Затем обновляйте translation status; каждая существующая русская страница должна содержать новый normalized English hash. Далее `BuildTools/docs_site.py` создаёт `Docs/Site/Data/docs-site.json`, оба search indexes и `Docs/generated/document-routes.json`. При изменении evaluation ownership/evidence или English search обновляйте `Docs/generated/ai-evaluation-report.json` через `BuildTools/docs_ai_eval.py`. В конце `BuildTools/docs_ai_delivery.py` создаёт `llms.txt`, `llms-full.txt` и `docs-manifest.json`. Public manifest хеширует diagram, screenshot, snippet, site и evaluation data; эти файлы нельзя редактировать вручную.
 8. При добавлении новой пользовательской страницы обновите [индекс документации](../../index.md).
 9. Повышайте статус в бэклоге только после semantic source review, а не после одной проверки ссылок.
 10. Добавьте датированный раздел в [отчёт о проверке](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationVerificationReport.md) с scope, sources, fixes и checks.
@@ -264,11 +266,11 @@ Markdown-ссылки документации движка должны раз�
 2. Сохраните dirty worktree в именованном stash или отдельном worktree, включая untracked generated documentation, и не удаляйте safety copy до успешной проверки.
 3. Сохраните текущую generated JSON model в ignored `Workspace/`, если её нет в committed baseline.
 
-Интегрируйте upstream обычным merge (fast-forward допустим, когда он возможен).
-Не переписывайте опубликованную историю: опубликованный tip каждой ветки должен
-оставаться предком обновлённого tip, отдельно для Engine и embedding project.
+Незалитые коммиты обязательно переносите rebase на полученную базу, даже при наличии upstream.
+Уже залитые tip сохраняйте в предках; merge нужен только для разошедшихся опубликованных историй.
+Правило отдельно действует для Engine и embedding project.
 
-После обычного merge:
+После интеграции:
 
 ```bash
 git log --oneline <old-engine-sha>..<new-engine-sha>
@@ -391,7 +393,7 @@ Jobs `Validate documentation` и `Parse documentation snippets` в `.github/work
 
 ## Примечания для ИИ-сопровождения
 
-[AGENTS.md](../../../../AGENTS.md) является точкой входа ИИ-maintainer. Он ведёт к human docs и фиксирует repository conventions, включая запрет commit/push без явной просьбы. Сохраняйте его кратким и навигационным, а подробные процедуры помещайте в `Docs/`. Root `llms.txt`, `llms-full.txt` и `docs-manifest.json` являются generated retrieval routes для внешних агентов; `_data/docs-site.json`, оба locale search indexes и `Docs/generated/document-routes.json` образуют соответствующую human navigation/search/routing projection. Все семь артефактов должны выводиться из одного manifest/corpus.
+[AGENTS.md](../../../../AGENTS.md) является точкой входа ИИ-maintainer. Он ведёт к human docs и фиксирует repository conventions, включая запрет commit/push без явной просьбы. Сохраняйте его кратким и навигационным, а подробные процедуры помещайте в `Docs/`. Root `llms.txt`, `llms-full.txt` и `docs-manifest.json` являются generated retrieval routes для внешних агентов; `Docs/Site/Data/docs-site.json`, оба locale search indexes и `Docs/generated/document-routes.json` образуют соответствующую human navigation/search/routing projection. Все семь артефактов должны выводиться из одного manifest/corpus.
 
 Будущий ИИ-agent, продолжающий roadmap, должен сначала восстановить контекст по git status, backlog и verification report. Контекст чата вторичен относительно состояния репозитория.
 

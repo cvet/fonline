@@ -7,16 +7,16 @@
   "enforcement": "complete",
   "summary": {
     "domain_count": 19,
-    "entry_count": 4826,
-    "current_count": 4826,
+    "entry_count": 4843,
+    "current_count": 4843,
     "missing_count": 0,
     "complete": true
   },
   "domains": {
     "ai-control-protocol": {
       "source_model": "Docs/generated/ai-control-protocol.json",
-      "entry_count": 134,
-      "current_count": 134,
+      "entry_count": 137,
+      "current_count": 137,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -603,6 +603,24 @@
           "status": "current"
         },
         {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/name",
+          "source": "Finite client timeout",
+          "source_sha256": "a3077be97043e969565ceba5ff277345428b7579c7d4e3dd936af9d6a9cf582e",
+          "status": "current"
+        },
+        {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/rationale",
+          "source": "NaN and infinity cannot define a bounded connection or response wait.",
+          "source_sha256": "b2773bf6e8f3f9dfb32767a1ef41235e04b3db05a2ecc0386a7f751df1a2392f",
+          "status": "current"
+        },
+        {
+          "locator": "/validation_rules/@id=ai-control-protocol.validation.finite-timeout/requirement",
+          "source": "Reference-client construction requires a finite positive numeric timeout representable as a Python float and rejects invalid values with ValueError before connecting.",
+          "source_sha256": "b02d063f5fab45aff4227d528d9e79f0408fd81d4729f76191a5ff677fcd06c4",
+          "status": "current"
+        },
+        {
           "locator": "/validation_rules/@id=ai-control-protocol.validation.gameplay-authority/name",
           "source": "Normal gameplay path",
           "source_sha256": "ce52d1913f1e5de0a81214a678b26f70c09567c4ad5f5cc5e76928166fa28e12",
@@ -840,8 +858,8 @@
     },
     "api": {
       "source_model": "Docs/generated/api.json",
-      "entry_count": 2563,
-      "current_count": 2563,
+      "entry_count": 2577,
+      "current_count": 2577,
       "missing_count": 0,
       "complete": true,
       "entries": [
@@ -14698,6 +14716,48 @@
           "status": "current"
         },
         {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveExtendAheadSteps/description",
+          "source": "A held direction's plan is followed by the next one once at most this many of its steps remain; must be below DirectMoveTraceSteps",
+          "source_sha256": "0d425a53149e8eff65344213c589c7f1775133f12ba4077222e5d23e4938b796",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveLeaseRenewSteps/description",
+          "source": "The lease is renewed once at most this many of its steps are left ahead of the player; must be below DirectMoveLeaseSteps",
+          "source_sha256": "cab3546f798fa8c4413def63850dd6cd313469af76525c8c21e10d8d16590ce7",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveLeaseSteps/description",
+          "source": "Hexes ahead of the player the server and the other players may run a held direction's plan; this bounds how far they walk on when the player's link stalls",
+          "source_sha256": "79f9404bf970e3fe628b15e3f0068e1ef669dbc3424001f861225d27de711bb6",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveRetargetImmediateAngle/description",
+          "source": "A turn of a held direction of at least this many degrees, like a key change, is planned at once",
+          "source_sha256": "1442855107c6090697512226f1fb446c283b3acf03788eb9e994aec5566b61aa",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveRetargetMinMs/description",
+          "source": "Minimum time in milliseconds between re-plans of a held direction for turns smaller than DirectMoveRetargetImmediateAngle",
+          "source_sha256": "94737c867ab89b4a2fe6bc33e3b24a10e0c072cdfa8cb5f1a6e177e9b5956bca",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveSlide/description",
+          "source": "If true, a held direction blocked ahead steps along the obstacle toward the direction instead of stopping at it",
+          "source_sha256": "2d90cd7c1f1118d9446732cca7d4638fb6119a9c1b6e4877d753493b499defbe",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.DirectMoveTraceSteps/description",
+          "source": "Hexes a held direction is traced ahead as one plan; the next plan is traced before this one runs out",
+          "source_sha256": "34a5383c254d35e4c325eaa4d5f3462b29a0bf6393469cfaf93d6293bbe2ea77",
+          "status": "current"
+        },
+        {
           "locator": "/symbols/@id=setting.client.Client.ForceEmbeddedRuntime/description",
           "source": "If true, the client host runs the embedded engine instead of loading the bundled runtime DLL first (an explicit --ClientLibPath still loads a DLL); read from the command line at host startup, before settings are otherwise resolved",
           "source_sha256": "56fcd7ab7caaf6e89297910cc19a1c8b64f16e35231b5c0aa10fa7250136d85b",
@@ -14707,6 +14767,18 @@
           "locator": "/symbols/@id=setting.client.Client.Language/description",
           "source": "Language setting",
           "source_sha256": "d29c9ab6ebd304db97654cb01d0c8d60d72fc608aab0fc6498f4e4be2b60696f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.MoveCatchUpRate/description",
+          "source": "Playback rate at which another critter's late plan catches up with where it would be by now, instead of jumping there",
+          "source_sha256": "647c754aa04b2366394cd4e286646c9e6165f5081b09d76e49b00aecf1f099ae",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.client.Client.MoveCatchUpSmoothMaxMs/description",
+          "source": "Largest lateness in milliseconds caught up smoothly; the rest of a later plan is skipped at once",
+          "source_sha256": "37ba2ed5744ae7a728bd08899c08550fdc1c94776b53c68715f2067a6ca35d48",
           "status": "current"
         },
         {
@@ -15523,6 +15595,36 @@
           "locator": "/symbols/@id=setting.common.Network.ForceMetadataVersion/description",
           "source": "Custom metadata version, for simulating a client baked apart from the server",
           "source_sha256": "2d985233e7265d52c22e0ab7c8062eb789f0e5f265d04689973488056b0286a6",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.LinkDelayRebaseMs/description",
+          "source": "A link whose every message was late for this many milliseconds got slower for good: its new transit becomes the usual one",
+          "source_sha256": "d09c6a0d9130b6c07624952994d85b23a317abe493f66c3682f4a82fcafdd776",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.LinkDelayWindowMs/description",
+          "source": "How far back in milliseconds the usual transit of a link is remembered; a message's lateness is its transit over the median usual one",
+          "source_sha256": "737a152857a726f9fda6b4709b9d4d3f85fff46db0e27ff53edbbec52897f775",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.MoveLateCatchUpMaxMs/description",
+          "source": "Upper bound in milliseconds on how far ahead a late movement plan is placed",
+          "source_sha256": "1b44f5d75f35bc52679e723d15692a6e2eee5cdf32b935ac2a1425bfb232f51f",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.MoveLateCatchUpMinMs/description",
+          "source": "A movement plan that arrived later than the link's usual transit by at least this many milliseconds is played from where it would be by now; such messages never count as usual",
+          "source_sha256": "ff043e6382d66b3b33930c6eee4f3c428a040cdb08975dd60d87e891b9e665f8",
+          "status": "current"
+        },
+        {
+          "locator": "/symbols/@id=setting.common.Network.MovePlanJoinMaxSteps/description",
+          "source": "A received movement plan whose first steps the receiver's critter has already walked is joined where the critter stands, up to this many steps in, instead of walking back to its start; 0 disables",
+          "source_sha256": "f68973bea12f64b4fcd151d4a5609b095da0ca5f890ef5dfd56bb7e1444971b5",
           "status": "current"
         },
         {

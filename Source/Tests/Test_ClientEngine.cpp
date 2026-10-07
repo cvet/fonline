@@ -2807,7 +2807,7 @@ TEST_CASE("ModelManagerInstantiatesABakedModel")
 }
 #endif
 
-#if FO_ANGELSCRIPT_SCRIPTING
+#if FO_ENABLE_3D && FO_ANGELSCRIPT_SCRIPTING
 TEST_CASE("ModelPosePhasesMatchTheSinglePassPose")
 {
     // The parallel client poses a model in three phases so a worker can take the middle one. The phases are only

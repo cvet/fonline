@@ -16,9 +16,10 @@ class DocumentationAiEvaluationTests(unittest.TestCase):
     def _create_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
+        (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs").mkdir()
         (root / "Source").mkdir()
-        (root / "assets").mkdir()
+        (root / "Docs/Site/Assets").mkdir(parents=True)
         (root / "Docs/Guide.md").write_text(
             "# Guide\n\nFixture evidence.\n\n## Details\n\nStable contract.\n",
             encoding="utf-8",
@@ -31,6 +32,7 @@ class DocumentationAiEvaluationTests(unittest.TestCase):
             },
             "versioning": {
                 "schema_version": docs_ai_eval.docs_ai_delivery.VERSIONING_SCHEMA_VERSION,
+                "engine": dict(docs_ai_eval.docs_ai_delivery.ENGINE_VERSION_POLICY),
                 "current": {
                     "channel": "current",
                     "kind": "rolling-branch",

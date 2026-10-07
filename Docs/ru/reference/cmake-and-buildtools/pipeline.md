@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/cmake-and-buildtools/pipeline.html
 ---
 
 # Конвейер BuildTools
-<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"05ae26c07fc194a4c4af68e6c2f1b28f746bb0963972f0785e8f4fca69e9f6bb"} -->
+<!-- docs-translation: {"document_id":"buildtools-pipeline","locale":"ru","source_path":"Docs/en/reference/cmake-and-buildtools/pipeline.md","source_sha256":"d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d"} -->
 Этот документ объясняет поэтапный CMake-конвейер в `BuildTools/cmake/`. Он
 дополняет основанное на исходниках руководство [Build Workflow](../../how-to/build/):
 в нём описан пользовательский подход к сборке, а здесь — владение реализацией.
@@ -81,6 +81,11 @@ revision-pinned implementation interfaces: автоматизация обяза
 - `BuildTools/msicreator/createmsi.py`
 
 Важные следствия:
+
+`BuildTools/cmake/helpers/State.cmake` получает список переменных конфигурации
+командой `cmake --help-variable-list` и сохраняет его только в памяти.
+Конфигурирование и проверки в script mode не должны создавать снимок
+`cmake-vars.txt` в дереве исходников.
 
 - Не документируйте итоговый список targets одной игры как универсальное
   поведение Engine.
@@ -451,6 +456,9 @@ diagnostics, а не для source ownership или проверки build featu
   конфигурации, в том числе для исходных архивов без Git и путей с пробелами.
   `BuildTools/tests/test_cmake_build_hash.py` проверяет реальные скомпилированные
   приложения и обе стандартные цели baking до и после смены Git revision.
+  Во временное дерево исходников копируются неизменённые helpers из checkout
+  Engine, поэтому fixture работает и тогда, когда Windows хранит checkout и
+  временные файлы на разных дисках.
 
 Если стадии нужно переиспользуемое поведение, добавляйте helper здесь вместо
 копирования логики между stages.

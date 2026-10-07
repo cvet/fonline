@@ -120,7 +120,7 @@
           "anchors": [
             "auto ImageBaker::LoadFrm",
             "File palette_file = files.FindFileByPath",
-            "collection.NewName = strex(fname).lower()"
+            "collection.NewName = strvex(fname).starts_with(\"art/critters/\")"
           ]
         }
       ]
@@ -138,8 +138,8 @@
           "path": "Source/Tools/ImageBaker.cpp",
           "anchors": [
             "auto ImageBaker::LoadFrX",
-            "collection.NewName = strex(\"{}.{}\", strex(fname).erase_file_extension().lower(), \"fofrm\")",
-            "collection.NewName = strex(\"{}.{}\", strvex(fname).erase_file_extension(), \"frm\")"
+            "collection.NewName = strex(\"{}.fofrm\"",
+            "collection.NewName = strex(\"{}.frm\""
           ]
         }
       ]
@@ -1111,5 +1111,5 @@
       "internal": 7
     }
   },
-  "contract_digest": "1269bc60b487ff594867d59dafb3b23b789b5a9adc8b6ac0630a163cfe8c15c4"
+  "contract_digest": "3e1fdf7a223bbbe7952868b62c0a6f55d74a3a21e9d77a283cdf8820981e0450"
 }

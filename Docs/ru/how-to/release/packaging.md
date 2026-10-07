@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/packaging.html
 ---
 
 # Упаковка и выпуск
-<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"a9708815dd34f5364cb6a145d225f48cd8b7ed7796e4c7a5dfe7dea08709238b"} -->
+<!-- docs-translation: {"document_id":"packaging-and-release","locale":"ru","source_path":"Docs/en/how-to/release/packaging.md","source_sha256":"bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e"} -->
 Точная текущая grammar, совместимость target/platform, pack tokens, payloads и
 command-line arguments находятся в сгенерированном
 [package interface](../../reference/packages/index.md). Перед тем как
@@ -90,6 +90,8 @@ IDs, когда различаются build hosts, credentials, acceptance lane
 publication destinations.
 
 ## Объявите packages
+
+В свидетельствах выпуска запишите CalVer движка из `VERSION` вместе с точной ревизией Engine и проверьте [историю изменений](../../reference/changelog.md). [Правила версий движка](versioning.md) отделяют эти идентификаторы от версии игры и хеша сборки пакетов и обновления клиента; они не подменяют версии Android или установщиков игрового проекта.
 
 Вызывайте `DefinePackage(...)` после регистрации project sources и до
 `BuildPackages()`. Используйте отдельные package IDs, если различаются build
@@ -297,7 +299,7 @@ emitted artifact.
 path controls остаются доступны мышью и через просмотр папок, хотя не входят
 в его tab loop. Реальный installer проверяйте на каждом поддерживаемом host.
 
-Диалог выбора каталога должен выполняться после `CostFinalize`, когда Windows Installer уже вычислил путь `INSTALLDIR`. Иначе `wixl` может поставить диалог, ограниченный только `Before="ProgressDlg"`, перед costing из-за изменчивого порядка обхода зависимостей; `msiexec` тогда прерывает установку с internal error 2343 из-за пустого пути. Генератор закрепляет диалог `After="CostFinalize"` для WiX и `wixl`. [Руководство MSI creator](../../../../BuildTools/msicreator/readme.md) и регрессионные тесты описывают проверку порядка у обоих компоновщиков. Успешная линковка MSI не заменяет видимую проверку установки на поддерживаемом host.
+Диалог выбора каталога должен выполняться после `CostFinalize`, когда Windows Installer уже вычислил путь `INSTALLDIR`. Иначе `wixl` может поставить диалог, ограниченный только `Before="ProgressDlg"`, перед costing из-за изменчивого порядка обхода зависимостей; `msiexec` тогда прерывает установку с internal error 2343 из-за пустого пути. Генератор закрепляет диалог `After="CostFinalize"` для WiX и `wixl`. [Руководство MSI creator](https://github.com/cvet/fonline/blob/master/BuildTools/msicreator/readme.md) и регрессионные тесты описывают проверку порядка у обоих компоновщиков. Успешная линковка MSI не заменяет видимую проверку установки на поддерживаемом host.
 
 ### Linux client или server
 

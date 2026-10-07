@@ -5,7 +5,7 @@ locale: ru
 document_id: ai-documentation-evaluation
 permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 ---
-<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"ec41b4f1e382dc6dfd1f06b1bcf0b1ad885c10554ac124c3fde04b94c0cc41d5"} -->
+<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf"} -->
 # Оценка документации для ИИ
 
 Это руководство определяет версионированный контракт оценки использования
@@ -110,7 +110,7 @@ python BuildTools/tests/test_docs_ai_eval.py
    заголовку.
 
 Реализация Python в `docs_site.search_documents` и браузерная реализация в
-`assets/js/docs.js` должны меняться вместе. Фокусные тесты закрепляют длинные
+`Docs/Site/Assets/js/docs.js` должны меняться вместе. Фокусные тесты закрепляют длинные
 запросы, отсутствующие токены, prefixes и маркеры статического layout.
 
 ## Запуск оценки семейств моделей

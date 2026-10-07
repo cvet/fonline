@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"4425e1accf4ed9b3d4dfc0d5e2555e86b7201b695a5e435a5982d370df7fa2f6"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c"} -->
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.
@@ -34,7 +34,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 |---|---|---|
 | Configure/code generation | build-tree `GeneratedSource/`, generated native bindings и internal config | CMake project interface, C++ tags/templates, project options |
 | Resource baking | `Baking/`, `Resources/`, `ServerResources/`, `PlatformBinaries/`, `Cache/` | `.fomain` resource packs, scripts, prototypes, maps, assets, metadata tags |
-| Documentation generation | `Docs/generated/`, `_data/docs-site.json`, search/AI artifacts | source-backed interface models и `Docs/documentation-manifest.json` |
+| Documentation generation | `Docs/generated/`, `Docs/Site/Data/docs-site.json`, search/AI artifacts | source-backed interface models и `Docs/documentation-manifest.json` |
 
 Generated output является evidence, а не editing surface. Исправьте source
 annotation, interface model, project config, generator или authored asset,
@@ -74,6 +74,8 @@ bake.
 Повторите configure после изменения CMake options, source registration, stage
 hooks, generated templates или Engine pin. Соберите самый узкий target, который
 компилирует затронутый generated source.
+
+Файл `VERSION` движка также участвует в конфигурации и генерации кода. Его номер CalVer и точная ревизия Engine становятся `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` в `EngineConfig.gen.h`; хеш сборки игрового проекта сохраняет отдельный смысл. Изменение `VERSION` автоматически инвалидирует конфигурацию и генерацию кода. См. [правила версий движка](../release/versioning.md) и [историю изменений](../../reference/changelog.md).
 
 ## Компиляция scripts
 

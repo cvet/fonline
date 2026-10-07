@@ -6,6 +6,13 @@
   "canonical_base_url": "https://fonline.ru",
   "repository": "cvet/fonline",
   "source_ref": "master",
+  "engine": {
+    "scheme": "calver",
+    "source": "VERSION",
+    "master_format": "YEAR.MAJOR.MINOR-dev",
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
+    "value": "2026.1.13-dev"
+  },
   "version": {
     "channel": "current",
     "kind": "rolling-branch",
@@ -30,7 +37,7 @@
       "status": "complete"
     }
   ],
-  "locale_pair_count": 193,
+  "locale_pair_count": 195,
   "locale_pairs": [
     {
       "document_id": "adr-documentation-version-locale-routing",
@@ -462,6 +469,19 @@
       }
     },
     {
+      "document_id": "engine-changelog",
+      "en": {
+        "title": "Engine Changelog",
+        "path": "Docs/en/reference/changelog.md",
+        "url": "/Docs/en/reference/changelog.html"
+      },
+      "ru": {
+        "title": "\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439 \u0434\u0432\u0438\u0436\u043a\u0430",
+        "path": "Docs/ru/reference/changelog.md",
+        "url": "/Docs/ru/reference/changelog.html"
+      }
+    },
+    {
       "document_id": "engine-upgrade-guide",
       "en": {
         "title": "Upgrade an Embedding Project",
@@ -472,6 +492,19 @@
         "title": "\u041e\u0431\u043d\u043e\u0432\u043b\u0435\u043d\u0438\u0435 Engine \u0432\u043e \u0432\u0441\u0442\u0440\u0430\u0438\u0432\u0430\u044e\u0449\u0435\u043c \u043f\u0440\u043e\u0435\u043a\u0442\u0435",
         "path": "Docs/ru/how-to/migration/engine-upgrade.md",
         "url": "/Docs/ru/how-to/migration/engine-upgrade.html"
+      }
+    },
+    {
+      "document_id": "engine-versioning",
+      "en": {
+        "title": "Engine Versioning and Release Notes",
+        "path": "Docs/en/how-to/release/versioning.md",
+        "url": "/Docs/en/how-to/release/versioning.html"
+      },
+      "ru": {
+        "title": "\u0412\u0435\u0440\u0441\u0438\u044f \u0434\u0432\u0438\u0436\u043a\u0430 \u0438 \u0437\u0430\u043c\u0435\u0442\u043a\u0438 \u043e \u0432\u044b\u043f\u0443\u0441\u043a\u0430\u0445",
+        "path": "Docs/ru/how-to/release/versioning.md",
+        "url": "/Docs/ru/how-to/release/versioning.html"
       }
     },
     {
@@ -2543,7 +2576,7 @@
     }
   ],
   "routes_path": "Docs/generated/document-routes.json",
-  "navigation_item_count": 114,
+  "navigation_item_count": 116,
   "navigation": [
     {
       "id": "start",
@@ -2864,6 +2897,44 @@
               "title": "\u0423\u043f\u0430\u043a\u043e\u0432\u043a\u0430 \u0438 \u0432\u044b\u043f\u0443\u0441\u043a",
               "path": "Docs/ru/how-to/release/packaging.md",
               "url": "/Docs/ru/how-to/release/packaging.html"
+            }
+          }
+        },
+        {
+          "id": "engine-versioning",
+          "title": "Engine Versioning and Release Notes",
+          "path": "Docs/en/how-to/release/versioning.md",
+          "url": "/Docs/en/how-to/release/versioning.html",
+          "diataxis": "how-to",
+          "locales": {
+            "en": {
+              "title": "Engine Versioning and Release Notes",
+              "path": "Docs/en/how-to/release/versioning.md",
+              "url": "/Docs/en/how-to/release/versioning.html"
+            },
+            "ru": {
+              "title": "\u0412\u0435\u0440\u0441\u0438\u044f \u0434\u0432\u0438\u0436\u043a\u0430 \u0438 \u0437\u0430\u043c\u0435\u0442\u043a\u0438 \u043e \u0432\u044b\u043f\u0443\u0441\u043a\u0430\u0445",
+              "path": "Docs/ru/how-to/release/versioning.md",
+              "url": "/Docs/ru/how-to/release/versioning.html"
+            }
+          }
+        },
+        {
+          "id": "engine-changelog",
+          "title": "Engine Changelog",
+          "path": "Docs/en/reference/changelog.md",
+          "url": "/Docs/en/reference/changelog.html",
+          "diataxis": "reference",
+          "locales": {
+            "en": {
+              "title": "Engine Changelog",
+              "path": "Docs/en/reference/changelog.md",
+              "url": "/Docs/en/reference/changelog.html"
+            },
+            "ru": {
+              "title": "\u0418\u0441\u0442\u043e\u0440\u0438\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u0439 \u0434\u0432\u0438\u0436\u043a\u0430",
+              "path": "Docs/ru/reference/changelog.md",
+              "url": "/Docs/ru/reference/changelog.html"
             }
           }
         },

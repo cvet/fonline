@@ -189,8 +189,8 @@ public:
     void SwitchPlayerCritter(ptr<Player> player, nptr<Critter> cr);
     void DestroyUnloadedCritter(ident_t cr_id);
 
-    void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator);
-    void StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator);
+    void StartCritterMoving(ptr<Critter> cr, refcount_ptr<MovingContext> moving, nptr<const Player> initiator, uint32_t plan_seq = 0, float32_t plan_distance_shift = 0.0f);
+    void StartCritterMoving(ptr<Critter> cr, uint16_t speed, const vector<mdir>& steps, const vector<uint16_t>& control_steps, ipos16 end_hex_offset, nptr<const Player> initiator, timespan offset_time = {});
     void StopCritterMoving(ptr<Critter> cr, MovingState reason = MovingState::Stopped, function<void()> customSend = nullptr);
     void ChangeCritterMovingSpeed(ptr<Critter> cr, uint16_t speed);
     // Writes one server-side MOVESYNC line. Call sites test Network.MoveSyncTrace first, so a disabled trace
@@ -372,6 +372,7 @@ private:
     void Process_Ping(ptr<Player> player);
     void Process_UnresolvedHash(ptr<ServerConnection> connection);
     void Process_Move(ptr<Player> player);
+    void Process_MoveLease(ptr<Player> player);
     void Process_StopMove(ptr<Player> player);
     void Process_MoveFinished(ptr<Player> player);
     void Process_Dir(ptr<Player> player);
@@ -397,7 +398,7 @@ private:
     void OnSetItemMultihexLines(ptr<Entity> entity, ptr<const Property> prop);
 
     void ProcessCritterMovingBySteps(ptr<Critter> cr, ptr<Map> map);
-    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
+    auto ReconcileCritterStopPosition(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, ptr<MovingContext> moving, mpos client_hex, ipos16 client_hex_offset, mdir client_dir) -> bool;
     auto MoveCritterAlongStopCorrectionPath(string_view request_name, ptr<Player> player, ptr<Critter> cr, ptr<Map> map, mpos target_hex, int32_t max_hex_distance) -> bool;
     auto MoveCritterToStopHex(ptr<Critter> cr, ptr<Map> map, mpos target_hex) -> bool;
     void SendCritterInitialInfo(ptr<Critter> cr, nptr<Critter> prev_cr);

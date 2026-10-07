@@ -268,8 +268,8 @@ Example:
   "current_contract_sha256": "<64 lowercase hex characters>",
   "classification": "breaking",
   "rationale": "Why the change is intentional and what embedding projects observe.",
-  "migration": "Docs/Migrations/Next.md#changed-option",
-  "release_note": "Docs/ReleaseNotes/Next.md#changed-option",
+  "migration": "Docs/en/how-to/migration/engine-upgrade.md#<exact-migration-anchor>",
+  "release_note": "Docs/en/reference/changelog.md#<exact-version-and-change-anchor>",
   "compatibility": "Pinned projects must update the option and engine revision together.",
   "owner": "build-release"
 }
@@ -289,6 +289,12 @@ The `Validate documentation` job checks out full history and selects:
 After model/reference freshness checks, CI runs `docs_contract_diff.py --write --enforce`. A missing required disposition fails the job. The `if: always()` upload step preserves both reports for diagnosis.
 
 A multi-commit pull request is compared with its base branch commit, not the previous feature-branch commit. A multi-commit push uses the complete pushed range. The standalone validator rejects removal of the shared ledger, seventeen-model manifest contract, full-history checkout, base-ref argument, aggregate test, or enforcement switch.
+
+## Semantic review and every-update obligations
+
+The static gate below is structural and stability-based; it does not implement the complete acceptance policy. Every integration surface, including internal/experimental entries, must preserve the original meaning of existing values and reject unmigrated affected usage during compilation/baking/validation. Remove the obsolete API; never preserve it with aliases or change same-shaped semantics. Review behavior behind unchanged declarations, and supply negative old-usage plus positive unaffected/migrated-usage evidence. Existing persisted-property `MigrationRule` conversion is the narrow exception.
+
+Every published master step increments its development minor and carries dated EN/RU notes, exhaustive migration records and all affected owning/generated documentation. Follow [the mandatory update checklist](../how-to/release/versioning.md#every-master-update) and [migration record](../how-to/release/versioning.md#exhaustive-migration-record). A green seventeen-domain diff does not waive these requirements.
 
 ## What requires human review
 
@@ -327,6 +333,7 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 
 ## Validation checklist
 
+0. Complete the version/changelog and exhaustive semantic migration review from the Engine update contract; run `BuildTools/docs_engine_version.py` against the exact publication baseline.
 1. Regenerate and check all seventeen canonical models plus generated Markdown.
 2. Run `test_docs_api_diff.py` and `test_docs_contract_diff.py`.
 3. Compare against the intended base with `--write --enforce`.
@@ -337,6 +344,8 @@ Runtime, structural CMake, native-extension, prototype/map/model/text/effect/ima
 8. Keep staging empty unless staging or commit was explicitly requested.
 
 ## See also
+
+New `release_note` dispositions link to the bilingual [Engine changelog](../reference/changelog.md) and the detailed migration guide. [Engine versioning](../how-to/release/versioning.md) owns the CalVer release process; older revision-bound ledger entries keep their historical release-note disposition.
 
 - [GeneratedApiAndMetadata.md](../reference/metadata/index.md) - canonical models and generated-reference ownership.
 - [ADR-0002](decisions/0002-public-api-stability-contract.md) - accepted stability and change policy.

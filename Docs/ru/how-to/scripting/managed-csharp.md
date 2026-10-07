@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"b05abccc5edf06158da0b806f86d0c7beb04d0308e8ff5d4aba43d4da90e327f"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -79,7 +79,22 @@ Generated project включает nullable analysis, warnings as errors, сти
 
 Неподдерживаемая форма type/member останавливает baking через `ManagedScriptBakerException`; baker не должен создавать placeholder, который упадёт только при выполнении gameplay.
 
-Compiled entry assemblies зависят от target, например `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. Они записываются в `Assemblies/<Target>Assemblies/` внутри baked pack. Helpers и dependencies остаются рядом с entry assembly.
+### Проверки компилятора
+
+Generated script projects всегда задают `Nullable=enable`, `CheckForOverflowUnderflow=true`,
+`TreatWarningsAsErrors=true` и `EnforceCodeStyleInBuild=true`. Managed host и принадлежащие движку
+C#-проекты также включают проверку переполнения. Необязательные настройки analysis level/mode,
+analyzers и additional files расширяют базовый профиль script project.
+
+Целочисленная арифметика и сужающие приведения за пределами диапазона назначения бросают
+`OverflowException`. Runtime compiler использует тот же checked по умолчанию для fragments и live
+patches. Ограничивайте `unchecked` выражениями, чей контракт намеренно включает оборачивание или
+усечение битов, например хеш или упакованный битовый шаблон RGBA. Конструктор `ucolor` упаковывает
+маскированные байты сразу беззнаковой арифметикой, сохраняя младший байт каждого компонента.
+Арифметика floating point сохраняет правила IEEE 754 и может давать NaN или infinity; проверяйте
+конечность числа на соответствующей границе инварианта.
+
+Основные сборки зависят от роли: например, `<Pack>.Server.dll`, `<Pack>.Client.dll` и `<Pack>.Mapper.dll`. MSBuild записывает промежуточные файлы в `Assemblies/<Target>Assemblies/`. Baker публикует основную сборку и соседние зависимости в ресурсах пакета `Assemblies/Assemblies-<target>/`, где роль записывается строчными буквами: `server`, `client` или `mapper`. Загрузка при запуске и упаковка используют опубликованные ресурсы; обычный baker удаляет промежуточные файлы при очистке устаревших выходов.
 
 При заданном `ManagedScript.PatchPointWeaver` generated build после компиляции запускает принадлежащий движку Mono.Cecil weaver на промежуточных серверной и клиентской assemblies, до последующего копирования и упаковки. Проект weaver и его исходники входят во входы incremental bake/build: их изменение перекомпилирует и заново обрабатывает скрипты. Уже обработанная assembly не меняется. Weaver собирается как инструмент и не попадает в зависимости скриптов.
 
@@ -161,7 +176,7 @@ cycles разрастаться экспоненциально. Analyzer self-te
 
 `FOSYNC010` запрещает отбрасывать boolean результат acquisition, включая отдельный вызов или присваивание `_`: отказ должен влиять на control flow. `FOSYNC011` требует, чтобы helper `Sync`, меняющий удерживаемый cover напрямую либо через другой effectful helper, объявил собственный `[CoverEffect]`. Analyzer считает эти findings ошибками сборки, а не advisory warnings; предложенные redundancy diagnostics `FOSYNC012`–`FOSYNC014` были отозваны.
 
-`FOSYNC015` отвергает пустое расширение `[CoversOnlyArguments]`: аргументы `[ProvidesCover]` уже покрыты, cover не освобождён, поздний `Sync.Snapshot` не требует собственной блокировки. Лишняя приостановка может нарушить синхронный handler. Подробности — в [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` отвергает пустое расширение `[CoversOnlyArguments]`: аргументы `[ProvidesCover]` уже покрыты, cover не освобождён, поздний `Sync.Snapshot` не требует собственной блокировки. Лишняя приостановка может нарушить синхронный handler. Подробности — в [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 При изменении связи `Sync.Yield()` передаёт все блокировки через `Game.SyncYield()`; связь нужно перечитать. Недоступная сущность требует `ScriptTask.Delay(0)` до следующего кадра для удаления. `Sync.OnRetry` и `Sync.ReportRetry(reason)` сообщают о попытках, не отказах.
 
@@ -292,7 +307,7 @@ Managed backend передаёт фиксированный native context, mana
 | --- | --- |
 | Нет generated type/member | Metadata input, target selection и diagnostic `ManagedScriptBaker`. |
 | Build видит старый API | Выбор generated directory и dependency `CompileManagedScripts`. |
-| Assembly собрана, но runtime ничего не загрузил | Baked pack и `Assemblies/<Target>Assemblies/`. |
+| Assembly собрана, но runtime ничего не загрузил | Выбор baked pack и опубликованные ресурсы `Assemblies/Assemblies-<target>/`. |
 | Работает native, но не Web/Android | Target-specific runtime payload и platform build, а не output host SDK. |
 | Continuation не продолжается | Захваченный `ScriptSynchronizationContext`, frame pump и уход в ThreadPool. |
 | Native API падает после `await` | Liveness entity и заново полученный synchronization cover. |

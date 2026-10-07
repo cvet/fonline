@@ -8,9 +8,16 @@ import sys
 from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
+from engine_version import read_engine_version
+
 
 SCHEMA_VERSION = 2
-VERSIONING_SCHEMA_VERSION = 1
+VERSIONING_SCHEMA_VERSION = 3
+ENGINE_VERSION_POLICY = {
+    "scheme": "calver", "source": "VERSION",
+    "master_format": "YEAR.MAJOR.MINOR-dev",
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
+}
 LOCALIZATION_SCHEMA_VERSION = 1
 GENERATED_BY = "BuildTools/docs_ai_delivery.py"
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
@@ -72,6 +79,10 @@ def _versioning_config(manifest: dict[str, object]) -> dict[str, object]:
             f"{VERSIONING_SCHEMA_VERSION}"
         )
 
+    engine = _require_object(versioning, "engine", "documentation Engine version")
+    if engine != ENGINE_VERSION_POLICY:
+        raise ValueError("documentation Engine version must use the master/release CalVer policy from VERSION")
+
     current = _require_object(versioning, "current", "documentation versioning current")
     expected_current = {
         "channel": "current",
@@ -102,6 +113,11 @@ def _versioning_config(manifest: dict[str, object]) -> dict[str, object]:
             "documentation versioning history mode must be commit-addressable-ci-artifacts"
         )
     return versioning
+
+
+def _engine_version(root: Path, manifest: dict[str, object]) -> dict[str, object]:
+    versioning = _versioning_config(manifest)
+    return {**versioning["engine"], "value": read_engine_version(root)}
 
 
 def _localization_config(manifest: dict[str, object]) -> dict[str, object]:
@@ -427,6 +443,7 @@ def render_llms(root: Path, manifest: dict[str, object], records: list[dict[str,
         f"Canonical site: {base_url}",
         "Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.",
         f"Current documentation: `{current_version['source_ref']}` rolling branch.",
+        f"Engine version: `{_engine_version(root, manifest)['value']}` (CalVer from VERSION).",
         f"Machine-readable document index: {base_url.rstrip('/')}/{DEFAULT_PUBLIC_MANIFEST_OUTPUT}",
         f"Bounded full-context bundle: {base_url.rstrip('/')}/{DEFAULT_FULL_CONTEXT_OUTPUT}",
         "",
@@ -484,6 +501,7 @@ def _is_generated_detail(record: dict[str, object]) -> bool:
 
 
 def render_full_context(
+    root: Path,
     manifest: dict[str, object],
     records: list[dict[str, object]],
 ) -> str:
@@ -530,6 +548,7 @@ def render_full_context(
         "Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.",
         f"Canonical site: {base_url}",
         f"Documentation version: {current_version['source_ref']} ({current_version['kind']})",
+        f"Engine version: {_engine_version(root, manifest)['value']} (CalVer from VERSION)",
         f"Documents: {len(ordered)}",
         "Policy exclusions: " + (", ".join(sorted(excluded_ids)) if excluded_ids else "none"),
         "",
@@ -625,6 +644,7 @@ def render_public_manifest(
         "canonical_base_url": base_url,
         "repository": repository,
         "source_ref": source_ref,
+        "engine": _engine_version(root, manifest),
         "version": {
             "channel": current_version["channel"],
             "kind": current_version["kind"],
@@ -663,7 +683,7 @@ def render_outputs(
     manifest = _load_manifest(root, manifest_relative_path)
     records = _document_records(root, manifest)
     llms_content = render_llms(root, manifest, records)
-    full_context_content = render_full_context(manifest, records)
+    full_context_content = render_full_context(root, manifest, records)
     public_manifest_content = render_public_manifest(
         root,
         manifest,

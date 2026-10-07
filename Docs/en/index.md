@@ -8,6 +8,8 @@ permalink: /Docs/en/
 
 # FOnline Engine Documentation
 
+The Engine [versioning policy](how-to/release/versioning.md) and [changelog](reference/changelog.md) identify releases and required migration work.
+
 This is the human documentation entry point for the reusable FOnline engine.
 It is written for game developers, tool authors, release operators, and engine
 contributors working from an Engine checkout without another game's

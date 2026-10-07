@@ -15,6 +15,17 @@ import docs_site  # noqa: E402
 
 
 class DocumentationSiteTests(unittest.TestCase):
+    def test_version_file_updates_site_and_routes_without_changing_channel(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        for version in ("2026.1.1-dev", "2026.1.2-dev"):
+            (root / "VERSION").write_text(version + "\n", encoding="utf-8")
+            outputs = docs_site.render_outputs(root)
+            for path in (docs_site.DEFAULT_NAVIGATION_OUTPUT, docs_site.DEFAULT_ROUTES_OUTPUT):
+                artifact = json.loads(outputs[path])
+                self.assertEqual(artifact["engine"], {**docs_ai_delivery.ENGINE_VERSION_POLICY, "value": version})
+                self.assertEqual(artifact["version"]["value"], "master")
+
     def test_repository_search_uses_reviewed_budget(self) -> None:
         root = BUILDTOOLS_DIR.parent
         manifest = json.loads((root / docs_site.DEFAULT_MANIFEST).read_text(encoding="utf-8"))
@@ -25,7 +36,7 @@ class DocumentationSiteTests(unittest.TestCase):
             outputs[docs_site.DEFAULT_RUSSIAN_SEARCH_OUTPUT].encode("utf-8")
         )
 
-        self.assertEqual(max_bytes, 1_835_008)
+        self.assertEqual(max_bytes, 1_867_776)
         self.assertLessEqual(output_bytes, max_bytes)
         self.assertLessEqual(russian_output_bytes, max_bytes)
 
@@ -59,6 +70,7 @@ class DocumentationSiteTests(unittest.TestCase):
     def _create_fixture(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
         root = Path(temporary_directory.name)
+        (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs/generated/api").mkdir(parents=True)
         (root / "Source").mkdir()
         (root / "Source/example.txt").write_text("fixture source\n", encoding="utf-8")
@@ -104,6 +116,7 @@ class DocumentationSiteTests(unittest.TestCase):
             },
             "versioning": {
                 "schema_version": docs_ai_delivery.VERSIONING_SCHEMA_VERSION,
+                "engine": dict(docs_ai_delivery.ENGINE_VERSION_POLICY),
                 "current": {
                     "channel": "current",
                     "kind": "rolling-branch",
@@ -287,12 +300,22 @@ class DocumentationSiteTests(unittest.TestCase):
         alias["target"] = "Docs/en/guide.md"
         alias["redirect_to"] = "guide"
         manifest["documents"]["Docs/Alias.md"] = alias
+        russian_alias_path = root / "Docs/ru/Alias.md"
+        russian_alias_path.parent.mkdir(parents=True, exist_ok=True)
+        russian_alias_path.write_text(
+            "> Legacy route.\n\n# Russian alias\n",
+            encoding="utf-8",
+        )
+        russian_alias = dict(alias, id="ru-guide-alias")
+        manifest["documents"]["Docs/ru/Alias.md"] = russian_alias
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 
         routes = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_ROUTES_OUTPUT])
         routes_by_id = {route["id"]: route for route in routes["routes"]}
         self.assertEqual(routes_by_id["guide-alias"]["canonical_document_id"], "guide")
         self.assertEqual(routes_by_id["guide-alias"]["planned_path"], "/Docs/en/guide.html")
+        self.assertEqual(routes_by_id["guide-alias"]["current_locale"], "en")
+        self.assertEqual(routes_by_id["ru-guide-alias"]["current_locale"], "ru")
 
         manifest["documents"]["Docs/Alias.md"]["redirect_to"] = "repository-home"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")

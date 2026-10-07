@@ -74,6 +74,25 @@ internal static class Program
                  ScriptFunc.Invoke("DispatchProbe::WriteInt", ref result);
                  Check(result == 42, "Converted result was lost");
              }),
+            ("color packing preserves all bytes in checked code",
+             () =>
+             {
+                 ucolor color = new ucolor(255, 128, 64);
+                 Check(color.value == 0xFF4080FFu, "Opaque color lost its packed channels");
+                 Check(color.red == 255 && color.green == 128 && color.blue == 64 && color.alpha == 255,
+                       "Packed color channels do not read back");
+                 Check(new ucolor(-1, 256, 257, -1).value == 0xFF0100FFu,
+                       "Color components must retain their low byte");
+             }),
+            ("checked arithmetic and narrowing reject overflow",
+             () =>
+             {
+                 int maximum = int.MaxValue;
+                 int outsideShort = short.MaxValue + 1;
+                 ExpectThrows<OverflowException>(() => _ = maximum + 1, "Integer overflow was accepted");
+                 ExpectThrows<OverflowException>(() => _ = (short)outsideShort, "Narrowing overflow was accepted");
+                 Check(unchecked((short)outsideShort) == short.MinValue, "Explicit unchecked must retain wrapping");
+             }),
             ("managed return value populates ref result",
              () =>
              {

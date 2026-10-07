@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"c7ed91c5be589e323831e0f945807af2160608b741f787eb8ed9bc5243c4dfb9"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"3952f353171667cd2d0d409c0246ef5f2466fc553af4e5d0955291319e60e649"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -346,6 +346,29 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 Клиентские скрипты могут синтезировать локальный ввод через тот же runtime path для automation и embedded-client probes. `Game.SimulateMouseMove(pos)`, `Game.SimulateMouseDown(pos, button)` и `Game.SimulateMouseUp(pos, button)` сохраняют held-button state на протяжении raw mouse gesture, включая позиции вне render window; `Game.SimulateMouseClick(pos, button)` отправляет полный mouse click или wheel event. `Game.SimulateTouchDown(fingerId, pos)`, `Game.SimulateTouchMove(fingerId, pos, offsetPos)` и `Game.SimulateTouchUp(fingerId, pos)` отправляют raw touch streams, `Game.SimulateTouchTap(pos)` - completed tap event, `Game.SimulateKeyPress(key, text)` - одну pair key down/up, а `Game.SimulateKeyboardPress(key1, key2, key1Text, key2Text)` остаётся доступным для two-key sequences. Тем же путём синтезируются два сетевых уведомления: `Game.SimulateDisconnect()` доставляет уведомление `OnDisconnected`, которым заканчивается настоящий разрыв связи, а `Game.SimulateInfoMessage(infoMessage, extraText)` доставляет `OnInfoMessage`. Само соединение оба оставляют нетронутым — проба, проверяющая реакцию на потерянную сессию, не должна обрывать сессию, через которую об этом сообщает.
 
 Для локального prediction движения персонажа `ClientEngine::CritterMoveTo()` синхронизирует активный `MovingContext` с текущим client frame до начала нового движения или отправки stop request. Затем он нормализует локальную pair hex/offset до следующего request, поэтому быстрый start/stop input не сообщает серверу stale на один frame или чрезмерный offset.
+
+### Движение при удержании направления
+
+`Critter.MoveToDir(dir, speed)` задаёт удерживаемое направление клавиатуры, D-pad или стика. Намерение прямого управления сохраняется до `StopMove()`, команды пути `MoveToHex()` или выгрузки текущей карты через `UnloadMap()`.
+
+- **Длинный план с lease.** `PathFinding::TraceDirection()` строит `Client.DirectMoveTraceSteps` шагов вдоль луча ввода; `Client.DirectMoveSlide` разрешает скольжение вдоль препятствий, см. [трассировку направления](../maps-and-movement.md#трассировка-направления). Собственный криттер проходит весь план. Сервер и наблюдатели получают номер плана и подтверждённую границу в проецируемом расстоянии пути: `Client.DirectMoveLeaseSteps` шагов впереди подтверждённого удержания. Когда впереди остаётся не больше `Client.DirectMoveLeaseRenewSteps`, `ProcessDirectMove()` продлевает lease через `SendCritterMoveLease`. При остановке входящего потока сервер и наблюдатели останавливаются на этой границе. Расстояние границы не меняется при коррекции скорости; обычная задержка линии оставляет сервер позади игрока на время одного прохода uplink.
+- **Продолжение до конца плана.** При остатке не больше `Client.DirectMoveExtendAheadSteps` полностью протрассированный план продлевается из текущего положения с проекцией на исходную линию и текущей скоростью, включая серверную коррекцию.
+- **Ограничение частоты поворотов.** Поворот от `Client.DirectMoveRetargetImmediateAngle`, изменение скорости, начало и остановка применяются сразу. Меньший поворот, включая клавиатурные 45° при стандартном пороге 60°, применяется не чаще `Client.DirectMoveRetargetMinMs`; побеждает последнее направление.
+- **Серверный план проходит до конца.** Контроллер продлевает только собственный план. Серверная коррекция или укороченный путь сначала проигрывается до конца; укороченный путь конечен и не имеет lease, поскольку заменяет клиентский план, который мог бы продлевать его. Затем удержание возобновляется. Заблокированное направление повторяется с интервалом перепланирования, без проверки на каждом кадре.
+
+Наблюдатель принимает `CritterMoveLease` только для server movement uid своего текущего плана. У копии, присоединённой дальше по пути, граница сдвигается на пропущенное проецируемое расстояние и переводится во время при текущей скорости. `MovingContext::SetLeaseTime` останавливает часы плана на границе, а продление продолжает его с места ожидания. `CritterHexView` показывает ожидание idle-анимацией. `Network.MoveSyncTrace` записывает `dir_plan` с причиной `start`, `turn`, `extend` или `resume` и продление `lease_send`, см. [сетевую трассировку](../authority-and-networking/index.md#трассировка-синхронизации-движения).
+
+### Догоняющее воспроизведение запоздавших планов
+
+`SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` и обе стороны `Ping` передают монотонное время отправителя. `LinkDelayEstimator` в `ClientConnection` и `ServerConnection` сравнивает разницу получения и отправки с медианой обычных сообщений за `Network.LinkDelayWindowMs`. Избыток показывает длительность зависания без общих часов между машинами. Медиана предотвращает догоняющее воспроизведение обычного jitter, которое могло бы провести сервер мимо точки остановки игрока.
+
+Сообщение с опозданием от `Network.MoveLateCatchUpMinMs` не меняет обычную медиану, поэтому весь задержанный пакетный поток сравнивается с линией до зависания. Если каждое сообщение опаздывает в течение `Network.LinkDelayRebaseMs`, новое время прохода становится обычным. Эта длительность учитывается отдельно от ограниченной очереди samples, а несколько обычных samples переживают окно: частые сообщения не откладывают перебазирование, и молчащая линия сохраняет предыдущую оценку.
+
+Запоздавший план или продление догоняет прошедшее время до `Network.MoveLateCatchUpMaxMs`. Сервер сразу перематывает план. Наблюдатель проходит догоняемую часть с множителем `Client.MoveCatchUpRate` в пределах `Client.MoveCatchUpSmoothMaxMs` и пропускает остаток. Если сервер начал план с опережением после позднего uplink, наблюдатель в начальной точке проходит до серверного положения вместо скачка (`ahead_ms`). Копия в другом месте, например при появлении криттера в видимости, ставится на текущую точку плана. Собственный криттер игрока не догоняет: его планы определяет локальный ввод.
+
+### Присоединение к уже начатому плану
+
+Если копия криттера уже прошла начало нового плана, `FindPathPrefixSteps` и `DropPathPrefix` присоединяют его с текущей точки в пределах `Network.MovePlanJoinMaxSteps`, избегая возврата к началу. Сервер сначала доводит действующий план до текущего времени, поскольку его шаги обновляются только с периодом движения.
 
 ## Тесты клиентской проверки
 

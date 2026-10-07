@@ -5,12 +5,10 @@ locale: ru
 document_id: repository-home
 permalink: /README.ru.html
 ---
-<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"b43be26040d110c289f96b48b45b9ea19693c49d48c455f35028efffadd7fe38"} -->
+<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"211b47520f9489ca4782fc7b7b6b56b4b56f3a9396ba86cbd11e78d580f8b765"} -->
 # FOnline Engine
 
-[![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
-[![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
-[![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)
+[Правила версий движка](Docs/ru/how-to/release/versioning.md) · [История изменений](Docs/ru/reference/changelog.md)
 
 **FOnline** — открытый движок на C++20 под лицензией MIT для создания сетевых
 многопользовательских RPG в классическом изометрическом стиле Fallout

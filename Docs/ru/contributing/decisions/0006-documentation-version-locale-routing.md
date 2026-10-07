@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-documentation-version-locale-routing
 permalink: /Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.html
 ---
-<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"6a90c2be548426ba6e0bbd4644cf0c2eec7798b74a5fc5927dc6e7d81f0b8962"} -->
+<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6"} -->
 # ADR-0006: версия, локали и стабильные маршруты документации
 
 - Статус: принято
@@ -37,7 +37,7 @@ FOnline публикует Markdown репозитория через GitHub Pag
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`
@@ -52,6 +52,8 @@ FOnline публикует Markdown репозитория через GitHub Pag
 3. Текущие публичные URL остаются неверсионированными и стабильными, пока их содержимое следует за последней опубликованной ревизией `master`.
 4. Ссылки на исходники используют тот же ref `master`, что и отображаемая документация.
 5. Для исторической проверки используются commit-addressable artifacts `_site` из GitHub Actions и ревизии репозитория.
+
+[CalVer движка](../../how-to/release/versioning.md) из корневого `VERSION` показывается вместе с обновляемым каналом и ведёт в [историю изменений](../../reference/changelog.md) на выбранном языке. Это идентификатор разработки или выпуска Engine, а не поддерживаемый снимок документации. Ссылки на исходники сохраняют `master`, соответствующий каналу.
 
 ### Документация выпусков
 

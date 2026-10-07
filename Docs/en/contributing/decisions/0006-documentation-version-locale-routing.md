@@ -37,7 +37,7 @@ Moving files or beginning translation without that contract would make redirects
 - `BuildTools/tests/test_docs_site_layout.py`
 - `BuildTools/tests/test_docs_validate.py`
 - `_config.yml`
-- `_layouts/default.html`
+- `Docs/Site/Layouts/default.html`
 - `Docs/en/contributing/documentation/site-publication.md`
 - `Docs/ProductionDocumentationPlan.md`
 - `Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md`
@@ -52,6 +52,8 @@ Moving files or beginning translation without that contract would make redirects
 3. Current public URLs remain unversioned and stable while their content follows the latest published `master` revision.
 4. Source links use the same `master` ref as the displayed documentation.
 5. Historical review uses commit-addressable GitHub Actions `_site` artifacts and repository revisions.
+
+The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is displayed alongside this rolling channel and links to the locale's [changelog](../../reference/changelog.md). It identifies Engine development/release metadata, not a supported documentation snapshot. Source links continue to use the channel's `master` ref.
 
 ### Release documentation
 

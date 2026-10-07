@@ -8,6 +8,11 @@ cmake_minimum_required(VERSION 3.22)
 IncludeFile(FindPython3)
 RequirePackage(Python3 REQUIRED COMPONENTS Interpreter)
 
+SetValue(engineVersionRoot "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}")
+include("${CMAKE_CURRENT_LIST_DIR}/../helpers/EngineVersion.cmake")
+ReadEngineVersion("${engineVersionRoot}" FO_ENGINE_VERSION engineGitDependencies)
+message(STATUS "FOnline Engine version: ${FO_ENGINE_VERSION}")
+
 AppendList(FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
@@ -107,6 +112,8 @@ AddCustomCommand(OUTPUT "${codegenStampPath}"
     COMMAND ${FO_CODEGEN_COMMAND}
     COMMAND ${codegenTouchCommand}
     DEPENDS ${FO_CODEGEN_SCRIPT} ${FO_CODEGEN_META_SOURCE} "${codegenArgsPath}"
+        "${engineVersionRoot}/VERSION" "${engineVersionRoot}/BuildTools/engine_version.py"
+        ${engineGitDependencies}
     WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}"
     COMMENT "Code generation")
 

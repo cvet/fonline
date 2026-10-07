@@ -23,8 +23,20 @@ DECISION_ROOT = ROOT / "Docs/en/contributing/decisions"
 class DocumentationGovernanceFoundationsTests(unittest.TestCase):
     def test_revision_update_guides_preserve_published_history(self) -> None:
         guides = {
-            "en": ("After the normal merge", "Do not rewrite published history"),
-            "ru": ("После обычного merge", "Не переписывайте опубликованную историю"),
+            "en": (
+                "Rebase unpublished commits onto the fetched base",
+                "including on branches with an upstream",
+                "Keep already-pushed tips as ancestors",
+                "merge only diverged published histories",
+                "After integration",
+            ),
+            "ru": (
+                "Незалитые коммиты обязательно переносите rebase",
+                "даже при наличии upstream",
+                "Уже залитые tip сохраняйте в предках",
+                "merge нужен только для разошедшихся опубликованных историй",
+                "После интеграции",
+            ),
         }
         for locale, markers in guides.items():
             with self.subTest(locale=locale):
@@ -89,7 +101,7 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
 
         delivery = manifest["ai_delivery"]
         self.assertEqual(delivery["source_ref"], "master")
-        self.assertEqual(delivery["full_context"]["max_bytes"], 2 * 1024 * 1024 + 64 * 1024)
+        self.assertEqual(delivery["full_context"]["max_bytes"], 2 * 1024 * 1024 + 128 * 1024)
         for path in ("llms.txt", "llms-full.txt", "docs-manifest.json"):
             self.assertIn(f"`{path}`", adr3)
         self.assertEqual(
@@ -98,12 +110,12 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
         )
 
         search = manifest["site_delivery"]["search"]
-        self.assertEqual(search["max_bytes"], 1_835_008)
+        self.assertEqual(search["max_bytes"], 1_867_776)
         self.assertEqual(
             search["locale_paths"],
-            {"en": "assets/docs-search.json", "ru": "assets/docs-search.ru.json"},
+            {"en": "Docs/Site/Assets/docs-search.json", "ru": "Docs/Site/Assets/docs-search.ru.json"},
         )
-        self.assertIn("1.75 MiB (1,835,008 byte)", adr4)
+        self.assertIn("1.78125 MiB (1,867,776 byte)", adr4)
         self.assertIn("authoritative coverage snapshot", adr6)
         self.assertNotIn("first two linked tutorials", adr4)
         self.assertNotIn("Five README-style", adr6)

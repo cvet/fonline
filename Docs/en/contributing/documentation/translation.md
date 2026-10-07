@@ -22,7 +22,7 @@ explicit entrypoint mapping below. Every public human page has:
 - one derived `Docs/ru/...` mirror path, or an explicit README pair;
 - one canonical English content hash in the generated translation-status model.
 
-All 197 required Russian counterparts are present, and
+All 194 required Russian counterparts are present, and
 `localization.enforcement` is `complete`. Every page must remain complete,
 hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
@@ -30,7 +30,7 @@ without its Russian counterpart fails validation immediately.
 
 The current machine report is [translation-status.json](../../../generated/translation-status.json).
 
-This 197/197 result proves physical page parity. Generated Russian pages can
+This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
 Markdown template. That semantic layer has a separate catalog and gate,
 described below; physical parity must not be reported as complete semantic
@@ -185,8 +185,8 @@ Within a Russian page:
 
 The site language switcher must resolve by stable document ID and fall back visibly when a counterpart is still missing. It must not silently send a Russian reader to an unrelated index.
 
-Search is locale-scoped. English pages load `assets/docs-search.json`; Russian
-pages load `assets/docs-search.ru.json`. Each index has the same fail-closed
+Search is locale-scoped. English pages load `Docs/Site/Assets/docs-search.json`; Russian
+pages load `Docs/Site/Assets/docs-search.ru.json`. Each index has the same fail-closed
 byte limit, contains only documents available in that locale, and must return
 locale-preserving result URLs. This keeps the complete future Russian mirror
 bounded independently from the English corpus.

@@ -549,6 +549,7 @@ public static class DynamicScriptCompiler
         CSharpCompilationOptions options =
             new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,
                                          optimizationLevel: patch ? OptimizationLevel.Release : OptimizationLevel.Debug,
+                                         checkOverflow: true,
                                          allowUnsafe: patch,
                                          concurrentBuild: false,
                                          deterministic: false,

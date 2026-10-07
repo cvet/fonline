@@ -3,6 +3,15 @@ cmake_minimum_required(VERSION 3.22)
 get_filename_component(_engineSourceRoot "${CMAKE_CURRENT_LIST_DIR}/../.." ABSOLUTE)
 include("${_engineSourceRoot}/BuildTools/Init.cmake")
 
+set(CMAKE_CXX_FLAGS_DEBUG "-state-config-copy-probe")
+set(CMAKE_EXE_LINKER_FLAGS_DEBUG "-state-link-copy-probe")
+CopyConfigurationType(Debug LayoutAudit)
+if(NOT CMAKE_CXX_FLAGS_LAYOUTAUDIT STREQUAL "-state-config-copy-probe"
+	OR NOT CMAKE_EXE_LINKER_FLAGS_LAYOUTAUDIT STREQUAL "-state-link-copy-probe")
+
+	message(FATAL_ERROR "CMake configuration-variable discovery did not preserve configuration copying")
+endif()
+
 set(_interfacePath "${_engineSourceRoot}/BuildTools/cmake/ProjectInterface.json")
 file(READ "${_interfacePath}" _interfaceJson)
 string(JSON _schemaVersion GET "${_interfaceJson}" schema_version)

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"a9fe5bca15faa9112954cbe03f1d4ccbc6031ba837df1bd6102170005003c739"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"d5e57ed0c5f19d3168d8c6df4c39a316f48917e1f02f5df55ee6cb2ddeb6f82e"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -51,6 +51,16 @@ permalink: /Docs/ru/contributing/testing/
 `GenerateCodeCoverageReport`, `AnalyzeCodeCoverage`. Префикс генерирует проект,
 он не является универсальным именем движка.
 
+Тесты отдельных возможностей используют те же compile-time guards, что и их
+runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует одновременно
+`FO_ENABLE_3D` и `FO_ANGELSCRIPT_SCRIPTING`; проект только с 2D продолжает
+собирать и выполнять остальные client, atlas и hit-testing suites.
+
+Заготовка входа client/server задаёт контролируемому персонажу `LookDistance`
+равным 20 до входа в мир. Проверки движения и синхронизации предметов на земле
+требуют такого радиуса, когда visibility hooks проекта проверяют расстояние:
+нулевое значение закономерно скрывает проверяемые предметы после движения.
+
 Отдельный `BuildTools/check_windows7_imports.py <binary> [...]` проверяет один
 или несколько PE-файлов, fail-closed обрабатывает поврежденный ввод и запрещает
 поддерживаемый список экспортов Windows 8+ из `kernel32`, `user32`, `dxgi`,
@@ -66,6 +76,13 @@ permalink: /Docs/ru/contributing/testing/
 [Windows 7 compatibility lane](../../how-to/build/#контур-совместимости-с-windows-7).
 
 ## Запуск тестов
+
+Задача CI `engine-update` также выполняет
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` с
+`python3-pytest`. Эти проверки исходников охватывают сгенерированную конфигурацию,
+аргументы по умолчанию и метаданные привязок. Заготовка конфигурации только из
+макросов использует фиксированные версию и ревизию Engine и проверяет
+`FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
 Сравнение памяти при повторных unload сначала прогревает один полный цикл
 загрузки/выгрузки карты, затем читает счётчик committed active pages rpmalloc.

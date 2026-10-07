@@ -29,6 +29,9 @@ Do not document project-specific hosts, ports, or release infrastructure here.
 - `Source/Common/NetworkUdp.h`
 - `Source/Common/NetworkUdp.cpp`
 - `Source/Common/Settings.inc`
+- `Source/Common/LinkDelay.cpp`
+- `Source/Essentials/TimeRelated.h`
+- `Source/Tests/Test_LinkDelay.cpp`
 - `Source/Client/NetworkClient.h`
 - `Source/Client/NetworkClient-Interthread.cpp`
 - `Source/Client/NetworkClient-Sockets.cpp`
@@ -225,15 +228,54 @@ The client starts predicting its own movement before its `SendCritterMove` reach
 
 The maximum fast-forward is `min(round trip / 2, Server.MoveFinishCatchUpMaxMs) + Server.CritterMovingPeriodMs`; without a measured round trip only the movement period applies. An early, stale, invalid, or superseded report is rejected. The connection's message order ensures arrival reconciliation completes before an action request behind it is processed. Ordinary arrival sends no redundant position broadcast; a correction is broadcast only if the reconciled hex differs from the plan's end hex. See [Server Runtime](../runtime/server.md#an-arrival-the-client-predicted-is-reconciled-before-the-request-behind-it).
 
+A **held direction** uses one far-traced, leased plan. `SendCritterMove` carries its client number and lease in projected path distance; the server and observers stop at that boundary. While held, `SendCritterMoveLease {map, critter, plan number, lease distance, sender ms}` renews a few steps ahead. The server adjusts for its projected start distance from the client's and forwards `CritterMoveLease {critter, movement uid, lease distance, sender ms}`; observers require the matching uid ([ClientRuntime.md](../runtime/client.md#held-direction-movement)). Like clicks, this shares a timeline. Uplink stalls stop remote copies at the lease; disconnect stops the server plan. A release arriving after that end reconciles along the player's finished plan ([ServerRuntime.md](../runtime/server.md#movement-and-authoritative-state)).
+
+**Lateness:** `SendCritterMove`, `SendStopCritterMove`, `SendCritterMoveLease`, `CritterMove`, `CritterMoveLease` and both `Ping` directions end with sender monotonic milliseconds. `LinkDelayEstimator` measures excess over the median transit in `Network.LinkDelayWindowMs`; idle pings preserve the pre-stall baseline. Plans/renewals late by at least `Network.MoveLateCatchUpMinMs` catch up ([ClientRuntime.md](../runtime/client.md#late-plans-catch-up)). Stamps outside ±9223372036854 ms raise `Sender timestamp is outside the native clock range` before sample mutation; lateness is clamped to 0…9223372036854 ms for native nanosecond storage. `CritterMove` also carries server movement uid and lease (zero plays to the end). These fields changed movement/Ping wire formats and compatibility.
+
 ### Movement synchronization trace
 
-`Network.MoveSyncTrace` (off by default) logs movement synchronization on server and clients. Each event is one stable, machine-readable line:
+`Network.MoveSyncTrace` (off by default, too verbose for production) makes the server and every client write
+one `MOVESYNC` log line per movement synchronization event, so the three views of one critter — where the
+server holds it, where its own client draws it, and where another client sees it — can be laid side by side
+after a run. The line is a format rather than prose, written by `TraceMoveSync` (`Movement.h`):
 
 ```text
 MOVESYNC side=<srv|cl> ev=<event> t=<monotonic µs> st=<synchronized ms> [viewer=<chosen id>] key=value…
 ```
 
-The local monotonic `t` aligns processes on one machine. Across machines, `st` is shared but client time sync delivery makes latency estimates approximate. Client lines identify their chosen critter with `viewer`. Server events include `move_req`, `move_start`, `step`, `stop`, `stopmove_req`, `finish_req`, `speed_change`, and `send`; client events include `move_send`, `stop_send`, `finish_send`, `move_recv`, `pos_recv`, `teleport_recv`, `speed_recv`, `step`, `arrive`, `in`, and `out`. `finish_req` records its outcome (`accepted`, `not_moving`, `attached`, `stale_plan`, `too_early`, `invalidated`, `superseded`, or `reconcile_failed`) and the reported position, remaining/allowed time, and measured round trip. Embedding projects may add scenario `mark` and scripted `input` events; the engine does not own their runners or interpretation. The trace is too verbose for production.
+`t` is the local monotonic clock, which every process on one machine shares, so a single-machine run aligns
+all three views without estimating any clock offset. Across machines only `st` is common, and a client's
+`st` trails the server's by the delivery of its last time sync, so cross-machine latencies read from it are
+estimates. Every client line carries `viewer=<its chosen critter id>`, which keeps several clients apart
+when they write into one log (embedded clients do).
+
+| Side | `ev` | Written by | Fields |
+|------|------|------------|--------|
+| srv | `move_req` | `Process_Move`, before the plan starts | `cr player client_start server_hex steps bridge joined truncated speed late_ms rtt_ms`; `joined` steps of the plan the server's critter had already walked, `late_ms` the message's lateness over the link's usual transit |
+| srv | `move_start` | `StartCritterMoving` (player or script) | `cr uid start end whole_ms offset_ms lease_ms speed was_moving initiator`; `lease_ms=0` runs to the end |
+| srv | `lease_req` | `Process_MoveLease` | `cr uid seq lease_ms late_ms catchup_ms elapsed_ms` — a held direction's lease moved on |
+| srv | `step` | `ProcessCritterMovingBySteps`, per hex entered | `cr uid hex elapsed_ms runtime_ms` |
+| srv | `stop` | `StopCritterMoving` | `cr uid reason hex broadcast` (`reason` is the `MovingState` value) |
+| srv | `stopmove_req` | `Process_StopMove`, after reconciliation | `cr client_hex server_hex reconciled final_hex after_end late_ms rtt_ms`; `after_end=1` when the stop arrived after the player's own plan had already run out on the server and was reconciled along that finished plan |
+| srv | `finish_req` | `Process_MoveFinished`, at every exit | `cr reported_end client_hex server_hex remaining_ms allowed_ms rtt_ms outcome` |
+| srv | `speed_change` | `ChangeCritterMovingSpeed` | `cr uid old_speed speed hex elapsed_ms runtime_ms rebased_ms whole_ms`; `runtime_ms - elapsed_ms` is progress the rebase discards |
+| srv | `send` | `Player::Send_Moving` / `Send_Teleport` | `cr to own kind(move\|pos\|teleport) hex [end offset_ms]`; `own=1` is a correction of the recipient's own critter |
+| cl | `move_send` / `stop_send` / `finish_send` / `lease_send` | `Net_SendMove` / `Net_SendStopMove` / `Net_SendMoveFinished` / `Net_SendMoveLease` | what the acting client told the server; `lease_send` is `cr seq lease_dist` |
+| cl | `lease_recv` | `Net_OnCritterMoveLease` | `cr uid lease_ms late_ms catchup_ms` — another critter's held plan may run further |
+| cl | `hold` | `CritterHexView::ProcessMoving`, when a plan reaches or leaves its lease | `cr own on elapsed_ms` — `on=1` the critter stands at the lease waiting for a renewal |
+| cl | `frames` | `ClientEngine::TraceFrameHealth`, once a second | `n ms max_ms` — frames drawn in the window and the longest; movement is processed once a frame, so a starved client measures its host |
+| cl | `dir_plan` | `ClientEngine::PlanDirectMove` | a held direction materialised as a plan: `cr reason(start\|turn\|extend\|resume) dir speed steps slid hex`; `steps=0` is a blocked direction, and every plan with steps is followed by its `move_send` |
+| cl | `move_recv` / `pos_recv` / `teleport_recv` | the three inbound position messages | `cr own …`; `own=1` is a correction; `pos_recv` carries `jump` (hexes moved) and `err_px` (pixels between where the critter was drawn and the received position — a sub-hex re-split moves the hex but not the picture); `move_recv` also carries `joined lease_ms late_ms ahead_ms catchup_ms smooth_ms` — steps joined past, the copy's lease, the plan's lateness, how far the server had started it ahead, the time made up and how much of it by running faster |
+| cl | `speed_recv` | `Net_OnCritterMoveSpeed` | `cr own old_speed speed hex elapsed_ms rebased_ms whole_ms` — the client rebases one delivery after the server |
+| cl | `step` / `arrive` | `CritterHexView::ProcessMoving` | where the client draws a critter, hex by hex, and where its plan ended |
+| cl | `in` / `out` | `Net_OnAddCritter` / `Net_OnRemoveCritter` | a critter entered or left this client's view: `cr own hex` (and `moving` on `in`). Between an `out` and the next `in` the client knows nothing about the critter, so a stale last hex is not a disagreement; a client re-entering its own critter on login traces `in` with itself as the viewer |
+| cl | `mark` | project scripts | a scenario boundary (`label=begin:<name>` / `end:<name>`) written through the AI-control bridge |
+| cl | `input` | project scripts | a change of scripted direct input (`state=<keys or stick> pattern_ms`), written by the AI-control input driver |
+
+`finish_req` outcomes are `accepted`, `not_moving` (the server had already finished — the normal case),
+`attached`, `stale_plan`, `too_early`, `invalidated`, `superseded` and `reconcile_failed`. Reading the lines
+is the job of an embedding project's tooling; the engine only guarantees that the field names above stay
+stable.
 
 ### Disconnect reasons
 

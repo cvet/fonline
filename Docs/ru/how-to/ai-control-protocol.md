@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/ai-control-protocol.html
 ---
 
 # Протокол AiControl
-<!-- docs-translation: {"document_id":"ai-control-protocol-guide","locale":"ru","source_path":"Docs/en/how-to/ai-control-protocol.md","source_sha256":"7c1fe61800bca34ceb303bb1e7d4e4e3c1e7e1e2833960a6b198740fa63a3cfe"} -->
+<!-- docs-translation: {"document_id":"ai-control-protocol-guide","locale":"ru","source_path":"Docs/en/how-to/ai-control-protocol.md","source_sha256":"d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7"} -->
 Проекты FOnline могут предоставлять клиент разработки автоматизированным
 QA-агентам, локальным инструментам или MCP-адаптеру, не превращая команды
 отдельной игры в часть Engine. Эта страница определяет такую переиспользуемую
@@ -339,6 +339,8 @@ Smoke-тест запускает временный loopback listener и про
 действия, асинхронное завершение, обновлённое наблюдение и исключающие event
 cursors. Сфокусированные тесты malformed peer также отклоняют несовпадающие
 id, неоднозначные ответы, неверный JSON и слишком длинные строки.
+
+Эталонный `AiControlClient` требует, чтобы `timeout` был конечным положительным числом, представимым как Python float. Конструктор отклоняет `NaN`, обе бесконечности, переполнение, логические и нечисловые значения с `ValueError("timeout must be a finite positive number")` до любого подключения сокета. Узкие тесты конструктора проверяют ошибочные значения и допустимые положительные целые и дробные таймауты без открытия сокетов.
 
 Этот пример — **не доказательство runtime FOnline**. Проектная интеграция также
 обязана:

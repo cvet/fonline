@@ -132,7 +132,7 @@ async function loadRoutes(siteDir) {
       {
         id: document.id,
         documentId: document.id,
-        locale: catalog.canonical_locale || "en",
+        locale: document.current_locale,
         path: document.current_path
       },
       ...(document.locale_routes || [])
@@ -145,6 +145,9 @@ async function loadRoutes(siteDir) {
         }))
     ];
     for (const route of candidates) {
+      if (!["en", "ru"].includes(route.locale)) {
+        throw new Error(`rendered route ${route.id} has an unsupported locale: ${route.locale}`);
+      }
       if (!route.path || seen.has(route.path)) {
         continue;
       }
@@ -251,9 +254,9 @@ async function inspectLayout(page, profile) {
       return errors;
     }
     const initialScrollX = window.scrollX;
-    window.scrollTo(documentElement.scrollWidth, window.scrollY);
+    window.scrollTo({ left: documentElement.scrollWidth, top: window.scrollY, behavior: "instant" });
     const reachableScrollX = window.scrollX;
-    window.scrollTo(initialScrollX, window.scrollY);
+    window.scrollTo({ left: initialScrollX, top: window.scrollY, behavior: "instant" });
     if (reachableScrollX > 1) {
       const offenders = Array.from(document.querySelectorAll("body *"))
         .filter((element) => {
@@ -521,6 +524,7 @@ async function auditProfile(browser, profile, routes, baseUrl, axeSource) {
     }
   });
 
+  let completedRoutes = 0;
   for (const route of routes) {
     activeRoute = route;
     runtimeErrors = [];
@@ -615,6 +619,13 @@ async function auditProfile(browser, profile, routes, baseUrl, axeSource) {
       });
     } else {
       report.passed_route_count += 1;
+    }
+    completedRoutes += 1;
+    if (completedRoutes % 50 === 0 || completedRoutes === routes.length) {
+      process.stdout.write(
+        `Browser profile ${profile.id}: ${completedRoutes}/${routes.length} routes checked, `
+          + `${report.errors.length} route finding groups.\n`
+      );
     }
   }
   report.axe_incomplete = Array.from(incompleteRules.values())
@@ -1022,6 +1033,57 @@ async function auditDiagramRendering(browser, baseUrl, routePath, screenshotDir,
   };
 }
 
+async function auditEngineVersionInteractions(browser, baseUrl, engineVersion, screenshotDir, screenshotPaths) {
+  const errors = [];
+  for (const profile of PROFILES) {
+    const context = await browser.newContext({
+      viewport: profile.viewport,
+      deviceScaleFactor: profile.deviceScaleFactor || 1,
+      colorScheme: profile.colorScheme,
+      isMobile: profile.isMobile,
+      hasTouch: profile.hasTouch || false,
+      reducedMotion: "reduce"
+    });
+    const page = await context.newPage();
+    try {
+      for (const locale of ["en", "ru"]) {
+        await page.goto(`${baseUrl}/Docs/${locale}/`, { waitUntil: "load" });
+        const indicator = page.locator(".version-indicator");
+        if (!await indicator.isVisible() || await indicator.locator("strong").innerText() !== engineVersion) {
+          throw new Error(`${profile.id}/${locale}: visible Engine version differs from VERSION`);
+        }
+        await indicator.click();
+        await page.waitForLoadState("load");
+        const changelogPath = `/Docs/${locale}/reference/changelog.html`;
+        if (new URL(page.url()).pathname !== changelogPath
+            || await page.locator("html").getAttribute("lang") !== locale) {
+          throw new Error(`${profile.id}/${locale}: version link did not open its locale's changelog`);
+        }
+        errors.push(...(await inspectLayout(page, profile)).map((error) => `${profile.id}/${locale}: ${error}`));
+        const screenshotName = `engine-changelog-${locale}-${profile.id}.png`;
+        await page.screenshot({ path: join(screenshotDir, screenshotName), fullPage: true });
+        screenshotPaths.push(screenshotName);
+        const pairedLocale = locale === "en" ? "ru" : "en";
+        await page.locator(`.locale-switch a[lang="${pairedLocale}"]`).click();
+        await page.waitForLoadState("load");
+        if (new URL(page.url()).pathname !== `/Docs/${pairedLocale}/reference/changelog.html`) {
+          throw new Error(`${profile.id}/${locale}: changelog language switch lost the paired route`);
+        }
+      }
+    } catch (error) {
+      errors.push(`Engine version interaction audit failed: ${error.message}`);
+    } finally {
+      await context.close();
+    }
+  }
+  return {
+    id: "engine-version-changelog",
+    path: "/Docs/en/reference/changelog.html",
+    passed: errors.length === 0,
+    errors
+  };
+}
+
 async function main() {
   const root = ENGINE_ROOT;
   let options;
@@ -1056,10 +1118,9 @@ async function main() {
       : allRoutes.slice(0, options.routeLimit);
     server = await createSiteServer(siteDir);
     browser = await chromium.launch({ headless: true });
-    const profiles = [];
-    for (const profile of PROFILES) {
-      profiles.push(await auditProfile(browser, profile, routes, server.baseUrl, axe.default.source));
-    }
+    const profiles = await Promise.all(PROFILES.map(
+      (profile) => auditProfile(browser, profile, routes, server.baseUrl, axe.default.source)
+    ));
     const representative = allRoutes.find((route) => route.path === "/Docs/README.html") || allRoutes[0];
     const architecture = allRoutes.find(
       (route) => route.locale === "en" && route.documentId === "engine-architecture"
@@ -1115,6 +1176,13 @@ async function main() {
       });
     }
     const interactions = [
+      await auditEngineVersionInteractions(
+        browser,
+        server.baseUrl,
+        (await readFile(join(root, "VERSION"), "utf8")).trim(),
+        screenshotDir,
+        screenshots
+      ),
       await auditDesktopInteractions(
         browser,
         server.baseUrl,

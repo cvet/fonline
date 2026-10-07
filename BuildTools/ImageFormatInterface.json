@@ -102,7 +102,7 @@
       "stability": "experimental",
       "requirement": "FRM imports big-endian frame timing, offsets, deltas, one or complete direction tables, optional same-basename .pal data, and animated default-palette indices.",
       "rationale": "The importer preserves legacy frame geometry while normalizing pixels into the Engine RGBA container.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["auto ImageBaker::LoadFrm", "File palette_file = files.FindFileByPath", "collection.NewName = strex(fname).lower()"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["auto ImageBaker::LoadFrm", "File palette_file = files.FindFileByPath", "collection.NewName = strvex(fname).starts_with(\"art/critters/\")"]}]
     },
     {
       "id": "image-format.format.fr0",
@@ -112,7 +112,7 @@
       "stability": "experimental",
       "requirement": "A .fr0 entry discovers its numbered directional siblings, rejects a gap after direction loading begins, and renames baked output to lowercase .fofrm for critter paths or .frm otherwise.",
       "rationale": "The split legacy representation must become one runtime direction sheet with a deterministic output path.",
-      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["auto ImageBaker::LoadFrX", "collection.NewName = strex(\"{}.{}\", strex(fname).erase_file_extension().lower(), \"fofrm\")", "collection.NewName = strex(\"{}.{}\", strvex(fname).erase_file_extension(), \"frm\")"]}]
+      "source": [{"path": "Source/Tools/ImageBaker.cpp", "anchors": ["auto ImageBaker::LoadFrX", "collection.NewName = strex(\"{}.fofrm\"", "collection.NewName = strex(\"{}.frm\""]}]
     },
     {
       "id": "image-format.format.rix",

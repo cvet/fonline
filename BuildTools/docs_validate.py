@@ -345,6 +345,8 @@ def _validate_publishing(
             "repository": repository,
             "theme": theme,
             "strict_front_matter": "true",
+            "layouts_dir": "Docs/Site/Layouts",
+            "data_dir": "Docs/Site/Data",
         }
         for key, expected in config_values.items():
             if _top_level_yaml_scalar(config_text, key) != expected:
@@ -2102,11 +2104,11 @@ def _validate_generated_artifacts(
             "generator": docs_site.GENERATED_BY,
             "schema_version": docs_site.SCHEMA_VERSION,
             "paths": list(docs_site.OUTPUT_PATHS),
-            "layout": "_layouts/default.html",
+            "layout": "Docs/Site/Layouts/default.html",
             "assets": [
-                "assets/css/docs.css",
-                "assets/js/docs.js",
-                "assets/images/fonline-mark.png",
+                "Docs/Site/Assets/css/docs.css",
+                "Docs/Site/Assets/js/docs.js",
+                "Docs/Site/Assets/images/fonline-mark.png",
             ],
             "artifact_validator": "BuildTools/docs_site_artifact.py",
             "artifact_report": "Workspace/docs-site-artifact-report.json",

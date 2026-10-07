@@ -79,7 +79,21 @@ The generated project enables nullable analysis, warnings as errors, Engine code
 
 Unsupported type or member shapes fail baking with `ManagedScriptBakerException`; the baker must not emit a placeholder that fails only when gameplay reaches it.
 
-Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. They are written under the baked pack's `Assemblies/<Target>Assemblies/` tree. Helpers and dependencies remain next to the entry assembly.
+### Compiler checks
+
+Generated script projects always set `Nullable=enable`, `CheckForOverflowUnderflow=true`,
+`TreatWarningsAsErrors=true` and `EnforceCodeStyleInBuild=true`. The managed host and Engine-owned
+C# projects also enable overflow checking. Optional analysis-level, analysis-mode, analyzer and
+additional-file settings extend the script project's baseline.
+
+Integer arithmetic and numeric narrowing outside the destination range throw `OverflowException`.
+The runtime compiler uses the same checked default for fragments and live patches. Keep `unchecked`
+local to expressions whose intended contract is wrapping or bit truncation, such as a hash or a
+packed RGBA bit pattern. The `ucolor` constructor packs masked bytes directly in unsigned arithmetic,
+preserving the low byte of each component. Floating-point arithmetic still follows IEEE 754 and may
+produce NaN or infinity; validate finiteness at the relevant invariant boundary.
+
+Compiled entry assemblies are target-specific, such as `<Pack>.Server.dll`, `<Pack>.Client.dll`, and `<Pack>.Mapper.dll`. MSBuild writes intermediate files under `Assemblies/<Target>Assemblies/`. The baker publishes the entry assembly and its sibling dependencies under the pack's `Assemblies/Assemblies-<target>/` resources, where the target is lowercase: `server`, `client`, or `mapper`. Runtime lookup and packaging use these published resources; the normal baker removes intermediate files during outdated-output cleanup.
 
 When `ManagedScript.PatchPointWeaver` is set, the generated build runs the Engine-owned Mono.Cecil weaver on the intermediate server and client assemblies after compilation, before the later copy/package steps. The weaver and its sources participate in incremental bake/build inputs, so changing them recompiles and reweaves the scripts. An already woven assembly is left alone. The weaver is built as a tool, not shipped as a script dependency.
 
@@ -161,7 +175,7 @@ require `FOSYNC009` for an uncovered use after `await`.
 
 `FOSYNC010` rejects discarding a boolean acquisition answer, including a bare call or assignment to `_`: failure must influence control flow. `FOSYNC011` requires a `Sync` helper that changes held cover, directly or through another effectful helper, to declare its own `[CoverEffect]`. The analyzer treats these as build verdicts, not advisory warnings; the proposed redundancy diagnostics `FOSYNC012`–`FOSYNC014` were withdrawn.
 
-`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](../../../SyncCoverAnalysis.md).
+`FOSYNC015` rejects `[CoversOnlyArguments]` widening when its `[ProvidesCover]` arguments remain covered and no later `Sync.Snapshot` needs an own lock. Such suspension can break synchronous handlers; see [Sync-Cover Analysis](https://github.com/cvet/fonline/blob/master/Docs/SyncCoverAnalysis.md).
 
 For changed relations, `Sync.Yield()` hands off thread locks via `Game.SyncYield()`; re-read afterward. Unavailable entities defer to the next frame for teardown. `Sync.OnRetry` and `Sync.ReportRetry(reason)` report attempts, not failures.
 
@@ -291,7 +305,7 @@ First diagnosis routes:
 | --- | --- |
 | Generated type or member is missing | Metadata input, target selection, and `ManagedScriptBaker` diagnostic. |
 | Build sees stale API | Generated directory selection and `CompileManagedScripts` dependency. |
-| Assembly builds but runtime loads none | Baked pack selection and `Assemblies/<Target>Assemblies/`. |
+| Assembly builds but runtime loads none | Baked pack selection and published `Assemblies/Assemblies-<target>/` resources. |
 | Works natively but not on Web/Android | Target-specific runtime payload and platform build, not the host SDK output. |
 | Continuation never resumes | Captured `ScriptSynchronizationContext`, frame pump, and forbidden ThreadPool escape. |
 | Native API fails after `await` | Entity liveness and reacquired synchronization cover. |

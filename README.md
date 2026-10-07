@@ -8,9 +8,7 @@ permalink: /
 
 # FOnline Engine
 
-[![License](https://img.shields.io/github/license/cvet/fonline.svg)](https://github.com/cvet/fonline/blob/master/LICENSE)
-[![GitHub](https://github.com/cvet/fonline/workflows/validate/badge.svg)](https://github.com/cvet/fonline/actions)
-[![Commit](https://img.shields.io/github/last-commit/cvet/fonline.svg)](https://github.com/cvet/fonline/commits/master)
+[Engine versioning](Docs/en/how-to/release/versioning.md) · [Changelog](Docs/en/reference/changelog.md)
 
 **FOnline** is an open-source (MIT) C++20 engine for building online multiplayer RPGs in the classic isometric style of Fallout 1/2/Tactics and Arcanum. One codebase gives you the authoritative server, the game client, the map editor, the content pipeline, and packaging for desktop, mobile, and the browser — you bring the game: content, scripts, and rules live in your own repository that embeds the engine.
 

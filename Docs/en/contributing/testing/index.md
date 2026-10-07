@@ -40,7 +40,18 @@ Use this page when choosing native validation for an engine change or when addin
 
 The standard generated names use the embedding project's development-name prefix: `<ProjectDevName>_UnitTests`, `RunUnitTests`, `<ProjectDevName>_CodeCoverage`, `RunCodeCoverage`, `GenerateCodeCoverageReport`, and `AnalyzeCodeCoverage`. Treat the prefix as project-generated, not universal.
 
+Feature-specific test bodies use the same compile-time guards as their runtime types. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` requires both `FO_ENABLE_3D` and `FO_ANGELSCRIPT_SCRIPTING`; a 2D-only project still builds and runs the remaining client, atlas and hit-testing suites.
+
+The client/server login fixture sets the controlled critter's `LookDistance` to 20 before entering the world. Its movement and synchronized ground-item probes require that visibility range when an embedding project's visibility hooks use distance checks; a zero default would legitimately hide the probed items after movement.
+
 ## Running tests
+
+The `engine-update` CI job also runs
+`python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` with
+`python3-pytest`. These source-only regressions check generated configuration,
+default arguments and binding metadata. The macro-only configuration fixture
+uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
+`FO_ENGINE_REVISION` independently of the checkout's current identity.
 
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 

@@ -704,7 +704,10 @@ internal static class Native
         where T : unmanaged
     {
         int elementSize = Unsafe.SizeOf<T>();
-        Invariant.Verify(raw.Length % elementSize == 0, "Raw list block must hold a whole number of elements", raw.Length, elementSize);
+        Invariant.Verify(raw.Length % elementSize == 0,
+                         "Raw list block must hold a whole number of elements",
+                         raw.Length,
+                         elementSize);
         CollectionsMarshal.SetCount(values, raw.Length / elementSize);
         raw.AsSpan().CopyTo(MemoryMarshal.AsBytes(CollectionsMarshal.AsSpan(values)));
         return true;

@@ -105,6 +105,14 @@ Prefer `SaveMapToPath` for generated or sandboxed authoring because its destinat
 
 Placement returns a live view so scripts can immediately apply direction and per-instance fields. `SetEntityProperty` is the generic route when a tool does not have a generated typed accessor; it returns `false` when the property name/value cannot be applied.
 
+`MergeItemsToMultihexMeshes` sorts coverage cells and normalizes the origin for
+meshes drawn at every cell (`DrawMultihexMesh=True`). A physical-only mesh
+(`DrawMultihexMesh=False`) retains its authored origin: extra cells contribute
+blocking, while only the origin anchors the sprite. Moving it to the smallest
+covered cell would shift doors or other single pictures during load/save.
+The `MapperMultihexMeshMerge` regression covers loading, repeated normalization,
+and a save/reload without changing the physical coverage or sprite origin.
+
 Do not put authoritative gameplay policy in mapper automation. The mapper authors serialized inputs, while runtime authority and persistence remain server-owned; see [Server Runtime](../../explanation/runtime/server.md), [Entity Model](../../explanation/entity-and-property-model/), and [Persistence](../../explanation/persistence/).
 
 ## Particle tools

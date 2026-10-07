@@ -5,7 +5,7 @@ document_id: baking-pipeline
 locale: ru
 permalink: /Docs/ru/explanation/content-pipeline/baking.html
 ---
-<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"87acb3cca74a2099a00235f1a74e54d66df802569583fa37bd2d4fed719976b8"} -->
+<!-- docs-translation: {"document_id":"baking-pipeline","locale":"ru","source_path":"Docs/en/explanation/content-pipeline/baking.md","source_sha256":"ba4571caecfd6a506f3a3eec77f5f697ff98f4fc01c768f1249afb348a004ed1"} -->
 # Конвейер запекания ресурсов
 
 Bake выдаёт loose outputs для каждого target. Затем packaging фильтрует логический pack по target и пишет детерминированную базу `.fores`; Embedded внутри executable остаётся ZIP. Клиентское обновление может соединить базу с одним append-only writable `.patch.fores`, а удаляемый `Resources.foindex` ускоряет общий поиск. Бинарный формат, хеши, проверки и восстановление описаны в [формате пакетов ресурсов](../../../ResourcePackFormat.md), синхронизация клиента — в [разделении client runtime и updater](../runtime/client-updater.md). `BuildTools/measure_resource_packs.py` сравнивает реальные форматы baked tree с необязательным readback; `analyze_resource_corpus.py` оценивает распределение исходников и стоимость индекса без записи packs.
@@ -122,6 +122,8 @@ Bake выдаёт loose outputs для каждого target. Затем packagi
 2. После sweep та же проверка применяется к файлам с сообщением `Rename stale-cased file <from> to <to>`.
 
 Это необходимо на файловых системах без учёта регистра: запись файла или создание каталога повторно использует старую directory entry, outdated sweep сравнивает пути без учёта регистра, а incremental bake может пропустить якобы актуальный artifact. Runtime lookup остаётся точным, поэтому старое написание превращается в неразрешимый ресурс.
+
+Ожидаемые имена поступают из `BakeChecker`, поэтому baker с отличающимся от исходника выходным именем регистрирует путь результата. `ImageBaker` регистрирует Fallout-кадры криттеров `.frm` в нижнем регистре, а набор направлений `.fr0`..`.fr5` — как один `.fofrm` для криттеров или `.frm` в остальных каталогах. Так согласование не заменяет имя, ожидаемое runtime lookup, написанием исходника. `ScanModeRegistersTheResourceEachSourceBakesTo` сравнивает зарегистрированные имена с записанными ресурсами.
 
 Согласование выполняется один раз за bake по уже созданным output, не добавляет работу к каждой записи, не удаляет и не пересоздаёт содержимое и исправляет даже пропущенные как up-to-date artifacts. На case-sensitive файловой системе старое имя удаляет обычный sweep. Контракт закреплён тестами `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename` и `DiskFileSystemNameCase`.
 

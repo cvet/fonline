@@ -80,9 +80,32 @@ namespace BakerTests
         return SecureChannelIdentity {ParseSecureChannelKey(TEST_CHANNEL_SECRET_KEY, "Test")};
     }
 
+    // Isolate persisted client/mapper settings and history from the embedding project's cache
+    inline auto GetTestCacheDir() -> string
+    {
+        struct TestCacheDir
+        {
+            TestCacheDir() :
+                Path {fs::path_to_string(std::filesystem::temp_directory_path() / std::format("fo_unit_test_cache_{}", platform::get_current_process_id_str()))}
+            {
+            }
+            TestCacheDir(const TestCacheDir&) = delete;
+            TestCacheDir(TestCacheDir&&) noexcept = delete;
+            auto operator=(const TestCacheDir&) = delete;
+            auto operator=(TestCacheDir&&) noexcept = delete;
+            ~TestCacheDir() { ignore_unused(fs::remove_dir_tree(Path)); }
+
+            string Path;
+        };
+
+        static TestCacheDir dir;
+        return dir.Path;
+    }
+
     inline void ApplySelfContainedClientSettings(GlobalSettings& settings)
     {
         ApplyTestChannelKeys(settings);
+        OverrideSetting(settings.Baking.CacheResources, GetTestCacheDir());
         OverrideSetting(settings.View.ScreenWidth, 320);
         OverrideSetting(settings.View.ScreenHeight, 200);
         OverrideSetting(settings.Audio.DisableAudio, true);

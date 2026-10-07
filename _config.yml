@@ -8,6 +8,8 @@ theme: jekyll-theme-slate
 google_analytics: UA-77340151-2
 markdown: kramdown
 strict_front_matter: true
+layouts_dir: Docs/Site/Layouts
+data_dir: Docs/Site/Data
 plugins:
   - jekyll-relative-links
 relative_links:
@@ -20,7 +22,10 @@ defaults:
     values:
       layout: default
 exclude:
+  - Docs/Site/Data/
+  - Docs/Site/Layouts/
   - Docs/_meta/
+  - Docs/SyncCoverAnalysis.md
   - Docs/DocumentationBacklog.md
   - Docs/DocumentationExpansionPlan.md
   - Docs/DocumentationResearchTemplate.md

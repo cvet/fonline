@@ -107,6 +107,8 @@ python BuildTools/docs_inventory.py --check
 
 ### Networking and server/client integration
 
+- `Source/Tests/Test_LinkDelay.cpp` (usual transit, sustained slowdown and bounded late-plan catch-up)
+
 - `Source/Tests/Test_ClientDataValidation.cpp`
 - `Source/Tests/Test_ClientEngine.cpp`
 - `Source/Tests/Test_ClientRuntimeApi.cpp`
