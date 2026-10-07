@@ -205,6 +205,8 @@ worker access to owner-only state, bounded pending work, and no task left at tea
 
 ## Tests
 
+The hidden `ClientPoseBatchCost` experiment compares identical baked animation inputs with alternating direct/batch order and exact matrix checks. Its [native input contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost) separates kernel cost from scene variability; frame and visual validation remain necessary.
+
 - [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) — the worker-count rule against limits of
   the test's own (every row of the table above, a zero cap, the mobile cap never lifting the general one, a limit
   out of range refused, and a sweep over 0..256 cores proving more cores never mean fewer workers and the owner

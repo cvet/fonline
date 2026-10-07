@@ -534,6 +534,7 @@ AppendList(FO_TESTS_SOURCE
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationData.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationConverter.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationPoseProcedural.cpp"
+    "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientPoseBatchCost.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelAnimationRuntime.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBaker.cpp"
     "${FO_ENGINE_ROOT}/Source/Tests/Test_ModelBounds.cpp"

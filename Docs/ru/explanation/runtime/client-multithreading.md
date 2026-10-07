@@ -5,7 +5,7 @@ locale: ru
 document_id: client-multithreading
 permalink: /Docs/ru/explanation/runtime/client-multithreading.html
 ---
-<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"2cc7981c95c9eb4c67463e0ac579fede7897a0309d4e868a76b3582fbf435802"} -->
+<!-- docs-translation: {"document_id":"client-multithreading","locale":"ru","source_path":"Docs/en/explanation/runtime/client-multithreading.md","source_sha256":"fe8a889bfc3a5393a7bc8b5281de01c6bb89bf6b02b3eebfe82c8b384723ef6c"} -->
 
 # Необязательная многопоточность клиента
 
@@ -155,6 +155,8 @@ SDL требует основной поток для [SDL_PollEvent](https://wi
 Структурные требования действуют уже сейчас: последовательный путь обходится без добавленной подготовки, workers не трогают состояние владельца, объём работы ограничен, после teardown задач нет.
 
 ## Тесты
+
+Скрытый эксперимент `ClientPoseBatchCost` сравнивает одинаковые запечённые анимационные входы, чередуя порядок прямого и пакетного расчёта и точно проверяя матрицы. Его [контракт native-входов](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз) отделяет стоимость ядра от изменчивости сцены; проверки кадра и картинки остаются необходимыми.
 
 - [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) проверяет все правила выбора workers, нулевые и мобильные пределы, отказ на неверном диапазоне, sweep `0..256` ядер с монотонным числом workers и сохранением ядра владельца, платформенные входы, последовательный путь, однократное выполнение элементов и разделение повторных пакетов. Проверены пустой и одиночный пакеты, minimum chunk, parallel threshold, передача ошибок и дальнейшая пригодность scheduler, запрет nesting, shutdown, два независимых scheduler и равенство результатов. `ClientMultithreadingFollowsTheSetting` создаёт реальный client engine, проверяет оба режима, выбранное на этой машине число workers, пониженный предел и выполнение кадров. `ClientSpriteUpdatePhasesFollowTheClientMode` записывает порядок: последовательный клиент вызывает только `Update()`, параллельный готовит всё до evaluate и завершает после drain. Удаление serial guard ломало этот тест при проверке его чувствительности.
 - [Test_ModelAnimationPoseProcedural.cpp](../../../../Source/Tests/Test_ModelAnimationPoseProcedural.cpp): `ModelAnimationRuntimePosesEvaluateIdenticallyOnClientWorkers` повторно вычисляет отдельные позы общего rig реальными workers и сравнивает world matrices побитно с последовательным результатом. Эта проверка доступна во всех конфигурациях.

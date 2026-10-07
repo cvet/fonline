@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"f84ebe81b7ebd21a0cce58701066fa4304e537e704dc44b88fd06a3861fb18b6"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -202,6 +202,12 @@ cmake --build . --config RelWithDebInfo --target RunUnitTests
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Отдельное измерение стоимости пакета поз
+
+Скрытый (`[.]`) тест `ClientPoseBatchCost` в `Test_ClientPoseBatchCost.cpp` требует 3D. Запускайте только его из каталога с `ClientPoseBatchCost.json`. Поля: `schema: 1`, `rigFile` (полный архив `WriteModelAnimationRigData`), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), `warmup` (1..512). Каждая дорожка ограничена четырьмя миллионами измеряемых вычислений.
+
+Тест чередует порядок прямого и пакетного расчёта при одинаковых временах clip, побайтово сравнивает все матрицы на владельце и сохраняет `samples.csv` и `result.json` с сигнатурами rig и счётчиками пакетов. Ноль workers означает прямую петлю; с workers тест обходит `ShouldRunParallel`, поэтому даже один элемент измеряет dispatch одного chunk. Прогрев, загрузка, сравнение результатов и файловый I/O не измеряются; dispatch/join scheduler измеряются. Нужны тихий хост, сырые пары и повторы. Замеры ядра не подтверждают ускорение кадра, визуальную или платформенную приёмку.
 
 ## Запуск покрытия кода
 

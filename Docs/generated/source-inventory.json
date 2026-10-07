@@ -80,7 +80,7 @@
     ]
   },
   "engine_tests": {
-    "test_file_count": 125,
+    "test_file_count": 126,
     "files": [
       "Source/Tests/Test_AngelScriptAlignment.cpp",
       "Source/Tests/Test_AngelScriptAttributes.cpp",
@@ -98,6 +98,7 @@
       "Source/Tests/Test_ClientDataValidation.cpp",
       "Source/Tests/Test_ClientEngine.cpp",
       "Source/Tests/Test_ClientEntityLifetime.cpp",
+      "Source/Tests/Test_ClientPoseBatchCost.cpp",
       "Source/Tests/Test_ClientRuntimeApi.cpp",
       "Source/Tests/Test_ClientServerIntegration.cpp",
       "Source/Tests/Test_ClientUpdater.cpp",

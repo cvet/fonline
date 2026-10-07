@@ -7,10 +7,12 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2c3b4b44de9fcb0a1f56febc70c1095c186815368268680c021f53923bf8b35e"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
+
+- Добавлен скрытый эксперимент `ClientPoseBatchCost`: парный прямой и рабочий расчёт переданного запечённого rig с точной проверкой результатов и сырыми timing samples. См. [контракт входов](../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз). Обычный unit-прогон и runtime defaults не меняются.
 
 ## 2026.1.13-dev - 2026-10-06
 

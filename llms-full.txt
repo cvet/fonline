@@ -2003,7 +2003,7 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897
+Content SHA-256: 2c3b4b44de9fcb0a1f56febc70c1095c186815368268680c021f53923bf8b35e
 
 ---
 layout: default
@@ -2018,6 +2018,8 @@ permalink: /Docs/en/reference/changelog.html
 Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
 
 ## Unreleased
+
+- Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
 
 ## 2026.1.13-dev - 2026-10-06
 
@@ -5090,7 +5092,7 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: d5e57ed0c5f19d3168d8c6df4c39a316f48917e1f02f5df55ee6cb2ddeb6f82e
+Content SHA-256: 3f730cb33f44ceda654d01be52daed4e8ac2ea0d9468b4796932b6bcb95b9420
 
 ---
 layout: default
@@ -5535,6 +5537,8 @@ runtime invoke and skips transports that need compiled code.
 - [Native, AngelScript, and Managed C# Debugging](../../troubleshooting/debugging.md) for backend-specific diagnosis.
 
 `Test_WorkScheduler.cpp` covers client worker selection, synchronous batches, failure propagation, and sprite phase order. `Test_ModelAnimationPoseProcedural.cpp` covers bit-identical parallel poses; `ModelPosePhasesMatchTheSinglePassPose` in `Test_ClientEngine.cpp` additionally requires AngelScript. See [client multithreading](../../explanation/runtime/client-multithreading.md).
+
+`Test_ClientPoseBatchCost.cpp` adds an opt-in baked-rig experiment; see its [input and evidence contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost).
 
 ===== END DOCUMENT testing =====
 
@@ -18960,7 +18964,7 @@ The renderer stays on the application thread when [client multithreading](../run
 ===== BEGIN DOCUMENT client-multithreading =====
 Source: Docs/en/explanation/runtime/client-multithreading.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-multithreading.html
-Content SHA-256: 2cc7981c95c9eb4c67463e0ac579fede7897a0309d4e868a76b3582fbf435802
+Content SHA-256: fe8a889bfc3a5393a7bc8b5281de01c6bb89bf6b02b3eebfe82c8b384723ef6c
 
 ---
 layout: default
@@ -19168,6 +19172,8 @@ Structural gates are stricter than the timing ones, and they hold today: nothing
 worker access to owner-only state, bounded pending work, and no task left at teardown.
 
 ## Tests
+
+The hidden `ClientPoseBatchCost` experiment compares identical baked animation inputs with alternating direct/batch order and exact matrix checks. Its [native input contract](../../../../Source/Tests/README.md#opt-in-pose-batch-cost) separates kernel cost from scene variability; frame and visual validation remain necessary.
 
 - [Test_WorkScheduler.cpp](../../../../Source/Tests/Test_WorkScheduler.cpp) — the worker-count rule against limits of
   the test's own (every row of the table above, a zero cap, the mobile cap never lifting the general one, a limit
@@ -29318,7 +29324,7 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc
+Content SHA-256: f84ebe81b7ebd21a0cce58701066fa4304e537e704dc44b88fd06a3861fb18b6
 
 ---
 layout: default
@@ -29548,6 +29554,12 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
+
+## Opt-in pose batch cost
+
+`ClientPoseBatchCost` in `Test_ClientPoseBatchCost.cpp` is hidden (`[.]`) and requires 3D. Run only that case in a directory containing `ClientPoseBatchCost.json`. Supply `schema: 1`, `rigFile` (a complete `WriteModelAnimationRigData` archive), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), and `warmup` (1..512). Each lane is capped at four million measured evaluations.
+
+It alternates direct/batch order over identical clip times, checks every resulting matrix bit-for-bit on the owner, and writes `samples.csv` plus `result.json` with rig signatures and scheduling counts. Zero workers uses a direct loop; with workers it bypasses `ShouldRunParallel`, so a single item still measures dispatch of one chunk. Warmup, loading, output checking and file I/O are outside timing; scheduler dispatch/join is inside. Keep the host quiet, retain raw pairs and repeat. These kernel-only samples establish neither frame-time gain nor visual/platform acceptance.
 
 ## Running code coverage
 

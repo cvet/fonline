@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"d5e57ed0c5f19d3168d8c6df4c39a316f48917e1f02f5df55ee6cb2ddeb6f82e"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"3f730cb33f44ceda654d01be52daed4e8ac2ea0d9468b4796932b6bcb95b9420"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -381,3 +381,5 @@ transport checks остаются assertions. На browser/device client зад�
 - [Нативная отладка, AngelScript и Managed C#](../../troubleshooting/debugging.md) для диагностики конкретного backend.
 
 `Test_WorkScheduler.cpp` проверяет выбор клиентских потоков, синхронные пакеты, передачу ошибок и порядок фаз спрайтов. `Test_ModelAnimationPoseProcedural.cpp` проверяет битовую идентичность параллельных поз; `ModelPosePhasesMatchTheSinglePassPose` в `Test_ClientEngine.cpp` дополнительно требует AngelScript. См. [многопоточность клиента](../../explanation/runtime/client-multithreading.md).
+
+`Test_ClientPoseBatchCost.cpp` добавляет отдельный эксперимент на запечённом rig; см. [контракт входов и доказательств](../../../../Source/Tests/README.ru.md#отдельное-измерение-стоимости-пакета-поз).

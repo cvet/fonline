@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "d5e57ed0c5f19d3168d8c6df4c39a316f48917e1f02f5df55ee6cb2ddeb6f82e",
-      "source_bytes": 32108,
+      "source_sha256": "3f730cb33f44ceda654d01be52daed4e8ac2ea0d9468b4796932b6bcb95b9420",
+      "source_bytes": 32275,
       "status": "current"
     },
     {
@@ -391,8 +391,8 @@
       "english_path": "Docs/en/explanation/runtime/client-multithreading.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client-multithreading.md",
-      "source_sha256": "2cc7981c95c9eb4c67463e0ac579fede7897a0309d4e868a76b3582fbf435802",
-      "source_bytes": 19364,
+      "source_sha256": "fe8a889bfc3a5393a7bc8b5281de01c6bb89bf6b02b3eebfe82c8b384723ef6c",
+      "source_bytes": 19691,
       "status": "current"
     },
     {
@@ -1158,8 +1158,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897",
-      "source_bytes": 17096,
+      "source_sha256": "2c3b4b44de9fcb0a1f56febc70c1095c186815368268680c021f53923bf8b35e",
+      "source_bytes": 17401,
       "status": "current"
     },
     {
@@ -2549,8 +2549,8 @@
       "english_path": "Source/Tests/README.md",
       "english_path_state": "migrated",
       "russian_path": "Source/Tests/README.ru.md",
-      "source_sha256": "613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc",
-      "source_bytes": 11828,
+      "source_sha256": "f84ebe81b7ebd21a0cce58701066fa4304e537e704dc44b88fd06a3861fb18b6",
+      "source_bytes": 12898,
       "status": "current"
     }
   ]
