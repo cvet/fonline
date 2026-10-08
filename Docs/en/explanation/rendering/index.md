@@ -1016,3 +1016,5 @@ When changing frontend or rendering behavior, verify:
 - Web changes cross-link to [Web Build, Packaging, and Browser Debugging](../../how-to/platforms/web-debugging.md); Android
   changes cross-link to [Android Build, Packaging, and Device Debugging](../../how-to/platforms/android-debugging.md);
   native attach/debug changes cross-link to [Native, AngelScript, and Managed Debugging](../../troubleshooting/debugging.md).
+
+The renderer stays on the application thread when [client multithreading](../runtime/client-multithreading.md) is enabled; CPU pose batches never own GPU objects or command recording.

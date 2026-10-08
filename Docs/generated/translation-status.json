@@ -11,8 +11,8 @@
     "term_count": 34
   },
   "summary": {
-    "required_document_count": 194,
-    "current_translation_count": 194,
+    "required_document_count": 195,
+    "current_translation_count": 195,
     "missing_translation_count": 0,
     "coverage_percent": 100.0,
     "complete": true
@@ -274,8 +274,8 @@
       "english_path": "Docs/en/contributing/testing/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/contributing/testing/index.md",
-      "source_sha256": "acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017",
-      "source_bytes": 31724,
+      "source_sha256": "3f730cb33f44ceda654d01be52daed4e8ac2ea0d9468b4796932b6bcb95b9420",
+      "source_bytes": 32275,
       "status": "current"
     },
     {
@@ -378,8 +378,21 @@
       "english_path": "Docs/en/explanation/rendering/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/rendering/index.md",
-      "source_sha256": "1aaff99b44d51934edf9bc07ce6ac3ea9722556fa7f52b926d7465318ee9dc06",
-      "source_bytes": 112254,
+      "source_sha256": "c5bce144a437549bf790d7e9cab94a215a5233587bb64e00f5eba30698d55232",
+      "source_bytes": 112439,
+      "status": "current"
+    },
+    {
+      "id": "client-multithreading",
+      "title": "Optional Client Multithreading",
+      "owner": "runtime",
+      "diataxis": "explanation",
+      "source_path": "Docs/en/explanation/runtime/client-multithreading.md",
+      "english_path": "Docs/en/explanation/runtime/client-multithreading.md",
+      "english_path_state": "migrated",
+      "russian_path": "Docs/ru/explanation/runtime/client-multithreading.md",
+      "source_sha256": "fe8a889bfc3a5393a7bc8b5281de01c6bb89bf6b02b3eebfe82c8b384723ef6c",
+      "source_bytes": 19691,
       "status": "current"
     },
     {
@@ -404,8 +417,8 @@
       "english_path": "Docs/en/explanation/runtime/client.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/explanation/runtime/client.md",
-      "source_sha256": "0b372f256332543a89984f3e705d599220d609a7bd5427d58fdd32e81ea9ea20",
-      "source_bytes": 55947,
+      "source_sha256": "3952f353171667cd2d0d409c0246ef5f2466fc553af4e5d0955291319e60e649",
+      "source_bytes": 56078,
       "status": "current"
     },
     {
@@ -807,8 +820,8 @@
       "english_path": "Docs/en/how-to/release/versioning.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/how-to/release/versioning.md",
-      "source_sha256": "1425a344a8c2fc7e6c66a6fc9d9b41e8ac996f02492334afd0fcf820b35f9cf6",
-      "source_bytes": 12732,
+      "source_sha256": "589f6ec6c131ccda66e7af41ae65b9db703cfd1b8d22ed3de4e80e7ae57b7a94",
+      "source_bytes": 12731,
       "status": "current"
     },
     {
@@ -937,8 +950,8 @@
       "english_path": "Docs/en/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/index.md",
-      "source_sha256": "e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f",
-      "source_bytes": 9803,
+      "source_sha256": "3959f87b602fc131c81b92fd5796b6a508f154934daefdefb3b1ec8b96eed307",
+      "source_bytes": 9877,
       "status": "current"
     },
     {
@@ -1145,8 +1158,8 @@
       "english_path": "Docs/en/reference/changelog.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/changelog.md",
-      "source_sha256": "b175e1dc43e203db59e0bd57b70acd2147b5d486bfe0f0a7d9a83ea665ae5897",
-      "source_bytes": 17096,
+      "source_sha256": "2c3b4b44de9fcb0a1f56febc70c1095c186815368268680c021f53923bf8b35e",
+      "source_bytes": 17401,
       "status": "current"
     },
     {
@@ -2016,7 +2029,7 @@
       "english_path": "Docs/en/reference/public-contract/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/public-contract/index.md",
-      "source_sha256": "6cada6de5b236d70972f49057fc703f8375b5d7f792928176f982d825171209d",
+      "source_sha256": "f0e578fec2b31650fb7cf6a1d8b482b17fd6ca5bed846d09ce9e557d25d0e294",
       "source_bytes": 7369,
       "status": "current"
     },
@@ -2055,7 +2068,7 @@
       "english_path": "Docs/en/reference/script-api/events.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/events.md",
-      "source_sha256": "7ba4c85c190b3c1a2e8ce98595df75bf33fb2da90d49e906d2f1f50fcda35946",
+      "source_sha256": "e2abf61498d9d67f91b985f1110bd33a24f43457b118d0f761741e123563322f",
       "source_bytes": 74971,
       "status": "current"
     },
@@ -2068,7 +2081,7 @@
       "english_path": "Docs/en/reference/script-api/index.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/index.md",
-      "source_sha256": "f272765f36bcf89ae52ce6ae0495bd9feaebac14f2cf65efa554177622662215",
+      "source_sha256": "e66833634cc2735f46402c8e3bfb8e76dfa5761886de044cc24937de994f0017",
       "source_bytes": 3410,
       "status": "current"
     },
@@ -2133,8 +2146,8 @@
       "english_path": "Docs/en/reference/script-api/settings.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/settings.md",
-      "source_sha256": "1d751c59fe5395dd807f56707d62c05ffd542fb2b59e5cca4f21cbe9fae9945c",
-      "source_bytes": 180041,
+      "source_sha256": "02ee64d732f8b26062cd85a6b1f7c6b7c40c201470e597ae3157603cb6b43ff8",
+      "source_bytes": 183762,
       "status": "current"
     },
     {
@@ -2146,7 +2159,7 @@
       "english_path": "Docs/en/reference/script-api/types.md",
       "english_path_state": "migrated",
       "russian_path": "Docs/ru/reference/script-api/types.md",
-      "source_sha256": "1905d55fc2d918eed54fd2789282d5439028a92fef5c917837de61122ec6685a",
+      "source_sha256": "d66176145920e865bde58d84f9719609e339984536d42370af2ce9a0db0dd203",
       "source_bytes": 597457,
       "status": "current"
     },
@@ -2536,8 +2549,8 @@
       "english_path": "Source/Tests/README.md",
       "english_path_state": "migrated",
       "russian_path": "Source/Tests/README.ru.md",
-      "source_sha256": "613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc",
-      "source_bytes": 11828,
+      "source_sha256": "f84ebe81b7ebd21a0cce58701066fa4304e537e704dc44b88fd06a3861fb18b6",
+      "source_bytes": 12898,
       "status": "current"
     }
   ]

@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/versioning.html
 ---
 
 # Версия движка и заметки о выпусках
-<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"1425a344a8c2fc7e6c66a6fc9d9b41e8ac996f02492334afd0fcf820b35f9cf6"} -->
+<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"589f6ec6c131ccda66e7af41ae65b9db703cfd1b8d22ed3de4e80e7ae57b7a94"} -->
 Корневой [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт идентификатор движка. Эта политика CalVer с календарным годом, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md) и [процедура изменения контрактов](../../contributing/contract-change-management.md) обязательны для каждого обновления master. Перед обновлением игры прочитайте [историю изменений](../../reference/changelog.md).
 
 ## Нотация
@@ -102,4 +102,3 @@ Engine поддерживает только актуальный API выбра
 - `VERSION`, `BuildTools/engine_version.py`, `BuildTools/docs_engine_version.py`, `BuildTools/tests/test_engine_version.py`
 - `BuildTools/cmake/helpers/EngineVersion.cmake`, `BuildTools/cmake/stages/Codegen.cmake`, `BuildTools/codegen.py`, `Source/Frontend/ApplicationInit.cpp`
 - `.github/workflows/validate.yml`, `AGENTS.md`, `Docs/documentation-manifest.json`, `BuildTools/docs_site.py`, `BuildTools/docs_ai_delivery.py`
-

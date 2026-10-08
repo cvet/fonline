@@ -51,10 +51,10 @@
     "legacy_route_strategy": "durable-markdown-pointer",
     "migration_status": "planned"
   },
-  "route_count": 398,
-  "redirect_count": 203,
-  "translation_target_count": 194,
-  "translation_complete_count": 194,
+  "route_count": 400,
+  "redirect_count": 204,
+  "translation_target_count": 195,
+  "translation_complete_count": 195,
   "routes": [
     {
       "id": "adr-documentation-version-locale-routing",
@@ -717,6 +717,40 @@
           "source_path": "BuildTools/README.ru.md",
           "path": "/BuildTools/README.ru.html",
           "url": "https://fonline.ru/BuildTools/README.ru.html",
+          "availability": "available"
+        }
+      ]
+    },
+    {
+      "id": "client-multithreading",
+      "canonical_document_id": "client-multithreading",
+      "title": "Optional Client Multithreading",
+      "state": "current",
+      "human": true,
+      "translation": "required",
+      "disposition": "retain",
+      "source_path": "Docs/en/explanation/runtime/client-multithreading.md",
+      "current_path": "/Docs/en/explanation/runtime/client-multithreading.html",
+      "current_locale": "en",
+      "current_url": "https://fonline.ru/Docs/en/explanation/runtime/client-multithreading.html",
+      "planned_source_path": "Docs/en/explanation/runtime/client-multithreading.md",
+      "planned_path": "/Docs/en/explanation/runtime/client-multithreading.html",
+      "planned_url": "https://fonline.ru/Docs/en/explanation/runtime/client-multithreading.html",
+      "migration_status": "current",
+      "redirect_required": false,
+      "locale_routes": [
+        {
+          "locale": "en",
+          "source_path": "Docs/en/explanation/runtime/client-multithreading.md",
+          "path": "/Docs/en/explanation/runtime/client-multithreading.html",
+          "url": "https://fonline.ru/Docs/en/explanation/runtime/client-multithreading.html",
+          "availability": "available"
+        },
+        {
+          "locale": "ru",
+          "source_path": "Docs/ru/explanation/runtime/client-multithreading.md",
+          "path": "/Docs/ru/explanation/runtime/client-multithreading.html",
+          "url": "https://fonline.ru/Docs/ru/explanation/runtime/client-multithreading.html",
           "availability": "available"
         }
       ]
@@ -5484,6 +5518,26 @@
       "redirect_required": true,
       "locale_routes": [],
       "redirect_to": "buildtools-pipeline"
+    },
+    {
+      "id": "legacy-client-multithreading-route",
+      "canonical_document_id": "client-multithreading",
+      "title": "Optional Client Multithreading",
+      "state": "redirect",
+      "human": false,
+      "translation": "not-required",
+      "disposition": "replace",
+      "source_path": "Docs/ClientMultithreading.md",
+      "current_path": "/Docs/ClientMultithreading.html",
+      "current_locale": "en",
+      "current_url": "https://fonline.ru/Docs/ClientMultithreading.html",
+      "planned_source_path": "Docs/en/explanation/runtime/client-multithreading.md",
+      "planned_path": "/Docs/en/explanation/runtime/client-multithreading.html",
+      "planned_url": "https://fonline.ru/Docs/en/explanation/runtime/client-multithreading.html",
+      "migration_status": "planned",
+      "redirect_required": true,
+      "locale_routes": [],
+      "redirect_to": "client-multithreading"
     },
     {
       "id": "legacy-client-runtime-route",
@@ -10922,6 +10976,14 @@
       "canonical_document_id": "buildtools-pipeline",
       "from": "/Docs/BuildToolsPipeline.html",
       "to": "/Docs/en/reference/cmake-and-buildtools/pipeline.html",
+      "strategy": "durable-markdown-pointer",
+      "status": "required-before-route-migration"
+    },
+    {
+      "document_id": "legacy-client-multithreading-route",
+      "canonical_document_id": "client-multithreading",
+      "from": "/Docs/ClientMultithreading.html",
+      "to": "/Docs/en/explanation/runtime/client-multithreading.html",
       "strategy": "durable-markdown-pointer",
       "status": "required-before-route-migration"
     },

@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"3959f87b602fc131c81b92fd5796b6a508f154934daefdefb3b1ec8b96eed307"} -->
 # Документация движка FOnline
 
 [Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
@@ -187,3 +187,5 @@ FOnline. Она предназначена для разработчиков и�
 проекты могут давать привязанные к ревизии доказательства, но переиспользуемые
 helpers и регрессионные тесты, на которых основана гарантия Engine, должны
 находиться в этом репозитории.
+
+- [Многопоточность клиента](explanation/runtime/client-multithreading.md).

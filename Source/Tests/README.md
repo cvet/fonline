@@ -227,6 +227,12 @@ Use the executable target directly when you need Catch2 arguments. Generated tes
 - Windows: `Binaries/Tests-Windows-win64/<ProjectDevName>_UnitTests.exe`
 - Linux: `Binaries/Tests-Linux-x64/<ProjectDevName>_UnitTests`
 
+## Opt-in pose batch cost
+
+`ClientPoseBatchCost` in `Test_ClientPoseBatchCost.cpp` is hidden (`[.]`) and requires 3D. Run only that case in a directory containing `ClientPoseBatchCost.json`. Supply `schema: 1`, `rigFile` (a complete `WriteModelAnimationRigData` archive), `nearestSampling` (bool), `clipIndex` (0..65534), `poseCount` (1..1024), `workers` (0..64), `samples` (2..2000), `iterations` (1..64), and `warmup` (1..512). Each lane is capped at four million measured evaluations.
+
+It alternates direct/batch order over identical clip times, checks every resulting matrix bit-for-bit on the owner, and writes `samples.csv` plus `result.json` with rig signatures and scheduling counts. Zero workers uses a direct loop; with workers it bypasses `ShouldRunParallel`, so a single item still measures dispatch of one chunk. Warmup, loading, output checking and file I/O are outside timing; scheduler dispatch/join is inside. Keep the host quiet, retain raw pairs and repeat. These kernel-only samples establish neither frame-time gain nor visual/platform acceptance.
+
 ## Running code coverage
 
 Coverage builds use the `FO_CODE_COVERAGE` path documented in [Testing](../../Docs/en/contributing/testing/). The generated targets are:

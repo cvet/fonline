@@ -42,4 +42,3 @@ function(ReadEngineVersion engineRoot outputVariable gitDependenciesVariable)
     set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
         "${engineRoot}/VERSION" "${engineRoot}/BuildTools/engine_version.py" ${gitDependencies})
 endfunction()
-

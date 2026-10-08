@@ -19274,6 +19274,26 @@
         "/symbols/@id=setting.server.ServerNetwork.WssPrivateKey/description": {
           "source_sha256": "db82685ecf12b80c08ba089ca50bdded3ee37cf20534d42acd149600a028fbaa",
           "translation": "Закрытый ключ защищенного WebSocket"
+        },
+        "/symbols/@id=setting.client.Client.Multithreading/description": {
+          "source_sha256": "dbd58395b351da90bcdcb8dd44ddef17fdfa33a69ea022fb1f30743ce72d6826",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingHeadroomMinCores/description": {
+          "source_sha256": "f311bf367d583cb1f7fc763d94aad4c880d237d4d9ce46d798d61c2a3e38c030",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingMaxMobileWorkers/description": {
+          "source_sha256": "785811e1b359b82baf178894111ccbb3663908568f35ca704fe7cb88ecd6fe57",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.client.Client.MultithreadingMaxWorkers/description": {
+          "source_sha256": "001a82f1dd82fbb98fcd3beefee2238f34e6fcd279556c93685204480a24ad4f",
+          "translation": "Если true, допустимая CPU-работа каждого кадра распределяется между потоками, число которых движок выбирает по машине при запуске; false оставляет её на потоке приложения, а сборка без поддержки потоков (Web) всегда работает последовательно. Не зависит от потоков audio, logging и managed runtime"
+        },
+        "/symbols/@id=setting.common.Render.ParallelSpriteUpdateMinCount/description": {
+          "source_sha256": "e949d9b0347a75278ad7243d475d747ad14a5d56eb06a6d4900f4af148df6b9e",
+          "translation": "Минимальное число спрайтов с подготовленной CPU-работой в кадре, при котором Client.Multithreading распределяет работу; меньший пакет обходится дороже, чем экономит"
         }
       }
     }

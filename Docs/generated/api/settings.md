@@ -77,6 +77,18 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2"></a>
 - [`symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2`](../../en/reference/script-api/settings.md#symbol-setting-client-client-movecatchupsmoothmaxms-2af53cb5f2)
 
+<a id="symbol-setting-client-client-multithreading-3377e82b10"></a>
+- [`symbol-setting-client-client-multithreading-3377e82b10`](../../en/reference/script-api/settings.md#symbol-setting-client-client-multithreading-3377e82b10)
+
+<a id="symbol-setting-client-client-multithreadingheadroommincores-89672a9cd1"></a>
+- [`symbol-setting-client-client-multithreadingheadroommincores-89672a9cd1`](../../en/reference/script-api/settings.md#symbol-setting-client-client-multithreadingheadroommincores-89672a9cd1)
+
+<a id="symbol-setting-client-client-multithreadingmaxmobileworkers-ba6e4e5f07"></a>
+- [`symbol-setting-client-client-multithreadingmaxmobileworkers-ba6e4e5f07`](../../en/reference/script-api/settings.md#symbol-setting-client-client-multithreadingmaxmobileworkers-ba6e4e5f07)
+
+<a id="symbol-setting-client-client-multithreadingmaxworkers-cb282ba470"></a>
+- [`symbol-setting-client-client-multithreadingmaxworkers-cb282ba470`](../../en/reference/script-api/settings.md#symbol-setting-client-client-multithreadingmaxworkers-cb282ba470)
+
 <a id="symbol-setting-client-client-updaterinfodelay-0fc0e5f047"></a>
 - [`symbol-setting-client-client-updaterinfodelay-0fc0e5f047`](../../en/reference/script-api/settings.md#symbol-setting-client-client-updaterinfodelay-0fc0e5f047)
 
@@ -741,6 +753,9 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 
 <a id="symbol-setting-common-render-nullrenderer-aed71ab0c9"></a>
 - [`symbol-setting-common-render-nullrenderer-aed71ab0c9`](../../en/reference/script-api/settings.md#symbol-setting-common-render-nullrenderer-aed71ab0c9)
+
+<a id="symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3"></a>
+- [`symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3`](../../en/reference/script-api/settings.md#symbol-setting-common-render-parallelspriteupdatemincount-a6897c65d3)
 
 <a id="symbol-setting-common-render-recreateclientonerror-2b0f01ba11"></a>
 - [`symbol-setting-common-render-recreateclientonerror-2b0f01ba11`](../../en/reference/script-api/settings.md#symbol-setting-common-render-recreateclientonerror-2b0f01ba11)

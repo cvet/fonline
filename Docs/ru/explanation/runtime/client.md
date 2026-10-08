@@ -5,7 +5,7 @@ locale: ru
 document_id: client-runtime
 permalink: /Docs/ru/explanation/runtime/client.html
 ---
-<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"0b372f256332543a89984f3e705d599220d609a7bd5427d58fdd32e81ea9ea20"} -->
+<!-- docs-translation: {"document_id":"client-runtime","locale":"ru","source_path":"Docs/en/explanation/runtime/client.md","source_sha256":"3952f353171667cd2d0d409c0246ef5f2466fc553af4e5d0955291319e60e649"} -->
 # Клиентская среда выполнения
 
 > Документация движка. Эта страница описывает переиспользуемое поведение клиентского runtime в `Source/Client/`; политика игрового интерфейса, игровые правила и конкретный контент принадлежат встраиваемому проекту.
@@ -391,3 +391,5 @@ Input semantics задаются в `Source/Frontend/Application.h`; game-specif
 - Изменения map presentation не дублируют правила координат и поиска пути из [карт, движения и геометрии](../maps-and-movement.md).
 - Изменения ресурсов указывают, какой owner затронут: `ResourceManager`, `SpriteManager`, конкретный sprite factory, `EffectManager` или `RenderTargetManager`.
 - Platform-specific последствия rendering/input отражены в [Frontend и рендеринг](../rendering/), [сборке, упаковке и отладке в браузере](../../how-to/platforms/web-debugging.md) или [сборке, упаковке и отладке на Android](../../how-to/platforms/android-debugging.md).
+
+Необязательные CPU workers: [многопоточность клиента](client-multithreading.md) описывает выбор числа потоков, фазы позы модели и проверку.

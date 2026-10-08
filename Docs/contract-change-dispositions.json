@@ -7344,6 +7344,30 @@
       "release_note": "No separate breaking-change note before the first Engine release; the current client runtime guide and generated API document the complete signature.",
       "compatibility": "Use matching generated bindings, native binaries and metadata; the conservative machine signature diff does not require a source-call rewrite.",
       "owner": "rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.eb235ee339d8e677",
+      "baseline_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
+      "current_contract_sha256": "31d79a825b730eeac4175b30eb041a92cce6ffa00af83c3f61c7c134b818eda1",
+      "classification": "breaking",
+      "rationale": "The inventory adds five experimental settings from the client multithreading branch. Existing API IDs, signatures, and stability labels remain unchanged; only the scope fingerprint changes.",
+      "migration": "No existing script calls require migration. Rebuild generated bindings with the updated Engine. Client.Multithreading defaults to false and existing configs remain serial.",
+      "release_note": "The bilingual client multithreading guide describes worker selection, ownership, sprite pose phases, and pending performance/platform qualification.",
+      "compatibility": "These additive startup settings change no persisted data or network/resource format. Native binaries and generated metadata must use the same Engine revision; no compatibility marker bump is required.",
+      "owner": "client-runtime"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.39c02e7fd186995f",
+      "baseline_contract_sha256": "cbc46881cbc724744ca3a8701e178e59f94cb83a27aaf707fcf223e127d53e7f",
+      "current_contract_sha256": "591ae6c8f4fd93f35d416912419330fec189d000a871f5c858749f2e2385540a",
+      "classification": "breaking",
+      "rationale": "The inventory retains five experimental client multithreading settings alongside upstream movement settings. Existing master IDs, signatures and stability labels remain unchanged; only the scope fingerprint changes.",
+      "migration": "No existing calls require migration for these additions. Regenerate bindings and rebuild matching binaries/resources. Client.Multithreading remains false. Follow upstream movement and checked-arithmetic migration notes independently.",
+      "release_note": "Docs/en/explanation/runtime/client-multithreading.md and its Russian mirror describe the branch feature and qualification limits. The bilingual changelog owns upstream migration notes.",
+      "compatibility": "These settings add no persisted or wire-format change beyond fetched master. Preserve compatibility marker 68 and deploy matching client/server binaries and metadata.",
+      "owner": "client-runtime"
     }
   ]
 }
