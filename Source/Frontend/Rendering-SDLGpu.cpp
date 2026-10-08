@@ -88,11 +88,13 @@ public:
 
     void SetSubmitted(ptr<SDL_GPUFence> fence);
     void SetFinished() noexcept;
+    void SetFailed() noexcept;
 
 private:
     ptr<SDL_GPUDevice> _device;
     nptr<SDL_GPUFence> _fence {};
     bool _finished {};
+    bool _failed {};
 };
 
 // The copy lands in a download transfer buffer, mapped once the fence of its command buffer has signaled
@@ -511,9 +513,15 @@ static void SubmitAndWait(ptr<SDLGpu_Renderer::Context> ctx)
         return;
     }
 
+    shared_ptr<SDLGpu_SubmitFence> readback_fence = std::exchange(ctx->CmdBufFence, {});
+    auto fail_readbacks = scope_fail([&readback_fence]() noexcept {
+        if (readback_fence) {
+            readback_fence->SetFailed();
+        }
+    });
+
     auto fence = make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(ctx->CmdBuf.get()));
     ctx->CmdBuf = nullptr;
-    shared_ptr<SDLGpu_SubmitFence> readback_fence = std::exchange(ctx->CmdBufFence, {});
     FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
 
     SDL_GPUFence* fence_handles[] = {fence.get()};
@@ -797,6 +805,8 @@ void SDLGpu_Renderer::Present()
     // A fence costs a little per submit, so only a command buffer that carries readbacks asks for one
     if (_ctx->CmdBufFence) {
         shared_ptr<SDLGpu_SubmitFence> readback_fence = std::exchange(_ctx->CmdBufFence, {});
+        auto fail_readbacks = scope_fail([&readback_fence]() noexcept { readback_fence->SetFailed(); });
+
         auto fence = make_nptr(SDL_SubmitGPUCommandBufferAndAcquireFence(_ctx->CmdBuf.get()));
         _ctx->CmdBuf = nullptr;
         FO_VERIFY_AND_THROW(fence, "SDL_SubmitGPUCommandBufferAndAcquireFence failed", SDL_GetError());
@@ -1271,6 +1281,8 @@ SDLGpu_SubmitFence::~SDLGpu_SubmitFence()
 
 auto SDLGpu_SubmitFence::IsSignaled() -> bool
 {
+    FO_VERIFY_AND_THROW(!_failed, "SDL_GPU texture readback command buffer failed");
+
     if (_finished) {
         return true;
     }
@@ -1288,7 +1300,7 @@ auto SDLGpu_SubmitFence::IsSignaled() -> bool
 
 void SDLGpu_SubmitFence::SetSubmitted(ptr<SDL_GPUFence> fence)
 {
-    FO_VERIFY_AND_THROW(!_fence && !_finished, "SDL_GPU readback fence is already submitted");
+    FO_VERIFY_AND_THROW(!_fence && !_finished && !_failed, "SDL_GPU readback fence is already submitted");
 
     _fence = fence;
 }
@@ -1301,6 +1313,11 @@ void SDLGpu_SubmitFence::SetFinished() noexcept
     }
 
     _finished = true;
+}
+
+void SDLGpu_SubmitFence::SetFailed() noexcept
+{
+    _failed = true;
 }
 
 SDLGpu_TextureReadback::SDLGpu_TextureReadback(ptr<SDLGpu_Renderer::Context> ctx, ptr<SDL_GPUTransferBuffer> transfer_buf, shared_ptr<SDLGpu_SubmitFence> fence, isize32 size) :

@@ -12,6 +12,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## 2026.1.14-dev - 2026-10-08
+
+### Fixed
+
+- Recover model picking after an SDL_GPU readback submission or wait failure. Failed requests report an error without exposing unconfirmed pixels; model alpha masks discard the failed reader and retry while preserving the last completed mask.
+
+### Migration
+
+- No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting `2026.1.14-dev`, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
+
 ## 2026.1.13-dev - 2026-10-06
 
 ### Fixed
