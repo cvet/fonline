@@ -520,8 +520,13 @@ void Critter::DetachFromCritter()
     SetIsAttached(false);
     SetAttachMaster({});
 
-    SendAndBroadcast_Attachments();
-    cr->SendAndBroadcast_Attachments();
+    // A destroying endpoint is removed normally and cannot publish attachment snapshots
+    if (!IsDestroying()) {
+        SendAndBroadcast_Attachments();
+    }
+    if (!cr->IsDestroying()) {
+        cr->SendAndBroadcast_Attachments();
+    }
 }
 
 void Critter::MoveAttachedCritters()

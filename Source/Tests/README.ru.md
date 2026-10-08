@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"274353991db7feabd7040219eed508301913f33ce92c8ebc6178f6306e3aed6d"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"25989f28d399523a369de9a81f0dcadd0db57d38fe212a23923e5f1167f86f48"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -190,6 +190,10 @@ procedural, skeleton-compatibility и Ozz покрывают производс�
 - `Source/Tests/Test_Rendering.cpp`
 
 CI-задача документации отклоняет устаревший сгенерированный инвентарь. Заголовки выше отражают текущие исходные файлы для навигации, но не заменяют полный сгенерированный список.
+
+Регрессии отсоединения при уничтожении выполняются при любом scripting backend: `CritterAttachmentTeardown`
+проверяет связи сервера, native-отчёты и доставку оставшемуся игроку; `ClientCritterFinalizationDropsAttachmentIds`
+проверяет очистку клиентского кеша с сохранением живого peer. Они входят в существующие наборы жизненного цикла сущностей сервера и клиента.
 
 ## Запуск тестов
 

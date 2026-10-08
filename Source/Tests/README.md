@@ -215,6 +215,10 @@ The documentation CI job rejects stale generated inventory. The headings above
 mirror the current source files for navigation but do not replace the generated
 complete list.
 
+The attachment teardown regressions run with either scripting backend: `CritterAttachmentTeardown`
+checks server links, native reports and delivery to the surviving player; `ClientCritterFinalizationDropsAttachmentIds`
+checks client cache release while keeping the peer alive. They live in the existing server/client entity-lifetime suites.
+
 ## Running tests
 
 Prefer running the generated run target from a configured build directory:

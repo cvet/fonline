@@ -2,6 +2,96 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-10 - Reconcile window display queries with rebased attachment teardown
+
+- Audit the complete published range from `e08ca424e4f24561d6610686b2b9f9548b9365db`
+  through `9ca3e5c986a38713cacf1a01661649861b9934ed`, including all native,
+  headless/stub, scripting, regression and documentation changes. Rebase the
+  unpublished attachment fix from `a4ef7759705df16e5b345ce3d6a563a3c7b40828`
+  to `700e1acff8633eb03944a25efadfe386954f1f47`, version `2026.1.25-dev`.
+  Preserve the published version 24 display-query note and all older migration
+  records; retain compatibility marker 69 in the rebased fix's migration note.
+- Match `GetDisplaySize` and `GetDisplayModes` against the rendering guide and
+  generated client API. Queries preserve existing window/logical-resolution
+  semantics, use the current display, deduplicate positive dimensions and return
+  empty values when unavailable. Virtual windows delegate to the main window.
+  Rebuild all consumers of the expanded `IAppWindow` virtual interface together.
+- Preserve both the incoming audit/contract dispositions and all 31 uncommitted
+  dispositions from the preceding reconciliation. Regenerate/check the API and
+  public index. The exact prior-local/current contract diff passes three changes
+  across seventeen domains, one required disposition and none missing.
+- Prepare ignored documentation delivery in dependency order: source inventory,
+  snippets, translation state, site/search/routes, AI evaluation and delivery.
+  Preparation passes; retrieval checks retain 28 tasks, 67 checks, 100% success
+  and 0.930 MRR. All 37 affected API, description-translation, version and
+  public-index fixtures pass. Aggregate documentation validation passes 411
+  Markdown entries; version history validates both publication steps.
+- Build all six affected embedding native targets without compiler warnings.
+  The full fresh engine unit suite passes 553 cases and 667318 assertions,
+  including current-display headless/stub and attachment teardown regressions.
+  Fresh embedding bake succeeds with a full rebuild triggered by the changed
+  build hash: 33 packs, 26948 inputs, 19040 submitted outputs and 662 maps from
+  the complete available corpus. All three managed roles compile successfully
+  with analyzers retained; dialog composition reports no errors. Baker host,
+  runtime and resource hashes match the committed embedding revision
+  `a8e101890bca53d40137bf7cd6d7d0cb79c18d30`.
+- Fresh embedding gameplay validation passes 9/9 cases and 21 expectations,
+  with no timeouts, skips or global exception delta. It exercises display-mode
+  selection, custom-resolution validation and Apply/Cancel handlers, GUI scroll
+  layout, and attachment teardown. A visible Windows DirectX scene and both
+  options/custom-resolution captures were inspected; a physical Cancel click
+  closed the custom dialog. The log identifies Engine `2026.1.25-dev` and the
+  exact rebased Engine SHA; the owned process was stopped after capture.
+- Published tips remain ancestors of both local tips, with one unpublished
+  commit each; the embedding gitlink matches this Engine revision. Safety refs
+  and stashes remain retained. This records source, native and embedding
+  acceptance; it does not qualify a rendered Jekyll/browser site, SDL/Vulkan,
+  other platforms, multiple-monitor transitions, performance or publication.
+
+## 2026-10-10 - Rebase unpublished attachment teardown onto current master
+
+- Integrate published master range `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+  through `e08ca424e4f24561d6610686b2b9f9548b9365db`. Preserve the unpublished
+  attachment fix from `af94a71b6c83a699f397f819d34d4b719a46e918` by rebasing it
+  to `a4ef7759705df16e5b345ce3d6a563a3c7b40828`, version `2026.1.24-dev`.
+  Published ancestry and every migration entry through version 23 are retained.
+- Reconcile defaults, READY runtime validation, explicit Property/Proto migration
+  actions, synchronous document callbacks, collection writeback/proxies and
+  client/server field grids with their owning guides. Retain both incoming grid
+  regressions and the attachment teardown/finalization tests; do not restore
+  deleted generated delivery catalogs to version control.
+- Prepare ignored documentation outputs in dependency order. The preparation
+  passes 310 normative snippets, 4,841 description translations and 28 tasks /
+  67 retrieval checks. Version/publication validation and standalone source
+  validation pass, including 411 Markdown entries and nine publication steps.
+- Append 31 API dispositions for the exact aggregate baseline/current digest
+  pair without changing historical entries. The full incoming contract diff
+  passes 35 changes in 17 domains, with 32 required dispositions and none missing.
+  Regenerate/check API, prototype/map format, examples and public-index outputs;
+  all three complete example configurations remain current. Reconcile the
+  rebased attachment fix's current EN/RU migration note with marker 69 from its
+  new base; preserve every dated historical migration.
+- Documentation fixtures pass 569 tests. Focused managed fixtures pass 550 tests
+  after isolating the document-migrator probe outside the embedding repository's
+  analyzer configuration; 5 optional native probes are skipped. Additional
+  async/context/GC fixtures pass 26 tests, with 11 platform-dependent skips.
+  Windows does not qualify the GCC/Clang native probe or Linux Mono cases.
+- Build the embedding project's native server, client, baker, Mapper and unit
+  targets. The fresh native run passes 552 of 553 cases and 667,314 assertions;
+  one precise-sleep timing assertion exceeds its bound during concurrent script
+  compilation. Its isolated post-compilation rerun passes all 11 assertions.
+  Attachment teardown, document
+  migrations, collection proxies and all nine server grid combinations pass.
+  Full forced resource baking passes with complete-corpus coverage, matching
+  version 24 binaries and compatibility marker 69. The embedding project passes
+  40 fresh gameplay cases with 584 expectations and zero exception delta; its
+  visible DevTest DirectX map/HUD capture passes and the owned process is stopped.
+  Two subsequently integrated published operations-only commits change none of
+  the verified code, resource inputs, settings, version or Engine pin; retain
+  the original artifact build hash as provenance. Ruby/Bundler/npm are unavailable
+  in PATH, so no local rendered Jekyll/browser qualification or publication is
+  claimed. No fresh SDL GPU/Vulkan or long-session/32-bit qualification is claimed.
+
 ## 2026-10-10 - Display-query replay after example configuration refresh
 
 - Replay unpublished `09f33955b9f47018843db309c2bff8b3ebc270d5` onto published `e08ca424e4f24561d6610686b2b9f9548b9365db`. The complete incoming range is one commit and eight paths: three complete example `.fomain` configurations replace the retired boolean grid keys with the two explicit Dynamic selectors; both generated-content guides, both changelogs and VERSION match that change. No source, tooling or test implementation changes are incoming. Preserve all published files and release entries.

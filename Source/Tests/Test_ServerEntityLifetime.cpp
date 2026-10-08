@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "MapLoader.h"
+#include "NetBuffer.h"
 #include "Server.h"
 #include "StaticMap.h"
 #include "Test_BakerHelpers.h"
@@ -674,6 +675,175 @@ TEST_CASE("ServerMapGridOperationsCost", "[.][server][map][grid][benchmark]")
             report.clear();
         }
     }
+}
+
+class AttachmentTeardownConnection final : public NetworkServerConnection
+{
+public:
+    explicit AttachmentTeardownConnection(ptr<ServerNetworkSettings> settings) :
+        NetworkServerConnection(settings),
+        _clientChannel {vector<crypto::key_bytes> {ParseSecureChannelKey(BakerTests::TEST_CHANNEL_PUBLIC_KEY, "Test")}}
+    {
+        _host = "Test";
+        vector<uint8_t> offer;
+        _clientChannel.TakeHandshakeOutput(offer);
+        ReceiveCallback(offer);
+    }
+    AttachmentTeardownConnection(const AttachmentTeardownConnection&) = delete;
+    AttachmentTeardownConnection(AttachmentTeardownConnection&&) noexcept = delete;
+    auto operator=(const AttachmentTeardownConnection&) = delete;
+    auto operator=(AttachmentTeardownConnection&&) noexcept = delete;
+    ~AttachmentTeardownConnection() override = default;
+
+    void ResetAttachmentCount() noexcept { _attachmentCount.store(0, std::memory_order_relaxed); }
+    [[nodiscard]] auto GetAttachmentCount() const noexcept -> size_t { return _attachmentCount.load(std::memory_order_relaxed); }
+
+protected:
+    void DispatchImpl() override
+    {
+        scoped_lock locker {_channelLocker};
+        vector<uint8_t> encoded_data = SendCallback();
+        vector<uint8_t> plain_data;
+        if (!encoded_data.empty()) {
+            _clientChannel.Receive(encoded_data, plain_data);
+        }
+
+        constexpr size_t header_size = sizeof(uint32_t) + sizeof(uint32_t) + sizeof(NetMessage);
+        size_t offset = 0;
+        while (offset < plain_data.size()) {
+            FO_VERIFY_AND_THROW(plain_data.size() - offset >= header_size, "Truncated outgoing network message header");
+            uint32_t signature {};
+            uint32_t message_size {};
+            NetMessage message {};
+            memory::copy(&signature, plain_data.data() + offset, sizeof(signature));
+            memory::copy(&message_size, plain_data.data() + offset + sizeof(signature), sizeof(message_size));
+            memory::copy(&message, plain_data.data() + offset + sizeof(signature) + sizeof(message_size), sizeof(message));
+            FO_VERIFY_AND_THROW(signature == NetBuffer::NETMSG_SIGNATURE, "Invalid outgoing network message signature", signature);
+            FO_VERIFY_AND_THROW(message_size >= header_size && message_size <= plain_data.size() - offset, "Invalid outgoing network message size", message_size);
+            if (message == NetMessage::CritterAttachments) {
+                _attachmentCount.fetch_add(1, std::memory_order_relaxed);
+            }
+            offset += message_size;
+        }
+    }
+
+    void DisconnectImpl() override { }
+
+private:
+    mutex _channelLocker {};
+    SecureChannel _clientChannel FO_TSA_GUARDED_BY(_channelLocker);
+    std::atomic<size_t> _attachmentCount {};
+};
+
+TEST_CASE("CritterAttachmentTeardown", "[server][entity][attachments]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    BakerTests::OverrideSetting(settings.Network.DisableZlibCompression, true);
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown = scope_exit([&server]() noexcept {
+        safe_call([&server] {
+            if (server->IsStarted()) {
+                server->Shutdown();
+            }
+        });
+    });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE_FALSE(server->IsStartingError());
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    auto fn = [&server](string_view name) { return server->Hashes.to_hashed_string(name); };
+    auto test_connection = safe_alloc::make_shared<AttachmentTeardownConnection>(server->Settings);
+    auto not_logged_in_player = server->CreateNotLoggedInPlayer(test_connection);
+    not_logged_in_player->SetName("AttachmentTeardown");
+    not_logged_in_player->SetLastControlledCritterId(ident_t {1});
+    auto player = server->LoginPlayerToNewRecord(not_logged_in_player);
+    auto master = server->CreateCritter(fn("LifetimeCritter"), false).hold_ref();
+    auto peer = server->CreateCritter(fn("LifetimeCritter"), true).hold_ref();
+    auto other_peer = server->CreateCritter(fn("LifetimeCritter"), false).hold_ref();
+    ident_t master_id = master->GetId();
+    ident_t peer_id = peer->GetId();
+    auto ctx = server->RequireCurrentSyncContext();
+    small_vector<ptr<ServerEntity>, 4> cover {player, master, peer, other_peer};
+    ctx->SyncEntities(cover);
+    peer->AttachToCritter(master);
+    other_peer->AttachToCritter(master);
+    server->SwitchPlayerCritter(player, peer);
+    test_connection->Dispatch();
+    test_connection->ResetAttachmentCount();
+
+    std::atomic<size_t> native_reports {};
+    auto previous_exception_callback = exceptions::get_callback();
+    exceptions::set_callback([&native_reports, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
+        native_reports.fetch_add(1, std::memory_order_relaxed);
+        if (previous_exception_callback) {
+            previous_exception_callback(message, trace, fatal);
+        }
+    });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    SECTION("LiveDetachKeepsTheOtherAttachment")
+    {
+        CHECK_NOTHROW(peer->DetachFromCritter());
+        CHECK_FALSE(peer->GetIsAttached());
+        CHECK(peer->GetAttachMaster() == ident_t {});
+        CHECK_FALSE(master->IsDestroyed());
+        CHECK_FALSE(peer->IsDestroyed());
+        CHECK(master->GetAttachedCritters().size() == 1);
+        CHECK(other_peer->GetAttachMaster() == master_id);
+    }
+
+    SECTION("DestroyingMasterDetachesEveryLivePeer")
+    {
+        CHECK_NOTHROW(server->CrMngr.DestroyCritter(master));
+        CHECK(master->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(master_id));
+        CHECK_FALSE(peer->IsDestroyed());
+        CHECK_FALSE(other_peer->IsDestroyed());
+        CHECK_FALSE(peer->GetIsAttached());
+        CHECK_FALSE(other_peer->GetIsAttached());
+        CHECK(peer->GetAttachMaster() == ident_t {});
+        CHECK(other_peer->GetAttachMaster() == ident_t {});
+    }
+
+    SECTION("DestroyingPeerNotifiesTheLiveMaster")
+    {
+        master->MarkIsForPlayer();
+        server->SwitchPlayerCritter(player, master);
+        peer->UnmarkIsForPlayer();
+        test_connection->Dispatch();
+        test_connection->ResetAttachmentCount();
+        CHECK_NOTHROW(server->CrMngr.DestroyCritter(peer));
+        CHECK(peer->IsDestroyed());
+        CHECK_FALSE(server->EntityMngr.GetCritter(peer_id));
+        CHECK_FALSE(master->IsDestroyed());
+        CHECK(master->GetAttachedCritters().size() == 1);
+        CHECK(other_peer->GetAttachMaster() == master_id);
+    }
+
+    test_connection->Dispatch();
+    CHECK(test_connection->GetAttachmentCount() == 1);
+    CHECK(native_reports.load(std::memory_order_relaxed) == 0);
+
+    server->SwitchPlayerCritter(player, nullptr);
+    if (other_peer->GetIsAttached()) {
+        other_peer->DetachFromCritter();
+    }
+    server->CrMngr.DestroyCritter(other_peer);
+    if (!peer->IsDestroyed()) {
+        if (peer->GetControlledByPlayer()) {
+            peer->UnmarkIsForPlayer();
+        }
+        server->CrMngr.DestroyCritter(peer);
+    }
+    if (!master->IsDestroyed()) {
+        if (master->GetControlledByPlayer()) {
+            master->UnmarkIsForPlayer();
+        }
+        server->CrMngr.DestroyCritter(master);
+    }
+    CHECK(native_reports.load(std::memory_order_relaxed) == 0);
 }
 
 // A native owner may outlive Shutdown and be released from another thread, but never outlive the engine itself:

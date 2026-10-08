@@ -712,4 +712,33 @@ TEST_CASE("ClientMapFieldAccessCost", "[.]")
     compare(8, true, false);
 }
 
+TEST_CASE("ClientCritterFinalizationDropsAttachmentIds", "[client][entity][attachments]")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    ProtoCritter proto {client->Hashes.to_hashed_string("LifetimeCritter"), client->GetPropertyRegistrar(CritterView::ENTITY_TYPE_NAME)};
+    refcount_nptr<CritterView> master = safe_alloc::make_refcounted<CritterView>(client, ident_t {1001}, &proto);
+    auto peer = safe_alloc::make_refcounted<CritterView>(client, ident_t {1002}, &proto);
+    master->SetAttachedCritters(vector<ident_t> {peer->GetId()});
+
+    std::atomic<size_t> native_reports {};
+    auto previous_exception_callback = exceptions::get_callback();
+    exceptions::set_callback([&native_reports, previous_exception_callback](string_view message, const stack_trace::catched_data& trace, bool fatal) {
+        native_reports.fetch_add(1, std::memory_order_relaxed);
+        if (previous_exception_callback) {
+            previous_exception_callback(message, trace, fatal);
+        }
+    });
+    auto restore_exception_callback = scope_exit([previous = std::move(previous_exception_callback)]() mutable noexcept { exceptions::set_callback(std::move(previous)); });
+
+    master->DestroySelf();
+    CHECK(master->IsDestroyed());
+    CHECK_FALSE(master->HasAttachedCritters());
+    CHECK_FALSE(peer->IsDestroyed());
+    master.reset();
+    CHECK(native_reports.load(std::memory_order_relaxed) == 0);
+    peer->DestroySelf();
+}
+
 FO_END_NAMESPACE

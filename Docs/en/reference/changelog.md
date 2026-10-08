@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Fixed
+
+- Detach critter links during destruction without publishing an attachment snapshot from either endpoint that is already being destroyed. Live endpoints still receive their normal notification, and entity-state guards remain enabled.
+- Release cached attachment identifiers when a client critter view is finalized, preserving the live peers and the destructor's cleanup checks. Native regressions cover live detach, destruction of either endpoint, outgoing attachment notifications and exception reports.
+
+### Migration
+
+- Reconfigure and rebuild native clients, servers and unit tests, then rebake the embedding project's resources before validation. No project caller or data conversion is required. API, settings, network compatibility `0.0.69`, ABI, resource schemas and saves retain their current meanings; no migration rule is needed.
+- Regenerate documentation snippets, translation state, site/search/routes, AI evaluation and AI delivery after integrating this update.
+
+## 2026.1.24-dev - 2026-10-10
+
 ### Added
 
 - Client scripts can query the desktop dimensions and display modes of the monitor containing the current window through `Game.GetDisplaySize` and `Game.GetDisplayModes`. SDL results exclude invalid and duplicate dimensions; unavailable display information returns zero dimensions or an empty list. Headless and stub windows provide the same unavailable result.

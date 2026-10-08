@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"c88f9c3c11d19a88fce408f19f60f2c82bebdcaff1c5ca3b633f23323b9c423b"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"17df19fae649d371be32cb6982baad0e1e51bb96cd15e9393daa0b5c1434163a"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -285,6 +285,8 @@ coverage на нативных платформах хоста. Они такж�
 Coverage зависит от platform и environment. Sources, не скомпилированные в текущем build, не имеют mapping и отдельно показываются как untouched. Sources, которые компилируются, но не могут выполниться в headless test process, входят в `ENVIRONMENT_EXCLUDED_SOURCES` с письменной причиной; сейчас это device-backed audio/video, Mongo/updater infrastructure и намеренно завершающий процесс diagnostic self-test. Loopback sockets и debugger endpoint остаются в headline. Report раздельно показывает scoped, all-source и excluded buckets. Exclusion является routing decision: его обязан покрыть owning platform, windowed run или integration lane с реальным endpoint.
 
 ### Шаблоны focused harness
+
+- **Отсоединение при уничтожении:** `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` использует автономный сервер при любом scripting backend. Он проверяет обычное отсоединение и уничтожение любого конца связи, считает native-отчёты через штатный callback исключений с сохранением прежнего обработчика и декодирует пакет `CritterAttachments` игрока, управляющего оставшимся существом. `ClientCritterFinalizationDropsAttachmentIds` в `Test_ClientEntityLifetime.cpp` проверяет финализацию представления с кешированными attachment IDs и живым peer. Одного конечного состояния недостаточно: после пойманного native-исключения повторная попытка может завершить удаление.
 
 - **ImGui panels:** создайте backend-less context, задайте `ImGuiBackendFlags_RendererHasTextures` и используйте `ImGui::LogToBuffer(depth)` для auto-open tree nodes и доказательства nested text. Collapsing headers требуют ручной записи IDs в `StateStorage`. Context уничтожается на scope exit. Для widget branch `ImGuiTestHarness::ActivateItem` требует два frame; controls в child windows адресуются через `ActivateChildItem`, а между presses очищается stale active ID.
 - **Server diagnostics:** sync point сам не покрывает entities. Snapshot ещё не вошедших players берётся под publication lock; lock освобождается до entity locks, после чего один replacement cover охватывает snapshot и registered world. Fixture должен содержать настоящего not-logged-in player.
