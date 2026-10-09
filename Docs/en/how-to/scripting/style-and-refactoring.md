@@ -193,7 +193,7 @@ Attributes are compiler and dispatcher contracts, not decorative labels. The pip
 
 ### Direct-call blockers
 
-The built-in direct-call-blocking set is `Event`, `TimeEvent`, `AnimCallback`, `PropertyGetter`, `PropertySetter`, `ServerRemoteCall`, `ClientRemoteCall`, `AdminRemoteCall`, `ItemTrigger`, `ItemStatic`, `ModuleInit`, and `InvokeEntry`. A script function bearing one of these attributes must be entered through its owning dispatcher or API, not called as an ordinary helper.
+The built-in direct-call-blocking set is `Event`, `TimeEvent`, `AnimCallback`, `PropertyGetter`, `PropertySetter`, `PropertyMigrator`, `ProtoMigrator`, `ServerRemoteCall`, `ClientRemoteCall`, `AdminRemoteCall`, `ItemTrigger`, `ItemStatic`, `ModuleInit`, and `InvokeEntry`. A script function bearing one of these attributes must be entered through its owning dispatcher or API, not called as an ordinary helper.
 
 Projects may add dispatcher-owned attributes through `Script.ExtraDirectCallBlockingAttributes`. `Script.AttributedFunctionDirectCallAllowedNamespaces` can exempt caller namespaces by prefix for compatibility. Keep either list narrow and transitional; extracting a normal helper is preferable when behavior genuinely needs both direct and dispatched entry.
 
@@ -210,6 +210,82 @@ Do not remove or add a marker as formatting cleanup. Compile all callers and fol
 Declaration comments such as `///@ Event`, `///@ RemoteCall`, `///@ Property`, and `///@ Enum` feed generated metadata and script declarations. Change the authored declaration, regenerate in dependency order, inspect generated diffs, and then compile the affected sides.
 
 Function attributes and `///@` declarations solve different parts of the pipeline. Do not replace one with the other because their names appear related.
+
+## Document migrations
+
+AngelScript supports the shared `MigrationRule Property/Proto Rename/Transform/Remove`
+grammar. Property Rename requires an existing destination; Property Transform
+requires an existing Persistent property. Proto Transform runs only with a loaded
+database document, before prototype lookup. See the
+[metadata contract](../../reference/metadata/index.md) for the
+shared rules and [Managed C#](managed-csharp.md#document-property-migrations) for
+the other backend's syntax.
+
+Declare an attributed global function. Qualify ambiguous names with
+`Namespace::Function`. Compilation and bytecode loading validate its attribute
+and signature; the server binds it automatically. Neither callback may be
+`[[Async]]` or suspend.
+
+```angelscript
+///@ MigrationRule Property Critter Transform Identity Migrations::RewriteIdentity
+///@ MigrationRule Proto Item Transform LegacyTool Migrations::RewritePrototype
+
+namespace Migrations
+{
+    [[PropertyMigrator]]
+    bool RewriteIdentity(hstring&inout value, const DatabaseDocument&inout document)
+    {
+        int kind;
+
+        if (!document.Read("IdentityKind", kind) || kind != 1 || value != "Old".hstr()) {
+            return false;
+        }
+
+        value = "New".hstr();
+
+        return true;
+    }
+
+    [[ProtoMigrator]]
+    bool RewritePrototype(hstring&inout value, const DatabaseDocument&inout document)
+    {
+        int variant;
+
+        if (!document.Read("ToolVariant", variant) || variant != 2) {
+            return false;
+        }
+
+        value = "CurrentTool".hstr();
+
+        return true;
+    }
+}
+```
+
+The property argument is exactly its AngelScript property type with `&inout`,
+including arrays, dictionaries, `any`, and RefType values. The prototype argument
+is `hstring&inout`; an empty changed value intentionally removes the prototype.
+The value is detached from the document. Returning `false` discards local edits
+and preserves the original serialized representation; `true` serializes the new
+value. Prepare all results against the unchanged document, then apply and queue
+changed canonical fields together, including `_Proto`. An exception leaves the
+document and its pending updates unchanged. Prototype chains detect cycles.
+
+`DatabaseDocument` is a read-only, synchronous borrowed reference: it has no
+factory or handle type and cannot be retained. `EntityType` identifies the
+property owner. The `inout` modifier passes this nonconstructible type by reference;
+`const` keeps it read-only. `Read(name, output)` requires the exact property type, reads a
+detached original value using canonical names or stored aliases, and falls back
+to the original `_Proto` defaults when available. It returns `false` when neither
+the stored value nor a prototype default is available. Unknown properties, type
+mismatches, and ambiguous stored aliases throw. Technical `_`/`$` fields can be
+read into `string`; `ReadEncoded(name)` returns the serialized original field,
+including unknown fields, and throws if it is absent.
+
+Callbacks must use semantic discriminators for mixed identity domains, avoid
+entity side effects, and be idempotent. Callbacks see the original `_Proto`, even
+when another migration has selected a replacement. Share logic through ordinary
+helpers: migrators block direct calls.
 
 ## Generated script ownership
 
@@ -341,6 +417,8 @@ Run the focused documentation test, localization check, snippet check, site gene
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.h`
+- `Source/Scripting/AngelScript/AngelScriptDocumentMigrations.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `BuildTools/tests/test_docs_angelscript_style.py`

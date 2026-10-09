@@ -5,7 +5,7 @@ locale: ru
 document_id: repository-home
 permalink: /README.ru.html
 ---
-<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"211b47520f9489ca4782fc7b7b6b56b4b56f3a9396ba86cbd11e78d580f8b765"} -->
+<!-- docs-translation: {"document_id":"repository-home","locale":"ru","source_path":"README.md","source_sha256":"ec338d2f81253883deb5a743d14e9c58d6ae34063137214f29be92977fc06ba9"} -->
 # FOnline Engine
 
 [Правила версий движка](Docs/ru/how-to/release/versioning.md) · [История изменений](Docs/ru/reference/changelog.md)
@@ -163,7 +163,7 @@ GameProject/
 - **Просматривайте сгенерированный интерфейс CMake:** [Docs/ru/reference/cmake/index.md](Docs/ru/reference/cmake/index.md) — опции проекта, строгие стадии и hook, выбранные helper, значения по умолчанию и ссылки на исходники.
 - **Измеряйте производительность клиента и сервера:** [Профилирование](Docs/ru/how-to/quality/profiling.md) — режимы сборки Tracy, изолированные границы capture, воспроизводимые нагрузки и сопоставимый анализ результатов.
 - **Публикуйте документацию:** [руководство по публикации сайта](Docs/ru/contributing/documentation/site-publication.md) — сгенерированные navigation/search/route, rolling version и locale policy, локальный Jekyll preview, проверка rendered route и доступности, артефакты CI и существующий GitHub Pages маршрут `fonline.ru`.
-- **Используйте документацию для AI и offline:** [llms.txt](llms.txt), [llms-full.txt](llms-full.txt) и [docs-manifest.json](docs-manifest.json) — сгенерированные маршруты, ограниченный контекст, canonical/source URL, provenance и хэши контента из того же Markdown-манифеста.
+- **Используйте документацию сайта для AI:** [llms.txt](https://fonline.ru/llms.txt), [llms-full.txt](https://fonline.ru/llms-full.txt) и [docs-manifest.json](https://fonline.ru/docs-manifest.json) — сгенерированные маршруты, ограниченный контекст, canonical/source URL, provenance и хэши контента из того же Markdown-манифеста.
 - **Если вы впервые знакомитесь с движком:** [Начало работы](Docs/ru/tutorials/getting-started.md) — первый маршрут: что читать, что собирать и кому что принадлежит.
 - **Если вы начинаете или изучаете игровой проект:** [Встраивание FOnline в игровой проект](Docs/ru/how-to/build/embedding-project.md) — ожидаемая структура репозитория и правила владения.
 - **Если вы собираете проект:** [Процесс сборки](Docs/ru/how-to/build/) — предварительные требования, пресеты и стратегия проверки. Обычно сборка запускается из встраивающего игрового репозитория, а не из checkout движка.

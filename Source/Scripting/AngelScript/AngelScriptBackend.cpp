@@ -37,6 +37,7 @@
 
 #include "AngelScriptArray.h"
 #include "AngelScriptAttributes.h"
+#include "AngelScriptDocumentMigrations.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
 #include "AngelScriptDebugger.h"
@@ -227,6 +228,7 @@ void AngelScriptBackend::RegisterMetadata(ptr<EngineMetadata> meta)
     RegisterAngelScriptTypes(as_engine);
     RegisterAngelScriptEntity(as_engine);
     RegisterAngelScriptTypeProperties(as_engine);
+    AngelScriptDocumentMigrations::RegisterTypes(as_engine);
     RegisterAngelScriptGlobals(as_engine);
     RegisterAngelScriptRemoteCalls(as_engine);
 
@@ -432,6 +434,8 @@ void AngelScriptBackend::LoadBinaryScripts(const FileSystem& resources)
     if (string remote_call_error = ValidateAngelScriptRemoteCallAttributes(mod, *_meta, lnt); !remote_call_error.empty()) {
         throw ScriptException(remote_call_error);
     }
+
+    AngelScriptDocumentMigrations::Validate(mod, *_meta);
 }
 
 auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector<uint8_t>
@@ -634,6 +638,8 @@ auto AngelScriptBackend::CompileTextScripts(const vector<File>& files) -> vector
         throw ScriptCompilerException("Remote call attribute validation failed", remote_call_error);
     }
 
+    AngelScriptDocumentMigrations::Validate(mod, *_meta);
+
     vector<AngelScript::asBYTE> buf;
     BinaryStream binary {&buf};
     as_result = mod->SaveByteCode(&binary);
@@ -775,6 +781,8 @@ void AngelScriptBackend::BindRequiredStuff()
         _contextMngr->SetDelayedScheduler([engine](timespan delay, function<void()> body) mutable { //
             engine->ScheduleDelayedCallback(delay, std::move(body));
         });
+
+        AngelScriptDocumentMigrations::Bind(_asEngine);
     }
 }
 

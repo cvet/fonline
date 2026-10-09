@@ -54,7 +54,7 @@
   <text class="node-line" x="240" y="1169" text-anchor="middle">desktop, mobile, WCAG</text>
   <rect x="38" y="1220" width="404" height="88" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
   <text class="node-title" x="240" y="1249" text-anchor="middle">Review evidence</text>
-  <text class="node-line" x="240" y="1273" text-anchor="middle">_site, reports, screenshots</text>
+  <text class="node-line" x="240" y="1273" text-anchor="middle">Site, reports, screenshots</text>
   <text class="band-title" x="240" y="1376" text-anchor="middle">Connections</text>
   <text class="connection" x="240" y="1404" text-anchor="middle">Versioned Markdown to Site generators</text>
   <text class="connection" x="240" y="1448" text-anchor="middle">Source manifest to Site generators</text>

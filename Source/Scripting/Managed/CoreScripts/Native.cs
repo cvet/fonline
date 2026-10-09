@@ -45,8 +45,10 @@ internal static class WrapperFactory<T>
     internal static Func<IntPtr, T>? Create;
 }
 
-internal static class Native
+internal static partial class Native
 {
+    static partial void ClearPropertyMigrators();
+
     // Every backend loads its own copy of the core scripts, so this names the engine behind this assembly on any
     // thread; internal calls that reach an engine pass it, and zero means the engine is gone
     private static volatile IntPtr BoundBackend;
@@ -66,6 +68,7 @@ internal static class Native
     [CallableByEngine]
     internal static void UnbindBackend()
     {
+        ClearPropertyMigrators();
         BoundBackend = IntPtr.Zero;
     }
 

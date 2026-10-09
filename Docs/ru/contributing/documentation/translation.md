@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"03babb107ee73bd0d45b57c130a09c822ef02891f7457e4472dced3193dc2d53"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"7990dbf6bb8fe32901b442dbd41fbce54bf75ecd79a02e855d0e74f501a058ad"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
@@ -36,7 +36,7 @@ permalink: /Docs/ru/contributing/documentation/translation.html
 добавление новой обязательной английской страницы без русского соответствия
 немедленно проваливает проверку.
 
-Текущий машинный отчёт: [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status).
+Текущий машинный отчёт: [docs-manifest.json#/translation_status](https://fonline.ru/docs-manifest.json#/translation_status).
 
 Результат 194/194 доказывает физический паритет страниц. Русские генерируемые
 страницы также могут содержать обращённый к читателю текст из машинных моделей,
@@ -85,7 +85,7 @@ BuildTools/README.ru.md
 5. Разместите однострочный комментарий с метаданными около начала файла:
 
    ```text
-   <!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"<current hash>"} -->
+   <!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6"} -->
    ```
 
 6. Переведите прозу, заголовки, подписи таблиц, альтернативный текст и
@@ -145,7 +145,7 @@ python BuildTools/docs_localization.py --check --enforce-complete
 `BuildTools/docs_description_translations.py` инвентаризирует 19 генерируемых
 моделей, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или
 inline-code записи и создаёт
-[description-translation-status.json](../../../generated/description-translation-status.json).
+[description-translation-status.json](https://fonline.ru/Docs/generated/description-translation-status.json).
 Генераторы накладывают overlay на глубокую копию модели: канонический JSON и
 английский Markdown не меняются, а русский Markdown получает переведённые
 описания до локализации фиксированных подписей и заголовков.

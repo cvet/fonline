@@ -78,8 +78,11 @@ class AngelScriptStyleDocumentationTests(unittest.TestCase):
         self.assertIn('document_id: angelscript-style', russian)
         self.assertIn('source_path":"Docs/en/how-to/scripting/style-and-refactoring.md"', russian)
         self.assertEqual(self._fences(english), self._fences(russian))
-        self.assertEqual(len(re.findall(r"^#{2,3} ", english, flags=re.MULTILINE)), 40)
-        self.assertEqual(len(re.findall(r"^#{2,3} ", russian, flags=re.MULTILINE)), 40)
+        self.assertEqual(len(re.findall(r"^#{2,3} ", english, flags=re.MULTILINE)), 41)
+        self.assertEqual(len(re.findall(r"^#{2,3} ", russian, flags=re.MULTILINE)), 41)
+        self.assertIn("const DatabaseDocument&inout", english)
+        self.assertIn("[[PropertyMigrator]]", english)
+        self.assertIn("[[ProtoMigrator]]", english)
         self.assertIn("[English](en/how-to/scripting/style-and-refactoring.md)", legacy)
         self.assertIn("[Russian](ru/how-to/scripting/style-and-refactoring.md)", legacy)
 

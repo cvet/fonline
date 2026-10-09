@@ -29,6 +29,8 @@ Introducing a separate site application would duplicate ownership and move the p
 
 ## Decision
 
+**2026-10-09 publication update:** the owner switched Pages to GitHub Actions. This supersedes the original root-file and branch-source constraints below: configuration is now `Docs/Site/_config.yml`, dependency/domain files are generated from the source manifest into `Workspace/Documentation/`, and the validated `Workspace/DocumentationSite/` artifact is deployed. Markdown, Jekyll, domain and public URLs are preserved. [Site publication](../documentation/site-publication.md) owns the current build and verification procedure.
+
 1. GitHub Pages remains the production publisher and Jekyll remains the renderer.
 2. Markdown committed to this repository is the canonical human-documentation source.
 3. Root `_config.yml` and `CNAME` remain part of the tested publication contract. `Docs/documentation-manifest.json` records provider, generator, source format, domain, and owning paths.
@@ -49,7 +51,7 @@ Introducing a separate site application would duplicate ownership and move the p
 9. Translation freshness is tracked from a canonical-content hash. Production publication must not present a stale Russian page as current.
 10. Existing public URLs receive GitHub Pages-compatible redirects or durable Markdown route pages before source files move.
 11. The existing Pages source branch/folder remains unchanged by documentation restructuring. Repository administrators must verify and record that setting plus DNS ownership before a production migration.
-12. Pull requests run fast Markdown/manifest/link checks and, in the site phase, a GitHub Pages-compatible Jekyll build that uploads `_site` as a review artifact. Production still deploys through the existing Pages route.
+12. Pull requests run fast Markdown/manifest/link checks and, in the site phase, a GitHub Pages-compatible Jekyll build that uploads `Workspace/DocumentationSite` as a review artifact. Production still deploys through the existing Pages route.
 
 ## Consequences
 
@@ -78,11 +80,11 @@ Introducing a separate site application would duplicate ownership and move the p
 
 ## Verification
 
-- `python BuildTools/docs_validate.py` checks manifest publication values, `_config.yml`, and `CNAME`/domain agreement.
+- `python BuildTools/docs_validate.py` checks manifest publication values, `Docs/Site/_config.yml`, and `CNAME`/domain agreement.
 - `python BuildTools/docs_site.py --check` checks locale-aware navigation and bounded search derived from the manifest.
-- `python BuildTools/docs_site_artifact.py --site-dir _site` validates the rendered Jekyll routes and static endpoints.
+- `python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite` validates the rendered Jekyll routes and static endpoints.
 - `npm --prefix BuildTools/docs-browser run audit` checks desktop/mobile pages, interactions, screenshots, and axe-core results.
-- The `Validate documentation` and `Build documentation site` jobs run without an embedding project or native build and retain `_site` as a review artifact.
+- The `Validate documentation` and `Build documentation site` jobs run without an embedding project or native build and retain `Workspace/DocumentationSite` as a review artifact.
 - Standalone GitHub Markdown rendering remains a required route alongside Jekyll.
 
 ## Related documents

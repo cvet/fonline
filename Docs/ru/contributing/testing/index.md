@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"51d19231715fc0251585444cda3c6d1fbc68f223c083aa602e12491ccdd66e26"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -90,6 +90,8 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 в прежнем лимите 8 MiB. Владение render targets проверяется на каждом цикле,
 включая прогрев: инициализация allocator отделена от памяти удержанных карт,
 но это не проверка GPU memory или process working set.
+
+Та же джоба выполняет регрессии подготовки managed runtime из `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` и `test_managed_runtime_byproducts.py`. Файловые фикстуры покрывают обязательные входы Windows, Linux, Web, Android и Apple независимо от хоста; список архивов сверяется выполнением реального блока выбора входов линковки CMake. Отсутствующие/пустые файлы должны вызывать восстановление либо явный отказ, а комплектные деревья — сохранять ключ кэша и готовые выходы исходной сборки. Небольшим пробам producer Ninja нужны POSIX CMake, Ninja и C toolchain; эти тесты устанавливают поведение setup, а не native-сборку runtime каждой платформы.
 
 `Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
 
@@ -234,7 +236,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 
 Полный отсортированный список и authoritative count генерируются из
 `Source/Tests/Test_*.cpp` в
-[source-inventory.json](../../../generated/source-inventory.json). Не копируйте
+[source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Не копируйте
 полный список или total в prose.
 
 ```bash
@@ -265,6 +267,8 @@ movement/pathfinding, text packs, timers и two-dimensional grids. Основн�
 location/entity management.
 
 ### Scripting и script-visible API
+
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — миграции документов через скомпилированный байткод на настоящем сервере: отклонение сигнатур, типизированные отделённые значения/контекст, условные домены имён, идемпотентность, атомарность при исключении и цепочки/значения прототипов.
 
 AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`, `Test_ScriptEntityOps`, `Test_CommonScriptMethods` и `Test_ServerScriptMethods`.
 

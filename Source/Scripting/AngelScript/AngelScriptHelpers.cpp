@@ -499,7 +499,7 @@ void FreeConstructAddrSpace(ptr<const Property> prop, ptr<void> construct_addr)
             cast_from_void<hstring*>(construct_addr.get())->~hstring();
         }
     }
-    else if (prop->IsBaseTypeRefType()) {
+    else if (prop->IsBaseTypeRefType() && !prop->IsArray() && !prop->IsDict()) {
         auto ref_obj = NativeDataProvider::ReadHandleSlot(construct_addr);
 
         if (ref_obj) {

@@ -7,6 +7,18 @@ from pathlib import Path
 PUBLIC_MANIFEST = "docs-manifest.json"
 ROUTING_OUTPUT = PUBLIC_MANIFEST + "#/routing"
 TRANSLATION_OUTPUT = PUBLIC_MANIFEST + "#/translation_status"
+BUILD_OUTPUT_DIR = "Workspace/Documentation"
+SITE_OUTPUT_DIR = "Workspace/DocumentationSite"
+SITE_CONFIG = "Docs/Site/_config.yml"
+ROOT_ENDPOINTS = (PUBLIC_MANIFEST, "llms.txt", "llms-full.txt", "CNAME")
+BUILD_SUPPORT_FILES = ("Gemfile", ".ruby-version", "CNAME")
+
+
+def output_path(root: Path, relative_path: str) -> Path:
+    path = relative_path.split("#/", 1)[0]
+    if path in ROOT_ENDPOINTS or path in BUILD_SUPPORT_FILES:
+        return root / BUILD_OUTPUT_DIR / path
+    return root / path
 
 
 def _section(pointer: str) -> str:
@@ -16,7 +28,7 @@ def _section(pointer: str) -> str:
 
 
 def read_section(root: Path, pointer: str) -> dict[str, object]:
-    document = json.loads((root / PUBLIC_MANIFEST).read_text(encoding="utf-8"))
+    document = json.loads(output_path(root, PUBLIC_MANIFEST).read_text(encoding="utf-8"))
     if not isinstance(document, dict):
         raise ValueError("Shared documentation metadata must be an object")
     value = document.get(_section(pointer))
@@ -26,7 +38,8 @@ def read_section(root: Path, pointer: str) -> dict[str, object]:
 
 
 def write_section(root: Path, pointer: str, value: dict[str, object]) -> None:
-    path = root / PUBLIC_MANIFEST
+    path = output_path(root, PUBLIC_MANIFEST)
+    path.parent.mkdir(parents=True, exist_ok=True)
     document = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
     if not isinstance(document, dict):
         raise ValueError("Shared documentation metadata must be an object")

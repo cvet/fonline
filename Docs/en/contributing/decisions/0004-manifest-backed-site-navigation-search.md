@@ -33,7 +33,7 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 8. The visible version indicator is `master`, explicitly a rolling branch rather than a stable engine release. Versioned documentation remains blocked on the release/tag support decision.
 9. The published FOnline mark is a byte-for-byte copy of the engine-owned `Resources/Radiation.png`. It is presentation-only and may be replaced later through a reviewed branding change without affecting document identity.
 10. Markdown must remain readable in the GitHub repository without Jekyll. Navigation/search generation, layout/static contracts, standalone validation, and the GitHub Pages build are required gates in the same change as manifest or rendering updates.
-11. `BuildTools/docs_site_artifact.py` validates the completed `_site` tree rather than inferring rendered correctness from source. Every current and available locale route, copied static endpoint, canonical URL, language, accessibility landmark/name, search result, and publishable local link is checked before the artifact is retained.
+11. `BuildTools/docs_site_artifact.py` validates the completed `Workspace/DocumentationSite` tree rather than inferring rendered correctness from source. Every current and available locale route, copied static endpoint, canonical URL, language, accessibility landmark/name, search result, and publishable local link is checked before the artifact is retained.
 12. The layout resolves locale pairs by stable document ID, sets the rendered HTML language, labels navigation in the active locale, and exposes an EN/RU switch only when both current routes exist. The browser gate exercises Russian search and both directions of the paired route.
 
 ## Consequences
@@ -68,7 +68,7 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 - `python BuildTools/tests/test_docs_site_artifact.py`
 - `python BuildTools/tests/test_docs_browser.py`
 - `python BuildTools/docs_site.py --check`
-- `python BuildTools/docs_site_artifact.py --site-dir _site`
+- `python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite`
 - `npm --prefix BuildTools/docs-browser run audit`
 - `python BuildTools/tests/test_docs_validate.py`
 - `python BuildTools/docs_validate.py`

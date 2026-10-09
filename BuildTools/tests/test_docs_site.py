@@ -9,6 +9,7 @@ from pathlib import Path
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
+import documentation_metadata  # noqa: E402
 import docs_ai_delivery  # noqa: E402
 import docs_localization  # noqa: E402
 import docs_site  # noqa: E402
@@ -129,7 +130,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "AGENTS.md": "# Agents\n\nAI route.\n",
         }
         for relative_path, content in files.items():
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
 
@@ -408,7 +409,7 @@ class DocumentationSiteTests(unittest.TestCase):
         manifest["documents"]["Docs/Guide.md"]["title"] = "Tools"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         for relative_path in manifest["documents"]:
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             if path.is_file():
                 with path.open("a", encoding="utf-8") as output:
                     output.write("\nTools are shared across workflows.\n")
@@ -471,7 +472,7 @@ class DocumentationSiteTests(unittest.TestCase):
                 and classification["human"]
                 and document["state"] == "current"
             ):
-                path = root / relative_path
+                path = documentation_metadata.output_path(root, relative_path)
                 path.write_text(path.read_text(encoding="utf-8") + "\nCorpusWideMarker\n", encoding="utf-8")
 
         search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])

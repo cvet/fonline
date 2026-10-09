@@ -91,6 +91,69 @@ auto PropertiesSerializer::SaveToDocument(ptr<const Properties> props, nptr<cons
     return doc;
 }
 
+auto PropertiesSerializer::MigrateDocument(ptr<const PropertyRegistrar> registrar, AnyData::Document& doc, nptr<AnyData::Document> updates, optional<AnyData::Value> prototype) -> bool
+{
+    FO_TRACE_ZONE(Entity);
+
+    AnyData::Document staged;
+
+    if (prototype) {
+        staged.Emplace("_Proto", std::move(*prototype));
+    }
+
+    vector<string> retired;
+    unordered_set<ptr<const Property>> seen;
+
+    for (const auto& [key, value] : doc) {
+        if (key.empty() || key[0] == '_' || key[0] == '$') {
+            continue;
+        }
+
+        auto prop = registrar->FindPersistedProperty(key);
+
+        if (!prop || prop->IsDisabled() || !prop->IsPersistent() || (prop->GetName() != key && doc.Contains(prop->GetName()))) {
+            continue;
+        }
+
+        bool first_seen = seen.emplace(prop.as_ptr()).second;
+        FO_VERIFY_AND_THROW(first_seen, "Duplicate persisted property during migration", registrar->GetTypeName(), key);
+
+        optional<AnyData::Value> replacement;
+
+        if (!prop->GetMigratorName().empty()) {
+            FO_VERIFY_AND_THROW(prop->GetMigrator(), "Property migrator is not bound", registrar->GetTypeName(), prop->GetName(), prop->GetMigratorName());
+            replacement = prop->GetMigrator()(value, doc);
+        }
+
+        if (prop->GetName() != key) {
+            retired.emplace_back(key);
+
+            if (!replacement) {
+                replacement = value.Copy();
+            }
+        }
+
+        if (replacement) {
+            staged.Emplace(string {prop->GetName()}, std::move(*replacement));
+        }
+    }
+
+    bool changed = !staged.Empty();
+
+    for (const auto& [key, value] : staged) {
+        doc.Assign(key, value.Copy());
+    }
+    for (const auto& key : retired) {
+        doc.Erase(key);
+    }
+
+    if (updates) {
+        *updates = std::move(staged);
+    }
+
+    return changed;
+}
+
 auto PropertiesSerializer::LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool
 {
     FO_TRACE_ZONE(Entity);
@@ -1263,6 +1326,12 @@ static auto LoadRefTypeFromText(string_view owner_name, const BaseTypeDesc& base
         auto field_prop = fields_registrar->FindPersistedProperty(field_name);
 
         if (!field_prop) {
+            auto migration = name_resolver.CheckMigrationRule(hashes.to_hashed_string("Property"), fields_registrar->GetTypeName(), hashes.to_hashed_string(field_name));
+
+            if (migration.has_value() && !*migration) {
+                continue;
+            }
+
             throw PropertySerializationException("Unknown ref type field", owner_name, field_name);
         }
         if (!seen_fields.emplace(field_prop.as_ptr()).second) {

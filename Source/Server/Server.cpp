@@ -642,6 +642,13 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
             SetSynchronizedTime(synctime(std::chrono::milliseconds {1}));
         }
         else {
+            AnyData::Document updates;
+            PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
+
+            for (const auto& [key, value] : updates) {
+                DbStorage.Update(GameCollectionName, ident_t {1}, key, value);
+            }
+
             if (!PropertiesSerializer::LoadFromDocument(GetPropertiesForEdit(), globals_doc, Hashes, *this)) {
                 throw ServerInitException("Failed to load globals document");
             }
@@ -3200,6 +3207,14 @@ auto ServerEngine::LoginPlayerToExistentRecord(ptr<Player> not_logged_in_player,
         if (player_doc.Empty()) {
             throw GenericException("Player data not found");
         }
+
+        AnyData::Document updates;
+        (void)PropertiesSerializer::MigrateDocument(player->GetProperties()->GetRegistrar(), player_doc, &updates);
+
+        for (const auto& [key, value] : updates) {
+            DbStorage.Update(PlayersCollectionName, player_id, key, value);
+        }
+
         if (!PropertiesSerializer::LoadFromDocument(player->GetPropertiesForEdit(), player_doc, Hashes, *this)) {
             throw GenericException("Invalid player data");
         }

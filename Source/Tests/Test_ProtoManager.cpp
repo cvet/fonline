@@ -121,9 +121,9 @@ TEST_CASE("ProtoManager")
         meta.RegisterProto(item_type, item_proto);
         meta.RegisterProto(map_type, map_proto);
         meta.RegisterProto(location_type, location_proto);
-        meta.RegisterMigrationRule("Proto", "Item", "LegacyKnife", "Knife");
-        meta.RegisterMigrationRule("Proto", "Map", "RestStop_Day", "RestStop_DayTime");
-        meta.RegisterMigrationRule("Proto", "Location", "RestStop_Day", "RestStop_DayTime");
+        meta.RegisterProtoMigrationRule("Item", "Rename", "LegacyKnife", "Knife");
+        meta.RegisterProtoMigrationRule("Map", "Rename", "RestStop_Day", "RestStop_DayTime");
+        meta.RegisterProtoMigrationRule("Location", "Rename", "RestStop_Day", "RestStop_DayTime");
 
         CHECK(IsSameProtoPtr(meta.GetProtoItem(legacy_pid), item_proto.get()));
         CHECK(IsSameProtoPtr(meta.GetProtoEntity(item_type, legacy_pid), item_proto.get()));
@@ -143,7 +143,7 @@ TEST_CASE("ProtoManager")
         hstring item_type = meta.Hashes.to_hashed_string("Item");
         hstring removed_pid = meta.Hashes.to_hashed_string("RemovedKnife");
 
-        meta.RegisterMigrationRule("Proto", "Item", "RemovedKnife", "__remove__");
+        meta.RegisterProtoMigrationRule("Item", "Remove", "RemovedKnife");
 
         // An engaged empty result distinguishes an intentional deletion from no migration rule
         auto resolved = meta.CheckMigrationRule(proto_rule, item_type, removed_pid);

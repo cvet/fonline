@@ -30,7 +30,7 @@ hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
 without its Russian counterpart fails validation immediately.
 
-The current machine report is [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status).
+The current machine report is [docs-manifest.json#/translation_status](https://fonline.ru/docs-manifest.json#/translation_status).
 
 This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
@@ -76,7 +76,7 @@ Stable document IDs join languages. Translated titles and headings never define 
 5. Put a one-line metadata comment near the top:
 
    ```text
-   <!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"<current hash>"} -->
+   <!-- docs-translation: {"document_id":"getting-started","locale":"ru","source_path":"Docs/en/tutorials/getting-started.md","source_sha256":"2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6"} -->
    ```
 
 6. Translate prose, headings, table labels, alt text, and reader-facing warnings.
@@ -127,7 +127,7 @@ stale immediately.
 `BuildTools/docs_description_translations.py` inventories 19 generated models,
 rejects duplicate, unknown, stale, type-changing, and inline-code-changing
 records, and writes
-[description-translation-status.json](../../../generated/description-translation-status.json).
+[description-translation-status.json](https://fonline.ru/Docs/generated/description-translation-status.json).
 Generators apply the overlay to a deep copy of the model: canonical JSON and
 English Markdown remain unchanged, while Russian Markdown receives translated
 descriptions before its fixed labels and headings are localized.

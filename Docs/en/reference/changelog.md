@@ -16,12 +16,72 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
-- Merge published `cb33d42c7e` with retained `8f7c166f17` integration history. Preserve both tips, the process-private unit-test cache and checked managed compilation; adopt SDL_GPU model-picking recovery and the shared documentation metadata index.
+- Merge `e463e04879` and `59611cf628`, preserving both histories.
 
 ### Migration
 
-- Apply the published `2026.1.14-dev` client rebuild and `2026.1.15-dev` documentation-consumer migration below. Read routes from `docs-manifest.json#/routing` and translation evidence from `docs-manifest.json#/translation_status`; regenerate localization, site/search/routes, AI evaluation and AI delivery in dependency order.
-- Reconfigure and rebuild native version/revision metadata and affected client/unit-test targets. This merge introduces no further API, settings, network compatibility (`0.0.68`), ABI, resource/save schema or database conversion. Existing alpha thresholds, successful readbacks, representable managed numeric values and unit-test cache ownership retain their meanings.
+- Apply versions 16–18 below, prepare documentation and rebuild/rebake matching roles. No additional API/data conversion: published `0.0.69`, ABI, schemas and valid-value meanings are preserved. Retain safety copies through validation.
+
+## 2026.1.18-dev - 2026-10-09
+
+### Added
+
+- Add `MigrationRule Property <Owner> Remove <Old>` as a permanent name tombstone. Skip its historical document/text value and reject a live declaration under that name, including RefType fields.
+- Add AngelScript document Property/Proto Transform support with `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, typed `&inout` values and `const DatabaseDocument&inout`, automatic source/bytecode validation and binding, and synchronous atomic staging. Namespace-qualified function names use `Namespace::Function`; rebake AngelScript scripts for the new registered type and callbacks. Release RefType arrays/dictionaries through their container cleanup paths.
+
+- Add document-level property value migration through `MigrationRule Property <Owner> Transform <Property> <Function>`, native `PropertyMigratorCallback`, and Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>`, and `DatabaseDocument`. All functions see the original loaded document; successful results are staged and queued as changed canonical fields before entity property loading.
+
+- Add `MigrationRule Proto <Owner> Transform <Source> <Function>` with `[ProtoMigrator] bool Function(ref hstring value, DatabaseDocument document)`. Resolve conditional proto chains on the original document before lookup, detect cycles, and stage `_Proto` with property changes; ordinary lookup and baking apply only Rename/Remove.
+
+### Changed
+
+- Require the explicit `Rename` action for property-name rules and an existing destination. Validate that `Transform` targets an existing Persistent property; server-only dynamic owners and their rules follow metadata role filtering.
+
+### Migration
+
+- For a deleted property, retain `///@ MigrationRule Property Owner Remove Old` with no replacement. Rename and Transform keep their five-part forms; both Property and Proto Remove use four parts. Name reuse is forbidden regardless of the new property type.
+- Replace every `///@ MigrationRule Property Owner Old New` declaration with `///@ MigrationRule Property Owner Rename Old New` in native/script source, generated consumers, tooling, and fixtures. Historical source names must point to existing live fields, including nested RefType fields. The old four-part property form is rejected; Proto rules also require an explicit action: use Rename Old New, Remove Old, or Transform Old QualifiedType.Function. The old __remove__ replacement is rejected; Enum, Entity, EntityHolder and Version retain their forms.
+- For value migration, register `///@ MigrationRule Property Owner Transform Property QualifiedType.Function` and implement a static synchronous `[PropertyMigrator]` method returning `bool` with parameters `ref T` and `DatabaseDocument`, where `T` exactly matches the property's managed type. `false` keeps the original serialized value; `true` serializes the result. Do not retain the context, perform entity mutations, issue rewards, or infer the identity type from matching text. Projects must supply semantic conditions, collision policy, idempotency, and old-save/restart fixtures. Managed C# binds functions automatically; unbound callbacks refuse migration.
+- Rebuild native binaries and rebake all metadata and managed roles together. Property and Proto Rename/Transform records now contain five parts; Remove contains four for either kind; the outer metadata file header is unchanged. The manual compatibility marker advances from 68 to 69, so mixed old/new executable and resource sets are unsupported. No database schema, field storage type, transport message, platform payload, or unrelated property behavior is changed; the added native callback API requires rebuilding embedding binaries.
+- Database loading applies conversions to Game, Player, ordinary and custom entities, including batched loads. An exception during preparation leaves the document and update queue untouched; this guarantee covers one document, not a transaction over all world documents. Retain migration rules for the supported save horizon and verify a database copy before production adoption. Regenerate API/reference, snippet, translation, site/search, and AI delivery artifacts.
+
+## 2026.1.17-dev - 2026-10-09
+
+### Fixed
+
+- Validate existing READY trees, downloaded workspace caches, prebuilt inputs and freshly published managed runtimes against the nonempty embedding headers, managed entry assemblies and target-specific link archives. Recover incomplete trees through the existing cache/republication route instead of reporting a runtime ready with missing linker inputs.
+
+### Migration
+
+- No script/native API, configuration-key, serialized-data, network, ABI, resource-schema or save migration is required: this change verifies build-preparation inputs and preserves the meaning of complete runtimes. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+- Run the normal `SetupManagedRuntime` target (or BuildTools `setup-mono <os> <arch> <config>`) to recover an incomplete READY tree. Without a workspace cache, existing valid source/object markers permit republication without recompiling Mono; configured caches accept complete entries and rebuild incomplete hits. Complete trees retain their existing cache identity and marker names.
+- `FO_MANAGED_RUNTIME_PREBUILT` must name a complete target tree containing the headers used by the managed backend, CoreLib and `System.Runtime.dll`, the platform's static archives, and browser JavaScript glue when applicable. Replace incomplete prebuilt input with a complete published target tree; it is rejected before copying or writing READY. Regenerate localization, site/search/routes, AI evaluation and AI delivery after updating the owning guide.
+
+## 2026.1.16-dev - 2026-10-09
+
+### Changed
+
+- Move the authored Jekyll config to `Docs/Site/_config.yml`. Generate Ruby dependency/domain files and public root endpoints under ignored `Workspace/Documentation/`; render and export with `docs_site_build.py` into `Workspace/DocumentationSite/`. Public URLs are preserved.
+
+- Generate documentation delivery indexes and validation catalogs at build time instead of committing them. This includes `docs-manifest.json`, both `llms` endpoints, site navigation/search, and six generated reports. `AGENTS.md` remains the source-checkout maintainer entry point; the website retains its public retrieval URLs.
+- Prepare documentation outputs before CI validation and site rendering. Publish the validated Pages artifact only after the master-push version and documentation gates pass.
+
+### Fixed
+
+- Apply declared Engine defaults before ordinary application configuration is loaded. Settings omitted from a project or packaged config retain their `Settings.inc` defaults; explicit config, sub-config, cached local-config and command-line values keep their existing precedence, including explicit zeroes.
+
+### Migration
+
+- Replace bare Jekyll commands with `python BuildTools/docs_site_build.py`; install dependencies using `bundle install --gemfile Workspace/Documentation/Gemfile` after preparation. `Gemfile`, `.ruby-version` and `CNAME` are derived from the source manifest, with no versioned root copies.
+
+- Run `python BuildTools/docs_prepare.py` before local documentation checks or Jekyll. Public contract models, Markdown, policies, translations and SVG/PNG remain versioned and must still pass their freshness checks. Do not stage the ignored delivery outputs.
+- Before the first master push with this change, select GitHub Actions as the repository's Pages build source; the former branch build cannot generate ignored files. Verify the first deployed artifact and existing public endpoints. The worktree change does not switch remote settings or deploy a site.
+- Reconfigure and rebuild affected native applications, then bake and validate the embedding project's startup profiles. Review settings previously omitted from configuration: they now receive their declared defaults instead of value-initialized zeroes. No setting name or declared default changes, and explicit values retain their meaning.
+- Native/script API, network compatibility `0.0.68`, ABI, resource schemas and saved data are unchanged. No project-source or persisted-data conversion is required.
+
+### Retained integration at 2026.1.16-dev
+
+- Merge `cb33d42c7e` and `8f7c166f17`; preserve caches and checked compilation. Apply migrations 14–15 below, rebuild client/tests and regenerate docs; no additional API/data conversion or compatibility change.
 
 ## 2026.1.15-dev - 2026-10-09
 
@@ -45,14 +105,9 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
 
-### Changed
+### Retained integration
 
-- Merge retained integration history with published `671a19e60f`; preserve both tips and the process-private unit-test cache class. Adopt checked managed compilation, unsigned color packing and the published assembly-resource documentation.
-
-### Migration
-
-- Apply the `2026.1.11-dev` checked-arithmetic migration: rebuild the baker and every managed role, review intentional wrap/truncation expressions, and rebake/package matching assemblies. `BakerTests::GetTestCacheDir()` keeps its result, temporary process-specific path and cleanup ownership. Published assembly resources remain `Assemblies/Assemblies-<target>/`; staging directories are not package inputs.
-- Reconfigure/rebuild native version metadata and unit tests. No new API, settings, protocol compatibility (`0.0.68`), ABI, resource/save schema or database conversion is introduced by this reconciliation. Existing representable numeric values retain their meaning; overflowing arithmetic/narrowing now follows the checked compiler contract.
+- Merge `671a19e60f`, preserving caches. Apply checked-arithmetic migration 11 and published assembly paths; rebuild/rebake matching roles and native tests. No additional API/data or compatibility change.
 
 ## 2026.1.13-dev - 2026-10-06
 
@@ -114,14 +169,11 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
-- Rebase unpublished TLA integration fixes onto published master `b1e3fa58021a171877177a19c3d26127abf486be`. Consolidate the prior merge-only changes into one local step; preserve the upstream Git-policy, version and bilingual release notes.
-- Retain actual lowercase baked image resource names and frame-composition regression coverage, process-isolated test caches, the 2D/AngelScript fixture guard and ground-item visibility precondition. Client-updater fixtures probe for an unused local TCP port instead of assuming a candidate is free.
-- Reconcile the owning image/baking/testing guides and generated documentation. Complete AI delivery retains the reviewed 2228224-byte bound needed by these local explanations.
+- Reconcile TLA integration with `b1e3fa58021a171877177a19c3d26127abf486be`; retain lowercase image resources, frame-composition tests, private caches, client fixture/visibility guards and updater free-port probing.
 
 ### Migration
 
-- Reconfigure and rebuild native clients, servers and version/revision metadata together. No TLA caller, setting, wire, ABI, resource schema or save conversion is introduced by this rebase; compatibility remains `0.0.68`. The natively tested source is unchanged. When upgrading from an earlier published engine, apply the preceding timestamp and movement migrations in order.
-- Delivery consumers must honor the full-context `max_bytes` increase from 2195456 to 2228224 bytes against this published baseline. Whole-document membership and fail-closed budget checks remain required. Test processes use private caches; the user's local settings and mapper history remain intact.
+- Reconfigure/rebuild clients, servers and metadata; apply earlier timestamp/movement migrations when needed. API, settings, ABI, resources, saves and compatibility `0.0.68` are unchanged. Delivery consumers accept `full_context.max_bytes` 2228224 (previously 2195456), preserving whole-document checks. User settings/history remain intact.
 
 ## 2026.1.9-dev - 2026-10-05
 

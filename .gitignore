@@ -16,5 +16,20 @@ package-lock.json
 !BuildTools/docs-browser/package-lock.json
 !Examples/ContentShowcase/WebTests/package-lock.json
 Gemfile.lock
+/.bundle/
 /Source/Scripting/Managed/**/bin/
 /Source/Scripting/Managed/**/obj/
+
+# Documentation build outputs; prepare with BuildTools/docs_prepare.py
+/docs-manifest.json
+/llms.txt
+/llms-full.txt
+/Docs/Site/Data/docs-site.json
+/Docs/Site/Assets/docs-search.json
+/Docs/Site/Assets/docs-search.ru.json
+/Docs/generated/source-inventory.json
+/Docs/generated/diagrams.json
+/Docs/generated/screenshots.json
+/Docs/generated/snippets.json
+/Docs/generated/description-translation-status.json
+/Docs/generated/ai-evaluation-report.json

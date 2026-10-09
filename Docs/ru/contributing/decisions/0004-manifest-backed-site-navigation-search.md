@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-manifest-backed-site-navigation-search
 permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-search.html
 ---
-<!-- docs-translation: {"document_id":"adr-manifest-backed-site-navigation-search","locale":"ru","source_path":"Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md","source_sha256":"3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3"} -->
+<!-- docs-translation: {"document_id":"adr-manifest-backed-site-navigation-search","locale":"ru","source_path":"Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md","source_sha256":"3609c77a54d31d6fa1516a4b13ba39cc520d1ca5cfa1b4260b87dae297d0c3de"} -->
 # ADR-0004: навигация и поиск сайта на основе манифеста
 
 - Статус: принято
@@ -33,7 +33,7 @@ permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-
 8. Видимый индикатор версии показывает `master`, явно обозначенную как rolling branch, а не стабильный выпуск движка. Версионированная документация остаётся заблокированной до решения по поддержке выпусков и тегов.
 9. Опубликованный знак FOnline является побайтной копией принадлежащего движку `Resources/Radiation.png`. Он служит только представлению и позднее может быть заменён через проверенное изменение брендинга без влияния на идентичность документов.
 10. Markdown должен оставаться читаемым в репозитории GitHub без Jekyll. Генерация навигации и поиска, контракты layout/static, самостоятельная проверка и сборка GitHub Pages являются обязательными gates в том же изменении, что и правки манифеста или рендеринга.
-11. `BuildTools/docs_site_artifact.py` проверяет готовое дерево `_site`, а не выводит корректность рендеринга из исходников. До сохранения артефакта проверяются каждый актуальный и доступный маршрут локали, скопированный static endpoint, canonical URL, язык, accessibility landmark и name, поисковый результат и публикуемая локальная ссылка.
+11. `BuildTools/docs_site_artifact.py` проверяет готовое дерево `Workspace/DocumentationSite`, а не выводит корректность рендеринга из исходников. До сохранения артефакта проверяются каждый актуальный и доступный маршрут локали, скопированный static endpoint, canonical URL, язык, accessibility landmark и name, поисковый результат и публикуемая локальная ссылка.
 12. Layout разрешает пары локалей по стабильному идентификатору документа, задаёт язык отрендеренного HTML, подписывает навигацию в активной локали и показывает переключатель EN/RU только при наличии обоих актуальных маршрутов. Browser gate проверяет русский поиск и оба направления перехода между парными страницами.
 
 ## Последствия
@@ -68,7 +68,7 @@ permalink: /Docs/ru/contributing/decisions/0004-manifest-backed-site-navigation-
 - `python BuildTools/tests/test_docs_site_artifact.py`
 - `python BuildTools/tests/test_docs_browser.py`
 - `python BuildTools/docs_site.py --check`
-- `python BuildTools/docs_site_artifact.py --site-dir _site`
+- `python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite`
 - `npm --prefix BuildTools/docs-browser run audit`
 - `python BuildTools/tests/test_docs_validate.py`
 - `python BuildTools/docs_validate.py`

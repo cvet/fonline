@@ -5,7 +5,7 @@ locale: ru
 document_id: angelscript-style
 permalink: /Docs/ru/how-to/scripting/style-and-refactoring.html
 ---
-<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"6a874ba5b84269757a273178381088d73c4d5b26c3f5697acd58419a1944411d"} -->
+<!-- docs-translation: {"document_id":"angelscript-style","locale":"ru","source_path":"Docs/en/how-to/scripting/style-and-refactoring.md","source_sha256":"2dfcab0adc40347a72b0f9dea4c9867ff226e9b159217a0854f86b889fbf2e44"} -->
 # Стиль AngelScript и рефакторинг
 
 > Документация движка. Это руководство определяет переиспользуемый контракт исходного кода, форматирования, модулей и рефакторинга AngelScript, поддержанный текущими compiler, formatter wrapper, публичными examples и тестами FOnline. Проект игры владеет своей предметной лексикой, каталогом модулей, конкретным formatter layout, генерируемыми форматами проекта, игровой архитектурой и политикой миграций.
@@ -193,7 +193,7 @@ Attributes являются контрактами compiler и dispatcher, а н
 
 ### Блокировка прямых вызовов
 
-Встроенный direct-call-blocking набор включает `Event`, `TimeEvent`, `AnimCallback`, `PropertyGetter`, `PropertySetter`, `ServerRemoteCall`, `ClientRemoteCall`, `AdminRemoteCall`, `ItemTrigger`, `ItemStatic`, `ModuleInit` и `InvokeEntry`. Script function с одним из этих attributes должна вызываться через владеющий dispatcher или API, а не как обычный helper.
+Встроенный direct-call-blocking набор включает `Event`, `TimeEvent`, `AnimCallback`, `PropertyGetter`, `PropertySetter`, `PropertyMigrator`, `ProtoMigrator`, `ServerRemoteCall`, `ClientRemoteCall`, `AdminRemoteCall`, `ItemTrigger`, `ItemStatic`, `ModuleInit` и `InvokeEntry`. Script function с одним из этих attributes должна вызываться через владеющий dispatcher или API, а не как обычный helper.
 
 Проекты могут добавлять dispatcher-owned attributes через `Script.ExtraDirectCallBlockingAttributes`. `Script.AttributedFunctionDirectCallAllowedNamespaces` может по префиксу освободить caller namespaces ради совместимости. Сохраняйте оба списка узкими и временными; когда поведению действительно нужны direct и dispatched entry, предпочтительнее выделить обычный helper.
 
@@ -210,6 +210,82 @@ Validator также проверяет ownership callback API, включая e
 Комментарии объявлений, например `///@ Event`, `///@ RemoteCall`, `///@ Property` и `///@ Enum`, питают generated metadata и script declarations. Измените авторское объявление, выполните regeneration в порядке зависимостей, просмотрите generated diffs, затем компилируйте затронутые стороны.
 
 Function attributes и объявления `///@` решают разные части pipeline. Не заменяйте одно другим из-за похожих имён.
+
+## Миграции документов
+
+AngelScript поддерживает общую грамматику `MigrationRule Property/Proto
+Rename/Transform/Remove`. Property Rename требует существующее целевое свойство,
+Property Transform — существующее Persistent-свойство. Proto Transform
+выполняется только для загруженного документа БД до поиска прототипа. Общие
+правила описаны в [контракте метаданных](../../reference/metadata/index.md),
+синтаксис другого backend — в [Managed C#](managed-csharp.md#миграция-свойств-документа).
+
+Объявите глобальную функцию с атрибутом. Неоднозначные имена квалифицируйте через
+`Namespace::Function`. Компиляция и загрузка байткода проверяют атрибут и сигнатуру;
+сервер автоматически связывает функцию. Callback не может иметь
+`[[Async]]` или приостанавливать выполнение.
+
+```angelscript
+///@ MigrationRule Property Critter Transform Identity Migrations::RewriteIdentity
+///@ MigrationRule Proto Item Transform LegacyTool Migrations::RewritePrototype
+
+namespace Migrations
+{
+    [[PropertyMigrator]]
+    bool RewriteIdentity(hstring&inout value, const DatabaseDocument&inout document)
+    {
+        int kind;
+
+        if (!document.Read("IdentityKind", kind) || kind != 1 || value != "Old".hstr()) {
+            return false;
+        }
+
+        value = "New".hstr();
+
+        return true;
+    }
+
+    [[ProtoMigrator]]
+    bool RewritePrototype(hstring&inout value, const DatabaseDocument&inout document)
+    {
+        int variant;
+
+        if (!document.Read("ToolVariant", variant) || variant != 2) {
+            return false;
+        }
+
+        value = "CurrentTool".hstr();
+
+        return true;
+    }
+}
+```
+
+Первый аргумент мигратора свойства имеет точно его AngelScript-тип с `&inout`,
+включая массивы, словари, `any` и значения RefType. Для прототипа это
+`hstring&inout`; изменённое пустое значение означает удаление прототипа.
+Значение отделено от документа. `false` отбрасывает локальные изменения и
+сохраняет исходное сериализованное представление; `true` сериализует результат.
+Все результаты готовятся на неизменённом документе, затем изменённые канонические
+поля, включая `_Proto`, применяются и ставятся в очередь вместе. При исключении
+документ и ожидающие записи остаются неизменными. Цепочки прототипов проверяются
+на циклы.
+
+`DatabaseDocument` — заимствованная синхронная ссылка только для чтения: у неё нет
+фабрики или типа handle, её нельзя сохранить. `EntityType` сообщает владельца
+свойств. `inout` передаёт этот неконструируемый тип по ссылке, `const` запрещает
+его изменение. `Read(name, output)` требует точный тип свойства, читает отделённое
+исходное значение по каноническому имени или старому имени и использует значения
+по умолчанию исходного `_Proto`, если они доступны. Возвращает `false`, если нет
+ни сохранённого значения, ни доступного прототипного. Неизвестное свойство,
+несовпадение типа и неоднозначные старые ключи вызывают исключение. Технические
+поля `_`/`$` читаются в `string`; `ReadEncoded(name)` возвращает исходное
+сериализованное поле, включая неизвестное, и отклоняет отсутствующее.
+
+Callback обязан использовать смысловые селекторы для смешанных доменов имён,
+избегать побочных изменений сущностей и быть идемпотентным. Он видит исходный
+`_Proto`, даже если другая миграция уже выбрала замену. Общую логику выносите
+в обычные helpers: миграторы блокируют прямые вызовы.
 
 ## Владение сгенерированными скриптами
 
@@ -341,6 +417,8 @@ CI движка запускает `buildtools.py format-source` и `git diff --
 - `Source/Scripting/AngelScript/AngelScriptBackend.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.cpp`
 - `Source/Scripting/AngelScript/AngelScriptAttributes.h`
+- `Source/Scripting/AngelScript/AngelScriptDocumentMigrations.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBaker.cpp`
 - `BuildTools/tests/test_docs_angelscript_style.py`

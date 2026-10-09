@@ -34,6 +34,7 @@
 #include "catch_amalgamated.hpp"
 
 #include "Application.h"
+#include "CacheStorage.h"
 #include "ConfigFile.h"
 #include "DiskFileSystem.h"
 #include "Settings.h"
@@ -629,6 +630,58 @@ TEST_CASE("Settings")
 
         ignore_unused(fs::remove_dir_tree(temp_dir));
     }
+}
+
+TEST_CASE("ApplicationSettings")
+{
+    string root = MakeTempSettingsDir("application_settings");
+    auto cleanup = scope_exit([&root]() noexcept { (void)fs::remove_dir_tree(root); });
+    string config_path = strex(root).combine_path("Startup.fomain").str();
+    REQUIRE(fs::write_file(config_path,
+        string_view {"Render.Sleep = 7\n"
+                     "Network.NetBufferSize = 8192\n"
+                     "[SubConfig]\n"
+                     "Name = Override\n"
+                     "Render.Sleep = 11\n"}));
+
+    char program[] = "settings_test";
+    char apply_config[] = "--ApplyConfig";
+    char writable_path[] = "--Common.UserWritablePath";
+    vector<CommandLineArg> args = {program, apply_config, config_path.data(), writable_path, root.data()};
+
+    auto configured = LoadAppSettings(CommandLineArgs {args});
+    CHECK(configured.SpriteMesh.MaxTriangles == 4096);
+    CHECK(configured.ServerNetwork.ClientPingTime == 10000);
+    CHECK(configured.Baking.CacheResources == "Cache");
+    CHECK(std::ranges::find(configured.Common.SecretSettingTokens, "token") != configured.Common.SecretSettingTokens.end());
+    CHECK(configured.Network.NetBufferSize == 8192);
+    CHECK(configured.Render.Sleep == 7);
+
+    char apply_subconfig[] = "--ApplySubConfig";
+    char subconfig_name[] = "Override";
+    args.emplace_back(apply_subconfig);
+    args.emplace_back(subconfig_name);
+    auto overlaid = LoadAppSettings(CommandLineArgs {args});
+    CHECK(overlaid.Render.Sleep == 11);
+    CHECK(overlaid.SpriteMesh.MaxTriangles == 4096);
+
+    {
+        CacheStorage cache(strex(root).combine_path("Cache").str());
+        cache.SetString(LOCAL_CONFIG_NAME, "Render.Sleep = 13\n");
+    }
+
+    auto cached = LoadAppSettings(CommandLineArgs {args});
+    CHECK(cached.Render.Sleep == 13);
+    CHECK(cached.ServerNetwork.ClientPingTime == 10000);
+
+    char sleep_setting[] = "--Render.Sleep";
+    char zero[] = "0";
+    args.emplace_back(sleep_setting);
+    args.emplace_back(zero);
+    auto command_line = LoadAppSettings(CommandLineArgs {args});
+    CHECK(command_line.Render.Sleep == 0);
+    CHECK(command_line.Network.NetBufferSize == 8192);
+    CHECK(command_line.SpriteMesh.MaxTriangles == 4096);
 }
 
 FO_END_NAMESPACE

@@ -147,16 +147,12 @@ Each checked interface owns its generator. Run the affected generator with `--wr
 
 ```bash
 python BuildTools/docs_diagrams.py --write
-python BuildTools/docs_screenshots.py --write
 python BuildTools/docs_reference.py --write
-python BuildTools/docs_snippets.py --write --external
-python BuildTools/docs_description_translations.py --write
-python BuildTools/docs_localization.py --write
-python BuildTools/docs_site.py --write
-python BuildTools/docs_ai_eval.py --write
-python BuildTools/docs_ai_delivery.py --write
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_validate.py
 ```
+
+Preparation writes public root endpoints and Ruby dependency/domain files into ignored `Workspace/Documentation/`. Use `python BuildTools/docs_site_build.py` for rendering and endpoint export to `Workspace/DocumentationSite/`; the authored Jekyll config is `Docs/Site/_config.yml`. Contract models and reviewed images still require their owning generators.
 
 Focused format/CLI/CMake generators are listed in [Generated API and Metadata](../../reference/metadata/index.md). `docs_validate.py` checks byte-for-byte freshness; it is not a replacement for the focused semantic test.
 

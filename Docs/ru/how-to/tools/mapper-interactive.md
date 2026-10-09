@@ -5,7 +5,7 @@ locale: ru
 document_id: mapper-interactive-manual
 permalink: /Docs/ru/how-to/tools/mapper-interactive.html
 ---
-<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"8984833f19d34fa517cfb1e44de7682c5f0b5528a60f586d90a576da06d37202"} -->
+<!-- docs-translation: {"document_id":"mapper-interactive-manual","locale":"ru","source_path":"Docs/en/how-to/tools/mapper-interactive.md","source_sha256":"6b621b6f54ec684b44c05fda24afbc246c8b717f261027192ad42acb9f49d44e"} -->
 # Интерактивное руководство по Mapper
 
 > Руководство движка по штатной интерактивной работе в Mapper. Каталоги карт,
@@ -315,7 +315,7 @@ Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
 
 Профиль открывает `TutorialMap`, запускает `Documentation.spk` с фиксированным
 seed и закрепляет viewport `1280x800`. Проверяемый PNG и полные хэши исходников зарегистрированы в
-[generated/screenshots.json](../../../generated/screenshots.json).
+[generated/screenshots.json](https://fonline.ru/Docs/generated/screenshots.json).
 
 Используйте `Render.HeadlessWindow = True` для внеэкранного рендера карты, но
 не `Render.NullRenderer`: нулевой рендерер не может создать визуальный кадр.

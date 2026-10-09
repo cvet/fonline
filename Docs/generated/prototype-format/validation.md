@@ -45,6 +45,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-prototype-format-rule-proto-migration-db0509eb60"></a>
 - [`entry-prototype-format-rule-proto-migration-db0509eb60`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-proto-migration-db0509eb60)
 
+<a id="entry-prototype-format-rule-property-migration-c7293b2035"></a>
+- [`entry-prototype-format-rule-property-migration-c7293b2035`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-property-migration-c7293b2035)
+
 <a id="entry-prototype-format-rule-side-specific-output-ade0b5dff3"></a>
 - [`entry-prototype-format-rule-side-specific-output-ade0b5dff3`](../../en/reference/prototype-format/validation.md#entry-prototype-format-rule-side-specific-output-ade0b5dff3)
 

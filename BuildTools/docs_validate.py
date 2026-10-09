@@ -63,7 +63,7 @@ ALLOWED_PAGES_SOURCE_STATES = {"pending-admin-verification", "verified"}
 ALLOWED_PAGES_BUILD_TYPES = {"legacy", "workflow"}
 ALLOWED_DNS_STATES = {"public-resolution-confirmed"}
 ALLOWED_DNS_OWNERSHIP_STATES = {"not-observed", "verified"}
-PAGES_BUILD_ACTION = "actions/jekyll-build-pages@v1"
+PAGES_BUILD_ACTION = "ruby/setup-ruby@v1"
 SITE_ARTIFACT_ACTION = "actions/upload-artifact@v4"
 PAGES_README_PERMALINKS = {
     "BuildTools/README.md": "/BuildTools/README.html",
@@ -233,7 +233,7 @@ def _validate_relative_path(value: str, label: str, errors: list[str]) -> PurePo
 def _source_exists(root: Path, source: str) -> bool:
     if any(character in source for character in "*?["):
         return any(root.glob(source))
-    return (root / source).exists()
+    return documentation_metadata.output_path(root, source).exists()
 
 
 def _top_level_yaml_scalar(text: str, key: str) -> str | None:
@@ -261,12 +261,12 @@ def _validate_publishing(
         "provider": "github-pages",
         "generator": "jekyll",
         "content_format": "markdown",
-        "cname": "CNAME",
-        "config": "_config.yml",
-        "gemfile": "Gemfile",
-        "ruby_version_file": ".ruby-version",
+        "cname": documentation_metadata.BUILD_OUTPUT_DIR + "/CNAME",
+        "config": documentation_metadata.SITE_CONFIG,
+        "gemfile": documentation_metadata.BUILD_OUTPUT_DIR + "/Gemfile",
+        "ruby_version_file": documentation_metadata.BUILD_OUTPUT_DIR + "/.ruby-version",
         "workflow": ".github/workflows/validate.yml",
-        "site_artifact": "_site",
+        "site_artifact": documentation_metadata.SITE_OUTPUT_DIR,
     }
     for key, expected in expected_values.items():
         if publishing.get(key) != expected:
@@ -330,8 +330,8 @@ def _validate_publishing(
     ):
         errors.append("unverified documentation publishing dns must name its challenge record")
 
-    cname_path = root / "CNAME"
-    config_path = root / "_config.yml"
+    cname_path = documentation_metadata.output_path(root, "CNAME")
+    config_path = root / documentation_metadata.SITE_CONFIG
     if not cname_path.is_file():
         errors.append("GitHub Pages CNAME file is missing")
     elif cname_path.read_text(encoding="utf-8").strip() != domain:
@@ -373,13 +373,13 @@ def _validate_publishing(
                     f"{relative_path}"
                 )
 
-    ruby_version_path = root / ".ruby-version"
+    ruby_version_path = documentation_metadata.output_path(root, ".ruby-version")
     if not ruby_version_path.is_file():
         errors.append("GitHub Pages .ruby-version file is missing")
     elif isinstance(ruby_version, str) and ruby_version_path.read_text(encoding="utf-8").strip() != ruby_version:
         errors.append("GitHub Pages .ruby-version does not match the publishing manifest")
 
-    gemfile_path = root / "Gemfile"
+    gemfile_path = documentation_metadata.output_path(root, "Gemfile")
     if not gemfile_path.is_file():
         errors.append("GitHub Pages Gemfile is missing")
     elif isinstance(pages_gem_version, str):
@@ -398,12 +398,13 @@ def _validate_publishing(
         workflow_text = workflow_path.read_text(encoding="utf-8")
         required_workflow_markers = (
             f"uses: {PAGES_BUILD_ACTION}",
-            "destination: ./_site",
+            "working-directory: Workspace/Documentation",
+            "BuildTools/docs_site_build.py",
             "BuildTools/docs_site_artifact.py",
-            "--site-dir _site",
+            "--site-dir Workspace/DocumentationSite",
             "Workspace/docs-site-artifact-report.json",
             f"uses: {SITE_ARTIFACT_ACTION}",
-            "path: _site/",
+            "path: Workspace/DocumentationSite/",
         )
         for marker in required_workflow_markers:
             if marker not in workflow_text:
@@ -1498,7 +1499,7 @@ def _validate_generated_artifacts(
             errors.append(f"unable to render public example repository documentation: {exception}")
         else:
             for relative_path, expected_content in rendered_public_example_outputs.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(f"generated public example repository artifact is missing: {relative_path}")
                 elif output_path.read_text(encoding="utf-8") != expected_content:
@@ -1538,7 +1539,7 @@ def _validate_generated_artifacts(
             errors.append(f"unable to render support matrix documentation: {exception}")
         else:
             for relative_path, expected_content in rendered_support_outputs.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(f"generated support matrix artifact is missing: {relative_path}")
                 elif output_path.read_text(encoding="utf-8") != expected_content:
@@ -1596,7 +1597,7 @@ def _validate_generated_artifacts(
             errors.append(f"unable to render public API contract index: {exception}")
         else:
             for relative_path, rendered_page in rendered_public_api_pages.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(
                         f"generated public API contract page is missing: {relative_path}"
@@ -1666,7 +1667,7 @@ def _validate_generated_artifacts(
             )
         else:
             for relative_path, expected_content in rendered_external_evidence.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(
                         f"generated external project evidence artifact is missing: "
@@ -1718,7 +1719,7 @@ def _validate_generated_artifacts(
             errors.append(f"unable to render documentation diagrams: {exception}")
         else:
             for relative_path, expected_content in rendered_diagram_outputs.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(
                         f"generated documentation diagram artifact is missing: "
@@ -1775,7 +1776,7 @@ def _validate_generated_artifacts(
             for relative_path, expected_content in (
                 rendered_screenshot_outputs.items()
             ):
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(
                         "generated documentation screenshot artifact is "
@@ -1926,7 +1927,7 @@ def _validate_generated_artifacts(
             errors.append(f"invalid documentation AI delivery: {exception}")
         else:
             for relative_path, expected_content in rendered_ai_outputs.items():
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(f"generated documentation AI artifact is missing: {relative_path}")
                 elif output_path.read_text(encoding="utf-8") != expected_content:
@@ -2132,7 +2133,7 @@ def _validate_generated_artifacts(
                             "run python BuildTools/docs_site.py --write"
                         )
                     continue
-                output_path = root / relative_path
+                output_path = documentation_metadata.output_path(root, relative_path)
                 if not output_path.is_file():
                     errors.append(f"generated documentation site artifact is missing: {relative_path}")
                 elif output_path.read_text(encoding="utf-8") != expected_content:

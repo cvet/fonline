@@ -59,6 +59,8 @@ Read it together with:
 - [Nullability.md](../../../Nullability.md) for handles that can disappear before a continuation resumes.
 - [generated API reference](../../../generated/api/index.md) for current method signatures, attributes, settings, and source links.
 
+Document migrations are synchronous dispatcher-owned callbacks, executed before entity property loading. Both backends pass detached values and the original read-only document; `false` preserves its serialized value. Do not suspend, retain the document context, or mutate entities. AngelScript blocks direct calls to `[[PropertyMigrator]]` and `[[ProtoMigrator]]`. See [AngelScript](style-and-refactoring.md#document-migrations) and [Managed C#](managed-csharp.md#document-property-migrations) for exact signatures and binding.
+
 ## Source paths inspected
 
 - `Source/Common/ScriptSystem.h`

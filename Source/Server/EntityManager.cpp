@@ -896,13 +896,13 @@ void EntityManager::LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bo
     }
 }
 
-auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
+auto EntityManager::LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>
 {
     auto docs = LoadEntityDocs(type_name, collection_name, {id}, expect_proto, is_error);
     return std::move(docs.front());
 }
 
-auto EntityManager::LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) const noexcept -> vector<tuple<AnyData::Document, hstring>>
+auto EntityManager::LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) noexcept -> vector<tuple<AnyData::Document, hstring>>
 {
     FO_TRACE_ZONE(Entity);
 
@@ -945,7 +945,7 @@ auto EntityManager::LoadEntityDocs(hstring type_name, hstring collection_name, c
     return result;
 }
 
-auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>
+auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>
 {
     try {
         if (doc.Empty()) {
@@ -954,10 +954,25 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
             return {};
         }
 
+        auto registrar = _engine->GetPropertyRegistrar(type_name);
+        FO_VERIFY_AND_THROW(registrar, "Missing property registrar for document migration", type_name);
+
+        auto migrate_document = [&](optional<AnyData::Value> prototype = std::nullopt) {
+            AnyData::Document updates;
+            PropertiesSerializer::MigrateDocument(registrar.as_ptr(), doc, &updates, std::move(prototype));
+
+            for (const auto& [key, value] : updates) {
+                _engine->DbStorage.Update(collection_name, id, key, value);
+            }
+        };
+
         if (!doc.Contains("_Proto")) {
             if (expect_proto) {
                 logging::write(logging::type::warning, "{} '_Proto' section not found in entity {}", collection_name, id);
                 is_error = true;
+            }
+            else {
+                migrate_document();
             }
 
             return {std::move(doc), hstring()};
@@ -983,12 +998,17 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
 
         // A proto removed on purpose by a migration rule skips cleanly so callers drop the entity, while a
         // genuinely missing one keeps its id and surfaces later as proto-not-found
-        if (optional<hstring> migrated = _engine->CheckMigrationRule(_protoMigrationRuleName, type_name, proto_id); migrated.has_value() && !migrated.value()) {
+        hstring migrated_proto_id = _engine->ResolveDocumentProto(type_name, proto_id, doc);
+
+        if (!migrated_proto_id) {
             logging::write(logging::type::info, "{} {} dropped: proto {} removed by migration rule", collection_name, id, proto_id);
             return {};
         }
 
-        return {std::move(doc), proto_id};
+        FO_VERIFY_AND_THROW(migrated_proto_id == proto_id || _engine->GetProtoEntity(type_name, migrated_proto_id), "Document Proto migration destination does not exist", type_name, proto_id, migrated_proto_id);
+        migrate_document(migrated_proto_id != proto_id ? optional<AnyData::Value> {AnyData::Value {string {migrated_proto_id.as_str()}}} : std::nullopt);
+
+        return {std::move(doc), migrated_proto_id};
     }
     catch (const std::exception& ex) {
         logging::write(logging::type::warning, "Failed during load document {} {}", collection_name, id);

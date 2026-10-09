@@ -35,6 +35,7 @@
 
 #include "Common.h"
 
+#include "AnyData.h"
 #include "ConfigFile.h"
 
 FO_BEGIN_NAMESPACE
@@ -110,6 +111,7 @@ private:
 using PropertyGetCallback = function<PropertyRawData(nptr<Entity>, ptr<const Property>)>;
 using PropertySetCallback = function<void(nptr<Entity>, ptr<const Property>, PropertyRawData&)>;
 using PropertyPostSetCallback = function<void(nptr<Entity>, ptr<const Property>)>;
+using PropertyMigratorCallback = function<optional<AnyData::Value>(const AnyData::Value&, const AnyData::Document&)>;
 
 class Property final
 {
@@ -130,6 +132,8 @@ public:
     [[nodiscard]] auto GetComponentName() const noexcept -> string_view { return _componentName; }
     [[nodiscard]] auto GetRegIndex() const noexcept -> uint16_t { return _regIndex; }
     [[nodiscard]] auto GetBaseScriptFuncType() const noexcept -> string_view { return _scriptFuncType; }
+    [[nodiscard]] auto GetMigratorName() const noexcept -> string_view { return _migratorName; }
+    [[nodiscard]] auto GetMigrator() const noexcept -> const PropertyMigratorCallback& { return _migrator; }
 
     [[nodiscard]] auto GetBaseType() const noexcept -> const BaseTypeDesc& { return _baseType; }
     [[nodiscard]] auto GetBaseTypeName() const noexcept -> string_view { return _baseType.Name; }
@@ -216,6 +220,8 @@ public:
     void SetGetter(PropertyGetCallback getter) const;
     void AddSetter(PropertySetCallback setter) const;
     void AddPostSetter(PropertyPostSetCallback setter) const;
+    void SetMigratorName(string_view name) const;
+    void SetMigrator(PropertyMigratorCallback migrator) const;
 
 private:
     explicit Property(ptr<const PropertyRegistrar> registrar);
@@ -225,6 +231,8 @@ private:
     mutable PropertyGetCallback _getter {};
     mutable vector<PropertySetCallback> _setters {};
     mutable vector<PropertyPostSetCallback> _postSetters {};
+    mutable string _migratorName {};
+    mutable PropertyMigratorCallback _migrator {};
 
     string _propName {};
     string _propNameWithoutComponent {};

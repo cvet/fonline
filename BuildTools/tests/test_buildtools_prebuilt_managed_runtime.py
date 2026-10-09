@@ -14,6 +14,7 @@ BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import buildtools as _buildtools  # noqa: E402
+from managed_runtime_fixtures import write_published_runtime
 
 
 @pytest.fixture(autouse=True)
@@ -24,9 +25,7 @@ def no_workspace_cache(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def make_published_tree(root: Path, triplet: str) -> Path:
     tree = root / triplet
-    (tree / "lib").mkdir(parents=True)
-    (tree / "include" / "mono-2.0").mkdir(parents=True)
-    (tree / "lib" / "libmonosgen-2.0.a").write_text("archive", encoding="utf-8")
+    write_published_runtime(tree, triplet.split(".")[0], "archive")
     return tree
 
 
@@ -49,7 +48,7 @@ def test_prebuilt_runtime_is_adopted_instead_of_being_built(tmp_path: Path, monk
     _buildtools.setup_mono("windows", "x64", "Release", setup_mono_env(tmp_path, prebuilt_root))
 
     workspace = tmp_path / "workspace"
-    assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "libmonosgen-2.0.a").is_file()
+    assert (workspace / "output" / "mono" / "windows.x64.Release" / "lib" / "monosgen-2.0.lib").is_file()
     assert (workspace / f"READY_v10.0.11_windows.x64.Release{_buildtools.MONO_WINDOWS_SOURCE_MARKER_SUFFIX}").is_file()
 
 
@@ -149,7 +148,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
     for phase in ("BUILT", "READY"):
         (workspace / f"{phase}_v10.0.11_{triplet}{previous_suffix}").touch()
     published = make_published_tree(workspace / "output/mono", triplet)
-    archive = published / "lib/libmonosgen-2.0.a"
+    archive = published / "lib" / ("monosgen-2.0.lib" if target == "windows" else "libmonosgen-2.0.a")
     calls = []
 
     def reject_clone(*args, **kwargs):
@@ -161,7 +160,7 @@ def test_source_patch_cache_rebuilds_and_republishes_once(tmp_path: Path, monkey
         assert f"{'/p:' if os.name == 'nt' else '-p:'}CMakeArgs={_buildtools.MONO_OVERRIDABLE_ALLOCATORS_CMAKE}" in command
         out = runtime / "artifacts/obj/mono" / triplet / "out/lib"
         out.mkdir(parents=True)
-        (out / "libmonosgen-2.0.a").write_text("patched runtime", encoding="utf-8")
+        write_published_runtime(out.parent, target, "patched runtime")
         rid = f"{'win' if target == 'windows' else target}-x64"
         framework = runtime / "artifacts/bin" / f"microsoft.netcore.app.runtime.{rid}" / "Release/runtimes" / rid / "lib/net10.0"
         framework.mkdir(parents=True)
@@ -632,7 +631,7 @@ def test_runtime_rebuild_patches_an_existing_clone_before_compilation(tmp_path: 
     monkeypatch.setattr(_buildtools, "run_marker_step", run_build_only)
     monkeypatch.setattr(_buildtools, "run_runtime_build", check_patched_before_build)
     monkeypatch.setattr(_buildtools, "patch_runtime_linux_signal_actions", lambda path: None)
-    _buildtools.setup_mono("linux", "x64", "Release", env)
+    _buildtools.build_mono("linux", "x64", "Release", env)
     assert len(calls) == 1
 
 
@@ -663,6 +662,7 @@ def test_publish_takes_target_class_libraries_and_replaces_old_files_only_after_
     inputs = runtime / "artifacts" / "obj" / "mono" / triplet / "out"
     inputs.mkdir(parents=True)
     (inputs / "current-library.so").write_text("current", encoding="utf-8")
+    write_published_runtime(inputs, target)
     # The SDK dotnet/runtime builds itself with carries a host-OS shared framework that must never be published
     sdk_framework = runtime / ".dotnet" / "shared" / "Microsoft.NETCore.App" / "10.0.9"
     sdk_framework.mkdir(parents=True)

@@ -589,6 +589,7 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBaker.cpp"
         "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptBytecode.cpp"
         "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptCall.cpp"
+        "${FO_ENGINE_ROOT}/Source/Tests/Test_AngelScriptDocumentMigrations.cpp"
         "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientEngine.cpp"
         "${FO_ENGINE_ROOT}/Source/Tests/Test_ClientServerIntegration.cpp"
         "${FO_ENGINE_ROOT}/Source/Tests/Test_CommonScriptMethods.cpp"

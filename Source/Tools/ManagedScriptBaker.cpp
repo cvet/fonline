@@ -178,7 +178,7 @@ static auto MakeSortedEnums(const EngineMetadata& meta) -> vector<pair<string, m
 static auto MakeSortedEntityTypes(const map<hstring, EntityTypeDesc>& types) -> vector<pair<string, const EntityTypeDesc*>>;
 static void WriteTextFileIfChanged(const std::filesystem::path& file_path, string_view content, string_view error_message);
 static void WriteGeneratedFile(const std::filesystem::path& project_dir, string_view target_name, string_view suffix, string_view content);
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes);
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes, const EngineMetadata& meta);
 static auto ReadFileBytes(const std::filesystem::path& path) -> vector<uint8_t>;
 static void BakeManagedRuntimePayload(const BakingContext& context, const vector<ManagedAssemblyIdentity>& pack_assemblies);
 static auto ReadManagedAssemblyIdentityFrom(string_view assembly_path, const_span<uint8_t> image) -> ManagedAssemblyIdentity;
@@ -431,7 +431,7 @@ void ManagedScriptBaker::GenerateTargetApiFiles(const EngineMetadata& meta, cons
     FO_TRACE_ZONE(Baking);
 
     ManagedAbiManifest abi = BuildManagedAbiManifest(meta, target_name);
-    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectManagedAbiWrapperClasses(meta));
+    WriteGeneratedAbiFile(project_dir, target_name, abi, CollectManagedAbiWrapperClasses(meta), meta);
 
     unordered_map<string, ComplexTypeDesc> callbacks;
     CollectCallbacks(meta, callbacks);
@@ -4859,7 +4859,7 @@ static void WriteTextFileIfChanged(const std::filesystem::path& file_path, strin
     }
 }
 
-static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes)
+static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, string_view target_name, const ManagedAbiManifest& abi, const vector<string>& wrapper_classes, const EngineMetadata& meta)
 {
     ostringstream out;
     AppendGeneratedHeader(out);
@@ -4871,6 +4871,24 @@ static void WriteGeneratedAbiFile(const std::filesystem::path& project_dir, stri
 
     for (const string& class_name : wrapper_classes) {
         out << CS_INDENT << "    global::FOnline.Native.RegisterWrapperFactory<" << EscapeCsIdentifier(class_name) << ">(static nativePtr => new " << EscapeCsIdentifier(class_name) << "(nativePtr));\n";
+    }
+
+    if (target_name == "Server") {
+        for (const auto& [owner, functions] : meta.GetProtoMigrators()) {
+            for (const auto& [source, migrator] : functions) {
+                out << CS_INDENT << "    global::FOnline.Native.RegisterProtoMigrator(\"" << owner.as_str() << "\", \"" << source.as_str() << "\", \"" << migrator.Name << "\");\n";
+            }
+        }
+
+        for (const auto& [name, entity] : meta.GetEntityTypes()) {
+            for (size_t index = 1; index < entity.PropRegistrar->GetPropertiesCount(); index++) {
+                auto prop = entity.PropRegistrar->GetPropertyByIndexUnsafe(index);
+
+                if (!prop->GetMigratorName().empty() && !prop->IsDisabled()) {
+                    out << CS_INDENT << "    global::FOnline.Native.RegisterPropertyMigrator<" << MakeCsPropertyTypeName(prop) << ">(\"" << name.as_str() << "\", \"" << prop->GetName() << "\", \"" << prop->GetMigratorName() << "\");\n";
+                }
+            }
+        }
     }
 
     out << CS_INDENT << "}\n";

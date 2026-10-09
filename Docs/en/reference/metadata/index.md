@@ -709,7 +709,7 @@ The registry is documentation/governance metadata, not a ninth runtime compatibi
 `BuildTools/SnippetPolicy.json` declares the complete supported fence-language
 and parser-harness map. `BuildTools/docs_snippets.py` scans every public,
 current, human manifest document, including generated reference pages, and
-writes [generated/snippets.json](../../../generated/snippets.json). The report records
+writes [generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). The report records
 stable document ownership, heading/line location, normalized content hash,
 template status, contract, harness, and result for every fenced block.
 
@@ -773,7 +773,7 @@ validation remain authoritative.
 
 `BuildTools/SupportMatrix.json` is the reviewed source for current host, target, architecture, compiler, application, and evidence profiles. `BuildTools/docs_support_matrix.py` validates referenced BuildTools targets and workflow lanes, then emits [generated/support-matrix.json](../../../generated/support-matrix.json) and the [generated support matrix](../platforms/generated-matrix.md). The model distinguishes source capability from a required build, process smoke, and embedding-project or device qualification; it is not a claim that every combinatorial target has been run.
 
-`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
+`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [docs-manifest.json#/translation_status](https://fonline.ru/docs-manifest.json#/translation_status). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
 
 Regenerate and verify from the engine root:
 
@@ -788,13 +788,15 @@ These models describe documentation evidence and translation freshness. They do 
 
 ## AI documentation delivery
 
+The three public root endpoints are generated locally under ignored `Workspace/Documentation/`. `docs_prepare.py` also derives `Gemfile`, `.ruby-version` and `CNAME` from the source manifest. `docs_site_build.py` exports the endpoints to the rendered root in `Workspace/DocumentationSite/`; their public URLs and logical artifact names are unchanged.
+
 The machine-oriented entry layer is generated from the same [documentation-manifest.json](../../../documentation-manifest.json) that owns human pages. `BuildTools/docs_ai_delivery.py` does not parse engine source or invent a second API model. It projects reviewed document metadata and canonical Markdown into:
 
 - root `llms.txt`, which routes public current documents through source-ref-pinned clean Markdown URLs, links their canonical HTML routes, and lists all canonical generated JSON models;
 - root `llms-full.txt`, which contains authored public current documents and generated reference indexes under a strict byte budget;
 - root `docs-manifest.json`, which exposes the rolling/current version channel, deferred release-snapshot state, locale policy, public stable IDs, owner/state/disposition, source, clean Markdown, raw, and canonical HTML URLs, source provenance, normalized content hashes, and generated-artifact hashes.
 
-[ai-evaluation.json](../../../ai-evaluation.json) is the reviewed, versioned task source for architecture, scripting, content, debugging, migration, and release questions. `BuildTools/docs_ai_eval.py` validates task ownership and answer-evidence sentinels, runs every retrieval query through the same `docs_site.search_documents` ranking contract used by browser search, and writes [generated/ai-evaluation-report.json](../../../generated/ai-evaluation-report.json). The deterministic report proves route selection and current evidence only; model-family answer runs remain separately reviewed evidence under [AI Documentation Evaluation](../../contributing/documentation/ai-evaluation.md).
+[ai-evaluation.json](../../../ai-evaluation.json) is the reviewed, versioned task source for architecture, scripting, content, debugging, migration, and release questions. `BuildTools/docs_ai_eval.py` validates task ownership and answer-evidence sentinels, runs every retrieval query through the same `docs_site.search_documents` ranking contract used by browser search, and writes [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json). The deterministic report proves route selection and current evidence only; model-family answer runs remain separately reviewed evidence under [AI Documentation Evaluation](../../contributing/documentation/ai-evaluation.md).
 
 The full-context output deliberately excludes generated detail pages. Their canonical JSON models carry complete method, type, property, setting, CMake, CLI, native-extension, prototype, map, model, text, effect, image, particle, font, audio, video, GUI-runtime, AiControl-protocol, package, and public-example inventories more accurately and compactly. The generated indexes remain in the bundle so an agent can select the correct model and source.
 
@@ -818,7 +820,7 @@ Human site navigation, search, version/locale identity, and route migration use 
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 
-After Jekyll renders the repository, `BuildTools/docs_site_artifact.py` validates the completed `_site` tree against the route and artifact models. This post-build layer proves that promised routes, available locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets, and publishable local links survived Jekyll processing. Its JSON report is CI evidence, not another checked-in generated reference.
+After Jekyll renders the repository, `BuildTools/docs_site_artifact.py` validates the completed `Workspace/DocumentationSite` tree against the route and artifact models. This post-build layer proves that promised routes, available locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets, and publishable local links survived Jekyll processing. Its JSON report is CI evidence, not another checked-in generated reference.
 
 `BuildTools/docs-browser/audit.mjs` then serves that exact tree from an ephemeral loopback port. The lock-file-pinned Playwright Chromium visits every route in the generated catalog at 1440 x 1000 and 390 x 844, injects the pinned axe-core engine for the declared WCAG 2.2 A/AA tags, and records runtime/resource, responsive-layout, page-overflow, and accessibility findings. Separate interaction profiles prove skip navigation, modal search, theme persistence, code-copy status, mobile drawer semantics, focus containment, and Escape restoration. Its JSON report and desktop/mobile screenshots are CI evidence; neither is a generated engine compatibility model.
 
@@ -831,7 +833,7 @@ python BuildTools/tests/test_docs_site_artifact.py
 python BuildTools/tests/test_docs_browser.py
 python BuildTools/docs_site.py --write
 python BuildTools/docs_site.py --check
-python BuildTools/docs_site_artifact.py --site-dir _site
+python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite
 npm ci --prefix BuildTools/docs-browser
 npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
@@ -935,6 +937,10 @@ compile time until those slot shapes have an explicit conversion contract.
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
 
+Property migration rules have an explicit action: `Property <Owner> Rename <Old> <New>` validates the live destination; `Property <Owner> Transform <Property> <Function>` validates an existing Persistent property. Function migration operates on loaded database documents before entity properties, with the original document as read-only context. See [Managed C# document migrations](../../how-to/scripting/managed-csharp.md#document-property-migrations) for binding, staging, and persistence. Use `///@ MigrationRule Property Critter Remove MyPropOld` without a replacement to retire a deleted property. Metadata finalization and baking reject a property still declared under that name on the same owner, including RefType fields. Document and property-text loading skip its old value; historical top-level database keys may remain. Keep the rule as a permanent name tombstone. Property and Proto share the action grammar: Rename/Transform have five parts and Remove has four; an extra Remove argument is rejected.
+
+AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../../how-to/scripting/style-and-refactoring.md#document-migrations).
+
 ### Metadata version
 
 **A server and every connected client must run metadata produced by one bake.** Entity payloads address properties by the registration order in that metadata, so different bakes can make the same index refer to different properties. Such divergence is rejected as a build or deployment defect, never treated as a supported compatibility mode.
@@ -975,6 +981,8 @@ tag changes, and rejection of an older file layout), `Test_Properties.cpp`
 (`PropertiesRestoreRejectsForeignMetadata`), and
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
+
+Proto rules use explicit `Rename`, `Remove`, or `Transform` actions. Rename/Remove remain context-free lookup rules; `Remove` has no replacement. Transform targets a source name on a prototype-supporting owner and receives the original loaded DB document before prototype lookup. One source has one action; unknown actions, duplicate sources and the legacy deletion token are rejected. Property and Proto Rename/Transform produce five-part metadata records; Remove produces four for either kind. See the [Managed document migration contract](../../how-to/scripting/managed-csharp.md#document-property-migrations).
 
 Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 

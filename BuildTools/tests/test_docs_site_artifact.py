@@ -9,6 +9,7 @@ from pathlib import Path
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
+import documentation_metadata  # noqa: E402
 import docs_site_artifact  # noqa: E402
 
 
@@ -106,7 +107,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
             "Docs/generated/support-matrix.json": json.dumps({"profiles": []}) + "\n",
         }
         for relative_path, content in source_files.items():
-            source_path = root / relative_path
+            source_path = documentation_metadata.output_path(root, relative_path)
             rendered_path = site / relative_path
             source_path.parent.mkdir(parents=True, exist_ok=True)
             rendered_path.parent.mkdir(parents=True, exist_ok=True)
@@ -267,7 +268,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         route_paths = (
-            root / "docs-manifest.json",
+            documentation_metadata.output_path(root, "docs-manifest.json"),
             root / "_site/docs-manifest.json",
         )
         metadata = json.loads(route_paths[0].read_text(encoding="utf-8"))
@@ -319,7 +320,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         for path in (
-            root / "docs-manifest.json",
+            documentation_metadata.output_path(root, "docs-manifest.json"),
             root / "_site/docs-manifest.json",
         ):
             metadata = json.loads(path.read_text(encoding="utf-8"))

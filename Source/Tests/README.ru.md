@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"274353991db7feabd7040219eed508301913f33ce92c8ebc6178f6306e3aed6d"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -23,7 +23,7 @@ document_id: unit-tests-readme
 
 ## Текущие наборы тестов
 
-Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](../../Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
 
 После добавления, удаления или переименования файла `Test_*.cpp` перегенерируйте инвентарь из корня движка:
 
@@ -132,6 +132,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`

@@ -5,7 +5,7 @@ document_id: prototype-format-guide
 locale: ru
 permalink: /Docs/ru/how-to/content/prototype-format.html
 ---
-<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"c23460464687030c5f15dedc6afcc6dc26907d414091e090fd25973474a03155"} -->
+<!-- docs-translation: {"document_id":"prototype-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/prototype-format.md","source_sha256":"c4724876437f65ae7485167ef379bf4f55a6fdc7ff357814bdf13d2dec5192c3"} -->
 # Формат прототипов
 
 Прототипы FOnline представляют собой именованные наборы свойств, основанные на метаданных и отдельно запекаемые для сервера, клиента и Mapper. Они задают переиспользуемые значения сущностей по умолчанию и фиксированные определения проекта, но не являются runtime-записями сохранения, записями размещения на карте или игровой таксономией контента.
@@ -203,13 +203,15 @@ ID прототипов встречаются в объявлениях, спи
 Объявляйте:
 
 ```cpp
-///@ MigrationRule Proto Item OldContainer NewContainer
-///@ MigrationRule Proto Item RemovedContainer __remove__
+///@ MigrationRule Proto Item Rename OldContainer NewContainer
+///@ MigrationRule Proto Item Remove RemovedContainer
 ```
 
 Владеющий проект определяет расположение объявлений проектных метаданных и срок хранения правил. Цель переименования обязана существовать в принимающей ревизии. Удаление допустимо, только если политика загрузки может безопасно отбросить ссылку или сущность; иначе мигрируйте на совместимую замену.
 
-При изменении имени или типа свойства следуйте политике миграции свойств и persistence владеющего объявления метаданных. Миграция прототипа не исправляет несовместимый payload свойства.
+При изменении имени или типа свойства следуйте политике миграции свойств и persistence владеющего объявления метаданных. Миграция прототипа не исправляет несовместимый payload свойства. Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
+
+AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../scripting/style-and-refactoring.md#миграции-документов).
 
 ## Практики авторинга
 

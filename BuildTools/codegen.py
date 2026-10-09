@@ -1791,11 +1791,21 @@ def parse_migration_rule_tags() -> None:
         comment = tag_meta.comment
 
         try:
-            rule_args = tokenize(tag_info, anySymbols=[2, 3])
-            assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove'], 'Invalid migration rule'
-            assert len(rule_args) == 4, 'Invalid migration rule args'
-            assert not len([rule_tag for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0:3] == rule_args[0:3]]), 'Migration rule already added'
-            assert rule_args[2] != rule_args[3], 'Migration rule same last args'
+            action_rule = (tag_info or '').split()[0:1] in (['Property'], ['Proto'])
+            rule_args = tokenize(tag_info, anySymbols=[3, 4] if action_rule else [2, 3])
+            assert len(rule_args) and rule_args[0] in ['Version', 'Property', 'Proto', 'Component', 'Remove', 'Enum'], 'Invalid migration rule'
+            remove_rule = action_rule and rule_args[2:3] == ['Remove']
+            assert len(rule_args) == (4 if remove_rule or not action_rule else 5), 'Invalid migration rule args'
+            if action_rule:
+                assert rule_args[2] in ['Rename', 'Transform', 'Remove'], 'Invalid migration action'
+            for existing in codegen_tags['MigrationRule']:
+                if action_rule:
+                    assert not (existing.args[:2] == rule_args[:2] and existing.args[3] == rule_args[3]), 'Migration source already added'
+                else:
+                    prefix = 4 if action_rule else 3
+                    assert existing.args[:prefix] != rule_args[:prefix], 'Migration rule already added'
+            assert remove_rule or action_rule and rule_args[2] == 'Transform' or rule_args[-2] != rule_args[-1], 'Migration rule same last args'
+            assert not action_rule or rule_args[-1] != '__remove__', 'Use Remove action'
 
             add_codegen_tag('MigrationRule', MigrationRuleTag(rule_args, comment), get_tag_source(tag_meta))
             hash_recursive(compatibility_hasher, rule_args)
@@ -2690,7 +2700,7 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
         return
 
     body_lines = ['const auto to_hstring = [&](string_view str) -> hstring { return meta->Hashes.to_hashed_string(str); };', '', 'meta->RegisterMigrationRules({']
-    for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'])):
+    for source_type in sorted(set(rule_tag.args[0] for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0] not in ('Property', 'Proto'))):
         body_lines.append('    {')
         body_lines.append('        to_hstring("' + source_type + '"), {')
         for source_name in sorted(set(rule_tag.args[1] for rule_tag in codegen_tags['MigrationRule'] if rule_tag.args[0] == source_type)):
@@ -2704,6 +2714,11 @@ def append_migration_rule_registration(helper_lines: list[str], register_lines: 
         body_lines.append('        },')
         body_lines.append('    },')
     body_lines.append('});')
+    for rule_tag in codegen_tags['MigrationRule']:
+        if rule_tag.args[0] == 'Property':
+            body_lines.append('meta->RegisterPropertyMigrationRule(' + ', '.join('"' + arg + '"' for arg in rule_tag.args[1:]) + ');')
+        elif rule_tag.args[0] == 'Proto':
+            body_lines.append('meta->RegisterProtoMigrationRule(' + ', '.join('"' + arg + '"' for arg in rule_tag.args[1:]) + ');')
 
     append_static_function(helper_lines, 'static void RegisterMigrationRulesSection(EngineMetadata* meta)', body_lines)
     register_lines.append('RegisterMigrationRulesSection(meta.get_no_const());')

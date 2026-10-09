@@ -175,12 +175,43 @@ static void CheckModelAnimationInfoRejected(string_view content)
 
 static void AddTestMigrationRule(EngineMetadata& meta, string_view target, string_view replacement)
 {
-    meta.RegisterMigrationRule("Property", "Item", target, replacement);
+    meta.RegisterPropertyMigrationRule("Item", "Rename", target, replacement);
 }
 
 static auto HashTestMigrationToken(EngineMetadata& meta, string_view value) -> hstring
 {
     return meta.Hashes.to_hashed_string(value);
+}
+
+TEST_CASE("PropertyMigrationActionsValidateSchema")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
+    auto stored = registrar->RegisterProperty({"Server", "hstring", "Stored", "Mutable", "Persistent"});
+    (void)registrar->RegisterProperty({"Server", "hstring", "Transient", "Mutable"});
+
+    CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("MissingOwner", "Transform", "Stored", "Migrate"), VerificationException);
+    CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("Item", "Transform", "Missing", "Migrate"), VerificationException);
+    CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("Item", "Transform", "Transient", "Migrate"), VerificationException);
+    CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("Item", "Guess", "Stored", "Migrate"), VerificationException);
+    CHECK_NOTHROW(meta.RegisterPropertyMigrationRule("Item", "Transform", "Stored", "Migrate"));
+    CHECK(stored->GetMigratorName() == "Migrate");
+    CHECK_THROWS_AS(meta.RegisterPropertyMigrationRule("Item", "Transform", "Stored", "Again"), VerificationException);
+
+    SECTION("ExistingRenameDestination")
+    {
+        meta.RegisterPropertyMigrationRule("Item", "Rename", "Old", "Stored");
+
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+    }
+
+    SECTION("MissingRenameDestination")
+    {
+        meta.RegisterPropertyMigrationRule("Item", "Rename", "Old", "Missing");
+
+        CHECK_THROWS_AS(meta.FinalizeRegistration(), VerificationException);
+    }
 }
 
 static auto ResolveTestMigrationRule(EngineMetadata& meta, string_view target) -> optional<hstring>
@@ -393,7 +424,7 @@ TEST_CASE("EngineMetadata")
         meta.RegisterSide(EngineSideKind::ServerSide);
         auto registrar = meta.RegisterEntityType("Item", true, false, true, true, true);
         meta.RegisterProto(meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(meta.Hashes.to_hashed_string("Rifle"), registrar));
-        meta.RegisterMigrationRule("Proto", "Item", "OldRifle", "Rifle");
+        meta.RegisterProtoMigrationRule("Item", "Rename", "OldRifle", "Rifle");
         CHECK_NOTHROW(meta.FinalizeRegistration());
 
         EngineMetadata reuse_meta {[] { }};
@@ -401,7 +432,7 @@ TEST_CASE("EngineMetadata")
         auto reuse_registrar = reuse_meta.RegisterEntityType("Item", true, false, true, true, true);
         reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Rifle"), reuse_registrar));
         reuse_meta.RegisterProto(reuse_meta.Hashes.to_hashed_string("Item"), safe_alloc::make_refcounted<ProtoItem>(reuse_meta.Hashes.to_hashed_string("Carbine"), reuse_registrar));
-        reuse_meta.RegisterMigrationRule("Proto", "Item", "Carbine", "Rifle");
+        reuse_meta.RegisterProtoMigrationRule("Item", "Rename", "Carbine", "Rifle");
         CHECK_THROWS_AS(reuse_meta.FinalizeRegistration(), VerificationException);
     }
 
@@ -644,5 +675,120 @@ BoundsMaxZ = 2 2
 }
 
 #endif
+
+TEST_CASE("PropertyRemovePermanentlyRetiresTheName")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    auto registrar = meta.RegisterEntityType("Critter", true, false, true, true, true);
+    registrar->RegisterProperty({"Server", "int32", "Current", "Mutable", "Persistent"});
+    meta.RegisterPropertyMigrationRule("Critter", "Remove", "Retired");
+
+    CHECK_THROWS(meta.RegisterPropertyMigrationRule("Critter", "Remove", "Retired", "Current"));
+    CHECK_THROWS(meta.RegisterPropertyMigrationRule("Critter", "Rename", "Retired", "Current"));
+    CHECK_THROWS(meta.RegisterPropertyMigrationRule("Critter", "Rename", "OtherRetired", ""));
+    CHECK_THROWS(meta.RegisterPropertyMigrationRule("Critter", "Rename", "OtherRetired", "__remove__"));
+
+    SECTION("AbsentSourceNeedsNoDestination")
+    {
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+        auto rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Retired"));
+
+        REQUIRE(rule.has_value());
+        CHECK_FALSE(*rule);
+    }
+
+    SECTION("ReintroducedPropertyRejectsMetadata")
+    {
+        registrar->RegisterProperty({"Server", "bool", "Retired", "Mutable", "Persistent"});
+
+        CHECK_THROWS_AS(meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("RefTypeFieldsAreAlsoRetired")
+    {
+        meta.RegisterRefType("StoredRecord");
+        meta.RegisterRefTypeLayout("StoredRecord", {{"Current", "int32"}});
+        meta.RegisterPropertyMigrationRule("StoredRecordRefType", "Remove", "Retired");
+
+        CHECK_NOTHROW(meta.FinalizeRegistration());
+    }
+
+    SECTION("ReintroducedRefTypeFieldRejectsMetadata")
+    {
+        meta.RegisterRefType("StoredRecord");
+        meta.RegisterRefTypeLayout("StoredRecord", {{"Retired", "bool"}});
+        meta.RegisterPropertyMigrationRule("StoredRecordRefType", "Remove", "Retired");
+
+        CHECK_THROWS_AS(meta.FinalizeRegistration(), VerificationException);
+    }
+
+    SECTION("UnknownOwnerRejectsMetadata")
+    {
+        meta.RegisterPropertyMigrationRule("Missing", "Remove", "Retired");
+
+        CHECK_THROWS_AS(meta.FinalizeRegistration(), VerificationException);
+    }
+}
+
+TEST_CASE("ProtoMigrationActionsUseDocumentContext")
+{
+    EngineMetadata meta {[] { }};
+    meta.RegisterSide(EngineSideKind::ServerSide);
+    meta.RegisterEntityType("Item", true, false, true, true, true);
+    meta.RegisterEntityType("Player", true, false, false, false, true);
+    const auto type = meta.Hashes.to_hashed_string("Item");
+    const auto legacy = meta.Hashes.to_hashed_string("Legacy");
+    const auto replacement = meta.Hashes.to_hashed_string("Replacement");
+    AnyData::Document original;
+    original.Emplace("_Proto", string {"Legacy"});
+    original.Emplace("Kind", string {"medical"});
+
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Player", "Transform", "Legacy", "Migrate"));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Missing", "Transform", "Legacy", "Migrate"));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Item", "Unknown", "Legacy", "Migrate"));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Item", "Remove", "Legacy", "Replacement"));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Item", "Rename", "Legacy", "__remove__"));
+    meta.RegisterProtoMigrationRule("Item", "Rename", "BeforeLegacy", "Legacy");
+    meta.RegisterProtoMigrationRule("Item", "Transform", "Legacy", "Migrate");
+
+    CHECK_THROWS(meta.ResolveDocumentProto(type, legacy, original));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Item", "Rename", "Legacy", "Replacement"));
+    CHECK_THROWS(meta.RegisterProtoMigrationRule("Item", "Transform", "BeforeLegacy", "Migrate"));
+    meta.BindProtoMigrator(type, legacy, [&](hstring value, const AnyData::Document& document) -> optional<hstring> {
+        CHECK(value == legacy);
+        CHECK(document["_Proto"].AsString() == "Legacy");
+        CHECK(document["Kind"].AsString() == "medical");
+
+        return replacement;
+    });
+
+    CHECK(meta.ResolveDocumentProto(type, meta.Hashes.to_hashed_string("BeforeLegacy"), original) == replacement);
+    CHECK(original["_Proto"].AsString() == "Legacy");
+    CHECK_THROWS(meta.BindProtoMigrator(type, legacy, [](hstring, const AnyData::Document&) -> optional<hstring> { return std::nullopt; }));
+    meta.RegisterProtoMigrationRule("Item", "Remove", "Replacement");
+
+    CHECK_FALSE(meta.ResolveDocumentProto(type, legacy, original));
+    CHECK_FALSE(meta.GetProtoMigrators().empty());
+
+    SECTION("UnchangedFunctionStops")
+    {
+        const auto unchanged = meta.Hashes.to_hashed_string("Unchanged");
+        meta.RegisterProtoMigrationRule("Item", "Transform", "Unchanged", "Keep");
+        meta.BindProtoMigrator(type, unchanged, [](hstring, const AnyData::Document&) -> optional<hstring> { return std::nullopt; });
+
+        CHECK(meta.ResolveDocumentProto(type, unchanged, original) == unchanged);
+    }
+
+    SECTION("ConditionalCyclesReject")
+    {
+        const auto cycle = meta.Hashes.to_hashed_string("Cycle");
+        meta.RegisterProtoMigrationRule("Item", "Transform", "Cycle", "CycleFunc");
+        meta.RegisterProtoMigrationRule("Item", "Rename", "CycleAlias", "Cycle");
+        meta.BindProtoMigrator(type, cycle, [&](hstring, const AnyData::Document&) -> optional<hstring> { return meta.Hashes.to_hashed_string("CycleAlias"); });
+
+        CHECK_THROWS(meta.ResolveDocumentProto(type, cycle, original));
+    }
+}
 
 FO_END_NAMESPACE

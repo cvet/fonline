@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-maintenance
 permalink: /Docs/ru/contributing/documentation/
 ---
-<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"ea413e86aab04dc4a42efb1bc9d65ef8fdef55ba56e3c2904310aba0c0e491d7"} -->
+<!-- docs-translation: {"document_id":"documentation-maintenance","locale":"ru","source_path":"Docs/en/contributing/documentation/index.md","source_sha256":"f1ee3ee24cbd8976582d7e7672e28fb0ebc43e586497062db1d1fdb73b1464a8"} -->
 # Сопровождение документации
 
 > Документация движка. Эта страница объясняет, как сохранять документацию FOnline привязанной к исходному коду, удобной для навигации и отделённой от содержимого проектов, использующих движок.
@@ -13,6 +13,8 @@ permalink: /Docs/ru/contributing/documentation/
 `docs-manifest.json` — общий генерируемый индекс технических данных. `docs_localization.py` владеет `#/translation_status`, а `docs_site.py` — `#/routing`. Каждый генератор сохраняет остальные разделы и проверяет актуальность собственного раздела. Порядок: локализация, сайт/поиск/маршруты, оценка ИИ при необходимости, затем данные для ИИ; последний шаг обновляет публичные хэши документов и артефактов. Хэши проверенных русских переводов сохраняются в комментариях исходников. Не редактируйте генерируемые разделы вручную. Индекс и навигация указывают `VERSION` как источник версии, не храня копию его значения.
 
 ## Назначение
+
+Перед проверкой или сборкой сайта выполните `python BuildTools/docs_prepare.py`. Команда строит игнорируемые индексы и отчёты в порядке зависимостей, не переписывая версионируемые модели публичных контрактов, Markdown, SVG и PNG. В Git остаются исходный manifest, правила, переводы и модели контрактов; `docs-manifest.json`, endpoints `llms`, навигация, поиск и каталоги проверок входят в результат сборки. Вход агента с checkout — `AGENTS.md`; файлы `llms` предназначены для внешних читателей сайта.
 
 Используйте эту страницу при добавлении, проверке и реорганизации документации движка. Это рабочее руководство дополняет машиночитаемый [манифест документации](../../../documentation-manifest.json), [бэклог документации](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationBacklog.md), [шаблон исследования](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationResearchTemplate.md), [отчёт о проверке](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationVerificationReport.md), [руководство по публикации сайта](site-publication.md), [индекс документации](../../index.md) и [точку входа для ИИ-сопровождения](../../../../AGENTS.md).
 
@@ -190,7 +192,7 @@ permalink: /Docs/ru/contributing/documentation/
 - `BuildTools/tests/validate_package_interface.cmake`
 - `BuildTools/tests/test_docs_validate.py`
 - `.github/workflows/validate.yml`
-- `_config.yml`, `Gemfile`, `.ruby-version` и `CNAME`
+- `Docs/Site/_config.yml`, `Docs/documentation-manifest.json`, `BuildTools/docs_prepare.py`, `BuildTools/docs_site_build.py`
 - репрезентативные документы подсистем в `Docs/`, проверенные по исходному коду
 
 ## Правила владения документацией
@@ -379,7 +381,7 @@ python BuildTools/docs_validate.py
 
 Jobs `Validate documentation` и `Parse documentation snippets` в `.github/workflows/validate.yml` являются авторитетной развёрткой CI: они явно запускают каждый focused test и generator check, затем классифицируют изменения контрактов относительно base revision. Сохраняйте их и aggregate local route поведенчески эквивалентными. Подключаемый проект и native build им не нужны.
 
-Изменения rendered output также должны следовать [руководству по публикации сайта](site-publication.md). При доступном pinned Ruby/Bundler/Node environment выполните `bundle exec jekyll build --trace`, `python BuildTools/docs_site_artifact.py --site-dir _site` и pinned browser audit. Каждый pull request получает GitHub Pages-compatible `_site` artifact и отдельные static/browser validation reports от job `Build documentation site`.
+Изменения rendered output также должны следовать [руководству по публикации сайта](site-publication.md). При доступном pinned Ruby/Bundler/Node environment выполните `python BuildTools/docs_site_build.py`, `python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite` и pinned browser audit. Каждый pull request получает GitHub Pages-compatible `Workspace/DocumentationSite` artifact и отдельные static/browser validation reports от job `Build documentation site`.
 
 Планируемые будущие документы описывайте обычным текстом, если checker явно их не исключает; не оформляйте отсутствующие страницы как существующие code paths или links.
 

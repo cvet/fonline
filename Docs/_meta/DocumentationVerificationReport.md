@@ -2,6 +2,65 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-09 - Merge published document migrations with retained integration history
+
+- Merge `e463e0487966e33fd546a205243a3b96d16a6055` with retained
+  `59611cf62812a4f2e0feb01d84939b00f995f650`; preserve both tips and prepare
+  `2026.1.19-dev`. Retain the process-private cache class and checked compilation.
+- Incoming range: three commits, 154 paths. Adopt document migration callbacks,
+  explicit migration actions, default initialization, complete-runtime validation,
+  and ignored documentation preparation/site outputs. Retain both verification histories.
+- Documentation preparation and validation pass for 411 Markdown entries;
+  310 normative snippets, 159 evidence fences and 4841 translated descriptions are current.
+  Version/changelog validation passes against published 18. Seventeen-domain comparison
+  against that tip has zero changes or missing dispositions. Eight focused test files
+  pass 502 cases and 76 subtests, including document migrations and runtime completeness.
+- Condense repeated bilingual integration notes to retain the existing full-context
+  bound; all migration requirements and historical identifiers remain. Full native
+  and embedding-project adoption checks remain pending for this merged revision.
+
+## 2026-10-09 - Reconcile document migrations with startup and documentation preparation
+
+- Fast-forward published master from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b` to
+  `3edc33f7d774b43d50c200f204a833adbacc4b59`, retaining the unpublished document-migration
+  work in a named safety stash and restoring it over the fetched tip. No commits or publication are performed.
+- Audit all 80 incoming paths. The runtime change calls `ApplyDefaultSettings()` before ordinary
+  application configuration; `ApplicationSettings` pins omitted defaults, project and sub-config values,
+  cached local values and explicit command-line zero. Existing setting keys and declared defaults remain unchanged.
+- Retain the incoming documentation preparation/output-path implementation, site-build command and tests,
+  CI ordering, authored config, publishing manifest and bilingual instructions. Remove conflicted delivery
+  projections from the index and regenerate them through `docs_prepare.py`; root endpoints are prepared
+  under ignored `Workspace/Documentation/`. Versioned contract models and translations remain reviewed inputs.
+- Preserve published `2026.1.16-dev` notes verbatim and prepare the document-migration step as
+  `2026.1.17-dev`. Reconcile the two Russian review-hash conflicts against the combined English sources.
+  The compatibility marker remains the local document-migration value 69; the incoming defaults fix
+  does not introduce another transport or persisted-data conversion.
+- Prepared documentation passes 410-entry validation, all 4838 generated descriptions are current,
+  and retrieval passes 28 tasks / 67 checks at 100% success and 0.930 MRR. The contract comparison
+  against the fetched tip reports 29 changes across 17 domains, 29 reviewed dispositions and none missing.
+  Native/runtime qualification is recorded separately after the embedding build and isolated save tests finish.
+- During qualification, published master advances to `6db09ef1d49a44307dbdadf747087247d5f5e78b`.
+  Audit the complete two-commit range (88 paths), fast-forward to that tip with another named safety stash,
+  and prepare the local migration step as `2026.1.18-dev`, preserving published 17 and 16 notes separately.
+  The added runtime-readiness validation preserves complete tree semantics and rejects incomplete build inputs;
+  review BuildTools, filesystem fixtures, target archive checks and both locale owners together.
+- The incoming testing guide contains its translated new paragraph with an outdated Russian review hash.
+  Review both paragraphs and refresh that hash; do not change the meaning or weaken completeness enforcement.
+- Final prepared documentation passes 411-entry validation, all 4838 descriptions and the same 28-task /
+  67-check retrieval gate. Version 18 and all 29 contract dispositions pass against the fetched tip.
+  Runtime-readiness checks cover 535 cases across two runs: 532 pass initially; three Ninja compiler
+  probes pass when repeated in the installed Visual Studio developer environment, with no test changes.
+- Fresh Windows embedding builds of baker, headless/interactive servers, client and native tests finish
+  without compiler warnings. The final full native run passes 541 cases / 666464 assertions.
+  The earlier intermediate run has one 8.2928 ms timing sample against the unchanged 8 ms limit;
+  the isolated 11-assertion Threading case and the final full run both pass without changing that limit.
+- Full Server/Client/Mapper and content baking completes in 15:05. Six semantic document-migration
+  gameplay cases and both real two-process SQLite restarts pass with no failures, timeouts, global
+  exceptions or overruns. Observed committed BSON preserves read/notified flags while jointly changing
+  `_Proto` and a nested typed reference. Repeat payout reconciliation remains inert; shutdown is graceful.
+  These are embedding integration results, not a production database restore, website deployment or
+  qualification of additional native runtime platforms. Local changes and safety stashes remain uncommitted.
+
 ## 2026-10-07 - Checked managed compilation and retained-history reconciliation
 
 - Published baseline `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9` (2026.1.13-dev), retained tip `7f952005cfdb911daa61fffe09af7186f9d40a67` (2026.1.12-dev), common base `3a325a5b4c37a4d8f47557df4b0881aa0a0c8202`. An ordinary merge on the published baseline prepares 2026.1.14-dev and preserves both ancestors; the retained master will advance only by fast-forward.
@@ -2268,7 +2327,7 @@ Source areas checked:
 Results:
 
 - Added `BuildTools/docs_ai_delivery.py` and ADR 0003. The source manifest now owns the canonical locale, source ref, curated starting IDs, generated-page policy, and hard 1 MiB context budget.
-- Generated root [llms.txt](../../llms.txt) with all public current documentation routes, [llms-full.txt](../../llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](../../docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
+- Generated root [llms.txt](https://fonline.ru/llms.txt) with all public current documentation routes, [llms-full.txt](https://fonline.ru/llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](https://fonline.ru/docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
 - The full-context artifact is assembled from whole documents only and fails rather than truncating content when the budget is exceeded. Placeholder, internal, and generated detail pages are excluded according to the recorded policy.
 - The three files are ordinary repository-root static artifacts, so the existing GitHub Pages/Jekyll deployment serves them at stable `fonline.ru` URLs without a separate renderer or documentation source.
 - Last Frontier maintenance guidance now requires same-change reconciliation and generator checks when an Engine update changes inventoried Markdown, manifest metadata, public paths, generated models, or publication policy.
@@ -2483,7 +2542,7 @@ Results:
 
 - Added [ADR-0006](../Decisions/0006-documentation-version-locale-routing.md). The unversioned site is now explicitly the rolling `current` channel on `master`; tagged snapshots remain deferred until supported release lines and a support matrix exist.
 - Added source-owned `versioning` and `localization` sections to the documentation manifest. English remains canonical, Russian remains planned, `Docs/en` targets mirror to `Docs/ru`, and five README-style entry points have explicit locale pairs.
-- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](../../docs-manifest.json#/routing). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
+- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](https://fonline.ru/docs-manifest.json#/routing). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
 - Multiple old pages may converge only when exactly one non-`replace` document owns the future target. The current public API routes correctly converge on the generated API index.
 - Added a validated `redirect` document state with `> Legacy route.` marker, non-human/non-search classification, stable target ID, shared canonical target, a direct Markdown link to that canonical file, and generated redirect ownership. This lets old Markdown URLs remain readable in GitHub and Jekyll after a move without generated HTML or another redirect plugin.
 - Site navigation data and public `docs-manifest.json` now expose the same rolling version and locale policy. The layout labels `Current master` from generated data instead of maintaining an independent version string.
@@ -3646,7 +3705,7 @@ Implemented and corrected:
 - Added [AiEvaluation.md](../AiEvaluation.md), the versioned
   `Docs/ai-evaluation.json` source, `BuildTools/docs_ai_eval.py`, focused
   tests, and the deterministic
-  [generated/ai-evaluation-report.json](../generated/ai-evaluation-report.json).
+  [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json).
   The source owns 12 tasks across architecture, scripting, content,
   debugging, migration, and release, with 24 retrieval checks plus current
   answer-evidence and forbidden-assumption checks.
@@ -3721,7 +3780,7 @@ Implemented and corrected:
 - Added [SnippetValidation.md](../SnippetValidation.md),
   `BuildTools/SnippetPolicy.json`, `BuildTools/docs_snippets.py`, focused
   tests, and the deterministic
-  [generated/snippets.json](../generated/snippets.json). The inventory records
+  [generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). The inventory records
   document/heading/line ownership, language, contract, harness, normalized
   hash, template status, and result for every public fence.
 - Added strict parsers for C-family delimiter/comment/string structure, CMake
@@ -3801,7 +3860,7 @@ Implemented and corrected:
   [Documentation Site Publication](../SitePublication.md). Each has a horizontal
   desktop variant and an automatically derived vertical mobile variant, so
   mobile text is not a scaled-down desktop canvas.
-- Added [generated/diagrams.json](../generated/diagrams.json) with the source
+- Added [generated/diagrams.json](https://fonline.ru/Docs/generated/diagrams.json) with the source
   manifest hash, owning document, dimensions, alt/caption text, complete
   source paths, variant paths, and exact SVG hashes. The six SVG variants live
   under `Docs/assets/diagrams/` and contain native `title`/`desc` metadata,

@@ -71,14 +71,16 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
 
         guide = self._read(GENERATED_GUIDE)
         commands = (
-            "docs_snippets.py --write --external",
-            "docs_localization.py --write",
-            "docs_site.py --write",
-            "docs_ai_eval.py --write",
-            "docs_ai_delivery.py --write",
+            "docs_diagrams.py --write",
+            "docs_reference.py --write",
+            "docs_prepare.py --external",
             "python BuildTools/docs_validate.py",
         )
         positions = [guide.index(command) for command in commands]
+        self.assertEqual(positions, sorted(positions))
+        prepare = self._read("BuildTools/docs_prepare.py")
+        steps = ("docs_snippets.main", "docs_localization.main", "docs_description_translations.main", "docs_site.main", "docs_ai_eval.main", "docs_ai_delivery.main")
+        positions = [prepare.index(step) for step in steps]
         self.assertEqual(positions, sorted(positions))
         self.assertIn("-ApplyConfig <project .fomain> -ApplySubConfig NONE", guide)
 

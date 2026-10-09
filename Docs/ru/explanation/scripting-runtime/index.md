@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/scripting-runtime/
 ---
 
 # Скриптовый runtime
-<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"0959ed1e4851cec7ee7941f6af383b0306ff3e17620dbbe54ab7362875074d3e"} -->
+<!-- docs-translation: {"document_id":"scripting-runtime","locale":"ru","source_path":"Docs/en/explanation/scripting-runtime/index.md","source_sha256":"b70e2d3bf50eb338be408ceff35c4dfd3d2637a325206f156db6d4f39f83c425"} -->
 > Документация движка. Эта страница описывает переиспользуемое поведение скриптового runtime в `Source/Common/ScriptSystem.*` и `Source/Scripting/`; конкретные игровые скрипты, квесты, правила и политика контента принадлежат подключающему проекту.
 
 ## Назначение
@@ -219,6 +219,7 @@ Client render helpers `Game.DrawSprite`, `Game.DrawSpritePattern` и `Game.DrawS
 | Контракт | AngelScript | Managed C# |
 |---|---|---|
 | Включение | `FO_ANGELSCRIPT_SCRIPTING` | `FO_MANAGED_SCRIPTING` |
+| Миграции документов | `Rename`/`Transform`/`Remove`, глобальный callback с атрибутом и `bool`, `T&inout`, `const DatabaseDocument&inout` | те же общие правила, статический callback с атрибутом и `bool`, `ref T`, `DatabaseDocument` |
 | Исходники проекта | проектные модули `.fos` | проектные модули `.cs` |
 | Результат компиляции | запечённый bytecode AngelScript | target assemblies и generated `.gen.cs`, `.gen.csproj`, `.gen.sln` |
 | Инициализация | `[[ModuleInit]] void` | static `void` или `Task` с `[ModuleInit]` |

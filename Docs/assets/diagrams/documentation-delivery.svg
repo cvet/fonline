@@ -69,6 +69,6 @@
   <text class="node-line" x="959" y="343" text-anchor="middle">desktop, mobile, WCAG</text>
   <rect x="850" y="406" width="218" height="92" rx="6" fill="#f1e9f6" stroke="#6d497d" stroke-width="2"/>
   <text class="node-title" x="959" y="437" text-anchor="middle">Review evidence</text>
-  <text class="node-line" x="959" y="463" text-anchor="middle">_site, reports, screenshots</text>
+  <text class="node-line" x="959" y="463" text-anchor="middle">Site, reports, screenshots</text>
   <text class="source-note" x="560" y="622" text-anchor="middle">Source-backed diagram: 7 checked paths; full provenance in Docs/generated/diagrams.json</text>
 </svg>

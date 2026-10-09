@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"5452ee7af5159c712a67fdd53ae08f91324d0807f184ee4a40becd6495444913"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"20becc1424634abcd78b3841caf0c54dbf9cad52510e689b9279a4f61eb7d71c"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
@@ -14,14 +14,15 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 
 ## Назначение
 
-Используйте эту страницу при изменении `_config.yml`, слоя рендеринга документации, custom domain или documentation jobs в GitHub Actions. Она не разрешает создавать отдельное приложение документации или второе дерево контента: canonical source остаётся Markdown в репозитории.
+Используйте эту страницу при изменении `Docs/Site/_config.yml`, слоя рендеринга документации, custom domain или documentation jobs в GitHub Actions. Она не разрешает создавать отдельное приложение документации или второе дерево контента: canonical source остаётся Markdown в репозитории.
 
 ## Проверенные исходные пути
 
-- `_config.yml`
-- `CNAME`
-- `.ruby-version`
-- `Gemfile`
+- `Docs/Site/_config.yml`
+- `BuildTools/docs_prepare.py`
+- `BuildTools/docs_site_build.py`
+- `BuildTools/documentation_metadata.py`
+- `BuildTools/tests/test_docs_site_build.py`
 - `.gitignore`
 - `.github/workflows/validate.yml`
 - `Docs/documentation-manifest.json`
@@ -68,22 +69,26 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 
 ## Production contract
 
+Перед Jekyll выполните `python BuildTools/docs_prepare.py`. Двенадцать производных файлов игнорируются Git: оба endpoints `llms`, общий manifest, навигация, поиск и каталоги проверок. Модели публичных контрактов, авторский Markdown, проверенные исходники изображений и переводы остаются версионируемыми. Агенту с чистым checkout файлы `llms` не нужны: `AGENTS.md` направляет его к исходным руководствам.
+
+Production получает проверенный артефакт `documentation-site`; `documentation-publish` публикует его только при push в `master` репозитория `cvet/fonline`, после проверки версии и документации. PR и release branches создают артефакты для просмотра. 2026-10-09 владелец выбрал **Settings → Pages → Build and deployment → Source → GitHub Actions**; аутентифицированный Pages API подтвердил `build_type: workflow` и `cname: fonline.ru`. Первый deploy нового workflow ещё необходимо проверить после публикации. Прежняя сборка из ветки не выполняет Python-подготовку; генерируемый `CNAME`, домен и публичные URL сохраняют прежний смысл.
+
 | Задача | Контракт |
 |---|---|
 | Canonical content | Versioned Markdown в этом репозитории |
 | Production provider | GitHub Pages |
 | Renderer | Jekyll, совместимый с GitHub Pages |
 | Production URL | `https://fonline.ru` |
-| Источник custom domain | Root `CNAME`, содержащий только `fonline.ru` |
-| Конфигурация сайта | Root `_config.yml` |
+| Источник custom domain | `publishing.domain` исходного manifest, экспортируемый как `CNAME` |
+| Конфигурация сайта | `Docs/Site/_config.yml` |
 | Rendering layer | Только поддерживаемые GitHub Pages themes, plugins, layouts, includes, data и static assets |
 | Навигация читателя | Generated `Docs/Site/Data/docs-site.json`, используемый default layout репозитория |
 | Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` и `Docs/Site/Assets/docs-search.ru.json`, полностью выполняемые в браузере |
 | Обучающие диаграммы | Source-owned local SVG в `Docs/assets/diagrams/` с provenance и hashes в `Docs/generated/diagrams.json` |
 | Скриншоты инструментов | Source-owned local PNG в `Docs/assets/screenshots/` с environment, interactions, source/image hashes и recapture triggers в `Docs/generated/screenshots.json` |
 | Карта version, locale и routes | Generated `docs-manifest.json#/routing`, выведенный из stable document IDs и manifest targets |
-| Review output | Commit-addressable `_site` artifact и rendered-site validation report из GitHub Actions |
-| AI delivery | Root `llms.txt`, ограниченный `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation и complete snippet coverage reports |
+| Review output | Commit-addressable `Workspace/DocumentationSite` artifact и rendered-site validation report из GitHub Actions |
+| AI delivery | Публичный корневой `llms.txt`, ограниченный `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation и complete snippet coverage reports |
 
 Маршрут публикации намеренно не зависит от подключаемого игрового проекта. Last Frontier, TLA и public example games могут ссылаться на этот сайт, но не собирают и не определяют его.
 
@@ -91,34 +96,38 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 
 Реализация сайта находится в `Docs/Site/`: `Layouts/` содержит HTML-шаблон,
 `Data/` — сгенерированную навигацию, а `Assets/` — стили, скрипты, логотип и
-поисковые индексы локалей. В `_config.yml` заданы
+поисковые индексы локалей. В `Docs/Site/_config.yml` заданы
 `layouts_dir: Docs/Site/Layouts` и `data_dir: Docs/Site/Data`; оба служебных
 каталога исключены из опубликованного дерева. URL статических ресурсов
 используют `/Docs/Site/Assets/` и проверяются по тому же манифесту.
 
-Jekyll по-прежнему читает канонический Markdown из корня репозитория.
-Корневые `_config.yml` и `CNAME` сохраняют действующий контракт источника
-GitHub Pages и домена; `Gemfile` и `.ruby-version` обеспечивают автоматическое
-обнаружение зависимостей при локальной работе. Корневые точки входа для ИИ
-остаются доступными по документированным URL. Изменения структуры требуют
-одновременного обновления генераторов, сведений об исходниках, переводов и
-проверок собранного сайта.
+Jekyll читает канонический Markdown из корня репозитория с явным путём
+конфигурации. `BuildTools/docs_prepare.py` создаёт `Gemfile`, `.ruby-version`
+и `CNAME` из версий зависимостей и домена исходного manifest, вместе с
+`llms.txt`, `llms-full.txt` и `docs-manifest.json`, в игнорируемом
+`Workspace/Documentation/`. Настройки Bundler и `Gemfile.lock` также находятся
+там. Версионируемых копий этих файлов в корне репозитория нет.
+`BuildTools/docs_site_build.py` подготавливает входные файлы, собирает сайт в
+`Workspace/DocumentationSite/` и экспортирует три публичных endpoint и `CNAME`
+в корень результата. Публичные URL и логические пути артефактов manifest
+сохраняются. Изменения структуры требуют одновременного обновления генераторов,
+сведений об исходниках, переводов и проверок собранного сайта.
 
 <figure class="docs-diagram">
 <picture>
 <source media="(max-width: 700px)" srcset="../../../assets/diagrams/documentation-delivery-mobile.svg">
-<img src="../../../assets/diagrams/documentation-delivery.svg" alt="Диаграмма доставки документации. Canonical Markdown и manifest документации поступают в deterministic generators. Generated navigation, search, diagrams, route catalogs, AI bundles и evaluation reports сохраняются в репозитории. Jekyll собирает сайт для людей, а AI clients используют llms.txt, llms-full.txt, docs-manifest.json и generated JSON. Static, browser, accessibility, hash и freshness gates проверяют одну ревизию." loading="lazy">
+<img src="../../../assets/diagrams/documentation-delivery.svg" alt="Диаграмма доставки документации. Canonical Markdown и manifest документации поступают в deterministic generators. Навигация, поиск, каталоги маршрутов, AI bundles и отчёты создаются перед сборкой сайта; проверенные изображения диаграмм остаются версионируемыми. Jekyll собирает сайт для людей, а AI clients используют llms.txt, llms-full.txt, docs-manifest.json и generated JSON. Static, browser, accessibility, hash и freshness gates проверяют одну ревизию." loading="lazy">
 </picture>
 <figcaption>Human и AI routes являются проекциями одного versioned Markdown corpus. GitHub Pages, machine-readable endpoints и CI evidence используют один manifest, generated artifacts, source revision и content hashes.</figcaption>
 </figure>
 
-GitHub Pages использует `jekyll-readme-index`, который обычно превращает route вложенного `README.md` в directory index. Поэтому семь public root/subsystem/example READMEs закрепляют manifest-owned `.html` routes коротким YAML front matter. `_config.yml` исключает local build trees, third-party inputs, private example governance templates и BuildTools subtrees без public pages, сохраняя source files, на которые ссылается документация. Удаление pinned permalink создаёт обещанный каталогом, но не отрендеренный Jekyll route и проваливает source-level и post-build validation.
+GitHub Pages использует `jekyll-readme-index`, который обычно превращает route вложенного `README.md` в directory index. Поэтому семь public root/subsystem/example READMEs закрепляют manifest-owned `.html` routes коротким YAML front matter. `Docs/Site/_config.yml` исключает local build trees, third-party inputs, private example governance templates и BuildTools subtrees без public pages, сохраняя source files, на которые ссылается документация. Удаление pinned permalink создаёт обещанный каталогом, но не отрендеренный Jekyll route и проваливает source-level и post-build validation.
 
 Обычные `index.md` используют canonical directory URL Jekyll (`/path/`), хотя artifact остаётся `/path/index.html`. `BuildTools/docs_site.py` записывает directory form в navigation, search, locale reservations и route catalog, чтобы canonical tags и published links совпадали с GitHub Pages.
 
 Записи документов манифеста с `visibility: internal` и сгенерированные
 артефакты с такой же видимостью являются только внутренними доказательствами
-для сопровождающих. `_config.yml` должен исключать их канонические пути и пути
+для сопровождающих. `Docs/Site/_config.yml` должен исключать их канонические пути и пути
 репозиторных указателей из GitHub Pages, а `BuildTools/docs_ai_delivery.py` не
 должен включать внутренние модели в публичный AI-пакет.
 `BuildTools/docs_site_artifact.py` отклоняет собранный артефакт, если в нём
@@ -155,14 +164,14 @@ python BuildTools/docs_site.py --check
 
 ## Миграция версий, локалей и маршрутов
 
-Unversioned production site является каналом `current`. Он следует rolling `master`, а layout помечает его `Current`; это не утверждение, что `master` является стабильным релизом. Historical review использует repository revisions и commit-addressable `_site` artifacts.
+Unversioned production site является каналом `current`. Он следует rolling `master`, а layout помечает его `Current`; это не утверждение, что `master` является стабильным релизом. Historical review использует repository revisions и commit-addressable `Workspace/DocumentationSite` artifacts.
 
 Tagged release snapshots намеренно отложены. Manifest резервирует `/versions/{version}/`, но release page не генерируется до появления immutable supported tags, support matrix и approved follow-up decision. `VERSION`, branch или reachable tag не должны неявно создавать supported documentation line.
 
 Localization policy также принадлежит исходному коду:
 
 - `en` является canonical; принадлежащие манифесту страницы используют текущие пути в `Docs/en/` или явно заданные README-точки входа репозитория и подсистем;
-- `ru` является полным зеркалом; в этой ревизии все 197 обязательных соответствий защищены fail-closed проверкой паритета;
+- `ru` является полным зеркалом; в этой ревизии все обязательные соответствия защищены fail-closed проверкой паритета;
 - paths в `Docs/en/` прямо зеркалируются в `Docs/ru/`;
 - root и subsystem README pages используют explicit pairs, например `README.md` и `README.ru.md`;
 - `BuildTools/docs_localization.py` вычисляет normalized SHA-256 каждого canonical English source и отклоняет stale или mismatched Russian pages;
@@ -234,41 +243,48 @@ DNS account names, registrar credentials, recovery codes и GitHub credentials �
 
 ## Совместимое окружение
 
-Local environment закреплён к GitHub Pages dependency set, объявленному в:
+Исходный `Docs/documentation-manifest.json` задаёт Ruby `3.3.4`, `github-pages`
+`232` и домен. Подготовка выводит из этих значений
+`Workspace/Documentation/.ruby-version`, `Gemfile` и `CNAME`. CI использует
+`ruby/setup-ruby@v1` с `working-directory: Workspace/Documentation` и кэшем
+Bundler, затем тот же Python-инструмент сборки, что используется локально.
+Дополнительный плагин Jekyll не вводится.
 
-- `.ruby-version` для Ruby runtime;
-- `Gemfile` для `github-pages` bundle;
-- `BuildTools/docs-browser/package.json` и `package-lock.json` для Node, Playwright, Chromium revision и axe-core;
-- `Docs/documentation-manifest.json` для machine-readable publication contract.
+Проверка браузера использует Node `24.16.0`, Playwright `1.62.0` с Chromium
+`151.0.7922.34` и axe-core `4.12.1`, закреплённые в manifest,
+`BuildTools/docs-browser/package.json` и его lock-файле. Перед изменением
+версии рендеринга сравните [версии зависимостей GitHub Pages](https://pages.github.com/versions/)
+и обновите исходный manifest. Обновление браузерных зависимостей требует точных
+правок lock, focused tests и полной проверки маршрутов; не используйте `latest` в CI.
 
-Текущий render pin: Ruby `3.3.4` и `github-pages` `232`. Browser validation использует Node `24.16.0`, Playwright `1.62.0` с Chromium `151.0.7922.34` и axe-core `4.12.1`. Перед изменением render value сравните его с [опубликованными версиями GitHub Pages dependencies](https://pages.github.com/versions/) и одновременно обновите manifest declarations. Browser dependency update требует exact lock-file change, обоих focused tests и complete route audit; не используйте `latest` в CI.
-
-`Gemfile.lock` намеренно ignored согласно GitHub Pages guidance. Exact `github-pages` pin является repository-level compatibility boundary; official Pages build image остаётся CI authority.
+`Workspace/Documentation/Gemfile.lock` игнорируется согласно рекомендации
+GitHub Pages. Точная версия `github-pages` задаёт границу совместимости.
 
 ## Локальная сборка и предварительный просмотр
 
-Установите Ruby из `.ruby-version` и Bundler, затем из корня Engine выполните:
+Установите Ruby указанной в исходном manifest версии и Bundler, затем из корня Engine выполните:
 
 На Windows используйте RubyInstaller с Devkit/MSYS2. GitHub Pages bundle содержит native gems; bare Ruby archive может разрешить bundle, но не соберёт эти dependencies.
 
 ```bash
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_diagrams.py --check
 python BuildTools/docs_screenshots.py --check
 python BuildTools/docs_site.py --check
-bundle install
-bundle exec jekyll build --trace
-python BuildTools/docs_site_artifact.py --site-dir _site
+bundle install --gemfile Workspace/Documentation/Gemfile
+python BuildTools/docs_site_build.py
+python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite
 npm ci --prefix BuildTools/docs-browser
 npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
 ```
 
-Rendered output находится в `_site/`, является disposable и ignored by git. Успешная сборка не содержит Jekyll/Liquid errors; `_config.yml` включает strict front-matter parsing. Browser validation обслуживает `_site/` только на ephemeral `127.0.0.1` port и пишет `Workspace/docs-browser-audit-report.json` и сохраняемый набор screenshots в `Workspace/docs-browser-screenshots/`. Она не обращается к production и не исполняет snippets.
+Rendered output находится в `Workspace/DocumentationSite/`, является disposable и ignored by git. Успешная сборка не содержит Jekyll/Liquid errors; `Docs/Site/_config.yml` включает strict front-matter parsing. Browser validation обслуживает `Workspace/DocumentationSite/` только на ephemeral `127.0.0.1` port и пишет `Workspace/docs-browser-audit-report.json` и сохраняемый набор screenshots в `Workspace/docs-browser-screenshots/`. Она не обращается к production и не исполняет snippets.
 
 Для interactive preview:
 
 ```bash
-bundle exec jekyll serve --livereload --host 127.0.0.1 --port 4000
+python -m http.server 4000 --bind 127.0.0.1 --directory Workspace/DocumentationSite
 ```
 
 Откройте `http://127.0.0.1:4000/`. Остановите server перед переключением branch или сменой Ruby/Jekyll pin. Поддерживаемая GitHub процедура: [Testing your GitHub Pages site locally with Jekyll](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll).
@@ -278,7 +294,7 @@ bundle exec jekyll serve --livereload --host 127.0.0.1 --port 4000
 Job `Build documentation site` в `.github/workflows/validate.yml` запускается после быстрых standalone documentation checks. Он:
 
 1. Checkout точной pull-request или push revision.
-2. Рендерит root репозитория через `actions/jekyll-build-pages@v1` в `_site/`.
+2. Запускает `BuildTools/docs_prepare.py`, устанавливает заданные manifest зависимости Ruby/Bundler через `ruby/setup-ruby@v1`, затем выполняет `BuildTools/docs_site_build.py` в `Workspace/DocumentationSite/`.
 3. Запускает `BuildTools/docs_site_artifact.py` на готовом дереве.
 4. Устанавливает manifest-pinned Node, npm lock, Chromium revision и Linux browser libraries.
 5. Запускает `BuildTools/docs-browser/audit.mjs` на том же дереве.
@@ -291,7 +307,7 @@ Browser gate посещает каждый catalog route в трёх profiles, �
 
 Automated axe results покрывают только machine-detectable criteria. Raw incomplete nodes остаются rule-level records с node/route counts и bounded examples. Если `color-contrast` incomplete вызван clipped text в scroll container, harness вычисляет effective colors с alpha composition, применяет WCAG relative-luminance formula и требует 4.5:1 или 3:1 для large text. Failed или unresolvable fallback проваливает route; raw и resolved counts остаются в report. Profile `zoom-200` является детерминированным доказательством reflow, accessibility и screenshot для одного viewport, а не доказательством для каждого браузера, magnifier операционной системы, font override или production rendering difference. Green job не доказывает screen-reader behavior, cognitive accessibility, content clarity или production equivalence. Release review требует keyboard-only и representative assistive-technology checks на landed artifact и production domain.
 
-Job проверяет и предварительно показывает production-compatible render. Он не deploy, не меняет Pages settings, branch или DNS. Существующий GitHub Pages source остаётся единственным production route.
+Job проверяет и предварительно показывает production render. При push в master он загружает тот же проверенный tree как Pages artifact; зависимый `documentation-publish` публикует его с `pages: write` и `id-token: write`. Оба job не записывают source branch и не меняют DNS. PR не может попасть в deployment job.
 
 Reviewers должны просмотреть каждый retained screenshot, включая отдельное русское изображение reflow при 200 процентах, затем интерактивно landing page и changed pages. Проверьте rolling version indicator, locale switch, page TOC, code blocks, tables, local assets, keyboard order и один screen-reader landmarks/headings pass. Перед выпуском повторите 200 percent zoom на landed artifact или production domain; локальный profile не заменяет проверку этой среды. Green source/artifact/axe check сам по себе не доказывает читаемость для каждого пользователя.
 
@@ -336,7 +352,7 @@ dig +short fonline.ru A
 ## Контрольный список проверки
 
 1. Markdown остаётся canonical authored content.
-2. `CNAME`, `_config.yml`, `Gemfile`, `.ruby-version`, manifest и CI согласованы по publication contract.
+2. Исходный manifest, `Docs/Site/_config.yml`, генерируемые входные файлы `Workspace/Documentation/` и CI согласованы по publication contract.
 3. `python BuildTools/tests/test_docs_validate.py` проходит.
 4. `python BuildTools/tests/test_docs_snippets.py` и `python BuildTools/docs_snippets.py --check --external` проходят без выполнения команд.
 5. Tests/checks diagrams, screenshots и site source/layout проходят с ownership/freshness и version/locale/route collision coverage.
@@ -344,8 +360,8 @@ dig +short fonline.ru A
 7. `python BuildTools/tests/test_docs_ai_delivery.py` и `python BuildTools/docs_ai_delivery.py --check` проходят.
 8. Localization test/check проходят; production bilingual launch также использует `--enforce-complete`.
 9. `python BuildTools/docs_validate.py` проходит.
-10. Local или CI Jekyll build создаёт `_site/` без errors со всеми AI routes, reports, navigation, search indexes, route catalog, layout и assets.
-11. Site artifact test и `docs_site_artifact.py --site-dir _site` проходят на rendered tree.
+10. Local или CI Jekyll build создаёт `Workspace/DocumentationSite/` без errors со всеми AI routes, reports, navigation, search indexes, route catalog, layout и assets.
+11. Site artifact test и `docs_site_artifact.py --site-dir Workspace/DocumentationSite` проходят на rendered tree.
 12. Browser unit test проходит, pinned npm dependencies установлены из lock, browser audit проходит каждый route во всех трёх manifest profiles и все interaction scenarios.
 13. Desktop, mobile и 200-percent reflow navigation, search, TOC, source link, theme, overflow, focus containment и screenshots проверены в artifact.
 14. Отдельный русский screenshot при 200 процентах просмотрен; manual keyboard, production-domain 200 percent zoom и representative screen-reader checks записаны для release candidate; axe incomplete nodes review выполнен.

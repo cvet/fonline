@@ -892,11 +892,15 @@ namespace TestEventsAndRemoteCalls
     SECTION("rejects malformed migration rules")
     {
         vector<pair<string_view, string_view>> cases = {
-            {"///@ MigrationRule Property Item OnlyOneArg", "insufficient parameters"},
-            {"///@ MigrationRule Property Item . _", "insufficient parameters"},
-            {"///@ MigrationRule Property Item . Bad _", "malformed dotted name"},
-            {"///@ MigrationRule Property Item Bad Name _", "too many rule arguments"},
-            {"///@ MigrationRule Property Item Bad .", "malformed dotted name"},
+            {"///@ MigrationRule Property Item Rename OnlyOneArg", "insufficient parameters"},
+            {"///@ MigrationRule Property Item Rename . _", "insufficient parameters"},
+            {"///@ MigrationRule Property Item Rename . Bad _", "malformed dotted name"},
+            {"///@ MigrationRule Property Item Rename Bad Name _", "too many rule arguments"},
+            {"///@ MigrationRule Property Item Rename Bad .", "malformed dotted name"},
+            {"///@ MigrationRule Property Item Transform Identity Migrations:Rewrite", "too many rule arguments"},
+            {"///@ MigrationRule Property Item Transform Identity Migrations:::Rewrite", "too many rule arguments"},
+            {"///@ MigrationRule Property Item Transform Identity Migrations::", "too many rule arguments"},
+            {"///@ MigrationRule Property Item Rename Old Migrations::New", "too many rule arguments"},
         };
 
         for (const auto& [script, message] : cases) {
@@ -909,8 +913,10 @@ namespace TestEventsAndRemoteCalls
         rig.AddSourceFile("Scripts/TestMigration.fos", R"(
 namespace TestMigration
 {
-///@ MigrationRule Property Item Weapon.AmmoPid Weapon.Ammo
-///@ MigrationRule Proto Modifier LegacyAchvO9tCm0 __remove__
+///@ Property Item Common bool Weapon Component
+///@ Property Item Common hstring Weapon.Ammo Mutable Persistent PublicSync
+///@ MigrationRule Property Item Rename Weapon.AmmoPid Weapon.Ammo
+///@ MigrationRule Proto Modifier Remove LegacyAchvO9tCm0
 }
 )");
 
@@ -958,12 +964,16 @@ namespace TestMigration
 
         reader.verify_end();
 
-        CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
-        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "LegacyAchvO9tCm0", "__remove__"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Property", "Item", "Rename", "Weapon.AmmoPid", "Weapon.Ammo"}) == 1);
+        CHECK(std::ranges::count(migration_entries, vector<string> {"Proto", "Modifier", "Remove", "LegacyAchvO9tCm0"}) == 1);
         CHECK(settings_entries.empty());
 
         EngineMetadata meta {[] { }};
         meta.RegisterSide(EngineSideKind::ClientSide);
+        meta.RegisterValueType("ident", sizeof(ident_t));
+        meta.RegisterValueTypeLayout("ident", {{"value", "int64"}});
+        meta.RegisterEntityType("Item", true, false, true, true, true);
+        meta.RegisterEnumGroup("ItemProperty", "int32", {});
         REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, output));
 
         auto property_rule = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Item"), meta.Hashes.to_hashed_string("Weapon.AmmoPid"));
@@ -1331,7 +1341,7 @@ TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
     BakerTests::TestRig rig;
     rig.AddSourceFile("Scripts/RenamedMetadata.cs", R"(
 ///@ Property Critter Common int16 Step Mutable Persistent PublicSync
-///@ MigrationRule Property Critter OldStep Step
+///@ MigrationRule Property Critter Rename OldStep Step
 )");
     MetadataBaker baker(rig.MakeContext());
     REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
@@ -1355,11 +1365,68 @@ TEST_CASE("MetadataBakerCarriesPropertyRenameRules")
 
 TEST_CASE("MetadataBakerRejectsPropertyRuleRetiringLiveName")
 {
-    for (auto rule : {"Property Critter Step LegacyStep", "Property Critter Step LegacyStep BeforeVersion DataVersion 3270"}) {
+    for (auto rule : {"Property Critter Rename Step LegacyStep", "Property Critter Rename Step LegacyStep BeforeVersion DataVersion 3270", "Property Critter Remove Step"}) {
         BakerTests::TestRig rig;
         rig.AddSourceFile("Scripts/ReusedMetadata.cs", strex("///@ Property Critter Common int32 LegacyStep Mutable Persistent PublicSync\n///@ Property Critter Common int16 Step Mutable Persistent PublicSync\n///@ MigrationRule {}\n", rule));
         MetadataBaker baker(rig.MakeContext());
         CHECK_THROWS(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    }
+}
+
+TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
+{
+    BakerTests::TestRig rig;
+    rig.AddSourceFile("Scripts/DocumentMigration.cs", R"(
+///@ Property Critter Common hstring MigrationIdentity Mutable Persistent PublicSync
+///@ Entity Server ServerOnlyRecord
+///@ Property ServerOnlyRecord Server hstring Stored Mutable Persistent
+///@ MigrationRule Property ServerOnlyRecord Transform Stored ServerMigrations.Rewrite
+///@ MigrationRule Property ServerOnlyRecord Remove Deleted
+///@ MigrationRule Proto Critter Rename BeforeLegacy LegacyIdentity
+///@ MigrationRule Proto Critter Transform LegacyIdentity GameMigrations.RewriteProto
+///@ MigrationRule Proto Critter Remove Removed.Identity
+///@ MigrationRule Property Critter Rename OldIdentity MigrationIdentity
+///@ MigrationRule Property Critter Transform MigrationIdentity GameMigrations.RewriteIdentity
+///@ MigrationRule Property Critter Remove Removed.Identity
+)");
+    rig.AddSourceFile("Scripts/AngelScriptMigration.fos", R"(
+///@ Property Critter Common hstring AngelScriptIdentity Mutable Persistent PublicSync
+///@ MigrationRule Property Critter Transform AngelScriptIdentity Migrations::RewriteIdentity
+///@ MigrationRule Proto Critter Transform AngelScriptLegacy Migrations::Nested::RewriteProto
+)");
+
+    MetadataBaker baker(rig.MakeContext());
+    REQUIRE_NOTHROW(baker.BakeFiles(rig.GetAllSourceFiles(), ""));
+    for (auto target : {"server", "client", "mapper"}) {
+        EngineMetadata meta {[] { }};
+        meta.RegisterSide(target == string_view {"server"} ? EngineSideKind::ServerSide : EngineSideKind::ClientSide);
+        meta.RegisterValueType("ident", sizeof(ident_t));
+        meta.RegisterValueTypeLayout("ident", {{"value", "int64"}});
+        meta.RegisterEntityType("Critter", true, false, true, true, true);
+        meta.RegisterEnumGroup("CritterProperty", "int32", {});
+        REQUIRE_NOTHROW(RegisterDynamicMetadata(&meta, rig.Outputs.at(strex("TestPack.fometa-{}", target))));
+        auto registrar = meta.GetPropertyRegistrar("Critter");
+        REQUIRE(registrar);
+        auto prop = registrar->FindProperty("MigrationIdentity");
+        REQUIRE(prop);
+        CHECK(meta.GetProtoMigrators().at(meta.Hashes.to_hashed_string("Critter")).at(meta.Hashes.to_hashed_string("LegacyIdentity")).Name == "GameMigrations.RewriteProto");
+        auto removed = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Proto"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"));
+        REQUIRE(removed.has_value());
+        CHECK_FALSE(*removed);
+        CHECK(prop->GetMigratorName() == "GameMigrations.RewriteIdentity");
+        CHECK(registrar->FindProperty("AngelScriptIdentity")->GetMigratorName() == "Migrations::RewriteIdentity");
+        CHECK(meta.GetProtoMigrators().at(meta.Hashes.to_hashed_string("Critter")).at(meta.Hashes.to_hashed_string("AngelScriptLegacy")).Name == "Migrations::Nested::RewriteProto");
+        CHECK(registrar->FindPersistedProperty("OldIdentity") == prop);
+        auto removed_property = meta.CheckMigrationRule(meta.Hashes.to_hashed_string("Property"), meta.Hashes.to_hashed_string("Critter"), meta.Hashes.to_hashed_string("Removed.Identity"));
+        REQUIRE(removed_property.has_value());
+        CHECK_FALSE(*removed_property);
+        CHECK_FALSE(registrar->FindPersistedProperty("Removed.Identity"));
+    }
+    for (auto rule : {"Property Critter Transform Missing Rewrite", "Property Critter Transform Transient Rewrite", "Property Critter Rename Old Missing", "Property Critter MigrationIdentity Rewrite", "Property Critter Remove", "Property Critter Remove Old New", "Property Critter Rename Old __remove__", "Property Missing Remove Old", "Proto Critter Old New", "Proto Critter Remove Old New", "Proto Critter Unknown Old New", "Proto Critter Rename Old __remove__"}) {
+        BakerTests::TestRig invalid;
+        invalid.AddSourceFile("Scripts/InvalidMigration.cs", strex("///@ Property Critter Common hstring Transient Mutable PublicSync\n///@ MigrationRule {}\n", rule));
+        MetadataBaker invalid_baker(invalid.MakeContext());
+        CHECK_THROWS(invalid_baker.BakeFiles(invalid.GetAllSourceFiles(), ""));
     }
 }
 

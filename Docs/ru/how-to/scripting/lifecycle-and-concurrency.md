@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/lifecycle-and-concurrency.html
 ---
 
 # Жизненный цикл и конкурентность скриптов
-<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"03389c356c8ff546c644ed1869b4addf6d1dedd58c23baf8b744ebf7d6f78aee"} -->
+<!-- docs-translation: {"document_id":"script-lifecycle-concurrency","locale":"ru","source_path":"Docs/en/how-to/scripting/lifecycle-and-concurrency.md","source_sha256":"fc9fcddf0fe6325c30648fd7cdf5a535ac3151d76edcf93e6862adf02e61f214"} -->
 > Документация движка. Это руководство описывает переиспользуемое поведение lifecycle и concurrency, общее для AngelScript и Managed C#, а затем явно называет правила каждого языка. Модули проекта, gameplay policies и проектные synchronization helpers принадлежат подключающей игре.
 
 ## Назначение
@@ -60,6 +60,8 @@ dispatchers в другой форме. Указывайте только док
 - [Удалённые вызовы](../../reference/scripting/remote-calls.md) — сетевые entry points и границы авторитетности.
 - [Nullability.md](../../../Nullability.md) — handles, которые могут исчезнуть до возобновления continuation.
 - [сгенерированный справочник API](../../../generated/api/index.md) — текущие сигнатуры методов, атрибуты, настройки и ссылки на исходный код.
+
+Миграции документов — синхронные callbacks своего dispatcher, выполняемые до загрузки свойств сущности. Оба backend передают отделённые значения и исходный документ только для чтения; `false` сохраняет сериализованное значение. Нельзя приостанавливать выполнение, сохранять контекст документа или изменять сущности. AngelScript блокирует прямые вызовы `[[PropertyMigrator]]` и `[[ProtoMigrator]]`. Точные сигнатуры и связывание описаны в [AngelScript](style-and-refactoring.md#миграции-документов) и [Managed C#](managed-csharp.md#миграция-свойств-документа).
 
 ## Проверенные пути исходного кода
 
