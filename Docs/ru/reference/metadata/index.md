@@ -5,12 +5,14 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"41f1f632789d521d1fdea4e3deb99acc1bbbddd78a36772825f778b453629b5b"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
 
 Практический порядок регенерации configure-time codegen, скриптов, запечённых ресурсов, метаданных, документации, сайта и AI-артефактов приведён в разделе [Работа со сгенерированным содержимым](../../how-to/build/generated-content.md).
+
+`docs-manifest.json` — общий генерируемый индекс технических данных. `docs_localization.py` владеет `#/translation_status`, а `docs_site.py` — `#/routing`. Каждый генератор сохраняет остальные разделы и проверяет актуальность собственного раздела. Порядок: локализация, сайт/поиск/маршруты, оценка ИИ при необходимости, затем данные для ИИ; последний шаг обновляет публичные хэши документов и артефактов. Хэши проверенных русских переводов сохраняются в комментариях исходников. Не редактируйте генерируемые разделы вручную. Индекс и навигация указывают `VERSION` как источник версии, не храня копию его значения.
 
 ## Модель владения
 
@@ -170,7 +172,7 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/generated/snippets.json`
 - `Docs/generated/support-matrix.json`
 - `Docs/ru/reference/platforms/generated-matrix.md`
-- `Docs/generated/translation-status.json`
+- `docs-manifest.json#/translation_status`
 - `Docs/generated/external-project-evidence.json`
 - `Docs/generated/external-project-evidence/index.md`
 - `Docs/generated/diagrams.json`
@@ -180,7 +182,7 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
 - `Source/Common/MetadataRegistration.template.cpp`
@@ -759,7 +761,7 @@ python BuildTools/docs_screenshots.py --write
 
 `BuildTools/SupportMatrix.json` является reviewed source текущих profiles host, target, architecture, compiler, application и evidence. `BuildTools/docs_support_matrix.py` проверяет указанные targets BuildTools и workflow lanes, затем создаёт [generated/support-matrix.json](../../../generated/support-matrix.json) и [сгенерированную матрицу поддержки](../platforms/generated-matrix.md). Модель отличает source capability от обязательных build, process smoke и qualification встраиваемого проекта или device; она не заявляет, что выполнена каждая комбинация targets.
 
-`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [generated/translation-status.json](../../../generated/translation-status.json). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
+`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
 
 Регенерация и проверка из корня движка:
 
@@ -800,7 +802,7 @@ Public files являются discovery/transport artifacts, а не owners ко
 
 ## Данные сайта документации
 
-Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `Docs/Site/Data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `Docs/generated/document-routes.json` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
+Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `Docs/Site/Data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `docs-manifest.json#/routing` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
 
 Navigation model требует точного покрытия top-level reader pages, оставляя generated detail pages за их generated indexes. Search включает detail pages, повышает вес titles/headings относительно body tokens, сохраняет technical identifiers и хранит только compact postings и result metadata. Он не копирует полные Markdown bodies в browser artifact и не создаёт hosted search contract.
 

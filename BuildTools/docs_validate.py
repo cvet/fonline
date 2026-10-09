@@ -27,6 +27,7 @@ import docs_helper_cli
 import docs_image_format
 import docs_inventory
 import docs_localization
+import documentation_metadata
 import docs_map_format
 import docs_model_format
 import docs_native_extension
@@ -346,6 +347,7 @@ def _validate_publishing(
             "theme": theme,
             "strict_front_matter": "true",
             "layouts_dir": "Docs/Site/Layouts",
+            "includes_dir": ".",
             "data_dir": "Docs/Site/Data",
         }
         for key, expected in config_values.items():
@@ -1825,13 +1827,9 @@ def _validate_generated_artifacts(
         except (OSError, json.JSONDecodeError, ValueError) as exception:
             errors.append(f"unable to render documentation localization status: {exception}")
         else:
-            output_path = root / docs_localization.DEFAULT_OUTPUT
-            if not output_path.is_file():
-                errors.append(
-                    "generated documentation localization status is missing: "
-                    + docs_localization.DEFAULT_OUTPUT
-                )
-            elif output_path.read_text(encoding="utf-8") != expected_localization_content:
+            if not documentation_metadata.section_matches(
+                root, docs_localization.DEFAULT_OUTPUT, json.loads(expected_localization_content)
+            ):
                 errors.append(
                     "generated documentation localization status is stale; "
                     "run python BuildTools/docs_localization.py --write"
@@ -2127,6 +2125,13 @@ def _validate_generated_artifacts(
             errors.append(f"invalid documentation site delivery: {exception}")
         else:
             for relative_path, expected_content in rendered_site_outputs.items():
+                if relative_path == documentation_metadata.ROUTING_OUTPUT:
+                    if not documentation_metadata.section_matches(root, relative_path, json.loads(expected_content)):
+                        errors.append(
+                            f"generated documentation site artifact is stale: {relative_path}; "
+                            "run python BuildTools/docs_site.py --write"
+                        )
+                    continue
                 output_path = root / relative_path
                 if not output_path.is_file():
                     errors.append(f"generated documentation site artifact is missing: {relative_path}")

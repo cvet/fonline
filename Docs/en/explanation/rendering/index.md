@@ -246,7 +246,7 @@ Desktop client, Mapper, and viewer loops use `FrameBalancer` (`Source/Common/Com
 
 `RenderTexture::GetTextureRegion(pos, size)` is a **blocking** read. It is appropriate for initialization, screenshot/dump capture, and other callers that require pixels immediately, not repeated frame-path picking. Both readback paths require a positive, in-bounds rectangle.
 
-`RequestTextureRegion(pos, size)` records a copy at the request point, observing draws and clears ordered before it. The returned `RenderTextureReadback::TakePixels()` polls without waiting: it returns `std::nullopt` until ready, then hands over the pixels exactly once. Taking them again throws. Pixel layout and row order match `GetTextureRegion`. Keep the request and its backend resources within the owning renderer/context lifetime.
+`RequestTextureRegion(pos, size)` records a copy at the request point, observing draws and clears ordered before it. The returned `RenderTextureReadback::TakePixels()` polls without waiting: it returns `std::nullopt` until ready, then hands over the pixels exactly once. Taking them again throws. A readback failure also throws; discard that request before retrying, and never treat unconfirmed pixels as ready. Pixel layout and row order match `GetTextureRegion`. Keep the request and its backend resources within the owning renderer/context lifetime.
 
 The request itself is not universally non-blocking; the following fallbacks remain part of the current contract:
 
@@ -259,6 +259,8 @@ The request itself is not universally non-blocking; the following fallbacks rema
 | SDL_GPU | Download transfer buffer in the current command buffer; a shared `SDL_QueryGPUFence` tracks completion. Only command buffers carrying readbacks acquire a submission fence; before submission the request is not ready. |
 
 `ModelSprite::IsHitTest` uses a CPU `vector<bool>` alpha mask of the model's atlas picture, rather than reading a GPU pixel for each query. `DrawToAtlas` marks the mask stale; the next hit test refreshes it with at most one readback in flight, retaining the last completed mask until the next one arrives. **Before the first mask is ready, hit testing returns false.** A moving/animated silhouette can therefore lag the rendered pose, typically by a frame or two, without a guaranteed completion deadline. This is client presentation/picking evidence, not a server-authoritative hit or combat check. Ordinary `AtlasSprite` masks are built from source pixels at load time. `RenderTargetManager` no longer owns a last-pixel-pick cache or cache-invalidation API.
+
+`ModelSpriteHitMask` owns the pending request and completed alpha mask. If requesting or collecting pixels throws, it releases the request, marks the mask stale and propagates the error. The next hit test requests a fresh copy while retaining the last completed mask. A redraw during an outstanding request still requires another copy after that request completes. `ModelSpriteHitMaskRetriesFailedReadback` covers both the first mask and replacement of a completed mask; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` pins the redraw ordering.
 
 ### Sprite and model atlas geometry
 
@@ -639,6 +641,12 @@ Design and important behaviors:
 - **`ProjBuf`/`MainTexBuf` are caller-owned when set, renderer-derived otherwise.** `DrawBuffer` auto-fills `ProjBuf` from the renderer's current 2D ortho and `MainTexBuf` from the bound texture size **only when the caller has not already supplied them** (`_needX && !X.has_value()`), then `reset()`s just those two after the draw so the next 2D draw re-derives them. This mirrors the native Vulkan backend and is load-bearing for 3D: `ModelSprites`/`ModelInstance` set `ProjBuf` externally to the per-frame model projection before drawing a critter model to its atlas — unconditionally overwriting it with the 2D ortho projects the skinned mesh off-screen, so nothing rasterizes into the model atlas and 3D critters render as name-plates only (the "characters not drawn in SDL" bug). The other externally fed buffers (`EggBuf`, `ModelBuf`, …) are likewise only auto-derived behind `!has_value()` and keep their last value across draws.
 - **Shares the engine-wide black-map fixes.** Because it reuses the same baked SPIR-V pipeline (baked with `precision highp float`) and the same epoch-based shader-time wrap in `EffectManager::PerFrameEffectUpdate`, the SDL_GPU backend inherits both Vulkan-only fixes (half-float overflow and `sin(large accumulated time)` NaN) and does not reproduce the black-map failure.
 - **Point primitives, orientation, depth.** `POINT_LIST` is remapped to `TRIANGLE_LIST` (shaders lack `gl_PointSize`), mirroring the native Vulkan renderer. `IsRenderTargetFlipped()` is `false` and the ortho matrix uses the `[0,1]` depth convention. Depth targets use `D24_UNORM` when supported, otherwise `D32_FLOAT`. Max atlas size is fixed at 4096 (SDL_GPU exposes no texture-size query).
+
+Failure to submit or wait marks every readback on that command buffer failed.
+Subsequent `TakePixels()` polls throw instead of remaining pending or mapping
+unconfirmed transfer bytes. Only a successful wait makes a blocking flush's
+readbacks ready. After the renderer resumes, consumers can discard failed
+requests and record new ones.
 
 Validate SDL_GPU changes with a client scene launch under
 `Render.ForceSDLGpu=True Render.RenderDebug=True` (Vulkan validation on the

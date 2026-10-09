@@ -12,6 +12,8 @@ This document explains the engine code-generation and metadata-registration flow
 
 For the task-oriented regeneration order across configure-time codegen, scripts, baked resources, metadata, documentation, site, and AI artifacts, use [Generated Content Workflow](../../how-to/build/generated-content.md).
 
+`docs-manifest.json` is the shared generated metadata index. `docs_localization.py` owns `#/translation_status`; `docs_site.py` owns `#/routing`. Each writer preserves other sections and each check compares its own section. Run localization, site/search/routes, AI evaluation when affected, then AI delivery; the last step refreshes public document and artifact hashes. Hashes that attest reviewed Russian translations remain in their source comments. Do not edit generated sections by hand. The index and navigation declare `VERSION` as their version source, without storing a copy of its value.
+
 ## Ownership model
 
 The engine owns the reusable metadata/codegen machinery. An embedding project supplies project configuration, extra metadata sources, common headers, and script/content inputs through CMake options and project files.
@@ -170,7 +172,7 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/generated/snippets.json`
 - `Docs/generated/support-matrix.json`
 - `Docs/en/reference/platforms/generated-matrix.md`
-- `Docs/generated/translation-status.json`
+- `docs-manifest.json#/translation_status`
 - `Docs/generated/external-project-evidence.json`
 - `Docs/generated/external-project-evidence/index.md`
 - `Docs/generated/diagrams.json`
@@ -180,7 +182,7 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
 - `Source/Common/MetadataRegistration.template.cpp`
@@ -771,7 +773,7 @@ validation remain authoritative.
 
 `BuildTools/SupportMatrix.json` is the reviewed source for current host, target, architecture, compiler, application, and evidence profiles. `BuildTools/docs_support_matrix.py` validates referenced BuildTools targets and workflow lanes, then emits [generated/support-matrix.json](../../../generated/support-matrix.json) and the [generated support matrix](../platforms/generated-matrix.md). The model distinguishes source capability from a required build, process smoke, and embedding-project or device qualification; it is not a claim that every combinatorial target has been run.
 
-`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [generated/translation-status.json](../../../generated/translation-status.json). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
+`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
 
 Regenerate and verify from the engine root:
 
@@ -812,7 +814,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `docs-manifest.json#/routing` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 

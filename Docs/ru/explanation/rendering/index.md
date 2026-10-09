@@ -5,7 +5,7 @@ locale: ru
 document_id: frontend-rendering
 permalink: /Docs/ru/explanation/rendering/
 ---
-<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"1aaff99b44d51934edf9bc07ce6ac3ea9722556fa7f52b926d7465318ee9dc06"} -->
+<!-- docs-translation: {"document_id":"frontend-rendering","locale":"ru","source_path":"Docs/en/explanation/rendering/index.md","source_sha256":"229b05841a0feb861598f1e336cd90876e27ab03dadb7f236a362cfad627d49b"} -->
 # Frontend и рендеринг
 
 Экспериментальный декодер Ogg/Theora, порядок полноэкранной отрисовки,
@@ -296,7 +296,7 @@ buffers до передачи shader files конкретному backend.
 
 `RenderTexture::GetTextureRegion(pos, size)` — **блокирующее** чтение. Оно подходит для инициализации, screenshot/dump и других операций, которым pixels нужны немедленно, но не для повторного picking внутри frame path. Оба пути требуют положительного размера прямоугольника внутри границ текстуры.
 
-`RequestTextureRegion(pos, size)` записывает copy в точке запроса, учитывая предшествующие ему draws и clears. `RenderTextureReadback::TakePixels()` проверяет готовность без ожидания: до завершения возвращает `std::nullopt`, затем отдаёт pixels ровно один раз. Повторное получение после успеха бросает исключение. Layout pixels и порядок строк совпадают с `GetTextureRegion`. Запрос и его backend resources должны оставаться внутри lifetime владеющего renderer/context.
+`RequestTextureRegion(pos, size)` записывает copy в точке запроса, учитывая предшествующие ему draws и clears. `RenderTextureReadback::TakePixels()` проверяет готовность без ожидания: до завершения возвращает `std::nullopt`, затем отдаёт pixels ровно один раз. Повторное получение после успеха бросает исключение. Ошибка чтения также бросает исключение: перед повторной попыткой нужно освободить неуспешный запрос; неподтверждённые пиксели нельзя считать готовыми. Layout pixels и порядок строк совпадают с `GetTextureRegion`. Запрос и его backend resources должны оставаться внутри lifetime владеющего renderer/context.
 
 Сам запрос не на всех платформах неблокирующий; следующие fallback-пути входят в текущий контракт:
 
@@ -309,6 +309,8 @@ buffers до передачи shader files конкретному backend.
 | SDL_GPU | Download transfer buffer в текущем command buffer; общий `SDL_QueryGPUFence` отслеживает завершение. Submission fence получают только buffers с readbacks; до submission результат не готов. |
 
 `ModelSprite::IsHitTest` использует CPU `vector<bool>` alpha mask изображения модели в atlas вместо чтения GPU pixel для каждого запроса. `DrawToAtlas` помечает mask устаревшей; следующий hit test обновляет её, держа не более одного readback in flight и сохраняя последнюю готовую mask до получения новой. **До готовности первой mask hit testing возвращает false.** Силуэт движущейся или анимированной модели может отставать от rendered pose, обычно на frame или два, но фиксированный срок завершения не гарантируется. Это клиентское представление/picking, не server-authoritative проверка попадания или боя. Обычный `AtlasSprite` строит mask из source pixels при загрузке. `RenderTargetManager` больше не содержит last-pixel-pick cache и API его инвалидации.
+
+`ModelSpriteHitMask` владеет незавершённым запросом и готовой альфа-маской. Если запрос или получение пикселей бросает исключение, он освобождает запрос, помечает маску устаревшей и передаёт ошибку вызывающему коду. Следующая проверка попадания запрашивает свежую копию, сохраняя последнюю готовую маску. Перерисовка во время незавершённого запроса по-прежнему требует ещё одной копии после его завершения. `ModelSpriteHitMaskRetriesFailedReadback` проверяет первую маску и обновление уже готовой; `ModelSpriteHitMaskKeepsRedrawsWhileReadbackIsPending` закрепляет порядок обновления после перерисовки.
 
 ### Геометрия atlas спрайтов и моделей
 
@@ -660,6 +662,12 @@ validation layer. Запускайте visible client с
 - **`ProjBuf`/`MainTexBuf` caller-owned при наличии.** Backend auto-fills их только при `_needX && !X.has_value()`, затем resets лишь эти два. Это критично для 3D: `ModelInstance` передаёт model projection; без проверки skinned mesh оказался бы вне atlas. Остальные externally fed buffers также не перезаписываются и сохраняются между draws.
 - **Общие black-map fixes.** `highp` SPIR-V и wrapped shader time исключают FP16 overflow и `sin(large time)` NaN.
 - **Topology/orientation/depth.** `POINT_LIST` становится `TRIANGLE_LIST`, `IsRenderTargetFlipped() == false`, ortho использует depth `[0,1]`, depth texture — `D24_UNORM` или `D32_FLOAT`. Max atlas size 4096 из-за отсутствия query в SDL_GPU.
+
+Отказ отправки или ожидания помечает все чтения этого command buffer неуспешными.
+Дальнейшие вызовы `TakePixels()` бросают исключение, вместо вечного ожидания или
+получения неподтверждённых байтов transfer buffer. Только успешное ожидание делает
+чтения блокирующего flush готовыми. Когда renderer возобновит работу, вызывающий
+код может освободить неуспешные запросы и записать новые.
 
 Запускайте client scene с `Render.ForceSDLGpu=True Render.RenderDebug=True`,
 проверяя видимые map и GUI без validation errors рядом с default backend. Для

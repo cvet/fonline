@@ -5,13 +5,15 @@ locale: ru
 document_id: documentation-translation-workflow
 permalink: /Docs/ru/contributing/documentation/translation.html
 ---
-<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c"} -->
+<!-- docs-translation: {"document_id":"documentation-translation-workflow","locale":"ru","source_path":"Docs/en/contributing/documentation/translation.md","source_sha256":"03babb107ee73bd0d45b57c130a09c822ef02891f7457e4472dced3193dc2d53"} -->
 # Процесс перевода документации
 
 В документации FOnline английский язык служит каноническим источником, а
 русский перевод является полным зеркалом документа. Это руководство определяет
 метаданные перевода, глоссарий, проверку актуальности, политику ссылок и переход
 к production-режиму.
+
+`docs-manifest.json` — общий генерируемый индекс технических данных. `docs_localization.py` владеет `#/translation_status`, а `docs_site.py` — `#/routing`. Каждый генератор сохраняет остальные разделы и проверяет актуальность собственного раздела. Порядок: локализация, сайт/поиск/маршруты, оценка ИИ при необходимости, затем данные для ИИ; последний шаг обновляет публичные хэши документов и артефактов. Хэши проверенных русских переводов сохраняются в комментариях исходников. Не редактируйте генерируемые разделы вручную. Индекс и навигация указывают `VERSION` как источник версии, не храня копию его значения.
 
 ## Текущее состояние миграции
 
@@ -34,7 +36,7 @@ permalink: /Docs/ru/contributing/documentation/translation.html
 добавление новой обязательной английской страницы без русского соответствия
 немедленно проваливает проверку.
 
-Текущий машинный отчёт: [translation-status.json](../../../generated/translation-status.json).
+Текущий машинный отчёт: [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status).
 
 Результат 194/194 доказывает физический паритет страниц. Русские генерируемые
 страницы также могут содержать обращённый к читателю текст из машинных моделей,
@@ -75,7 +77,7 @@ BuildTools/README.ru.md
 
 ## Перевод одного документа
 
-1. Найдите запись в `Docs/generated/translation-status.json`.
+1. Найдите запись в `docs-manifest.json#/translation_status`.
 2. Прочитайте владеющие исходники и каноническую английскую страницу; не
    переводите устаревшее поведение.
 3. Используйте `Docs/translation-glossary.json` для общей терминологии.

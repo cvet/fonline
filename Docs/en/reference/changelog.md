@@ -12,7 +12,38 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
-## 2026.1.14-dev - 2026-10-07
+## Current - 2026-10-09
+
+### Changed
+
+- Merge published `cb33d42c7e` with retained `8f7c166f17` integration history. Preserve both tips, the process-private unit-test cache and checked managed compilation; adopt SDL_GPU model-picking recovery and the shared documentation metadata index.
+
+### Migration
+
+- Apply the published `2026.1.14-dev` client rebuild and `2026.1.15-dev` documentation-consumer migration below. Read routes from `docs-manifest.json#/routing` and translation evidence from `docs-manifest.json#/translation_status`; regenerate localization, site/search/routes, AI evaluation and AI delivery in dependency order.
+- Reconfigure and rebuild native version/revision metadata and affected client/unit-test targets. This merge introduces no further API, settings, network compatibility (`0.0.68`), ABI, resource/save schema or database conversion. Existing alpha thresholds, successful readbacks, representable managed numeric values and unit-test cache ownership retain their meanings.
+
+## 2026.1.15-dev - 2026-10-09
+
+### Changed
+
+- Consolidate route and translation reports in `docs-manifest.json`. Navigation and AI delivery reference `VERSION`; the Jekyll build reads its value rather than committing version copies. Search excludes technical HTML comments, and the AI full-context bundle leaves document hashes in the public index.
+
+### Migration
+
+- Documentation consumers must replace `Docs/generated/document-routes.json` with `docs-manifest.json#/routing` and `Docs/generated/translation-status.json` with `docs-manifest.json#/translation_status`. These are JSON sections of one file, not filesystem paths. AI delivery schema is `3`; site delivery schema is `4`; report field meanings and translation review hashes are preserved. The obsolete standalone reports are removed.
+- Regenerate localization, site/search/routes, AI evaluation when affected, then AI delivery. The Jekyll layout includes `VERSION` directly; retain `includes_dir: .` in `_config.yml` for local and GitHub Pages builds. Publish root `VERSION` verbatim. No native/script API, configuration, serialized data, network, ABI, resource-schema or save migration is required.
+- Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+
+## 2026.1.14-dev - 2026-10-08
+
+### Fixed
+
+- Recover model picking after an SDL_GPU readback submission or wait failure. Failed requests report an error without exposing unconfirmed pixels; model alpha masks discard the failed reader and retry while preserving the last completed mask.
+
+### Migration
+
+- No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
 
 ### Changed
 
@@ -47,15 +78,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - No project caller or data conversion is required. Generated macros retain their current names, values and ordering; API, settings, network compatibility `0.0.68`, ABI, resource schemas, saves and package behavior are unchanged. Reconfigure and rebuild native version/revision metadata for this Engine update.
 - The Ubuntu `engine-update` job installs `python3-pytest` and executes `python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py` before publication-range validation. Local source-only checks need pytest; native and embedding-project validation remain required for runtime changes. Regenerate documentation snippets, translation state, site/search/routes and AI delivery when integrating this revision.
 
-### Changed
-
-- Encapsulate the process-private unit-test cache directory in a local class with private path storage; shorten its ownership comment to the Engine comment contract. Cache selection and process-exit cleanup retain their existing behavior.
-
-### Migration
-
-- Reconfigure and rebuild Engine revision/version metadata and the unit-test target after `4e1e0585efffb8c0e06dad6290490e7898ddc696`. `BakerTests::GetTestCacheDir()` retains its `string` result, temporary process-specific path, cleanup ownership and all callers. No project source/configuration/content changes or rebake are required by this test-helper change.
-- API, settings, protocol compatibility `0.0.68`, ABI, resource schemas and saved data remain unchanged; no database conversion or mixed-version restriction is introduced. Previous version migrations still apply in order.
-
 ## 2026.1.11-dev - 2026-10-06
 
 ### Changed
@@ -88,16 +110,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   Deliver the rebuilt managed assemblies with their matching native build; retain the previous
   package as the rollback boundary. No old API alias or data migration is introduced.
 
-### Changed
-
-- Merge retained Engine history `ee324e195564ffb0c8d13e6a0aef7a157e240c97` with published `3a325a5b4c37a4d8f47557df4b0881aa0a0c8202`; preserve both ancestors and their acceptance records. Reconcile generated references and complete documentation delivery.
-
-### Migration
-
-- Reconfigure and rebuild version/revision metadata. The merge introduces no additional API, settings, protocol, ABI or saved-data conversion; compatibility remains `0.0.68`.
-- When upgrading from the retained parent, rebake legacy critter `.frm` and directional `.fr0` resources: scan registration now uses the actual lowercase `.frm` or `.fofrm` output path. Non-critter directional frames retain their `.frm` output. The image schema and frame semantics remain unchanged.
-- Complete AI delivery uses the published 2228224-byte limit. Engine unit fixtures use process-private disk caches, probe available updater ports, require the 3D/AngelScript hit-test types and explicitly establish ground-item visibility. Earlier version migrations still apply in order.
-
 ## 2026.1.10-dev - 2026-10-05
 
 ### Fixed
@@ -107,24 +119,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Reconcile the owning image/baking/testing guides and generated documentation. Complete AI delivery retains the reviewed 2228224-byte bound needed by these local explanations.
 
 ### Migration
-
-- Reconfigure and rebuild native clients, servers and version/revision metadata together. No TLA caller, setting, wire, ABI, resource schema or save conversion is introduced by this rebase; compatibility remains `0.0.68`. The natively tested source is unchanged. When upgrading from an earlier published engine, apply the preceding timestamp and movement migrations in order.
-- Delivery consumers must honor the full-context `max_bytes` increase from 2195456 to 2228224 bytes against this published baseline. Whole-document membership and fail-closed budget checks remain required. Test processes use private caches; the user's local settings and mapper history remain intact.
-
-### Changed
-
-- Merge retained documentation reconciliation and refresh derived references.
-
-### Fixed
-
-- Rebase unpublished TLA integration fixes onto published master `b1e3fa58021a171877177a19c3d26127abf486be`. Consolidate the prior merge-only changes into one local step; preserve the upstream Git-policy, version and bilingual release notes.
-- Retain actual lowercase baked image resource names and frame-composition regression coverage, process-isolated test caches, the 2D/AngelScript fixture guard and ground-item visibility precondition. Client-updater fixtures probe for an unused local TCP port instead of assuming a candidate is free.
-- Reconcile the owning image/baking/testing guides and generated documentation. Complete AI delivery retains the reviewed 2228224-byte bound needed by these local explanations.
-
-### Migration
-
-- No new API, setting, protocol, resource or saved-data changes. Reconfigure/rebuild version metadata. Upgrades from `d24190c9d0` also require the coordinated `2026.1.5-dev` movement migration below.
-
 
 - Reconfigure and rebuild native clients, servers and version/revision metadata together. No TLA caller, setting, wire, ABI, resource schema or save conversion is introduced by this rebase; compatibility remains `0.0.68`. The natively tested source is unchanged. When upgrading from an earlier published engine, apply the preceding timestamp and movement migrations in order.
 - Delivery consumers must honor the full-context `max_bytes` increase from 2195456 to 2228224 bytes against this published baseline. Whole-document membership and fail-closed budget checks remain required. Test processes use private caches; the user's local settings and mapper history remain intact.
@@ -246,30 +240,6 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 - Documentation-manifest versioning policy now uses schema version `3` and declares `engine: {scheme: calver, source: VERSION, master_format: YEAR.MAJOR.MINOR-dev, release_format: YEAR.MAJOR.MINOR.PATCH[-rc]}`. Custom consumers regenerating these artifacts must include that policy and provide the Engine `VERSION` file. Rolling documentation still follows `master`.
 - Reconfigure and rebuild native binaries to obtain the Engine identifiers. Project game versions, package/updater build hashes, runtime compatibility digests, ABI versions, and resource-schema versions keep their own contracts; this change requires no data migration or resource-schema bump.
 
-### Added
-
-- Engine CalVer from `VERSION` is validated during CMake configuration, compiled into `FO_ENGINE_VERSION`, and recorded in native startup logs. `FO_ENGINE_REVISION` records the Engine SHA and tracked-file `-dirty` state separately from the embedding project's build hash.
-- The documentation version link opens this changelog in the selected language. Navigation/route data and AI delivery expose the Engine version from the same source file.
-- Bilingual change notes and release checks establish an owner for developer-visible changes and required migration instructions.
-
-### Changed
-
-- Current-only Engine API support preserves the original meaning of existing values. Replacements remove the old API and provide actionable compile/bake/validation failures plus exhaustive bilingual migration records; existing persisted-property `MigrationRule` conversion remains the narrow exception.
-- Every published master step increments minor and records its UTC year/date; release lines freeze year/major/minor and advance patch, using `-rc` for stabilization. Documentation-only, CI, test and dependency updates are included.
-
-- `VERSION` replaces `2022.1.0.wip` with development CalVer; historical API `Since` values stay unchanged.
-
-### Migration
-
-- The bounded full-context delivery limit increases from 2,162,688 to 2,195,456 bytes to include the complete mandatory update/migration policy. Delivery consumers must honor the declared `full_context.max_bytes` rather than a fixed previous buffer; whole-document inclusion and fail-closed validation remain.
-
-- The earlier draft `YYYY.M.PATCH` notation is superseded. Use `YEAR.MAJOR.MINOR-dev` on master and `YEAR.MAJOR.MINOR.PATCH[-rc]` on `release/YEAR.MAJOR`; major is the line ordinal, and the month is in the note date. Initial policy adoption sets `2026.1.1-dev`. Consumers parsing the earlier version syntax must accept these exact forms and reject obsolete suffixes/final three-field forms; `BuildTools/engine_version.py` is the shared parser. See the [complete update checklist](../how-to/release/versioning.md#every-master-update), release-cut sequence and migration record before preparing any update.
-
-- Documentation-manifest versioning policy now uses schema version `3` and declares `engine: {scheme: calver, source: VERSION, master_format: YEAR.MAJOR.MINOR-dev, release_format: YEAR.MAJOR.MINOR.PATCH[-rc]}`. Custom consumers regenerating these artifacts must include that policy and provide the Engine `VERSION` file. Rolling documentation still follows `master`.
-- Reconfigure and rebuild native binaries to obtain the Engine identifiers. Project game versions, package/updater build hashes, runtime compatibility digests, ABI versions, and resource-schema versions keep their own contracts; this change requires no data migration or resource-schema bump.
-
 ## Earlier history
 
 This maintained log begins with the adoption of Engine versioning. Earlier work is available in the [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound contract-change ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json). They are audit evidence, not a reconstructed series of published Engine releases.
-
-This log starts with Engine versioning. Earlier [repository history](https://github.com/cvet/fonline/commits/master/) and the [revision-bound ledger](https://github.com/cvet/fonline/blob/master/Docs/contract-change-dispositions.json) are audit evidence, not reconstructed release history.

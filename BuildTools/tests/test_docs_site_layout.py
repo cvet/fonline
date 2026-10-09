@@ -36,6 +36,8 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         self.assertIn("site.data.docs-site.version.channel", layout)
         self.assertIn("site.data.docs-site.version.label", layout)
         self.assertIn("site.data.docs-site.version.value", layout)
+        self.assertIn("{% include VERSION %}", layout)
+        self.assertIn("{{ engine_version | strip | escape }}", layout)
         self.assertIn("site.data.docs-site.source_ref", layout)
         self.assertIn("site.data.docs-site.locale_pairs", layout)
         self.assertIn("aria-current=\"page\"", layout)

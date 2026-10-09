@@ -48,6 +48,22 @@ class ModelInstance;
 class ModelManager;
 class ModelSpriteFactory;
 
+class ModelSpriteHitMask final
+{
+public:
+    [[nodiscard]] auto IsHitTest(ipos32 pos) const -> bool;
+
+    void Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit);
+    void MarkStale() noexcept { _stale = true; }
+
+private:
+    vector<bool> _mask {};
+    isize32 _maskSize {};
+    unique_nptr<RenderTextureReadback> _readback {};
+    isize32 _readbackSize {};
+    bool _stale {true};
+};
+
 class ModelSprite final : public AtlasSprite
 {
     friend class ModelSpriteFactory;
@@ -109,11 +125,7 @@ private:
 
     // A hit test reads a mask of the drawn picture that arrives without waiting for the GPU. Picking is a query,
     // so the cache it keeps is mutable
-    mutable vector<bool> _hitMask {};
-    mutable isize32 _hitMaskSize {};
-    mutable unique_nptr<RenderTextureReadback> _hitReadback {};
-    mutable isize32 _hitReadbackSize {};
-    mutable bool _hitMaskStale {true};
+    mutable ModelSpriteHitMask _hitMask {};
 };
 
 class ModelSpriteFactory : public SpriteFactory

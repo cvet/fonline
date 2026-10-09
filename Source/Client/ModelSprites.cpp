@@ -43,6 +43,51 @@
 
 FO_BEGIN_NAMESPACE
 
+auto ModelSpriteHitMask::IsHitTest(ipos32 pos) const -> bool
+{
+    if (!_maskSize.is_valid_pos(pos)) {
+        return false;
+    }
+
+    return _mask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_maskSize.width) + numeric_cast<size_t>(pos.x)];
+}
+
+void ModelSpriteHitMask::Refresh(ptr<const RenderTexture> texture, ipos32 pos, isize32 size, const function<bool(int32_t)>& check_hit)
+{
+    FO_TRACE_ZONE(Render);
+
+    auto discard_readback_on_fail = scope_fail([this]() noexcept {
+        _readback.reset();
+        _stale = true;
+    });
+
+    if (!_readback && _stale) {
+        _readback = texture->RequestTextureRegion(pos, size);
+        _readbackSize = size;
+        _stale = false;
+    }
+
+    if (!_readback) {
+        return;
+    }
+
+    optional<vector<ucolor>> pixels = _readback->TakePixels();
+
+    if (!pixels.has_value()) {
+        return;
+    }
+
+    vector<bool> mask(pixels->size());
+
+    for (size_t i = 0; i < pixels->size(); i++) {
+        mask[i] = check_hit(numeric_cast<int32_t>((*pixels)[i].comp.a));
+    }
+
+    _mask = std::move(mask);
+    _maskSize = _readbackSize;
+    _readback.reset();
+}
+
 ModelSprite::ModelSprite(ptr<SpriteManager> spr_mngr, ptr<ModelSpriteFactory> factory, unique_ptr<ModelInstance> model, AtlasType atlas_type) :
     AtlasSprite(spr_mngr, {}, {}, {}, {}, {}, {}),
     _factory {factory},
@@ -71,45 +116,15 @@ auto ModelSprite::IsHitTest(ipos32 pos) const -> bool
 
     RefreshHitMask();
 
-    // Before the first picture arrives the model is not under the cursor yet, for the frame or two a readback takes
-    if (!_hitMaskSize.is_valid_pos(pos)) {
-        return false;
-    }
-
-    return _hitMask[numeric_cast<size_t>(pos.y) * numeric_cast<size_t>(_hitMaskSize.width) + numeric_cast<size_t>(pos.x)];
+    return _hitMask.IsHitTest(pos);
 }
 
 // The mask trails the drawn picture by the frame or two a readback takes, a lag picking under a moving cursor absorbs
 void ModelSprite::RefreshHitMask() const
 {
-    // One readback in flight at a time, and only for a picture the mask does not show yet
-    if (!_hitReadback && _hitMaskStale) {
-        ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
-        ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
-
-        _hitReadback = atlas_tex->RequestTextureRegion(atlas_pos, _size);
-        _hitReadbackSize = _size;
-        _hitMaskStale = false;
-    }
-
-    if (!_hitReadback) {
-        return;
-    }
-
-    optional<vector<ucolor>> pixels = _hitReadback->TakePixels();
-
-    if (!pixels.has_value()) {
-        return;
-    }
-
-    _hitMask.resize(pixels->size());
-
-    for (size_t i = 0; i < pixels->size(); i++) {
-        _hitMask[i] = _sprMngr->CheckHitTest(numeric_cast<int32_t>((*pixels)[i].comp.a));
-    }
-
-    _hitMaskSize = _hitReadbackSize;
-    _hitReadback.reset();
+    ptr<const RenderTexture> atlas_tex = GetAtlas()->GetTexture();
+    ipos32 atlas_pos {iround<int32_t>(atlas_tex->SizeData[0] * GetAtlasRect().x), iround<int32_t>(atlas_tex->SizeData[1] * GetAtlasRect().y)};
+    _hitMask.Refresh(atlas_tex, atlas_pos, _size, [this](int32_t value) { return _sprMngr->CheckHitTest(value); });
 }
 
 auto ModelSprite::GetViewSize() const -> optional<irect32>
@@ -223,7 +238,7 @@ void ModelSprite::DrawToAtlas()
     _factory->DrawModelToAtlas(this);
 
     // The mask now shows the previous picture, and the next hit test asks for this one
-    _hitMaskStale = true;
+    _hitMask.MarkStale();
 }
 
 void ModelSprite::DrawInScene(fpos32 scene_pos, float32_t depth) const
