@@ -16,6 +16,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Refresh reviewed Russian changelog and testing translation provenance so complete localization validation accepts the current English sources.
+- Align the paired BuildTools guide with the existing ignored documentation-output workflow and its nineteen description models.
+
+### Migration
+
+- No script/native API, configuration, serialized-data, network, ABI, resource-schema or saved-data migration is required: this update corrects documentation provenance and existing BuildTools guidance. Regenerate documentation outputs with `python BuildTools/docs_prepare.py` before validation or a site build.
+- Reconfigure and rebuild affected consumers to refresh the native Engine version/revision identity when adopting this revision.
+
+## 2026.1.17-dev - 2026-10-09
+
+### Fixed
+
 - Validate existing READY trees, downloaded workspace caches, prebuilt inputs and freshly published managed runtimes against the nonempty embedding headers, managed entry assemblies and target-specific link archives. Recover incomplete trees through the existing cache/republication route instead of reporting a runtime ready with missing linker inputs.
 
 ### Migration

@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"1bf08542454c8e7f3f33d7c63268b7858de54072d0e08f2deceed59ced1b4ccc"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"dbaf0a103343acc2b298d40f9a7d264869139272961908c8bcef5792250bb378"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -201,7 +201,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_metadata.py` строго декодирует project-baked `Metadata.fometa-server/client`, проверяет согласованность обеих сторон и записывает/проверяет принадлежащий проекту JSON/Markdown catalog remote calls.
 - `docs_inventory.py` записывает/проверяет независимый inventory export methods, native tests и setting declarations.
 - `docs_localization.py` обеспечивает полное двуязычное покрытие, проверяет glossary, стабильные locale targets, нормализованные English hashes, точные переведённые fences и language-preserving links, затем записывает/проверяет `docs-manifest.json#/translation_status`.
-- `docs_description_translations.py` инвентаризирует обращённый к читателю текст в 20 генерируемых контрактных моделях, применяет проверенный русский overlay со стабильными ID, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или код записи и записывает/проверяет `Docs/generated/description-translation-status.json`. Отсутствующие записи остаются явными, пока семантический каталог не сможет перейти из `registered-translations-current` в `complete`.
+- `docs_description_translations.py` инвентаризирует обращённый к читателю текст в 19 генерируемых контрактных моделях, применяет проверенный русский overlay со стабильными ID, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или код записи и записывает/проверяет `Docs/generated/description-translation-status.json`. Отсутствующие записи остаются явными, пока семантический каталог не сможет перейти из `registered-translations-current` в `complete`.
 - `docs_ai_delivery.py` проецирует `Docs/documentation-manifest.json` и канонический Markdown в корневые `llms.txt`, ограниченный `llms-full.txt` и публичный `docs-manifest.json`; он нормализует content hashes и отклоняет stale, oversized или non-deterministic output.
 - `docs_site.py` разрешает manifest-owned stable document IDs в проверенные localized Jekyll navigation data, ограниченные статические English/Russian search indexes и публичный version/locale/legacy-route catalog; он отклоняет неизвестные, дублированные или пропущенные top-level pages, route collisions, неоднозначные canonical targets, отсутствующие locale pairs, cross-locale search ownership и oversized или stale output.
 - `docs_ai_eval.py` проверяет версионированный standalone task set в `Docs/ai-evaluation.json` по manifest и той же компактной search model, которую использует browser, затем записывает/проверяет `Docs/generated/ai-evaluation-report.json` с ranks, evidence checks, success rate и MRR.
@@ -214,8 +214,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs-browser/audit.mjs` локально обслуживает готовое дерево `_site` и применяет зафиксированный lock-файлом Playwright Chromium вместе с axe-core для проверки каждого route на desktop и mobile ширине. Он отклоняет нарушения WCAG 2.2 A/AA, runtime/resource errors, горизонтальную прокрутку уровня страницы, сломанный responsive layout и keyboard failures в skip navigation, search, theme, copy и mobile focus-trapped drawer; CI сохраняет JSON и screenshots.
 - `docs_validate.py` проверяет documentation manifest, локальные links/anchors, source ownership, Pages contract и freshness каждого generated artifact.
 
-Запускайте их сфокусированные тесты и проверки из корня движка; generated JSON
-и Markdown хранятся в repository и не должны редактироваться вручную.
+Запускайте их сфокусированные тесты и проверки из корня движка. Авторские модели интерфейсов и проверенные assets остаются версионированными. Выходы доставки документации формируются в игнорируемом `Workspace/Documentation/` и экспортируются через `BuildTools/docs_site_build.py`; generated output нельзя редактировать вручную.
 
 Материализуйте review candidate только из чистого, удалённо доступного точного
 Engine commit:
