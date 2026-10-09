@@ -14,14 +14,15 @@ The layout includes root `VERSION` through Jekyll's standard `include` tag; `inc
 
 ## Purpose
 
-Use this page when changing `_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
+Use this page when changing `Docs/Site/_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
 
 ## Source paths inspected
 
-- `_config.yml`
-- `CNAME`
-- `.ruby-version`
-- `Gemfile`
+- `Docs/Site/_config.yml`
+- `BuildTools/docs_prepare.py`
+- `BuildTools/docs_site_build.py`
+- `BuildTools/documentation_metadata.py`
+- `BuildTools/tests/test_docs_site_build.py`
 - `.gitignore`
 - `.github/workflows/validate.yml`
 - `Docs/documentation-manifest.json`
@@ -68,22 +69,26 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 
 ## Production contract
 
+Before Jekyll, run `python BuildTools/docs_prepare.py`. The twelve delivery files are ignored build outputs, including both `llms` endpoints, the shared manifest, navigation/search, and validation catalogs. Public contract models, authored Markdown, reviewed image sources and translations remain versioned. A clean checkout does not need the `llms` files for agent work: `AGENTS.md` routes maintainers to source guides.
+
+Production uses the validated artifact from `documentation-site`, deployed by `documentation-publish` only on a push to `cvet/fonline` `master`, after version and documentation gates pass. Pull requests and release branches produce review artifacts. On 2026-10-09 the owner selected **Settings → Pages → Build and deployment → Source → GitHub Actions**; the authenticated Pages API confirms `build_type: workflow` and `cname: fonline.ru`. The first deployment of the new workflow still needs verification after publication. The former branch build cannot run Python preparation; generated `CNAME`, domain and public URLs retain their existing meaning.
+
 | Concern | Contract |
 |---|---|
 | Canonical content | Versioned Markdown in this repository |
 | Production provider | GitHub Pages |
 | Renderer | GitHub Pages-compatible Jekyll |
 | Production URL | `https://fonline.ru` |
-| Custom-domain source | Root `CNAME`, containing only `fonline.ru` |
-| Site configuration | Root `_config.yml` |
+| Custom-domain source | `publishing.domain` in the source manifest, exported as `CNAME` |
+| Site configuration | `Docs/Site/_config.yml` |
 | Rendering layer | GitHub Pages-supported themes, plugins, layouts, includes, data, and static assets only |
 | Reader navigation | Generated `Docs/Site/Data/docs-site.json`, consumed by the repository-owned default layout |
 | Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, queried entirely in the browser |
 | Teaching diagrams | Source-owned local SVG under `Docs/assets/diagrams/`, with exact provenance and hashes in `Docs/generated/diagrams.json` |
 | Tool screenshots | Source-owned local PNG under `Docs/assets/screenshots/`, with capture environment, interactions, source/image hashes, and recapture triggers in `Docs/generated/screenshots.json` |
 | Version, locale, and route map | Generated `docs-manifest.json#/routing`, derived from stable document IDs and manifest targets |
-| Review output | Commit-addressable `_site` artifact plus rendered-site validation report from GitHub Actions |
-| AI delivery | Root `llms.txt`, bounded `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation, and complete snippet coverage reports |
+| Review output | Commit-addressable `Workspace/DocumentationSite` artifact plus rendered-site validation report from GitHub Actions |
+| AI delivery | Published root `llms.txt`, bounded `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation, and complete snippet coverage reports |
 
 The publication route is intentionally independent from any embedding game project. Last Frontier, TLA, and public example games may link to this site, but they neither build nor define it.
 
@@ -91,27 +96,32 @@ The publication route is intentionally independent from any embedding game proje
 
 The website implementation lives under `Docs/Site/`: `Layouts/` owns the
 HTML shell, `Data/` owns generated navigation, and `Assets/` owns styles,
-scripts, branding, and generated locale search indexes. `_config.yml` sets
+scripts, branding, and generated locale search indexes. `Docs/Site/_config.yml` sets
 `layouts_dir: Docs/Site/Layouts` and `data_dir: Docs/Site/Data`; both source-only
 directories are excluded from the published tree. The static asset URLs use
 `/Docs/Site/Assets/` and are checked against the same generated manifest.
 
-Jekyll still reads canonical Markdown from the repository root. Root
-`_config.yml` and `CNAME` preserve the existing GitHub Pages source and domain
-contract; `Gemfile` and `.ruby-version` preserve automatic local dependency
-discovery. The root AI endpoints remain directly discoverable at their
-documented URLs. Repository layout changes must update generators, source
-provenance, locale mirrors, and rendered-site checks together.
+Jekyll reads canonical Markdown from the repository root with the explicit
+configuration path. `BuildTools/docs_prepare.py` generates `Gemfile`,
+`.ruby-version` and `CNAME` from the source manifest's dependency pins and
+domain, alongside `llms.txt`, `llms-full.txt` and `docs-manifest.json`, under
+ignored `Workspace/Documentation/`. Bundler settings and `Gemfile.lock` belong
+in that directory too. These files have no versioned copies at the repository
+root. `BuildTools/docs_site_build.py` prepares the inputs, renders into
+`Workspace/DocumentationSite/` and exports the three public endpoints plus
+`CNAME` to the rendered root. Public URLs and logical manifest artifact paths
+stay unchanged. Repository layout changes must update generators, source
+provenance, locale mirrors and rendered-site checks together.
 
 <figure class="docs-diagram">
 <picture>
 <source media="(max-width: 700px)" srcset="../../../assets/diagrams/documentation-delivery-mobile.svg">
-<img src="../../../assets/diagrams/documentation-delivery.svg" alt="Documentation delivery diagram. Canonical Markdown and the documentation manifest feed deterministic generators. Generated navigation, search, diagrams, route catalogs, AI bundles, and evaluation reports are checked in. Jekyll builds the human site while AI clients consume llms.txt, llms-full.txt, docs-manifest.json, and generated JSON. Static, browser, accessibility, hash, and freshness gates validate the same revision." loading="lazy">
+<img src="../../../assets/diagrams/documentation-delivery.svg" alt="Documentation delivery diagram. Canonical Markdown and the documentation manifest feed deterministic generators. Navigation, search, route catalogs, AI bundles, and reports are generated before the site build; reviewed diagram images remain versioned. Jekyll builds the human site while AI clients consume llms.txt, llms-full.txt, docs-manifest.json, and generated JSON. Static, browser, accessibility, hash, and freshness gates validate the same revision." loading="lazy">
 </picture>
 <figcaption>Human and AI routes are projections of one versioned Markdown corpus. GitHub Pages, machine-readable endpoints, and CI evidence all use the same manifest, generated artifacts, source revision, and content hashes.</figcaption>
 </figure>
 
-GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
+GitHub Pages uses `jekyll-readme-index`, which normally changes a nested `README.md` route to the directory index. The seven public root/subsystem/example READMEs therefore pin their manifest-owned `.html` routes in short YAML front matter blocks. `Docs/Site/_config.yml` excludes local build trees, third-party inputs, private example governance templates, and BuildTools subtrees that do not own public pages while retaining the source files referenced by the docs. Removing a pinned permalink creates a route that the catalog promises but Jekyll does not render and fails source-level plus post-build validation.
 
 Ordinary `index.md` pages use Jekyll's canonical directory URL (`/path/`), while
 their artifact remains `/path/index.html`. `BuildTools/docs_site.py` records the
@@ -119,7 +129,7 @@ directory form in navigation, search, locale reservations, and the route
 catalog so canonical tags and published links agree with GitHub Pages.
 
 Manifest document records with `visibility: internal` and generated artifacts
-with the same visibility are source-only maintainer evidence. `_config.yml`
+with the same visibility are source-only maintainer evidence. `Docs/Site/_config.yml`
 must exclude their canonical paths and any repository pointer paths from
 GitHub Pages, while `BuildTools/docs_ai_delivery.py` must omit internal models
 from the public AI bundle. `BuildTools/docs_site_artifact.py` fails the rendered
@@ -167,14 +177,14 @@ The accepted boundaries are recorded in
 
 ## Version, locale, and route migration
 
-The unversioned production site is the `current` channel. It follows rolling `master`, and the layout labels it `Current`; it does not claim that `master` is a stable release. Historical review uses repository revisions and commit-addressable `_site` artifacts.
+The unversioned production site is the `current` channel. It follows rolling `master`, and the layout labels it `Current`; it does not claim that `master` is a stable release. Historical review uses repository revisions and commit-addressable `Workspace/DocumentationSite` artifacts.
 
 Tagged release snapshots are deliberately deferred. The manifest reserves `/versions/{version}/`, but no release page is generated until the engine has immutable supported tags, a support matrix, and an approved follow-up decision. `VERSION`, a branch, or a reachable tag must not silently create a supported documentation line.
 
 The localization policy is also source-owned:
 
 - `en` is canonical; manifest-owned human pages use their current paths below `Docs/en/` or an explicit repository/subsystem README entrypoint;
-- `ru` is a complete mirror; this revision has all 197 required counterparts under fail-closed parity enforcement;
+- `ru` is a complete mirror; this revision has all required counterparts under fail-closed parity enforcement;
 - paths below `Docs/en/` mirror directly below `Docs/ru/`;
 - root and subsystem README pages use explicit pairs such as `README.md` and `README.ru.md`;
 - `BuildTools/docs_localization.py` computes normalized SHA-256 for every canonical English source and rejects stale or mismatched existing Russian pages;
@@ -246,41 +256,47 @@ DNS account names, registrar credentials, recovery codes, and GitHub credentials
 
 ## Compatible environment
 
-The local environment is pinned to the GitHub Pages dependency set declared in:
+The source `Docs/documentation-manifest.json` owns Ruby `3.3.4`, `github-pages`
+`232`, and the domain. Preparation derives `Workspace/Documentation/.ruby-version`,
+`Gemfile` and `CNAME` from those values. CI uses `ruby/setup-ruby@v1` with
+`working-directory: Workspace/Documentation` and Bundler caching, then the same
+Python build wrapper used locally. No Jekyll plugin is added.
 
-- `.ruby-version` for the Ruby runtime;
-- `Gemfile` for the `github-pages` bundle;
-- `BuildTools/docs-browser/package.json` and `package-lock.json` for Node, Playwright, Chromium revision, and axe-core;
-- `Docs/documentation-manifest.json` for the machine-readable publication contract.
+Browser validation uses Node `24.16.0`, Playwright `1.62.0` with Chromium
+`151.0.7922.34`, and axe-core `4.12.1`, pinned in the manifest and
+`BuildTools/docs-browser/package.json` plus its lock file. Before changing a
+render value, compare the [GitHub Pages dependency versions](https://pages.github.com/versions/)
+and update the owning manifest. Browser updates require exact lock changes,
+focused tests and the complete route audit; never use `latest` in CI.
 
-The current render pin is Ruby `3.3.4` and `github-pages` `232`. Browser validation uses Node `24.16.0`, Playwright `1.62.0` with its Chromium `151.0.7922.34` revision, and axe-core `4.12.1`. Before changing a render value, compare it with the [published GitHub Pages dependency versions](https://pages.github.com/versions/) and update the manifest declarations together. Browser dependency updates require an exact lock-file change, both focused tests, and a complete route audit; never use `latest` in CI.
-
-`Gemfile.lock` is intentionally ignored, following GitHub's Pages guidance. The exact `github-pages` pin is the repository-level compatibility boundary; the official Pages build image is the CI authority.
+`Workspace/Documentation/Gemfile.lock` is ignored, following GitHub's Pages
+guidance. The exact `github-pages` pin defines the compatibility boundary.
 
 ## Local build and preview
 
-Install the Ruby version from `.ruby-version` and Bundler, then run from the engine root:
+Install the Ruby version declared in the source manifest and Bundler, then run from the engine root:
 
 On Windows, use the RubyInstaller package with Devkit/MSYS2 support. The GitHub Pages bundle contains native gems; a bare Ruby archive can resolve the bundle but cannot compile those dependencies.
 
 ```bash
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_diagrams.py --check
 python BuildTools/docs_screenshots.py --check
 python BuildTools/docs_site.py --check
-bundle install
-bundle exec jekyll build --trace
-python BuildTools/docs_site_artifact.py --site-dir _site
+bundle install --gemfile Workspace/Documentation/Gemfile
+python BuildTools/docs_site_build.py
+python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite
 npm ci --prefix BuildTools/docs-browser
 npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
 ```
 
-The rendered output is `_site/`. It is disposable and ignored by git. A successful build must finish without Jekyll or Liquid errors; `_config.yml` enables strict front-matter parsing. Browser validation serves `_site/` only on an ephemeral `127.0.0.1` port and writes `Workspace/docs-browser-audit-report.json` plus the retained screenshot set under `Workspace/docs-browser-screenshots/`. It never contacts production or executes documentation snippets.
+The rendered output is `Workspace/DocumentationSite/`. It is disposable and ignored by git. A successful build must finish without Jekyll or Liquid errors; `Docs/Site/_config.yml` enables strict front-matter parsing. Browser validation serves `Workspace/DocumentationSite/` only on an ephemeral `127.0.0.1` port and writes `Workspace/docs-browser-audit-report.json` plus the retained screenshot set under `Workspace/docs-browser-screenshots/`. It never contacts production or executes documentation snippets.
 
 For an interactive preview:
 
 ```bash
-bundle exec jekyll serve --livereload --host 127.0.0.1 --port 4000
+python -m http.server 4000 --bind 127.0.0.1 --directory Workspace/DocumentationSite
 ```
 
 Open `http://127.0.0.1:4000/`. Stop the server before switching branches or changing the Ruby/Jekyll dependency pin. GitHub's maintained procedure is [Testing your GitHub Pages site locally with Jekyll](https://docs.github.com/en/pages/setting-up-a-github-pages-site-with-jekyll/testing-your-github-pages-site-locally-with-jekyll).
@@ -290,7 +306,7 @@ Open `http://127.0.0.1:4000/`. Stop the server before switching branches or chan
 The `Build documentation site` job in `.github/workflows/validate.yml` runs after the fast standalone documentation checks. It:
 
 1. checks out the exact pull-request or push revision;
-2. renders the repository root with `actions/jekyll-build-pages@v1` into `_site/`;
+2. runs `BuildTools/docs_prepare.py`, installs manifest-pinned Ruby/Bundler dependencies with `ruby/setup-ruby@v1`, then runs `BuildTools/docs_site_build.py` into `Workspace/DocumentationSite/`;
 3. runs `BuildTools/docs_site_artifact.py` against the completed tree;
 4. installs the manifest-pinned Node, npm lock, Chromium revision, and required Linux browser libraries;
 5. runs `BuildTools/docs-browser/audit.mjs` against the same completed tree;
@@ -303,7 +319,7 @@ The browser gate visits every catalog route in three manifest-owned profiles: de
 
 Automated axe results cover only machine-detectable criteria. Raw incomplete nodes remain rule-level records with node/route counts and bounded example paths/targets instead of being mislabeled as passes. Axe can return `color-contrast` as incomplete when text is clipped inside a scroll container; for those exact nodes, the harness computes the effective foreground/background with alpha composition, applies the WCAG relative-luminance formula, and requires 4.5:1 or 3:1 for large text. Any failed or unresolvable fallback fails its route; both raw and resolved counts stay in the report. The `zoom-200` profile is deterministic reflow, accessibility, and screenshot evidence for one viewport; it is not proof for every browser, operating-system magnifier, font override, or production rendering difference. A green job still does not prove screen-reader behavior, cognitive accessibility, content clarity, or production equivalence. Release review needs keyboard-only and representative assistive-technology checks on the landed artifact and production domain.
 
-This job validates and previews the production-compatible render. It does not deploy, alter Pages settings, write a branch, or change DNS. The existing GitHub Pages source remains the only production publication route.
+This job validates and previews the production render. On a master push it uploads the same validated tree as a Pages artifact; the dependent `documentation-publish` job deploys that artifact with `pages: write` and `id-token: write`. Neither job writes a source branch or changes DNS. PRs cannot enter the deployment job.
 
 Reviewers should inspect every retained screenshot, including the dedicated Russian 200-percent reflow image, then inspect at least the landing page and changed pages interactively. Check the rolling version indicator, locale switch, page table of contents, code blocks, tables, local assets, keyboard order, and one screen-reader landmark/headings pass. Repeat 200-percent zoom on the landed artifact or production domain before release; the local profile does not replace that environment check. A green source, artifact, or axe check does not by itself prove that the rendered page is readable by every user.
 
@@ -347,7 +363,7 @@ Escalate a mismatch to both repository and domain administrators. Do not work ar
 ## Validation checklist
 
 1. Markdown remains the canonical authored content.
-2. `CNAME`, `_config.yml`, `Gemfile`, `.ruby-version`, the manifest, and CI agree on the publication contract.
+2. `CNAME`, `Docs/Site/_config.yml`, `Gemfile`, `.ruby-version`, the manifest, and CI agree on the publication contract.
 3. `python BuildTools/tests/test_docs_validate.py` passes.
 4. `python BuildTools/tests/test_docs_snippets.py` and `python BuildTools/docs_snippets.py --check --external` pass without executing commands.
 5. `python BuildTools/tests/test_docs_diagrams.py`,
@@ -362,8 +378,8 @@ Escalate a mismatch to both repository and domain administrators. Do not work ar
 7. `python BuildTools/tests/test_docs_ai_delivery.py` and `python BuildTools/docs_ai_delivery.py --check` pass.
 8. `python BuildTools/tests/test_docs_localization.py` and `python BuildTools/docs_localization.py --check` pass; production bilingual launch also uses `--enforce-complete`.
 9. `python BuildTools/docs_validate.py` passes.
-10. A local or CI Jekyll build produces `_site/` without errors and contains the AI routes, evaluation/snippet reports, generated navigation, both locale search indexes, route catalog, layout, and local assets.
-11. `python BuildTools/tests/test_docs_site_artifact.py` and `python BuildTools/docs_site_artifact.py --site-dir _site` pass against that rendered tree.
+10. A local or CI Jekyll build produces `Workspace/DocumentationSite/` without errors and contains the AI routes, evaluation/snippet reports, generated navigation, both locale search indexes, route catalog, layout, and local assets.
+11. `python BuildTools/tests/test_docs_site_artifact.py` and `python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite` pass against that rendered tree.
 12. `python BuildTools/tests/test_docs_browser.py` passes, the pinned npm dependencies are installed from the lock file, and `npm --prefix BuildTools/docs-browser run audit` passes every route in all three manifest profiles plus every interaction scenario.
 13. Desktop, mobile, and 200-percent reflow navigation, search, table of contents, source link, theme preference, page overflow, focus containment, and screenshots are exercised in the rendered artifact.
 14. The dedicated Russian 200-percent screenshot is reviewed; manual keyboard, production-domain 200-percent zoom, and representative screen-reader checks are recorded for a release candidate; axe incomplete nodes are reviewed rather than silently ignored.

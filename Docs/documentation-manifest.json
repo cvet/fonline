@@ -39,20 +39,20 @@
     "production_url": "https://fonline.ru",
     "repository": "cvet/fonline",
     "theme": "jekyll-theme-slate",
-    "cname": "CNAME",
-    "config": "_config.yml",
-    "gemfile": "Gemfile",
-    "ruby_version_file": ".ruby-version",
+    "cname": "Workspace/Documentation/CNAME",
+    "config": "Docs/Site/_config.yml",
+    "gemfile": "Workspace/Documentation/Gemfile",
+    "ruby_version_file": "Workspace/Documentation/.ruby-version",
     "ruby_version": "3.3.4",
     "pages_gem_version": "232",
     "workflow": ".github/workflows/validate.yml",
-    "site_artifact": "_site",
+    "site_artifact": "Workspace/DocumentationSite",
     "source": {
       "status": "verified",
-      "build_type": "legacy",
+      "build_type": "workflow",
       "branch": "master",
       "folder": "/",
-      "verified_on": "2026-08-02"
+      "verified_on": "2026-10-09"
     },
     "dns": {
       "status": "public-resolution-confirmed",
@@ -4314,7 +4314,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/documentation/site-publication.md",
-      "sources": ["_config.yml", "CNAME", ".ruby-version", "Gemfile", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "docs-manifest.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "BuildTools/documentation_metadata.py"]
+      "sources": ["Docs/Site/_config.yml", "BuildTools/docs_site_build.py", "BuildTools/docs_prepare.py", ".github/workflows/validate.yml", "Docs/documentation-manifest.json", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/SnippetPolicy.json", "BuildTools/docs_snippets.py", "BuildTools/tests/test_docs_snippets.py", "BuildTools/DocumentationDiagrams.json", "BuildTools/docs_diagrams.py", "BuildTools/tests/test_docs_diagrams.py", "BuildTools/DocumentationScreenshots.json", "BuildTools/docs_screenshots.py", "BuildTools/tests/test_docs_screenshots.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/package.json", "BuildTools/docs-browser/package-lock.json", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/tests/test_docs_documentation_operations_foundations.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json", "Docs/generated/diagrams.json", "Docs/generated/screenshots.json", "Docs/generated/snippets.json", "docs-manifest.json", "Docs/generated/ai-evaluation-report.json", "llms.txt", "llms-full.txt", "BuildTools/documentation_metadata.py"]
     },
     "Docs/SitePublication.md": {
       "id": "legacy-documentation-site-publication-route",
@@ -4330,7 +4330,7 @@
       "audiences": ["engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md",
-      "sources": ["_config.yml", "CNAME", "Gemfile", ".ruby-version", "Docs/documentation-manifest.json", "BuildTools/docs_validate.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", ".github/workflows/validate.yml"]
+      "sources": ["Docs/Site/_config.yml", "BuildTools/docs_site_build.py", "BuildTools/docs_prepare.py", "Docs/documentation-manifest.json", "BuildTools/docs_validate.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", ".github/workflows/validate.yml"]
     },
     "Docs/Decisions/0001-github-pages-markdown-publication.md": {
       "id": "legacy-adr-github-pages-markdown-publication-route",
@@ -4362,7 +4362,7 @@
       "audiences": ["game-developer", "engine-contributor", "tool-developer", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md",
-      "sources": ["Docs/documentation-manifest.json", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "_config.yml", "llms.txt", "llms-full.txt", "docs-manifest.json"]
+      "sources": ["Docs/documentation-manifest.json", "Docs/ai-evaluation.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_ai_eval.py", "BuildTools/docs_localization.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_ai_eval.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "Docs/Site/_config.yml", "llms.txt", "llms-full.txt", "docs-manifest.json"]
     },
     "Docs/Decisions/0003-manifest-backed-ai-documentation-delivery.md": {
       "id": "legacy-adr-manifest-backed-ai-documentation-delivery-route",
@@ -4378,7 +4378,7 @@
       "audiences": ["game-developer", "engine-contributor", "tool-developer", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md",
-      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "_config.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json"]
+      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs-browser/audit.mjs", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_browser.py", "BuildTools/docs_validate.py", ".github/workflows/validate.yml", "Docs/Site/_config.yml", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "Docs/Site/Assets/docs-search.ru.json"]
     },
     "Docs/Decisions/0004-manifest-backed-site-navigation-search.md": {
       "id": "legacy-adr-manifest-backed-site-navigation-search-route",
@@ -4410,7 +4410,7 @@
       "audiences": ["game-developer", "engine-contributor", "release-operator", "ai-agent"],
       "classification": {"diataxis": "explanation", "visibility": "public", "human": true, "translation": "required"},
       "owner": "documentation", "state": "current", "disposition": "retain", "target": "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md",
-      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_validate.py", "_config.yml", "Docs/Site/Layouts/default.html", "Docs/en/contributing/documentation/site-publication.md", "Docs/ProductionDocumentationPlan.md", "docs-manifest.json"]
+      "sources": ["Docs/documentation-manifest.json", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_localization.py", "BuildTools/docs_site.py", "BuildTools/docs_site_artifact.py", "BuildTools/docs_validate.py", "BuildTools/tests/test_docs_ai_delivery.py", "BuildTools/tests/test_docs_localization.py", "BuildTools/tests/test_docs_site.py", "BuildTools/tests/test_docs_site_layout.py", "BuildTools/tests/test_docs_site_artifact.py", "BuildTools/tests/test_docs_validate.py", "Docs/Site/_config.yml", "Docs/Site/Layouts/default.html", "Docs/en/contributing/documentation/site-publication.md", "Docs/ProductionDocumentationPlan.md", "docs-manifest.json"]
     },
     "Docs/Decisions/0006-documentation-version-locale-routing.md": {
       "id": "legacy-adr-documentation-version-locale-routing-route",

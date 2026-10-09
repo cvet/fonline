@@ -5,16 +5,18 @@ locale: ru
 document_id: documentation-snippet-validation
 permalink: /Docs/ru/contributing/documentation/snippets.html
 ---
-<!-- docs-translation: {"document_id":"documentation-snippet-validation","locale":"ru","source_path":"Docs/en/contributing/documentation/snippets.md","source_sha256":"bdf4d5a6636dac970558ce75253cf03f37099dad96708e36a9e9722393848442"} -->
+<!-- docs-translation: {"document_id":"documentation-snippet-validation","locale":"ru","source_path":"Docs/en/contributing/documentation/snippets.md","source_sha256":"478e770d656937869801470c9d68b76a86e67179d84979d0de797d6302b367ca"} -->
 # Проверка фрагментов документации
 
 Это руководство определяет проверяемый контракт для fenced-примеров в
 самодостаточной документации FOnline Engine. Проверенная политика хранится в
 [`BuildTools/SnippetPolicy.json`](../../../../BuildTools/SnippetPolicy.json), а
 текущие сгенерированные инвентарь и результат — в
-[`generated/snippets.json`](../../../generated/snippets.json).
+[`generated/snippets.json`](https://fonline.ru/Docs/generated/snippets.json).
 
 ## Состояние контракта
+
+Отчёт является игнорируемым результатом сборки. `BuildTools/docs_prepare.py` создаёт его из чистого checkout; CI подготавливает отчёт, затем запускает `docs_snippets.py --check --external` с настоящими shell parsers. В Git остаются проверенные правила и Markdown с примерами. Отсутствующий локальный отчёт требует подготовки, а не коммита generated-файла.
 
 Каждый fenced block в публичном актуальном документе для людей из
 [`documentation-manifest.json`](../../../documentation-manifest.json) входит в

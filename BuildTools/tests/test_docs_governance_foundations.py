@@ -89,10 +89,10 @@ class DocumentationGovernanceFoundationsTests(unittest.TestCase):
             publishing["source"],
             {
                 "status": "verified",
-                "build_type": "legacy",
+                "build_type": "workflow",
                 "branch": "master",
                 "folder": "/",
-                "verified_on": "2026-08-02",
+                "verified_on": "2026-10-09",
             },
         )
         self.assertEqual(publishing["dns"]["ownership_verification"], "not-observed")

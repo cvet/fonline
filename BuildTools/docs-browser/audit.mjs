@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
 const GENERATED_BY = "BuildTools/docs-browser/audit.mjs";
-const DEFAULT_SITE_DIR = "_site";
+const DEFAULT_SITE_DIR = "Workspace/DocumentationSite";
 const DEFAULT_REPORT = "Workspace/docs-browser-audit-report.json";
 const DEFAULT_SCREENSHOTS = "Workspace/docs-browser-screenshots";
 const WCAG_TAGS = [

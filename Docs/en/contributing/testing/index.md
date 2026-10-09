@@ -224,7 +224,7 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 
 ## Current test inventory
 
-The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Do not copy the total or full list into prose.
+The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Do not copy the total or full list into prose.
 
 Regenerate and verify it from the engine root:
 

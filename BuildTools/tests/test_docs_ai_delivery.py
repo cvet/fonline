@@ -19,17 +19,17 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--write"]), 0)
-        before = json.loads((root / documentation_metadata.PUBLIC_MANIFEST).read_text(encoding="utf-8"))
+        before = json.loads((documentation_metadata.output_path(root, documentation_metadata.PUBLIC_MANIFEST)).read_text(encoding="utf-8"))
         routes = {"routes": [{"id": "changed-route"}]}
         documentation_metadata.write_section(root, documentation_metadata.ROUTING_OUTPUT, routes)
-        after = json.loads((root / documentation_metadata.PUBLIC_MANIFEST).read_text(encoding="utf-8"))
+        after = json.loads((documentation_metadata.output_path(root, documentation_metadata.PUBLIC_MANIFEST)).read_text(encoding="utf-8"))
         self.assertEqual({k: v for k, v in before.items() if k != "routing"},
                          {k: v for k, v in after.items() if k != "routing"})
         self.assertTrue(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, routes))
         self.assertFalse(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, before["routing"]))
         self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--write"]), 0)
         self.assertEqual(documentation_metadata.read_section(root, documentation_metadata.ROUTING_OUTPUT), routes)
-        (root / documentation_metadata.PUBLIC_MANIFEST).write_text("[]\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, documentation_metadata.PUBLIC_MANIFEST)).write_text("[]\n", encoding="utf-8")
         self.assertFalse(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, routes))
         with self.assertRaisesRegex(ValueError, "must be an object"):
             documentation_metadata.write_section(root, documentation_metadata.ROUTING_OUTPUT, routes)
@@ -119,7 +119,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
             "PUBLIC_API.md": "> Placeholder route.\n\n# Public API\n",
         }
         for relative_path, content in files.items():
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
         (root / "Docs/generated/api.json").write_text(
@@ -447,7 +447,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
 
         self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--write"]), 0)
         self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--check"]), 0)
-        (root / docs_ai_delivery.DEFAULT_LLMS_OUTPUT).write_text("stale\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, docs_ai_delivery.DEFAULT_LLMS_OUTPUT)).write_text("stale\n", encoding="utf-8")
         self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--check"]), 1)
 
 

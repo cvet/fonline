@@ -136,9 +136,9 @@ balance, quests, dialog content, visual policy, and localization policy.
   evidence behind support claims.
 
 Canonical machine-readable models live under [`Docs/generated/`](../generated/).
-AI clients should start with [`llms.txt`](../../llms.txt), use
-[`docs-manifest.json`](../../docs-manifest.json) for stable document metadata,
-and load [`llms-full.txt`](../../llms-full.txt) only when a bounded standalone
+Website AI readers should start with [`llms.txt`](https://fonline.ru/llms.txt), use
+[`docs-manifest.json`](https://fonline.ru/docs-manifest.json) for stable document metadata,
+and load [`llms-full.txt`](https://fonline.ru/llms-full.txt) only when a bounded standalone
 corpus is appropriate.
 
 ## Maintain the engine and documentation
@@ -177,3 +177,5 @@ Normative Engine procedures must be executable from an Engine checkout and must
 not depend on Last Frontier, TLA, or another project's files. External projects
 may provide version-pinned evidence, but reusable helpers and regressions cited
 as the source of an Engine guarantee belong in this repository.
+
+Checkout agents start with [AGENTS.md](../../AGENTS.md) and source guides; website retrieval bundles are optional build outputs.

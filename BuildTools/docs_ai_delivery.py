@@ -719,7 +719,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write:
         for relative_path, content in outputs.items():
-            output_path = root / relative_path
+            output_path = documentation_metadata.output_path(root, relative_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
             print(f"Wrote {relative_path}")
@@ -727,7 +727,7 @@ def main(argv: list[str] | None = None) -> int:
 
     stale = []
     for relative_path, content in outputs.items():
-        output_path = root / relative_path
+        output_path = documentation_metadata.output_path(root, relative_path)
         if not output_path.is_file() or output_path.read_text(encoding="utf-8") != content:
             stale.append(relative_path)
     if stale:

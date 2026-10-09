@@ -1,11 +1,14 @@
 from __future__ import annotations
 
 import json
+import sys
 import unittest
 from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / "BuildTools"))
+import documentation_metadata  # noqa: E402
 MANIFEST_PATH = ROOT / "Docs/documentation-manifest.json"
 MAINTENANCE_GUIDE = ROOT / "Docs/en/contributing/documentation/index.md"
 PUBLICATION_GUIDE = ROOT / "Docs/en/contributing/documentation/site-publication.md"
@@ -15,7 +18,7 @@ class DocumentationOperationsFoundationsTests(unittest.TestCase):
     def test_internal_plans_are_meta_owned_and_excluded_from_publication(self) -> None:
         manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
         documents = manifest["documents"]
-        config = (ROOT / "_config.yml").read_text(encoding="utf-8")
+        config = (ROOT / "Docs/Site/_config.yml").read_text(encoding="utf-8")
         names = (
             "DocumentationBacklog.md",
             "DocumentationExpansionPlan.md",
@@ -82,16 +85,16 @@ class DocumentationOperationsFoundationsTests(unittest.TestCase):
             ("github-pages", "jekyll", "markdown"),
         )
         self.assertEqual(publishing["production_url"], "https://fonline.ru")
-        self.assertEqual((ROOT / "CNAME").read_text(encoding="utf-8").strip(), "fonline.ru")
-        self.assertEqual((ROOT / ".ruby-version").read_text(encoding="utf-8").strip(), "3.3.4")
-        self.assertIn('gem "github-pages", "= 232"', (ROOT / "Gemfile").read_text(encoding="utf-8"))
+        self.assertEqual((documentation_metadata.output_path(ROOT, "CNAME")).read_text(encoding="utf-8").strip(), "fonline.ru")
+        self.assertEqual((documentation_metadata.output_path(ROOT, ".ruby-version")).read_text(encoding="utf-8").strip(), "3.3.4")
+        self.assertIn('gem "github-pages", "= 232"', (documentation_metadata.output_path(ROOT, "Gemfile")).read_text(encoding="utf-8"))
         self.assertEqual(browser_package["dependencies"]["playwright"], "1.62.0")
         self.assertEqual(browser_package["dependencies"]["axe-core"], "4.12.1")
-        self.assertIn("actions/jekyll-build-pages@v1", workflow)
+        self.assertIn("ruby/setup-ruby@v1", workflow)
         self.assertIn("node-version: 24.16.0", workflow)
         for marker in (
             "Versioned Markdown in this repository",
-            "all 197 required counterparts",
+            "all required counterparts",
             "three manifest-owned profiles",
             "`zoom-200-russian-documentation.png`",
             "source mode `legacy`, branch `master`, and folder `/`",

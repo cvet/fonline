@@ -12,7 +12,7 @@ This guide defines the versioned evaluation contract for using the standalone
 FOnline Engine documentation with retrieval systems and AI assistants. The
 source set is [ai-evaluation.json](../../../ai-evaluation.json); the generated current
 result is
-[ai-evaluation-report.json](../../../generated/ai-evaluation-report.json).
+[ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json).
 
 ## Contract status
 
@@ -83,7 +83,7 @@ python BuildTools/tests/test_docs_ai_eval.py
 
 `--write` always writes the diagnostic report before returning failure. This
 keeps failed ranks, top document IDs, stale anchors, and missing terms
-inspectable. `--check` then requires byte-identical committed output and a
+inspectable. `--check` then requires byte-identical prepared output and a
 retrieval success rate at or above the source-owned threshold.
 
 The site generator removes overly frequent body terms to keep the index

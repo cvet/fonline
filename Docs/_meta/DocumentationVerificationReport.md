@@ -2258,7 +2258,7 @@ Source areas checked:
 Results:
 
 - Added `BuildTools/docs_ai_delivery.py` and ADR 0003. The source manifest now owns the canonical locale, source ref, curated starting IDs, generated-page policy, and hard 1 MiB context budget.
-- Generated root [llms.txt](../../llms.txt) with all public current documentation routes, [llms-full.txt](../../llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](../../docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
+- Generated root [llms.txt](https://fonline.ru/llms.txt) with all public current documentation routes, [llms-full.txt](https://fonline.ru/llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](https://fonline.ru/docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
 - The full-context artifact is assembled from whole documents only and fails rather than truncating content when the budget is exceeded. Placeholder, internal, and generated detail pages are excluded according to the recorded policy.
 - The three files are ordinary repository-root static artifacts, so the existing GitHub Pages/Jekyll deployment serves them at stable `fonline.ru` URLs without a separate renderer or documentation source.
 - Last Frontier maintenance guidance now requires same-change reconciliation and generator checks when an Engine update changes inventoried Markdown, manifest metadata, public paths, generated models, or publication policy.
@@ -2473,7 +2473,7 @@ Results:
 
 - Added [ADR-0006](../Decisions/0006-documentation-version-locale-routing.md). The unversioned site is now explicitly the rolling `current` channel on `master`; tagged snapshots remain deferred until supported release lines and a support matrix exist.
 - Added source-owned `versioning` and `localization` sections to the documentation manifest. English remains canonical, Russian remains planned, `Docs/en` targets mirror to `Docs/ru`, and five README-style entry points have explicit locale pairs.
-- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](../../docs-manifest.json#/routing). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
+- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](https://fonline.ru/docs-manifest.json#/routing). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
 - Multiple old pages may converge only when exactly one non-`replace` document owns the future target. The current public API routes correctly converge on the generated API index.
 - Added a validated `redirect` document state with `> Legacy route.` marker, non-human/non-search classification, stable target ID, shared canonical target, a direct Markdown link to that canonical file, and generated redirect ownership. This lets old Markdown URLs remain readable in GitHub and Jekyll after a move without generated HTML or another redirect plugin.
 - Site navigation data and public `docs-manifest.json` now expose the same rolling version and locale policy. The layout labels `Current master` from generated data instead of maintaining an independent version string.
@@ -3636,7 +3636,7 @@ Implemented and corrected:
 - Added [AiEvaluation.md](../AiEvaluation.md), the versioned
   `Docs/ai-evaluation.json` source, `BuildTools/docs_ai_eval.py`, focused
   tests, and the deterministic
-  [generated/ai-evaluation-report.json](../generated/ai-evaluation-report.json).
+  [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json).
   The source owns 12 tasks across architecture, scripting, content,
   debugging, migration, and release, with 24 retrieval checks plus current
   answer-evidence and forbidden-assumption checks.
@@ -3711,7 +3711,7 @@ Implemented and corrected:
 - Added [SnippetValidation.md](../SnippetValidation.md),
   `BuildTools/SnippetPolicy.json`, `BuildTools/docs_snippets.py`, focused
   tests, and the deterministic
-  [generated/snippets.json](../generated/snippets.json). The inventory records
+  [generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). The inventory records
   document/heading/line ownership, language, contract, harness, normalized
   hash, template status, and result for every public fence.
 - Added strict parsers for C-family delimiter/comment/string structure, CMake
@@ -3791,7 +3791,7 @@ Implemented and corrected:
   [Documentation Site Publication](../SitePublication.md). Each has a horizontal
   desktop variant and an automatically derived vertical mobile variant, so
   mobile text is not a scaled-down desktop canvas.
-- Added [generated/diagrams.json](../generated/diagrams.json) with the source
+- Added [generated/diagrams.json](https://fonline.ru/Docs/generated/diagrams.json) with the source
   manifest hash, owning document, dimensions, alt/caption text, complete
   source paths, variant paths, and exact SVG hashes. The six SVG variants live
   under `Docs/assets/diagrams/` and contain native `title`/`desc` metadata,

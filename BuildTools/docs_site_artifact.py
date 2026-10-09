@@ -13,7 +13,7 @@ import documentation_metadata
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
-DEFAULT_SITE_DIR = "_site"
+DEFAULT_SITE_DIR = documentation_metadata.SITE_OUTPUT_DIR
 DEFAULT_REPORT = "Workspace/docs-site-artifact-report.json"
 MAX_CONSOLE_ERRORS = 50
 GENERATED_BY = "BuildTools/docs_site_artifact.py"
@@ -419,7 +419,7 @@ def audit_site(
 
     endpoint_paths = _expected_static_paths(manifest)
     for relative_path in endpoint_paths:
-        source_path = root / relative_path
+        source_path = documentation_metadata.output_path(root, relative_path)
         rendered_path = site_dir / Path(*PurePosixPath(relative_path).parts)
         if not source_path.is_file():
             errors.append(f"source endpoint is missing: {relative_path}")

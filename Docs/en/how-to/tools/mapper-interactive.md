@@ -300,7 +300,7 @@ Build\windows\Binaries\Mapper-Windows-win64\FOMM_Mapper.exe `
 The profile opens `TutorialMap`, starts `Documentation.spk` with a fixed seed,
 and fixes the viewport at `1280x800`. The checked-in PNG and complete source
 hashes are recorded in
-[generated/screenshots.json](../../../generated/screenshots.json).
+[generated/screenshots.json](https://fonline.ru/Docs/generated/screenshots.json).
 
 Use `Render.HeadlessWindow = True` for off-screen map rendering, but not
 `Render.NullRenderer`: a null renderer cannot produce a visual frame.

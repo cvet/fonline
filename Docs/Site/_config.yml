@@ -23,6 +23,7 @@ defaults:
     values:
       layout: default
 exclude:
+  - Docs/Site/_config.yml
   - Docs/Site/Data/
   - Docs/Site/Layouts/
   - Docs/_meta/

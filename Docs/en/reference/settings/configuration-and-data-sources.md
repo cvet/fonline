@@ -111,8 +111,10 @@ defaults, project config (or packaged internal config), selected sub-configs,
 the writable local-config cache, command-line overrides, then derived auto
 settings. A project `.fomain` therefore records deliberate authored choices;
 an omitted setting receives its declared Engine default rather than a
-zero-initialized value. `Source/Tests/Test_Settings.cpp` protects both the
-default baseline and the fact that a project override still wins.
+zero-initialized value. An explicit zero remains an override. The
+`ApplicationSettings` test in `Source/Tests/Test_Settings.cpp` exercises the
+ordinary `LoadAppSettings()` path with isolated config and cache files, checking
+the default baseline and each override layer through the final command line.
 
 `ConfigBaker` (`Source/Tools/ConfigBaker.cpp`) re-derives every sub-config from
 the root. Metadata stores each game setting's configured root value and is the

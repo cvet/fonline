@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"5f5f84ff306c03a69df0600aba0b082b088a5390fa368d10e6ebd1043bc14b38"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -234,7 +234,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 
 Полный отсортированный список и authoritative count генерируются из
 `Source/Tests/Test_*.cpp` в
-[source-inventory.json](../../../generated/source-inventory.json). Не копируйте
+[source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Не копируйте
 полный список или total в prose.
 
 ```bash

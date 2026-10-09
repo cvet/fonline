@@ -21,7 +21,7 @@ Use this page when adding, moving, or reviewing script-visible native methods. T
 
 ## Source inventory
 
-The authoritative file list and per-file `///@ ExportMethod` declaration counts are generated from `Source/Scripting/*ScriptMethods.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Full parsed method records live in the [canonical API model](../../../generated/api.json), and the [generated methods reference](../../../generated/api/methods.md) renders their overload IDs, signatures, defaults, nullability, runtime sides, effective receivers, stability, and source locations. This page owns the human explanation of method families and side/receiver boundaries; it does not duplicate generated totals or signatures.
+The authoritative file list and per-file `///@ ExportMethod` declaration counts are generated from `Source/Scripting/*ScriptMethods.cpp` into [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Full parsed method records live in the [canonical API model](../../../generated/api.json), and the [generated methods reference](../../../generated/api/methods.md) renders their overload IDs, signatures, defaults, nullability, runtime sides, effective receivers, stability, and source locations. This page owns the human explanation of method families and side/receiver boundaries; it does not duplicate generated totals or signatures.
 
 Regenerate the inventory after adding, removing, or moving an export:
 

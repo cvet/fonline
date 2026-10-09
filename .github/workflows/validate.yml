@@ -98,6 +98,8 @@ jobs:
     - uses: actions/checkout@v6
       with:
         fetch-depth: 0
+    - name: Prepare documentation build outputs
+      run: python3 BuildTools/docs_prepare.py
     - run: python3 BuildTools/tests/test_docs_api.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - run: python3 BuildTools/tests/test_docs_api_diff.py
@@ -112,6 +114,7 @@ jobs:
     - run: python3 BuildTools/tests/test_docs_site.py
     - run: python3 BuildTools/tests/test_docs_site_layout.py
     - run: python3 BuildTools/tests/test_docs_site_artifact.py
+    - run: python3 BuildTools/tests/test_docs_site_build.py
     - run: python3 BuildTools/tests/test_docs_browser.py
     - run: python3 BuildTools/tests/test_docs_testing_foundations.py
     - run: python3 BuildTools/tests/test_docs_build_foundations.py
@@ -233,6 +236,7 @@ jobs:
         shell: bash
     steps:
     - uses: actions/checkout@v6
+    - run: python3 BuildTools/docs_snippets.py --write
     - run: python3 BuildTools/docs_snippets.py --check --external
   documentation-site:
     name: Build documentation site
@@ -240,16 +244,19 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v6
-    - name: Build GitHub Pages-compatible site
-      uses: actions/jekyll-build-pages@v1
+    - name: Prepare documentation build outputs
+      run: python3 BuildTools/docs_prepare.py
+    - name: Use pinned Ruby and install site dependencies
+      uses: ruby/setup-ruby@v1
       with:
-        source: ./
-        destination: ./_site
-        verbose: true
+        working-directory: Workspace/Documentation
+        bundler-cache: true
+    - name: Build and export GitHub Pages-compatible site
+      run: python3 BuildTools/docs_site_build.py --site-dir Workspace/DocumentationSite
     - name: Validate rendered documentation site
       run: >-
         python3 BuildTools/docs_site_artifact.py
-        --site-dir _site
+        --site-dir Workspace/DocumentationSite
         --json-output Workspace/docs-site-artifact-report.json
     - name: Use pinned Node.js for browser validation
       uses: actions/setup-node@v4
@@ -289,9 +296,32 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: documentation-site-${{ github.sha }}
-        path: _site/
+        path: Workspace/DocumentationSite/
         if-no-files-found: error
         retention-days: 14
+    - name: Upload validated Pages artifact
+      if: github.repository == 'cvet/fonline' && github.event_name == 'push' && github.ref == 'refs/heads/master'
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: Workspace/DocumentationSite/
+  documentation-publish:
+    name: Publish validated documentation
+    if: github.repository == 'cvet/fonline' && github.event_name == 'push' && github.ref == 'refs/heads/master'
+    needs: [engine-update, documentation-site]
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: documentation-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+    - name: Deploy validated artifact to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
   unit-tests:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run unit tests

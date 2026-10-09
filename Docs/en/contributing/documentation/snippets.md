@@ -12,9 +12,11 @@ This guide defines the checked contract for fenced examples in the standalone
 FOnline Engine documentation. The reviewed policy is
 [`BuildTools/SnippetPolicy.json`](../../../../BuildTools/SnippetPolicy.json); the
 generated current inventory and result is
-[`generated/snippets.json`](../../../generated/snippets.json).
+[`generated/snippets.json`](https://fonline.ru/Docs/generated/snippets.json).
 
 ## Contract status
+
+The report is an ignored build output. `BuildTools/docs_prepare.py` recreates it from a clean checkout; CI prepares the report, then runs `docs_snippets.py --check --external` with real shell parsers. Keep the reviewed policy and fenced Markdown in Git. Missing local reports require preparation, not a generated-file commit.
 
 Every fenced block in a public, current, human document from
 [`documentation-manifest.json`](../../../documentation-manifest.json) belongs to the

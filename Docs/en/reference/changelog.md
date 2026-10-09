@@ -16,6 +16,28 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Changed
 
+- Move the authored Jekyll config to `Docs/Site/_config.yml`. Generate Ruby dependency/domain files and public root endpoints under ignored `Workspace/Documentation/`; render and export with `docs_site_build.py` into `Workspace/DocumentationSite/`. Public URLs are preserved.
+
+- Generate documentation delivery indexes and validation catalogs at build time instead of committing them. This includes `docs-manifest.json`, both `llms` endpoints, site navigation/search, and six generated reports. `AGENTS.md` remains the source-checkout maintainer entry point; the website retains its public retrieval URLs.
+- Prepare documentation outputs before CI validation and site rendering. Publish the validated Pages artifact only after the master-push version and documentation gates pass.
+
+### Fixed
+
+- Apply declared Engine defaults before ordinary application configuration is loaded. Settings omitted from a project or packaged config retain their `Settings.inc` defaults; explicit config, sub-config, cached local-config and command-line values keep their existing precedence, including explicit zeroes.
+
+### Migration
+
+- Replace bare Jekyll commands with `python BuildTools/docs_site_build.py`; install dependencies using `bundle install --gemfile Workspace/Documentation/Gemfile` after preparation. `Gemfile`, `.ruby-version` and `CNAME` are derived from the source manifest, with no versioned root copies.
+
+- Run `python BuildTools/docs_prepare.py` before local documentation checks or Jekyll. Public contract models, Markdown, policies, translations and SVG/PNG remain versioned and must still pass their freshness checks. Do not stage the ignored delivery outputs.
+- Before the first master push with this change, select GitHub Actions as the repository's Pages build source; the former branch build cannot generate ignored files. Verify the first deployed artifact and existing public endpoints. The worktree change does not switch remote settings or deploy a site.
+- Reconfigure and rebuild affected native applications, then bake and validate the embedding project's startup profiles. Review settings previously omitted from configuration: they now receive their declared defaults instead of value-initialized zeroes. No setting name or declared default changes, and explicit values retain their meaning.
+- Native/script API, network compatibility `0.0.68`, ABI, resource schemas and saved data are unchanged. No project-source or persisted-data conversion is required.
+
+## 2026.1.15-dev - 2026-10-09
+
+### Changed
+
 - Consolidate route and translation reports in `docs-manifest.json`. Navigation and AI delivery reference `VERSION`; the Jekyll build reads its value rather than committing version copies. Search excludes technical HTML comments, and the AI full-context bundle leaves document hashes in the public index.
 
 ### Migration

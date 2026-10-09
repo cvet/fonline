@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"41f1f632789d521d1fdea4e3deb99acc1bbbddd78a36772825f778b453629b5b"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"12d0e2dc8c0cf30298a6c72345bde13c9231f5c2def7b88f7dc321ce9baff671"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -701,7 +701,7 @@ python BuildTools/docs_examples.py --check
 `BuildTools/SnippetPolicy.json` объявляет полную карту поддерживаемых fence languages
 и parser harnesses. `BuildTools/docs_snippets.py` сканирует каждый public/current/human
 документ manifest, включая generated reference pages, и записывает
-[generated/snippets.json](../../../generated/snippets.json). Для каждого fenced block
+[generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). Для каждого fenced block
 report содержит стабильного owner документа, heading/line, normalized content hash,
 template status, contract, harness и result.
 
@@ -761,7 +761,7 @@ python BuildTools/docs_screenshots.py --write
 
 `BuildTools/SupportMatrix.json` является reviewed source текущих profiles host, target, architecture, compiler, application и evidence. `BuildTools/docs_support_matrix.py` проверяет указанные targets BuildTools и workflow lanes, затем создаёт [generated/support-matrix.json](../../../generated/support-matrix.json) и [сгенерированную матрицу поддержки](../platforms/generated-matrix.md). Модель отличает source capability от обязательных build, process smoke и qualification встраиваемого проекта или device; она не заявляет, что выполнена каждая комбинация targets.
 
-`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
+`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [docs-manifest.json#/translation_status](https://fonline.ru/docs-manifest.json#/translation_status). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
 
 Регенерация и проверка из корня движка:
 
@@ -776,13 +776,15 @@ python BuildTools/docs_localization.py --check
 
 ## Доставка документации для AI
 
+Три публичных корневых endpoint локально генерируются в игнорируемом `Workspace/Documentation/`. `docs_prepare.py` также создаёт `Gemfile`, `.ruby-version` и `CNAME` из исходного manifest. `docs_site_build.py` экспортирует endpoints в корень собранного `Workspace/DocumentationSite/`; публичные URL и логические имена артефактов сохраняются.
+
 Machine-oriented entry layer создаётся из того же [documentation-manifest.json](../../../documentation-manifest.json), который владеет human pages. `BuildTools/docs_ai_delivery.py` не разбирает source движка и не изобретает вторую API model. Он проецирует reviewed document metadata и канонический Markdown в:
 
 - root `llms.txt`, который маршрутизирует public current documents через source-ref-pinned clean Markdown URLs, связывает canonical HTML routes и перечисляет все канонические generated JSON models;
 - root `llms-full.txt`, содержащий authored public current documents и generated reference indexes в строгом byte budget;
 - root `docs-manifest.json`, публикующий rolling/current version channel, deferred state release snapshot, locale policy, public stable IDs, owner/state/disposition, source, clean Markdown, raw и canonical HTML URLs, source provenance, normalized content hashes и hashes generated artifacts.
 
-[ai-evaluation.json](../../../ai-evaluation.json) является reviewed versioned source задач по architecture, scripting, content, debugging, migration и release. `BuildTools/docs_ai_eval.py` проверяет ownership задач и sentinels answer evidence, пропускает каждый retrieval query через тот же ranking contract `docs_site.search_documents`, что использует browser search, и записывает [generated/ai-evaluation-report.json](../../../generated/ai-evaluation-report.json). Детерминированный report доказывает только выбор route и текущее evidence; runs ответов model family остаются отдельным reviewed evidence по разделу [Оценка AI-документации](../../contributing/documentation/ai-evaluation.md).
+[ai-evaluation.json](../../../ai-evaluation.json) является reviewed versioned source задач по architecture, scripting, content, debugging, migration и release. `BuildTools/docs_ai_eval.py` проверяет ownership задач и sentinels answer evidence, пропускает каждый retrieval query через тот же ranking contract `docs_site.search_documents`, что использует browser search, и записывает [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json). Детерминированный report доказывает только выбор route и текущее evidence; runs ответов model family остаются отдельным reviewed evidence по разделу [Оценка AI-документации](../../contributing/documentation/ai-evaluation.md).
 
 Full-context output намеренно исключает generated detail pages. Их канонические JSON models точнее и компактнее несут полные inventories methods, types, properties, settings, CMake, CLI, native extensions, prototypes, maps, models, text, effects, images, particles, fonts, audio, video, GUI runtime, protocol AiControl, packages и public examples. Generated indexes остаются в bundle, чтобы agent мог выбрать правильные model и source.
 
@@ -806,7 +808,7 @@ Human navigation сайта, search, identity version/locale и migration routes
 
 Navigation model требует точного покрытия top-level reader pages, оставляя generated detail pages за их generated indexes. Search включает detail pages, повышает вес titles/headings относительно body tokens, сохраняет technical identifiers и хранит только compact postings и result metadata. Он не копирует полные Markdown bodies в browser artifact и не создаёт hosted search contract.
 
-После render репозитория Jekyll инструмент `BuildTools/docs_site_artifact.py` проверяет готовое дерево `_site` по route и artifact models. Этот post-build layer доказывает, что обещанные routes, доступные locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets и publishable local links пережили processing Jekyll. Его JSON report является CI evidence, а не ещё одним checked-in generated reference.
+После render репозитория Jekyll инструмент `BuildTools/docs_site_artifact.py` проверяет готовое дерево `Workspace/DocumentationSite` по route и artifact models. Этот post-build layer доказывает, что обещанные routes, доступные locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets и publishable local links пережили processing Jekyll. Его JSON report является CI evidence, а не ещё одним checked-in generated reference.
 
 Затем `BuildTools/docs-browser/audit.mjs` обслуживает точное дерево через ephemeral loopback port. Зафиксированный lock file Playwright Chromium посещает каждый route generated catalog в размерах 1440 x 1000 и 390 x 844, внедряет pinned engine axe-core для заявленных tags WCAG 2.2 A/AA и записывает findings runtime/resources, responsive layout, page overflow и accessibility. Отдельные interaction profiles доказывают skip navigation, modal search, persistence theme, status code copy, semantics mobile drawer, containment focus и restoration по Escape. JSON report и desktop/mobile screenshots являются CI evidence; ни один из них не является generated compatibility model движка.
 
@@ -819,7 +821,7 @@ python BuildTools/tests/test_docs_site_artifact.py
 python BuildTools/tests/test_docs_browser.py
 python BuildTools/docs_site.py --write
 python BuildTools/docs_site.py --check
-python BuildTools/docs_site_artifact.py --site-dir _site
+python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite
 npm ci --prefix BuildTools/docs-browser
 npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit

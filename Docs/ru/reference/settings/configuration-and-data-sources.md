@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"d4bde46f2b7f5f5ad0d109b9c78557be91c918b8d302c07c882a69357f2886ab"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"610119a9552371d815fdcc90a8cc97f1f22c1e17eb939ae473424d9a71419908"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -97,7 +97,7 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 - `ApplySubConfigSection()` для именованных overlays;
 - `ApplyDefaultSettings()` и `ApplyAutoSettings()` для defaults движка и производных значений.
 
-При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. `Source/Tests/Test_Settings.cpp` защищает как default baseline, так и приоритет project override.
+При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. Явно заданный ноль остаётся override. Тест `ApplicationSettings` в `Source/Tests/Test_Settings.cpp` проверяет обычный путь `LoadAppSettings()` на изолированных файлах конфигурации и кэша: default baseline и каждый слой override вплоть до командной строки.
 
 `ConfigBaker` из `Source/Tools/ConfigBaker.cpp` заново выводит каждый sub-config
 из root. Metadata хранит настроенное root-значение каждого game setting и служит

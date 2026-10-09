@@ -143,7 +143,7 @@ class DocumentationBrowserAuditTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text(
             encoding="utf-8"
         )
-        config = (ROOT / "_config.yml").read_text(encoding="utf-8")
+        config = (ROOT / "Docs/Site/_config.yml").read_text(encoding="utf-8")
 
         for marker in (
             "navigationSidebar.inert = hidden",

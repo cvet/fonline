@@ -5,7 +5,7 @@ locale: ru
 document_id: ai-documentation-evaluation
 permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 ---
-<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf"} -->
+<!-- docs-translation: {"document_id":"ai-documentation-evaluation","locale":"ru","source_path":"Docs/en/contributing/documentation/ai-evaluation.md","source_sha256":"5b889bead8d9a270c8d87167dd27fe45236d20aa2f98f659cc396d6e6e8deb2d"} -->
 # Оценка документации для ИИ
 
 Это руководство определяет версионированный контракт оценки использования
@@ -13,7 +13,7 @@ permalink: /Docs/ru/contributing/documentation/ai-evaluation.html
 ассистентами. Исходный набор находится в
 [ai-evaluation.json](../../../ai-evaluation.json), а текущий сгенерированный
 результат — в
-[ai-evaluation-report.json](../../../generated/ai-evaluation-report.json).
+[ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json).
 
 ## Состояние контракта
 
@@ -89,7 +89,7 @@ python BuildTools/tests/test_docs_ai_eval.py
 `--write` всегда записывает диагностический отчёт до возврата ошибки. Поэтому
 неудачные ранги, верхние идентификаторы документов, устаревшие якоря и
 отсутствующие термины остаются доступными для анализа. Затем `--check` требует
-побайтно идентичный committed output и долю успешного retrieval не ниже
+побайтно идентичный подготовленный результат и долю успешного retrieval не ниже
 порогового значения из исходника.
 
 Генератор сайта удаляет слишком частые body terms ради компактности индекса,

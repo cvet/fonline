@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"048d7118330edae52b4286b04f7069b50edb5eb1bfc7fe46a700f009cdf7cebd"} -->
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.
@@ -176,16 +176,12 @@ generator с `--write`, затем проверьте все outputs:
 
 ```bash
 python BuildTools/docs_diagrams.py --write
-python BuildTools/docs_screenshots.py --write
 python BuildTools/docs_reference.py --write
-python BuildTools/docs_snippets.py --write --external
-python BuildTools/docs_description_translations.py --write
-python BuildTools/docs_localization.py --write
-python BuildTools/docs_site.py --write
-python BuildTools/docs_ai_eval.py --write
-python BuildTools/docs_ai_delivery.py --write
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_validate.py
 ```
+
+Подготовка записывает публичные корневые endpoint и файлы зависимостей Ruby/домена в игнорируемый `Workspace/Documentation/`. Для сборки и экспорта endpoints в `Workspace/DocumentationSite/` используйте `python BuildTools/docs_site_build.py`; авторская конфигурация Jekyll — `Docs/Site/_config.yml`. Модели контрактов и проверенные изображения по-прежнему требуют своих генераторов.
 
 Focused format/CLI/CMake generators перечислены в
 [Generated API and Metadata](../../reference/metadata/index.md).
