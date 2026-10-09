@@ -7,21 +7,31 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"3f9b9e7ef38f06e39975c56c21450b0126a583eff823c0fdf717dd00c1976e50"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d1682180e32bce16acec44568cfd942269b88f0b30154539074aba794be26e90"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-09
 
+### Исправлено
+
+- Исправлена пунктуация комментариев документных миграций.
+
+### Миграция
+
+- Изменены только комментарии; API и сохранения не требуют конвертации. Пересоберите метаданные версии и перегенерируйте документацию.
+
+## 2026.1.18-dev - 2026-10-09
+
 ### Добавлено
 
 - Добавлен `MigrationRule Property <Owner> Remove <Old>` как постоянный запрет имени. Старое значение в документе/тексте пропускается; живое объявление под этим именем отклоняется, включая поля RefType.
 - Добавлена поддержка документных Property/Proto Transform в AngelScript: `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, типизированное значение `&inout`, `const DatabaseDocument&inout`, автоматическая проверка исходников/байткода и связывание, синхронная атомарная подготовка результатов. Квалифицированное имя функции — `Namespace::Function`; AngelScript-скрипты нужно перепечь для нового зарегистрированного типа и callbacks. Массивы/словари RefType освобождаются путями своих контейнеров.
 
-- Добавлен перенос значений свойств на уровне документа через `MigrationRule Property <Owner> Transform <Property> <Function>`, native `PropertyMigratorCallback` и Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>`, `DatabaseDocument`. Все функции видят исходный загруженный документ; успешные результаты подготавливаются целиком и ставятся в очередь записи изменённых канонических полей до загрузки свойств сущности.
+- Добавлены атомарные обработчики Property Transform: native `PropertyMigratorCallback`, Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>` и контекст исходного `DatabaseDocument`. Канонические поля подготавливаются до загрузки сущности.
 
-- Добавлен `MigrationRule Proto <Owner> Transform <Source> <Function>` с `[ProtoMigrator] bool Function(ref hstring value, DatabaseDocument document)`. Условные цепочки разрешаются на исходном документе до поиска прототипа, циклы отклоняются, `_Proto` записывается вместе со свойствами; обычный lookup и bake применяют только Rename/Remove.
+- Добавлены документные обработчики `[ProtoMigrator]` для Proto Transform. Цепочки исходного документа разрешаются до поиска с обнаружением циклов и подготовкой `_Proto`; обычный lookup и bake применяют только Rename/Remove.
 
 ### Изменено
 

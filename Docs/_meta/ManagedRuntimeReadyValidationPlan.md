@@ -2,18 +2,25 @@
 
 ## State
 
-Validated locally. No commit or publication is authorized.
+Validating documentation reconciliation after owner publication. No commit or
+publication is authorized for this follow-up.
 
 ## Baseline and scope
 
-The baseline is Engine `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+The current published baseline is Engine
+`6db09ef1d49a44307dbdadf747087247d5f5e78b` (`2026.1.17-dev`), which contains
+the runtime validation fix. The follow-up candidate is `2026.1.18-dev` and
+changes documentation review metadata, a stale documentation-workflow test and completion notes only. The project
+baseline is `4de7aaa1739456e4f67c39f63fee30a302e8500d`. The earlier validation
+results below retain their exact original source scope.
+
+The original baseline was Engine `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
 (`2026.1.15-dev`). The candidate was prepared in an isolated worktree and
 copied into the main Engine checkout after validation. Engine HEAD and the
-project gitlink retain that published baseline. The current embedding-project
-baseline is `825b865aa1308c8bcf062b7f14975d21de60d0c3`, published independently
+project gitlink retained that published baseline during the run. Its embedding-project
+baseline was `825b865aa1308c8bcf062b7f14975d21de60d0c3`, published independently
 by the owner after validation of `263047b2e200fa8bbeb65a386d2dbd2e4ffb7915` started.
-The candidate version is `2026.1.16-dev`, subject to recalculation if the
-published master advances.
+The original candidate version was `2026.1.16-dev`.
 
 The defect is reproducible without a runtime build: an existing empty output
 directory plus READY causes `setup_mono` to report success. A Windows
@@ -36,7 +43,7 @@ native ABI or resource-schema migration is introduced. Player knowledge-base
 advice remains accurate because runtime preparation changes no game mechanic.
 No Authoring or project operations files are touched.
 
-## Plan
+## Original validation milestones
 
 - [x] Add missing/empty-input regressions across desktop, Android, Apple and Web targets; confirm the baseline fails
 - [x] Validate every setup entry and recovery result against the required target inputs
@@ -49,12 +56,31 @@ No Authoring or project operations files are touched.
 - [x] Render the complete Jekyll artifact and run the full pinned browser audit
 - [x] Complete the affected native/managed gameplay checks
 
-## Validation
+## Current follow-up
+
+- [x] Rebase unpublished work onto the fetched project and Engine bases; preserve published history
+- [x] Retain named safety stashes and resolve restored documentation conflicts
+- [x] Preserve the incoming ignored-output layout and dated release notes
+- [x] Review translation parity and correct the testing/changelog review hashes
+- [x] Prepare documentation outputs under the new layout and validate the authored corpus
+- [x] Render the current owned build and pass the full 592-route browser audit
+- [x] Reconcile the stale generated-workflow test with the aggregate preparation entrypoint
+- [ ] Repeat full documentation discovery and generated/rendered checks after the test/release-note correction
+- [ ] Qualify affected native/project integration on the new published source scope
+
+The owner independently published the preserved runtime and cursor fixes after
+conflict resolution. No ordinary agent commit or push occurred. The intervening
+Engine update restores application defaults and moves documentation delivery
+outputs out of versioned source. The project update adds checkpoint landing.
+Earlier native/browser results do not qualify these additional changes.
+
+## Validation on the original baseline
 
 The runtime regressions passed: 536 tests, one off-host Windows-source-build skip.
 The immutable baseline fails 384 defect checks while 21 positive controls pass.
 All seven target archive fixtures match the real CMake link inputs; all seven
-cache identities are unchanged. The version/changelog gate passes against HEAD.
+cache identities are unchanged. The version/changelog gate passed against the
+original baseline; the new publication range requires a fresh check.
 The existing Engine update CI job now runs this regression set.
 
 An isolated Linux ASAN nested-sync unit passed on unchanged source;
@@ -118,3 +144,47 @@ commit or push was performed. The rendered validation proof is
 `825-engine-rendered-documentation/validation-proof.json` in the private CI-watch
 evidence directory; the current native proof is
 `825-camera-bootstrap-native-integration.json` there.
+
+## Current workflow-test reconciliation
+
+On the current published baseline, full documentation discovery ran 569 tests
+with one unavailable external-shell-parser skip and one stale-command error. The generated
+content guide already uses `docs_prepare.py --external`; the regression still
+required the removed manual snippet/localization/site/AI command chain. The
+corrected test checks the documented diagram/reference/preparation/validation
+order. All six focused build-foundation checks passed on the isolated candidate.
+The unchanged earlier current-version render passed all 592 routes across three
+profiles (1776 page checks), 15 interactions and 23 screenshots, with zero errors.
+That frozen artifact predates these release-note/test updates; repeat current
+generation, discovery and rendered/browser gates before publication readiness.
+
+The corrected full documentation discovery passed all 569 tests without skips
+with the private portable PowerShell parser available; project link auditing
+passed 4494 documents. Current native and Web compilation remain live.
+
+The subsequent current-version render completed with exit code 0 and unchanged
+source hashes. The artifact passed 85,531 local-reference checks, contains no
+published internal routes, and passed all 592 rendered routes in three browser
+profiles: 1,776 page checks, 15 interactions, 23 screenshots and zero errors.
+The version gate accepted `2026.1.18-dev`; documentation validation accepted
+all 411 Markdown entries. The proof is
+`6db-engine18-workflow-fixed-rendered-documentation/validation-proof.json`
+in the private CI-watch evidence directory. These internal completion notes
+do not change the published pages; regenerate and check AI delivery metadata.
+
+The current native build and bake completed on unchanged program inputs.
+Two model hit-mask cases passed 60 assertions; four application/settings/cache
+cases passed 307 assertions. The subsequent current all-role bake completed,
+and the affected gameplay repeat accepted all 608 unique cases and 4,827
+assertions across two suite partitions, without failures, timeouts, skips or
+global-exception deltas. Program sources and baked inputs remained unchanged.
+Both existing packaged Web startup/exit/replay tests passed on the newly baked
+role assemblies. Three routes delayed actual native startup by 6,000 ms with
+the original 5,000 ms timer and observed the first normal quit more than
+7.28 seconds after the delay. Immutable package hashes remained unchanged.
+These are project integration checks, not Windows ASAN or GPU first-render
+qualification. No ordinary commit or push was performed. The current native
+and Web proofs are `4de-configured-landing-native-validation.json` and
+`4de-current-landing-packaged-web/validation-proof.json` in the private evidence
+directory. These internal completion notes do not change the published pages;
+regenerate and validate their AI delivery metadata before readiness.

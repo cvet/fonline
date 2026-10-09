@@ -14,14 +14,24 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-09
 
+### Fixed
+
+- Normalize document migration comments.
+
+### Migration
+
+- Comments only; no API or save conversion. Rebuild version metadata and regenerate documentation outputs.
+
+## 2026.1.18-dev - 2026-10-09
+
 ### Added
 
 - Add `MigrationRule Property <Owner> Remove <Old>` as a permanent name tombstone. Skip its historical document/text value and reject a live declaration under that name, including RefType fields.
 - Add AngelScript document Property/Proto Transform support with `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, typed `&inout` values and `const DatabaseDocument&inout`, automatic source/bytecode validation and binding, and synchronous atomic staging. Namespace-qualified function names use `Namespace::Function`; rebake AngelScript scripts for the new registered type and callbacks. Release RefType arrays/dictionaries through their container cleanup paths.
 
-- Add document-level property value migration through `MigrationRule Property <Owner> Transform <Property> <Function>`, native `PropertyMigratorCallback`, and Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>`, and `DatabaseDocument`. All functions see the original loaded document; successful results are staged and queued as changed canonical fields before entity property loading.
+- Add atomic Property Transform callbacks: native `PropertyMigratorCallback`, Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>` and original `DatabaseDocument` contexts. Stage canonical fields before entity loading.
 
-- Add `MigrationRule Proto <Owner> Transform <Source> <Function>` with `[ProtoMigrator] bool Function(ref hstring value, DatabaseDocument document)`. Resolve conditional proto chains on the original document before lookup, detect cycles, and stage `_Proto` with property changes; ordinary lookup and baking apply only Rename/Remove.
+- Add `[ProtoMigrator]` document callbacks for Proto Transform. Resolve original-document chains before lookup, detect cycles and stage `_Proto`; ordinary lookup and baking apply only Rename/Remove.
 
 ### Changed
 
