@@ -2939,6 +2939,119 @@ TEST_CASE("PropertiesNameMigrationAppliesOnlyToStoredNames")
     }
 }
 
+TEST_CASE("PropertyRemoveSkipsRetiredValuesWithoutChangingOtherProperties")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver;
+    resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("RemovedPropertyEntity"), hashes.to_hashed_string("Retired"), hstring {});
+    PropertyRegistrar registrar("RemovedPropertyEntity", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto current = registrar.RegisterProperty({"Server", "int32", "Current", "Mutable", "Persistent"});
+    Properties props(&registrar);
+    AnyData::Document document;
+    document.Emplace("Retired", string {"not an integer"});
+    document.Emplace("Current", int64_t {17});
+
+    CHECK_FALSE(registrar.FindPersistedProperty("Retired"));
+    CHECK(PropertiesSerializer::LoadFromDocument(&props, document, hashes, resolver));
+    CHECK(props.GetValue<int32_t>(current) == 17);
+    CHECK_NOTHROW(props.ApplyFromText(map<string, string> {{"Retired", "not an integer"}, {"Current", "23"}}));
+    CHECK(props.GetValue<int32_t>(current) == 23);
+    CHECK_THROWS(props.ApplyFromText(map<string, string> {{"Unknown", "ignored only with an explicit rule"}}));
+
+    PropertyRegistrar other("OtherOwner", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto same_name = other.RegisterProperty({"Server", "int32", "Retired", "Mutable", "Persistent"});
+    Properties other_props(&other);
+
+    CHECK_NOTHROW(other_props.ApplyFromText(map<string, string> {{"Retired", "31"}}));
+    CHECK(other_props.GetValue<int32_t>(same_name) == 31);
+}
+
+TEST_CASE("DocumentMigratorsUseOriginalContextAndCommitTogether")
+{
+    hash_storage hashes {};
+    TestNameResolver resolver;
+    PropertyRegistrar registrar("MigratedDocument", EngineSideKind::ServerSide, &hashes, &resolver);
+    auto first = registrar.RegisterProperty({"Server", "hstring", "First", "Mutable", "Persistent"});
+    auto second = registrar.RegisterProperty({"Server", "hstring", "Second", "Mutable", "Persistent"});
+    first->SetMigratorName("FirstFunc");
+    second->SetMigratorName("SecondFunc");
+    first->SetMigrator([](const AnyData::Value& value, const AnyData::Document& original) -> optional<AnyData::Value> {
+        CHECK(value.AsString() == "old-first");
+        CHECK(original["_Proto"].AsString() == "LegacyProto");
+        CHECK(original[original.Contains("Second") ? "Second" : "OldSecond"].AsString() == "old-second");
+
+        return AnyData::Value {string {"new-first"}};
+    });
+    AnyData::Document document;
+    document.Emplace("First", string {"old-first"});
+    document.Emplace("Second", string {"old-second"});
+    document.Emplace("_Opaque", string {"preserved"});
+    document.Emplace("_Proto", string {"LegacyProto"});
+
+    SECTION("SuccessfulStaging")
+    {
+        second->SetMigrator([](const AnyData::Value&, const AnyData::Document& original) -> optional<AnyData::Value> {
+            CHECK(original["First"].AsString() == "old-first");
+
+            return AnyData::Value {string {"new-second"}};
+        });
+        AnyData::Document updates;
+
+        CHECK(PropertiesSerializer::MigrateDocument(&registrar, document, &updates, AnyData::Value {string {"CurrentProto"}}));
+        CHECK(updates.Size() == 3);
+        CHECK(updates["_Proto"].AsString() == "CurrentProto");
+        CHECK(document["_Proto"].AsString() == "CurrentProto");
+        CHECK(!updates.Contains("_Opaque"));
+        CHECK(document["First"].AsString() == "new-first");
+        CHECK(document["Second"].AsString() == "new-second");
+        CHECK(document["_Opaque"].AsString() == "preserved");
+    }
+
+    SECTION("ExceptionPreservesWholeDocument")
+    {
+        second->SetMigrator([](const AnyData::Value&, const AnyData::Document&) -> optional<AnyData::Value> { throw GenericException("Rejected fixture"); });
+        AnyData::Document updates;
+
+        CHECK_THROWS_AS(PropertiesSerializer::MigrateDocument(&registrar, document, &updates, AnyData::Value {string {"CurrentProto"}}), GenericException);
+        CHECK(document["_Proto"].AsString() == "LegacyProto");
+        CHECK(updates.Empty());
+        CHECK(document["First"].AsString() == "old-first");
+        CHECK(document["Second"].AsString() == "old-second");
+    }
+
+    SECTION("UnboundMigratorRejectsDocument")
+    {
+        CHECK_THROWS_AS(PropertiesSerializer::MigrateDocument(&registrar, document), VerificationException);
+        CHECK(document["First"].AsString() == "old-first");
+    }
+
+    SECTION("UnchangedValueKeepsSerializedRepresentation")
+    {
+        second->SetMigrator([](const AnyData::Value&, const AnyData::Document&) -> optional<AnyData::Value> { return std::nullopt; });
+
+        CHECK(PropertiesSerializer::MigrateDocument(&registrar, document));
+        CHECK(document["Second"].AsString() == "old-second");
+    }
+
+    SECTION("RenameRunsTheDestinationMigrator")
+    {
+        resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("MigratedDocument"), hashes.to_hashed_string("OldSecond"), hashes.to_hashed_string("Second"));
+        document.Erase("Second");
+        document.Emplace("OldSecond", string {"old-second"});
+        second->SetMigrator([](const AnyData::Value& value, const AnyData::Document& original) -> optional<AnyData::Value> {
+            CHECK(value.AsString() == "old-second");
+            CHECK(original["First"].AsString() == "old-first");
+            CHECK(original.Contains("OldSecond"));
+
+            return AnyData::Value {string {"new-second"}};
+        });
+
+        CHECK(PropertiesSerializer::MigrateDocument(&registrar, document));
+        CHECK(!document.Contains("OldSecond"));
+        CHECK(document["Second"].AsString() == "new-second");
+    }
+}
+
 TEST_CASE("PropertiesRetypedPropertyLoadsValuesStoredUnderItsFormerType")
 {
     hash_storage hashes {};
@@ -4546,6 +4659,13 @@ TEST_CASE("PropertiesSerializerRejectsInvalidRefTypeShapes")
 
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Unknown 1", hashes, resolver));
     CHECK_THROWS(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Note", hashes, resolver));
+
+    resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("RouteSnapshotRefType"), hashes.to_hashed_string("Retired"), hstring {});
+    CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "Retired \"old payload\" Note current", hashes, resolver));
+    auto after_remove = PropertiesSerializer::SavePropertyToValue(&props, snapshot_prop, hashes, resolver);
+    CHECK(after_remove.AsDict().Size() == 1);
+    CHECK(after_remove.AsDict()["Note"].AsString() == "current");
+    CHECK_FALSE(after_remove.AsDict().Contains("Retired"));
 
     resolver.AddMigrationRule(hashes.to_hashed_string("Property"), hashes.to_hashed_string("RouteSnapshotRefType"), hashes.to_hashed_string("OldNote"), hashes.to_hashed_string("Note"));
     CHECK_NOTHROW(PropertiesSerializer::LoadPropertyFromText(&props, snapshot_prop, "OldNote old", hashes, resolver));

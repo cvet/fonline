@@ -608,6 +608,101 @@ void EngineMetadata::RegisterMigrationRule(string_view rule_name, string_view ex
     rules.emplace(htarget, hreplacement);
 }
 
+void EngineMetadata::RegisterPropertyMigrationRule(string_view owner, string_view action, string_view target, string_view replacement)
+{
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+
+    if (action == "Rename" || action == "Remove") {
+        FO_VERIFY_AND_THROW(!target.empty(), "Property migration source is empty", owner, action);
+        FO_VERIFY_AND_THROW(action == "Remove" ? replacement.empty() : !replacement.empty() && replacement != "__remove__", "Invalid Property migration replacement", action, replacement);
+
+        RegisterMigrationRule("Property", owner, target, replacement);
+    }
+    else {
+        FO_VERIFY_AND_THROW(action == "Transform", "Unknown Property migration action", owner, action);
+
+        auto registrar = GetPropertyRegistrar(Hashes.to_hashed_string(owner));
+        FO_VERIFY_AND_THROW(registrar, "Property Transform migration owner does not exist", owner);
+
+        auto prop = registrar->FindProperty(target);
+        FO_VERIFY_AND_THROW(prop, "Property Transform migration target does not exist", owner, target);
+
+        prop->SetMigratorName(replacement);
+    }
+}
+
+void EngineMetadata::RegisterProtoMigrationRule(string_view owner, string_view action, string_view target, string_view replacement)
+{
+    FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
+    FO_VERIFY_AND_THROW(!owner.empty() && !target.empty(), "Proto migration requires an owner and source");
+
+    hstring type = Hashes.to_hashed_string(owner);
+    hstring source = Hashes.to_hashed_string(target);
+    auto functions = _protoMigrators.find(type);
+    FO_VERIFY_AND_THROW(functions == _protoMigrators.end() || !functions->second.contains(source), "Proto migration source is already registered", owner, target);
+
+    if (action == "Rename" || action == "Remove") {
+        FO_VERIFY_AND_THROW(action == "Remove" ? replacement.empty() : !replacement.empty() && replacement != "__remove__", "Invalid Proto migration replacement", action, replacement);
+
+        RegisterMigrationRule("Proto", owner, target, replacement);
+    }
+    else {
+        FO_VERIFY_AND_THROW(action == "Transform", "Unknown Proto migration action", owner, action);
+        FO_VERIFY_AND_THROW(GetEntityType(type).HasProtos, "Proto Transform owner must have prototypes", owner);
+        FO_VERIFY_AND_THROW(!replacement.empty(), "Proto Transform requires a function", owner, target);
+        FO_VERIFY_AND_THROW(!CheckMigrationRule(Hashes.to_hashed_string("Proto"), type, source), "Proto migration source is already registered", owner, target);
+
+        _protoMigrators[type].emplace(source, ProtoMigrator {string {replacement}, {}});
+    }
+}
+
+void EngineMetadata::BindProtoMigrator(hstring owner, hstring target, function<optional<hstring>(hstring, const AnyData::Document&)> callback)
+{
+    auto& migrator = _protoMigrators.at(owner).at(target);
+    FO_VERIFY_AND_THROW(callback && !migrator.Callback, "Proto migrator is already bound or empty", owner, target);
+
+    migrator.Callback = std::move(callback);
+}
+
+auto EngineMetadata::ResolveDocumentProto(hstring owner, hstring target, const AnyData::Document& document) const -> hstring
+{
+    const auto rule = Hashes.to_hashed_string("Proto");
+    auto functions = _protoMigrators.find(owner);
+
+    if (!CheckMigrationRule(rule, owner, target).has_value() && (functions == _protoMigrators.end() || !functions->second.contains(target))) {
+        return target;
+    }
+
+    unordered_set<hstring> visited;
+
+    while (target) {
+        bool first_visit = visited.emplace(target).second;
+        FO_VERIFY_AND_THROW(first_visit, "Document Proto migration contains a cycle", owner, target);
+
+        if (auto renamed = CheckMigrationRule(rule, owner, target); renamed.has_value()) {
+            target = *renamed;
+            continue;
+        }
+
+        if (functions != _protoMigrators.end()) {
+            if (auto function = functions->second.find(target); function != functions->second.end()) {
+                FO_VERIFY_AND_THROW(function->second.Callback, "Proto migrator is not bound", owner, target, function->second.Name);
+
+                auto replacement = function->second.Callback(target, document);
+
+                if (replacement.has_value() && *replacement != target) {
+                    target = *replacement;
+                    continue;
+                }
+            }
+        }
+
+        break;
+    }
+
+    return target;
+}
+
 auto EngineMetadata::RegisterBaseType(string_view type_str) -> ptr<BaseTypeDesc>
 {
     FO_VERIFY_AND_THROW(!_registrationFinalized, "Registration is already finalized");
@@ -688,6 +783,10 @@ void EngineMetadata::FinalizeRegistration()
                     }
 
                     registered = registrar && registrar->FindProperty(target.as_str());
+
+                    auto replacement = rules.at(target);
+                    FO_VERIFY_AND_THROW(registrar, "Property migration owner does not exist", scope_name, target);
+                    FO_VERIFY_AND_THROW(!replacement || registrar->FindProperty(replacement.as_str()), "Property Rename migration destination does not exist", scope_name, target, replacement);
                 }
                 else if (rule_name.as_str() == "Proto") {
                     // Prototype lookup always applies the rule, so a registered prototype under the old id would be unreachable
@@ -1056,7 +1155,7 @@ auto EngineMetadata::CheckMigrationRule(hstring rule_name, hstring extra_info, h
         result = it_target2->second;
     }
 
-    return result.as_str() != "__remove__" ? result : hstring {};
+    return result;
 }
 
 auto EngineMetadata::GetProtoItem(hstring proto_id) const noexcept -> nptr<const ProtoItem>

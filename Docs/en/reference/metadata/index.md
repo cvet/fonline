@@ -937,6 +937,10 @@ compile time until those slot shapes have an explicit conversion contract.
 
 This is the runtime side of metadata that can be loaded from generated/baked data rather than compiled static registration alone.
 
+Property migration rules have an explicit action: `Property <Owner> Rename <Old> <New>` validates the live destination; `Property <Owner> Transform <Property> <Function>` validates an existing Persistent property. Function migration operates on loaded database documents before entity properties, with the original document as read-only context. See [Managed C# document migrations](../../how-to/scripting/managed-csharp.md#document-property-migrations) for binding, staging, and persistence. Use `///@ MigrationRule Property Critter Remove MyPropOld` without a replacement to retire a deleted property. Metadata finalization and baking reject a property still declared under that name on the same owner, including RefType fields. Document and property-text loading skip its old value; historical top-level database keys may remain. Keep the rule as a permanent name tombstone. Property and Proto share the action grammar: Rename/Transform have five parts and Remove has four; an extra Remove argument is rejected.
+
+AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../../how-to/scripting/style-and-refactoring.md#document-migrations).
+
 ### Metadata version
 
 **A server and every connected client must run metadata produced by one bake.** Entity payloads address properties by the registration order in that metadata, so different bakes can make the same index refer to different properties. Such divergence is rejected as a build or deployment defect, never treated as a supported compatibility mode.
@@ -977,6 +981,8 @@ tag changes, and rejection of an older file layout), `Test_Properties.cpp`
 (`PropertiesRestoreRejectsForeignMetadata`), and
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
+
+Proto rules use explicit `Rename`, `Remove`, or `Transform` actions. Rename/Remove remain context-free lookup rules; `Remove` has no replacement. Transform targets a source name on a prototype-supporting owner and receives the original loaded DB document before prototype lookup. One source has one action; unknown actions, duplicate sources and the legacy deletion token are rejected. Property and Proto Rename/Transform produce five-part metadata records; Remove produces four for either kind. See the [Managed document migration contract](../../how-to/scripting/managed-csharp.md#document-property-migrations).
 
 Migration rules are generic `(kind, extra-info, target → replacement)` remaps with transitive resolution, authored as `///@ MigrationRule <Kind> ...`. Beyond `Proto`/`Property` (applied at proto lookup and property-name resolution), the `Enum` kind is consulted by `PropertiesSerializer` when a persisted enum value **name** no longer resolves on load: the rule remaps the old name to a current value — for scalar enum properties and enum dict keys — instead of throwing `EnumResolveException`. This keeps removed/renamed enum values from bricking old saves.
 

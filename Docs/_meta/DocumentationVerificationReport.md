@@ -2,6 +2,48 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-09 - Reconcile document migrations with startup and documentation preparation
+
+- Fast-forward published master from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b` to
+  `3edc33f7d774b43d50c200f204a833adbacc4b59`, retaining the unpublished document-migration
+  work in a named safety stash and restoring it over the fetched tip. No commits or publication are performed.
+- Audit all 80 incoming paths. The runtime change calls `ApplyDefaultSettings()` before ordinary
+  application configuration; `ApplicationSettings` pins omitted defaults, project and sub-config values,
+  cached local values and explicit command-line zero. Existing setting keys and declared defaults remain unchanged.
+- Retain the incoming documentation preparation/output-path implementation, site-build command and tests,
+  CI ordering, authored config, publishing manifest and bilingual instructions. Remove conflicted delivery
+  projections from the index and regenerate them through `docs_prepare.py`; root endpoints are prepared
+  under ignored `Workspace/Documentation/`. Versioned contract models and translations remain reviewed inputs.
+- Preserve published `2026.1.16-dev` notes verbatim and prepare the document-migration step as
+  `2026.1.17-dev`. Reconcile the two Russian review-hash conflicts against the combined English sources.
+  The compatibility marker remains the local document-migration value 69; the incoming defaults fix
+  does not introduce another transport or persisted-data conversion.
+- Prepared documentation passes 410-entry validation, all 4838 generated descriptions are current,
+  and retrieval passes 28 tasks / 67 checks at 100% success and 0.930 MRR. The contract comparison
+  against the fetched tip reports 29 changes across 17 domains, 29 reviewed dispositions and none missing.
+  Native/runtime qualification is recorded separately after the embedding build and isolated save tests finish.
+- During qualification, published master advances to `6db09ef1d49a44307dbdadf747087247d5f5e78b`.
+  Audit the complete two-commit range (88 paths), fast-forward to that tip with another named safety stash,
+  and prepare the local migration step as `2026.1.18-dev`, preserving published 17 and 16 notes separately.
+  The added runtime-readiness validation preserves complete tree semantics and rejects incomplete build inputs;
+  review BuildTools, filesystem fixtures, target archive checks and both locale owners together.
+- The incoming testing guide contains its translated new paragraph with an outdated Russian review hash.
+  Review both paragraphs and refresh that hash; do not change the meaning or weaken completeness enforcement.
+- Final prepared documentation passes 411-entry validation, all 4838 descriptions and the same 28-task /
+  67-check retrieval gate. Version 18 and all 29 contract dispositions pass against the fetched tip.
+  Runtime-readiness checks cover 535 cases across two runs: 532 pass initially; three Ninja compiler
+  probes pass when repeated in the installed Visual Studio developer environment, with no test changes.
+- Fresh Windows embedding builds of baker, headless/interactive servers, client and native tests finish
+  without compiler warnings. The final full native run passes 541 cases / 666464 assertions.
+  The earlier intermediate run has one 8.2928 ms timing sample against the unchanged 8 ms limit;
+  the isolated 11-assertion Threading case and the final full run both pass without changing that limit.
+- Full Server/Client/Mapper and content baking completes in 15:05. Six semantic document-migration
+  gameplay cases and both real two-process SQLite restarts pass with no failures, timeouts, global
+  exceptions or overruns. Observed committed BSON preserves read/notified flags while jointly changing
+  `_Proto` and a nested typed reference. Repeat payout reconciliation remains inert; shutdown is graceful.
+  These are embedding integration results, not a production database restore, website deployment or
+  qualification of additional native runtime platforms. Local changes and safety stashes remain uncommitted.
+
 ## 2026-10-06 - Complete the paused checked-arithmetic rebase
 
 - Resolve the paused replay of unpublished `2d77a62473` onto published master

@@ -160,7 +160,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Critter Cond Condition",
+      "signature": "Property Critter Rename Cond Condition",
       "description": "Maps the legacy Critter property name Cond to Condition during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -182,7 +182,8 @@
       },
       "rule_kind": "Property",
       "scope": "Critter",
-      "replacement": "Condition"
+      "replacement": "Condition",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Critter.IsControlledByPlayer",
@@ -195,7 +196,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Critter IsControlledByPlayer ControlledByPlayer",
+      "signature": "Property Critter Rename IsControlledByPlayer ControlledByPlayer",
       "description": "Maps the legacy Critter property name IsControlledByPlayer to ControlledByPlayer during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -217,7 +218,8 @@
       },
       "rule_kind": "Property",
       "scope": "Critter",
-      "replacement": "ControlledByPlayer"
+      "replacement": "ControlledByPlayer",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Critter.IsNoFlatten",
@@ -230,7 +232,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Critter IsNoFlatten DeadDrawNoFlatten",
+      "signature": "Property Critter Rename IsNoFlatten DeadDrawNoFlatten",
       "description": "Maps the legacy Critter property name IsNoFlatten to DeadDrawNoFlatten during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -252,7 +254,8 @@
       },
       "rule_kind": "Property",
       "scope": "Critter",
-      "replacement": "DeadDrawNoFlatten"
+      "replacement": "DeadDrawNoFlatten",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Critter.ScriptId",
@@ -265,7 +268,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Critter ScriptId InitScript",
+      "signature": "Property Critter Rename ScriptId InitScript",
       "description": "Maps the legacy Critter property name ScriptId to InitScript during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -287,7 +290,8 @@
       },
       "rule_kind": "Property",
       "scope": "Critter",
-      "replacement": "InitScript"
+      "replacement": "InitScript",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.Accessory",
@@ -300,7 +304,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item Accessory Ownership",
+      "signature": "Property Item Rename Accessory Ownership",
       "description": "Maps the legacy Item property name Accessory to Ownership during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -322,7 +326,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "Ownership"
+      "replacement": "Ownership",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.BlockLines",
@@ -335,7 +340,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item BlockLines MultihexLines",
+      "signature": "Property Item Rename BlockLines MultihexLines",
       "description": "Maps the legacy Item property name BlockLines to MultihexLines during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -357,7 +362,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "MultihexLines"
+      "replacement": "MultihexLines",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.CritId",
@@ -370,7 +376,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item CritId CritterId",
+      "signature": "Property Item Rename CritId CritterId",
       "description": "Maps the legacy Item property name CritId to CritterId during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -392,7 +398,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "CritterId"
+      "replacement": "CritterId",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.CritSlot",
@@ -405,7 +412,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item CritSlot CritterSlot",
+      "signature": "Property Item Rename CritSlot CritterSlot",
       "description": "Maps the legacy Item property name CritSlot to CritterSlot during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -427,7 +434,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "CritterSlot"
+      "replacement": "CritterSlot",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsColorize",
@@ -440,7 +448,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsColorize Colorize",
+      "signature": "Property Item Rename IsColorize Colorize",
       "description": "Maps the legacy Item property name IsColorize to Colorize during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -462,7 +470,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "Colorize"
+      "replacement": "Colorize",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsFlat",
@@ -475,7 +484,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsFlat DrawFlatten",
+      "signature": "Property Item Rename IsFlat DrawFlatten",
       "description": "Maps the legacy Item property name IsFlat to DrawFlatten during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -497,7 +506,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "DrawFlatten"
+      "replacement": "DrawFlatten",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsHidden",
@@ -510,7 +520,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsHidden Hidden",
+      "signature": "Property Item Rename IsHidden Hidden",
       "description": "Maps the legacy Item property name IsHidden to Hidden during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -532,7 +542,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "Hidden"
+      "replacement": "Hidden",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsHiddenPicture",
@@ -545,7 +556,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsHiddenPicture AlwaysHideSprite",
+      "signature": "Property Item Rename IsHiddenPicture AlwaysHideSprite",
       "description": "Maps the legacy Item property name IsHiddenPicture to AlwaysHideSprite during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -567,7 +578,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "AlwaysHideSprite"
+      "replacement": "AlwaysHideSprite",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsLight",
@@ -580,7 +592,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsLight LightSource",
+      "signature": "Property Item Rename IsLight LightSource",
       "description": "Maps the legacy Item property name IsLight to LightSource during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -602,7 +614,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "LightSource"
+      "replacement": "LightSource",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsLightThru",
@@ -615,7 +628,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsLightThru LightThru",
+      "signature": "Property Item Rename IsLightThru LightThru",
       "description": "Maps the legacy Item property name IsLightThru to LightThru during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -637,7 +650,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "LightThru"
+      "replacement": "LightThru",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsNoBlock",
@@ -650,7 +664,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsNoBlock NoBlock",
+      "signature": "Property Item Rename IsNoBlock NoBlock",
       "description": "Maps the legacy Item property name IsNoBlock to NoBlock during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -672,7 +686,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "NoBlock"
+      "replacement": "NoBlock",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsNoHighlight",
@@ -685,7 +700,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsNoHighlight NoHighlight",
+      "signature": "Property Item Rename IsNoHighlight NoHighlight",
       "description": "Maps the legacy Item property name IsNoHighlight to NoHighlight during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -707,7 +722,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "NoHighlight"
+      "replacement": "NoHighlight",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsNoLightInfluence",
@@ -720,7 +736,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsNoLightInfluence NoLightInfluence",
+      "signature": "Property Item Rename IsNoLightInfluence NoLightInfluence",
       "description": "Maps the legacy Item property name IsNoLightInfluence to NoLightInfluence during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -742,7 +758,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "NoLightInfluence"
+      "replacement": "NoLightInfluence",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsShootThru",
@@ -755,7 +772,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsShootThru ShootThru",
+      "signature": "Property Item Rename IsShootThru ShootThru",
       "description": "Maps the legacy Item property name IsShootThru to ShootThru during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -777,7 +794,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "ShootThru"
+      "replacement": "ShootThru",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.IsStatic",
@@ -790,7 +808,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item IsStatic Static",
+      "signature": "Property Item Rename IsStatic Static",
       "description": "Maps the legacy Item property name IsStatic to Static during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -812,7 +830,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "Static"
+      "replacement": "Static",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.SceneryScript",
@@ -825,7 +844,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item SceneryScript StaticScript",
+      "signature": "Property Item Rename SceneryScript StaticScript",
       "description": "Maps the legacy Item property name SceneryScript to StaticScript during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -847,7 +866,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "StaticScript"
+      "replacement": "StaticScript",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.ScriptId",
@@ -860,7 +880,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item ScriptId InitScript",
+      "signature": "Property Item Rename ScriptId InitScript",
       "description": "Maps the legacy Item property name ScriptId to InitScript during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -882,7 +902,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "InitScript"
+      "replacement": "InitScript",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.Slot",
@@ -895,7 +916,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item Slot CritterSlot",
+      "signature": "Property Item Rename Slot CritterSlot",
       "description": "Maps the legacy Item property name Slot to CritterSlot during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -917,7 +938,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "CritterSlot"
+      "replacement": "CritterSlot",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Item.SubItemIds",
@@ -930,7 +952,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Item SubItemIds InnerItemIds",
+      "signature": "Property Item Rename SubItemIds InnerItemIds",
       "description": "Maps the legacy Item property name SubItemIds to InnerItemIds during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -952,7 +974,8 @@
       },
       "rule_kind": "Property",
       "scope": "Item",
-      "replacement": "InnerItemIds"
+      "replacement": "InnerItemIds",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Location.ScriptId",
@@ -965,7 +988,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Location ScriptId InitScript",
+      "signature": "Property Location Rename ScriptId InitScript",
       "description": "Maps the legacy Location property name ScriptId to InitScript during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -987,7 +1010,8 @@
       },
       "rule_kind": "Property",
       "scope": "Location",
-      "replacement": "InitScript"
+      "replacement": "InitScript",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Map.CurDayTime",
@@ -1000,7 +1024,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Map CurDayTime FixedDayTime",
+      "signature": "Property Map Rename CurDayTime FixedDayTime",
       "description": "Maps the legacy Map property name CurDayTime to FixedDayTime during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -1022,7 +1046,8 @@
       },
       "rule_kind": "Property",
       "scope": "Map",
-      "replacement": "FixedDayTime"
+      "replacement": "FixedDayTime",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Map.DayTime",
@@ -1035,7 +1060,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Map DayTime DayColorTime",
+      "signature": "Property Map Rename DayTime DayColorTime",
       "description": "Maps the legacy Map property name DayTime to DayColorTime during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -1057,7 +1082,8 @@
       },
       "rule_kind": "Property",
       "scope": "Map",
-      "replacement": "DayColorTime"
+      "replacement": "DayColorTime",
+      "action": "Rename"
     },
     {
       "id": "migration.Property.Map.ScriptId",
@@ -1070,7 +1096,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Property Map ScriptId InitScript",
+      "signature": "Property Map Rename ScriptId InitScript",
       "description": "Maps the legacy Map property name ScriptId to InitScript during Engine migration lookup",
       "flags": [],
       "stability": "experimental",
@@ -1092,7 +1118,8 @@
       },
       "rule_kind": "Property",
       "scope": "Map",
-      "replacement": "InitScript"
+      "replacement": "InitScript",
+      "action": "Rename"
     },
     {
       "id": "migration.Version.0.0",
@@ -1105,7 +1132,7 @@
         "mapper"
       ],
       "receiver": null,
-      "signature": "Version 0 0 68",
+      "signature": "Version 0 0 69",
       "description": "Force change of compatability version",
       "flags": [],
       "stability": "experimental",
@@ -1127,7 +1154,7 @@
       },
       "rule_kind": "Version",
       "scope": "0",
-      "replacement": "68"
+      "replacement": "69"
     },
     {
       "id": "script.entity.Critter",

@@ -71,7 +71,8 @@ class BuildFoundationsDocumentationTests(unittest.TestCase):
         self.assertIn('-ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}"', cmake)
 
         guide = self._read(GENERATED_GUIDE)
-        commands = ("docs_prepare.py --external", "python BuildTools/docs_validate.py")
+        commands = ("docs_diagrams.py --write", "docs_reference.py --write",
+                    "docs_prepare.py --external", "python BuildTools/docs_validate.py")
         positions = [guide.index(command) for command in commands]
         self.assertEqual(positions, sorted(positions))
 

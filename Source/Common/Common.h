@@ -47,7 +47,7 @@ FO_BEGIN_NAMESPACE
 ///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2569 InventorySha256=c2a69b7e2f3748942a47b6a446802033cc0ec9e1abfd20f607b4176f2c4341c7
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 68
+///@ MigrationRule Version 0 0 69
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
