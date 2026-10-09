@@ -8,11 +8,21 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+Changes and migration notes are paired in English/Russian. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the development version; [release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility.
 
 ## Unreleased
 
 ## Current - 2026-10-09
+
+### Fixed
+
+- Allow attachment teardown broadcasts; mark intentional migration-result discards.
+
+### Migration
+
+- Rebuild servers; no API, data, resource, wire, ABI or compatibility change, no rebake.
+
+## 2026.1.19-dev - 2026-10-09
 
 ### Changed
 
@@ -20,7 +30,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- Apply versions 16–18 below, prepare documentation and rebuild/rebake matching roles. No additional API/data conversion: published `0.0.69`, ABI, schemas and valid-value meanings are preserved. Retain safety copies through validation.
+- Apply versions 16–18; prepare docs and rebuild/rebake matching roles. No new migration; `0.0.69`, ABI, schemas and valid meanings persist. Retain safety copies through validation.
 
 ## 2026.1.18-dev - 2026-10-09
 

@@ -2,6 +2,29 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-09 - Preserve attachment broadcasts during critter teardown
+
+- Prepare `2026.1.20-dev` from `6827383f4af08a62522409e8ae6ce80de1764425`.
+  Detachment already permits destroying endpoints; match its state broadcast guard
+  to `LOCKED, NOT_DESTROYED`. Keep attachment growth guards and lifecycle latches.
+- Add backend-neutral ordinary, attached-finish and master-finish native cases.
+  After explicitly ignoring document-migration change flags where staged updates
+  are consumed, both configurations compile without warnings. Managed full suite:
+  2121 JUnit entries / 666562 assertions, 81.13 seconds. Isolated AngelScript:
+  17 entries / 151 assertions, 1.46 seconds. All errors/failures/skips are zero.
+  Exact source hashes and pre-recheck binaries are retained in qualification evidence.
+- Version/native-contract tests pass 18 cases and 58 subtests. Reconcile the EN/RU
+  lifecycle guide and changelog. Condense routing prose to retain the existing
+  full-context byte bound; no policy exclusions or limits are changed.
+- API, stored data, wire format, resources, ABI and compatibility marker are unchanged.
+  Rebuild servers; no script/content rebake is needed by this defect correction.
+  Prepare all 15 documentation outputs and validate 411 Markdown entries. Focused
+  documentation/version tests pass 87 cases and 63 subtests; seventeen contract
+  domains have zero changes or missing dispositions. Rendered Jekyll artifact:
+  592 routes, 41 static endpoints, 85554 local references. Browser audit passes
+  1776 page checks, 15 interaction profiles and 23 screenshots without findings.
+  Embedding-project qualification remains separate.
+
 ## 2026-10-09 - Merge published document migrations with retained integration history
 
 - Merge `e463e0487966e33fd546a205243a3b96d16a6055` with retained

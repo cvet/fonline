@@ -959,7 +959,7 @@ auto EntityManager::ParseEntityDoc(hstring type_name, hstring collection_name, i
 
         auto migrate_document = [&](optional<AnyData::Value> prototype = std::nullopt) {
             AnyData::Document updates;
-            PropertiesSerializer::MigrateDocument(registrar.as_ptr(), doc, &updates, std::move(prototype));
+            (void)PropertiesSerializer::MigrateDocument(registrar.as_ptr(), doc, &updates, std::move(prototype));
 
             for (const auto& [key, value] : updates) {
                 _engine->DbStorage.Update(collection_name, id, key, value);
