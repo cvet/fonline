@@ -202,13 +202,15 @@ Prototype IDs can appear in declarations, parent lists, property references, run
 Declare:
 
 ```cpp
-///@ MigrationRule Proto Item OldContainer NewContainer
-///@ MigrationRule Proto Item RemovedContainer __remove__
+///@ MigrationRule Proto Item Rename OldContainer NewContainer
+///@ MigrationRule Proto Item Remove RemovedContainer
 ```
 
 The owning project decides where project metadata declarations live and how long rules are retained. A rename target must exist at the receiving revision. A removal is valid only when loading policy can safely discard the reference or entity; otherwise migrate to a compatible replacement.
 
-When changing a property name or type, follow the property/persistence migration policy of the owning metadata declaration. Prototype migration does not repair an incompatible property payload.
+When changing a property name or type, follow the property/persistence migration policy of the owning metadata declaration. Prototype migration does not repair an incompatible property payload. Use `///@ MigrationRule Property Critter Remove MyPropOld` without a replacement to retire a deleted property. Metadata finalization and baking reject a property still declared under that name on the same owner, including RefType fields. Document and property-text loading skip its old value; historical top-level database keys may remain. Keep the rule as a permanent name tombstone. Property and Proto share the action grammar: Rename/Transform have five parts and Remove has four; an extra Remove argument is rejected.
+
+AngelScript binds the same rules with `T&inout` and `const DatabaseDocument&inout`; see [its migration contract](../scripting/style-and-refactoring.md#document-migrations).
 
 ## Authoring practices
 

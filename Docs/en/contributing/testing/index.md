@@ -295,6 +295,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — compiled-bytecode document migrations on a real server: signature rejection, typed detached values/context, conditional identity domains, idempotency, atomic exceptions, and prototype chains/defaults.
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`

@@ -159,9 +159,9 @@ private:
     void LoadInnerEntitiesEntry(ptr<Entity> holder, hstring entry, bool& is_error) noexcept;
     auto RestoreItem(ident_t item_id, const AnyData::Document& item_doc, hstring item_pid, bool& is_error) noexcept -> refcount_nptr<Item>;
     auto RestoreCustomEntity(ptr<Entity> holder, hstring type_name, ident_t id, const AnyData::Document& doc, hstring pid, bool& is_error) noexcept -> refcount_nptr<CustomEntity>;
-    auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
-    auto LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) const noexcept -> vector<tuple<AnyData::Document, hstring>>;
-    auto ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) const noexcept -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDoc(hstring type_name, hstring collection_name, ident_t id, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>;
+    auto LoadEntityDocs(hstring type_name, hstring collection_name, const vector<ident_t>& ids, bool expect_proto, bool& is_error) noexcept -> vector<tuple<AnyData::Document, hstring>>;
+    auto ParseEntityDoc(hstring type_name, hstring collection_name, ident_t id, AnyData::Document doc, bool expect_proto, bool& is_error) noexcept -> tuple<AnyData::Document, hstring>;
     auto StoreEntityDoc(ptr<ServerEntity> entity) -> AnyData::Document;
 
     auto ConstructCustomEntity(hstring type_name, hstring pid) -> refcount_ptr<CustomEntity>;

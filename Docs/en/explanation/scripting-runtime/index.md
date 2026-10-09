@@ -238,6 +238,7 @@ The backend-neutral metadata and native export surface is shared, but language s
 | Contract | AngelScript | Managed C# |
 |---|---|---|
 | Enablement | `FO_ANGELSCRIPT_SCRIPTING` | `FO_MANAGED_SCRIPTING` |
+| Document migrations | `Rename`/`Transform`/`Remove`, attributed global `bool` callbacks, `T&inout`, `const DatabaseDocument&inout` | the same shared rules, static attributed `bool` callbacks, `ref T`, `DatabaseDocument` |
 | Project source | project-owned `.fos` modules | project-owned `.cs` modules |
 | Compile artifact | baked AngelScript bytecode | target assemblies plus generated `.gen.cs`, `.gen.csproj`, and `.gen.sln` |
 | Initialization | `[[ModuleInit]] void` | `[ModuleInit]` static `void` or `Task` |

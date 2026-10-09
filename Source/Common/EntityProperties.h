@@ -108,17 +108,17 @@ public:
     }
 
     // Maps the legacy Item property name ScriptId to InitScript during Engine migration lookup
-    ///@ MigrationRule Property Item ScriptId InitScript
+    ///@ MigrationRule Property Item Rename ScriptId InitScript
     // Server initialization function called after the item-init event for a newly created or restored item
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemInit
     FO_ENTITY_PROPERTY(hstring, InitScript);
     // Maps the legacy Item property name IsStatic to Static during Engine migration lookup
-    ///@ MigrationRule Property Item IsStatic Static
+    ///@ MigrationRule Property Item Rename IsStatic Static
     // Marks map-authored item data as static scenery rather than a dynamic item entity
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, Static);
     // Maps the legacy Item property name Accessory to Ownership during Engine migration lookup
-    ///@ MigrationRule Property Item Accessory Ownership
+    ///@ MigrationRule Property Item Rename Accessory Ownership
     // Current placement category: map hex, critter inventory, item container, or nowhere
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ItemOwnership, Ownership);
@@ -132,14 +132,14 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int16_t, Elevation);
     // Maps the legacy Item property name CritId to CritterId during Engine migration lookup
-    ///@ MigrationRule Property Item CritId CritterId
+    ///@ MigrationRule Property Item Rename CritId CritterId
     // Identifier of the owning critter while Ownership is CritterInventory; zero otherwise
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(ident_t, CritterId);
     // Maps the legacy Item property name CritSlot to CritterSlot during Engine migration lookup
-    ///@ MigrationRule Property Item CritSlot CritterSlot
+    ///@ MigrationRule Property Item Rename CritSlot CritterSlot
     // Maps the legacy Item property name Slot to CritterSlot during Engine migration lookup
-    ///@ MigrationRule Property Item Slot CritterSlot
+    ///@ MigrationRule Property Item Rename Slot CritterSlot
     // Inventory or equipment slot occupied while the item belongs to a critter
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterItemSlot, CritterSlot);
@@ -150,7 +150,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(any_t, ContainerStack);
     // Maps the legacy Item property name SubItemIds to InnerItemIds during Engine migration lookup
-    ///@ MigrationRule Property Item SubItemIds InnerItemIds
+    ///@ MigrationRule Property Item Rename SubItemIds InnerItemIds
     // Persistent identifiers of the items directly contained by this item
     ///@ ExportProperty Server Persistent
     FO_ENTITY_PROPERTY(vector<ident_t>, InnerItemIds);
@@ -167,7 +167,7 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DisableEgg);
     // Maps the legacy Item property name BlockLines to MultihexLines during Engine migration lookup
-    ///@ MigrationRule Property Item BlockLines MultihexLines
+    ///@ MigrationRule Property Item Rename BlockLines MultihexLines
     // Direction and step-count pairs that trace additional footprint hexes from each mesh origin
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(vector<uint8_t>, MultihexLines);
@@ -184,7 +184,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, DrawMultihexMesh);
     // Maps the legacy Item property name IsHidden to Hidden during Engine migration lookup
-    ///@ MigrationRule Property Item IsHidden Hidden
+    ///@ MigrationRule Property Item Rename IsHidden Hidden
     // Server visibility flag that suppresses a dynamic item from client views while set
     ///@ ExportProperty Server Mutable Persistent
     FO_ENTITY_PROPERTY(bool, Hidden);
@@ -192,27 +192,27 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, HideSprite);
     // Maps the legacy Item property name IsHiddenPicture to AlwaysHideSprite during Engine migration lookup
-    ///@ MigrationRule Property Item IsHiddenPicture AlwaysHideSprite
+    ///@ MigrationRule Property Item Rename IsHiddenPicture AlwaysHideSprite
     // Prevents the item sprite from being drawn at runtime and hides it by default in Mapper
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, AlwaysHideSprite);
     // Maps the legacy Item property name IsNoBlock to NoBlock during Engine migration lookup
-    ///@ MigrationRule Property Item IsNoBlock NoBlock
+    ///@ MigrationRule Property Item Rename IsNoBlock NoBlock
     // Allows movement through every hex occupied by the item
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoBlock);
     // Maps the legacy Item property name IsShootThru to ShootThru during Engine migration lookup
-    ///@ MigrationRule Property Item IsShootThru ShootThru
+    ///@ MigrationRule Property Item Rename IsShootThru ShootThru
     // Allows projectile traces through every hex occupied by the item
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, ShootThru);
     // Maps the legacy Item property name IsLightThru to LightThru during Engine migration lookup
-    ///@ MigrationRule Property Item IsLightThru LightThru
+    ///@ MigrationRule Property Item Rename IsLightThru LightThru
     // Allows map light propagation through every hex occupied by the item
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, LightThru);
     // Maps the legacy Item property name IsLight to LightSource during Engine migration lookup
-    ///@ MigrationRule Property Item IsLight LightSource
+    ///@ MigrationRule Property Item Rename IsLight LightSource
     // Enables a map light source centered on this item
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, LightSource);
@@ -232,7 +232,7 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(ucolor, ColorizeColor);
     // Maps the legacy Item property name SceneryScript to StaticScript during Engine migration lookup
-    ///@ MigrationRule Property Item SceneryScript StaticScript
+    ///@ MigrationRule Property Item Rename SceneryScript StaticScript
     // Server callback invoked when a critter interacts with this static item
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = ItemStatic
     FO_ENTITY_PROPERTY(hstring, StaticScript);
@@ -261,7 +261,7 @@ public:
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(uint8_t, TileLayer);
     // Maps the legacy Item property name IsFlat to DrawFlatten during Engine migration lookup
-    ///@ MigrationRule Property Item IsFlat DrawFlatten
+    ///@ MigrationRule Property Item Rename IsFlat DrawFlatten
     // Renders the item in a flat map pass instead of the normal depth-sorted item pass
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(bool, DrawFlatten);
@@ -269,12 +269,12 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int8_t, DrawOrderSubLayer);
     // Maps the legacy Item property name IsNoHighlight to NoHighlight during Engine migration lookup
-    ///@ MigrationRule Property Item IsNoHighlight NoHighlight
+    ///@ MigrationRule Property Item Rename IsNoHighlight NoHighlight
     // Prevents the client from applying normal item highlight presentation
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoHighlight);
     // Maps the legacy Item property name IsNoLightInfluence to NoLightInfluence during Engine migration lookup
-    ///@ MigrationRule Property Item IsNoLightInfluence NoLightInfluence
+    ///@ MigrationRule Property Item Rename IsNoLightInfluence NoLightInfluence
     // Prevents ambient map lighting from tinting the item's sprite
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, NoLightInfluence);
@@ -282,7 +282,7 @@ public:
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, IsGag);
     // Maps the legacy Item property name IsColorize to Colorize during Engine migration lookup
-    ///@ MigrationRule Property Item IsColorize Colorize
+    ///@ MigrationRule Property Item Rename IsColorize Colorize
     // Enables ColorizeColor tinting for the item's map sprite
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, Colorize);
@@ -299,7 +299,7 @@ public:
     }
 
     // Maps the legacy Critter property name ScriptId to InitScript during Engine migration lookup
-    ///@ MigrationRule Property Critter ScriptId InitScript
+    ///@ MigrationRule Property Critter Rename ScriptId InitScript
     // Server initialization function called after the critter-init event for a newly created or restored critter
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = CritterInit
     FO_ENTITY_PROPERTY(hstring, InitScript);
@@ -346,7 +346,7 @@ public:
     ///@ ExportProperty Client Mutable
     FO_ENTITY_PROPERTY(vector<int32_t>, ModelLayers);
     // Maps the legacy Critter property name IsControlledByPlayer to ControlledByPlayer during Engine migration lookup
-    ///@ MigrationRule Property Critter IsControlledByPlayer ControlledByPlayer
+    ///@ MigrationRule Property Critter Rename IsControlledByPlayer ControlledByPlayer
     // Classifies the critter as player-controllable independently of its current online state
     ///@ ExportProperty Common
     FO_ENTITY_PROPERTY(bool, ControlledByPlayer);
@@ -372,7 +372,7 @@ public:
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(CritterVisibilityMode, VisibilityMode);
     // Maps the legacy Critter property name Cond to Condition during Engine migration lookup
-    ///@ MigrationRule Property Critter Cond Condition
+    ///@ MigrationRule Property Critter Rename Cond Condition
     // Current life-state condition used by animation, filtering, and gameplay queries
     ///@ ExportProperty Common Persistent
     FO_ENTITY_PROPERTY(CritterCondition, Condition);
@@ -383,7 +383,7 @@ public:
     ///@ ExportProperty Common Mutable OwnerSync Persistent
     FO_ENTITY_PROPERTY(int32_t, LookDistance);
     // Maps the legacy Critter property name IsNoFlatten to DeadDrawNoFlatten during Engine migration lookup
-    ///@ MigrationRule Property Critter IsNoFlatten DeadDrawNoFlatten
+    ///@ MigrationRule Property Critter Rename IsNoFlatten DeadDrawNoFlatten
     // Keeps a dead critter in the normal critter draw order instead of the flattened dead-critter order
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(bool, DeadDrawNoFlatten);
@@ -415,7 +415,7 @@ public:
     }
 
     // Maps the legacy Map property name ScriptId to InitScript during Engine migration lookup
-    ///@ MigrationRule Property Map ScriptId InitScript
+    ///@ MigrationRule Property Map Rename ScriptId InitScript
     // Server initialization function called after the map-init event for a newly created or restored map
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = MapInit
     FO_ENTITY_PROPERTY(hstring, InitScript);
@@ -453,12 +453,12 @@ public:
     ///@ ExportProperty Client
     FO_ENTITY_PROPERTY(float32_t, SpritesZoomTarget);
     // Maps the legacy Map property name CurDayTime to FixedDayTime during Engine migration lookup
-    ///@ MigrationRule Property Map CurDayTime FixedDayTime
+    ///@ MigrationRule Property Map Rename CurDayTime FixedDayTime
     // Map-local day-time override value, conventionally expressed in minutes and interpreted by game scripts
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(int32_t, FixedDayTime);
     // Maps the legacy Map property name DayTime to DayColorTime during Engine migration lookup
-    ///@ MigrationRule Property Map DayTime DayColorTime
+    ///@ MigrationRule Property Map Rename DayTime DayColorTime
     // Map-specific daylight color keyframe times expressed in minutes of the day cycle
     ///@ ExportProperty Common Mutable PublicSync Persistent
     FO_ENTITY_PROPERTY(vector<int32_t>, DayColorTime);
@@ -490,7 +490,7 @@ public:
     }
 
     // Maps the legacy Location property name ScriptId to InitScript during Engine migration lookup
-    ///@ MigrationRule Property Location ScriptId InitScript
+    ///@ MigrationRule Property Location Rename ScriptId InitScript
     // Server initialization function called after the location-init event for a newly created or restored location
     ///@ ExportProperty Server Mutable Persistent ScriptFuncType = LocationInit
     FO_ENTITY_PROPERTY(hstring, InitScript);

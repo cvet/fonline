@@ -45,6 +45,7 @@
 #include "ManagedRuntime.h"
 #include "Platform.h"
 #include "Properties.h"
+#include "PropertiesSerializer.h"
 #include "RemoteCallWire.h"
 #include "Settings.h"
 
@@ -559,6 +560,10 @@ static auto NativeSetPropertyArray(void* backend_ptr, void* entity_ptr, int32_t 
 static auto NativeSetProperty(void* backend_ptr, void* entity_ptr, int32_t prop_index, MonoObject* value) noexcept -> MonoString*;
 static auto NativeSetPropertyGetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* getter) noexcept -> MonoString*;
 static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
+static auto NativeRegisterPropertyMigrator(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* migrator) noexcept -> MonoString*;
+static auto NativeRegisterProtoMigrator(void* backend_ptr, MonoString* owner_type, MonoString* proto_name, MonoObject* migrator) noexcept -> MonoString*;
+static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, MonoString* property_name, MonoObject** result) noexcept -> MonoString*;
+static auto NativeReadDatabaseDocumentEncoded(void* backend_ptr, void* context_ptr, MonoString* field_name, MonoString** result) noexcept -> MonoString*;
 static auto NativeAddPropertySetterWithProperty(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
 static auto NativeAddPropertyDeferredSetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*;
 static auto NativeCallMethodBoxed(void* backend_ptr, int32_t method_id, void* entity_ptr, MonoArray* args, MonoString** error) noexcept -> MonoObject*;
@@ -3928,6 +3933,201 @@ static void NativeAddPropertySetterImpl(void* backend_ptr, MonoString* owner_typ
     });
 }
 
+struct ManagedDatabaseDocumentContext
+{
+    const AnyData::Document& Document;
+    ptr<const PropertyRegistrar> Registrar;
+    ptr<ManagedScriptBackend> Backend;
+};
+
+static auto NativeRegisterPropertyMigrator(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* migrator) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta && migrator, "Missing property migrator metadata or delegate");
+
+        auto registrar = meta->GetPropertyRegistrar(meta->Hashes.to_hashed_string(ToStringAndFree(owner_type)));
+        FO_VERIFY_AND_THROW(registrar, "Property migrator owner does not exist");
+
+        auto prop = registrar->FindProperty(ToStringAndFree(property_name));
+        FO_VERIFY_AND_THROW(prop && prop->IsPersistent(), "Property migrator target must exist and be Persistent");
+
+        uint32_t handle = NewManagedGcHandle(migrator, false);
+        auto release_on_error = scope_fail([handle]() noexcept { mono_gchandle_free(handle); });
+
+        backend->AdoptPersistentGcHandle(handle);
+        release_on_error.release();
+
+        prop->SetMigrator([backend, prop = prop.as_ptr(), registrar = registrar.as_ptr(), handle](const AnyData::Value& value, const AnyData::Document& document) -> optional<AnyData::Value> FO_DEFERRED {
+            auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+            FO_VERIFY_AND_THROW(engine, "Property migration requires an engine context");
+
+            optional<AnyData::Value> migrated;
+
+            RunManagedScriptEntry(
+                backend, engine.as_ptr(), [handle] { return mono_gchandle_get_target(handle); },
+                [&] {
+                    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                    ManagedThreadAttachment attachment {domain};
+
+                    PropertyRawData raw;
+                    PropertiesSerializer::LoadPropertyFromValue(prop, value, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, engine->Hashes, *engine);
+
+                    ManagedObjectRoot input;
+                    input.SetObject(BoxPropertyValue(backend, prop, {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()}));
+
+                    ManagedDatabaseDocumentContext context {document, registrar, backend};
+                    void* context_ptr = &context;
+                    ManagedObjectRoot owner;
+                    owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
+
+                    bool changed = false;
+                    void* args[] = {mono_gchandle_get_target(handle), input.GetObject(), &context_ptr, owner.GetObject(), &changed};
+                    ManagedObjectRoot output;
+                    output.SetObject(InvokeNativeHelper(backend, "InvokePropertyMigrator", 5, args));
+
+                    if (changed) {
+                        PropertyRawData result = ConvertManagedObjectToPropertyData(backend, prop, output.GetObject());
+                        migrated = PropertiesSerializer::SavePropertyToValue(prop, {result.GetPtrAs<uint8_t>().get(), result.GetSize()}, engine->Hashes, *engine);
+                    }
+                });
+
+            return migrated;
+        });
+    });
+}
+
+static auto NativeRegisterProtoMigrator(void* backend_ptr, MonoString* owner_type, MonoString* proto_name, MonoObject* migrator) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta && migrator, "Missing prototype migrator metadata or delegate");
+
+        hstring owner_type_id = meta->Hashes.to_hashed_string(ToStringAndFree(owner_type));
+        hstring source = meta->Hashes.to_hashed_string(ToStringAndFree(proto_name));
+        auto registrar = meta->GetPropertyRegistrar(owner_type_id);
+        FO_VERIFY_AND_THROW(registrar, "Prototype migrator owner does not exist");
+
+        uint32_t handle = NewManagedGcHandle(migrator, false);
+        auto release_on_error = scope_fail([handle]() noexcept { mono_gchandle_free(handle); });
+
+        backend->AdoptPersistentGcHandle(handle);
+        release_on_error.release();
+
+        meta->BindProtoMigrator(owner_type_id, source, [backend, registrar = registrar.as_ptr(), handle](hstring value, const AnyData::Document& document) -> optional<hstring> FO_DEFERRED {
+            auto engine = backend->GetMetadata().dyn_cast<BaseEngine>();
+            FO_VERIFY_AND_THROW(engine, "Prototype migration requires an engine context");
+
+            optional<hstring> migrated;
+
+            RunManagedScriptEntry(
+                backend, engine.as_ptr(), [handle] { return mono_gchandle_get_target(handle); },
+                [&] {
+                    MonoDomain* domain = GetDomainOrThrow(backend->GetDomain());
+                    ManagedThreadAttachment attachment {domain};
+
+                    ManagedObjectRoot input;
+                    input.SetObject(BoxNativeSimpleValue(backend, engine->GetBaseType("hstring"), &value));
+
+                    ManagedDatabaseDocumentContext context {document, registrar, backend};
+                    void* context_ptr = &context;
+                    ManagedObjectRoot owner;
+                    owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
+
+                    bool changed = false;
+                    void* args[] = {mono_gchandle_get_target(handle), input.GetObject(), &context_ptr, owner.GetObject(), &changed};
+                    ManagedObjectRoot output;
+                    output.SetObject(InvokeNativeHelper(backend, "InvokePropertyMigrator", 5, args));
+
+                    if (changed) {
+                        migrated = ExtractNativeHstring(output.GetObject());
+                    }
+                });
+
+            return migrated;
+        });
+    });
+}
+
+static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, MonoString* property_name, MonoObject** result) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        FO_VERIFY_AND_THROW(context_ptr && result, "Missing database document context or output");
+
+        const auto& context = *static_cast<const ManagedDatabaseDocumentContext*>(context_ptr);
+        FO_VERIFY_AND_THROW(context.Backend == backend, "Database document belongs to a different backend");
+
+        string key = ToStringAndFree(property_name);
+        *result = nullptr;
+
+        if (!key.empty() && (key[0] == '_' || key[0] == '$')) {
+            if (context.Document.Contains(key)) {
+                const auto& value = context.Document[key];
+                FO_VERIFY_AND_THROW(value.Type() == AnyData::ValueType::String, "Technical document read requires a string", key);
+                *result = reinterpret_cast<MonoObject*>(mono_string_new(GetDomainOrThrow(backend->GetDomain()), string {value.AsString()}.c_str()));
+            }
+
+            return;
+        }
+
+        auto prop = context.Registrar->FindProperty(key);
+        FO_VERIFY_AND_THROW(prop, "Database document property does not exist", context.Registrar->GetTypeName(), key);
+
+        auto meta = backend->GetMetadata();
+        FO_VERIFY_AND_THROW(meta, "Missing database document metadata");
+
+        nptr<const AnyData::Value> selected;
+
+        if (context.Document.Contains(key)) {
+            selected = &context.Document[key];
+        }
+        else {
+            for (const auto& [stored_key, value] : context.Document) {
+                if (context.Registrar->FindPersistedProperty(stored_key) == prop) {
+                    FO_VERIFY_AND_THROW(!selected, "Ambiguous database document property", key);
+                    selected = &value;
+                }
+            }
+        }
+
+        if (selected) {
+            PropertyRawData raw;
+            PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, meta->Hashes, *meta);
+            *result = BoxPropertyValue(backend, prop.as_ptr(), {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()});
+        }
+        else if (context.Document.Contains("_Proto")) {
+            const auto& proto_value = context.Document["_Proto"];
+            FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
+
+            auto proto = meta->GetProtoEntity(context.Registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()));
+
+            if (proto) {
+                *result = BoxPropertyValue(backend, prop.as_ptr(), proto->GetProperties()->GetRawData(prop.as_ptr()));
+            }
+        }
+    });
+}
+
+static auto NativeReadDatabaseDocumentEncoded(void* backend_ptr, void* context_ptr, MonoString* field_name, MonoString** result) noexcept -> MonoString*
+{
+    return CaptureNativeError([&] {
+        auto backend = ResolveBoundBackend(backend_ptr);
+        FO_VERIFY_AND_THROW(context_ptr && result, "Missing database document context or output");
+
+        const auto& context = *static_cast<const ManagedDatabaseDocumentContext*>(context_ptr);
+        FO_VERIFY_AND_THROW(context.Backend == backend, "Database document belongs to a different backend");
+
+        string key = ToStringAndFree(field_name);
+        FO_VERIFY_AND_THROW(context.Document.Contains(key), "Database document field does not exist", key);
+
+        string encoded = AnyData::ValueToString(context.Document[key]);
+        *result = mono_string_new(GetDomainOrThrow(backend->GetDomain()), encoded.c_str());
+    });
+}
+
 static auto NativeAddPropertySetter(void* backend_ptr, MonoString* owner_type, MonoString* property_name, MonoObject* setter) noexcept -> MonoString*
 {
     return CaptureNativeError([&] { NativeAddPropertySetterImpl(backend_ptr, owner_type, property_name, setter); });
@@ -4937,6 +5137,10 @@ static void RegisterInternalCalls()
     AddInternalCall("FOnline.Native::SetPropertyInternal", NativeSetProperty);
     AddInternalCall("FOnline.Native::SetPropertyGetterInternal", NativeSetPropertyGetter);
     AddInternalCall("FOnline.Native::AddPropertySetterInternal", NativeAddPropertySetter);
+    AddInternalCall("FOnline.Native::RegisterPropertyMigratorInternal", NativeRegisterPropertyMigrator);
+    AddInternalCall("FOnline.Native::RegisterProtoMigratorInternal", NativeRegisterProtoMigrator);
+    AddInternalCall("FOnline.Native::ReadDatabaseDocumentInternal", NativeReadDatabaseDocument);
+    AddInternalCall("FOnline.Native::ReadDatabaseDocumentEncodedInternal", NativeReadDatabaseDocumentEncoded);
     AddInternalCall("FOnline.Native::AddPropertySetterWithPropertyInternal", NativeAddPropertySetterWithProperty);
     AddInternalCall("FOnline.Native::AddPropertyDeferredSetterInternal", NativeAddPropertyDeferredSetter);
     AddInternalCall("FOnline.Native::BindAbiInternal", NativeBindAbi);

@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"12d0e2dc8c0cf30298a6c72345bde13c9231f5c2def7b88f7dc321ce9baff671"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"122b9cd8112c83b5831e3dc67b67424dc178d8480cd9a7c6a294bde4976d7477"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -925,6 +925,10 @@ shapes не появится явный conversion contract.
 
 Это runtime side metadata, которую можно загрузить из generated/baked data вместо одной только compiled static registration.
 
+Правила миграции свойств содержат действие: `Property <Owner> Rename <Old> <New>` проверяет текущее целевое поле; `Property <Owner> Transform <Property> <Function>` проверяет существующее Persistent-свойство. Функция работает с документом БД до загрузки свойств сущности и получает исходный документ как контекст чтения. Связывание, подготовка результатов и запись описаны в [Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
+
+AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
 ### Версия metadata
 
 **Server и каждый подключённый client обязаны использовать metadata из одной bake.** Entity payload адресует properties по registration order этих metadata, поэтому в разных bakes один index может означать разные properties. Такое расхождение отклоняется как дефект build или deployment и не считается поддерживаемым compatibility mode.
@@ -965,6 +969,8 @@ targets, tag changes и отказ от старого file layout), `Test_Prope
 (`PropertiesRestoreRejectsForeignMetadata`) и
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
+
+Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"5f5f84ff306c03a69df0600aba0b082b088a5390fa368d10e6ebd1043bc14b38"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"51d19231715fc0251585444cda3c6d1fbc68f223c083aa602e12491ccdd66e26"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -267,6 +267,8 @@ movement/pathfinding, text packs, timers и two-dimensional grids. Основн�
 location/entity management.
 
 ### Scripting и script-visible API
+
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — миграции документов через скомпилированный байткод на настоящем сервере: отклонение сигнатур, типизированные отделённые значения/контекст, условные домены имён, идемпотентность, атомарность при исключении и цепочки/значения прототипов.
 
 AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`, `Test_ScriptEntityOps`, `Test_CommonScriptMethods` и `Test_ServerScriptMethods`.
 

@@ -172,7 +172,7 @@ def _model() -> dict[str, object]:
             "migration-rule",
             "migration.Property.Critter.OldName",
             "OldName",
-            signature="Property Critter OldName Name",
+            signature="Property Critter Rename OldName Name",
             rule_kind="Property",
             scope="Critter",
             replacement="Name",

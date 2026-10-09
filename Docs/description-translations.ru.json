@@ -5709,16 +5709,16 @@
           "translation": "Каждый неуправляющий ключ должен разрешаться в свойство, доступное текущей стороне bake."
         },
         "/rules/@id=prototype-format.rule.proto-migration/description": {
-          "source_sha256": "484a9df55871d4e20e4121376ae76760ae782ab9763a3e0fe5df5dbe9486a397",
-          "translation": "Задавайте миграции в нативных или проектных метаданных через ///@ MigrationRule Proto <Type> <Old> <NewOrRemove>."
+          "source_sha256": "7b8aa394e8d48a926b9f3949b7ffc2a1eee17507c5e54992b4945aad13ad5571",
+          "translation": "Объявляйте MigrationRule Proto <Type> Rename <Old> <New>, Remove <Old> или Transform <Old> <Migrator>. Remove не принимает замену; Transform получает исходное имя прототипа и контекст всего документа."
         },
         "/rules/@id=prototype-format.rule.proto-migration/name": {
           "source_sha256": "04fb86a69a92c9277e619542b83494d7d8fe64cdfad971b969a7d04c212fd3d7",
           "translation": "Миграция прототипов"
         },
         "/rules/@id=prototype-format.rule.proto-migration/requirement": {
-          "source_sha256": "a85a9e3c4ea4fddb7444f892a55b8fa3dbc4c625d6beb0849123bb1502f1d49d",
-          "translation": "Правила миграции Proto применяются к объявленным ID, ID родителей, lookup и сохраняемым ссылкам до окончательного разрешения."
+          "source_sha256": "d1a0b90f91be4e2320e3adea0f73fe043a15fd0956e58e64d0839c7f69b8ccd0",
+          "translation": "Правила Proto Rename и Remove применяются к объявленным ID, ID родителей, lookup и сохраняемым ссылкам; Proto Transform выполняется только на загруженном документе БД до поиска прототипа."
         },
         "/rules/@id=prototype-format.rule.proto-reference/description": {
           "source_sha256": "88fad8262b86da1d45daa702037306204147c09b51a99b50d7baa88cd078a989",
@@ -5803,6 +5803,18 @@
         "/section_forms/@id=prototype-format.section.proto-entity/resolves_to": {
           "source_sha256": "6753cd36a218d5a6bdfbfcffea370f97f38d19f423e90df73859fa67f8dea9f6",
           "translation": "Метаданные сущности типа <Type> с HasProtos"
+        },
+        "/rules/@id=prototype-format.rule.property-migration/name": {
+          "source_sha256": "da829260a47d3ceac8d95d856dd36e7e5c1952ae88ce84774643cd9c68af7c48",
+          "translation": "Действия миграции свойств"
+        },
+        "/rules/@id=prototype-format.rule.property-migration/requirement": {
+          "source_sha256": "93855f298e8d67ba0a54283730f0d572ef298728ef77d62149220fc35c52d5ed",
+          "translation": "Property Rename требует существующего назначения; Transform — существующего Persistent-свойства; Remove навсегда запрещает удалённое имя у того же владельца, включая поля RefType."
+        },
+        "/rules/@id=prototype-format.rule.property-migration/description": {
+          "source_sha256": "bf453e3b2c1bf6121f5ff1bce4dda4cb683a5ea7a32db3dfc3d0413d554032ee",
+          "translation": "Объявляйте MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator> или Remove <Old>. Property и Proto имеют общие записи Rename/Transform из пяти частей и Remove из четырёх. Старые значения пропускаются при загрузке документа/текста; bake и финализация метаданных отклоняют повторное имя."
         }
       }
     },
