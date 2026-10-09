@@ -123,8 +123,11 @@ function displayPath(root, value) {
 }
 
 async function loadRoutes(siteDir) {
-  const catalogPath = join(siteDir, "Docs", "generated", "document-routes.json");
-  const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+  const catalogPath = join(siteDir, "docs-manifest.json");
+  const catalog = JSON.parse(await readFile(catalogPath, "utf8")).routing;
+  if (!catalog || !Array.isArray(catalog.routes)) {
+    throw new Error("rendered docs-manifest.json is missing its routing section");
+  }
   const routes = [];
   const seen = new Set();
   for (const document of catalog.routes || []) {

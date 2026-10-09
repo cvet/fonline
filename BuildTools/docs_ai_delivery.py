@@ -9,9 +9,10 @@ from pathlib import Path, PurePosixPath
 from urllib.parse import quote
 
 from engine_version import read_engine_version
+import documentation_metadata
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 VERSIONING_SCHEMA_VERSION = 3
 ENGINE_VERSION_POLICY = {
     "scheme": "calver", "source": "VERSION",
@@ -117,7 +118,8 @@ def _versioning_config(manifest: dict[str, object]) -> dict[str, object]:
 
 def _engine_version(root: Path, manifest: dict[str, object]) -> dict[str, object]:
     versioning = _versioning_config(manifest)
-    return {**versioning["engine"], "value": read_engine_version(root)}
+    read_engine_version(root)
+    return dict(versioning["engine"])
 
 
 def _localization_config(manifest: dict[str, object]) -> dict[str, object]:
@@ -443,7 +445,7 @@ def render_llms(root: Path, manifest: dict[str, object], records: list[dict[str,
         f"Canonical site: {base_url}",
         "Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.",
         f"Current documentation: `{current_version['source_ref']}` rolling branch.",
-        f"Engine version: `{_engine_version(root, manifest)['value']}` (CalVer from VERSION).",
+        f"Engine version source: {base_url.rstrip('/')}/VERSION (CalVer; read for the current value).",
         f"Machine-readable document index: {base_url.rstrip('/')}/{DEFAULT_PUBLIC_MANIFEST_OUTPUT}",
         f"Bounded full-context bundle: {base_url.rstrip('/')}/{DEFAULT_FULL_CONTEXT_OUTPUT}",
         "",
@@ -548,7 +550,7 @@ def render_full_context(
         "Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.",
         f"Canonical site: {base_url}",
         f"Documentation version: {current_version['source_ref']} ({current_version['kind']})",
-        f"Engine version: {_engine_version(root, manifest)['value']} (CalVer from VERSION)",
+        f"Engine version source: {base_url.rstrip('/')}/VERSION (CalVer; read for the current value)",
         f"Documents: {len(ordered)}",
         "Policy exclusions: " + (", ".join(sorted(excluded_ids)) if excluded_ids else "none"),
         "",
@@ -559,7 +561,6 @@ def render_full_context(
                 f"===== BEGIN DOCUMENT {record['id']} =====",
                 f"Source: {record['path']}",
                 f"Canonical URL: {record['canonical_url']}",
-                f"Content SHA-256: {record['content_sha256']}",
                 "",
                 str(record["content"]).rstrip("\n"),
                 "",
@@ -672,6 +673,8 @@ def render_public_manifest(
         "document_count": len(public_records),
         "documents": public_records,
         "artifacts": artifacts,
+        "routing": documentation_metadata.read_section(root, documentation_metadata.ROUTING_OUTPUT),
+        "translation_status": documentation_metadata.read_section(root, documentation_metadata.TRANSLATION_OUTPUT),
     }
     return json.dumps(public_manifest, indent=2, ensure_ascii=True) + "\n"
 

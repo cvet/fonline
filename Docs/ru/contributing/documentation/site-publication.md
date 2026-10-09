@@ -5,10 +5,12 @@ locale: ru
 document_id: documentation-site-publication
 permalink: /Docs/ru/contributing/documentation/site-publication.html
 ---
-<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"62b626cd810fc359bd79b51e039375a9c07a35a0b14a885156100e1e8279c12a"} -->
+<!-- docs-translation: {"document_id":"documentation-site-publication","locale":"ru","source_path":"Docs/en/contributing/documentation/site-publication.md","source_sha256":"5452ee7af5159c712a67fdd53ae08f91324d0807f184ee4a40becd6495444913"} -->
 # Публикация сайта документации
 
 > Документация движка. Эта страница определяет, как Markdown-корпус FOnline предварительно просматривается, проверяется и публикуется через существующий маршрут GitHub Pages.
+
+Шаблон включает корневой `VERSION` стандартным тегом Jekyll `include`; `includes_dir: .` делает этот единственный источник доступным и локальной сборке, и обычной сборке GitHub Pages. Копия версии и подготовительный шаг не нужны. Публикуйте `/VERSION` побайтно вместе с `/docs-manifest.json`; отчёты маршрутов и переводов хранятся в разделах этого общего индекса.
 
 ## Назначение
 
@@ -48,7 +50,7 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Docs/ai-evaluation.json`
 - `Docs/generated/ai-evaluation-report.json`
 - `Docs/generated/snippets.json`
@@ -79,7 +81,7 @@ permalink: /Docs/ru/contributing/documentation/site-publication.html
 | Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` и `Docs/Site/Assets/docs-search.ru.json`, полностью выполняемые в браузере |
 | Обучающие диаграммы | Source-owned local SVG в `Docs/assets/diagrams/` с provenance и hashes в `Docs/generated/diagrams.json` |
 | Скриншоты инструментов | Source-owned local PNG в `Docs/assets/screenshots/` с environment, interactions, source/image hashes и recapture triggers в `Docs/generated/screenshots.json` |
-| Карта version, locale и routes | Generated `Docs/generated/document-routes.json`, выведенный из stable document IDs и manifest targets |
+| Карта version, locale и routes | Generated `docs-manifest.json#/routing`, выведенный из stable document IDs и manifest targets |
 | Review output | Commit-addressable `_site` artifact и rendered-site validation report из GitHub Actions |
 | AI delivery | Root `llms.txt`, ограниченный `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation и complete snippet coverage reports |
 
@@ -136,7 +138,7 @@ Public site оборачивает обычный Markdown, отрендерен
 | `Docs/Site/Data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes и current stable-ID locale pairs |
 | `Docs/Site/Assets/docs-search.json` | Compact weighted English token postings и result metadata для каждого public current English human document |
 | `Docs/Site/Assets/docs-search.ru.json` | Compact weighted Russian token postings и result metadata для каждого current translated human document |
-| `Docs/generated/document-routes.json` | Current public URLs, canonical future owners, planned English/Russian paths, route availability и required legacy redirects |
+| `docs-manifest.json#/routing` | Current public URLs, canonical future owners, planned English/Russian paths, route availability и required legacy redirects |
 
 Каждая public current human top-level page должна ровно один раз входить в navigation. Generated detail pages не попадают в sidebar, но доступны в поиске через generated index pages. Internal plans, placeholders и AI-only maintainer routes отсутствуют в обеих reader surfaces.
 
@@ -164,10 +166,10 @@ Localization policy также принадлежит исходному код�
 - paths в `Docs/en/` прямо зеркалируются в `Docs/ru/`;
 - root и subsystem README pages используют explicit pairs, например `README.md` и `README.ru.md`;
 - `BuildTools/docs_localization.py` вычисляет normalized SHA-256 каждого canonical English source и отклоняет stale или mismatched Russian pages;
-- `Docs/generated/translation-status.json` сообщает точное required/current/missing coverage;
+- `docs-manifest.json#/translation_status` сообщает точное required/current/missing coverage;
 - stable-ID language switching и locale-scoped search активны для каждой обязательной пары; режим manifest enforcement равен `complete`.
 
-`Docs/generated/document-routes.json` фиксирует migration map до перемещения файлов. Каждая public record содержит current route, planned canonical owner/path, locale paths и redirect requirement. Несколько legacy pages могут сходиться только к одному non-`replace` owner destination.
+`docs-manifest.json#/routing` фиксирует migration map до перемещения файлов. Каждая public record содержит current route, planned canonical owner/path, locale paths и redirect requirement. Несколько legacy pages могут сходиться только к одному non-`replace` owner destination.
 
 Каждый текущий маршрут объявляет `current_locale`, включая старые русские
 страницы-указатели, у которых нет пары переводов. Проверки артефакта и браузера
@@ -185,7 +187,7 @@ Static site публикует три generated root endpoints, route catalog и
 | `https://fonline.ru/llms.txt` | Краткая карта всех public current pages по типам Diataxis и canonical generated JSON models |
 | `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle public current authored pages и generated reference indexes, максимум 2 MiB + 64 KiB |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, provenance, byte size и SHA-256 hashes |
-| `https://fonline.ru/Docs/generated/document-routes.json` | Current/planned paths, version/locale policy, canonical target ownership и legacy redirects |
+| `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version/locale policy, canonical target ownership и legacy redirects |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, evidence checks, success rate, MRR и failures |
 | `https://fonline.ru/Docs/generated/snippets.json` | Каждый public/current/human fenced block, owner/heading, parser harness, hash, template status, result и normative coverage |
 | `https://fonline.ru/Docs/generated/diagrams.json` | Diagram IDs, documents, dimensions, alt/caption, source provenance, SVG paths и hashes |
@@ -283,7 +285,7 @@ Job `Build documentation site` в `.github/workflows/validate.yml` запуск�
 6. Загружает отдельные static-validation и browser-validation artifacts с JSON и screenshots.
 7. Загружает `documentation-site-<commit-sha>` через `actions/upload-artifact@v4` на 14 дней.
 
-Static post-build gate требует каждый current route и available locale route из `Docs/generated/document-routes.json`, проверяет byte-for-byte static AI/search/generated-model endpoints, canonical URLs, HTML language, один `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets и links к publishable local resources.
+Static post-build gate требует каждый current route и available locale route из `docs-manifest.json#/routing`, проверяет byte-for-byte static AI/search/generated-model endpoints, canonical URLs, HTML language, один `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets и links к publishable local resources.
 
 Browser gate посещает каждый catalog route в трёх profiles, принадлежащих manifest: desktop при 1440 x 1000 CSS pixels, mobile при 390 x 844 CSS pixels и `zoom-200` при 640 x 512 CSS pixels с device scale factor 2. Последний profile моделирует физический viewport 1280 x 1024 при 200 percent browser zoom и требует compact navigation/reflow contract без mobile user agent. Страница не должна иметь выбранных WCAG 2.2 A/AA axe violations, page/console/request errors, undecoded images, clipped reading column, fixed-header/sidebar overlap или reachable page-level horizontal scroll. Interaction scenarios дополнительно проверяют keyboard skip navigation, English technical/prose search, native-dialog Escape, theme persistence, copy feedback, compact/mobile drawer semantics, focus containment/restoration, Russian search, `html lang`, active locale, все explicit README language pairs, exact paired-route switching, rendering архитектурной схемы и Content Showcase и русский reflow при 200 процентах. Сохраняемые screenshots включают responsive document/navigation states, все Russian README entry points, translated documents, архитектурную схему и материалы Content Showcase для каждого profile, а также `zoom-200-russian-documentation.png` с точным физическим размером 1280 x 1024 без изменения Pages deployment path.
 

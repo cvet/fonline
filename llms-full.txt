@@ -5,14 +5,13 @@ Generated reference detail pages are represented by their indexes; complete JSON
 Documents omitted by the reviewed full-context policy remain discoverable through llms.txt and docs-manifest.json.
 Canonical site: https://fonline.ru
 Documentation version: master (rolling-branch)
-Engine version: 2026.1.14-dev (CalVer from VERSION)
+Engine version source: https://fonline.ru/VERSION (CalVer; read for the current value)
 Documents: 112
 Policy exclusions: buildtools-readme, documentation-site-publication, script-methods-map, tools
 
 ===== BEGIN DOCUMENT repository-home =====
 Source: README.md
 Canonical URL: https://fonline.ru/
-Content SHA-256: 211b47520f9489ca4782fc7b7b6b56b4b56f3a9396ba86cbd11e78d580f8b765
 
 ---
 layout: default
@@ -175,7 +174,6 @@ When behavior changes in a noticeable way, the owning document is updated in the
 ===== BEGIN DOCUMENT documentation-home =====
 Source: Docs/en/index.md
 Canonical URL: https://fonline.ru/Docs/en/
-Content SHA-256: e7391633a854dce0ec7fa59679077a6a24c3296553c90dc1f685dcee488bf97f
 
 ---
 layout: default
@@ -362,7 +360,6 @@ as the source of an Engine guarantee belong in this repository.
 ===== BEGIN DOCUMENT legacy-public-api-entry =====
 Source: Docs/en/reference/public-contract/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-contract/
-Content SHA-256: 6cada6de5b236d70972f49057fc703f8375b5d7f792928176f982d825171209d
 
 ---
 title: FOnline Public Contract Index
@@ -448,7 +445,6 @@ Pin the Engine by an exact commit in every game repository and public example. B
 ===== BEGIN DOCUMENT getting-started =====
 Source: Docs/en/tutorials/getting-started.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/getting-started.html
-Content SHA-256: 2773347b8ab1cf3e2888aeafb00141e47b3d3749437622ab26cfa3f347d5f6d6
 
 ---
 layout: default
@@ -538,7 +534,6 @@ When changing behavior, update the owning doc in the same change. Do not leave a
 ===== BEGIN DOCUMENT first-client-tutorial =====
 Source: Docs/en/tutorials/first-client.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-client.html
-Content SHA-256: c96b9ffeaf641a1f2dc5af3b1d520d649740af3814044c84026f85cdde0f66c0
 
 ---
 layout: default
@@ -664,7 +659,6 @@ Continue with [First Content Change](first-content.md).
 ===== BEGIN DOCUMENT first-content-tutorial =====
 Source: Docs/en/tutorials/first-content.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-content.html
-Content SHA-256: 670fd7312d9b562cec599887b320c340e04b5c83f1cf3a931cc310a78daafc27
 
 ---
 layout: default
@@ -788,7 +782,6 @@ Continue with [First Automated Test](first-test.md).
 ===== BEGIN DOCUMENT first-test-tutorial =====
 Source: Docs/en/tutorials/first-test.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-test.html
-Content SHA-256: a6a04fc38189630334396b16f1cc9e37436fbb7de3b9f8aa74e57a1c62a23f0d
 
 ---
 layout: default
@@ -906,7 +899,6 @@ native Catch2 ownership and coverage, use [Testing](../../Testing.md).
 ===== BEGIN DOCUMENT embedding-project =====
 Source: Docs/en/how-to/build/embedding-project.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/embedding-project.html
-Content SHA-256: 0acb2ae65debb2493c031a7054a88ab552d1cae52581979b098ea8fa81034b23
 
 ---
 layout: default
@@ -1051,7 +1043,6 @@ Validate engine changes through a real embedding project whenever possible. The 
 ===== BEGIN DOCUMENT engine-architecture =====
 Source: Docs/en/explanation/architecture/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/architecture/
-Content SHA-256: ed29a41d3c3a6b2ccfa73bd8a892142f2657683129e26e7b2d7137403110ad61
 
 ---
 layout: default
@@ -1238,7 +1229,6 @@ A normal embedding-project workflow looks like this:
 ===== BEGIN DOCUMENT build-workflow =====
 Source: Docs/en/how-to/build/index.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/
-Content SHA-256: 91f5eb4f89c9119fe681f12cd3df4355e4915d7ae8f935d792512f7c2170a7e8
 
 ---
 layout: default
@@ -1459,7 +1449,6 @@ Do not copy a full preset list into engine docs. Presets change per game and per
 ===== BEGIN DOCUMENT packaging-and-release =====
 Source: Docs/en/how-to/release/packaging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/packaging.html
-Content SHA-256: bca1548124ff3db691f557d8a32b02f57dd483c06ec77b7410ae0e30ecc46e1e
 
 ---
 layout: default
@@ -1889,7 +1878,6 @@ Promote a package row to project-qualified only when the named lane is versioned
 ===== BEGIN DOCUMENT engine-versioning =====
 Source: Docs/en/how-to/release/versioning.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/versioning.html
-Content SHA-256: 1425a344a8c2fc7e6c66a6fc9d9b41e8ac996f02492334afd0fcf820b35f9cf6
 
 ---
 layout: default
@@ -1902,6 +1890,8 @@ permalink: /Docs/en/how-to/release/versioning.html
 # Engine Versioning and Release Notes
 
 The root [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the Engine identifier. This year-based CalVer policy, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md), and the [contract-change workflow](../../contributing/contract-change-management.md) are mandatory for every master update. Read the [changelog](../../reference/changelog.md) before upgrading a game.
+
+Navigation, routes and AI delivery reference `VERSION` without copying its value. The Jekyll layout includes the root file directly at build time.
 
 ## Notation
 
@@ -1927,7 +1917,7 @@ Each first-parent master commit owns one minor increment and dated bilingual not
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
 3. Increment `VERSION` from the current master tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
-4. Add `## 2026.1.21-dev - 2026-10-04` in both changelog locales for the exact new identifier. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
+4. Freeze the preceding `## Current - <date>` heading with its old `VERSION` identifier, then add `## Current - <UTC date>` in both changelog locales. The validator resolves only this newest entry from `VERSION`; historical headings keep their exact identifiers. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
 5. For every removal/replacement, write the exhaustive migration record below and bind any required generated-contract disposition to its exact base/current digests. Review semantic changes even when the static diff is empty.
 6. Update each owning guide, examples, both locales, and `AGENTS.md` routing in the same change. Regenerate affected source-owned models/references, diagrams/screenshots, snippets, translation state, site/search/routes, AI evaluation, and AI delivery in dependency order. [Documentation maintenance](../../contributing/documentation/) owns the complete route.
 7. Run affected native/script/configuration/content/package checks plus negative old-usage and positive unaffected/new-usage tests. Run version/changelog and full relevant documentation/site gates. Record exact results, compatibility/ABI/resource decisions, and residual limits; a version bump alone never changes runtime compatibility.
@@ -1988,7 +1978,7 @@ An upgrade without project migration either preserves all used contracts or fail
 | `FO_COMPATIBILITY_VERSION` | Runtime contract digest including the separate manual migration marker |
 | ABI/resource-schema versions | Their source-owned serialization/protocol contracts |
 
-`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery share the version; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
+`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery reference `VERSION` without copying its value. the Jekyll layout includes the root file directly at build time; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
 
 ## Source ownership
 
@@ -2001,7 +1991,6 @@ An upgrade without project migration either preserves all used contracts or fail
 ===== BEGIN DOCUMENT engine-changelog =====
 Source: Docs/en/reference/changelog.md
 Canonical URL: https://fonline.ru/Docs/en/reference/changelog.html
-Content SHA-256: 741f023f84a73d605a3a7483948e6f0e1606f32361acf23d4a6bafe24026b634
 
 ---
 layout: default
@@ -2017,6 +2006,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Unreleased
 
+## Current - 2026-10-09
+
+### Changed
+
+- Consolidate route and translation reports in `docs-manifest.json`. Navigation and AI delivery reference `VERSION`; the Jekyll build reads its value rather than committing version copies. Search excludes technical HTML comments, and the AI full-context bundle leaves document hashes in the public index.
+
+### Migration
+
+- Documentation consumers must replace `Docs/generated/document-routes.json` with `docs-manifest.json#/routing` and `Docs/generated/translation-status.json` with `docs-manifest.json#/translation_status`. These are JSON sections of one file, not filesystem paths. AI delivery schema is `3`; site delivery schema is `4`; report field meanings and translation review hashes are preserved. The obsolete standalone reports are removed.
+- Regenerate localization, site/search/routes, AI evaluation when affected, then AI delivery. The Jekyll layout includes `VERSION` directly; retain `includes_dir: .` in `_config.yml` for local and GitHub Pages builds. Publish root `VERSION` verbatim. No native/script API, configuration, serialized data, network, ABI, resource-schema or save migration is required.
+- Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+
 ## 2026.1.14-dev - 2026-10-08
 
 ### Fixed
@@ -2025,7 +2026,7 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Migration
 
-- No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting `2026.1.14-dev`, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
+- No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
 
 ## 2026.1.13-dev - 2026-10-06
 
@@ -2222,7 +2223,6 @@ This maintained log begins with the adoption of Engine versioning. Earlier work 
 ===== BEGIN DOCUMENT release-operations =====
 Source: Docs/en/how-to/release/operations.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/operations.html
-Content SHA-256: e477cc4cbfab3218cb4dcd3d3b80050ff7fec9505aaa29942ee85889c9934388
 
 ---
 layout: default
@@ -2373,7 +2373,6 @@ Run [Examples/PackagingMatrix](../../../../Examples/PackagingMatrix/) plus proje
 ===== BEGIN DOCUMENT backup-and-recovery =====
 Source: Docs/en/how-to/release/backup-and-recovery.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/backup-and-recovery.html
-Content SHA-256: 713a72447d6b5557f13815104d957372dae7cdc87820b332ee8827f55ec4991b
 
 ---
 layout: default
@@ -2565,7 +2564,6 @@ When persistence or recovery source changes, run `Source/Tests/Test_DataBase.cpp
 ===== BEGIN DOCUMENT security-and-secrets =====
 Source: Docs/en/how-to/release/security-and-secrets.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/release/security-and-secrets.html
-Content SHA-256: e109a9def1e2b0d0abdb1245495135d21c194f2029f97e9aed967cf037ccb0d5
 
 ---
 layout: default
@@ -2786,7 +2784,6 @@ Use [Release Operations](operations.md) for target-host preflight, staged rollou
 ===== BEGIN DOCUMENT project-configuration =====
 Source: Docs/en/how-to/build/project-configuration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/project-configuration.html
-Content SHA-256: 35098b15063ce35ad3615b9f7d04a08d42bf81898cbf0a2e4a98000c08fb7314
 
 ---
 layout: default
@@ -3015,7 +3012,6 @@ When Engine or the embedding project is updated, inspect changes to `Settings.in
 ===== BEGIN DOCUMENT generated-content-workflow =====
 Source: Docs/en/how-to/build/generated-content.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/generated-content.html
-Content SHA-256: ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c
 
 ---
 layout: default
@@ -3245,7 +3241,6 @@ Every Engine or embedding-project update is a generation-bearing change. Record 
 ===== BEGIN DOCUMENT support-matrix =====
 Source: Docs/en/reference/platforms/support-matrix.md
 Canonical URL: https://fonline.ru/Docs/en/reference/platforms/support-matrix.html
-Content SHA-256: d356552b3da1aa91e0a16896da15f00e8113d95f2a259a0c730f454458d4efa4
 
 ---
 layout: default
@@ -3369,7 +3364,6 @@ When Engine or an embedding project is updated, audit the complete incoming rang
 ===== BEGIN DOCUMENT engine-upgrade-guide =====
 Source: Docs/en/how-to/migration/engine-upgrade.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/migration/engine-upgrade.html
-Content SHA-256: 5a01d1ee9502f61fbff2bda02a5b2ef378835034922a0fe593e1c86606616374
 
 ---
 layout: default
@@ -3606,7 +3600,6 @@ Do not call the update complete while required evidence is missing. Record an un
 ===== BEGIN DOCUMENT scripting-runtime =====
 Source: Docs/en/explanation/scripting-runtime/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/scripting-runtime/
-Content SHA-256: 0959ed1e4851cec7ee7941f6af383b0306ff3e17620dbbe54ab7362875074d3e
 
 ---
 layout: default
@@ -3942,7 +3935,6 @@ Use these tests as executable documentation when changing script registration, g
 ===== BEGIN DOCUMENT managed-csharp-scripting =====
 Source: Docs/en/how-to/scripting/managed-csharp.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/managed-csharp.html
-Content SHA-256: 464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08
 
 ---
 layout: default
@@ -4334,7 +4326,6 @@ Also regenerate affected CMake, helper-CLI, package, API, public-contract, trans
 ===== BEGIN DOCUMENT angelscript-style =====
 Source: Docs/en/how-to/scripting/style-and-refactoring.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/style-and-refactoring.html
-Content SHA-256: 6a874ba5b84269757a273178381088d73c4d5b26c3f5697acd58419a1944411d
 
 ---
 layout: default
@@ -4688,7 +4679,6 @@ Run the focused documentation test, localization check, snippet check, site gene
 ===== BEGIN DOCUMENT script-lifecycle-concurrency =====
 Source: Docs/en/how-to/scripting/lifecycle-and-concurrency.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/scripting/lifecycle-and-concurrency.html
-Content SHA-256: 03389c356c8ff546c644ed1869b4addf6d1dedd58c23baf8b744ebf7d6f78aee
 
 ---
 layout: default
@@ -5098,7 +5088,6 @@ For all engine documentation changes, also run the standalone documentation gate
 ===== BEGIN DOCUMENT testing =====
 Source: Docs/en/contributing/testing/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/testing/
-Content SHA-256: acba56ee12db64bbaafd6975f8ffe7ac80d9a8da5df0d3246f392781ccbe0017
 
 ---
 layout: default
@@ -5547,7 +5536,6 @@ runtime invoke and skips transports that need compiled code.
 ===== BEGIN DOCUMENT gameplay-testing =====
 Source: Docs/en/how-to/testing/gameplay-and-integration.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/testing/gameplay-and-integration.html
-Content SHA-256: 2cd0aa61a8e5ed82840b3fb12048aa4da44a0880a231bd577f713965cbc3d271
 
 ---
 layout: default
@@ -5753,7 +5741,6 @@ enforced normal authority.
 ===== BEGIN DOCUMENT ai-control-protocol-guide =====
 Source: Docs/en/how-to/ai-control-protocol.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/ai-control-protocol.html
-Content SHA-256: d7b627419e6d15d24243a1d65a3b677b90b15b409a7d9ad0fb5a2d95945d39c7
 
 ---
 layout: default
@@ -6120,7 +6107,6 @@ names, and QA policy in their owning projects.
 ===== BEGIN DOCUMENT native-extensions-guide =====
 Source: Docs/en/how-to/native-extensions.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions.html
-Content SHA-256: d47ba2f16bb6246de9ab1a3587eca03692e57105a62cd651af38df7a5f5cdac9
 
 ---
 layout: default
@@ -6382,7 +6368,6 @@ Treat an Engine gitlink change as an extension compatibility event:
 ===== BEGIN DOCUMENT project-local-dependencies =====
 Source: Docs/en/how-to/native-extensions/project-dependencies.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/native-extensions/project-dependencies.html
-Content SHA-256: 2062a10908b13e067c7fb83accd407bcd6167a371556b32fe1be35c80c994d6b
 
 ---
 layout: default
@@ -6794,7 +6779,6 @@ fixture.
 ===== BEGIN DOCUMENT prototype-format-guide =====
 Source: Docs/en/how-to/content/prototype-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/prototype-format.html
-Content SHA-256: c23460464687030c5f15dedc6afcc6dc26907d414091e090fd25973474a03155
 
 ---
 layout: default
@@ -7067,7 +7051,6 @@ When an embedding project advances its Engine revision:
 ===== BEGIN DOCUMENT map-format-guide =====
 Source: Docs/en/how-to/content/map-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/map-format.html
-Content SHA-256: 8a3a03955311abcf640034cf3dc1c0bbb5aec41ec3fdb510a83dbb0682a865ab
 
 ---
 layout: default
@@ -7348,7 +7331,6 @@ When these files change, regenerate the [canonical model](../../../generated/map
 ===== BEGIN DOCUMENT model-format-guide =====
 Source: Docs/en/how-to/content/model-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/model-format.html
-Content SHA-256: 343e310f1338b96c00857c939bb3b7581a8ca31a066ed278c6ad5e766de74a6e
 
 ---
 layout: default
@@ -7990,7 +7972,6 @@ When changing:
 ===== BEGIN DOCUMENT text-and-localization-guide =====
 Source: Docs/en/how-to/content/text-and-localization.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/text-and-localization.html
-Content SHA-256: 530625de381a099a604b158b2f7f8fa695508cdd1c2f76f44ac6ac44579a06c6
 
 ---
 layout: default
@@ -8287,7 +8268,6 @@ refresh behavior require project tests rather than Engine fixtures.
 ===== BEGIN DOCUMENT effect-format-guide =====
 Source: Docs/en/how-to/content/effect-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/effect-format.html
-Content SHA-256: dce3f7ec64a38feb365c46e8fb1a36c0fd1b89ddc976d03d7720b6437b6da145
 
 ---
 layout: default
@@ -8874,7 +8854,6 @@ When the Engine contract changes, update together:
 ===== BEGIN DOCUMENT image-format-guide =====
 Source: Docs/en/how-to/content/image-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/image-format.html
-Content SHA-256: 7677cbe13a997e201531807611dbd70830341ebe3aa65d594090a3090abad56f
 
 ---
 layout: default
@@ -9399,7 +9378,6 @@ When changing an image surface:
 ===== BEGIN DOCUMENT particle-format-guide =====
 Source: Docs/en/how-to/content/particle-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/particle-format.html
-Content SHA-256: 4cd0f52678a178f1a7664a8df5eabe17f0709873328ef7f0b91ca8906d8be4c0
 
 ---
 layout: default
@@ -9704,7 +9682,6 @@ production frame budget.
 ===== BEGIN DOCUMENT particle-authoring-tools =====
 Source: Docs/en/how-to/tools/particle-authoring.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/particle-authoring.html
-Content SHA-256: 9dbc060c7f534201f014e8fe86db20133ec83a55bf01eda4a437a2401535dc8c
 
 ---
 layout: default
@@ -10069,7 +10046,6 @@ production game's visual policy.
 ===== BEGIN DOCUMENT mapper-interactive-manual =====
 Source: Docs/en/how-to/tools/mapper-interactive.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper-interactive.html
-Content SHA-256: 8984833f19d34fa517cfb1e44de7682c5f0b5528a60f586d90a576da06d37202
 
 ---
 layout: default
@@ -10417,7 +10393,6 @@ tests, and runtime behavior remain the authority.
 ===== BEGIN DOCUMENT font-format-guide =====
 Source: Docs/en/how-to/content/font-format.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/font-format.html
-Content SHA-256: 40b691afb97e7264162953a58b48a42f1e52b25f53282ed366d8200f0adb2340
 
 ---
 layout: default
@@ -10778,7 +10753,6 @@ backend behavior, and asset rights.
 ===== BEGIN DOCUMENT audio-guide =====
 Source: Docs/en/how-to/content/audio.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/audio.html
-Content SHA-256: 5280a938e5587e7260465d27c6b23ae18e78b513e2aef56dc10b5b2d6c90fbef
 
 ---
 layout: default
@@ -11033,7 +11007,6 @@ and include migration guidance for public behavior changes.
 ===== BEGIN DOCUMENT video-guide =====
 Source: Docs/en/how-to/content/video.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/video.html
-Content SHA-256: ff9a3082fb14e50d2f5b9683a4142dc78d416e9725ffe315cb1f6cb310fd3c83
 
 ---
 layout: default
@@ -11361,7 +11334,6 @@ not a substitute for a compatibility policy or production media tests.
 ===== BEGIN DOCUMENT gui-runtime-guide =====
 Source: Docs/en/how-to/runtime/gui.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/runtime/gui.html
-Content SHA-256: 3653ca03d660b95b397878634d01c7e483835c84113363b06266eb7554794996
 
 ---
 layout: default
@@ -11420,7 +11392,6 @@ Update this route when Engine adds or removes native presentation/input primitiv
 ===== BEGIN DOCUMENT ai-maintainer-entry =====
 Source: AGENTS.md
 Canonical URL: https://fonline.ru/AGENTS.html
-Content SHA-256: 2fd3012c1aac3c73a6e5ef344520ce9f3f0a5323af7ea5e583357d023393e821
 
 # FOnline Engine — AI Maintainer Guide
 
@@ -11478,7 +11449,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [BuildTools/SnippetPolicy.json](BuildTools/SnippetPolicy.json) and [Docs/generated/snippets.json](Docs/generated/snippets.json) - reviewed fence/harness policy and generated complete coverage report; regenerate with `BuildTools/docs_snippets.py`, never edit the report manually.
 - [BuildTools/DocumentationDiagrams.json](BuildTools/DocumentationDiagrams.json), [Docs/generated/diagrams.json](Docs/generated/diagrams.json), and [Docs/assets/diagrams/](Docs/assets/diagrams/) - source-owned accessible teaching diagrams, provenance, and exact SVG hashes; regenerate with `BuildTools/docs_diagrams.py`, never edit the SVG or catalog manually.
 - [BuildTools/DocumentationScreenshots.json](BuildTools/DocumentationScreenshots.json), [Docs/generated/screenshots.json](Docs/generated/screenshots.json), and [Docs/assets/screenshots/](Docs/assets/screenshots/) - versioned tool screenshots, exact capture inputs, recapture triggers, and source/image hashes; regenerate the catalog with `BuildTools/docs_screenshots.py`, never replace an image without updating its provenance record.
-- [Docs/Site/Data/docs-site.json](Docs/Site/Data/docs-site.json), [Docs/Site/Assets/docs-search.json](Docs/Site/Assets/docs-search.json), [Docs/Site/Assets/docs-search.ru.json](Docs/Site/Assets/docs-search.ru.json), and [Docs/generated/document-routes.json](Docs/generated/document-routes.json) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
+- [Docs/Site/Data/docs-site.json](Docs/Site/Data/docs-site.json), [Docs/Site/Assets/docs-search.json](Docs/Site/Assets/docs-search.json), [Docs/Site/Assets/docs-search.ru.json](Docs/Site/Assets/docs-search.ru.json), and [docs-manifest.json#/routing](docs-manifest.json#/routing) - generated human navigation, per-locale search, and version/locale/legacy-route data from the same manifest; regenerate with `BuildTools/docs_site.py`, never edit them manually.
 - [Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md](Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md) - rolling/current documentation identity, deferred release snapshots, planned English/Russian paths, and durable Markdown redirect policy.
 - [ThirdParty Maintenance](Docs/en/contributing/third-party/) - vendored dependency update, pruning, version pin, and `(FOnline Patch)` workflow.
 - [Docs/en/explanation/runtime/client-updater.md](Docs/en/explanation/runtime/client-updater.md) - client host/runtime split, ABI, updater protocol, and `UpdaterBackend`.
@@ -11545,7 +11516,7 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 - [Examples/MinimalProject/README.md](Examples/MinimalProject/README.md) - canonical engine-owned starter and smoke contract.
 - [Examples/ContentShowcase/README.md](Examples/ContentShowcase/README.md) - canonical engine-owned content gallery, provenance, performance-budget, and capture contract.
 - [Docs/en/reference/public-examples/index.md](Docs/en/reference/public-examples/index.md) and [Docs/generated/public-examples.json](Docs/generated/public-examples.json) - checked public-example repository registry from `Examples/PublicRepositories.json`.
-- [Docs/en/reference/platforms/generated-matrix.md](Docs/en/reference/platforms/generated-matrix.md), [Docs/generated/support-matrix.json](Docs/generated/support-matrix.json), and [Docs/generated/translation-status.json](Docs/generated/translation-status.json) - generated support evidence and locale parity; regenerate with their owning BuildTools scripts.
+- [Docs/en/reference/platforms/generated-matrix.md](Docs/en/reference/platforms/generated-matrix.md), [Docs/generated/support-matrix.json](Docs/generated/support-matrix.json), and [docs-manifest.json#/translation_status](docs-manifest.json#/translation_status) - generated support evidence and locale parity; regenerate with their owning BuildTools scripts.
 - [Source/README.md](Source/README.md) - source-tree overview.
 - [Source/Tests/README.md](Source/Tests/README.md) - engine unit-test suites.
 - [BuildTools/README.md](BuildTools/README.md) - build-tooling notes.
@@ -11659,7 +11630,6 @@ The full maintained index is [Docs/en/index.md](Docs/en/index.md); use it when a
 ===== BEGIN DOCUMENT exception-safety =====
 Source: Docs/en/contributing/coding-contracts/exception-safety.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/exception-safety.html
-Content SHA-256: afb4d473355a7b4ac5947d87c2acb2a745c098bded2b3cec918e219e44f8e258
 
 ---
 layout: default
@@ -11898,7 +11868,6 @@ For the cases where `noexcept` *is* warranted, three engine-specific hazards sti
 ===== BEGIN DOCUMENT local-variables =====
 Source: Docs/en/contributing/coding-contracts/local-variables.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/local-variables.html
-Content SHA-256: 9f1a122dc5f4c825be8e7fa3e4619403edb0de33977834e9925209add1cdd88b
 
 ---
 layout: default
@@ -12041,7 +12010,6 @@ Prune the compilation database to one command per translation unit before passin
 ===== BEGIN DOCUMENT nullability =====
 Source: Docs/en/contributing/coding-contracts/nullability.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/nullability.html
-Content SHA-256: ba79255cf2cce8d31b49bf02997ea78d9acc950f4ea846fe2647afb845e6686a
 
 ---
 layout: default
@@ -12519,7 +12487,6 @@ Project-side rewriters must not own contract inference: they should preserve aut
 ===== BEGIN DOCUMENT smart-pointers =====
 Source: Docs/en/contributing/coding-contracts/smart-pointers.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/smart-pointers.html
-Content SHA-256: 00127de2f7ad8dc83ae4397bee91938e88a859e61e5d4d9ce1f581f7dff69a4e
 
 ---
 layout: default
@@ -12784,7 +12751,6 @@ A project-side checker should use exact line-level allowlists for reviewed ABI a
 ===== BEGIN DOCUMENT thread-safety-analysis =====
 Source: Docs/en/contributing/coding-contracts/thread-safety-analysis.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/coding-contracts/thread-safety-analysis.html
-Content SHA-256: b92dd0d64ee820868b29fc958040c34b8003dcfd043fd70da65a842de955dc29
 
 ---
 layout: default
@@ -12896,7 +12862,6 @@ this file owns only the reusable mechanism.
 ===== BEGIN DOCUMENT api-change-management =====
 Source: Docs/en/contributing/contract-change-management.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/contract-change-management.html
-Content SHA-256: 2b037e974b21413e4bdb8c19b9cdb42c76478f21603cb437cc062550c09f6cb1
 
 ---
 layout: default
@@ -13258,7 +13223,6 @@ New `release_note` dispositions link to the bilingual [Engine changelog](../refe
 ===== BEGIN DOCUMENT adr-github-pages-markdown-publication =====
 Source: Docs/en/contributing/decisions/0001-github-pages-markdown-publication.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0001-github-pages-markdown-publication.html
-Content SHA-256: bf9e7605e8e044f83467f2c2ef16cb7ae0a2b48132b1f44a9a33dfcfbb6a62dc
 
 ---
 layout: default
@@ -13359,7 +13323,6 @@ Introducing a separate site application would duplicate ownership and move the p
 ===== BEGIN DOCUMENT adr-public-api-stability-contract =====
 Source: Docs/en/contributing/decisions/0002-public-api-stability-contract.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0002-public-api-stability-contract.html
-Content SHA-256: d2af696a9e8e46aa48e2e23fe3c6d484c49509a5092818069bcbed2471d2f5cc
 
 ---
 layout: default
@@ -13510,7 +13473,6 @@ Documentation describes the current branch until the engine has meaningful relea
 ===== BEGIN DOCUMENT adr-manifest-backed-ai-documentation-delivery =====
 Source: Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0003-manifest-backed-ai-documentation-delivery.html
-Content SHA-256: 094d73f0b1e31896ea18c926c9e63383067da95b434970bde31f42417eddd8f7
 
 ---
 layout: default
@@ -13611,7 +13573,6 @@ Hand-maintaining those surfaces would duplicate the documentation index and drif
 ===== BEGIN DOCUMENT adr-manifest-backed-site-navigation-search =====
 Source: Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.html
-Content SHA-256: 3528ea9af2e04b5275fd2402ddfdc6f85d4b2988393cb9c264a08d08c59b71b3
 
 ---
 layout: default
@@ -13703,7 +13664,6 @@ Hand-authored Jekyll menus would duplicate `Docs/documentation-manifest.json`. H
 ===== BEGIN DOCUMENT adr-public-example-repository-ownership =====
 Source: Docs/en/contributing/decisions/0005-public-example-repository-ownership.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0005-public-example-repository-ownership.html
-Content SHA-256: 33a49ed21b04fa813cf401b487191fd844c8bf6bb38879593bb509168e26c462
 
 ---
 layout: default
@@ -13783,7 +13743,6 @@ Rejected because silent drift would make security, compatibility, and support cl
 ===== BEGIN DOCUMENT adr-documentation-version-locale-routing =====
 Source: Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/decisions/0006-documentation-version-locale-routing.html
-Content SHA-256: ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6
 
 ---
 layout: default
@@ -13852,7 +13811,7 @@ The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is d
 ### Locale ownership
 
 1. English (`en`) is canonical. Unmigrated flat English files remain the source until their reviewed group moves; migrated pages are canonical below `Docs/en`.
-2. Russian (`ru`) is a whole-document mirror populated in reviewed groups. `Docs/generated/translation-status.json` is the authoritative coverage snapshot; no ADR paragraph owns a manually maintained translation count.
+2. Russian (`ru`) is a whole-document mirror populated in reviewed groups. `docs-manifest.json#/translation_status` is the authoritative coverage snapshot; no ADR paragraph owns a manually maintained translation count.
 3. Human pages moving under `Docs/en` derive their Russian path by replacing `Docs/en/` with `Docs/ru/`.
 4. Repository and subsystem README entry points use manifest-declared paired paths such as `README.md` and `README.ru.md`.
 5. Stable document IDs, not translated titles, join English and Russian pages.
@@ -13862,7 +13821,7 @@ The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is d
 ### Stable routes and migration
 
 1. `Docs/documentation-manifest.json` owns versioning, localization, current source paths, stable document IDs, migration dispositions, and planned targets.
-2. `BuildTools/docs_site.py` generates `Docs/generated/document-routes.json`.
+2. `BuildTools/docs_site.py` generates `docs-manifest.json#/routing`.
 3. The route catalog records every public page's current URL, canonical future owner, planned English URL, Russian mirror path, migration state, and required legacy redirect.
 4. A future target shared by multiple legacy pages must have exactly one non-`replace` canonical owner. Other records are aliases that redirect to that owner.
 5. A move is not allowed until the old route remains as a durable Markdown pointer page. This preserves both GitHub repository reading and GitHub Pages/Jekyll navigation without depending on an unsupported redirect plugin or checked-in HTML.
@@ -13926,7 +13885,6 @@ The tests reject version/source-ref drift, malformed locale policy, missing READ
 ===== BEGIN DOCUMENT ai-documentation-evaluation =====
 Source: Docs/en/contributing/documentation/ai-evaluation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/ai-evaluation.html
-Content SHA-256: 4e4044edffb459fa461e84e869f99fc3935a1d581bf438880cc4066ac4c0edcf
 
 ---
 layout: default
@@ -14234,7 +14192,6 @@ are owned by [Documentation Snippet Validation](snippets.md).
 ===== BEGIN DOCUMENT documentation-maintenance =====
 Source: Docs/en/contributing/documentation/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/
-Content SHA-256: abbef0ec44dd122d8a544b89ef38217dc07ddeb75d219113e68328a03de8a96f
 
 ---
 layout: default
@@ -14247,6 +14204,8 @@ permalink: /Docs/en/contributing/documentation/
 # Documentation Maintenance
 
 > Engine-owned documentation. This page explains how to keep the FOnline engine documentation source-grounded, navigable, and separated from embedding-project content.
+
+`docs-manifest.json` is the shared generated metadata index. `docs_localization.py` owns `#/translation_status`; `docs_site.py` owns `#/routing`. Each writer preserves other sections and each check compares its own section. Run localization, site/search/routes, AI evaluation when affected, then AI delivery; the last step refreshes public document and artifact hashes. Hashes that attest reviewed Russian translations remain in their source comments. Do not edit generated sections by hand. The index and navigation declare `VERSION` as their version source, without storing a copy of its value.
 
 ## Purpose
 
@@ -14341,7 +14300,7 @@ Use this page when adding, verifying, or reorganizing engine docs. It is the mai
 - `Docs/translation-glossary.json`
 - `BuildTools/docs_localization.py`
 - `BuildTools/tests/test_docs_localization.py`
-- `Docs/generated/translation-status.json`
+- `docs-manifest.json#/translation_status`
 - `Docs/description-translations.ru.json`
 - `BuildTools/docs_description_translations.py`
 - `BuildTools/tests/test_docs_description_translations.py`
@@ -14366,7 +14325,7 @@ Use this page when adding, verifying, or reorganizing engine docs. It is the mai
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `llms.txt`
 - `llms-full.txt`
 - `docs-manifest.json`
@@ -14473,7 +14432,7 @@ Every master update, including documentation-only work, also follows the [mandat
 5. Add a validation checklist to deep subsystem docs.
 6. Review the owning structured contract when a generated surface changes. For native API changes, update `///@ ApiContract` metadata as needed and use `BuildTools/docs_api_diff.py` for symbol-level diagnosis. For project-facing CMake changes, update `BuildTools/cmake/ProjectInterface.json` and run the structural CMake test. For main BuildTools CLI changes, keep `create_parser()` authoritative. For helper-script CLI changes, keep the executable `create_parser()` authoritative, update `BuildTools/HelperCliInterface.json` when ownership/audience/invocation changes, and regenerate the helper reference. For native-extension role/hook/binding changes, update `BuildTools/NativeExtensionInterface.json`, run its structural test, and validate the minimal starter or affected project. For prototype parser/property/metadata changes, update `BuildTools/PrototypeFormatInterface.json` and [PrototypeFormat.md](../../../PrototypeFormat.md), regenerate its model/reference, run the focused test, and rebake an affected project. For map parser/baker/mapper/materialization changes, update `BuildTools/MapFormatInterface.json` and [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run focused map tests, and rebake an affected project. For `.fo3d` parser state/tokens, FBX/OBJ import, model layers, attachments, particles, transforms, materials, cuts, rendering flags, or model limits, update `BuildTools/ModelFormatInterface.json` and [Model Format](../../how-to/content/model-format.md), regenerate its model/reference, run focused model tests, and validate a visible client scene. For `.fotxt`, language normalization, prototype `$Text`, text script methods, or inline color tags, update `BuildTools/TextFormatInterface.json` and [Text and Localization](../../how-to/content/text-and-localization.md), regenerate its model/reference, run focused text tests, and rebake an affected project. For `.fofx`, effect state, shader resources, `EffectBaker`, backend bindings, `EffectManager`, script values, or `FO_EFFECT_*` limits, update `BuildTools/EffectFormatInterface.json` and [Effect Format](../../how-to/content/effect-format.md), regenerate its model/reference, run focused effect tests, and validate every affected backend/profile in a visible client scene. For `ImageBaker`, FOFRM, built-in image loaders, baked sprite records, default factory coverage, atlas upload, or image caches, update `BuildTools/ImageFormatInterface.json` and [Image And Sprite Formats](../../how-to/content/image-format.md), regenerate its model/reference, run focused image documentation/native tests, and rebake plus visibly inspect an affected project. For `FO_*_PARTICLES`, `.spark`/`.efkproj` parsing, `.spk`/`.efk` baking, backend composition, SPARK/Effekseer rendering, Mapper particle tools, particle caches, script methods, or model-particle links, update `BuildTools/ParticleFormatInterface.json` and [Particle Format And Runtime](../../how-to/content/particle-format.md), regenerate its model/reference, run focused particle documentation and baker/runtime tests, and rebake plus visibly inspect every affected backend and integration path. For `.fofnt`/`.fnt`, raw-copy selection, `FontManager`, slot/flag enums, bind-time scale, measurement, wrapping, or inline colors, update `BuildTools/FontFormatInterface.json` and [Font Formats And Text Layout](../../how-to/content/font-format.md), regenerate its model/reference, run focused font documentation and native tests, and rebake plus visibly inspect an affected project. For `AudioManager`, WAV/Ogg decoding, sound-name indexing, `Game.PlaySound`/`Game.PlayMusic`, audio settings, `AppAudio`, or AudioBaker delivery, update `BuildTools/AudioInterface.json` and [Audio.md](../../../Audio.md), regenerate its model/reference, run focused audio documentation and native tests, and rebake plus audibly inspect an affected project on every claimed platform. For `VideoClip`, Ogg/Theora decoding, fullscreen queue/input/music/drawing, `VideoPlayback`, script drawing, or raw-copy OGV delivery, update `BuildTools/VideoInterface.json` and [Video.md](../../../Video.md), regenerate its model/reference, run focused video documentation and native tests, and rebake plus visibly inspect an affected project on every claimed platform. For native GUI render/input primitives or their script exports, update [Frontend and Rendering](../../explanation/rendering/) and [GUI Integration Boundary](../../how-to/runtime/gui.md), regenerate the script API, run focused native tests, and validate every affected scripting backend and screen visibly in an embedding project; high-level libraries, formats, generators, and their references remain project-owned. For AiControl framing, methods, errors, common command fields, authorization, bounds, lifecycle, threat policy, reference client, or sample behavior, update `BuildTools/AiControlProtocol.json` and [AiControl Protocol](../../how-to/ai-control-protocol.md), regenerate the AiControl protocol plus helper-CLI references, run both focused AiControl suites, and validate every affected project-native/client/MCP path; project observations, game actions, administrator commands, and MCP namespaces stay project-owned. For model animation tokens, clip durations, aliases, baked duration metadata, or script lookup changes, also update [Model Animation](../../how-to/content/model-animation.md), run its focused source test, regenerate the native API/reference when needed, and rebake an affected project. For image-frame offsets, baked sprite offset transport, or client walk/run phase behavior, update [Sprite Root Motion](../../how-to/content/sprite-root-motion.md), run its focused source test and image-baker tests, and validate the affected locomotion in a visible client scene. For package declarations or payload behavior, update `BuildTools/PackageInterface.json` and run the structural package test. For the public example portfolio, shared repository files, source scaffold, compatibility boundaries, or publication state, update `Examples/PublicRepositories.json` and [PublicExampleRepositories.md](../../../PublicExampleRepositories.md), regenerate its model/reference, and validate affected external repositories in both Engine modes. Regenerate every affected runtime model, compare all seventeen generated contract domains with `BuildTools/docs_contract_diff.py`, regenerate the root contract index with `BuildTools/docs_public_api.py`, and complete [Contract Change Management](../contract-change-management.md) dispositions for baseline-public or model-contract breaks. Project-authored remote calls remain project-owned: bake both sides and regenerate/check their catalog with `BuildTools/docs_metadata.py`.
    For the current 3D subsystem, treat `ModelSourceLoader`, `ModelAnimationConverter`, `ModelAnimationData`, `ModelMeshData`, `ModelManager`, `ModelInformation`, `ModelInstance`, and `ModelAnimation` as co-owners with the two bakers. A parser, source, compatibility, mesh/rig wire, Ozz runtime, or ownership change updates both model guides and the structured model contract, runs the focused model/Ozz native suites, force-rebakes an affected project, proves the following incremental bake is clean, and validates the affected pose/composition visibly.
-7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `Docs/Site/Data/docs-site.json`, both `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, and `Docs/generated/document-routes.json` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
+7. Add or update the page entry in `Docs/documentation-manifest.json`, keep its stable ID and locale target authoritative, and assign each public current human top-level page to exactly one `site_delivery.navigation` group. Regenerate source-owned diagrams first with `BuildTools/docs_diagrams.py` whenever their manifest, owning prose, or source provenance changes. Recapture any source-owned screenshot whose recorded trigger fired, then regenerate `Docs/generated/screenshots.json` with `BuildTools/docs_screenshots.py`; changing only the catalog to preserve an obsolete image is not reconciliation. Regenerate `Docs/generated/snippets.json` next with `BuildTools/docs_snippets.py` whenever any scoped fence or snippet policy changes. Regenerate the canonical EN/RU public contract indexes and root legacy route after their seventeen source models and references. Regenerate translation status after these source assets; every existing Russian page must carry the new normalized English hash or the change fails. Then regenerate `Docs/Site/Data/docs-site.json`, both `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, and `docs-manifest.json#/routing` with `BuildTools/docs_site.py`. Regenerate `Docs/generated/ai-evaluation-report.json` with `BuildTools/docs_ai_eval.py` whenever an evaluation owner/evidence heading or English search behavior changes. Finally regenerate `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `BuildTools/docs_ai_delivery.py`. The public manifest hashes all diagram/screenshot/snippet/site/evaluation data; none of these files may be edited manually.
 8. Update the [documentation index](../../index.md) when a new user-facing page is added.
 9. Promote backlog status only after semantic source review, not just link checks.
 10. Add a dated section to the [verification report](https://github.com/cvet/fonline/blob/master/Docs/_meta/DocumentationVerificationReport.md) with scope, sources, fixes, and checks.
@@ -14487,7 +14446,7 @@ Do not treat a file rename as sufficient route migration:
 2. Move the canonical content to the manifest-owned English target and add the matching Russian target only when its reviewed translation exists.
 3. Retain the old Markdown path as a short durable pointer to the canonical page so GitHub and Jekyll both preserve the legacy URL.
 4. Mark the old record as a replacement/route alias and make the new record the one non-`replace` owner of the target.
-5. Regenerate `Docs/generated/document-routes.json`; the old route must appear in `legacy_redirects` and resolve to the expected canonical document ID.
+5. Regenerate `docs-manifest.json#/routing`; the old route must appear in `legacy_redirects` and resolve to the expected canonical document ID.
 6. Update navigation/search only for the canonical page. A legacy pointer is not a second searchable owner.
 7. Require `locale: en` / `locale: ru` front matter on the new pair, verify the stable-ID language switch, and prove that each locale index returns only its own canonical routes.
 8. Run the focused localization, site, AI-delivery, standalone validation, Jekyll artifact, and browser locale-interaction checks before removing any temporary migration state.
@@ -14555,14 +14514,14 @@ Generated-surface triggers:
 | `BuildTools/buildtools.py` validation profiles, required workflow platform matrices, platform detection, application construction, runtime smoke evidence, or uploaded validation artifacts | Update `BuildTools/SupportMatrix.json` and the [Support Matrix](../../reference/platforms/support-matrix.md), regenerate/check its model/page with `docs_support_matrix.py`, run the affected validation target, and keep build, smoke, package-fixture, source-capable, and project-qualified claims separate. |
 | `BuildTools/gameplay_test_runner.py`, its manifest schema, `Examples/GameplayTestHarness`, or an Engine example's process smoke | Update [Gameplay and Integration Testing](../../how-to/testing/gameplay-and-integration.md), `HelperCliInterface.json` when CLI syntax/ownership changes, and the affected example manifest; run `test_gameplay_test_runner.py`, `test_docs_gameplay_testing.py`, helper-CLI generation/tests, and at least one real baked headless server/client smoke. Keep project script registries, fixtures, content assertions, ports, backends, platform labs, and thresholds in the embedding project. |
 | `Profiling_*` configurations, `FO_TRACE_ENABLED`/`FO_TRACE_CATEGORIES`/`TRACY_*` wiring, `TracyVersion.hpp`, native/script zones, frame marks, plots, log messages, thread names, or allocation tracking | Update [Profiling](../../how-to/quality/profiling.md), run `test_docs_profiling.py`, build the affected on-demand/total profile, and record one isolated client or server capture as appropriate. A Tracy update also requires matching capture/export tools and one capture on each runtime side before changing protocol/version claims. |
-| Canonical English human prose, locale targets, glossary terms, or an existing Russian translation | Update the paired Russian page, retain identical fenced code, refresh only after review, regenerate `Docs/generated/translation-status.json` with `docs_localization.py`, then regenerate both locale search indexes and the route/navigation model with `docs_site.py`. Run focused parity, site, artifact, and browser locale-interaction tests. Complete manifest enforcement rejects every missing or stale page pair. |
+| Canonical English human prose, locale targets, glossary terms, or an existing Russian translation | Update the paired Russian page, retain identical fenced code, refresh only after review, regenerate `docs-manifest.json#/translation_status` with `docs_localization.py`, then regenerate both locale search indexes and the route/navigation model with `docs_site.py`. Run focused parity, site, artifact, and browser locale-interaction tests. Complete manifest enforcement rejects every missing or stale page pair. |
 | Reader-facing prose in any generated contract model, `Docs/description-translations.ru.json`, or a Russian generated reference | Keep canonical JSON and stable IDs unchanged, update the stable-locator translation and its exact source hash, regenerate the owning model/pages, then regenerate `Docs/generated/description-translation-status.json` with `docs_description_translations.py`. Run its focused test plus the owning generator test. Missing records remain explicit until semantic enforcement becomes `complete`; unknown, stale, position-based, type-changing, or code-changing records are defects. |
 | `BuildTools/DocumentationDiagrams.json`, a diagram-owning document, diagram source provenance, caption/alt text, or shared diagram CSS | Update the source manifest and owning prose together, regenerate/check `Docs/generated/diagrams.json` plus `Docs/assets/diagrams/*.svg` with `docs_diagrams.py`, run `test_docs_diagrams.py`, rebuild Jekyll, and inspect the retained desktop/mobile diagram screenshots. Do not edit generated SVG by hand or use a diagram as the only representation of a required procedure. |
 | `BuildTools/DocumentationScreenshots.json`, Mapper/SPARK/viewer UI, a capture fixture, screenshot-owning prose, image bytes, capture environment, or listed source provenance | Rebuild the exact recorded fixture, reproduce the interaction at the recorded viewport/backend, recapture without cosmetic edits, update the source manifest and owning alt/caption together, regenerate/check `Docs/generated/screenshots.json`, run `test_docs_screenshots.py`, rebuild Jekyll, and inspect the decoded desktop/mobile page. Never update only a hash to bless an unexplained visual difference. |
 | A fenced block in public/current/human Markdown or `BuildTools/SnippetPolicy.json` | Declare a supported language, update [Documentation Snippet Validation](snippets.md) when policy changes, regenerate/check `Docs/generated/snippets.json`, run `test_docs_snippets.py` plus `docs_snippets.py --check --external`, and run the semantic compile/bake/smoke owner for every claimed outcome. Untyped/ignored fences are not allowed. |
 | Export methods, native test files, or settings declarations | Regenerate/check `Docs/generated/source-inventory.json`. |
 | Any inventoried Markdown, its visibility/state/owner/target/sources, publication URL, versioning policy, locale policy, or canonical generated model path | Update `Docs/documentation-manifest.json` as needed, regenerate/check snippets first when fenced content/scope changed, site delivery next, AI evaluation after search when affected, then root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` with `docs_ai_delivery.py`. A context-budget failure requires an explicit manifest/policy review, never truncation. |
-| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
+| Any public Markdown title/path/state/target, README locale pair, `site_delivery` navigation/routing/search/browser policy, Jekyll include/exclude rule, layout, or site asset | Regenerate/check `Docs/Site/Data/docs-site.json`, both locale search indexes, and `docs-manifest.json#/routing` with `docs_site.py`; run the focused source/layout/artifact/browser tests, `docs_site_artifact.py`, and the pinned `docs-browser` audit against the same completed `_site` tree. Route collisions, missing rendered pages/endpoints, wrong `html lang`, broken language pairs, cross-locale search results, browser runtime/resource failures, WCAG violations, keyboard/focus regressions, page overflow, ambiguous replacement owners, or a per-locale search-budget failure require an explicit policy fix, never silent document removal or a lowered gate. |
 | `Docs/ai-evaluation.json`, a task-owning stable ID, an answer-evidence heading/term, compact-search tokenization/ranking, or the current source ref | Update [AI Documentation Evaluation](ai-evaluation.md), regenerate/check `Docs/generated/ai-evaluation-report.json` with `docs_ai_eval.py` after `docs_site.py`, run its focused test, and record model-family findings separately. Never add irrelevant keywords or lower a threshold merely to make a rank green. |
 | Metadata baker or remote-call format/runtime | Update [Remote Calls](../../reference/scripting/remote-calls.md); an embedding project must rebake both sides and regenerate its project-owned remote-call catalog. |
 | Module init, callback attributes, `Yield`, server script scheduling/synchronization, mutable-global policy, or entity callback teardown | Update [Script Lifecycle and Concurrency](../../how-to/scripting/lifecycle-and-concurrency.md), run `test_docs_script_lifecycle.py`, and run the narrow source/runtime tests named by the guide. |
@@ -14631,7 +14590,7 @@ Planned future docs should be written as plain prose unless the checker intentio
 
 ## AI maintainer notes
 
-[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `Docs/Site/Data/docs-site.json`, both locale search indexes, and `Docs/generated/document-routes.json` are the matching human navigation/search/routing projection. All seven must stay derived from the same manifest/corpus.
+[AGENTS.md](../../../../AGENTS.md) is the AI-maintainer entry point. It routes AI agents to human docs and records repository conventions such as not committing/pushing without explicit instruction. Keep it concise and navigational; put detailed human-readable procedures in `Docs/`. Root `llms.txt`, `llms-full.txt`, and `docs-manifest.json` are generated retrieval routes for external agents; `Docs/Site/Data/docs-site.json`, both locale search indexes, and `docs-manifest.json#/routing` are the matching human navigation/search/routing projection. All six must stay derived from the same manifest/corpus.
 
 If a future AI agent continues this roadmap, it should re-anchor from git status, the backlog, and the verification report before editing. Context from chat is secondary to the repository state.
 
@@ -14652,7 +14611,6 @@ If a future AI agent continues this roadmap, it should re-anchor from git status
 ===== BEGIN DOCUMENT documentation-snippet-validation =====
 Source: Docs/en/contributing/documentation/snippets.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/snippets.html
-Content SHA-256: bdf4d5a6636dac970558ce75253cf03f37099dad96708e36a9e9722393848442
 
 ---
 layout: default
@@ -14788,7 +14746,6 @@ content.
 ===== BEGIN DOCUMENT documentation-translation-workflow =====
 Source: Docs/en/contributing/documentation/translation.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/documentation/translation.html
-Content SHA-256: 6bf75b074044b6df8072cbdffa1b889b2c7a856396b2002a3f726d3bb547a59c
 
 ---
 layout: default
@@ -14801,6 +14758,8 @@ permalink: /Docs/en/contributing/documentation/translation.html
 # Documentation Translation Workflow
 
 FOnline documentation uses English as the canonical source and Russian as a whole-document mirror. This guide defines the translation metadata, glossary, freshness gate, link policy, and production transition.
+
+`docs-manifest.json` is the shared generated metadata index. `docs_localization.py` owns `#/translation_status`; `docs_site.py` owns `#/routing`. Each writer preserves other sections and each check compares its own section. Run localization, site/search/routes, AI evaluation when affected, then AI delivery; the last step refreshes public document and artifact hashes. Hashes that attest reviewed Russian translations remain in their source comments. Do not edit generated sections by hand. The index and navigation declare `VERSION` as their version source, without storing a copy of its value.
 
 ## Current migration state
 
@@ -14820,7 +14779,7 @@ hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
 without its Russian counterpart fails validation immediately.
 
-The current machine report is [translation-status.json](../../../generated/translation-status.json).
+The current machine report is [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status).
 
 This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
@@ -14859,7 +14818,7 @@ Stable document IDs join languages. Translated titles and headings never define 
 
 ## Translate one document
 
-1. Find the record in `Docs/generated/translation-status.json`.
+1. Find the record in `docs-manifest.json#/translation_status`.
 2. Read the owning sources and canonical English page; do not translate stale behavior.
 3. Use `Docs/translation-glossary.json` for shared terminology.
 4. Create the exact `russian_path`.
@@ -15042,7 +15001,6 @@ After launch, Engine and embedding-project updates must include translation impa
 ===== BEGIN DOCUMENT source-tree =====
 Source: Docs/en/contributing/source-tree/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/source-tree/
-Content SHA-256: 8da1612321aedc56e3ace92d12cb55ed86cb9f6a9e2f3c759fada129d3ae3880
 
 ---
 layout: default
@@ -15163,7 +15121,6 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 ===== BEGIN DOCUMENT third-party-maintenance =====
 Source: Docs/en/contributing/third-party/index.md
 Canonical URL: https://fonline.ru/Docs/en/contributing/third-party/
-Content SHA-256: 98088cac30033f30c2788fbaf1c245356590b2bd29ce4ad6ed77ad568f2e5bd7
 
 ---
 layout: default
@@ -15376,7 +15333,6 @@ delta small enough that the next update can reapply it by inspection.
 ===== BEGIN DOCUMENT networking =====
 Source: Docs/en/explanation/authority-and-networking/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/authority-and-networking/
-Content SHA-256: 569e96048a420e0b788a66f30ba9eddc1e5820b5e0d8b747a6526c50eefb6930
 
 ---
 layout: default
@@ -15860,7 +15816,6 @@ Relevant tests include:
 ===== BEGIN DOCUMENT baking-pipeline =====
 Source: Docs/en/explanation/content-pipeline/baking.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/content-pipeline/baking.html
-Content SHA-256: ba4571caecfd6a506f3a3eec77f5f697ff98f4fc01c768f1249afb348a004ed1
 
 ---
 layout: default
@@ -17051,7 +17006,6 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 ===== BEGIN DOCUMENT entity-model =====
 Source: Docs/en/explanation/entity-and-property-model/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/entity-and-property-model/
-Content SHA-256: 820e9a08d863ab37e7cec613fb606ae55542d6b4b9029a51b14a3d0125b015bb
 
 ---
 layout: default
@@ -17321,7 +17275,6 @@ Relevant tests include:
 ===== BEGIN DOCUMENT maps-movement-geometry =====
 Source: Docs/en/explanation/maps-and-movement.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/maps-and-movement.html
-Content SHA-256: c49572433e20fef672e77b65527a2fef26989be21fdd6160c42219fdcf34d077
 
 ---
 layout: default
@@ -17716,7 +17669,6 @@ Relevant tests include:
 ===== BEGIN DOCUMENT persistence =====
 Source: Docs/en/explanation/persistence/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/persistence/
-Content SHA-256: 863e10c06da05c2ff1f23f966df65dbaf8bc3bb9c4a7a4d86d2c1a2c65a1db86
 
 ---
 layout: default
@@ -17938,7 +17890,6 @@ Relevant tests include:
 ===== BEGIN DOCUMENT frontend-rendering =====
 Source: Docs/en/explanation/rendering/index.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/rendering/
-Content SHA-256: 229b05841a0feb861598f1e336cd90876e27ab03dadb7f236a362cfad627d49b
 
 ---
 layout: default
@@ -18972,7 +18923,6 @@ When changing frontend or rendering behavior, verify:
 ===== BEGIN DOCUMENT client-updater =====
 Source: Docs/en/explanation/runtime/client-updater.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client-updater.html
-Content SHA-256: d8506856b4f6171d0d4b195c005860f97f5c1ab766fb734d64413b27ad0276ea
 
 ---
 layout: default
@@ -19628,7 +19578,6 @@ Local validation steps:
 ===== BEGIN DOCUMENT client-runtime =====
 Source: Docs/en/explanation/runtime/client.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/client.html
-Content SHA-256: 0b372f256332543a89984f3e705d599220d609a7bd5427d58fdd32e81ea9ea20
 
 ---
 layout: default
@@ -20233,7 +20182,6 @@ When changing client runtime code, verify:
 ===== BEGIN DOCUMENT server-runtime =====
 Source: Docs/en/explanation/runtime/server.md
 Canonical URL: https://fonline.ru/Docs/en/explanation/runtime/server.html
-Content SHA-256: ca839e139b0a3dcaf352b4e17bb715806274549d3116030d4fb9d279af5b908b
 
 ---
 layout: default
@@ -20739,7 +20687,6 @@ When changing server runtime behavior, verify:
 ===== BEGIN DOCUMENT public-example-repositories =====
 Source: Docs/en/how-to/build/public-example-repositories.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/build/public-example-repositories.html
-Content SHA-256: faae854133e244465ed0758c64b7d03a90bbe342ca2a9eccf17247ffd699e1cc
 
 ---
 layout: default
@@ -21009,7 +20956,6 @@ The generated model is the compact AI-readable portfolio. This page owns rationa
 ===== BEGIN DOCUMENT model-animation =====
 Source: Docs/en/how-to/content/model-animation.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/model-animation.html
-Content SHA-256: 87210fa5e304b04865797e03928507322f11ac2dd143fea378d35c4e81a41886
 
 ---
 layout: default
@@ -21251,7 +21197,6 @@ After changing `.fo3d` animation declarations, enum metadata, model sources, mes
 ===== BEGIN DOCUMENT sprite-root-motion =====
 Source: Docs/en/how-to/content/sprite-root-motion.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/content/sprite-root-motion.html
-Content SHA-256: 04ead23529b85d79eb2294313cd3aed667fc46b8facdd37859f67624cddd09a5
 
 ---
 layout: default
@@ -21536,7 +21481,6 @@ The current native suite does not expose a focused `CritterHexView` root-motion 
 ===== BEGIN DOCUMENT android-debugging =====
 Source: Docs/en/how-to/platforms/android-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/android-debugging.html
-Content SHA-256: ab2804a6ebebe324a9c21dd00b9ff52063f0d90269a3adf101210d900ebec66d
 
 ---
 layout: default
@@ -21943,7 +21887,6 @@ For an Android change, also run the narrowest affected native validation target 
 ===== BEGIN DOCUMENT web-debugging =====
 Source: Docs/en/how-to/platforms/web-debugging.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/platforms/web-debugging.html
-Content SHA-256: ac9a7601e53b44458de39b4d111158f28dd601c03a1a1e6abe355c7ca38d6828
 
 ---
 layout: default
@@ -22315,7 +22258,6 @@ Run `python validate.py --web-runtime` from `Examples/ContentShowcase` for the o
 ===== BEGIN DOCUMENT profiling =====
 Source: Docs/en/how-to/quality/profiling.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/quality/profiling.html
-Content SHA-256: 48df563bb4623c9b5ac88b45d8c6bdeb169aaa6e339d259bb8e5a346f342cd16
 
 ---
 layout: default
@@ -22826,7 +22768,6 @@ documented version or protocol claim.
 ===== BEGIN DOCUMENT viewer-tools =====
 Source: Docs/en/how-to/tools/animation-particle-viewers.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/animation-particle-viewers.html
-Content SHA-256: 2ccb082eeb8b34a1e0940b9911fd8b71bff462cf34991542439e94aaa81c81d8
 
 ---
 layout: default
@@ -23231,7 +23172,6 @@ owning model tests.
 ===== BEGIN DOCUMENT mapper-tools =====
 Source: Docs/en/how-to/tools/mapper.md
 Canonical URL: https://fonline.ru/Docs/en/how-to/tools/mapper.html
-Content SHA-256: 43fab870b4af8d1124ca2a8665de15b9a76612c99b4516515ba46839c271c90a
 
 ---
 layout: default
@@ -23552,7 +23492,6 @@ Use [Script Methods Map](../../reference/script-api/method-ownership.md) as the 
 ===== BEGIN DOCUMENT generated-ai-control-protocol-index =====
 Source: Docs/en/reference/ai-control-protocol/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/ai-control-protocol/
-Content SHA-256: ab4ad1691fff340a296176f4fad47fb4e56d9e7aa069f43e170531a5e0ab2643
 
 ---
 title: Generated AiControl Protocol Reference
@@ -23614,7 +23553,6 @@ Excluded:
 ===== BEGIN DOCUMENT applications-entry-points =====
 Source: Docs/en/reference/applications.md
 Canonical URL: https://fonline.ru/Docs/en/reference/applications.html
-Content SHA-256: 4c94d7f50df1bbd67bee33dc0baac378598eb461680d78be58c9f761dfe970d4
 
 ---
 layout: default
@@ -23765,7 +23703,6 @@ When adding or changing an application entry point:
 ===== BEGIN DOCUMENT generated-audio-index =====
 Source: Docs/en/reference/audio/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/audio/
-Content SHA-256: afb33398c17989bea54e62d73a4a485a43f36b9cc14df5259d834770d31532f1
 
 ---
 title: Generated Audio Reference
@@ -23826,7 +23763,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-cli-index =====
 Source: Docs/en/reference/buildtools/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/buildtools/
-Content SHA-256: 37837843a72c7377ea3c89a8b0b65794ab4c5647ddeac1c7b99f6ef8580340d2
 
 ---
 title: Generated BuildTools CLI Reference
@@ -23910,7 +23846,6 @@ Excluded surfaces remain implementation details until an owning parser-backed co
 ===== BEGIN DOCUMENT buildtools-pipeline =====
 Source: Docs/en/reference/cmake-and-buildtools/pipeline.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake-and-buildtools/pipeline.html
-Content SHA-256: d0262d87dd477ffcd06b0fa9c7b06cfb117460ad4a8e3bb93cb0c5030151d73d
 
 ---
 layout: default
@@ -24276,7 +24211,6 @@ For BuildTools changes:
 ===== BEGIN DOCUMENT generated-cmake-index =====
 Source: Docs/en/reference/cmake/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/cmake/
-Content SHA-256: ccd81df1ef1b149c42f05345a67b3714bb6a5837479c5d92df5fac680973b7b9
 
 ---
 title: Generated CMake Project Interface
@@ -24341,7 +24275,6 @@ Package declarations and payloads are documented by the separate [package interf
 ===== BEGIN DOCUMENT generated-effect-format-index =====
 Source: Docs/en/reference/effect-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/effect-format/
-Content SHA-256: 83d495107a956d39ba98efe3f779f13d042d451f3b4349a768c924991e19f49a
 
 ---
 title: Generated Effect Format Reference
@@ -24398,7 +24331,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-font-format-index =====
 Source: Docs/en/reference/font-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/font-format/
-Content SHA-256: 24e8595468791e361c68b28977f13457590df37506c0da4e14cd132b72962e1b
 
 ---
 title: Generated Font Format Reference
@@ -24464,7 +24396,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-helper-cli-index =====
 Source: Docs/en/reference/helper-cli/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/helper-cli/
-Content SHA-256: 1b419a9cc05ba04d11c385c0be772994ac69d02304f6da587e7ddb152257f2d6
 
 ---
 title: Generated Helper CLI Reference
@@ -24524,7 +24455,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-image-format-index =====
 Source: Docs/en/reference/image-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/image-format/
-Content SHA-256: 5d7dbce46962f897ffa591707e1c4cce1d19e5c8d903f1e3a89f3f102093eeaa
 
 ---
 title: Generated Image Format Reference
@@ -24584,7 +24514,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-map-format-index =====
 Source: Docs/en/reference/map-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/map-format/
-Content SHA-256: afb5fb35f28e070ff984888046727a3d966e219ab8d471c99bf0a4ff29055047
 
 ---
 title: Generated Map Format Reference
@@ -24640,7 +24569,6 @@ Embedding projects must document their added metadata, prototypes, map catalog, 
 ===== BEGIN DOCUMENT generated-api-metadata =====
 Source: Docs/en/reference/metadata/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/metadata/
-Content SHA-256: d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd
 
 ---
 layout: default
@@ -24655,6 +24583,8 @@ permalink: /Docs/en/reference/metadata/
 This document explains the engine code-generation and metadata-registration flow. Use it when changing generated source, metadata annotations, property definitions, or script-visible API contracts.
 
 For the task-oriented regeneration order across configure-time codegen, scripts, baked resources, metadata, documentation, site, and AI artifacts, use [Generated Content Workflow](../../how-to/build/generated-content.md).
+
+`docs-manifest.json` is the shared generated metadata index. `docs_localization.py` owns `#/translation_status`; `docs_site.py` owns `#/routing`. Each writer preserves other sections and each check compares its own section. Run localization, site/search/routes, AI evaluation when affected, then AI delivery; the last step refreshes public document and artifact hashes. Hashes that attest reviewed Russian translations remain in their source comments. Do not edit generated sections by hand. The index and navigation declare `VERSION` as their version source, without storing a copy of its value.
 
 ## Ownership model
 
@@ -24814,7 +24744,7 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/generated/snippets.json`
 - `Docs/generated/support-matrix.json`
 - `Docs/en/reference/platforms/generated-matrix.md`
-- `Docs/generated/translation-status.json`
+- `docs-manifest.json#/translation_status`
 - `Docs/generated/external-project-evidence.json`
 - `Docs/generated/external-project-evidence/index.md`
 - `Docs/generated/diagrams.json`
@@ -24824,7 +24754,7 @@ Generated files are build artifacts. Document the source annotations, templates,
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
 - `Source/Common/MetadataRegistration.template.cpp`
@@ -25415,7 +25345,7 @@ validation remain authoritative.
 
 `BuildTools/SupportMatrix.json` is the reviewed source for current host, target, architecture, compiler, application, and evidence profiles. `BuildTools/docs_support_matrix.py` validates referenced BuildTools targets and workflow lanes, then emits [generated/support-matrix.json](../../../generated/support-matrix.json) and the [generated support matrix](../platforms/generated-matrix.md). The model distinguishes source capability from a required build, process smoke, and embedding-project or device qualification; it is not a claim that every combinatorial target has been run.
 
-`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [generated/translation-status.json](../../../generated/translation-status.json). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
+`BuildTools/docs_localization.py` projects the canonical human-document inventory, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes, and existing locale counterparts into [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status). Existing translations must carry the expected document ID, locale, source path/hash, byte-identical fenced code, and language-preserving internal links. Missing counterparts are reportable during the pre-production migration and fail when `--enforce-complete` is enabled.
 
 Regenerate and verify from the engine root:
 
@@ -25456,7 +25386,7 @@ The public files are discovery/transport artifacts, not contract owners. API sta
 
 ## Documentation site data
 
-Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `Docs/generated/document-routes.json` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
+Human site navigation, search, version/locale identity, and route migration use the same manifest records without becoming generated API domains. `BuildTools/docs_site.py` resolves stable document IDs into `Docs/Site/Data/docs-site.json` for Jekyll/Liquid, tokenizes public current human Markdown into independent bounded English and Russian browser-search indexes, and writes `docs-manifest.json#/routing` for current URLs, canonical future owners, available locale pairs, and required legacy redirects.
 
 The navigation model requires exact coverage of top-level reader pages while keeping generated detail pages behind their generated indexes. Search includes those detail pages, weights titles and headings above body tokens, preserves technical identifiers, and stores only compact postings plus result metadata. It does not copy full Markdown bodies into the browser artifact or create a hosted search contract.
 
@@ -25757,7 +25687,6 @@ If a generated script API change is involved, inspect both AngelScript and Manag
 ===== BEGIN DOCUMENT generated-model-format-index =====
 Source: Docs/en/reference/model-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/model-format/
-Content SHA-256: f0f6c1c314a857dcb25f937e9a9e8afd7975c027a7d1bf0c33994db8bc026fda
 
 ---
 title: Generated Model Format Reference
@@ -25813,7 +25742,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-native-extension-index =====
 Source: Docs/en/reference/native-extension/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native-extension/
-Content SHA-256: 93cc25675e4fdd3d6f9e2ae8ee18d8371a3d45e6bec70eed110460a8eca682af
 
 ---
 title: Generated Native Extension Interface
@@ -25866,7 +25794,6 @@ Excluded:
 ===== BEGIN DOCUMENT native-essentials =====
 Source: Docs/en/reference/native/essentials.md
 Canonical URL: https://fonline.ru/Docs/en/reference/native/essentials.html
-Content SHA-256: af288529c00cb552626535a9ccb17ef6b05698f16d8bef343a6b473c7268f7af
 
 ---
 layout: default
@@ -26314,7 +26241,6 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 ===== BEGIN DOCUMENT generated-package-index =====
 Source: Docs/en/reference/packages/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/packages/
-Content SHA-256: 9d4a376f4179a3256c834767349b2b4d879b42e6108f025976005eb7d59da4cc
 
 ---
 title: Generated Package Interface
@@ -26381,7 +26307,6 @@ Excluded from this slice:
 ===== BEGIN DOCUMENT generated-particle-format-index =====
 Source: Docs/en/reference/particle-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/particle-format/
-Content SHA-256: eebd60ceb678da501c7035fb17c17c831eaebe7d405501782fe68a1521afebd3
 
 ---
 title: Generated Particle Format Reference
@@ -26444,7 +26369,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-prototype-format-index =====
 Source: Docs/en/reference/prototype-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/prototype-format/
-Content SHA-256: 7d123dca913c6ff70d3a69fee12e0796128a346bc8ae0e6f546a5c59d05bcde1
 
 ---
 title: Generated Prototype Format Reference
@@ -26500,7 +26424,6 @@ Embedding projects must generate or document their additional entity declaration
 ===== BEGIN DOCUMENT generated-public-examples-index =====
 Source: Docs/en/reference/public-examples/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/public-examples/
-Content SHA-256: 0a939c4cab0d9aa503b6b844df3a87521cda024272d3750b31d9ee0ba2109ea4
 
 ---
 title: Generated Public Example Repository Registry
@@ -26681,7 +26604,6 @@ Exit gate: The tagged sample demonstrates one complete native extension path wit
 ===== BEGIN DOCUMENT resource-pack-format =====
 Source: Docs/en/reference/resource-pack-format.md
 Canonical URL: https://fonline.ru/Docs/en/reference/resource-pack-format.html
-Content SHA-256: 44fcd41b22a878e0e53490d7085648317acf5c8791201c0f2e38487802543422
 
 ---
 layout: default
@@ -26931,7 +26853,6 @@ interrupted-footer recovery, resumed appends and pair verification. `Test_Resour
 ===== BEGIN DOCUMENT generated-api-index =====
 Source: Docs/en/reference/script-api/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/script-api/
-Content SHA-256: f272765f36bcf89ae52ce6ae0495bd9feaebac14f2cf65efa554177622662215
 
 ---
 title: Generated API Reference
@@ -27012,7 +26933,6 @@ Source links follow the repository's `master` branch. The path and line stored i
 ===== BEGIN DOCUMENT remote-calls =====
 Source: Docs/en/reference/scripting/remote-calls.md
 Canonical URL: https://fonline.ru/Docs/en/reference/scripting/remote-calls.html
-Content SHA-256: 0296d8b306436a22e69b8791166421dd04b7ff33a69a3f2fd0d351b31c7659ab
 
 ---
 layout: default
@@ -27316,7 +27236,6 @@ The engine-owned AngelScript [minimal project](../../../../Examples/MinimalProje
 ===== BEGIN DOCUMENT configuration-data-sources =====
 Source: Docs/en/reference/settings/configuration-and-data-sources.md
 Canonical URL: https://fonline.ru/Docs/en/reference/settings/configuration-and-data-sources.html
-Content SHA-256: d4bde46f2b7f5f5ad0d109b9c78557be91c918b8d302c07c882a69357f2886ab
 
 ---
 layout: default
@@ -27591,7 +27510,6 @@ Related consumers are covered by resource, client, server, script, and baker tes
 ===== BEGIN DOCUMENT generated-text-format-index =====
 Source: Docs/en/reference/text-format/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/text-format/
-Content SHA-256: 6772a6581beada3f24dc0d9d0e059516007061d759143346e193e998c3bf4cc0
 
 ---
 title: Generated Text And Localization Reference
@@ -27648,7 +27566,6 @@ Excluded:
 ===== BEGIN DOCUMENT generated-video-index =====
 Source: Docs/en/reference/video/index.md
 Canonical URL: https://fonline.ru/Docs/en/reference/video/
-Content SHA-256: 8c6d437a84c8f406e7002daea0041ebb5b5239d433c88aff104e87e47333f1b2
 
 ---
 title: Generated Video Reference
@@ -27712,7 +27629,6 @@ Excluded:
 ===== BEGIN DOCUMENT debugging =====
 Source: Docs/en/troubleshooting/debugging.md
 Canonical URL: https://fonline.ru/Docs/en/troubleshooting/debugging.html
-Content SHA-256: a7f99685e50deec965b506089ceb1cc276dfdae69ddd41dc4c7e65cbde56150e
 
 ---
 layout: default
@@ -28269,7 +28185,6 @@ Update the canonical English and Russian pages together, refresh the normalized 
 ===== BEGIN DOCUMENT legacy-tutorial-entry =====
 Source: Docs/en/tutorials/first-project.md
 Canonical URL: https://fonline.ru/Docs/en/tutorials/first-project.html
-Content SHA-256: b136193f90ed0307bac291d22ffd2e28c37645d533293a2df113015126567758
 
 ---
 layout: default
@@ -28382,7 +28297,6 @@ the scaffold into a separate repository, and
 ===== BEGIN DOCUMENT ai-control-sample-readme =====
 Source: Examples/AiControlSample/README.md
 Canonical URL: https://fonline.ru/Examples/AiControlSample/README.html
-Content SHA-256: d11c363a4d4954befcc3510e2435a5b3191e269e96b50533e77624835ccd273f
 
 ---
 layout: default
@@ -28443,7 +28357,6 @@ clients, and test the resulting native/script integration separately.
 ===== BEGIN DOCUMENT content-showcase-readme =====
 Source: Examples/ContentShowcase/README.md
 Canonical URL: https://fonline.ru/Examples/ContentShowcase/README.html
-Content SHA-256: 261a3d5784dcc49490fcace8099a099f907244f11015c869dcac90fb776dad34
 
 ---
 permalink: /Examples/ContentShowcase/README.html
@@ -28668,7 +28581,6 @@ is intentional.
 ===== BEGIN DOCUMENT minimal-multiplayer-readme =====
 Source: Examples/MinimalMultiplayer/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalMultiplayer/README.html
-Content SHA-256: ad90b82633801cdc08ce4ac47dcd8ca34b2497da81a3d371b7aa12c004d6258d
 
 ---
 permalink: /Examples/MinimalMultiplayer/README.html
@@ -28873,7 +28785,6 @@ requires its complete saved settings contract.
 ===== BEGIN DOCUMENT minimal-project-readme =====
 Source: Examples/MinimalProject/README.md
 Canonical URL: https://fonline.ru/Examples/MinimalProject/README.html
-Content SHA-256: 799fea6770f5d2181da542f6fb7487ba088c594b8c22e9b636c4dbcce6e13631
 
 ---
 permalink: /Examples/MinimalProject/README.html
@@ -28964,7 +28875,6 @@ The tested first lesson is
 ===== BEGIN DOCUMENT native-extension-sample-readme =====
 Source: Examples/NativeExtensionSample/README.md
 Canonical URL: https://fonline.ru/Examples/NativeExtensionSample/README.html
-Content SHA-256: 2b20525120004086efe0011fdd84e8deba8279546849a9e4907a715309b335dc
 
 ---
 permalink: /Examples/NativeExtensionSample/README.html
@@ -29042,7 +28952,6 @@ The sample contains no distributable assets, runtime libraries, credentials, or 
 ===== BEGIN DOCUMENT source-readme =====
 Source: Source/README.md
 Canonical URL: https://fonline.ru/Source/README.html
-Content SHA-256: f386f4c9f5f293ab0378eb7f6327993123f09f0144e488d7c85136f00e26618a
 
 ---
 layout: default
@@ -29074,7 +28983,6 @@ ownership, see [Source Tree](../Docs/en/contributing/source-tree/),
 ===== BEGIN DOCUMENT unit-tests-readme =====
 Source: Source/Tests/README.md
 Canonical URL: https://fonline.ru/Source/Tests/README.html
-Content SHA-256: 613e439585b1586d9f324d1b2849247fcddb7c87359756a1076026e92fde29fc
 
 ---
 layout: default

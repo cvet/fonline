@@ -5,7 +5,7 @@
 Canonical site: https://fonline.ru
 Document links target source-ref-pinned clean Markdown; each entry also links its canonical HTML page.
 Current documentation: `master` rolling branch.
-Engine version: `2026.1.14-dev` (CalVer from VERSION).
+Engine version source: https://fonline.ru/VERSION (CalVer; read for the current value).
 Machine-readable document index: https://fonline.ru/docs-manifest.json
 Bounded full-context bundle: https://fonline.ru/llms-full.txt
 
@@ -235,7 +235,6 @@ Bounded full-context bundle: https://fonline.ru/llms-full.txt
 - [cmake_reference](https://fonline.ru/Docs/generated/cmake.json): canonical generated JSON at `Docs/generated/cmake.json`.
 - [description_translation_status](https://fonline.ru/Docs/generated/description-translation-status.json): canonical generated JSON at `Docs/generated/description-translation-status.json`.
 - [documentation_diagrams](https://fonline.ru/Docs/generated/diagrams.json): canonical generated JSON at `Docs/generated/diagrams.json`.
-- [site-document-routes](https://fonline.ru/Docs/generated/document-routes.json): canonical generated JSON at `Docs/generated/document-routes.json`.
 - [effect_format_reference](https://fonline.ru/Docs/generated/effect-format.json): canonical generated JSON at `Docs/generated/effect-format.json`.
 - [font_format_reference](https://fonline.ru/Docs/generated/font-format.json): canonical generated JSON at `Docs/generated/font-format.json`.
 - [helper_cli_reference](https://fonline.ru/Docs/generated/helper-cli.json): canonical generated JSON at `Docs/generated/helper-cli.json`.
@@ -252,6 +251,5 @@ Bounded full-context bundle: https://fonline.ru/llms-full.txt
 - [source_inventory](https://fonline.ru/Docs/generated/source-inventory.json): canonical generated JSON at `Docs/generated/source-inventory.json`.
 - [support_matrix](https://fonline.ru/Docs/generated/support-matrix.json): canonical generated JSON at `Docs/generated/support-matrix.json`.
 - [text_format_reference](https://fonline.ru/Docs/generated/text-format.json): canonical generated JSON at `Docs/generated/text-format.json`.
-- [localization_status](https://fonline.ru/Docs/generated/translation-status.json): canonical generated JSON at `Docs/generated/translation-status.json`.
 - [video_reference](https://fonline.ru/Docs/generated/video.json): canonical generated JSON at `Docs/generated/video.json`.
 - [public documentation manifest](https://fonline.ru/docs-manifest.json): public paths, stable IDs, provenance, URLs, and content hashes.

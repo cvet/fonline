@@ -5,7 +5,7 @@ import datetime
 import subprocess
 from pathlib import Path
 
-from engine_version import (CHANGELOG_PATHS, RELEASE_RE, parse_engine_version,
+from engine_version import (CHANGELOG_PATHS, changelog_releases, parse_engine_version,
                             read_engine_version, validate_changelog_texts,
                             validate_changelogs, validate_transition)
 
@@ -39,11 +39,11 @@ def validate_committed_update(root: Path, baseline: str, target: str, branch: st
     if previous != '2022.1.0.wip':
         for path, text in zip(CHANGELOG_PATHS, texts, strict=True):
             old_text = git(root, 'show', f'{baseline}:{path}', strip=False)
-            for old_heading in RELEASE_RE.finditer(old_text):
-                if old_heading[1] not in [version for version, _ in RELEASE_RE.findall(text)]:
-                    raise ValueError(f'{target}: missing preceding change notes {old_heading[1]} in {path}')
+            for old_version, _ in changelog_releases(previous, old_text):
+                if old_version not in [version for version, _ in changelog_releases(current, text)]:
+                    raise ValueError(f'{target}: missing preceding change notes {old_version} in {path}')
     if branch == 'master':
-        notes_date = next(date_text for version, date_text in RELEASE_RE.findall(texts[0]) if version == current)
+        notes_date = next(date_text for version, date_text in changelog_releases(current, texts[0]) if version == current)
         if notes_date != date.isoformat():
             raise ValueError(f'{target}: master change notes must carry its UTC commit date {date}')
     validate_promotion_paths(previous, current, git(root, 'diff', '--name-only', baseline, target).splitlines())

@@ -63,6 +63,11 @@ def read_engine_revision(root: Path) -> str:
     return revision + ("-dirty" if dirty else "")
 
 
+def changelog_releases(version: str, text: str) -> list[tuple[str, str]]:
+    return [(version if release == "Current" else release, date)
+            for release, date in RELEASE_RE.findall(text)]
+
+
 def validate_changelog_texts(version: str, texts: list[str]) -> None:
     catalogs = []
     for relative_path, text, migration in zip(CHANGELOG_PATHS, texts, ('Migration', 'Миграция'), strict=True):
@@ -73,8 +78,12 @@ def validate_changelog_texts(version: str, texts: list[str]) -> None:
         for candidate in re.findall(r'^## [0-9].*$', text, re.MULTILINE):
             if not RELEASE_RE.fullmatch(candidate):
                 raise ValueError(f'Malformed dated version heading: {relative_path}: {candidate}')
-        for heading in headings:
+        for index, heading in enumerate(headings):
             release, date_text = heading.groups()
+            if release == "Current":
+                if index != 0:
+                    raise ValueError(f"Current must be the first dated changelog entry: {relative_path}")
+                release = version
             parsed = parse_engine_version(release)
             date = datetime.date.fromisoformat(date_text)
             if parsed.suffix == '-dev' and parsed.year != date.year:

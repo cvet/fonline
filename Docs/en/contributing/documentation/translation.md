@@ -10,6 +10,8 @@ permalink: /Docs/en/contributing/documentation/translation.html
 
 FOnline documentation uses English as the canonical source and Russian as a whole-document mirror. This guide defines the translation metadata, glossary, freshness gate, link policy, and production transition.
 
+`docs-manifest.json` is the shared generated metadata index. `docs_localization.py` owns `#/translation_status`; `docs_site.py` owns `#/routing`. Each writer preserves other sections and each check compares its own section. Run localization, site/search/routes, AI evaluation when affected, then AI delivery; the last step refreshes public document and artifact hashes. Hashes that attest reviewed Russian translations remain in their source comments. Do not edit generated sections by hand. The index and navigation declare `VERSION` as their version source, without storing a copy of its value.
+
 ## Current migration state
 
 The locale migration is complete. Canonical human documentation lives under
@@ -28,7 +30,7 @@ hash-current, code-preserving, and correctly paired. The generated report is
 the authoritative inventory; adding a new translation-required English page
 without its Russian counterpart fails validation immediately.
 
-The current machine report is [translation-status.json](../../../generated/translation-status.json).
+The current machine report is [docs-manifest.json#/translation_status](../../../../docs-manifest.json#/translation_status).
 
 This 194/194 result proves physical page parity. Generated Russian pages can
 also contain reader-facing prose supplied by machine models rather than by the
@@ -67,7 +69,7 @@ Stable document IDs join languages. Translated titles and headings never define 
 
 ## Translate one document
 
-1. Find the record in `Docs/generated/translation-status.json`.
+1. Find the record in `docs-manifest.json#/translation_status`.
 2. Read the owning sources and canonical English page; do not translate stale behavior.
 3. Use `Docs/translation-glossary.json` for shared terminology.
 4. Create the exact `russian_path`.

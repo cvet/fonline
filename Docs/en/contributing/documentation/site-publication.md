@@ -10,6 +10,8 @@ permalink: /Docs/en/contributing/documentation/site-publication.html
 
 > Engine-owned documentation. This page defines how the FOnline Markdown corpus is previewed, validated, and published through the existing GitHub Pages route.
 
+The layout includes root `VERSION` through Jekyll's standard `include` tag; `includes_dir: .` makes that single source available in local builds and the ordinary GitHub Pages build alike. No copied version or preparation step is required. Publish `/VERSION` byte-for-byte with `/docs-manifest.json`; route and translation reports are sections of that shared index.
+
 ## Purpose
 
 Use this page when changing `_config.yml`, the documentation rendering layer, the custom domain, or the documentation jobs in GitHub Actions. It does not authorize a separate documentation application or a second content tree: repository Markdown remains canonical.
@@ -48,7 +50,7 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Docs/ai-evaluation.json`
 - `Docs/generated/ai-evaluation-report.json`
 - `Docs/generated/snippets.json`
@@ -79,7 +81,7 @@ Use this page when changing `_config.yml`, the documentation rendering layer, th
 | Static search | Generated locale-scoped `Docs/Site/Assets/docs-search.json` and `Docs/Site/Assets/docs-search.ru.json`, queried entirely in the browser |
 | Teaching diagrams | Source-owned local SVG under `Docs/assets/diagrams/`, with exact provenance and hashes in `Docs/generated/diagrams.json` |
 | Tool screenshots | Source-owned local PNG under `Docs/assets/screenshots/`, with capture environment, interactions, source/image hashes, and recapture triggers in `Docs/generated/screenshots.json` |
-| Version, locale, and route map | Generated `Docs/generated/document-routes.json`, derived from stable document IDs and manifest targets |
+| Version, locale, and route map | Generated `docs-manifest.json#/routing`, derived from stable document IDs and manifest targets |
 | Review output | Commit-addressable `_site` artifact plus rendered-site validation report from GitHub Actions |
 | AI delivery | Root `llms.txt`, bounded `llms-full.txt`, public `docs-manifest.json`, deterministic AI evaluation, and complete snippet coverage reports |
 
@@ -136,7 +138,7 @@ The public site wraps normal Jekyll-rendered Markdown in `Docs/Site/Layouts/defa
 | `Docs/Site/Data/docs-site.json` | Site identity, repository/source ref, localized navigation groups, resolved public Markdown routes, and current stable-ID locale pairs |
 | `Docs/Site/Assets/docs-search.json` | Compact weighted English token postings and result metadata for every public current English human document |
 | `Docs/Site/Assets/docs-search.ru.json` | Compact weighted Russian token postings and result metadata for every current translated human document |
-| `Docs/generated/document-routes.json` | Current public URLs, canonical future owners, planned English/Russian paths, route availability, and every required legacy redirect |
+| `docs-manifest.json#/routing` | Current public URLs, canonical future owners, planned English/Russian paths, route availability, and every required legacy redirect |
 
 Every public current human top-level page must appear exactly once in navigation. Generated detail pages stay out of the sidebar but remain searchable behind their generated index pages. Internal plans, placeholders, and AI-only maintainer routes appear in neither reader surface.
 
@@ -176,10 +178,10 @@ The localization policy is also source-owned:
 - paths below `Docs/en/` mirror directly below `Docs/ru/`;
 - root and subsystem README pages use explicit pairs such as `README.md` and `README.ru.md`;
 - `BuildTools/docs_localization.py` computes normalized SHA-256 for every canonical English source and rejects stale or mismatched existing Russian pages;
-- `Docs/generated/translation-status.json` currently reports exact required/current/missing coverage;
+- `docs-manifest.json#/translation_status` currently reports exact required/current/missing coverage;
 - stable-ID language switching and locale-scoped search are active for every required pair; manifest enforcement is `complete`.
 
-`Docs/generated/document-routes.json` freezes the migration map before files move. Each public record carries its current route, planned canonical owner/path, locale paths, and redirect requirement. Multiple legacy pages may converge only when exactly one non-`replace` record owns the destination.
+`docs-manifest.json#/routing` freezes the migration map before files move. Each public record carries its current route, planned canonical owner/path, locale paths, and redirect requirement. Multiple legacy pages may converge only when exactly one non-`replace` record owns the destination.
 
 Each current route declares `current_locale`, including retired Russian
 pointer pages that have no translation pair. Both artifact and browser checks
@@ -197,7 +199,7 @@ The static site publishes three generated root endpoints, the route catalog, and
 | `https://fonline.ru/llms.txt` | Concise map of every public current page, grouped by Diataxis kind, plus canonical generated JSON models |
 | `https://fonline.ru/llms-full.txt` | UTF-8/LF full-context bundle of public current authored pages and generated reference indexes, capped at 2 MiB + 64 KiB |
 | `https://fonline.ru/docs-manifest.json` | Public stable IDs, locale, owner, lifecycle state, canonical/source/raw URLs, source provenance, byte size, and SHA-256 content hashes |
-| `https://fonline.ru/Docs/generated/document-routes.json` | Current/planned paths, version and locale policy, canonical target ownership, and legacy redirect requirements |
+| `https://fonline.ru/docs-manifest.json#/routing` | Current/planned paths, version and locale policy, canonical target ownership, and legacy redirect requirements |
 | `https://fonline.ru/Docs/generated/ai-evaluation-report.json` | Deterministic task-set identity, retrieval ranks, current evidence checks, success rate, MRR, and failures |
 | `https://fonline.ru/Docs/generated/snippets.json` | Every public/current/human fenced block, owning document/heading, parser harness, hash, template status, result, and normative coverage |
 | `https://fonline.ru/Docs/generated/diagrams.json` | Owned diagram IDs, documents, dimensions, alt/caption text, source provenance, published SVG paths, and exact hashes |
@@ -295,7 +297,7 @@ The `Build documentation site` job in `.github/workflows/validate.yml` runs afte
 6. uploads separate static-validation and browser-validation artifacts, including the browser JSON and screenshots;
 7. uploads `documentation-site-<commit-sha>` with `actions/upload-artifact@v4` for 14 days.
 
-The static post-build gate requires every current route and every available locale route from `Docs/generated/document-routes.json`, verifies that static AI/search/generated-model endpoints are copied byte-for-byte, and checks canonical URLs, HTML language, one `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets, and links to publishable local resources.
+The static post-build gate requires every current route and every available locale route from `docs-manifest.json#/routing`, verifies that static AI/search/generated-model endpoints are copied byte-for-byte, and checks canonical URLs, HTML language, one `h1`, skip/main landmarks, accessible image/button names, unique IDs, search targets, and links to publishable local resources.
 
 The browser gate visits every catalog route in three manifest-owned profiles: desktop at 1440 x 1000 CSS pixels, mobile at 390 x 844 CSS pixels, and `zoom-200` at 640 x 512 CSS pixels with device scale factor 2. The last profile models a 1280 x 1024 physical viewport at 200 percent browser zoom and requires the compact navigation/reflow contract without a mobile user agent. Each rendered page must have no selected WCAG 2.2 A/AA axe violation, page/console/request error, undecoded image, clipped reading column, fixed-header/sidebar overlap, or reachable page-level horizontal scroll. Interaction scenarios additionally prove keyboard skip navigation, English technical/prose search, native-dialog Escape, theme persistence, copy feedback, compact/mobile drawer semantics, focus containment and restoration, Russian search, `html lang`, active-locale state, all explicit README language pairs, exact paired-route switching, architecture/content-showcase rendering, and Russian 200-percent reflow. The retained screenshots include responsive document/navigation states, every Russian README entry point, translated documents, architecture and Content Showcase media for each profile, and `zoom-200-russian-documentation.png` at an exact 1280 x 1024 physical size without changing the Pages deployment path.
 

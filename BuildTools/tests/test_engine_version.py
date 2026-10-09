@@ -21,6 +21,32 @@ import docs_engine_version
 
 
 class EngineVersionTests(unittest.TestCase):
+    def test_current_changelog_uses_version_and_preserves_previous_release(self) -> None:
+        old, new = '2026.1.21-dev', '2026.1.22-dev'
+        inputs = {('show', 'base:VERSION'): old + '\n', ('show', 'target:VERSION'): new + '\n',
+                  ('show', '-s', '--format=%cI', 'target'): '2026-10-04T12:00:00+00:00',
+                  ('diff', '--name-only', 'base', 'target'): 'VERSION\nDocs/en/reference/changelog.md'}
+        for path, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция')):
+            previous = f'## Current - 2026-10-04\n\n### {label}\nNo migration.\n'
+            inputs['show', f'base:{path}'] = '# Log\n\n## Unreleased\n\n' + previous
+            inputs['show', f'target:{path}'] = inputs['show', f'base:{path}'] + '\n' + previous.replace('Current', old)
+        with patch.object(docs_engine_version, 'git', side_effect=lambda root, *args, **kwargs: inputs[args]):
+            docs_engine_version.validate_committed_update(Path('.'), 'base', 'target', 'master')
+            for path in engine_version.CHANGELOG_PATHS:
+                inputs['show', f'target:{path}'] = inputs['show', f'base:{path}']
+            with self.assertRaisesRegex(ValueError, 'preceding|previous|retain'):
+                docs_engine_version.validate_committed_update(Path('.'), 'base', 'target', 'master')
+        notes = [inputs['show', f'base:{path}'] for path in engine_version.CHANGELOG_PATHS]
+        engine_version.validate_changelog_texts(new, notes)
+        notes[0] += f'\n## {new} - 2026-10-04\n\n### Migration\nDuplicate.\n'
+        with self.assertRaisesRegex(ValueError, 'duplicate|Duplicate'):
+            engine_version.validate_changelog_texts(new, notes)
+        notes = [inputs['show', f'base:{path}'].replace('## Unreleased\n\n',
+                 f'## Unreleased\n\n## {old} - 2026-10-04\n\n### {label}\nExisting notes.\n\n')
+                 for path, label in zip(engine_version.CHANGELOG_PATHS, ('Migration', 'Миграция'))]
+        with self.assertRaisesRegex(ValueError, 'Current must be the first'):
+            engine_version.validate_changelog_texts(new, notes)
+
     def test_notation_and_file_shape(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

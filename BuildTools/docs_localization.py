@@ -8,11 +8,13 @@ import sys
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlsplit
 
+import documentation_metadata
+
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
 DEFAULT_GLOSSARY = "Docs/translation-glossary.json"
-DEFAULT_OUTPUT = "Docs/generated/translation-status.json"
+DEFAULT_OUTPUT = documentation_metadata.TRANSLATION_OUTPUT
 GENERATED_BY = "BuildTools/docs_localization.py"
 TRANSLATION_METADATA_RE = re.compile(
     r"^\s*<!--\s*docs-translation:\s*(?P<json>\{[^\r\n]+\})\s*-->\s*$",
@@ -368,10 +370,8 @@ def render_localization_status(
 
 def _write_or_check(root: Path, *, check: bool, enforce_complete: bool) -> int:
     model = generate_localization_status(root, enforce_complete=enforce_complete)
-    content = json.dumps(model, ensure_ascii=False, indent=2) + "\n"
-    output = root / DEFAULT_OUTPUT
     if check:
-        if not output.is_file() or output.read_text(encoding="utf-8") != content:
+        if not documentation_metadata.section_matches(root, DEFAULT_OUTPUT, model):
             print(
                 "Translation status is stale; run "
                 "python BuildTools/docs_localization.py --write",
@@ -385,8 +385,7 @@ def _write_or_check(root: Path, *, check: bool, enforce_complete: bool) -> int:
             f"{summary['required_document_count']} current"
         )
         return 0
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text(content, encoding="utf-8")
+    documentation_metadata.write_section(root, DEFAULT_OUTPUT, model)
     return 0
 
 

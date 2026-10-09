@@ -1,5 +1,5 @@
 {
-  "schema_version": 3,
+  "schema_version": 4,
   "generated_by": "BuildTools/docs_site.py",
   "title": "FOnline Engine",
   "description": "Standalone documentation for building games and extending the FOnline engine.",
@@ -10,8 +10,7 @@
     "scheme": "calver",
     "source": "VERSION",
     "master_format": "YEAR.MAJOR.MINOR-dev",
-    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]",
-    "value": "2026.1.14-dev"
+    "release_format": "YEAR.MAJOR.MINOR.PATCH[-rc]"
   },
   "version": {
     "channel": "current",
@@ -2562,7 +2561,7 @@
       }
     }
   ],
-  "routes_path": "Docs/generated/document-routes.json",
+  "routes_path": "docs-manifest.json#/routing",
   "navigation_item_count": 115,
   "navigation": [
     {

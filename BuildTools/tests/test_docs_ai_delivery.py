@@ -11,20 +11,44 @@ from pathlib import Path
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
 import docs_ai_delivery  # noqa: E402
+import documentation_metadata  # noqa: E402
 
 
 class DocumentationAiDeliveryTests(unittest.TestCase):
-    def test_version_file_updates_every_ai_artifact(self) -> None:
+    def test_shared_metadata_owners_preserve_other_sections_and_detect_staleness(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
+        self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--write"]), 0)
+        before = json.loads((root / documentation_metadata.PUBLIC_MANIFEST).read_text(encoding="utf-8"))
+        routes = {"routes": [{"id": "changed-route"}]}
+        documentation_metadata.write_section(root, documentation_metadata.ROUTING_OUTPUT, routes)
+        after = json.loads((root / documentation_metadata.PUBLIC_MANIFEST).read_text(encoding="utf-8"))
+        self.assertEqual({k: v for k, v in before.items() if k != "routing"},
+                         {k: v for k, v in after.items() if k != "routing"})
+        self.assertTrue(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, routes))
+        self.assertFalse(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, before["routing"]))
+        self.assertEqual(docs_ai_delivery.main(["--root", str(root), "--write"]), 0)
+        self.assertEqual(documentation_metadata.read_section(root, documentation_metadata.ROUTING_OUTPUT), routes)
+        (root / documentation_metadata.PUBLIC_MANIFEST).write_text("[]\n", encoding="utf-8")
+        self.assertFalse(documentation_metadata.section_matches(root, documentation_metadata.ROUTING_OUTPUT, routes))
+        with self.assertRaisesRegex(ValueError, "must be an object"):
+            documentation_metadata.write_section(root, documentation_metadata.ROUTING_OUTPUT, routes)
+
+    def test_version_source_does_not_rewrite_ai_artifacts(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        previous = None
         for version in ("2026.1.1-dev", "2026.1.2-dev"):
             (root / "VERSION").write_text(version + "\n", encoding="utf-8")
             outputs = docs_ai_delivery.render_outputs(root)
             manifest = json.loads(outputs[docs_ai_delivery.DEFAULT_PUBLIC_MANIFEST_OUTPUT])
-            self.assertEqual(manifest["engine"], {**docs_ai_delivery.ENGINE_VERSION_POLICY, "value": version})
+            self.assertEqual(manifest["engine"], docs_ai_delivery.ENGINE_VERSION_POLICY)
             self.assertEqual(manifest["version"]["source_ref"], "master")
-            self.assertIn(version, outputs[docs_ai_delivery.DEFAULT_LLMS_OUTPUT])
-            self.assertIn(version, outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT])
+            self.assertIn("https://fonline.ru/VERSION", outputs[docs_ai_delivery.DEFAULT_LLMS_OUTPUT])
+            self.assertIn("https://fonline.ru/VERSION", outputs[docs_ai_delivery.DEFAULT_FULL_CONTEXT_OUTPUT])
+            if previous is not None:
+                self.assertEqual(previous, outputs)
+            previous = outputs
 
     def test_repository_full_context_uses_reviewed_budget(self) -> None:
         root = BUILDTOOLS_DIR.parent
@@ -106,10 +130,8 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         (root / "Docs/Site/Assets").mkdir(parents=True)
         (root / "Docs/Site/Data/docs-site.json").write_text('{"navigation":[]}\n', encoding="utf-8")
         (root / "Docs/Site/Assets/docs-search.json").write_text('{"documents":[]}\n', encoding="utf-8")
-        (root / "Docs/generated/document-routes.json").write_text(
-            '{"routes":[]}\n',
-            encoding="utf-8",
-        )
+        documentation_metadata.write_section(root, documentation_metadata.ROUTING_OUTPUT, {"routes": []})
+        documentation_metadata.write_section(root, documentation_metadata.TRANSLATION_OUTPUT, {"documents": []})
 
         manifest = {
             "schema_version": 1,
@@ -204,7 +226,7 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
                     "paths": [
                         "Docs/Site/Data/docs-site.json",
                         "Docs/Site/Assets/docs-search.json",
-                        "Docs/generated/document-routes.json",
+                        "docs-manifest.json#/routing",
                     ],
                 },
             },
@@ -301,11 +323,13 @@ class DocumentationAiDeliveryTests(unittest.TestCase):
         self.assertEqual(public_manifest["full_context"]["excluded_document_ids"], [])
         self.assertIn("site-docs-site", artifacts)
         self.assertIn("site-docs-search", artifacts)
-        self.assertIn("site-document-routes", artifacts)
+        self.assertNotIn("site-document-routes", artifacts)
+        self.assertEqual(public_manifest["routing"], {"routes": []})
+        self.assertEqual(public_manifest["translation_status"], {"documents": []})
         self.assertNotIn("internal_model", artifacts)
         self.assertNotIn("Docs/generated/internal.json", llms)
         self.assertIn("Docs/Site/Assets/docs-search.json", llms)
-        self.assertIn("Docs/generated/document-routes.json", llms)
+        self.assertIn("docs-manifest.json", llms)
 
     def test_outputs_are_byte_deterministic(self) -> None:
         temporary_directory, root = self._create_fixture()

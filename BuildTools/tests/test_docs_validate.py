@@ -33,6 +33,7 @@ import docs_helper_cli  # noqa: E402
 import docs_image_format  # noqa: E402
 import docs_inventory  # noqa: E402
 import docs_localization  # noqa: E402
+import documentation_metadata  # noqa: E402
 import docs_map_format  # noqa: E402
 import docs_model_format  # noqa: E402
 import docs_native_extension  # noqa: E402
@@ -50,7 +51,7 @@ import docs_video  # noqa: E402
 class DocumentationValidatorTests(unittest.TestCase):
     def _create_tree(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
-        root = Path(temporary_directory.name)
+        root = Path(temporary_directory.name).resolve()
         (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
         (root / "Docs").mkdir()
         (root / "BuildTools").mkdir()
@@ -96,6 +97,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             "theme: jekyll-theme-slate\n"
             "strict_front_matter: true\n"
             "layouts_dir: Docs/Site/Layouts\n"
+            "includes_dir: .\n"
             "data_dir: Docs/Site/Data\n"
             "plugins:\n"
             "  - jekyll-relative-links\n"
@@ -1967,15 +1969,16 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(snippet_report, indent=2, ensure_ascii=True) + "\n",
             encoding="utf-8",
         )
-        (root / docs_localization.DEFAULT_OUTPUT).write_text(
-            docs_localization.render_localization_status(root),
-            encoding="utf-8",
-        )
+        documentation_metadata.write_section(root, docs_localization.DEFAULT_OUTPUT,
+                                             docs_localization.generate_localization_status(root))
         (root / docs_description_translations.DEFAULT_OUTPUT).write_text(
             docs_description_translations.render_status(root),
             encoding="utf-8",
         )
         for relative_path, content in docs_site.render_outputs(root).items():
+            if relative_path == documentation_metadata.ROUTING_OUTPUT:
+                documentation_metadata.write_section(root, relative_path, json.loads(content))
+                continue
             output_path = root / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
@@ -2146,11 +2149,12 @@ class DocumentationValidatorTests(unittest.TestCase):
             + "\n\n# Руководство\n",
             encoding="utf-8",
         )
-        (root / docs_localization.DEFAULT_OUTPUT).write_text(
-            docs_localization.render_localization_status(root),
-            encoding="utf-8",
-        )
+        documentation_metadata.write_section(root, docs_localization.DEFAULT_OUTPUT,
+                                             docs_localization.generate_localization_status(root))
         for relative_path, content in docs_site.render_outputs(root).items():
+            if relative_path == documentation_metadata.ROUTING_OUTPUT:
+                documentation_metadata.write_section(root, relative_path, json.loads(content))
+                continue
             output_path = root / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
@@ -2201,6 +2205,7 @@ class DocumentationValidatorTests(unittest.TestCase):
     def test_site_source_directories_must_match_documentation_layout(self) -> None:
         for key, expected, obsolete in (
             ("layouts_dir", "Docs/Site/Layouts", "_layouts"),
+            ("includes_dir", ".", "_includes"),
             ("data_dir", "Docs/Site/Data", "_data"),
         ):
             with self.subTest(key=key):
@@ -2644,13 +2649,13 @@ class DocumentationValidatorTests(unittest.TestCase):
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
         self._write_manifest(root, {"Docs/Guide.md": self._document()})
-        (root / docs_site.DEFAULT_ROUTES_OUTPUT).write_text("stale\n", encoding="utf-8")
+        documentation_metadata.write_section(root, docs_site.DEFAULT_ROUTES_OUTPUT, {"stale": True})
 
         errors, _ = docs_validate.validate_documentation(root)
 
         self.assertIn(
             "generated documentation site artifact is stale: "
-            "Docs/generated/document-routes.json; "
+            "docs-manifest.json#/routing; "
             "run python BuildTools/docs_site.py --write",
             errors,
         )

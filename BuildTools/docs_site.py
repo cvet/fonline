@@ -10,15 +10,16 @@ from pathlib import Path, PurePosixPath
 
 import docs_ai_delivery
 import docs_localization
+import documentation_metadata
 
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 GENERATED_BY = "BuildTools/docs_site.py"
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
 DEFAULT_NAVIGATION_OUTPUT = "Docs/Site/Data/docs-site.json"
 DEFAULT_SEARCH_OUTPUT = "Docs/Site/Assets/docs-search.json"
 DEFAULT_RUSSIAN_SEARCH_OUTPUT = "Docs/Site/Assets/docs-search.ru.json"
-DEFAULT_ROUTES_OUTPUT = "Docs/generated/document-routes.json"
+DEFAULT_ROUTES_OUTPUT = documentation_metadata.ROUTING_OUTPUT
 OUTPUT_PATHS = (
     DEFAULT_NAVIGATION_OUTPUT,
     DEFAULT_SEARCH_OUTPUT,
@@ -519,10 +520,18 @@ def _is_generated_detail(record: dict[str, object]) -> bool:
 
 def _markdown_body(text: str) -> str:
     normalized = text.replace("\r\n", "\n").replace("\r", "\n")
-    if not normalized.startswith("---\n"):
-        return normalized
-    end = normalized.find("\n---\n", 4)
-    return normalized[end + 5 :] if end >= 0 else normalized
+    if normalized.startswith("---\n"):
+        end = normalized.find("\n---\n", 4)
+        if end >= 0:
+            normalized = normalized[end + 5 :]
+    code_ranges = [match.span() for match in docs_localization.FENCE_RE.finditer(normalized)]
+    code_ranges.extend(match.span() for match in re.finditer(r"(`+)(.+?)\1", normalized))
+    return re.sub(
+        r"<!--.*?-->",
+        lambda match: match.group(0) if any(start <= match.start() < end for start, end in code_ranges) else "",
+        normalized,
+        flags=re.DOTALL,
+    )
 
 
 def _current_translations(
@@ -1096,6 +1105,10 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.write:
         for relative_path, content in outputs.items():
+            if relative_path == DEFAULT_ROUTES_OUTPUT:
+                documentation_metadata.write_section(root, relative_path, json.loads(content))
+                print(f"Wrote {relative_path}")
+                continue
             output_path = root / relative_path
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
@@ -1104,6 +1117,10 @@ def main(argv: list[str] | None = None) -> int:
 
     stale = []
     for relative_path, content in outputs.items():
+        if relative_path == DEFAULT_ROUTES_OUTPUT:
+            if not documentation_metadata.section_matches(root, relative_path, json.loads(content)):
+                stale.append(relative_path)
+            continue
         output_path = root / relative_path
         if not output_path.is_file() or output_path.read_text(encoding="utf-8") != content:
             stale.append(relative_path)

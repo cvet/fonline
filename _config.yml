@@ -9,6 +9,7 @@ google_analytics: UA-77340151-2
 markdown: kramdown
 strict_front_matter: true
 layouts_dir: Docs/Site/Layouts
+includes_dir: .
 data_dir: Docs/Site/Data
 plugins:
   - jekyll-relative-links

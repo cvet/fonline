@@ -5,7 +5,7 @@ locale: ru
 document_id: adr-documentation-version-locale-routing
 permalink: /Docs/ru/contributing/decisions/0006-documentation-version-locale-routing.html
 ---
-<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"ef72915627de04353ca8b7d0d3977762b46df67c73342a1041e5a37f0f2308c6"} -->
+<!-- docs-translation: {"document_id":"adr-documentation-version-locale-routing","locale":"ru","source_path":"Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md","source_sha256":"a3b72c2c424eebbff3a405cdf88954a7cb9bfdfdd91b021d52885c13c6bec39f"} -->
 # ADR-0006: версия, локали и стабильные маршруты документации
 
 - Статус: принято
@@ -65,7 +65,7 @@ FOnline публикует Markdown репозитория через GitHub Pag
 ### Владение локалями
 
 1. Английский (`en`) является каноническим. Немигрированные плоские английские файлы остаются исходниками до перемещения проверенной группы; мигрированные страницы каноничны под `Docs/en`.
-2. Русский (`ru`) представляет собой цельное зеркало документов, заполняемое проверенными группами. Авторитетным снимком покрытия служит `Docs/generated/translation-status.json`; ни один абзац ADR не владеет числом переводов, поддерживаемым вручную.
+2. Русский (`ru`) представляет собой цельное зеркало документов, заполняемое проверенными группами. Авторитетным снимком покрытия служит `docs-manifest.json#/translation_status`; ни один абзац ADR не владеет числом переводов, поддерживаемым вручную.
 3. Для страницы для людей, перемещённой под `Docs/en`, русский путь получается заменой `Docs/en/` на `Docs/ru/`.
 4. Точки входа README репозитория и подсистем используют объявленные в манифесте парные пути, например `README.md` и `README.ru.md`.
 5. Английские и русские страницы связываются стабильными идентификаторами документов, а не переведёнными заголовками.
@@ -75,7 +75,7 @@ FOnline публикует Markdown репозитория через GitHub Pag
 ### Стабильные маршруты и миграция
 
 1. `Docs/documentation-manifest.json` владеет versioning, localization, текущими исходными путями, стабильными идентификаторами документов, dispositions миграции и планируемыми целями.
-2. `BuildTools/docs_site.py` генерирует `Docs/generated/document-routes.json`.
+2. `BuildTools/docs_site.py` генерирует `docs-manifest.json#/routing`.
 3. Каталог маршрутов записывает для каждой публичной страницы текущий URL, будущего канонического владельца, планируемый английский URL, путь русского зеркала, состояние миграции и обязательный legacy redirect.
 4. Будущий target, общий для нескольких legacy pages, обязан иметь ровно одного канонического владельца без disposition `replace`. Остальные записи являются aliases, перенаправляющими к этому владельцу.
 5. Перемещение запрещено, пока старый маршрут не сохранён как долговечная pointer page Markdown. Это сохраняет чтение и в репозитории GitHub, и в GitHub Pages/Jekyll без зависимости от неподдерживаемого redirect plugin или зафиксированного HTML.

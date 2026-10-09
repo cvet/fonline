@@ -1,4 +1,5 @@
 {% assign docs_locale = page.locale | default: site.data.docs-site.canonical_locale | default: 'en' %}
+{% capture engine_version %}{% include VERSION %}{% endcapture %}
 {% assign current_locale_pair = nil %}
 {% for pair in site.data.docs-site.locale_pairs %}
   {% if pair.en.path == page.path or pair.ru.path == page.path %}
@@ -50,7 +51,7 @@
         {% endif %}
         <a class="version-indicator" href="{% if docs_locale == 'ru' %}{{ '/Docs/ru/reference/changelog.html' | relative_url }}{% else %}{{ '/Docs/en/reference/changelog.html' | relative_url }}{% endif %}" title="{% if docs_locale == 'ru' %}Версия движка из VERSION; текущая документация соответствует ветке {{ site.data.docs-site.version.value }}. Открыть историю изменений{% else %}Engine version from VERSION; current documentation follows {{ site.data.docs-site.version.value }}. Open the changelog{% endif %}">
           <span class="version-label">{{ site.data.docs-site.version.label }}</span>
-          <strong>{{ site.data.docs-site.engine.value }}</strong>
+          <strong>{{ engine_version | strip | escape }}</strong>
         </a>
         <button class="icon-button search-open header-search" type="button" data-search-open aria-label="{% if docs_locale == 'ru' %}Поиск по документации{% else %}Search documentation{% endif %}"></button>
         <a class="header-link" href="https://github.com/{{ site.data.docs-site.repository }}" aria-label="{% if docs_locale == 'ru' %}Репозиторий FOnline на GitHub{% else %}FOnline repository on GitHub{% endif %}">GitHub</a>
