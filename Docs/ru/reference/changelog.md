@@ -7,12 +7,22 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"54edfad144006444f90a2fc9a934a8b450d844a6c97109529450233b741169da"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"d93175ab23821d54886529c7d0b7ebaa69df28e6d49b8386158ec238bc1ba1bd"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-09
+
+### Исправлено
+
+- Проверка процесса документации приведена в соответствие с preparation entrypoint и обязательным порядком генераторов после переноса выходов в игнорируемый workspace.
+
+### Миграция
+
+- Миграция API, конфигурации, ABI, сети, ресурсов и сохранений не требуется. Проверка использует действующий процесс; перегенерируйте документацию через `python BuildTools/docs_prepare.py`. При переходе на новую версию Engine повторите конфигурацию и сборку потребителей.
+
+## 2026.1.18-dev - 2026-10-09
 
 ### Исправлено
 

@@ -16,6 +16,16 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
+- Update the documentation workflow regression to validate the preparation entrypoint and its required generator order after documentation outputs moved into the ignored workspace.
+
+### Migration
+
+- No API, configuration, ABI, network, resource or saved-data migration is required. The regression now checks the existing workflow; regenerate documentation with `python BuildTools/docs_prepare.py`. Reconfigure and rebuild consumers when adopting the new Engine identity.
+
+## 2026.1.18-dev - 2026-10-09
+
+### Fixed
+
 - Refresh reviewed Russian changelog and testing translation provenance so complete localization validation accepts the current English sources.
 - Align the paired BuildTools guide with the existing ignored documentation-output workflow and its nineteen description models.
 
