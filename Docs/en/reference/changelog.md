@@ -8,11 +8,24 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+[VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the current development version. [Release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility. Changes and migration notes below are bilingual.
 
 ## Unreleased
 
 ## Current - 2026-10-09
+
+### Fixed
+
+- Shorten paired scripting guidance without changing contracts.
+- Correct generator call-order checks, diagram/reference sequencing, ignored outputs, nineteen description models and Transform auto-binding in both script backends.
+- Format migration sources.
+
+### Migration
+
+- No script/native API, configuration, data/save, network, ABI or resource-schema migration; prior requirements remain.
+- Run `python BuildTools/docs_prepare.py`; reconfigure/rebuild consumers for version/revision metadata.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Fixed
 

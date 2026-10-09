@@ -7,12 +7,25 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1929205ff91702b7b895d240cbb9b4c608a8e98d98b2c0a64056c7199f66cbd4"} -->
-Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4bb095bb0e297917889fa3282be81035442b4cb954d108e315ab8770e6cb95fa"} -->
+[VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт текущую версию разработки. [Правила выпусков](../how-to/release/versioning.md) определяют CalVer, даты, неизменяемые теги и совместимость. Изменения и заметки о миграции ниже двуязычные.
 
 ## Unreleased
 
 ## Current - 2026-10-09
+
+### Исправлено
+
+- Сокращены парные пояснения скриптов без изменения контрактов.
+- Исправлены проверка порядка вызовов генераторов, последовательность диаграмм/справочника, игнорируемые выходы, 19 моделей описаний и Transform binding обоих backend.
+- Исправлено форматирование кода миграций.
+
+### Миграция
+
+- Миграция скриптового/native API, конфигурации, данных/сохранений, сети, ABI и схем ресурсов не требуется; прежние требования сохраняются.
+- Выполните `python BuildTools/docs_prepare.py` и повторите конфигурацию/сборку потребителей для обновления версии/ревизии.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Исправлено
 
