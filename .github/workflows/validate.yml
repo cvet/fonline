@@ -277,6 +277,9 @@ jobs:
     - name: Install pinned Chromium and host dependencies
       working-directory: BuildTools/docs-browser
       run: npx playwright install --with-deps chromium
+    - name: Check lazy and missing diagrams in every browser profile
+      working-directory: BuildTools/docs-browser
+      run: npm run test:diagram
     - name: Validate rendered site in desktop and mobile Chromium
       working-directory: BuildTools/docs-browser
       run: npm run audit

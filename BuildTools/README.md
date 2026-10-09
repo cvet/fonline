@@ -123,7 +123,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs-browser/audit.mjs` serves that completed `_site` tree locally and uses the lock-file-pinned Playwright Chromium plus axe-core to audit every route at desktop and mobile widths. It rejects WCAG 2.2 A/AA violations, runtime/resource errors, page-level horizontal scrolling, broken responsive layout, and keyboard failures in skip navigation, search, theme, copy, and the mobile focus-trapped drawer; CI retains JSON and screenshots.
 - `docs_validate.py` validates the documentation manifest, local links/anchors, source ownership, Pages contract, and freshness of every generated artifact.
 
-Run their focused tests and checks from the engine root. Authored interface models and reviewed assets remain versioned. Documentation delivery outputs are derived in ignored `Workspace/Documentation/` and exported through `BuildTools/docs_site_build.py`; never edit generated output manually.
+Run focused checks from the engine root. Models and reviewed assets stay versioned; derive ignored `Workspace/Documentation/` outputs with `BuildTools/docs_site_build.py`. Never edit generated output.
 
 Materialize a review candidate only from a clean, remotely fetchable exact
 Engine commit:

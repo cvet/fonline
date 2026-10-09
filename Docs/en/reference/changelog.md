@@ -8,7 +8,7 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+[VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the current development version. [Release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility. Changes and migration notes below are bilingual.
 
 ## Unreleased
 
@@ -16,14 +16,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Fixed
 
-- Validate documentation generator dependency order from the actual preparation function calls rather than textual name occurrences; retain the documented diagram/reference preparation sequence.
-- Correct the paired BuildTools guide: documentation delivery outputs are ignored and its description translation catalog contains nineteen models.
-- Document automatic Property/Proto Transform binding for both Managed C# and AngelScript.
+- Shorten paired scripting guidance without changing contracts.
+- Correct generator call-order checks, diagram/reference sequencing, ignored outputs, nineteen description models and Transform auto-binding in both script backends.
+- Format migration sources.
 
 ### Migration
 
-- No script/native API, configuration, serialized-data, network, ABI, resource-schema or saved-data migration is required by these documentation and regression corrections. Preserve the migration requirements of preceding Engine updates below.
-- Regenerate documentation outputs with `python BuildTools/docs_prepare.py` before validation or a site build. Reconfigure and rebuild affected consumers to refresh the native Engine version/revision identity when adopting this revision.
+- No script/native API, configuration, data/save, network, ABI or resource-schema migration; prior requirements remain.
+- Run `python BuildTools/docs_prepare.py`; reconfigure/rebuild consumers for version/revision metadata.
+
+## 2026.1.20-dev - 2026-10-09
+
+### Fixed
+
+- Wait for lazy architecture-diagram images before browser rendering checks and screenshots. Delayed SVG responses no longer cause false audit failures; missing images still fail in every profile.
+- Run the real-browser delayed/missing-image regression in documentation CI.
+
+### Migration
+
+- No script/native API, configuration, serialized data, network, ABI, resource schema, or save conversion changes. Rebuild version metadata when adopting this revision. Browser dependency pins and the full route/profile scope are unchanged.
+- After the existing pinned Chromium setup, run `npm --prefix BuildTools/docs-browser run test:diagram` and the complete browser audit. Regenerate documentation, translations, site/search/routes, and AI delivery for the new version.
 
 ## 2026.1.19-dev - 2026-10-09
 

@@ -996,6 +996,7 @@ async function auditDiagramRendering(browser, baseUrl, routePath, screenshotDir,
     const page = await context.newPage();
     try {
       await page.goto(`${baseUrl}${routePath}`, { waitUntil: "load" });
+      await decodeContentImages(page);
       const diagram = page.locator(".docs-diagram").first();
       if (await diagram.count() !== 1) {
         errors.push(`${profile.id} architecture page does not expose one primary documentation diagram`);
@@ -1317,4 +1318,8 @@ async function main() {
   return 0;
 }
 
-process.exitCode = await main();
+export { auditDiagramRendering };
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = await main();
+}
