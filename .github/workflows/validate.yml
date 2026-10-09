@@ -38,6 +38,13 @@ jobs:
         sudo apt-get install -y python3-pytest
     - name: Check generated configuration and default arguments
       run: python3 -m pytest -q BuildTools/tests/test_codegen_default_args.py
+    - name: Check managed runtime preparation and recovery
+      run: >-
+        python3 -m pytest -q
+        BuildTools/tests/test_managed_runtime_ready_validation.py
+        BuildTools/tests/test_managed_runtime_workspace_cache.py
+        BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py
+        BuildTools/tests/test_managed_runtime_byproducts.py
     - run: python3 BuildTools/tests/test_engine_version.py
     - name: Check the exact publication range
       env:

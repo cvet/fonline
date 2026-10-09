@@ -14,6 +14,18 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-09
 
+### Fixed
+
+- Validate existing READY trees, downloaded workspace caches, prebuilt inputs and freshly published managed runtimes against the nonempty embedding headers, managed entry assemblies and target-specific link archives. Recover incomplete trees through the existing cache/republication route instead of reporting a runtime ready with missing linker inputs.
+
+### Migration
+
+- No script/native API, configuration-key, serialized-data, network, ABI, resource-schema or save migration is required: this change verifies build-preparation inputs and preserves the meaning of complete runtimes. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+- Run the normal `SetupManagedRuntime` target (or BuildTools `setup-mono <os> <arch> <config>`) to recover an incomplete READY tree. Without a workspace cache, existing valid source/object markers permit republication without recompiling Mono; configured caches accept complete entries and rebuild incomplete hits. Complete trees retain their existing cache identity and marker names.
+- `FO_MANAGED_RUNTIME_PREBUILT` must name a complete target tree containing the headers used by the managed backend, CoreLib and `System.Runtime.dll`, the platform's static archives, and browser JavaScript glue when applicable. Replace incomplete prebuilt input with a complete published target tree; it is rejected before copying or writing READY. Regenerate localization, site/search/routes, AI evaluation and AI delivery after updating the owning guide.
+
+## 2026.1.16-dev - 2026-10-09
+
 ### Changed
 
 - Move the authored Jekyll config to `Docs/Site/_config.yml`. Generate Ruby dependency/domain files and public root endpoints under ignored `Workspace/Documentation/`; render and export with `docs_site_build.py` into `Workspace/DocumentationSite/`. Public URLs are preserved.

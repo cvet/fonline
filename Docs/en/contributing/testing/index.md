@@ -53,6 +53,8 @@ default arguments and binding metadata. The macro-only configuration fixture
 uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
 `FO_ENGINE_REVISION` independently of the checkout's current identity.
 
+The same job runs the managed runtime preparation regressions in `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` and `test_managed_runtime_byproducts.py`. Filesystem fixtures cover required Windows, Linux, Web, Android and Apple inputs independently of the host; the archive inventory is checked by executing the actual CMake link-selection block. Missing/empty files must cause recovery or explicit refusal, while complete trees keep their cache identity and already built source outputs. The small Ninja producer probes require POSIX CMake, Ninja and a C toolchain; these tests establish setup behavior, not a native runtime build on every target.
+
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 
 The repeated-unload storage comparison warms one complete map load/unload

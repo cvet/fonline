@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"464071818bb358c43f15b1d5a91022e1463fbdbbd909891fd53cfd740c032a08"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"d67609d80038325eaef7fd1fedfb1d13091d6ed041c7d3900ea1e02e81bf0498"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -264,6 +264,10 @@ Generated CMake target `CompileManagedScripts` запускает standalone `<P
 `BakeResources` и `ForceBakeResources` запускают baker `Managed` внутри выбранного resource pack. Используйте compile target для быстрой проверки source/API, а bake target — для реального контракта resources, assemblies, runtime payload и metadata. После force bake выполните обычный incremental bake и потребуйте clean settle.
 
 Runtime toolchain готовит `SetupManagedRuntime`; `PrepareManagedRuntimePayload` создаёт deployable subset и `runtime.manifest`. Setup выполняется в изолированном environment, чтобы локальные `DOTNET_*`, NuGet или SDK settings не меняли опубликованный runtime незаметно. Runtime source build отключает live NuGet advisory audit: reproducible dependency set задаёт pinned source revision, а не более позднее обновление feed. Перед каждым runtime build BuildTools удаляет target-dependent repo-local tasks semaphore dotnet, чтобы переход от desktop build к Android не переиспользовал неполный набор tasks. Настроенный workspace cache хранит только проверенное published runtime tree под target/toolchain-specific ключом; локальные runtime source checkouts не публикуются, неполный cache hit пересобирается, а stale SDK bootstrap без соответствующего shared runtime удаляется перед повтором setup.
+
+Setup проверяет непустые заголовки, включаемые managed backend, `System.Private.CoreLib.dll` и `System.Runtime.dll`, а также все архивы платформы из CMake: component stubs, `minipal`, системные shims и Web interpreter archives. Архивы Windows имеют расширение `.lib`, остальных платформ — имена `lib*.a` независимо от ОС runner. Браузерному дереву дополнительно нужен непустой glue `lib/es6/dotnet.es6.*.js`. Это устанавливает комплектность входов; компиляция, линковка и baking проверяют их при использовании.
+
+Существующий маркер READY используется только с комплектным деревом. Отсутствующие или пустые обязательные файлы снимают маркер и запускают обычное восстановление кэша либо повторную публикацию исходной сборки; без настроенного кэша действующие маркеры исходников/объектов сохраняют уже собранные выходы Mono. Кандидаты кэша проверяются до установки, prebuilt — до копирования и записи READY. Свежий результат проверяется до публикации в кэш; неполный результат завершает setup с ошибкой и лишается READY. Комплектные деревья сохраняют прежний ключ кэша и имена маркеров.
 
 ## Packaging и updating
 

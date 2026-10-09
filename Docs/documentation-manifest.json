@@ -4499,6 +4499,14 @@
       "classification": {"diataxis": "none", "visibility": "internal", "human": true, "translation": "not-required"},
       "owner": "documentation", "state": "active-plan", "disposition": "move-meta", "target": "Docs/_meta/ProductionDocumentationPlan.md",
       "sources": ["Docs/documentation-manifest.json", "Docs/_meta/DocumentationVerificationReport.md", "Docs/NativeExtensions.md", "Docs/PrototypeFormat.md", "Docs/en/how-to/content/map-format.md", "Docs/TextAndLocalization.md", "Docs/en/contributing/documentation/site-publication.md", "Docs/en/contributing/decisions/0004-manifest-backed-site-navigation-search.md", "Docs/en/contributing/decisions/0006-documentation-version-locale-routing.md", "BuildTools/docs_ai_delivery.py", "BuildTools/docs_site.py", "BuildTools/docs_text_format.py", "BuildTools/docs_validate.py", "BuildTools/ExternalProjectEvidence.json", "BuildTools/docs_external_evidence.py", "Docs/generated/external-project-evidence/index.md", "Docs/Site/Layouts/default.html", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Data/docs-site.json", "Docs/Site/Assets/docs-search.json", "docs-manifest.json", "BuildTools/cmake/ProjectInterface.json", "BuildTools/buildtools.py", "BuildTools/NativeExtensionInterface.json", "BuildTools/PrototypeFormatInterface.json", "BuildTools/MapFormatInterface.json", "BuildTools/TextFormatInterface.json", "BuildTools/PackageInterface.json", "BuildTools/package.py", "Docs/generated/cmake/index.md", "Docs/generated/cli/index.md", "Docs/generated/native-extension/index.md", "Docs/generated/prototype-format/index.md", "Docs/en/reference/map-format/index.md", "Docs/generated/text-format/index.md", "Docs/generated/package/index.md"]
+    },
+    "Docs/_meta/ManagedRuntimeReadyValidationPlan.md": {
+      "id": "managed-runtime-ready-validation-plan",
+      "title": "Managed Runtime READY Validation Plan",
+      "audiences": ["engine-contributor", "ai-agent"],
+      "classification": {"diataxis": "none", "visibility": "internal", "human": true, "translation": "not-required"},
+      "owner": "scripting", "state": "active-plan", "disposition": "retain", "target": "Docs/_meta/ManagedRuntimeReadyValidationPlan.md",
+      "sources": ["BuildTools/buildtools.py", "BuildTools/cmake/stages/ThirdParty.cmake", "BuildTools/tests/test_managed_runtime_ready_validation.py", "BuildTools/tests/test_managed_runtime_workspace_cache.py", "BuildTools/tests/test_buildtools_prebuilt_managed_runtime.py", "Docs/en/how-to/scripting/managed-csharp.md", "Docs/en/reference/changelog.md"]
     }
   }
 }

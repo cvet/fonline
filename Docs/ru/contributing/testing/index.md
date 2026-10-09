@@ -91,6 +91,8 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 включая прогрев: инициализация allocator отделена от памяти удержанных карт,
 но это не проверка GPU memory или process working set.
 
+Та же джоба выполняет регрессии подготовки managed runtime из `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` и `test_managed_runtime_byproducts.py`. Файловые фикстуры покрывают обязательные входы Windows, Linux, Web, Android и Apple независимо от хоста; список архивов сверяется выполнением реального блока выбора входов линковки CMake. Отсутствующие/пустые файлы должны вызывать восстановление либо явный отказ, а комплектные деревья — сохранять ключ кэша и готовые выходы исходной сборки. Небольшим пробам producer Ninja нужны POSIX CMake, Ninja и C toolchain; эти тесты устанавливают поведение setup, а не native-сборку runtime каждой платформы.
+
 `Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
 
 `MapViewItemHitTesting*` и `TransparentEgg*` проверяют native sprite picking и
