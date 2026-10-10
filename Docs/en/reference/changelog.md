@@ -14,6 +14,17 @@ permalink: /Docs/en/reference/changelog.html
 
 ## Current - 2026-10-10
 
+### Tests
+
+- Add Windows common unit lanes for AngelScript and Managed, with real exclusive-handle native-temp cleanup refusal checks in both delivery modes.
+
+### Migration
+
+- Tests, CI and paired guidance only; no API, configuration, saves, wire, resource format, ABI or updater marker changes. Rebuild version metadata and unit binaries; regenerate docs/delivery, then run prepare, contract, format and exact history.
+- Windows OS-denial execution, package/restart/rollback and remaining causal qualification are still required.
+
+## 2026.1.22-dev - 2026-10-10
+
 ### Fixed
 
 - Validate every incoming first-parent update in pull requests as well as pushes; skipped bumps and missing earlier notes still fail.

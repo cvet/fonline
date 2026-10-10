@@ -164,10 +164,6 @@ for a loadable sibling module. `Client.ForceEmbeddedRuntime` is honored from the
 a SubConfig/config-only value does not reach this pre-init decision, so launch profiles that must force
 embedded on a standalone client pass it on the command line.
 
-Because the regular client loads the `<live>` DLL into its own process, it cannot safely reload that
-same path after staging a new module. The host promotes the file and exits so the next process performs
-the only post-update load.
-
 The implicit bundled-DLL load intentionally does **not** require the DLL's gameplay compatibility string
 to match the host executable's built-in string. The executable is frozen in deployed installs, while the
 runtime DLL is the self-updated module; tying the bundled DLL to the old host compatibility would reject
@@ -203,9 +199,9 @@ The host executable is frozen and never delivered by updater. Old same-process-r
 
 ## Native temporary-file verification recovery
 
-Native temps resume by size. Bad final hash triggers cleanup and one full retry per launch; complete bad/oversized temps share the limit. Cleanup failure or another bad payload aborts without promotion. Final size/hash bypass the cache; host PDB/resource rules stay intact. Retry resets remaining/received counters; backend range/hash and synchronous borrowed callback remain, with no public API.
+Native temps resume by size. Bad hash or complete wrong/oversized temp permits one full retry per launch after cleanup; cleanup failure or a bad retry aborts without promotion. Final size/hash bypass cache. Host PDB/resources, backend range/hash and synchronous borrowed callbacks stay; retry resets remaining/received bytes. No new API.
 
-The real secure-channel fixture covers both delivery modes and terminal lock. Friend cleanup refusal is not OS denial. Managed RunUnitTests inclusion is not execution: AS/Managed, OS and package acceptance remain pending.
+Both deliveries check terminal lock and retained bytes. Windows exclusive handles deny deletion until release, then allow it. Run Windows AS/Managed for OS evidence; inclusion or friend refusal is insufficient. Check packages/restart/rollback separately.
 
 ## Host CLI surface
 
@@ -421,7 +417,7 @@ then removed around `createmsi` so the sibling Raw/Zip portable artifacts stay p
 - **Managed resource payloads** are rebuilt per distributed client target and staged below `PlatformBinaries/<target>/`. When several native binary variants share one updater target, the least-qualified matching entry, normally default Release, supplies the one target-wide pack; independently built equivalent CoreLib payloads need not be byte-identical.
 - **Windows Client packages with the `Wix` pack** build a required MSI from the already-staged Raw client payload. `package.py::make_wix_installer` writes a temporary WiX JSON config and adds the `INSTALLED` marker only while the MSI payload is generated; `createmsi.py` defaults `INSTALLDIR` to `%LOCALAPPDATA%\<Common.GameName>` and registers the selected path plus the product URI scheme through HKCU registry entries. A remembered path or an explicit command-line/UI choice still overrides that default. Windows `light` retries once with `-sval` only for the exact Windows Installer service-unavailable diagnostic; other linker/ICE failures and a failed fallback remain fatal. A missing WiX/wixl toolset or a generator failure fails the package instead of silently publishing only the Raw/Zip siblings.
 - **PDBs for Windows runtime DLLs** are shipped under `<runtime_dll>.pdb` (for example, `<client-host>.dll.pdb`) — both next to the bundled client DLL and inside every server-staged `PlatformBinaries/Windows-*` payload. The host exe keeps its own `<host_name>.pdb` so the two namespaces never collide. `package.py` patches the CodeView (`RSDS`) record in place to point at the new PDB filename — for the renamed runtime DLL (`copy_runtime_pdb`) **and** for the host exe (`<name>.pdb`, patched at the `copy_pdb` call site) — so DbgHelp resolve symbols automatically without relying on the build-machine path baked into the binary. Missing PDB inputs or failed RSDS patches `assert` immediately during packaging — symbol gaps are never silently tolerated.
-- **The host PDB is delivered for missing-copy recovery only.** `package_all_client_runtime_update_payloads` stages the host's own `<name>.pdb` alongside the runtime DLL and its `<name>.dll.pdb` under `PlatformBinaries/<target>/`. The host exe is frozen and never delivered, so its PDB is build-specific and the server only carries its *current* build's host PDB. The client therefore fetches the host PDB **only when its local copy is missing** and **never overwrites a present one** (`Updater.cpp` skips the `<runtime_local_prefix>.pdb` entry when the file already exists, in either resource-sync or binaries mode). An up-to-date host re-downloads a matching PDB; an older host's matching local PDB stays untouched (and only if the player deleted it does the client write the current, non-matching one, which the debugger ignores by GUID). This recovers a deleted host PDB without ever clobbering a good one — the clobber that an unconditional host-PDB delivery used to cause for self-updated clients (frozen old host + newer server host PDB).
+- **Host PDB staging.** `package_all_client_runtime_update_payloads` places `<name>.pdb` beside the runtime DLL and `<name>.dll.pdb` under `PlatformBinaries/<target>/`. Missing-copy recovery and frozen-host symbol matching follow [Runtime ABI](#runtime-abi).
 
 Both the bundled runtime library in client packages and the runtime libraries staged for server-side binary updates go through the same package-time patching as ordinary executables: embedded resources, internal config, and packaged mark are written by `package.py`. Variant-specific config is applied to the runtime payload that actually runs the game; for example the Windows OpenGL runtime receives `ForceOpenGL=1`. The embedded-resource zip is produced with pinned entry timestamps and permissions (`make_embedded_pack`), so the bundled-client copy of a runtime and the matching `<Baking.PlatformBinaries>/<target>/<output_name><ext>` payload remain byte-identical across separate Server/Client package runs.
 
