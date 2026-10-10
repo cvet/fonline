@@ -14,6 +14,35 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Fixed
+
+- Persist synchronous changes to a retained critter's own properties in
+  `OnCritterUnload`, while keeping native unload teardown and ordinary
+  destruction outside that permission. A reloaded critter receives the
+  callback's values, including explicit writes back to defaults.
+
+### Migration
+
+- Upgrade from `2026.1.25-dev` at `a131717f8373b78f251c331699d15a4ab285eeca`.
+  The correction fulfills the existing unload callback contract; no script API,
+  setting, saved-property identity, unit, database conversion, network marker
+  (`0.0.69`) or resource-schema change is introduced. Only the synchronous
+  callback for the exact unloading critter may save while destroying; do not
+  suspend and expect the permission to persist. Logout alone is unaffected.
+- Reconfigure and rebuild Engine and consuming native server roles together
+  for the private critter layout and version/revision metadata. Rebake matching
+  scripts/resources when adopting dependent gameplay changes. Preserve the
+  stored map/hex fields during teardown; the existing global-map load policy
+  is unchanged. Already lost callback values cannot be reconstructed; an
+  embedding project owns any business-data reconciliation. Roll back using
+  the previous complete package, accepting its previous unload behavior.
+- Regenerate/check source-owned references, localization, site/search/routes
+  and AI artifacts. Run the backend-independent native unload/finish
+  regressions and the complete engine unit target; embedding games own their
+  exact persisted gameplay acceptance.
+
+## 2026.1.25-dev - 2026-10-10
+
 ### Changed
 
 - Merge published display-query and map-grid updates `9ca3e5c986` with retained collection-event integration `f684889580`, preserving both histories. The published `2026.1.24-dev` tip is the first parent; retained integration notes are preserved under version 22.

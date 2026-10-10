@@ -10698,3 +10698,34 @@ Completed local validation:
   source cohort. The later verification-record edit changes documentation only.
   Safety stashes remain retained. No push, release or production publication
   was performed.
+
+## 2026-10-10 — Persist retained critter changes during unload
+
+- Baseline `a131717f8373b78f251c331699d15a4ab285eeca`
+  (`2026.1.25-dev`); correction `2026.1.26-dev`. A private per-critter
+  permission admits synchronous persistent-property writes only during its
+  `OnCritterUnload` dispatch and ends before native map/body teardown.
+  Ordinary destroying and finished entities continue rejecting persistence.
+- Two backend-independent engine-owned regressions reproduce lost callback
+  values before the fix and run successfully after it: 29 assertions, no
+  failure, error or skip. They verify actual load, resetting a property to
+  its default, saved map/hex preservation before load, and no finish-time
+  write or recreation of a deleted database record. Ordinary load still
+  clears local-map membership and enters the global map.
+- Clean Windows native compilation and the full embedding-generated engine
+  unit target pass 554 cases and 667334 assertions. An initial const-capture
+  compiler failure is retained separately; acceptance uses the subsequent
+  mutable unwind guard and unchanged source cohort.
+- The dated English/Russian migration notes and lifecycle guide describe the
+  precise synchronous boundary, private native-layout rebuild, unchanged
+  stored identities/API/formats and project-owned data reconciliation.
+  Generated API/map/index, complete source documentation validation
+  (414 Markdown entries), and 25 lifecycle/localization/version fixtures pass.
+  The seventeen-domain contract diff has zero changes and zero required or
+  missing dispositions. Site/search/routes and AI artifacts are regenerated
+  in dependency order.
+- Jekyll remains unavailable in this environment: no bundle/Ruby or WSL.
+  No fresh rendered-site or browser acceptance is claimed. Gameplay-specific
+  persisted outcomes remain the embedding project's evidence boundary.
+  Completion/report edits follow native validation and alter documentation
+  only. No push, release or production publication is performed.

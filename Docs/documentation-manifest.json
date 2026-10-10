@@ -4541,6 +4541,31 @@
         "Docs/en/how-to/scripting/managed-csharp.md",
         "Docs/en/reference/changelog.md"
       ]
+    },
+    "Docs/_meta/CritterUnloadPersistence20261010Plan.md": {
+      "id": "critter-unload-persistence-20261010-plan",
+      "title": "Retained critter persistence during unload callbacks, 10 October 2026",
+      "audiences": [
+        "engine-contributor",
+        "ai-agent"
+      ],
+      "classification": {
+        "diataxis": "none",
+        "visibility": "internal",
+        "human": true,
+        "translation": "not-required"
+      },
+      "owner": "documentation",
+      "state": "active-plan",
+      "disposition": "retain",
+      "target": "Docs/_meta/CritterUnloadPersistence20261010Plan.md",
+      "sources": [
+        "Source/Server/Server.cpp",
+        "Source/Server/Critter.h",
+        "Source/Tests/Test_ServerEntityLifetime.cpp",
+        "Docs/en/how-to/scripting/lifecycle-and-concurrency.md",
+        "Docs/en/reference/changelog.md"
+      ]
     }
   }
 }
