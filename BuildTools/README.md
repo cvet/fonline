@@ -106,7 +106,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs_metadata.py` strictly decodes project-baked `Metadata.fometa-server/client`, verifies both sides agree, and writes/checks a project-owned remote-call JSON/Markdown catalog.
 - `docs_inventory.py` writes/checks the independent export-method, native-test, and setting declaration inventory.
 - `docs_localization.py` enforces complete bilingual coverage, the glossary, stable locale targets, normalized English hashes, exact translated fences, and language-preserving links, then writes/checks `docs-manifest.json#/translation_status`.
-- `docs_description_translations.py` inventories reader-facing prose in 20 generated contract models, applies the reviewed stable-ID Russian overlay, rejects duplicate/unknown/stale/type-changing/code-changing records, and writes/checks `Docs/generated/description-translation-status.json`. Missing entries remain explicit until the semantic catalog can move from `registered-translations-current` to `complete`.
+- `docs_description_translations.py` inventories reader-facing prose in 19 generated contract models, applies the reviewed stable-ID Russian overlay, rejects duplicate/unknown/stale/type-changing/code-changing records, and writes/checks `Docs/generated/description-translation-status.json`. Missing entries remain explicit until the semantic catalog can move from `registered-translations-current` to `complete`.
 - `docs_ai_delivery.py` projects `Docs/documentation-manifest.json` and canonical Markdown into root `llms.txt`, bounded `llms-full.txt`, and public `docs-manifest.json`; it normalizes content hashes and rejects stale, oversized, or non-deterministic output.
 - `docs_site.py` resolves manifest-owned stable document IDs into checked localized Jekyll navigation data, bounded English and Russian static search indexes, and the public version/locale/legacy-route catalog; it rejects unknown/duplicate/omitted top-level pages, route collisions, ambiguous canonical targets, missing locale pairs, cross-locale search ownership, and oversized or stale output.
 - `docs_ai_eval.py` validates the versioned standalone task set in `Docs/ai-evaluation.json` against the manifest and the same compact search model used by the browser, then writes/checks `Docs/generated/ai-evaluation-report.json` with ranks, evidence checks, success rate, and MRR.
@@ -123,7 +123,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs-browser/audit.mjs` serves that completed `_site` tree locally and uses the lock-file-pinned Playwright Chromium plus axe-core to audit every route at desktop and mobile widths. It rejects WCAG 2.2 A/AA violations, runtime/resource errors, page-level horizontal scrolling, broken responsive layout, and keyboard failures in skip navigation, search, theme, copy, and the mobile focus-trapped drawer; CI retains JSON and screenshots.
 - `docs_validate.py` validates the documentation manifest, local links/anchors, source ownership, Pages contract, and freshness of every generated artifact.
 
-Run their focused tests and checks from the engine root; generated JSON and Markdown are checked in and must not be edited manually.
+Run focused checks from the engine root. Models and reviewed assets stay versioned; derive ignored `Workspace/Documentation/` outputs with `BuildTools/docs_site_build.py`. Never edit generated output.
 
 Materialize a review candidate only from a clean, remotely fetchable exact
 Engine commit:
@@ -285,7 +285,7 @@ Linux system package installation is explicit and separate from workspace prepar
 - `msi-packages`
 - `all-packages`
 
-Workspace features such as `linux`, `web`, `android-arm64`, and `windows-cross` do not install apt packages. On a fresh host, pass the matching `*-packages` feature first. `all-packages` installs every group above (including `php-cli` and `msi-packages`, the `wixl` MSI-installer toolset). Because apt lives only on the host-provisioning path, no `prepare-workspace` part installs system packages, and parallel CI jobs never contend for the apt lock.
+Workspace features (`linux`, `web`, `android-arm64`, `windows-cross`) do not install apt packages: provision a fresh host with the matching `*-packages` first. `linux-packages` includes `libkrb5-dev` for Managed native GSSAPI. `all-packages` installs every group, including `php-cli` and `msi-packages` with `wixl`. Apt runs only during host provisioning, never in a `prepare-workspace` part; parallel CI jobs do not share its lock.
 
 Host prerequisite checks are also available through the main tool:
 

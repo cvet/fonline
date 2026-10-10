@@ -1430,4 +1430,20 @@ TEST_CASE("MetadataBakerPropertyTransformRoundTripsAndValidates")
     }
 }
 
+TEST_CASE("MetadataBakerRejectsTruncatedNegativeEnum")
+{
+    for (auto extension : {"cs", "fos"}) {
+        for (auto suffix : {"", "\n", " // unfinished value\n"}) {
+            BakerTests::TestRig rig;
+            rig.AddSourceFile(std::format("Scripts/TruncatedEnum.{}", extension), std::format("///@ Enum TruncatedEnum Entry = -{}", suffix));
+            auto context = rig.MakeContext();
+            context->ForceSyncMode = true;
+            MetadataBaker baker(context);
+
+            REQUIRE_THROWS_WITH(baker.BakeFiles(rig.GetAllSourceFiles(), ""), Catch::Matchers::ContainsSubstring("expected number after '-'"));
+            CHECK(rig.Outputs.empty());
+        }
+    }
+}
+
 FO_END_NAMESPACE
