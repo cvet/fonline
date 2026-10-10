@@ -14,6 +14,75 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Added
+
+- Hidden `ServerMapGridMemoryDynamic` and `ServerMapGridMemoryChunked`
+  measurements for empty/populated runtime maps, increasing field-write history,
+  destruction and shutdown. Fresh-process comparisons report process-private
+  bytes and check identical entity counts/field behavior without memory thresholds.
+  See [testing](../contributing/testing/).
+- Hidden `ServerMapGridOperationsCost` benchmark for production server path,
+  reachability, trace, field-read and block-write operations across all nine
+  dense/chunked/hash prototype and instance combinations. It checks identical
+  results and reports five warmed wall/CPU samples without timing thresholds.
+  See [testing](../contributing/testing/).
+- Independent string selectors for shared map prototype and runtime instance
+  grids: `Server.ProtoMapGridType` and `Server.MapInstanceGridType` default to
+  `Dynamic` and accept exactly `Static`, `Chunked` or `Dynamic`. Unknown or empty
+  values reject server startup. These select three sibling implementations;
+  chunked grids do not inherit from static grids. Block side comes from
+  `GameSettings::SERVER_MAP_CHUNK_SIDE` (16). See
+  [server field storage](../explanation/runtime/server.md#server-map-field-storage).
+
+### Fixed
+
+- Replace the client's full-map field allocation with directly indexed 16x16
+  dense blocks, created on first write. Large maps no longer need one contiguous
+  allocation containing every field. Missing reads, scrolling, overlapping
+  Mapper resize and unload preserve their behavior; light buffers remain dense.
+  Add actual large-map memory regressions, block-boundary/ownership tests and
+  a hidden comparison of native field-access costs. See
+  [client field storage](../explanation/runtime/client.md#client-map-field-storage).
+  Block side is a template parameter; `MapView` selects it through the
+  compile-time `GameSettings::CLIENT_MAP_CHUNK_SIDE` constant (16).
+
+### Migration
+
+- Upgrade from `2026.1.21-dev` at `cfa468f17bd5dff82cebc6f05b568620fc34163c`.
+  `ChunkedTwoDimensionalGrid` is a new native storage type;
+  `StaticTwoDimensionalGrid` and `DynamicTwoDimensionalGrid` retain their existing
+  contracts. Private `MapView::_hexField` uses the new type. Native clients,
+  embedded clients and Mapper on all platforms/backends must rebuild every
+  consumer of `MapView` headers because the private C++ layout changes. No
+  existing hex-coordinate meaning, map format, save or database
+  conversion is required. Do not mix old native objects with new headers.
+- Follow the [generated-content order](../how-to/build/generated-content.md):
+  configure/codegen, rebuild affected native applications and tests, bake
+  matching metadata/resources, then repackage the matching host/runtime.
+  Host/runtime ABI version, resource schemas, network compatibility `0.0.69`
+  and database `MigrationRule` remain unchanged. Replace the published boolean
+  settings `ProtoMapStaticGrid` and `MapInstanceStaticGrid` with the corresponding
+  `ProtoMapGridType` and `MapInstanceGridType` strings. For each layer, the former
+  static/chunk flag combination maps to `Dynamic` when static was false,
+  `Static` when static was true and chunked false, and `Chunked` when both were
+  true. Earlier unpublished `ProtoMapChunkedGrid`, `MapInstanceChunkedGrid`,
+  `ProtoMapStaticGridChunked` and `MapInstanceStaticGridChunked` keys are removed;
+  no aliases remain. Regenerate bindings and bake matching metadata. Native
+  `StaticMap` callers now pass `(size, grid_type)`; `Map` construction is no longer
+  `noexcept` and invalid selectors throw `SettingsException`. Rollback uses the previous complete native package;
+  no database restore is needed.
+- Run `ClientLargeMap*`, `TwoDimensionalGrid`, client-map/lifetime and
+  `ServerMapGridSelectionPreservesFieldBehavior`, invalid-selector and
+  constructor-unwind checks plus server-map/lifetime,
+  sprite/atlas/roof regressions, compare repeated `ClientMapFieldAccessCost`
+  runs and `ServerMapGridOperationsCost`, and qualify the embedding project's
+  ordinary rendered map-entry route.
+  Constructor-memory and access-cost fixtures do not establish long-session
+  32-bit OOM freedom, whole-game FPS or server tick throughput. Regenerate snippets, translation state,
+  site/search/routes, AI evaluation and AI delivery after integration.
+
+## 2026.1.21-dev - 2026-10-10
+
 ### Fixed
 
 - Write back mutable Managed event lists and dictionaries through the caller's collection accessor after converting their entries. Native collection proxies retain container-owned addresses after additions and vector growth, refresh dictionary order, and preserve duplicate-key insertion semantics and const write rejection.

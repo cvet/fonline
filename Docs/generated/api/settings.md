@@ -944,8 +944,8 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-server-lockmaxwaittime-aaef94c68f"></a>
 - [`symbol-setting-server-server-lockmaxwaittime-aaef94c68f`](../../en/reference/script-api/settings.md#symbol-setting-server-server-lockmaxwaittime-aaef94c68f)
 
-<a id="symbol-setting-server-server-mapinstancestaticgrid-f2673a5f1f"></a>
-- [`symbol-setting-server-server-mapinstancestaticgrid-f2673a5f1f`](../../en/reference/script-api/settings.md#symbol-setting-server-server-mapinstancestaticgrid-f2673a5f1f)
+<a id="symbol-setting-server-server-mapinstancegridtype-b6c9d28cf4"></a>
+- [`symbol-setting-server-server-mapinstancegridtype-b6c9d28cf4`](../../en/reference/script-api/settings.md#symbol-setting-server-server-mapinstancegridtype-b6c9d28cf4)
 
 <a id="symbol-setting-server-server-maxserverloglines-942b1f7897"></a>
 - [`symbol-setting-server-server-maxserverloglines-942b1f7897`](../../en/reference/script-api/settings.md#symbol-setting-server-server-maxserverloglines-942b1f7897)
@@ -959,8 +959,8 @@ Continue with the [canonical reference](../../en/reference/script-api/settings.m
 <a id="symbol-setting-server-server-nostart-44b1aac416"></a>
 - [`symbol-setting-server-server-nostart-44b1aac416`](../../en/reference/script-api/settings.md#symbol-setting-server-server-nostart-44b1aac416)
 
-<a id="symbol-setting-server-server-protomapstaticgrid-95ae6fc2b5"></a>
-- [`symbol-setting-server-server-protomapstaticgrid-95ae6fc2b5`](../../en/reference/script-api/settings.md#symbol-setting-server-server-protomapstaticgrid-95ae6fc2b5)
+<a id="symbol-setting-server-server-protomapgridtype-1b734335f6"></a>
+- [`symbol-setting-server-server-protomapgridtype-1b734335f6`](../../en/reference/script-api/settings.md#symbol-setting-server-server-protomapgridtype-1b734335f6)
 
 <a id="symbol-setting-server-server-serverheight-fc6b45f22f"></a>
 - [`symbol-setting-server-server-serverheight-fc6b45f22f`](../../en/reference/script-api/settings.md#symbol-setting-server-server-serverheight-fc6b45f22f)

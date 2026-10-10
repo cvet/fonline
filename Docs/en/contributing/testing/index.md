@@ -57,6 +57,66 @@ The same job runs the managed runtime preparation regressions in `test_managed_r
 
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
 
+`ClientLargeMapFieldsStayWithinMemoryBudget` checks a real 1200x1200 `MapView`
+constructor against a 64 MiB process-private-memory growth limit when the
+platform counter is available, then checks camera rebuilds, stable field
+addresses across block allocations, Mapper resize and destruction.
+`ClientLargeMapScrollBoundsStayWithinMemoryBudget` applies an axial scroll
+rectangle to the same large-map fixture. These are separate from the retained
+destroyed-map allocator check. `Test_TwoDimensionalGrid.cpp` covers chunk
+boundaries, partial-edge shrink/growth, zero size and move-only cell ownership,
+including explicit template sides of 1, 8, 16 and 32.
+The hidden `ClientMapFieldAccessCost` reports seven-sample median access times
+for actual client fields in populated, mixed, empty and scattered workloads.
+Compare repeated runs from the same optimized binary; timings have no flaky
+pass/fail threshold and do not claim rendered frame performance.
+
+`ServerMapGridSelectionPreservesFieldBehavior` starts the real server loader
+and constructs runtime maps for all nine independent `Static`, `Chunked` and
+`Dynamic` prototype/instance combinations.
+It checks shared prototype fields across chunk boundaries, stable field
+addresses, manual movement/shooting blocks and isolation between instances,
+then adds items and critters through the native managers. The fixture lives in
+`Test_ServerEntityLifetime.cpp` and runs with either scripting backend.
+`ServerMapGridTypesRejectInvalidSettings` rejects empty, unknown and wrong-case
+values for both selectors before any map blobs are loaded.
+`ServerMapInvalidGridConstructionUnwindsEntityOwner` checks cleanup after a
+constructor rejects a selector. These are functional contract fixtures, not
+server performance bounds.
+
+The hidden `ServerMapGridOperationsCost` measures production `MapManager` and
+`Map` operations on a deterministic 600x600 fixture with obstacles, sealed
+rooms, 256 critters and 1024 items. It compares all nine independent prototype
+and instance combinations of dense static, chunked and hash storage.
+Each workload is warmed, calibrated once to an approximately 200 ms dense
+batch and repeated five times with rotated/reversed mode order. Startup,
+population, logging and Catch2 assertions are outside the timed loops.
+`SERVER_GRID_CSV` rows contain sample, prototype mode, instance mode, workload,
+iterations, operation count, wall milliseconds, process CPU milliseconds and
+checksum. Full route results and other outputs must match across modes.
+
+Run the explicitly named hidden case from an optimized test binary on a quiet
+host. Compare medians and ranges; CPU counters may have coarse resolution.
+The measured workloads include result hashing and normal entity-cover
+validation under server quiescence. This measures native operation cost, not
+game-script/tick throughput, contention scalability, startup memory or a
+particular embedding game's maps. Settings apply only to the fixture servers.
+
+The hidden `ServerMapGridMemoryDynamic` and `ServerMapGridMemoryChunked` cases
+compare runtime storage on sixteen 600x600 server maps sharing one empty
+prototype with `Dynamic` storage. Each map receives 1024 nonblocking items
+and 256 critters at identical spread coordinates. Subsequent stages toggle
+and clear 10% and 90% of distinct fields without adding live entities.
+Five process-private samples per stage yield a median; the
+`SERVER_GRID_MEMORY_CSV` columns are grid type, stage, private bytes and optional
+allocator committed active-page bytes (zero means unavailable).
+Run each exact case in a fresh optimized process, alternate modes and repeat.
+Subtract each process's baseline, keep absolute values and ranges, and separate
+destroyed-map/cover-release storage from post-shutdown storage. Assertions check
+entity counts and field behavior, without a machine-dependent memory threshold.
+This is a controlled native world, not a restored embedding-game database or
+a measurement of its full prototype catalog.
+
 The repeated-unload storage comparison warms one complete map load/unload
 cycle before reading rpmalloc's committed active-page counter. Twelve destroyed
 maps retained by native handles must then stay within the same 8 MiB bound.

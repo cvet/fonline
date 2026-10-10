@@ -418,7 +418,7 @@ private:
     unordered_map<ident_t, ptr<ItemHexView>> _itemsMap {};
     unordered_set<refcount_ptr<ItemHexView>> _deferredRefreshItems {};
 
-    optional<StaticTwoDimensionalGrid<Field, mpos, msize>> _hexField {};
+    optional<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::CLIENT_MAP_CHUNK_SIDE>> _hexField {};
 
     bool _rebuildMap {};
     MapSpriteList _mapSprites {};

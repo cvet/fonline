@@ -42,7 +42,7 @@ This reference describes the declarations in the model's `engine-native-codegen`
 
 ## Scope contract
 
-The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2569 stable IDs with SHA-256 <code>c2a69b7e2f3748942a47b6a446802033cc0ec9e1abfd20f607b4176f2c4341c7</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
+The complete current inventory is <code>experimental</code> since <code>2022.1.0.wip</code>. The declaration pins 2569 stable IDs with SHA-256 <code>cb9a9f41d4684263027b946b30bb0c2384476983ce438652ebfc43b2efa402d2</code>; any symbol addition, removal, or stable-ID change fails generation until an owner reviews and updates both pins.
 
 The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.<br>SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
 

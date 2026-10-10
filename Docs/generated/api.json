@@ -11,7 +11,7 @@
       "stability": "experimental",
       "since": "2022.1.0.wip",
       "symbol_count": 2569,
-      "inventory_sha256": "c2a69b7e2f3748942a47b6a446802033cc0ec9e1abfd20f607b4176f2c4341c7",
+      "inventory_sha256": "cb9a9f41d4684263027b946b30bb0c2384476983ce438652ebfc43b2efa402d2",
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
@@ -1483,7 +1483,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1075
+        "line": 1077
       },
       "contract": {
         "explicit": true,
@@ -1519,7 +1519,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1078
+        "line": 1080
       },
       "contract": {
         "explicit": true,
@@ -1555,7 +1555,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1077
+        "line": 1079
       },
       "contract": {
         "explicit": true,
@@ -1591,7 +1591,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1073
+        "line": 1075
       },
       "contract": {
         "explicit": true,
@@ -1627,7 +1627,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1076
+        "line": 1078
       },
       "contract": {
         "explicit": true,
@@ -1663,7 +1663,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1074
+        "line": 1076
       },
       "contract": {
         "explicit": true,
@@ -1699,7 +1699,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 993
+        "line": 995
       },
       "contract": {
         "explicit": true,
@@ -1735,7 +1735,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 992
+        "line": 994
       },
       "contract": {
         "explicit": true,
@@ -1771,7 +1771,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 994
+        "line": 996
       },
       "contract": {
         "explicit": true,
@@ -1807,7 +1807,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 989
+        "line": 991
       },
       "contract": {
         "explicit": true,
@@ -1843,7 +1843,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 990
+        "line": 992
       },
       "contract": {
         "explicit": true,
@@ -1879,7 +1879,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 987
+        "line": 989
       },
       "contract": {
         "explicit": true,
@@ -1915,7 +1915,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 986
+        "line": 988
       },
       "contract": {
         "explicit": true,
@@ -1951,7 +1951,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 996
+        "line": 998
       },
       "contract": {
         "explicit": true,
@@ -1987,7 +1987,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 995
+        "line": 997
       },
       "contract": {
         "explicit": true,
@@ -2023,7 +2023,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 991
+        "line": 993
       },
       "contract": {
         "explicit": true,
@@ -2059,7 +2059,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 988
+        "line": 990
       },
       "contract": {
         "explicit": true,
@@ -2095,7 +2095,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1024
+        "line": 1026
       },
       "contract": {
         "explicit": true,
@@ -2131,7 +2131,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1012
+        "line": 1014
       },
       "contract": {
         "explicit": true,
@@ -2167,7 +2167,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1023
+        "line": 1025
       },
       "contract": {
         "explicit": true,
@@ -2203,7 +2203,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1015
+        "line": 1017
       },
       "contract": {
         "explicit": true,
@@ -2239,7 +2239,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1011
+        "line": 1013
       },
       "contract": {
         "explicit": true,
@@ -2275,7 +2275,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1020
+        "line": 1022
       },
       "contract": {
         "explicit": true,
@@ -2311,7 +2311,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1016
+        "line": 1018
       },
       "contract": {
         "explicit": true,
@@ -2347,7 +2347,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1017
+        "line": 1019
       },
       "contract": {
         "explicit": true,
@@ -2383,7 +2383,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1022
+        "line": 1024
       },
       "contract": {
         "explicit": true,
@@ -2419,7 +2419,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1021
+        "line": 1023
       },
       "contract": {
         "explicit": true,
@@ -2455,7 +2455,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1019
+        "line": 1021
       },
       "contract": {
         "explicit": true,
@@ -2491,7 +2491,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1018
+        "line": 1020
       },
       "contract": {
         "explicit": true,
@@ -2527,7 +2527,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1013
+        "line": 1015
       },
       "contract": {
         "explicit": true,
@@ -2563,7 +2563,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1014
+        "line": 1016
       },
       "contract": {
         "explicit": true,
@@ -2599,7 +2599,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 976
+        "line": 978
       },
       "contract": {
         "explicit": true,
@@ -2635,7 +2635,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 978
+        "line": 980
       },
       "contract": {
         "explicit": true,
@@ -2671,7 +2671,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 977
+        "line": 979
       },
       "contract": {
         "explicit": true,
@@ -2707,7 +2707,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1048
+        "line": 1050
       },
       "contract": {
         "explicit": true,
@@ -2743,7 +2743,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1050
+        "line": 1052
       },
       "contract": {
         "explicit": true,
@@ -2779,7 +2779,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1056
+        "line": 1058
       },
       "contract": {
         "explicit": true,
@@ -2815,7 +2815,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1054
+        "line": 1056
       },
       "contract": {
         "explicit": true,
@@ -2851,7 +2851,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1049
+        "line": 1051
       },
       "contract": {
         "explicit": true,
@@ -2887,7 +2887,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1055
+        "line": 1057
       },
       "contract": {
         "explicit": true,
@@ -2923,7 +2923,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1053
+        "line": 1055
       },
       "contract": {
         "explicit": true,
@@ -2959,7 +2959,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1052
+        "line": 1054
       },
       "contract": {
         "explicit": true,
@@ -2995,7 +2995,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1051
+        "line": 1053
       },
       "contract": {
         "explicit": true,
@@ -3031,7 +3031,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 967
+        "line": 969
       },
       "contract": {
         "explicit": true,
@@ -3067,7 +3067,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 968
+        "line": 970
       },
       "contract": {
         "explicit": true,
@@ -3103,7 +3103,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 969
+        "line": 971
       },
       "contract": {
         "explicit": true,
@@ -4432,7 +4432,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1031
+        "line": 1033
       },
       "contract": {
         "explicit": true,
@@ -4468,7 +4468,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1033
+        "line": 1035
       },
       "contract": {
         "explicit": true,
@@ -4504,7 +4504,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1032
+        "line": 1034
       },
       "contract": {
         "explicit": true,
@@ -4540,7 +4540,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1003
+        "line": 1005
       },
       "contract": {
         "explicit": true,
@@ -4576,7 +4576,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1004
+        "line": 1006
       },
       "contract": {
         "explicit": true,
@@ -4612,7 +4612,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1041
+        "line": 1043
       },
       "contract": {
         "explicit": true,
@@ -4648,7 +4648,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1040
+        "line": 1042
       },
       "contract": {
         "explicit": true,
@@ -6844,7 +6844,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 453
+        "line": 455
       },
       "contract": {
         "explicit": true,
@@ -6880,7 +6880,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 448
+        "line": 450
       },
       "contract": {
         "explicit": true,
@@ -6916,7 +6916,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 449
+        "line": 451
       },
       "contract": {
         "explicit": true,
@@ -6952,7 +6952,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 439
+        "line": 441
       },
       "contract": {
         "explicit": true,
@@ -6988,7 +6988,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 446
+        "line": 448
       },
       "contract": {
         "explicit": true,
@@ -7024,7 +7024,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 428
+        "line": 430
       },
       "contract": {
         "explicit": true,
@@ -7060,7 +7060,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 437
+        "line": 439
       },
       "contract": {
         "explicit": true,
@@ -7096,7 +7096,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 420
+        "line": 422
       },
       "contract": {
         "explicit": true,
@@ -7132,7 +7132,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 424
+        "line": 426
       },
       "contract": {
         "explicit": true,
@@ -7168,7 +7168,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 421
+        "line": 423
       },
       "contract": {
         "explicit": true,
@@ -7204,7 +7204,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 419
+        "line": 421
       },
       "contract": {
         "explicit": true,
@@ -7240,7 +7240,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 430
+        "line": 432
       },
       "contract": {
         "explicit": true,
@@ -7276,7 +7276,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 435
+        "line": 437
       },
       "contract": {
         "explicit": true,
@@ -7312,7 +7312,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 423
+        "line": 425
       },
       "contract": {
         "explicit": true,
@@ -7348,7 +7348,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 443
+        "line": 445
       },
       "contract": {
         "explicit": true,
@@ -7384,7 +7384,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 442
+        "line": 444
       },
       "contract": {
         "explicit": true,
@@ -7420,7 +7420,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 422
+        "line": 424
       },
       "contract": {
         "explicit": true,
@@ -7456,7 +7456,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 445
+        "line": 447
       },
       "contract": {
         "explicit": true,
@@ -7492,7 +7492,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 444
+        "line": 446
       },
       "contract": {
         "explicit": true,
@@ -7528,7 +7528,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 433
+        "line": 435
       },
       "contract": {
         "explicit": true,
@@ -7564,7 +7564,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 450
+        "line": 452
       },
       "contract": {
         "explicit": true,
@@ -7600,7 +7600,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 436
+        "line": 438
       },
       "contract": {
         "explicit": true,
@@ -7636,7 +7636,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 440
+        "line": 442
       },
       "contract": {
         "explicit": true,
@@ -7672,7 +7672,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 431
+        "line": 433
       },
       "contract": {
         "explicit": true,
@@ -7708,7 +7708,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 441
+        "line": 443
       },
       "contract": {
         "explicit": true,
@@ -7744,7 +7744,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 451
+        "line": 453
       },
       "contract": {
         "explicit": true,
@@ -7780,7 +7780,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 417
+        "line": 419
       },
       "contract": {
         "explicit": true,
@@ -7816,7 +7816,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 418
+        "line": 420
       },
       "contract": {
         "explicit": true,
@@ -7852,7 +7852,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 432
+        "line": 434
       },
       "contract": {
         "explicit": true,
@@ -7888,7 +7888,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 427
+        "line": 429
       },
       "contract": {
         "explicit": true,
@@ -7924,7 +7924,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 425
+        "line": 427
       },
       "contract": {
         "explicit": true,
@@ -7960,7 +7960,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 426
+        "line": 428
       },
       "contract": {
         "explicit": true,
@@ -7996,7 +7996,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 447
+        "line": 449
       },
       "contract": {
         "explicit": true,
@@ -8032,7 +8032,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 438
+        "line": 440
       },
       "contract": {
         "explicit": true,
@@ -8068,7 +8068,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 415
+        "line": 417
       },
       "contract": {
         "explicit": true,
@@ -8104,7 +8104,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 429
+        "line": 431
       },
       "contract": {
         "explicit": true,
@@ -8140,7 +8140,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 416
+        "line": 418
       },
       "contract": {
         "explicit": true,
@@ -8176,7 +8176,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 434
+        "line": 436
       },
       "contract": {
         "explicit": true,
@@ -8212,7 +8212,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 413
+        "line": 415
       },
       "contract": {
         "explicit": true,
@@ -8248,7 +8248,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 454
+        "line": 456
       },
       "contract": {
         "explicit": true,
@@ -20446,7 +20446,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1064
+        "line": 1066
       },
       "contract": {
         "explicit": true,
@@ -20482,7 +20482,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1065
+        "line": 1067
       },
       "contract": {
         "explicit": true,
@@ -20518,7 +20518,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1063
+        "line": 1065
       },
       "contract": {
         "explicit": true,
@@ -20554,7 +20554,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1066
+        "line": 1068
       },
       "contract": {
         "explicit": true,
@@ -26416,7 +26416,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1115
+        "line": 1117
       },
       "contract": {
         "explicit": true,
@@ -26452,7 +26452,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1111
+        "line": 1113
       },
       "contract": {
         "explicit": true,
@@ -26488,7 +26488,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1114
+        "line": 1116
       },
       "contract": {
         "explicit": true,
@@ -26524,7 +26524,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1108
+        "line": 1110
       },
       "contract": {
         "explicit": true,
@@ -26560,7 +26560,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1107
+        "line": 1109
       },
       "contract": {
         "explicit": true,
@@ -26596,7 +26596,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1113
+        "line": 1115
       },
       "contract": {
         "explicit": true,
@@ -26632,7 +26632,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1109
+        "line": 1111
       },
       "contract": {
         "explicit": true,
@@ -26668,7 +26668,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1112
+        "line": 1114
       },
       "contract": {
         "explicit": true,
@@ -26704,7 +26704,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1110
+        "line": 1112
       },
       "contract": {
         "explicit": true,
@@ -28429,7 +28429,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1087
+        "line": 1089
       },
       "contract": {
         "explicit": true,
@@ -28465,7 +28465,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1085
+        "line": 1087
       },
       "contract": {
         "explicit": true,
@@ -28501,7 +28501,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1086
+        "line": 1088
       },
       "contract": {
         "explicit": true,
@@ -28966,7 +28966,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1099
+        "line": 1101
       },
       "contract": {
         "explicit": true,
@@ -29002,7 +29002,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1096
+        "line": 1098
       },
       "contract": {
         "explicit": true,
@@ -29038,7 +29038,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1095
+        "line": 1097
       },
       "contract": {
         "explicit": true,
@@ -29074,7 +29074,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1097
+        "line": 1099
       },
       "contract": {
         "explicit": true,
@@ -29110,7 +29110,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1098
+        "line": 1100
       },
       "contract": {
         "explicit": true,
@@ -29290,7 +29290,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1070
+        "line": 1072
       },
       "contract": {
         "explicit": true,
@@ -29324,7 +29324,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 983
+        "line": 985
       },
       "contract": {
         "explicit": true,
@@ -29358,7 +29358,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1008
+        "line": 1010
       },
       "contract": {
         "explicit": true,
@@ -29392,7 +29392,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 973
+        "line": 975
       },
       "contract": {
         "explicit": true,
@@ -29426,7 +29426,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1045
+        "line": 1047
       },
       "contract": {
         "explicit": true,
@@ -29460,7 +29460,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 964
+        "line": 966
       },
       "contract": {
         "explicit": true,
@@ -29525,7 +29525,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1028
+        "line": 1030
       },
       "contract": {
         "explicit": true,
@@ -29559,7 +29559,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1000
+        "line": 1002
       },
       "contract": {
         "explicit": true,
@@ -29593,7 +29593,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1037
+        "line": 1039
       },
       "contract": {
         "explicit": true,
@@ -29763,7 +29763,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 410
+        "line": 412
       },
       "contract": {
         "explicit": true,
@@ -30777,7 +30777,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1060
+        "line": 1062
       },
       "contract": {
         "explicit": true,
@@ -30907,7 +30907,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1104
+        "line": 1106
       },
       "contract": {
         "explicit": true,
@@ -31040,7 +31040,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1082
+        "line": 1084
       },
       "contract": {
         "explicit": true,
@@ -31139,7 +31139,7 @@
       "examples": [],
       "source": {
         "path": "Source/Common/Common.h",
-        "line": 1092
+        "line": 1094
       },
       "contract": {
         "explicit": true,
@@ -111452,16 +111452,16 @@
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
     },
     {
-      "id": "setting.server.Server.MapInstanceStaticGrid",
-      "family_id": "setting.server.Server.MapInstanceStaticGrid",
+      "id": "setting.server.Server.MapInstanceGridType",
+      "family_id": "setting.server.Server.MapInstanceGridType",
       "kind": "setting",
-      "name": "Server.MapInstanceStaticGrid",
+      "name": "Server.MapInstanceGridType",
       "runtime_sides": [
         "server"
       ],
       "receiver": null,
-      "signature": "bool Server.MapInstanceStaticGrid = false",
-      "description": "If true, map instance static grid is enabled",
+      "signature": "string Server.MapInstanceGridType = Dynamic",
+      "description": "Runtime map field storage: Static, Chunked or Dynamic",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -111482,11 +111482,11 @@
       },
       "declared_target": "server",
       "group": "Server",
-      "type": "bool",
+      "type": "string",
       "setting_kind": "read-only",
       "mutability": "read-only",
       "default_values": [
-        "false"
+        "Dynamic"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
@@ -111652,16 +111652,16 @@
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"
     },
     {
-      "id": "setting.server.Server.ProtoMapStaticGrid",
-      "family_id": "setting.server.Server.ProtoMapStaticGrid",
+      "id": "setting.server.Server.ProtoMapGridType",
+      "family_id": "setting.server.Server.ProtoMapGridType",
       "kind": "setting",
-      "name": "Server.ProtoMapStaticGrid",
+      "name": "Server.ProtoMapGridType",
       "runtime_sides": [
         "server"
       ],
       "receiver": null,
-      "signature": "bool Server.ProtoMapStaticGrid = false",
-      "description": "If true, proto map static grid is enabled",
+      "signature": "string Server.ProtoMapGridType = Dynamic",
+      "description": "Shared prototype field storage: Static, Chunked or Dynamic",
       "flags": [],
       "stability": "experimental",
       "since": "2022.1.0.wip",
@@ -111682,11 +111682,11 @@
       },
       "declared_target": "server",
       "group": "Server",
-      "type": "bool",
+      "type": "string",
       "setting_kind": "read-only",
       "mutability": "read-only",
       "default_values": [
-        "false"
+        "Dynamic"
       ],
       "command_line_redacted_by_default": false,
       "redaction_rule": "name matches a default Common.SecretSettingTokens entry"

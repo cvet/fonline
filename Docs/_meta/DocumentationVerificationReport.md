@@ -2,6 +2,296 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-10 - Reconcile document migrations and collection proxies with local map-grid work
+
+- Fast-forward published master from `6db09ef1d49a44307dbdadf747087247d5f5e78b`
+  to `cfa468f17bd5dff82cebc6f05b568620fc34163c`; audit all 95 incoming paths.
+  Retain the uncommitted grid implementation, defaults, regressions and prior
+  measurements in named safety copies. Twelve native files match the original
+  work after line-ending normalization and adoption of the incoming marker 69.
+- Keep all published `2026.1.18-dev` through `2026.1.21-dev` migration records;
+  continue the local grid work as `2026.1.22-dev`. Preserve both verification
+  histories and reconcile Russian review hashes against the combined sources.
+  Correct the Managed guide's obsolete single-backend Transform statement:
+  both implemented backends now bind document callbacks automatically.
+- Regenerate canonical API/map/prototype/public-contract projections, then
+  prepare ignored delivery outputs in dependency order. Source validation passes
+  411 documents, all 4,841 description translations, 310 normative snippets and
+  the 28-task/67-check retrieval gate. Publication history and the local version
+  pass; the seventeen-domain contract diff has five changes, three reviewed grid
+  dispositions and no missing entries against the adopted published baseline.
+- Focused migration/metadata/documentation fixtures pass 50 tests and 69
+  subtests; async/snippet/description/AI fixtures pass another 49 tests and 34
+  subtests. The delayed/missing lazy SVG browser regression passes its three
+  tests across desktop, mobile and 200-percent profiles. Eleven optional native
+  probes are skipped: nine require Linux Mono embedding and two require a
+  configured GCC/Clang Ninja Managed build. This Windows integration does not
+  qualify those payload/toolchain paths, the AngelScript runtime, or a full
+  Jekyll site deployment.
+- The embedding Windows Managed build completes the unit executable, baker,
+  client host/runtime, headless server and Mapper without compiler warnings.
+  The fresh ordinary native run passes 551 cases and 667,262 assertions,
+  including the new migration/metadata/property and container-proxy regressions
+  together with the retained grid and lifetime checks.
+
+## 2026-10-09 - Reconcile master updates with local map-grid work
+
+- Integrate the complete published range from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+  to `6db09ef1d49a44307dbdadf747087247d5f5e78b`. Review startup-default application,
+  managed-runtime input validation, documentation preparation/output ownership,
+  consumers, fixtures, publication wiring, source manifest and paired guides.
+  Keep published `2026.1.16-dev` and `2026.1.17-dev` entries intact; continue
+  the uncommitted grid work as `2026.1.18-dev`. Twelve changed native source/test
+  files match their pre-update backup after line-ending normalization.
+- Regenerate source-owned API, references, map-format and public-contract indexes,
+  then use `docs_prepare.py` for ignored delivery outputs in dependency order.
+  Source validation passes 411 Markdown entries, all 4,838 generated-description
+  translations, 309 normative snippets and the 28-task/67-check retrieval gate.
+  Root endpoints live under `Workspace/Documentation/`; removed delivery files
+  are not returned to the index.
+- Affected documentation/version tools pass 139 tests and 71 subtests. Runtime
+  preparation/recovery fixtures pass 535 tests with two POSIX-only link fixtures
+  skipped on Windows. Version validation accepts the current minor and both
+  published update steps. The aggregate contract diff retains five changes in
+  seventeen domains, with all three required dispositions present.
+- Fresh Windows native configuration, unit/baker/client/server builds complete
+  without compiler warnings. The complete native unit suite passes 542 cases
+  and 667,042 assertions, including `ApplicationSettings` and map-grid regressions.
+  Smart-pointer, allocator and exception-safety audits have no findings.
+- A complete affected embedding-project resource bake finishes successfully
+  after the native rebuild, with matching `2026.1.18-dev` metadata and current
+  revision, 658 maps and no dialog-composition errors. Source documentation
+  validation is repeated after this verification entry and passes all 411 pages.
+- This records source/tool/native acceptance. A rendered Jekyll/browser audit,
+  other platform builds, production rollout and a live rendered gameplay route
+  were not performed in this reconciliation. Historical measurements retain
+  their original revision and workload boundaries.
+
+## 2026-10-09 - Measure dynamic and chunked server grid memory
+
+- Add the hidden `ServerMapGridMemoryDynamic` and
+  `ServerMapGridMemoryChunked` cases to the native server lifetime suite.
+  Sixteen 600x600 maps share one empty dynamic prototype; each receives
+  1,024 nonblocking items and 256 critters at identical spread coordinates.
+  Toggle and clear 10% and 90% of fields while preserving entity counts.
+- Record five-sample process-private medians at startup, empty/populated
+  maps, both write-history densities, destroyed-location/cover release and
+  shutdown. Optional allocator active-page values are unavailable in the
+  measured binary and are represented as unavailable in the external report.
+  Process commitment includes entities and allocator caches; it is not an
+  exact container-allocation or leak measurement.
+- Run each case in a fresh optimized process, three times per mode with
+  alternating order. All six cases pass 894 assertions in total, record
+  42 stage medians and stop cleanly once each, without synchronization or
+  fatal/script diagnostics. Fix a duplicate shutdown in the preparation
+  fixture before rebuilding and recording the final comparison; exclude
+  the pilot and incomplete first series from the final medians.
+- Across the sixteen maps, private growth from baseline is 53.9766 MiB for
+  dynamic versus 249.4883 MiB for chunked after sparse population, and
+  526.2734 versus 414.8086 MiB after writing and clearing 90% of fields.
+  Cleared dynamic cells and chunk blocks persist until grid destruction;
+  retained write history can reverse the sparse-world memory advantage.
+- Reconcile EN/RU runtime, testing and current changelog descriptions.
+  The focused native grid/selection/lifetime/large-map regression passes
+  772 assertions in nine cases. Source allocator and exception-safety
+  audits have no findings. The existing development version and selector
+  migration remain applicable; these hidden fixtures add no public contract.
+- Regenerated documentation inventory, references, paired translation state,
+  site/search/routes and AI delivery pass source validation for 410 Markdown
+  entries and the deterministic 28-task, 67-check retrieval gate. Focused
+  testing/inventory/version tooling passes eighteen tests. Aggregate contract
+  diff retains the five existing selector changes across seventeen domains,
+  with all three required dispositions present.
+
+## 2026-10-09 - Select server grids by string type
+
+- Replace boolean static/chunk flag pairs with the independent read-only
+  string settings `Server.ProtoMapGridType` and `Server.MapInstanceGridType`.
+  Both default to `Dynamic`; exact values `Static`, `Chunked` and `Dynamic`
+  select three sibling grid implementations at construction time.
+- Validate both strings before loading maps, including resource sets without
+  map blobs. Native constructors reject invalid values too. Remove `Map`'s
+  `noexcept` so `SettingsException` unwinds the partially constructed entity;
+  RAII balances its engine owner count. Field reads and pathfinding keep their
+  existing interface and perform no string selection.
+- The optimized native selection/lifetime/grid/large-map subset passes 772
+  assertions in nine test cases, with all nine grid combinations and ten
+  expected invalid-selector startup failures. All 23 fixture servers stop
+  cleanly. The first constructor-unwind fixture needed explicit current-context
+  coverage before reading its unpublished map; rebuild and repeat the complete
+  subset after correcting it. The final run has no synchronization diagnostics.
+- Reconcile runtime/testing/changelog in English and Russian, replace retired
+  descriptions and explain migration for both removed published boolean keys.
+  API inventory contains 2,569 symbols. Contract diff covers five changes in
+  seventeen domains with all three required dispositions present. Native API
+  tests pass twelve cases, codegen tests eight, and contract/description tests
+  seventeen plus twenty-two subtests.
+- Adapt the hidden benchmark to the new selector keys without changing any
+  container or workload algorithm. Earlier performance samples retain their
+  measured-revision meaning; do not infer a new timing result from this change.
+  Network compatibility, resource schemas, database migration and host/runtime
+  ABI markers remain unchanged; bindings and matching packages must be rebuilt.
+- The matching optimized Windows native applications and complete resource
+  bake succeed without compiler diagnostics; configuration and managed scripts
+  are regenerated and baking reports completion. Source validation passes 410
+  Markdown documents, 194/194 translations and 4,838/4,838 generated descriptions.
+  The embedding allocator gate checks 591 files and 348 markers with no findings;
+  its exception-safety gate checks 7,341 functions without errors or warnings.
+
+## 2026-10-09 - Compare production server map operations
+
+- Add the hidden `ServerMapGridOperationsCost` fixture to the existing native
+  server suite. The deterministic 600x600 map contains 45,368 obstacle fields,
+  1,024 runtime items and 256 critters. Use the production MapManager/Map paths
+  under quiescence, without managed assemblies or external networking/database.
+- Compare all nine independent dense/chunked/hash prototype and instance modes
+  over fourteen workloads, five warmed samples each. Rotate/reverse mode order;
+  use identical request/result checksums and fixed calibrated batch sizes.
+  Startup, population, output and assertions are outside timed loops. Separate
+  nearby reachable targets from a deliberately unreachable flood workload.
+- The optimized Windows native build completes without compiler diagnostics.
+  The full benchmark passes 1,665 assertions, all 630 recorded samples have
+  matching checksums, and every fixture shuts down cleanly. Functional grid
+  tests pass 1,024 assertions; separate entity-lifetime tests pass 48 assertions.
+- Host preflight passes five consecutive samples below 25% CPU. During the
+  comparison host CPU averages 23.9%, peaks at 66.2%, and process CPU median is
+  99.9% of one core. Aggregate measured process CPU/wall ratio is 0.9972. Retain
+  wall ranges and coarse process-CPU counters instead of timing pass thresholds.
+  These are warmed native-operation costs on one controlled map; they do not
+  qualify game-script/tick throughput, many-map cache pressure or worker scaling.
+- Reconcile EN/RU testing inventory and current development changelog. No
+  production API, compatibility, configuration or game behavior changes are
+  introduced by the benchmark; existing chunk-grid implementation is unchanged.
+- Regenerate affected documentation models, paired translation state, site,
+  search, routes and AI delivery. Source validation passes 410 Markdown entries;
+  194/194 translations are current. Focused testing/inventory/version fixtures
+  pass eighteen tests and fifty-eight subtests. Aggregate contract diff retains
+  three existing changes across seventeen domains with no missing disposition;
+  the benchmark itself changes no generated public contract.
+
+## 2026-10-09 - Refine static-grid chunk selection
+
+- Rename the unpublished server selectors to `Server.ProtoMapStaticGridChunked`
+  and `Server.MapInstanceStaticGridChunked`. Both default to false. Each is
+  effective only when its parent static-grid flag is enabled; otherwise storage
+  remains dynamic. Replace the draft keys without aliases and reconcile both
+  changelog locales, runtime guides, API inventory and Russian descriptions.
+- Rebuilt native tests pass 1,165 assertions in ten focused cases, including
+  all sixteen independent parent/chunk flag combinations. API/codegen fixtures
+  pass twenty tests and seventeen subtests. Documentation validation passes
+  410 Markdown entries with all 4,840 Russian generated descriptions current;
+  aggregate contract diff has no missing dispositions. Allocation audit covers
+  591 files with no errors or warnings; exception-safety audit covers 7,341
+  functions with no errors or warnings. Constructor/factory guarantees remain
+  unchanged. Matching resource baking, headless server, client host and client
+  runtime builds complete successfully.
+- The embedding project qualifies prototype storage with four sequential fresh
+  in-memory server startups on identical resources, with parent prototype static
+  storage enabled and instance flags fixed. Median process-private memory is
+  7.063 GiB dense versus 4.233 GiB chunked (40.07% lower). Both worlds contain no
+  runtime maps or player entities. This is process-level startup evidence, not
+  requested allocation bytes, active-instance memory or hot-access performance.
+  Startup-time medians are 11.608 versus 11.509 seconds on a loaded host; the
+  difference is within run variation and does not establish a speed improvement.
+
+## 2026-10-09 - Reconcile published readback and documentation metadata updates
+
+- Fast-forward published master from `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`
+  to `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`, preserving named safety
+  stashes in both repositories. Audit both incoming commits and all changed
+  native sources, tests and BuildTools consumers. The embedding project's
+  published gitlink already selects the fetched Engine tip.
+- Preserve every stashed native chunk-grid source and API fixture exactly.
+  Prepare the still-uncommitted storage work as `2026.1.16-dev`; retain the
+  published readback fix (`2026.1.14-dev`) and archive the metadata update's
+  `Current` notes as `2026.1.15-dev` before adding the new current entry.
+- Incoming model picking releases failed requests and retries while retaining
+  the last completed mask. SDL GPU submission/wait failures poison associated
+  fences rather than exposing unconfirmed pixels. Existing thresholds and
+  successful-readback behavior are unchanged; no wire/save/schema migration.
+- Adopt the incoming shared `docs-manifest.json` routing/translation sections
+  and their owning generators. Do not restore the two retired standalone JSON
+  files from the stash. Keep the Jekyll VERSION include and remove duplicate
+  version values through the incoming generators; preserve translation hashes.
+- Fresh generation and aggregate validation pass for 410 Markdown entries;
+  all 4,840 Russian generated descriptions are current. Changed documentation,
+  version, API and codegen fixtures pass 137 tests and 82 subtests. Version and
+  published-history checks pass; contract diff has no missing dispositions.
+- The embedding project's rebuilt native runner passes 701 assertions in ten
+  focused grid, entity-lifetime and rendering cases, including both incoming
+  hit-mask regressions. Exception-safety audit reports 7,341 functions and no
+  errors or warnings. Full resource baking succeeds for the updated project
+  hash, including 658 maps and zero dialog-composition errors. Client host,
+  client runtime and headless server builds complete with exit code zero.
+- Source-preservation, published-ancestor, gitlink and empty-index checks pass;
+  retain both safety stashes. Prior client screenshots and benchmark evidence
+  below retain their historical revision scope; this update makes no new GPU
+  scene, site-browser, platform or performance qualification claim.
+
+## 2026-10-08 - Bound client field allocations with directly indexed blocks
+
+- Keep published master `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9` unchanged;
+  prepare `2026.1.14-dev` with dated EN/RU change and migration notes.
+  Add `ChunkedTwoDimensionalGrid` and use it in private `MapView` storage.
+  Existing dense/hash grids and public/serialized contracts are unchanged.
+- Withdraw the hash-grid experiment after owner feedback about access cost.
+  Compare actual `MapView::Field` from one optimized binary in three processes,
+  each pinned to logical CPU 7 with seven samples per workload. Each sample
+  performs 786432 accesses. Median populated reads: dense 2.693 ms, blocks
+  3.002 ms, hash 20.255 ms; mixed reads: 2.696/3.027/11.736 ms.
+  Blocks retain an approximately 11-12% read penalty in these workloads;
+  populated writes and empty/scattered reads are faster. This is access-cost
+  evidence, not whole-frame qualification or a platform-wide performance bound.
+- Real empty 1200x1200 constructor private-byte growth: 403496960 before,
+  34127872 after; the axial-scroll fixture grows by 37814272. Both 64 MiB
+  budgets pass. Focused native validation: 28 cases, 1989 assertions, exit 0;
+  includes boundary/partial-resize and move-only ownership checks. Reviewed
+  template allocation/resize invariants; pointer audit reports 0/0 and the
+  existing exception-safety audit checks 7338 functions with 0/0.
+- Fresh native applications and embedding-project bake pass with no compiler
+  warnings. Ordinary rendered global-map entry and movement to the reported
+  door pass twice; final image inspected. Early entry attempts did not qualify
+  map loading; one was rejected before client construction for distance.
+  No functional crash/script-exception/assert markers in the final game log;
+  execution overruns remain visible. Adapter termination does not prove graceful
+  shutdown. Original fragmented 32-bit address space is not reproduced.
+- Reconcile client runtime and testing docs in both locales. API/inventory and
+  Engine-version checks pass; regenerate snippets, translations, site/search,
+  routes, AI evaluation and delivery. Validation: 410 Markdown pages,
+  309 normative/159 evidence/183 external-parser snippets; AI retrieval
+  28 tasks/67 checks, 100% success, MRR 0.930.
+- Owner refinement: make `ChunkSide` a required compile-time template parameter;
+  `MapView` and its access benchmark supply `GameSettings::CLIENT_MAP_CHUNK_SIDE`
+  (16). Reject zero and non-power-of-two values at compilation. Fresh native
+  unit build passes without compiler warnings; focused execution passes four
+  cases and 123 assertions, including sides 1/8/16/32, both real-map memory
+  budgets and benchmark checksum equality. The first build failed with MSVC
+  PDB/RPC C1090; a process-local PDB endpoint completed the retry. Previous
+  rendered-route evidence precedes this refinement with the same block side.
+- Reconcile EN/RU runtime/testing/changelog and regenerate source-line references
+  and dependent delivery artifacts. Documentation validation passes 410 pages;
+  contract comparison reports zero changes across seventeen domains.
+- Server extension: independently opt into chunks for prototype and instance
+  grids using `Server.ProtoMapChunkedGrid` and `Server.MapInstanceChunkedGrid`.
+  Both default to false; existing static-grid flags retain dense precedence.
+  `GameSettings::SERVER_MAP_CHUNK_SIDE` supplies the required template side (16).
+  Eight native fixture combinations cover loader selection, boundary allocation,
+  shared prototype data, per-instance blocking, items and critters. The fixture
+  uses native managers in the always-built entity-lifetime source, covering both
+  scripting backends. A fresh unit build and focused execution pass six cases
+  and 618 assertions with normal fixture shutdown. The embedding project's
+  `LF_UnitTests`, `BakeResources` and `LF_ServerHeadless` targets complete with
+  exit 0 and no compiler warnings; the bake reports `Baking complete!`.
+- API/codegen regressions pass 20 tests and 17 subtests. Pointer audit covers
+  eight files with zero warnings/errors; five reviewed exception classifications
+  preserve allocation-only NoThrow or the loader's existing Basic guarantee,
+  and the complete audit passes 7338 functions with zero warnings/errors.
+  Documentation validation passes 410 entries and 4840 current generated Russian
+  descriptions. The seventeen-domain diff has two additive settings and one
+  reviewed inventory-fingerprint disposition. Mapper screenshot pixels and their
+  capture conditions are unaffected by server-only settings; only the derived
+  whole-file settings hash changes, and no new rendered capture is claimed.
+
 ## 2026-10-09 - Reconcile document migrations with startup and documentation preparation
 
 - Fast-forward published master from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b` to

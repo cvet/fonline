@@ -3,6 +3,42 @@
   "entries": [
     {
       "domain": "api",
+      "change_id": "api-change.model-scope.9098b6ae656946fe",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "a96b969e7fce43d7276cf610957526e2115f1516f724265d2c282094e8845bd9",
+      "classification": "breaking",
+      "rationale": "Replace ambiguous boolean static/chunk pairs with independent string selectors for three sibling grid implementations. Both settings default to Dynamic; invalid values reject startup.",
+      "migration": "Replace Server.ProtoMapStaticGrid and Server.MapInstanceStaticGrid with Server.ProtoMapGridType and Server.MapInstanceGridType. Each former static/chunk pair maps to Dynamic when static=false, Static when static=true and chunked=false, or Chunked when both=true. Unpublished chunk-selector keys have no aliases. Native StaticMap callers pass (size, grid_type); Map construction propagates SettingsException. See Docs/en/reference/changelog.md Current migration.",
+      "release_note": "Docs/en/reference/changelog.md Current and Docs/en/explanation/runtime/server.md document exact values, defaults, validation and migration in English and Russian.",
+      "compatibility": "Rebuild native applications, regenerate bindings and rebake matching metadata. No wire, resource-schema, persisted-data or host/runtime ABI conversion; network compatibility remains 0.0.69.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.230f93cb20b2407c",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "a96b969e7fce43d7276cf610957526e2115f1516f724265d2c282094e8845bd9",
+      "classification": "breaking",
+      "rationale": "Replace ambiguous boolean static/chunk pairs with independent string selectors for three sibling grid implementations. Both settings default to Dynamic; invalid values reject startup.",
+      "migration": "Replace Server.ProtoMapStaticGrid and Server.MapInstanceStaticGrid with Server.ProtoMapGridType and Server.MapInstanceGridType. Each former static/chunk pair maps to Dynamic when static=false, Static when static=true and chunked=false, or Chunked when both=true. Unpublished chunk-selector keys have no aliases. Native StaticMap callers pass (size, grid_type); Map construction propagates SettingsException. See Docs/en/reference/changelog.md Current migration.",
+      "release_note": "Docs/en/reference/changelog.md Current and Docs/en/explanation/runtime/server.md document exact values, defaults, validation and migration in English and Russian.",
+      "compatibility": "Rebuild native applications, regenerate bindings and rebake matching metadata. No wire, resource-schema, persisted-data or host/runtime ABI conversion; network compatibility remains 0.0.69.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.13f1a8f798cd0814",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "a96b969e7fce43d7276cf610957526e2115f1516f724265d2c282094e8845bd9",
+      "classification": "breaking",
+      "rationale": "Replace ambiguous boolean static/chunk pairs with independent string selectors for three sibling grid implementations. Both settings default to Dynamic; invalid values reject startup.",
+      "migration": "Replace Server.ProtoMapStaticGrid and Server.MapInstanceStaticGrid with Server.ProtoMapGridType and Server.MapInstanceGridType. Each former static/chunk pair maps to Dynamic when static=false, Static when static=true and chunked=false, or Chunked when both=true. Unpublished chunk-selector keys have no aliases. Native StaticMap callers pass (size, grid_type); Map construction propagates SettingsException. See Docs/en/reference/changelog.md Current migration.",
+      "release_note": "Docs/en/reference/changelog.md Current and Docs/en/explanation/runtime/server.md document exact values, defaults, validation and migration in English and Russian.",
+      "compatibility": "Rebuild native applications, regenerate bindings and rebake matching metadata. No wire, resource-schema, persisted-data or host/runtime ABI conversion; network compatibility remains 0.0.69.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
       "change_id": "api-change.model-scope.841bbad2669f18ed",
       "baseline_contract_sha256": "2655d263131d11755924711b7bb91cd23af00fb10c8ebbcc1f999806c59e4ffd",
       "current_contract_sha256": "cbc46881cbc724744ca3a8701e178e59f94cb83a27aaf707fcf223e127d53e7f",

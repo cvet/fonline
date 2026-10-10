@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-map-format-index","locale":"ru","source_path":"Docs/en/reference/map-format/index.md","source_sha256":"afb5fb35f28e070ff984888046727a3d966e219ab8d471c99bf0a4ff29055047"} -->
+<!-- docs-translation: {"document_id":"generated-map-format-index","locale":"ru","source_path":"Docs/en/reference/map-format/index.md","source_sha256":"eb9278c9b4e8be505cc152f0dcf93bc2d24d635c6bfaa01daa2376549d90ff76"} -->
 
 # Справочник формата карт
 
@@ -22,7 +22,7 @@ generated: true
 | Стабильность | <code>experimental</code> |
 | Политика поддержки | Контракт генерируется для закреплённой ревизии движка. Каталоги карт проекта, пользовательские метаданные, игровая семантика и правила композиции остаются во владении проекта. |
 | Исходный манифест | [BuildTools/MapFormatInterface.json](https://github.com/cvet/fonline/blob/master/BuildTools/MapFormatInterface.json) |
-| Дайджест контракта | <code>85b20a893b8f558e868a7bfb87bdd55ca9d1d778796eab63c5ecb030b9d6d51f</code> |
+| Дайджест контракта | <code>a1598b0419bbd00aaf23c953072439dba1c502c66e9fe426e9b2962f428bf8ae</code> |
 
 | Справочник | Записей | Назначение |
 | --- | --- | --- |

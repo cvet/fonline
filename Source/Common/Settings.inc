@@ -412,8 +412,8 @@ SETTING(int32_t, Server, LockMaxWaitTime, 100); // Maximum lock wait time in mil
 SETTING(int32_t, Server, WorkerThreads, 0); // Worker thread count for entity processing (0 = auto)
 SETTING(bool, Server, SingleThreadedLogic, false); // If true, all game logic runs on one worker thread and scripts need no explicit entity synchronization
 SETTING(bool, Server, WriteHealthFile, false); // If true, health file is written
-SETTING(bool, Server, ProtoMapStaticGrid, false); // If true, proto map static grid is enabled
-SETTING(bool, Server, MapInstanceStaticGrid, false); // If true, map instance static grid is enabled
+SETTING(string, Server, ProtoMapGridType, "Dynamic"); // Shared prototype field storage: Static, Chunked or Dynamic
+SETTING(string, Server, MapInstanceGridType, "Dynamic"); // Runtime map field storage: Static, Chunked or Dynamic
 SETTING(int64_t, Server, EntityStartId, 10000000001); // Entity start ID
 SETTING(int64_t, Server, EntityIdReserveBatch, 1000); // Entity IDs reserved per persisted-counter bump, so a new entity does not force a DB write of the last-id marker every time
 SETTING(int32_t, Server, SyncPeriodMs, 10); // Sync-point job period in milliseconds (100 FPS by default)

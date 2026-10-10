@@ -7,12 +7,86 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"facc7f727c0a20fa29bd38f16c396400f0343aa19226b6309ed1f62d883637bb"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f8b5c90948558d6df89b65388461edef743d9156b6d85049189f3697ff562ac1"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-10
+
+### Добавлено
+
+- Скрытые замеры `ServerMapGridMemoryDynamic` и `ServerMapGridMemoryChunked`
+  для пустых/населённых карт, растущей истории записей полей, уничтожения
+  и остановки. Сравнение новых процессов сообщает private bytes и проверяет
+  одинаковые число сущностей и поведение полей без лимита памяти.
+  См. [тестирование](../contributing/testing/).
+- Скрытый benchmark `ServerMapGridOperationsCost` для настоящих серверных
+  операций пути, достижимости, трассировки, чтения полей и изменения блокировок
+  во всех девяти сочетаниях плотной, чанковой и хеш-сетки прототипа и экземпляра.
+  Он проверяет одинаковые результаты и сообщает пять прогретых замеров стены
+  и CPU без временных порогов. См. [тестирование](../contributing/testing/).
+- Независимые строковые настройки сеток общих прототипов и экземпляров карт:
+  `Server.ProtoMapGridType` и `Server.MapInstanceGridType` по умолчанию `Dynamic`
+  и принимают только `Static`, `Chunked` или `Dynamic`. Неизвестное или пустое
+  значение прерывает запуск сервера. Это три соседние реализации;
+  сетка чанков не наследуется от статической. Сторона блока задаётся через
+  `GameSettings::SERVER_MAP_CHUNK_SIDE` (16). См.
+  [хранение серверных полей](../explanation/runtime/server.md#хранение-полей-серверных-карт).
+
+### Исправлено
+
+- Единый массив полей клиентской карты заменён плотными блоками 16x16 с
+  прямой индексацией, создаваемыми при первой записи. Большая карта больше
+  не требует одного непрерывного выделения для всех полей. Пустое чтение,
+  прокрутка, пересечение координат resize Mapper и unload сохраняют поведение;
+  буферы освещения остаются плотными. Добавлены проверки памяти настоящей
+  большой карты, границ блоков и владения, а также скрытое сравнение стоимости
+  нативного доступа к полям. См.
+  [хранение полей клиента](../explanation/runtime/client.md#хранение-полей-клиентской-карты).
+  Сторона блока задаётся параметром шаблона; `MapView` выбирает её через
+  константу времени компиляции `GameSettings::CLIENT_MAP_CHUNK_SIDE` (16).
+
+### Миграция
+
+- Предыдущая версия — `2026.1.21-dev`, ревизия
+  `cfa468f17bd5dff82cebc6f05b568620fc34163c`.
+  `ChunkedTwoDimensionalGrid` — новый нативный тип хранения;
+  `StaticTwoDimensionalGrid` и `DynamicTwoDimensionalGrid` сохраняют свои
+  контракты. Закрытое поле `MapView::_hexField` использует новый тип. Native
+  clients, embedded clients и Mapper на всех платформах/backend требуют
+  пересборки всех потребителей заголовков `MapView`: меняется закрытая C++
+  компоновка. Преобразование смысла координат,
+  формата карт, сохранений или базы данных не требуется. Старые native objects
+  нельзя смешивать с новыми заголовками.
+- Соблюдайте [порядок generated content](../how-to/build/generated-content.md):
+  configure/codegen, пересборка затронутых native applications и тестов,
+  выпечка соответствующих metadata/resources, переупаковка пары host/runtime.
+  Версия host/runtime ABI, схемы ресурсов, сетевая совместимость `0.0.69` и
+  database `MigrationRule` не меняются. Замените опубликованные булевы настройки
+  `ProtoMapStaticGrid` и `MapInstanceStaticGrid` соответствующими строками
+  `ProtoMapGridType` и `MapInstanceGridType`. Для каждого слоя прежние флаги
+  static/chunk переводятся в `Dynamic` при static=false, в `Static` при
+  static=true и chunked=false, в `Chunked` при обоих true. Ранние незакоммиченные
+  ключи `ProtoMapChunkedGrid`, `MapInstanceChunkedGrid`, `ProtoMapStaticGridChunked`
+  и `MapInstanceStaticGridChunked` удалены; псевдонимов нет. Перегенерируйте
+  bindings и выпеките соответствующие metadata. Нативные вызовы `StaticMap`
+  теперь передают `(size, grid_type)`; конструктор `Map` больше не имеет
+  `noexcept`, неверный выбор вызывает `SettingsException`.
+  Откат использует целый предыдущий native package;
+  восстановление базы не требуется.
+- Выполните `ClientLargeMap*`, `TwoDimensionalGrid`, регрессии client-map/lifetime,
+  `ServerMapGridSelectionPreservesFieldBehavior`, проверки неверного выбора
+  и освобождения владельца при ошибке конструктора, а также server-map/lifetime,
+  sprite/atlas/roof, сравните повторные запуски `ClientMapFieldAccessCost`
+  и `ServerMapGridOperationsCost` и
+  проверьте обычный отрисованный вход на карту в проекте. Заготовки памяти
+  конструктора и стоимости доступа не доказывают отсутствие OOM в долгом
+  32-битном сеансе, FPS всей игры или пропускную способность тиков сервера.
+  После интеграции перегенерируйте snippets,
+  состояние перевода, сайт/поиск/маршруты, оценку для ИИ и AI delivery.
+
+## 2026.1.21-dev - 2026-10-10
 
 ### Исправлено
 

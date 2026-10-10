@@ -475,6 +475,85 @@ TEST_CASE("ClientMapUnloadReleasesRenderTargetsWithRetainedHandles")
     }
 }
 
+TEST_CASE("ClientLargeMapFieldsStayWithinMemoryBudget")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("LargeSparseMap"), client->GetPropertyRegistrar("Map"));
+    proto->SetSize(msize {1200, 1200});
+    proto->SetWorkHex(mpos {200, 200});
+
+    size_t initial_memory = platform::get_process_private_memory_usage();
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept {
+        safe_call([&map] {
+            if (!map->IsDestroyed()) {
+                map->DestroySelf();
+            }
+        });
+    });
+    size_t map_memory = platform::get_process_private_memory_usage();
+
+    // Measure the real constructor, including view and light buffers, without optional allocator diagnostics
+    if (initial_memory != 0 && map_memory != 0) {
+        INFO("Large map private memory: " << map_memory << "; initial: " << initial_memory);
+        CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
+    }
+
+    map->SetScrollCheck(false);
+    map->InstantScrollTo(mpos {300, 300});
+    map->InstantScrollTo(mpos {200, 200});
+    REQUIRE(map->GetField(mpos {200, 200}).IsView);
+    ptr<const MapView::Field> first_field = &map->GetField(mpos {200, 200});
+
+    for (mpos center : {mpos {500, 500}, mpos {900, 900}, mpos {1100, 1100}}) {
+        map->InstantScrollTo(center);
+        CHECK(map->GetField(center).IsView);
+        CHECK(&map->GetField(mpos {200, 200}) == first_field);
+    }
+
+    CHECK_FALSE(first_field->IsView);
+    CHECK(map->GetField(mpos {1199, 1199}).Items.empty());
+    CHECK_FALSE(map->GetField(mpos {1199, 1199}).MoveBlocked);
+
+    map->EnableMapperMode();
+    map->InstantScrollTo(mpos {200, 200});
+    map->Resize(msize {600, 600});
+    CHECK(map->GetField(mpos {200, 200}).IsView);
+    map->Resize(msize {1200, 1200});
+    CHECK_FALSE(map->GetField(mpos {1100, 1100}).IsView);
+    CHECK(map->GetField(mpos {1100, 1100}).Items.empty());
+    map->InstantScrollTo(mpos {1100, 1100});
+    CHECK(map->GetField(mpos {1100, 1100}).IsView);
+    map->DestroySelf();
+    CHECK_FALSE(client->GetEntity(map->GetId()));
+}
+
+TEST_CASE("ClientLargeMapScrollBoundsStayWithinMemoryBudget")
+{
+    auto settings = MakeClientLifetimeSettings();
+    auto client = MakeClientLifetimeEngine(settings);
+    auto shutdown = scope_exit([&client]() noexcept { safe_call([&client] { client->Shutdown(); }); });
+    auto proto = safe_alloc::make_refcounted<ProtoMap>(client->Hashes.to_hashed_string("LargeScrollBoundedMap"), client->GetPropertyRegistrar("Map"));
+    proto->SetSize(msize {1200, 1200});
+    proto->SetWorkHex(mpos {301, 183});
+    proto->SetScrollAxialArea(irect32 {-380, 230, 356, 243});
+
+    size_t initial_memory = platform::get_process_private_memory_usage();
+    auto map = safe_alloc::make_refcounted<MapView>(client, ident_t {9001}, proto, isize32 {320, 200});
+    auto destroy_map = scope_exit([&map]() noexcept { safe_call([&map] { map->DestroySelf(); }); });
+    size_t map_memory = platform::get_process_private_memory_usage();
+
+    if (initial_memory == 0 || map_memory == 0) {
+        SKIP("Process-private-memory measurement is unavailable on this platform");
+    }
+
+    // Scroll-block lines must not materialize the rest of a large, empty map
+    INFO("Scroll-bounded map private memory: " << map_memory << "; initial: " << initial_memory);
+    CHECK(map_memory < initial_memory + 64 * 1024 * 1024);
+}
+
 TEST_CASE("ClientMapConstructionFailureReleasesRenderTargets")
 {
     auto settings = MakeClientLifetimeSettings();
@@ -557,6 +636,80 @@ TEST_CASE("AtlasCleanupReleasesOnlyEmptyPages")
     CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
     atlas_mngr.CleanupAtlases();
     CHECK(rt_mngr.GetRenderTargetCount() == initial_targets);
+}
+
+// Hidden: compare actual client-field access; timings are evidence, not a flaky pass/fail threshold
+TEST_CASE("ClientMapFieldAccessCost", "[.]")
+{
+    vector<mpos> positions;
+
+    for (int16_t y = 160; y < 224; y++) {
+        for (int16_t x = 256; x < 352; x++) {
+            positions.emplace_back(x, y);
+        }
+    }
+
+    auto compare = [&positions](size_t populated_stride, bool scattered, bool writing) {
+        if (scattered) {
+            for (size_t index = 0; index < positions.size(); index++) {
+                positions[index] = mpos {numeric_cast<int16_t>(index * 137 % 1200), numeric_cast<int16_t>(index * 71 % 1200)};
+            }
+        }
+
+        auto measure = [&](auto& grid, string_view name) {
+            if (populated_stride != 0) {
+                for (size_t index = 0; index < positions.size(); index += populated_stride) {
+                    grid.GetCellForWriting(positions[index])->MoveBlocked = true;
+                }
+            }
+
+            array<double, 7> samples {};
+            uint64_t checksum = 0;
+
+            for (double& sample : samples) {
+                auto started = std::chrono::steady_clock::now();
+
+                for (size_t iteration = 0; iteration < 128; iteration++) {
+                    for (mpos pos : positions) {
+                        if (writing) {
+                            ptr<MapView::Field> field = grid.GetCellForWriting(pos);
+                            field->IsView = !field->IsView;
+                            checksum += field->IsView;
+                        }
+                        else {
+                            checksum += grid.GetCellForReading(pos).MoveBlocked;
+                        }
+                    }
+                }
+
+                sample = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+            }
+
+            std::sort(samples.begin(), samples.end());
+            WARN(strex("field access {} stride={} scattered={} writing={} median={:.3f} ms checksum={}", name, populated_stride, scattered, writing, samples[3], checksum).str());
+            return checksum;
+        };
+
+        uint64_t dense_checksum = 0;
+        {
+            StaticTwoDimensionalGrid<MapView::Field, mpos, msize> dense {{1200, 1200}};
+            dense_checksum = measure(dense, "dense");
+        }
+        {
+            ChunkedTwoDimensionalGrid<MapView::Field, mpos, msize, GameSettings::CLIENT_MAP_CHUNK_SIDE> chunked {{1200, 1200}};
+            CHECK(measure(chunked, "chunked") == dense_checksum);
+        }
+        {
+            DynamicTwoDimensionalGrid<MapView::Field, mpos, msize> dynamic {{1200, 1200}};
+            CHECK(measure(dynamic, "hash") == dense_checksum);
+        }
+    };
+
+    compare(1, false, false);
+    compare(8, false, false);
+    compare(0, false, false);
+    compare(1, false, true);
+    compare(8, true, false);
 }
 
 FO_END_NAMESPACE

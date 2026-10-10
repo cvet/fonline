@@ -55,6 +55,12 @@ void MapManager::LoadFromResources()
 {
     FO_TRACE_ZONE(Map);
 
+    for (const auto& [setting_name, grid_type] : array<pair<string_view, string_view>, 2> {{{"Server.ProtoMapGridType", _engine->Settings->Server.ProtoMapGridType}, {"Server.MapInstanceGridType", _engine->Settings->Server.MapInstanceGridType}}}) {
+        if (grid_type != "Static" && grid_type != "Chunked" && grid_type != "Dynamic") {
+            throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", setting_name, grid_type);
+        }
+    }
+
     auto map_files = _engine->Resources.FilterFiles("fomap-bin-server");
     vector<pair<ptr<const ProtoMap>, std::future<unique_ptr<StaticMap>>>> static_map_loadings;
 
@@ -77,7 +83,7 @@ void MapManager::LoadFromResources()
             MapLoader::ReadBakedFileHeader(reader, map_proto->GetName());
 
             auto map_size = map_proto->GetSize();
-            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapStaticGrid);
+            auto static_map = safe_alloc::make_unique<StaticMap>(map_size, _engine->Settings->Server.ProtoMapGridType);
 
             // Read hashes
             {

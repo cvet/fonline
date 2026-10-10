@@ -92,6 +92,49 @@ Major responsibilities:
 
 `ServerEngine` is intentionally authoritative: client views can request movement, commands, property changes, and remote calls, but the server validates and applies the state that matters.
 
+## Server map field storage
+
+The server selects storage independently for the shared `StaticMap` of each
+prototype and the mutable fields of each `Map` instance. The selection happens
+when the grid is constructed; ordinary reads and writes keep the existing grid
+interface. The read-only string settings `Server.ProtoMapGridType` and
+`Server.MapInstanceGridType` select their respective grids and default to
+`Dynamic`. Values are case-sensitive:
+
+| Value | Implementation | Storage |
+| --- | --- | --- |
+| `Static` | `StaticTwoDimensionalGrid` | Dense array of optional cells |
+| `Chunked` | `ChunkedTwoDimensionalGrid` | Directly indexed, lazily allocated dense blocks |
+| `Dynamic` | `DynamicTwoDimensionalGrid` | Hash table of populated cells |
+
+These are three sibling implementations of `TwoDimensionalGrid`; the chunked
+grid does not inherit from the static grid. Unknown or empty values reject
+server startup before loading maps, naming the setting and supplied value.
+
+Chunk side is the compile-time `GameSettings::SERVER_MAP_CHUNK_SIDE` constant
+(16), supplied as the grid's required template argument. It must be a nonzero
+power of two and requires a native rebuild to change. A directly indexed owner
+table allocates a dense `ChunkSide * ChunkSide` block on first write; reading an
+absent block allocates nothing. Populated cell addresses remain stable when
+other blocks are allocated. Chunks can allocate more unused fields than hash
+storage on widely scattered content; qualify memory and access cost on the
+intended server workload before choosing the mode.
+
+Clearing a field's occupants or manual block does not remove its `Dynamic`
+cell or release its `Chunked` block. Storage therefore reflects write history
+as well as current population. The hidden runtime-memory fixtures described
+in [testing](../../contributing/testing/) distinguish these stages.
+
+The shared prototype grid remains read-only after loading. Instance grid
+selection does not change static-item removal overlays, manual blocking,
+critters, items, pathfinding or per-instance isolation. `StaticMap` native
+construction takes an explicit `string_view grid_type`. Unknown values throw
+`SettingsException`; `Map` construction propagates the error and is not `noexcept`.
+`ServerMapGridSelectionPreservesFieldBehavior` exercises the real loader and
+runtime maps across all nine independent grid combinations. Invalid-value
+fixtures cover both startup selectors, empty values, case sensitivity and
+entity-owner cleanup when a runtime map constructor fails.
+
 ## Initialization and server jobs
 
 `ServerEngine` startup is organized as scheduled jobs rather than one monolithic constructor. The private job list in `Source/Server/Server.h` shows the runtime phases:

@@ -19151,9 +19151,9 @@
           "source_sha256": "3da861a24b4b88d2fb091f412932e11104deb5df35fc4be6a64b4795794211de",
           "translation": "Максимальное время ожидания блокировки в миллисекундах"
         },
-        "/symbols/@id=setting.server.Server.MapInstanceStaticGrid/description": {
-          "source_sha256": "a04590c27487098ce5b61f7843d6c54d93e4cbdf396af54edf3d9b794d17d980",
-          "translation": "Если true, включена статическая сетка экземпляра карты"
+        "/symbols/@id=setting.server.Server.MapInstanceGridType/description": {
+          "source_sha256": "af169d74f593ffcb5c545c0cc1bbb96fb197e738cab2d227e3ee51af302d909e",
+          "translation": "Хранение полей экземпляра карты: Static, Chunked или Dynamic"
         },
         "/symbols/@id=setting.server.Server.MaxServerLogLines/description": {
           "source_sha256": "a389080c1c45f52a0298f241fb477dcaf08fa152398d39bdfd3753a40e52be8d",
@@ -19171,9 +19171,9 @@
           "source_sha256": "0ae880c046794a245346333643eab0a60197b97a6ec8f2427dc1338049c47f8c",
           "translation": "Если true, запуск сервера отключен"
         },
-        "/symbols/@id=setting.server.Server.ProtoMapStaticGrid/description": {
-          "source_sha256": "1d6627b4e491f5038978b2121c540627a207016f2a5734248d154a6fda6673b5",
-          "translation": "Если true, включена статическая сетка прототипа карты"
+        "/symbols/@id=setting.server.Server.ProtoMapGridType/description": {
+          "source_sha256": "abf24322229d810c62715f66df0f5ee830d1c71a5b92937bb3997fd742988346",
+          "translation": "Хранение общих полей прототипа: Static, Chunked или Dynamic"
         },
         "/symbols/@id=setting.server.Server.ServerHeight/description": {
           "source_sha256": "afdf7d228bb939109b2053aa0d355eade24ef1139113a42423dac259c5ea2469",
