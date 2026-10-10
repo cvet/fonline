@@ -8,11 +8,25 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+[VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the current development version. [Release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility. Changes and migration notes below are bilingual.
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Fixed
+
+- Shorten paired scripting guidance without changing contracts; correct source call-order and translation checks, diagram/reference sequencing, ignored outputs, nineteen description models and Transform auto-binding guidance for both backends.
+- Format migration sources.
+- Reject enum metadata ending at `= -` without a missing-token read. The baker regression covers `.cs`/`.fos` at EOF, newline and comment.
+
+### Migration
+
+- API, config, saves, network, ABI, resource format, valid enum encoding and compatibility/file versions are unchanged.
+- Complete/remove `= -`; rebuild baker/version metadata. Run `MetadataBakerRejectsTruncatedNegativeEnum`, enum round-trip tests and per-backend project bake, then regenerate docs/delivery in dependency order.
+- Run `python BuildTools/docs_prepare.py` and reconfigure/rebuild consumers for version metadata.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Fixed
 
