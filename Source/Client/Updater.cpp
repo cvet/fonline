@@ -574,6 +574,15 @@ auto Updater::ReadLocalMetadataVersion() const -> string
     }
 }
 
+auto Updater::RemoveNativeTempFile(string_view path) -> bool
+{
+    if (_nativeTempRemoveOverride) {
+        return _nativeTempRemoveOverride(path);
+    }
+
+    return fs::remove_file(path);
+}
+
 void Updater::GetNextFile()
 {
     FO_TRACE_ZONE(Network);
@@ -660,13 +669,13 @@ void Updater::GetNextFile()
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
                 logging::write(logging::type::warning, "Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-                fs::remove_file(temp_path);
+                (void)(next_update_file.IsClientBinary ? RemoveNativeTempFile(temp_path) : fs::remove_file(temp_path));
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
                     logging::write(logging::type::warning, "Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-                    fs::remove_file(temp_path);
+                    (void)(next_update_file.IsClientBinary ? RemoveNativeTempFile(temp_path) : fs::remove_file(temp_path));
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
