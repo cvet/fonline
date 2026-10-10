@@ -209,6 +209,67 @@ class EngineVersionTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'increment minor'):
                 docs_engine_version.validate_history(root, first, final, 'master')
 
+    @unittest.skipUnless(shutil.which('git'), 'Git is required')
+    def test_published_parent_history_and_invalid_children(self) -> None:
+        for case in ('valid', 'missing-bump', 'lost-current', 'direct-skip'):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                hooks = root / 'empty-hooks'
+                hooks.mkdir()
+                environment = {key: value for key, value in os.environ.items()
+                               if not key.startswith('GIT_')}
+                environment.update(GIT_DIR=str(root / ".git"), GIT_WORK_TREE=str(root),
+                                   GIT_AUTHOR_DATE='2026-10-10T12:00:00+00:00',
+                                   GIT_COMMITTER_DATE='2026-10-10T12:00:00+00:00')
+
+                def git(*args: str) -> str:
+                    return subprocess.check_output(
+                        ['git', '-C', str(root), '-c', 'user.name=Version Test',
+                         '-c', 'user.email=version@example.invalid',
+                         '-c', f'core.hooksPath={hooks}', *args],
+                        env=environment, text=True, stderr=subprocess.STDOUT).strip()
+
+                previous_version = None
+                step = 0
+
+                def commit(version: str, preserve: bool = True) -> str:
+                    nonlocal previous_version, step
+                    (root / 'VERSION').write_text(version + '\n', encoding='utf-8')
+                    for relative, label in zip(engine_version.CHANGELOG_PATHS,
+                                               ('Migration', 'Миграция'), strict=True):
+                        path = root / relative
+                        path.parent.mkdir(parents=True, exist_ok=True)
+                        history = ''
+                        if preserve and path.exists():
+                            history = path.read_text(encoding='utf-8').split('## Unreleased\n', 1)[1]
+                            history = history.replace('## Current -', f'## {previous_version} -', 1)
+                        path.write_text(
+                            f'# Log\n\n## Unreleased\n\n## Current - 2026-10-10\n\n'
+                            f'### {label}\nNo migration required.\n' + history,
+                            encoding='utf-8')
+                    step += 1
+                    (root / 'Step.txt').write_text(str(step), encoding='utf-8')
+                    git('add', '.')
+                    git('commit', '-m', version)
+                    previous_version = version
+                    return git('rev-parse', 'HEAD')
+
+                git('init', '-b', 'master')
+                base = commit('2026.1.20-dev')
+                parent = commit('2026.1.21-dev') if case != 'direct-skip' else base
+                target = commit('2026.1.21-dev' if case == 'missing-bump' else '2026.1.22-dev',
+                                preserve=case != 'lost-current')
+                with patch.dict(os.environ, environment, clear=True):
+                    if case == 'valid':
+                        self.assertEqual(2, docs_engine_version.validate_history(root, base, target, 'master'))
+                        self.assertEqual(1, docs_engine_version.validate_history(root, parent, target, 'master'))
+                        with self.assertRaisesRegex(ValueError, 'increment minor'):
+                            docs_engine_version.validate_committed_update(root, base, target, 'master')
+                    else:
+                        diagnostic = 'missing preceding change notes' if case == 'lost-current' else 'increment minor'
+                        with self.assertRaisesRegex(ValueError, diagnostic):
+                            docs_engine_version.validate_history(root, base, target, 'master')
+
     def test_missing_migration_disposition_and_later_year_release_patch(self) -> None:
         notes = [f'# Log\n\n## Unreleased\n\n## 2026.1.21.2 - 2027-02-04\n\n### {label}\nNo data conversion needed.\n'
                  for label in ('Migration', 'Миграция')]

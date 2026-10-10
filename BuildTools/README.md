@@ -10,6 +10,8 @@ document_id: buildtools-readme
 
 ## Build scripts
 
+Engine PR/push version admission checks every incoming first-parent step with the existing history validator. Use exact base/head refs with `docs_engine_version.py --check --branch master --baseline-git-ref <base> --target-git-ref <head> --history`; retain each preceding Current as a dated version entry. See [Engine versioning](../Docs/en/how-to/release/versioning.md).
+
 Builds normally start in an embedding project. Use [Build Workflow](../Docs/en/how-to/build/) for the supported workflow and this file for BuildTools-specific commands and environment inputs.
 
 The exact main `buildtools.py` command surface is generated from its executable parser. Browse the [BuildTools CLI reference](../Docs/en/reference/buildtools/index.md) or the [canonical JSON model](../Docs/generated/cli.json) instead of maintaining a separate command inventory.

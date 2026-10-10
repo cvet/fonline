@@ -53,7 +53,7 @@ For committed publication-range evidence:
 python BuildTools/docs_engine_version.py --check --branch master   --baseline-git-ref <previous-master-sha> --target-git-ref <new-master-sha> --history
 ```
 
-Source-only `--check` needs no Git. Comparisons require the exact available baseline and target; do not bypass missing/shallow baselines. PRs compare final head to base; pushes validate every incoming first-parent step. Pre-policy revisions still require a complete-range source audit.
+Source-only `--check` needs no Git. Comparisons require the exact available baseline and target; do not bypass missing/shallow baselines. PRs and pushes validate every incoming first-parent step from exact base to head. The base must be on that chain; skipped bumps and missing earlier notes fail. Pre-policy revisions still require a complete-range source audit.
 
 ## Exhaustive migration record
 

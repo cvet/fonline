@@ -16,6 +16,19 @@ permalink: /Docs/en/reference/changelog.html
 
 ### Fixed
 
+- Validate every incoming first-parent update in pull requests as well as pushes; skipped bumps and missing earlier notes still fail.
+- Keep named ConfigFile inputs alive while applying resource-pack settings in the native updater integration fixture. Candidate and control receive the same compile admission fix.
+
+### Migration
+
+- No project-source or saved-data migration is required: this step fixes two test call sites and PR history admission, with regression tests, version metadata and paired guidance. ApplyConfigFile(ConfigFile&) and runtime API, configuration, wire, resource and compatibility markers retain their parent meanings.
+- Reconfigure/rebuild version metadata and the native unit executable, then regenerate EN/RU documentation, reference/helper models, site/search/routes and AI delivery in dependency order. Run prepare, contract, format and exact version/history checks.
+- Re-run the AngelScript and Managed suites. Compile/setup failures are not causal RED; stale-prefix baseline RED and candidate GREEN must execute the same fixture and delivery models. Actual OS denial, Windows packages, staging/restart and rollback remain unqualified.
+
+## 2026.1.21-dev - 2026-10-10
+
+### Fixed
+
 - Shorten paired scripting guidance without changing contracts; correct source call-order and translation checks, diagram/reference sequencing, ignored outputs, nineteen description models and Transform auto-binding guidance for both backends.
 - Format migration sources.
 - Reject enum metadata ending at `= -` without a missing-token read. The baker regression covers `.cs`/`.fos` at EOF, newline and comment.

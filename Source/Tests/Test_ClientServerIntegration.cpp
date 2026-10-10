@@ -2514,7 +2514,8 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
     BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, binary_dir);
     BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
-    server_settings.ApplyConfigFile(ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n"), "");
+    auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n");
+    server_settings.ApplyConfigFile(server_pack_config, "");
     auto server = MakeServerEngine(server_settings);
     auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
     string error = WaitForServerStart(server);
@@ -2531,7 +2532,8 @@ TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
     GlobalSettings client_settings = MakeClientTestSettings(port);
     BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
     BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
-    client_settings.ApplyConfigFile(ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n"), "");
+    auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n");
+    client_settings.ApplyConfigFile(client_pack_config, "");
     client_settings.ApplyWritableRoot(writable);
     Updater updater {&client_settings, &GetApp()->MainWindow};
     REQUIRE(WaitForUpdaterResult(updater));
