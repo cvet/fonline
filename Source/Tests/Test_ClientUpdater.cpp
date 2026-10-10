@@ -35,10 +35,13 @@
 
 #include "Application.h"
 #include "FileSystem.h"
+#include "NetworkServer.h"
 #include "ResourcePack.h"
+#include "ServerConnection.h"
 #include "Settings.h"
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
+#include "UpdaterBackend.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -324,6 +327,294 @@ TEST_CASE("ClientResourcePackCurrencyFollowsTheEffectivePair")
     CHECK(IsClientResourcePackCurrent(settings, "Art", target.GetContentHash()));
     CHECK_FALSE(IsClientResourcePackCurrent(settings, "Art", base_header.ContentHash));
     CHECK_FALSE(IsClientResourcePackCurrent(settings, "Missing", target.GetContentHash()));
+}
+
+class UpdaterTransferFixture final
+{
+public:
+    explicit UpdaterTransferFixture(GlobalSettings& settings) :
+        _settings {settings},
+        _identity {BakerTests::MakeTestChannelIdentity()}
+    {
+        _backend.LoadFromClientResources(_settings, BakerTests::TEST_METADATA_VERSION);
+        _transport = NetworkServer::StartInterthreadServer(&_settings, [this](shared_ptr<NetworkServerConnection> transport) {
+            REQUIRE_FALSE(_connection);
+            _connection = safe_alloc::make_unique<ServerConnection>(&_settings, std::move(transport), _identity);
+        });
+    }
+
+    ~UpdaterTransferFixture()
+    {
+        _connection.reset();
+        safe_call([this] { _transport->Shutdown(); });
+    }
+
+    void Pump()
+    {
+        if (!_connection || _connection->IsHardDisconnected()) {
+            return;
+        }
+
+        auto in = _connection->ReadBuf();
+
+        while (in->NeedProcess()) {
+            auto message = in->ReadMsg();
+
+            if (message == NetMessage::Handshake) {
+                CHECK(in->Read<string>() == _settings.Network.CompatibilityVersion);
+                (void)in->Read<string>();
+                CHECK(in->Read<uint32_t>() == FO_UPDATER_VERSION);
+                string target = in->Read<string>();
+                in.Unlock();
+
+                {
+                    auto out = _connection->WriteMsg(NetMessage::HandshakeAnswer);
+                    out->Write(false);
+                    out->Write(false);
+                    out->Write(false);
+                    out->Write(string {BakerTests::TEST_METADATA_VERSION});
+                }
+
+                {
+                    auto out = _connection->WriteMsg(NetMessage::InitData);
+                    auto descriptor = _backend.GetUpdateDescriptor(target);
+                    out->Write(numeric_cast<uint32_t>(descriptor.size()));
+                    out->Push(descriptor.data(), descriptor.size());
+                    out->WritePropsData({}, {});
+                    out->Write(synctime {});
+                }
+
+                _connection->MarkHandshakeComplete();
+                in.Lock();
+            }
+            else if (message == NetMessage::GetUpdateFile) {
+                REQUIRE(in->GetUnreadSize() >= sizeof(uint32_t) + sizeof(uint64_t) * 3);
+                uint64_t offset {};
+                auto data = in->GetData();
+                memory::copy(&offset, data.data() + in->GetReadPos() + sizeof(uint32_t), sizeof(offset));
+                _offsets.push_back(offset);
+                in.Unlock();
+                _backend.ProcessUpdateFile(make_ptr(_connection.get()), 1024, [this](const_span<uint8_t> data) {
+                    vector<uint8_t> delivered(data.begin(), data.end());
+
+                    if (_corruptDelivery && !delivered.empty()) {
+                        delivered.front() ^= 1;
+                    }
+
+                    auto out = _connection->WriteMsg(NetMessage::UpdateFileData);
+                    out->Write(numeric_cast<int32_t>(delivered.size()));
+                    out->Push(delivered.data(), delivered.size());
+                });
+                in.Lock();
+            }
+            else {
+                FAIL("Unexpected message in updater transfer fixture");
+            }
+        }
+    }
+
+    void BlockNativeTempRemoval(Updater& updater, string temp_path)
+    {
+        updater._nativeTempRemoveOverride = [this, temp_path = std::move(temp_path)](string_view path) {
+            if (path == temp_path) {
+                _removalAttempts++;
+                return false;
+            }
+
+            return fs::remove_file(path);
+        };
+    }
+
+    [[nodiscard]] auto GetRemovalAttempts() const noexcept -> int32_t { return _removalAttempts; }
+    void SetCorruptDelivery(bool corrupt) noexcept { _corruptDelivery = corrupt; }
+    [[nodiscard]] auto GetOffsets() const noexcept -> const vector<uint64_t>& { return _offsets; }
+
+private:
+    vector<uint64_t> _offsets {};
+    bool _corruptDelivery {};
+    int32_t _removalAttempts {};
+    GlobalSettings& _settings;
+    SecureChannelIdentity _identity;
+    UpdaterBackend _backend {};
+    unique_ptr<NetworkServer> _transport {};
+    unique_ptr<ServerConnection> _connection {};
+};
+
+TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
+{
+    using namespace TestClientUpdater;
+
+    if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        SKIP("Native self-update is unavailable on this target");
+    }
+
+    const bool in_memory = GENERATE(false, true);
+    string install = PrepareUpdaterBakeOutput();
+    string published = strex("{}-published", install).str();
+    string writable = strex("{}-writable", install).str();
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    string binary_dir = strex(published).combine_path("Binaries").str();
+    string platform_dir = strex(binary_dir).combine_path(GetCurrentBinaryUpdateTargetName()).str();
+    REQUIRE(fs::create_directories(platform_dir));
+    string prefix = GetPackagedRuntimeName();
+
+    if (prefix.empty()) {
+        prefix = GetCurrentClientRuntimeLibraryName();
+    }
+
+    string source_path = strex(platform_dir).combine_path(strex("{}.pdb", prefix)).str();
+    string live = strex(writable).combine_path(strex("{}.pdb", GetCurrentClientRuntimeLibraryName())).str();
+    string temp = strex(writable).combine_path(strex("~{}.pdb", GetCurrentClientRuntimeLibraryName())).str();
+    string staged = strex("{}-staging", live).str();
+    string expected(8192, 'n');
+    string obsolete(8192, 'o');
+    REQUIRE(fs::write_file(source_path, expected));
+    auto expected_hash = fs::hash_file(source_path);
+    REQUIRE(expected_hash);
+    bool existing = false;
+    bool repeated_bad = false;
+    bool valid_partial = false;
+    bool complete = false;
+    bool cleanup_denied = false;
+
+    SECTION("A stale partial prefix retries within this launch")
+    {
+        REQUIRE(fs::write_file(temp, string_view(obsolete).substr(0, 2048)));
+    }
+    SECTION("A valid partial prefix keeps its resume offset")
+    {
+        REQUIRE(fs::write_file(temp, string_view(expected).substr(0, 2048)));
+        valid_partial = true;
+    }
+    SECTION("A complete wrong temporary file consumes the one full retry")
+    {
+        REQUIRE(fs::write_file(temp, obsolete));
+        complete = true;
+    }
+    SECTION("An oversized temporary file is removed before one full transfer")
+    {
+        REQUIRE(fs::write_file(temp, obsolete + obsolete));
+        complete = true;
+    }
+    SECTION("Existing host symbols remain untouched")
+    {
+        REQUIRE(fs::write_file(live, obsolete));
+        existing = true;
+    }
+    SECTION("A repeatedly invalid delivery never promotes")
+    {
+        REQUIRE(fs::write_file(temp, string_view(obsolete).substr(0, 2048)));
+        repeated_bad = true;
+    }
+
+    SECTION("A denied cleanup of a stale partial file aborts without another transfer")
+    {
+        REQUIRE(fs::write_file(temp, string_view(obsolete).substr(0, 2048)));
+        cleanup_denied = true;
+    }
+    SECTION("A denied cleanup of a complete wrong file aborts before any transfer")
+    {
+        REQUIRE(fs::write_file(temp, obsolete));
+        complete = true;
+        cleanup_denied = true;
+    }
+    SECTION("A denied cleanup of an oversized file aborts before any transfer")
+    {
+        REQUIRE(fs::write_file(temp, obsolete + obsolete));
+        complete = true;
+        cleanup_denied = true;
+    }
+
+    uint16_t port = OfflineServerPort.fetch_add(1);
+    GlobalSettings server_settings(false);
+    server_settings.ApplyDefaultSettings();
+    server_settings.ApplyAutoSettings();
+    BakerTests::ApplySelfContainedServerSettings(server_settings);
+    BakerTests::OverrideSetting(server_settings.Network.ServerPort, port);
+    BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+    BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, binary_dir);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+    server_settings.ApplyConfigFile(ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n"), "");
+    UpdaterTransferFixture fixture {server_settings};
+    fixture.SetCorruptDelivery(repeated_bad);
+
+    GlobalSettings client_settings = MakeUpdaterClientSettings(port);
+    BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+    client_settings.ApplyConfigFile(ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n"), "");
+    client_settings.ApplyWritableRoot(writable);
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+
+    if (cleanup_denied) {
+        fixture.BlockNativeTempRemoval(updater, temp);
+    }
+
+    bool finished = false;
+
+    for (int32_t attempt = 0; attempt < 2000; attempt++) {
+        fixture.Pump();
+
+        if (updater.Process()) {
+            finished = true;
+            break;
+        }
+
+        coarse_sleep(std::chrono::milliseconds {2});
+    }
+
+    REQUIRE(finished);
+    fs::disk_directory_lock released_lock {GetClientWritableResourceDir(client_settings)};
+    CHECK(static_cast<bool>(released_lock));
+
+    if (existing) {
+        CHECK(fixture.GetOffsets().empty());
+        CHECK(fs::read_file(live) == optional<string> {obsolete});
+    }
+    else if (cleanup_denied && complete) {
+        CHECK(fixture.GetOffsets().empty());
+    }
+    else {
+        REQUIRE_FALSE(fixture.GetOffsets().empty());
+        CHECK(fixture.GetOffsets().front() == (complete ? uint64_t {0} : uint64_t {2048}));
+        CHECK(std::count(fixture.GetOffsets().begin(), fixture.GetOffsets().end(), uint64_t {0}) == (valid_partial || cleanup_denied ? 0 : 1));
+    }
+
+    CHECK(fixture.GetRemovalAttempts() == (cleanup_denied ? 1 : 0));
+
+    if (repeated_bad || cleanup_denied) {
+        CHECK(updater.GetResult() == UpdaterResult::Failed);
+        CHECK(updater.IsAborted());
+        CHECK_FALSE(fs::exists(live));
+        CHECK_FALSE(fs::exists(staged));
+        REQUIRE(fs::exists(temp));
+        CHECK(fs::hash_file(temp) != expected_hash);
+    }
+    else {
+        CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
+        CHECK_FALSE(updater.IsAborted());
+
+        if (!existing) {
+            CHECK(fs::read_file(live) == optional<string> {expected});
+            CHECK(fs::hash_file(live) == expected_hash);
+            CHECK_FALSE(fs::exists(temp));
+            CHECK_FALSE(fs::exists(staged));
+        }
+    }
 }
 
 FO_END_NAMESPACE
