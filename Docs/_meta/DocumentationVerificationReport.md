@@ -10341,3 +10341,7 @@ Completed local validation:
 - Correct that date in both locales and add this separately versioned correction's migration note. Keep the exact-publication-range validator, historical failure and native/settings/protocol behavior unchanged. No history rewrite or exception is introduced.
 - Regenerate the public index, snippet/localization state, site/search/routes, AI evaluation and delivery artifacts in dependency order. Preserve source-owned classification and limits. The existing version suite passes all ten cases and the working-tree comparison against the exact published baseline accepts the new minor.
 - This documentation correction does not independently qualify the newly published movement implementation or an embedding project's adoption. Native builds, controlling/observing-client movement and delayed-link checks retain their separate evidence boundaries.
+
+## 2026-10-10 — Truncated enum diagnostic
+
+Reviewed ParseEnum, its token bounds, the real TestRig and existing enum tests. Split the missing-token diagnostic from invalid present values and add six synchronous `.cs`/`.fos` cases. Native execution awaits CI. API/metadata generation, exact source formatting and version22 validation passed; documentation preparation exposed the unchanged bundle limit. Compact paired metadata explanations and new notes, preserving registration, lookup and version invariants. Parent7531519 retains published master8b and QA21 history; full documentation and CI acceptance remain pending.
