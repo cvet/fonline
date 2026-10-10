@@ -8,11 +8,58 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Developer-visible FOnline changes and migration notes are maintained here in English and Russian. The current development version is owned by [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Versioning and release rules](../how-to/release/versioning.md) define CalVer, release dates, immutable tags, and compatibility boundaries.
+[VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the current development version. [Release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility. Changes and migration notes below are bilingual.
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Tests
+
+- Add Windows common unit lanes for AngelScript and Managed, with real exclusive-handle native-temp cleanup refusal checks in both delivery modes.
+
+### Migration
+
+- Tests, CI and paired guidance only; no API, configuration, saves, wire, resource format, ABI or updater marker changes. Rebuild version metadata and unit binaries; regenerate docs/delivery, then run prepare, contract, format and exact history.
+- Windows OS-denial execution, package/restart/rollback and remaining causal qualification are still required.
+
+## 2026.1.22-dev - 2026-10-10
+
+### Fixed
+
+- Validate every incoming first-parent update in pull requests as well as pushes; skipped bumps and missing earlier notes still fail.
+- Keep named ConfigFile inputs alive while applying resource-pack settings in the native updater integration fixture. Candidate and control receive the same compile admission fix.
+
+### Migration
+
+- No project-source or saved-data migration is required: this step fixes two test call sites and PR history admission, with regression tests, version metadata and paired guidance. ApplyConfigFile(ConfigFile&) and runtime API, configuration, wire, resource and compatibility markers retain their parent meanings.
+- Reconfigure/rebuild version metadata and the native unit executable, then regenerate EN/RU documentation, reference/helper models, site/search/routes and AI delivery in dependency order. Run prepare, contract, format and exact version/history checks.
+- Re-run the AngelScript and Managed suites. Compile/setup failures are not causal RED; stale-prefix baseline RED and candidate GREEN must execute the same fixture and delivery models. Actual OS denial, Windows packages, staging/restart and rollback remain unqualified.
+
+## 2026.1.21-dev - 2026-10-10
+
+### Fixed
+
+- Shorten paired scripting guidance without changing contracts; correct source call-order and translation checks, diagram/reference sequencing, ignored outputs, nineteen description models and Transform auto-binding guidance for both backends.
+- Format migration sources.
+- Reject enum metadata ending at `= -` without a missing-token read. The baker regression covers `.cs`/`.fos` at EOF, newline and comment.
+- Native updater payloads with invalid resumed prefixes retry once from byte zero in the same launch. Complete invalid and oversized temporary files share this allowance; deletion errors and repeated bad delivery remain terminal failures without promotion.
+- Final native verification reads fresh whole-file size/hash, preserving resource-pack verification and installed host PDB policy.
+
+### Tests
+
+- Added common actual Updater/UpdaterBackend secure-channel regression for both delivery modes, resume offsets, bounded retry and terminal lock release. Add private friend-only cleanup-failure injection for stale partial, complete invalid and oversized native temps in both delivery modes; actual OS permission-denial remains a separate acceptance gate.
+- Added a Managed unit profile and CI job that executes RunUnitTests beside the existing AngelScript suite.
+
+### Migration
+
+- API, config, saves, network, ABI, resource format, valid enum encoding and compatibility/file versions are unchanged.
+- Complete/remove `= -`; rebuild baker/version metadata. Run `MetadataBakerRejectsTruncatedNegativeEnum`, enum round-trip tests and per-backend project bake, then regenerate docs/delivery in dependency order.
+- Run `python BuildTools/docs_prepare.py` and reconfigure/rebuild consumers for version metadata.
+- No public API, configuration, wire, save-data, resource-format, updater-version or runtime-ABI change. Rebuild native artifacts; preserve generation-2/ABI-3 host compatibility and next-launch staging.
+- Regenerate version metadata, EN/RU translations, reference/helper models, site/search/routes and AI delivery. Run exact contract diff, both native unit lanes and Windows/package acceptance before qualification.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Fixed
 

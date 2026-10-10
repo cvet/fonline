@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"d8506856b4f6171d0d4b195c005860f97f5c1ab766fb734d64413b27ad0276ea"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"7db37ae68edac3cdfb462cec13c68e8e699a1c1350cb4f3aadea34e7671bc458"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -177,12 +177,8 @@ Restart step (taken on either Case after ReloadRequested) — PromoteStagedReloa
 вычисляется под тем же capability guard: у Android и iOS нет пригодного
 executable path для загружаемого sibling module. Поскольку runtime выбирается раньше
 обычного чтения конфигурации, `Client.ForceEmbeddedRuntime` должен прийти как
-`--ForceEmbeddedRuntime`; значение только из `.fomain` или SubConfig не влияет на
+`--Client.ForceEmbeddedRuntime`; значение только из `.fomain` или SubConfig не влияет на
 этот pre-init выбор.
-
-Загруженную по live path DLL нельзя безопасно заменить и снова загрузить в том
-же процессе. Поэтому host только продвигает staged-файл и завершается. Новый
-runtime получает ровно один `InitApp` уже в следующем процессе.
 
 Обычная загрузка bundled DLL специально не сравнивает игровую compatibility
 строку runtime со встроенной строкой старого host. Host в установленном клиенте
@@ -191,15 +187,7 @@ runtime получает ровно один `InitApp` уже в следующ�
 только для тестов и явных probes. При несовпадении embedded fallback запрещён,
 чтобы host не скрывал ошибку переходом на старый встроенный код.
 
-Диагностика handoff пишется в обычный `<host>.log`. Host создаёт global data,
-открывает лог с truncation, а затем держит дескриптор открытым во время вызова
-runtime DLL. Host и DLL содержат независимые экземпляры engine global data и
-собственные `std::ofstream`, но разделяют файл без exclusive lock. Каждый write
-сначала выполняет seek-to-end, поэтому записи не перетирают друг друга. Runtime
-передаёт `AppInitFlags::AppendLogFile` в `InitApp`. Самые ранние строки
-`FO_QueryClientRuntimeExports` и `RunClientRuntime` до создания global data DLL
-могут попасть только в stdout, но host уже записывает полный load/accept/enter
-handoff, а после `InitApp` runtime продолжает тот же файл.
+Диагностика handoff использует `<host>.log`. Host создаёт global data и открывает лог с truncation через `LogToFile(GetExeLogFileName(), false)`, затем держит nonexclusive handle при вызове DLL. Независимые globals/streams host и DLL выполняют seek-to-end при каждом `WriteSync`, сохраняя записи обоих модулей. Runtime `InitApp` использует `AppInitFlags::AppendLogFile`. До создания globals DLL её `FO_QueryClientRuntimeExports` и первая строка `RunClientRuntime` пишут только в stdout; host уже записывает load/accept/enter, а последующие строки DLL добавляются в тот же файл.
 
 После `ReloadRequested` embedded-модуль выполняет `App.reset()` до возврата host,
 чтобы не держать два SDL window одновременно. Runtime из DLL также освобождает
@@ -209,32 +197,19 @@ handoff, а после `InitApp` runtime продолжает тот же фай
 
 ### Self-update применяется при следующем запуске пользователя
 
-Native self-update не применяется внутри текущего процесса. После staging
-runtime updater выводит приглашение перезапустить клиент прямо на update screen
-через `Updater::AddText` и `_restartPrompt` из
-[Updater.cpp](../../../../Source/Client/Updater.cpp), затем ждёт закрытия клиента.
-Runtime возвращает `ReloadRequested`, а
-`PromoteStagedReloadForRestart` из
-[ClientApp.cpp](../../../../Source/Applications/ClientApp.cpp) продвигает файл и
-завершает host. Следующий запуск загружает обновлённый модуль как единственный
-`InitApp`.
+После native staging [Updater.cpp](../../../../Source/Client/Updater.cpp) показывает restart prompt через `Updater::AddText`/`_restartPrompt` и ждёт закрытия (Escape). Runtime возвращает `ReloadRequested`; [ClientApp.cpp](../../../../Source/Applications/ClientApp.cpp) вызывает `PromoteStagedReloadForRestart`/`ApplyStagedBinaryUpdate`, продвигает модуль и завершает host. Следующий запуск выполняет единственный чистый `InitApp`. `App->IsHeadless()` пропускает prompt и ожидание: нужен runtime guard, поскольку `FO_HEADLESS_APP` не определён для ClientLib.
 
-Сообщение и ожидание отключены для `App->IsHeadless()`: у headless-клиента нет UI
-и пользователя, который закроет prompt, поэтому он сразу возвращает результат,
-после чего host продвигает файл и выходит. Проверка runtime необходима, так как
-`FO_HEADLESS_APP` относится к app-target и не задаётся при компиляции `ClientLib`.
+Reload в том же процессе опасен: OS references/path deduplication могут сохранить прежний live module, стабильно на Windows; второй [InitApp](../../../../Source/Frontend/ApplicationInit.cpp) нарушает module `once_flag`/`FO_STRONG_ASSERT` и может вызвать падение SDL window/audio. Старый build-hash guard скрывал вторую ошибку. Новый процесс избегает обеих и синхронизируется с server compatibility без повторного staging.
 
-Политика restart защищает не только SDL. Два engine-модуля в одном процессе имеют
-отдельные allocator, global data, logging и singleton state. Повторная
-инициализация runtime по тому же пути оставляла бы ссылки и thread-local state от
-выгруженного модуля. ABI 3 и updater generation 2 отвергают старые host, которые
-могли попытаться сделать in-process reload; для них нужен новый полный пакет.
+Installed host записывает promoted writable DLL под `<Platform::GetUserDataBase()>/<FO_NICE_NAME>/ClientRuntimeHost/`. Следующий запуск проверяет selector до `InitApp`; отсутствие, неверный формат, другое имя runtime либо отсутствие live и staging возвращают frozen install DLL. Portable host selector не использует. Путь должен быть абсолютным, basename — соответствовать runtime, newline/NUL запрещены; запись выполняется через временный файл и rename до обычного чтения settings.
 
-Для установленного клиента после promotion host проверяет, что путь абсолютный,
-basename совпадает с runtime, отсутствуют newline/NUL, а live или staging файл
-существует. Затем selector записывается через временный файл и rename. При
-следующем старте selector читается до settings. Некорректный selector не блокирует
-запуск, а возвращает клиента к runtime из install directory.
+Host executable заморожен и updater его не доставляет. Старым host с reload в том же процессе нужна одна ручная переустановка. Protocol generation 2 отвергает generation-1 до native transfer; ABI 3 отвергает ABI-2 host. Generation-1 сохраняет прежнюю инструкцию base client; generation-2+ использует формулировку latest full package ниже.
+
+## Восстановление временного native-файла
+
+Native temp продолжается по размеру. Неверный хеш, полный неверный или слишком большой temp: очистка и один полный повтор за запуск; отказ очистки или повтора прерывает обновление без продвижения. Размер/хеш без кэша; PDB/ресурсы, range/hash backend и синхронные borrowed callbacks прежние; повтор сбрасывает остаток/принятые байты. API прежний.
+
+Обе доставки: terminal lock и исходные байты. Exclusive handle Windows: отказ удаления до освобождения, успех после. Нужен прогон Windows AS/Managed: включение или friend-отказ не доказывают результат ОС. Пакеты/перезапуск/откат — отдельно.
 
 ## Интерфейс командной строки host
 
@@ -510,7 +485,7 @@ command line. MSI packager добавляет marker только во врем�
 - Managed resource payload пересобирается для каждого распространяемого client target и размещается под `PlatformBinaries/<target>/`; если несколько native binary variants разделяют updater target, один target-wide pack получает payload наименее квалифицированной подходящей entry, обычно default Release, а независимо собранные эквивалентные CoreLib не обязаны быть byte-identical;
 - Windows Client с `Wix` строит обязательный MSI из staged Raw payload, временно добавляет `INSTALLED`, регистрирует URI scheme через HKCU и падает при отсутствии toolset или ошибке generator; Windows `light` повторяется один раз с `-sval` только для точного сообщения о недоступности Windows Installer service, а прочие linker/ICE failures и failed fallback остаются фатальными;
 - Windows runtime PDB называется `<runtime_dll>.pdb`, а host PDB сохраняет `<host_name>.pdb`; package patch CodeView `RSDS` меняет embedded PDB path на итоговое имя, и отсутствие input или неудачный patch считаются ошибкой;
-- host PDB staged вместе с runtime payload, но client скачивает его только при отсутствии локального файла и никогда не clobber существующую подходящую копию.
+- **Размещение host PDB.** `package_all_client_runtime_update_payloads` помещает `<name>.pdb` рядом с runtime DLL и `<name>.dll.pdb` под `PlatformBinaries/<target>/`. Восстановление отсутствующей копии и совпадение symbols с замороженным host описаны в [ABI среды выполнения](#abi-среды-выполнения).
 
 Bundled runtime и server-staged runtime проходят тот же package-time patch, что и
 обычные executable: embedded resources, internal config и packaged mark.

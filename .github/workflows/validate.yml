@@ -65,7 +65,7 @@ jobs:
         branch = os.environ['VERSION_BRANCH']
         if not baseline or set(baseline) == {'0'}:
             baseline = git(root, 'rev-parse', '--verify', f'{target}^')
-        if os.environ['VERSION_EVENT'] == 'push':
+        if os.environ['VERSION_EVENT'] in ('push', 'pull_request'):
             count = validate_history(root, baseline, target, branch)
         else:
             validate_committed_update(root, baseline, target, branch)
@@ -343,6 +343,21 @@ jobs:
     - uses: actions/checkout@v6
     - run: BuildTools/prepare-workspace.sh linux-packages linux
     - run: BuildTools/validate.sh unit-tests
+  managed-unit-tests:
+    if: github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'
+    name: Run common unit tests with Managed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-dotnet@v5
+      with:
+        dotnet-version: 10.0.x
+    - run: BuildTools/prepare-workspace.sh linux-packages linux
+    - run: BuildTools/validate.sh managed-unit-tests
   unit-tests-sanitizers:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Run unit tests (${{matrix.sanitizer}} sanitizer)
@@ -378,6 +393,26 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
+  windows-unit-tests:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
+    name: Run common unit tests on Windows (${{ matrix.profile }})
+    runs-on: windows-2025
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [unit-tests, managed-unit-tests]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - uses: actions/setup-dotnet@v5
+      if: matrix.profile == 'managed-unit-tests'
+      with:
+        dotnet-version: 10.0.x
+    - name: Build and run the common unit executable
+      run: BuildTools/validate.cmd ${{ matrix.profile }}
   windows-file-io:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Probe native Windows file paths

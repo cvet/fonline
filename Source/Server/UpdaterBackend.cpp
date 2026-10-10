@@ -228,6 +228,13 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
     FO_TRACE_ZONE(Network);
 
     auto connection = player->GetConnection();
+    ProcessUpdateFile(connection, update_file_max_portion_size, [player](const_span<uint8_t> data) mutable { player->Send_UpdateFileData(data); });
+}
+
+void UpdaterBackend::ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size, const function<void(const_span<uint8_t>)>& send_data)
+{
+    FO_TRACE_ZONE(Network);
+
     auto in_buf = connection->ReadBuf();
 
     auto file_index = in_buf->Read<uint32_t>();
@@ -288,7 +295,7 @@ void UpdaterBackend::ProcessUpdateFile(ptr<Player> player, int32_t update_file_m
         }
     }
 
-    player->Send_UpdateFileData(update_data);
+    send_data(update_data);
 }
 
 FO_END_NAMESPACE
