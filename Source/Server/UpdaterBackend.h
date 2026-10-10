@@ -43,6 +43,7 @@ FO_BEGIN_NAMESPACE
 FO_DECLARE_EXCEPTION(UpdaterException);
 
 class Player;
+class ServerConnection;
 
 class UpdaterBackend final
 {
@@ -59,6 +60,9 @@ public:
     void ProcessUpdateFile(ptr<Player> player, int32_t update_file_max_portion_size);
 
 private:
+    friend class UpdaterTransferFixture;
+
+    void ProcessUpdateFile(ptr<ServerConnection> connection, int32_t update_file_max_portion_size, const function<void(const_span<uint8_t>)>& send_data);
     static void VerifyClientResourcesMetadata(const GlobalSettings& settings, string_view server_metadata_version);
 
     struct UpdateFileData

@@ -5,7 +5,7 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"122b9cd8112c83b5831e3dc67b67424dc178d8480cd9a7c6a294bde4976d7477"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"a2f0f4da506c0faf951e1f662d7b06eb9d1ef4c2d639089aadb5a0ba517bec01"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
@@ -911,19 +911,9 @@ shapes не появится явный conversion contract.
 
 ## Динамические metadata
 
-`Source/Common/MetadataRegistration.cpp` реализует `RegisterDynamicMetadata()`. Функция читает binary sections metadata и направляет их в typed steps регистрации:
+Неполное `///@ Enum <Name> <Entry> = -` отклоняется с `Invalid Enum codegen tag: expected number after '-'` до вывода метаданных и обращения к отсутствующему токену.
 
-- enums
-- entities
-- entity holders
-- fixed/value/reference types
-- properties
-- events
-- remote calls
-- settings
-- migration rules
-
-Это runtime side metadata, которую можно загрузить из generated/baked data вместо одной только compiled static registration.
+`RegisterDynamicMetadata()` из `Source/Common/MetadataRegistration.cpp` загружает baked enums, entities/holders, fixed/value/reference types, properties, events, remote calls, settings и migration rules вместе со статической регистрацией.
 
 Правила миграции свойств содержат действие: `Property <Owner> Rename <Old> <New>` проверяет текущее целевое поле; `Property <Owner> Transform <Property> <Function>` проверяет существующее Persistent-свойство. Функция работает с документом БД до загрузки свойств сущности и получает исходный документ как контекст чтения. Связывание, подготовка результатов и запись описаны в [Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
 
@@ -933,9 +923,9 @@ AngelScript связывает те же правила с `T&inout` и `const D
 
 **Server и каждый подключённый client обязаны использовать metadata из одной bake.** Entity payload адресует properties по registration order этих metadata, поэтому в разных bakes один index может означать разные properties. Такое расхождение отклоняется как дефект build или deployment и не считается поддерживаемым compatibility mode.
 
-Один `FO_COMPATIBILITY_VERSION` не может обеспечить этот invariant. Codegen видит metadata sources движка и C++-код встраивающего проекта, а project declarations `///@ Property` регистрируются runtime из baked script metadata. Поэтому binary compatibility version описывает executables, а layout properties принадлежит ресурсам.
+`FO_COMPATIBILITY_VERSION` описывает метаданные исполняемого кода из C++ codegen движка/проекта. Проектные script tags `///@ Property` регистрируют baked layout во время runtime, поэтому одной binary compatibility недостаточно для инварианта общей bake свойств.
 
-`MetadataBaker` детерминированно выводит metadata version из всех разобранных codegen tags до target filtering. Client, server и mapper outputs одной bake получают общую версию, хотя их итоговые sections различаются. Любое изменение tag-level contract — порядок properties, layout fixed type, enum values, events, settings или remote calls — меняет эту версию.
+`MetadataBaker` хеширует все разобранные tags до фильтрации сторон: одна bake даёт client/server/mapper общую metadata version. Любое изменение tags, включая порядок properties, layout fixed types, enum values, events, settings и remote calls, меняет её.
 
 Каждый файл `Metadata.fometa-*` начинается с fixed header перед section table:
 
@@ -972,7 +962,7 @@ targets, tag changes и отказ от старого file layout), `Test_Prope
 
 Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
 
-Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
+`///@ MigrationRule <Kind> ...` транзитивно сопоставляет `(kind, extra-info, target → replacement)`. Proto/Property применяются при поиске прототипа/имени свойства; Enum позволяет `PropertiesSerializer` разрешать старые сохранённые имена в текущие значения scalar enum и enum keys словаря без `EnumResolveException`.
 
 ## Properties и generated contracts
 

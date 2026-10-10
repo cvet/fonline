@@ -383,7 +383,10 @@ void MetadataBaker::ParseEnum(TagsParsingContext& ctx) const
             int64_t value;
 
             if (tag_desc.Tokens[3] == "-") {
-                if (tag_desc.Tokens.size() < 5 || !strvex(tag_desc.Tokens[4]).is_number()) {
+                if (tag_desc.Tokens.size() < 5) {
+                    throw MetadataBakerException("Invalid Enum codegen tag: expected number after '-'", tag_desc.SourceFile, tag_desc.LineNumber);
+                }
+                if (!strvex(tag_desc.Tokens[4]).is_number()) {
                     throw MetadataBakerException("Invalid Enum codegen tag: expected number after '-'", tag_desc.SourceFile, tag_desc.LineNumber, tag_desc.Tokens[4]);
                 }
 
