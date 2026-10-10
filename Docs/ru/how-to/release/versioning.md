@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/release/versioning.html
 ---
 
 # Версия движка и заметки о выпусках
-<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"4941443b33bcf46cc9ca999b64ad465c6d8974f736e0fbba5e6ad3d6f1356c30"} -->
+<!-- docs-translation: {"document_id":"engine-versioning","locale":"ru","source_path":"Docs/en/how-to/release/versioning.md","source_sha256":"33a47b5e6f02c0f3552d66ece47bc80ca2eca7f0ba59743d0fd62c023982e2dd"} -->
 Корневой [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт идентификатор движка. Эта политика CalVer с календарным годом, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md) и [процедура изменения контрактов](../../contributing/contract-change-management.md) обязательны для каждого обновления master. Перед обновлением игры прочитайте [историю изменений](../../reference/changelog.md).
 
 Навигация, маршруты и данные для ИИ ссылаются на `VERSION`, не копируя значение. Шаблон Jekyll включает корневой файл напрямую при сборке.
@@ -53,7 +53,7 @@ python BuildTools/tests/test_engine_version.py
 python BuildTools/docs_engine_version.py --check --branch master   --baseline-git-ref <previous-master-sha> --target-git-ref <new-master-sha> --history
 ```
 
-Проверке исходников `--check` Git не нужен. Сравнение требует точных доступных исходной и целевой ревизий; отсутствие или неполную базу обходить нельзя. PR сравнивает итоговый head с базой, push проверяет каждый входящий шаг первого родителя. Для ревизий до политики всё равно нужен аудит полного диапазона исходников.
+Проверке исходников `--check` Git не нужен. Сравнение требует точных доступных исходной и целевой ревизий; отсутствие или неполную базу обходить нельзя. PR и push проверяют каждый входящий шаг первого родителя от точной базы до head. База должна входить в эту цепочку; пропущенное повышение версии и потерянные прежние заметки дают ошибку. Для ревизий до политики всё равно нужен аудит полного диапазона исходников.
 
 ## Исчерпывающая запись миграции
 

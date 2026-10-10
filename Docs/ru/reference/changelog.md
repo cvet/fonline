@@ -7,12 +7,25 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"785f48e8c6e28616ed5c94251350b5b4037ecfc8fe86e6efb555504e220b076b"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"418ea1bdb9ae1480f71b0ff9d4f0954c2bf3e0dc0a2ae31719920e6735ce33b8"} -->
 [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт текущую версию разработки. [Правила выпусков](../how-to/release/versioning.md) определяют CalVer, даты, неизменяемые теги и совместимость. Изменения и заметки о миграции ниже двуязычные.
 
 ## Unreleased
 
 ## Current - 2026-10-10
+
+### Исправлено
+
+- В pull request, как и в push, проверяется каждый входящий шаг первого родителя; пропущенное повышение версии и потерянные прежние заметки остаются ошибкой.
+- В integration fixture native updater конфигурации resource pack сохраняются в именованных ConfigFile перед применением настроек. Одинаковое исправление допуска к компиляции внесено в кандидат и контроль.
+
+### Миграция
+
+- Миграция исходников проекта или сохранённых данных не требуется: этот шаг исправляет два вызова в тесте и проверку PR history, добавляя регрессии, метаданные версии и парные инструкции. ApplyConfigFile(ConfigFile&) и смысл runtime API, конфигурации, сети, ресурсов и маркеров совместимости сохраняются относительно родителя.
+- Повторите конфигурацию и сборку метаданных версии и native unit executable, затем перегенерируйте EN/RU документацию, справочники/helper models, сайт/поиск/маршруты и AI delivery в порядке зависимостей. Выполните prepare, contract, format и точные version/history проверки.
+- Повторно запустите AngelScript и Managed suites. Ошибки компиляции или подготовки не являются causal RED; baseline RED и candidate GREEN для неверного префикса должны исполнить одинаковые fixture и способы доставки. Реальный OS denial, Windows packages, staging/restart и rollback пока не квалифицированы.
+
+## 2026.1.21-dev - 2026-10-10
 
 ### Исправлено
 

@@ -65,7 +65,7 @@ jobs:
         branch = os.environ['VERSION_BRANCH']
         if not baseline or set(baseline) == {'0'}:
             baseline = git(root, 'rev-parse', '--verify', f'{target}^')
-        if os.environ['VERSION_EVENT'] == 'push':
+        if os.environ['VERSION_EVENT'] in ('push', 'pull_request'):
             count = validate_history(root, baseline, target, branch)
         else:
             validate_committed_update(root, baseline, target, branch)

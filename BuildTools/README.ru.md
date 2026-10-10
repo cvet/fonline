@@ -5,10 +5,12 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"6f78564e939bf527ed56234eb76ad067cdeae4e1b20a9cc5fbae2d00663b35ad"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"8522e834765b664e5b454ca16ce1a762cd63d8edd8489df2654f0da040ade829"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
+
+Проверка версии Engine в PR/push проходит каждый входящий шаг первого родителя существующим history validator. Используйте точные base/head refs с `docs_engine_version.py --check --branch master --baseline-git-ref <base> --target-git-ref <head> --history`; сохраняйте прежние Current как датированные записи версий. См. [правила версий Engine](../Docs/ru/how-to/release/versioning.md).
 
 Сборка обычно начинается во встраивающем проекте. Поддерживаемый рабочий
 процесс описан в [Build Workflow](../Docs/ru/how-to/build/), а этот файл содержит
