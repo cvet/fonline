@@ -574,6 +574,15 @@ auto Updater::ReadLocalMetadataVersion() const -> string
     }
 }
 
+auto Updater::RemoveNativeTempFile(string_view path) -> bool
+{
+    if (_nativeTempRemoveOverride) {
+        return _nativeTempRemoveOverride(path);
+    }
+
+    return fs::remove_file(path);
+}
+
 void Updater::GetNextFile()
 {
     FO_TRACE_ZONE(Network);
@@ -599,12 +608,26 @@ void Updater::GetNextFile()
         }
 
         _tempFile.close();
-        const auto& prev_update_file = _filesToUpdate.front();
+        auto& prev_update_file = _filesToUpdate.front();
         string prev_path_str = make_final_path(prev_update_file);
         string temp_path_str = make_temp_path(prev_update_file);
 
         if (!IsDownloadedFileHashMatch(temp_path_str, prev_update_file)) {
             logging::write(logging::type::warning, "Client updater: downloaded file hash mismatch, temp {}, file {}", temp_path_str, prev_update_file.Name);
+
+            if (prev_update_file.IsClientBinary && !prev_update_file.RetriedWholeFile) {
+                if (!RemoveNativeTempFile(temp_path_str)) {
+                    Abort(UpdaterResult::Failed, StrFilesystemError);
+                    return;
+                }
+
+                prev_update_file.RetriedWholeFile = true;
+                prev_update_file.RemaningSize = prev_update_file.Size;
+                logging::write("Client updater: retrying native download from the beginning after verification failure, file {}, size {}", prev_update_file.Name, prev_update_file.Size);
+                GetNextFile();
+                return;
+            }
+
             Abort(UpdaterResult::Failed, StrFilesystemError);
             return;
         }
@@ -660,13 +683,23 @@ void Updater::GetNextFile()
         if (temp_file_size.has_value()) {
             if (*temp_file_size > next_update_file.Size) {
                 logging::write(logging::type::warning, "Client updater: temp file {} is too large, size {}, expected {}", temp_path, *temp_file_size, next_update_file.Size);
-                fs::remove_file(temp_path);
+                if (!(next_update_file.IsClientBinary ? RemoveNativeTempFile(temp_path) : fs::remove_file(temp_path)) && next_update_file.IsClientBinary) {
+                    Abort(UpdaterResult::Failed, StrFilesystemError);
+                    return;
+                }
+
+                next_update_file.RetriedWholeFile = next_update_file.IsClientBinary;
                 next_update_file.RemaningSize = next_update_file.Size;
             }
             else if (*temp_file_size == next_update_file.Size) {
                 if (!IsDownloadedFileHashMatch(temp_path, next_update_file)) {
                     logging::write(logging::type::warning, "Client updater: complete temp file {} has wrong hash, restarting download", temp_path);
-                    fs::remove_file(temp_path);
+                    if (!(next_update_file.IsClientBinary ? RemoveNativeTempFile(temp_path) : fs::remove_file(temp_path)) && next_update_file.IsClientBinary) {
+                        Abort(UpdaterResult::Failed, StrFilesystemError);
+                        return;
+                    }
+
+                    next_update_file.RetriedWholeFile = next_update_file.IsClientBinary;
                     next_update_file.RemaningSize = next_update_file.Size;
                 }
                 else {
@@ -1458,7 +1491,14 @@ auto Updater::IsDownloadedFileHashMatch(string_view file_path, const UpdateFile&
         }
     }
 
-    return IsDiskFileHashMatch(file_path, update_file.Size, update_file.Hash);
+    auto local_size = fs::file_size(file_path);
+
+    if (!local_size || *local_size != update_file.Size) {
+        return false;
+    }
+
+    auto local_hash = fs::hash_file(file_path);
+    return local_hash.has_value() && *local_hash == update_file.Hash;
 }
 
 auto Updater::IsResourcePackName(string_view file_name) noexcept -> bool
