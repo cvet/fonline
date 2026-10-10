@@ -607,7 +607,7 @@ static auto CreateManagedCallbackDesc(ptr<const ManagedCallbackBridgeData> callb
 static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const ComplexTypeDesc& type, void* data, const DataAccessor* accessor) -> MonoObject*;
 
 // Event dispatch bridge
-static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst);
+static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> dst, ptr<const DataAccessor> accessor);
 static auto ResolveEventEntity(ptr<ManagedScriptBackend> backend, const ManagedAbiEventRuntime& entry, void* entity_ptr) -> nptr<Entity>;
 static auto FindManagedEventSubscription(ptr<ManagedScriptBackend> backend, ptr<const Entity> entity, string_view event_name, MonoObject* handler) -> optional<uintptr_t>;
 static auto GetManagedEventSubscriptionOwner(ptr<const ManagedScriptBackend> backend) noexcept -> uintptr_t;
@@ -3935,7 +3935,7 @@ static void NativeAddPropertySetterImpl(void* backend_ptr, MonoString* owner_typ
 
 struct ManagedDatabaseDocumentContext
 {
-    const AnyData::Document& Document;
+    ptr<const AnyData::Document> Document;
     ptr<const PropertyRegistrar> Registrar;
     ptr<ManagedScriptBackend> Backend;
 };
@@ -3977,7 +3977,7 @@ static auto NativeRegisterPropertyMigrator(void* backend_ptr, MonoString* owner_
                     ManagedObjectRoot input;
                     input.SetObject(BoxPropertyValue(backend, prop, {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()}));
 
-                    ManagedDatabaseDocumentContext context {document, registrar, backend};
+                    ManagedDatabaseDocumentContext context {&document, registrar, backend};
                     void* context_ptr = &context;
                     ManagedObjectRoot owner;
                     owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
@@ -4031,7 +4031,7 @@ static auto NativeRegisterProtoMigrator(void* backend_ptr, MonoString* owner_typ
                     ManagedObjectRoot input;
                     input.SetObject(BoxNativeSimpleValue(backend, engine->GetBaseType("hstring"), &value));
 
-                    ManagedDatabaseDocumentContext context {document, registrar, backend};
+                    ManagedDatabaseDocumentContext context {&document, registrar, backend};
                     void* context_ptr = &context;
                     ManagedObjectRoot owner;
                     owner.SetObject(reinterpret_cast<MonoObject*>(mono_string_new(domain, string {registrar->GetTypeName().as_str()}.c_str())));
@@ -4064,8 +4064,8 @@ static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, Mon
         *result = nullptr;
 
         if (!key.empty() && (key[0] == '_' || key[0] == '$')) {
-            if (context.Document.Contains(key)) {
-                const auto& value = context.Document[key];
+            if (context.Document->Contains(key)) {
+                const auto& value = (*context.Document)[key];
                 FO_VERIFY_AND_THROW(value.Type() == AnyData::ValueType::String, "Technical document read requires a string", key);
                 *result = reinterpret_cast<MonoObject*>(mono_string_new(GetDomainOrThrow(backend->GetDomain()), string {value.AsString()}.c_str()));
             }
@@ -4081,11 +4081,11 @@ static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, Mon
 
         nptr<const AnyData::Value> selected;
 
-        if (context.Document.Contains(key)) {
-            selected = &context.Document[key];
+        if (context.Document->Contains(key)) {
+            selected = &(*context.Document)[key];
         }
         else {
-            for (const auto& [stored_key, value] : context.Document) {
+            for (const auto& [stored_key, value] : *context.Document) {
                 if (context.Registrar->FindPersistedProperty(stored_key) == prop) {
                     FO_VERIFY_AND_THROW(!selected, "Ambiguous database document property", key);
                     selected = &value;
@@ -4098,8 +4098,8 @@ static auto NativeReadDatabaseDocument(void* backend_ptr, void* context_ptr, Mon
             PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, meta->Hashes, *meta);
             *result = BoxPropertyValue(backend, prop.as_ptr(), {raw.GetPtrAs<uint8_t>().get(), raw.GetSize()});
         }
-        else if (context.Document.Contains("_Proto")) {
-            const auto& proto_value = context.Document["_Proto"];
+        else if (context.Document->Contains("_Proto")) {
+            const auto& proto_value = (*context.Document)["_Proto"];
             FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
 
             auto proto = meta->GetProtoEntity(context.Registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()));
@@ -4121,9 +4121,9 @@ static auto NativeReadDatabaseDocumentEncoded(void* backend_ptr, void* context_p
         FO_VERIFY_AND_THROW(context.Backend == backend, "Database document belongs to a different backend");
 
         string key = ToStringAndFree(field_name);
-        FO_VERIFY_AND_THROW(context.Document.Contains(key), "Database document field does not exist", key);
+        FO_VERIFY_AND_THROW(context.Document->Contains(key), "Database document field does not exist", key);
 
-        string encoded = AnyData::ValueToString(context.Document[key]);
+        string encoded = AnyData::ValueToString((*context.Document)[key]);
         *result = mono_string_new(GetDomainOrThrow(backend->GetDomain()), encoded.c_str());
     });
 }
@@ -5633,24 +5633,67 @@ static auto BoxNativeCallValue(ptr<const ManagedScriptBackend> backend, const Co
 
 // Writes a managed event argument that a [Event] handler mutated through a `ref` parameter back into the native inout
 // slot the engine fired the event with
-static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, void* dst)
+static void WriteBackManagedEventArg(ptr<ManagedScriptBackend> backend, const ComplexTypeDesc& type, MonoObject* value, ptr<void> dst, ptr<const DataAccessor> accessor)
 {
+    FO_TRACE_ZONE(Script);
+
+    if (type.Kind == ComplexTypeKind::Array || type.Kind == ComplexTypeKind::Dict) {
+        ManagedNativeValue storage;
+        ptr<void> source = ConvertManagedObjectToNative(backend, type, value, storage);
+
+        if (type.Kind == ComplexTypeKind::Array) {
+            size_t count = MANAGED_DATA_ACCESSOR.GetArraySize(source);
+            storage.Array->Elements.resize(count);
+            vector<ptr<void>> elements;
+            elements.reserve(count);
+
+            for (size_t i = 0; i < count; i++) {
+                elements.emplace_back(MANAGED_DATA_ACCESSOR.GetArrayElement(source, i));
+            }
+
+            accessor->ClearArray(dst);
+
+            for (ptr<void> element : elements) {
+                accessor->AddArrayElement(dst, element);
+            }
+        }
+        else {
+            size_t count = MANAGED_DATA_ACCESSOR.GetDictSize(source);
+            storage.Dict->Keys.resize(count);
+            storage.Dict->Values.resize(count);
+            vector<pair<ptr<void>, ptr<void>>> elements;
+            elements.reserve(count);
+
+            for (size_t i = 0; i < count; i++) {
+                elements.emplace_back(MANAGED_DATA_ACCESSOR.GetDictElement(source, i));
+            }
+
+            accessor->ClearDict(dst);
+
+            for (const auto& [key, element] : elements) {
+                accessor->AddDictElement(dst, key, element);
+            }
+        }
+
+        return;
+    }
+
     if (type.Kind != ComplexTypeKind::Simple) {
         throw ScriptSystemException("Managed mutable event argument type is not supported", type.BaseType.Name);
     }
 
     const BaseTypeDesc& base_type = type.BaseType;
     ManagedScalarValue storage;
-    void* converted = ConvertManagedSimpleObjectToNative(backend, base_type, value, storage);
+    ptr<void> converted = ConvertManagedSimpleObjectToNative(backend, base_type, value, storage);
 
     if (base_type.IsString) {
-        *static_cast<string*>(dst) = *static_cast<string*>(converted);
+        *dst.reinterpret_as<string>() = *converted.reinterpret_as<string>();
     }
     else if (base_type.IsHashedString) {
-        *static_cast<hstring*>(dst) = *static_cast<hstring*>(converted);
+        *dst.reinterpret_as<hstring>() = *converted.reinterpret_as<hstring>();
     }
     else if (base_type.IsEntity) {
-        *static_cast<Entity**>(dst) = *static_cast<Entity**>(converted);
+        *dst.reinterpret_as<Entity*>() = *converted.reinterpret_as<Entity*>();
     }
     else if (base_type.IsPrimitive || base_type.IsEnum || base_type.IsStruct) {
         memory::copy(dst, converted, base_type.Size);
@@ -5762,7 +5805,7 @@ static auto DispatchManagedEventInContext(shared_ptr<ManagedEventSubscription> s
     for (size_t i = 0; i < subscription->Args.size(); i++) {
         if (subscription->Args[i].IsMutable) {
             MonoObject* mutated = mono_array_get(get_args_array(), MonoObject*, i);
-            WriteBackManagedEventArg(subscription->Backend.as_ptr(), subscription->Args[i], mutated, ptr<void>(call.ArgsData[i]).get());
+            WriteBackManagedEventArg(subscription->Backend, subscription->Args[i], mutated, call.ArgsData[i], call.Accessor);
         }
     }
 

@@ -23,7 +23,8 @@ internal static partial class Native
     }
 
     private static readonly ConcurrentDictionary<(string Owner, string Property), Delegate> PropertyMigrators = [];
-    private static readonly ConcurrentDictionary<(string Owner, hstring Prototype), PropertyMigrator<hstring>> ProtoMigrators = [];
+    private static readonly ConcurrentDictionary<(string Owner, hstring Prototype), PropertyMigrator<hstring>>
+        ProtoMigrators = [];
 
     static partial void ClearPropertyMigrators()
     {
@@ -61,11 +62,10 @@ internal static partial class Native
             }
         }
 
-        if (selected == null || !selected.IsDefined(attribute, false) ||
-            selected.ReturnType != typeof(bool) || selected.ContainsGenericParameters ||
-            selected.IsDefined(typeof(AsyncStateMachineAttribute), false)) {
-            throw new InvalidOperationException(subject + " migrator must be synchronous, static and attributed: " +
-                                                function);
+        if (selected == null || !selected.IsDefined(attribute, false) || selected.ReturnType != typeof(bool) ||
+            selected.ContainsGenericParameters || selected.IsDefined(typeof(AsyncStateMachineAttribute), false)) {
+            throw new InvalidOperationException(subject +
+                                                " migrator must be synchronous, static and attributed: " + function);
         }
 
         ParameterInfo[] parameters = selected.GetParameters();
@@ -130,7 +130,8 @@ internal static partial class Native
                                                                    Delegate migrator);
 
     [CallableByEngine]
-    internal static object? InvokePropertyMigrator(Delegate migrator, object? input, IntPtr context, string owner, out bool changed)
+    internal static object? InvokePropertyMigrator(Delegate migrator, object? input, IntPtr context, string owner,
+                                                   out bool changed)
     {
         DatabaseDocument document = new DatabaseDocument(context, owner);
 

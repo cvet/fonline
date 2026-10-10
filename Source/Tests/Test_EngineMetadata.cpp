@@ -791,4 +791,93 @@ TEST_CASE("ProtoMigrationActionsUseDocumentContext")
     }
 }
 
+TEST_CASE("Native array proxies retain container-owned values after mutation")
+{
+    vector<string> values {"original"};
+    NativeDataProvider::ArrayDataProxy proxy {values};
+    string temporary = "copied";
+    proxy.Add(&temporary);
+    temporary = "changed";
+
+    REQUIRE(proxy.Size() == 2);
+    CHECK(*proxy.Get(1).reinterpret_as<string>() == "copied");
+    CHECK(proxy.Get(1) == make_ptr(&values[1]).void_cast());
+
+    values.reserve(values.capacity() + 100);
+    values.emplace_back("native");
+
+    REQUIRE(proxy.Size() == 3);
+    CHECK(proxy.Get(0) == make_ptr(&values[0]).void_cast());
+    CHECK(*proxy.Get(2).reinterpret_as<string>() == "native");
+
+    proxy.Clear();
+
+    CHECK(values.empty());
+    CHECK(proxy.Size() == 0);
+
+    proxy.Add(&temporary);
+
+    REQUIRE(proxy.Size() == 1);
+    CHECK(*proxy.Get(0).reinterpret_as<string>() == "changed");
+}
+
+TEST_CASE("Native dictionary proxies expose stored keys and current iteration order")
+{
+    map<string, string> values {{"z", "original"}};
+    NativeDataProvider::DictDataProxy proxy {values};
+    string key = "a";
+    string value = "copied";
+    proxy.Add(&key, &value);
+    key = "temporary";
+    value = "changed";
+
+    REQUIRE(proxy.Size() == 2);
+    auto [first_key, first_value] = proxy.Get(0);
+    CHECK(first_key == make_ptr(&values.begin()->first).void_cast());
+    CHECK(first_value == make_ptr(&values.begin()->second).void_cast());
+    CHECK(*first_key.reinterpret_as<string>() == "a");
+    CHECK(*first_value.reinterpret_as<string>() == "copied");
+
+    key = "a";
+    proxy.Add(&key, &value);
+
+    CHECK(proxy.Size() == 2);
+    CHECK(values.at("a") == "copied");
+
+    values.erase("a");
+    values.emplace("b", "native");
+
+    REQUIRE(proxy.Size() == 2);
+    CHECK(*proxy.Get(0).first.reinterpret_as<string>() == "b");
+    CHECK(*proxy.Get(0).second.reinterpret_as<string>() == "native");
+
+    proxy.Clear();
+
+    CHECK(values.empty());
+    CHECK(proxy.Size() == 0);
+
+    proxy.Add(&key, &value);
+
+    CHECK(*proxy.Get(0).first.reinterpret_as<string>() == "a");
+    CHECK(*proxy.Get(0).second.reinterpret_as<string>() == "changed");
+}
+
+TEST_CASE("Const native collection proxies reject writes without changing their views")
+{
+    const vector<int32_t> array {7};
+    const map<int32_t, int32_t> dict {{7, 9}};
+    NativeDataProvider::ArrayDataProxy array_proxy {array};
+    NativeDataProvider::DictDataProxy dict_proxy {dict};
+    int32_t replacement = 42;
+
+    CHECK_THROWS_AS(array_proxy.Clear(), InvalidCallException);
+    CHECK_THROWS_AS(array_proxy.Add(&replacement), InvalidCallException);
+    CHECK_THROWS_AS(dict_proxy.Clear(), InvalidCallException);
+    CHECK_THROWS_AS(dict_proxy.Add(&replacement, &replacement), InvalidCallException);
+    CHECK(array_proxy.Size() == 1);
+    CHECK(*array_proxy.Get(0).reinterpret_as<int32_t>() == 7);
+    CHECK(dict_proxy.Size() == 1);
+    CHECK(*dict_proxy.Get(0).second.reinterpret_as<int32_t>() == 9);
+}
+
 FO_END_NAMESPACE

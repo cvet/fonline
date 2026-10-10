@@ -53,7 +53,7 @@ namespace AngelScriptDocumentMigrations
         ScriptDatabaseDocument(ptr<AngelScript::asIScriptEngine> as_engine, ptr<const PropertyRegistrar> registrar, const AnyData::Document& document) :
             _asEngine {as_engine},
             _registrar {registrar},
-            _document {document}
+            _document {&document}
         {
         }
 
@@ -64,7 +64,7 @@ namespace AngelScriptDocumentMigrations
     private:
         ptr<AngelScript::asIScriptEngine> _asEngine;
         ptr<const PropertyRegistrar> _registrar;
-        const AnyData::Document& _document;
+        ptr<const AnyData::Document> _document;
     };
 
     static void ReadDocument(AngelScript::asIScriptGeneric* raw_generic);
@@ -196,11 +196,11 @@ namespace AngelScriptDocumentMigrations
         if (!key.empty() && (key[0] == '_' || key[0] == '$')) {
             FO_VERIFY_AND_THROW(output_type == "string", "Technical document reads require a string", key);
 
-            if (!_document.Contains(key)) {
+            if (!_document->Contains(key)) {
                 return false;
             }
 
-            const auto& value = _document[key];
+            const auto& value = (*_document)[key];
             FO_VERIFY_AND_THROW(value.Type() == AnyData::ValueType::String, "Technical document field is not a string", key);
             *output.reinterpret_as<string>() = value.AsString();
 
@@ -214,11 +214,11 @@ namespace AngelScriptDocumentMigrations
 
         nptr<const AnyData::Value> selected;
 
-        if (_document.Contains(key)) {
-            selected = &_document[key];
+        if (_document->Contains(key)) {
+            selected = &(*_document)[key];
         }
         else {
-            for (const auto& [stored_key, value] : _document) {
+            for (const auto& [stored_key, value] : *_document) {
                 if (_registrar->FindPersistedProperty(stored_key) == prop) {
                     FO_VERIFY_AND_THROW(!selected, "Ambiguous database document property", key);
                     selected = &value;
@@ -234,8 +234,8 @@ namespace AngelScriptDocumentMigrations
         if (selected) {
             PropertiesSerializer::LoadPropertyFromValue(prop.as_ptr(), *selected, [&](const_span<uint8_t> bytes) { raw.Set(nptr<const void> {bytes.data()}, bytes.size()); }, engine->Hashes, *engine);
         }
-        else if (_document.Contains("_Proto")) {
-            const auto& proto_value = _document["_Proto"];
+        else if (_document->Contains("_Proto")) {
+            const auto& proto_value = (*_document)["_Proto"];
             FO_VERIFY_AND_THROW(proto_value.Type() == AnyData::ValueType::String, "Document prototype must be a string");
 
             auto proto = meta->GetProtoEntity(_registrar->GetTypeName(), meta->Hashes.to_hashed_string(proto_value.AsString()));
@@ -284,9 +284,9 @@ namespace AngelScriptDocumentMigrations
 
     auto ScriptDatabaseDocument::ReadEncoded(const string& key) const -> string
     {
-        FO_VERIFY_AND_THROW(_document.Contains(key), "Database document field does not exist", key);
+        FO_VERIFY_AND_THROW(_document->Contains(key), "Database document field does not exist", key);
 
-        return AnyData::ValueToString(_document[key]);
+        return AnyData::ValueToString((*_document)[key]);
     }
 
     static void ReadDocument(AngelScript::asIScriptGeneric* raw_generic)

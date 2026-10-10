@@ -643,7 +643,7 @@ auto ServerEngine::InitGameLogicJob() -> std::optional<timespan>
         }
         else {
             AnyData::Document updates;
-            PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
+            (void)PropertiesSerializer::MigrateDocument(GetProperties()->GetRegistrar(), globals_doc, &updates);
 
             for (const auto& [key, value] : updates) {
                 DbStorage.Update(GameCollectionName, ident_t {1}, key, value);

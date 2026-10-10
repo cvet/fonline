@@ -202,7 +202,7 @@
     },
     "full_context": {
       "path": "llms-full.txt",
-      "max_bytes": 2228224,
+      "max_bytes": 2260992,
       "generated_pages": "indexes-only",
       "exclude_document_ids": [
         "tools",
@@ -1898,7 +1898,7 @@
       "audiences": ["game-developer", "engine-contributor", "native-extension-developer", "ai-agent", "release-operator"],
       "classification": {"diataxis": "how-to", "visibility": "public", "human": true, "translation": "required"},
       "owner": "scripting", "state": "current", "disposition": "retain", "target": "Docs/en/how-to/scripting/managed-csharp.md",
-      "sources": ["Source/Scripting/Managed", "Source/Tools/ManagedScriptBaker.cpp", "Source/Applications/ManagedScriptBakerApp.cpp", "Source/Common/Settings.inc", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/cmake/stages/Packages.cmake", "BuildTools/managed_runtime_payload.py", "BuildTools/tests/test_managed_async_callbacks.py", "BuildTools/tests/test_managed_callback_context.py", "BuildTools/tests/test_managed_runtime_packaging.py", "Source/Tests/Test_ManagedScriptBaker.cpp", "BuildTools/tests/test_docs_managed_csharp.py"]
+      "sources": ["Source/Scripting/Managed", "Source/Tools/ManagedScriptBaker.cpp", "Source/Applications/ManagedScriptBakerApp.cpp", "Source/Common/Settings.inc", "BuildTools/cmake/stages/ScriptsAndBaking.cmake", "BuildTools/cmake/stages/Packages.cmake", "BuildTools/managed_runtime_payload.py", "BuildTools/tests/test_managed_async_callbacks.py", "BuildTools/tests/test_managed_callback_context.py", "BuildTools/tests/test_managed_runtime_packaging.py", "Source/Tests/Test_ManagedScriptBaker.cpp", "BuildTools/tests/test_docs_managed_csharp.py", "BuildTools/tests/test_managed_event_collections.py"]
     },
     "Docs/en/how-to/scripting/style-and-refactoring.md": {
       "id": "angelscript-style",
