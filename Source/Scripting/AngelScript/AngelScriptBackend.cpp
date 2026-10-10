@@ -37,11 +37,11 @@
 
 #include "AngelScriptArray.h"
 #include "AngelScriptAttributes.h"
-#include "AngelScriptDocumentMigrations.h"
 #include "AngelScriptCall.h"
 #include "AngelScriptContext.h"
 #include "AngelScriptDebugger.h"
 #include "AngelScriptDict.h"
+#include "AngelScriptDocumentMigrations.h"
 #include "AngelScriptEntity.h"
 #include "AngelScriptGlobals.h"
 #include "AngelScriptHelpers.h"

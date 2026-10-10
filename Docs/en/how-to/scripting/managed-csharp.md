@@ -201,6 +201,12 @@ Arrays of primitives, enums, `hstring`, and registered value types use `GetPrope
 
 Ordinary native/managed `List<T>` arguments and results use a single raw-byte block for `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float`, and `double`. Other element types retain the element-wise conversion path. The receiver rejects a byte count that is not a multiple of the element size; this optimization changes neither the list order nor the declared method signature.
 
+### Mutable event collections
+
+A synchronous `[Event]` handler may edit or replace a `ref List<T>` or `ref Dictionary<K, V>` argument whose element, key and value types are supported by the bridge. After the handler returns, the backend converts every entry of that argument before clearing the caller's collection, then writes through the caller's `DataAccessor`. Empty results clear the collection. The next subscriber sees the resulting entries; list order and the native dictionary's insertion and iteration rules are preserved.
+
+Native collection proxies borrow the caller's container, never a conversion temporary. Array access follows the current vector storage after growth. Dictionary size access refreshes the entry view from the current container before traversal; proxy additions and clears invalidate that view. A const container rejects either operation without changing its view. Collection conversion does not change the scalar event frame ABI or acquire missing entity cover.
+
 ### Document property migrations
 
 The shared rules also support [AngelScript document migrations](style-and-refactoring.md#document-migrations); its callback and context syntax differ.
@@ -344,12 +350,15 @@ First diagnosis routes:
 | Synchronization failures | `FOnline.Sync.Tests.csproj`, analyzer tests, and the embedding-project subscriber/log behavior. |
 | Generated API shape or native export | Codegen, managed baker, generated diff, API contract diff, both backend tests where the contract is shared. |
 | Attribute, event, callback, timer, or named call | Managed reflection/registration test plus the owning native/runtime dispatch. |
+| Mutable collection event arguments | `test_managed_event_collections.py` with real native inputs, native collection-proxy unit tests, and the affected tool/game event. |
 | Async scheduler | `test_managed_async_callbacks.py`, backend-isolation/frame-pump tests, and an embedding-project awaited gameplay path. |
 | Entity-cover contract | Roslyn analyzer tests, warning-free managed build, and the owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Managed baker/backend native tests plus repeated multi-instance startup/shutdown. |
 | Indexed ABI, callback adapters, or wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters, and the exact target runtime. |
 | Package or updater | Runtime-payload and packaging tests, exact target package inspection, startup from the packaged artifact, and update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke, and project acceptance for that platform. |
+
+The optional `test_managed_event_collections.py` probe builds both entry and host assemblies from Engine sources and compiles the complete production backend with an existing GCC/Clang Ninja unit build. Set `FO_MANAGED_EVENT_BUILD` to that Managed-enabled build and `FO_MANAGED_EVENT_RUNTIME` to its prepared host runtime, including `runtime.manifest`; `FO_MANAGED_EVENT_CONFIG` selects a multi-config build configuration and defaults to `RelWithDebInfo`. Run `python -m pytest -q BuildTools/tests/test_managed_event_collections.py` from the Engine root. With no build selected, the native tests are skipped; a configured incomplete build/runtime fails qualification. The same behavioral test exercises list and dictionary replacement, a subsequent subscriber, clearing, native order, const rejection, forced GC, the outer `BaseEngine` context, and clean shutdown. A temporary backend copy without collection writeback must fail. This probe covers integer lists and string/integer dictionaries; entity payloads, server synchronization, and other platform toolchains still require their owning runtime tests.
 
 At minimum, run the focused Python managed suites under `BuildTools/tests/test_managed_*.py`, the analyzer test project, CoreScripts tests, `Test_ManagedScriptBaker.cpp`, the generated embedding-project unit-test target, `CompileManagedScripts`, and the affected bake/package/runtime path. A dry-run baker marker, a successful `dotnet build`, and a native process-start smoke prove different layers and must be reported separately.
 

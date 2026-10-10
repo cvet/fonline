@@ -277,6 +277,9 @@ int main(int argc, char** argv)
     (void)mono_dl_fallback_register(LoadShim, FindShim, CloseShim, nullptr);
     if (std::strcmp(argv[3], "runtime-init") == 0) {
         int32_t status = 0;
+        bool worker_cached = false;
+        bool worker_reused = false;
+        bool worker_detached = false;
         std::thread worker([&] {
             MonoDomain* worker_domain = mono_jit_init_version("CallbackRootProbe", "v4.0.30319");
             if (worker_domain == nullptr || mono_thread_current() == nullptr) {
@@ -300,20 +303,30 @@ int main(int argc, char** argv)
             }
 
             ReleaseManagedGcHandle(worker_domain, flag_handle);
-            if (flag_handle != 0 || mono_thread_current() != nullptr) {
+            if (flag_handle != 0 || mono_thread_current() == nullptr) {
                 status = 94;
                 return;
             }
 
+            mono_threads_assert_gc_safe_region();
+            MonoThread* cached_thread = mono_thread_current();
+            worker_cached = true;
+
             {
                 ManagedThreadAttachment managed_thread {worker_domain};
-                if (mono_thread_current() == nullptr) status = 96;
+                worker_reused = mono_thread_current() == cached_thread;
+                if (!worker_reused) status = 96;
+                mono_threads_assert_gc_unsafe_region();
             }
 
-            if (mono_thread_current() != nullptr) status = 95;
+            mono_threads_assert_gc_safe_region();
+            ManagedFrameWorkerThreadAttachment.Release();
+            worker_detached = mono_thread_current() == nullptr;
+            if (!worker_detached) status = 95;
         });
         worker.join();
-        std::printf("RUNTIME_INIT status=%d detached=%d\n", status, status == 0);
+        std::printf("RUNTIME_INIT status=%d cached=%d reused=%d detached=%d\n", status,
+                    worker_cached, worker_reused, worker_detached);
         return status;
     }
 
@@ -328,7 +341,7 @@ int main(int argc, char** argv)
         std::atomic<bool> release_worker {};
         std::thread worker([&] {
             for (int32_t iteration = 0; iteration < 10000; iteration++) {
-                ManagedThreadAttachment frame_scope {domain, ManagedThreadAttachmentMode::CacheForThread};
+                ManagedThreadAttachment frame_scope {domain};
                 if (mono_thread_current() == nullptr) {
                     status = 98;
                     return;
@@ -410,6 +423,8 @@ int main(int argc, char** argv)
     };
     bool worker_detached = !external_thread && !adopt_existing;
     if (external_thread || adopt_existing) {
+        mono_profiler_set_thread_started_callback(profiler_handle, ThreadStarted);
+        mono_profiler_set_thread_stopped_callback(profiler_handle, ThreadStopped);
         std::thread worker([&] {
             if (adopt_existing) {
                 MonoThread* implicit_attachment = mono_thread_attach(domain);
@@ -433,11 +448,20 @@ int main(int argc, char** argv)
             }
             else {
                 invoke();
+                if (mono_thread_current() == nullptr) {
+                    status = 98;
+                    return;
+                }
+                mono_threads_assert_gc_safe_region();
             }
 
-            worker_detached = mono_thread_current() == nullptr;
+            if (adopt_existing && mono_thread_current() != nullptr) status = 97;
         });
         worker.join();
+        mono_profiler_set_thread_started_callback(profiler_handle, nullptr);
+        mono_profiler_set_thread_stopped_callback(profiler_handle, nullptr);
+        worker_detached = ThreadStarts == 1 && ThreadStops == 1;
+        std::printf("WORKER starts=%d stops=%d\n", ThreadStarts.load(), ThreadStops.load());
         if (!worker_detached) status = 97;
     }
     else {
@@ -532,6 +556,8 @@ def test_callback_roots_survive_collection_and_release_on_exit(mono_callback_pro
     assert result.returncode == 0, result.stdout + result.stderr
     assert "RESULT status=0 " + expected in result.stdout
     assert "LEAK" not in result.stdout
+    if mode.startswith(("external-thread", "adopt-existing")):
+        assert "WORKER starts=1 stops=1" in result.stdout
 
 
 def test_runtime_initialization_attachment_is_adopted_and_reusable(mono_callback_probe):
@@ -541,10 +567,10 @@ def test_runtime_initialization_attachment_is_adopted_and_reusable(mono_callback
                             preexec_fn=managed_callbacks.disable_core_dump)
     (executable.parent / "runtime-init.log").write_text(result.stdout + result.stderr, encoding="utf-8")
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "RUNTIME_INIT status=0 detached=1" in result.stdout
+    assert "RUNTIME_INIT status=0 cached=1 reused=1 detached=1" in result.stdout
 
 
-def test_frame_worker_reuses_one_attachment_and_detaches_on_thread_exit(mono_callback_probe):
+def test_native_worker_reuses_default_attachment_and_detaches_on_thread_exit(mono_callback_probe):
     executable, runtime, assembly = mono_callback_probe
     result = subprocess.run([str(executable), str(runtime), str(assembly), "frame-cache"],
                             capture_output=True, text=True, timeout=30,

@@ -492,7 +492,7 @@ def replace_internal_call(source, declaration, replacement):
     return source
 
 
-def build_probe(dotnet, output, probe_source):
+def build_probe(dotnet, output, probe_source, *, project_source=PROJECT):
     for name in ("Native.cs", "Any.cs", "ScriptFunc.cs", "ScriptExceptions.cs", "Enums.cs", "Attributes.cs", "Invariant.cs", "ScriptTask.cs", "ScriptSynchronizationContext.cs", "ScriptEntryNames.cs", "Initializator.cs"):
         source = (CORE / name).read_text(encoding="utf-8")
         if name == "Native.cs":
@@ -504,7 +504,7 @@ def build_probe(dotnet, output, probe_source):
             source = replace_internal_call(source, "private static extern string? RunScriptContinuationInternal(IntPtr backend, Action continuation);",
                                            "private static string? RunScriptContinuationInternal(IntPtr backend, Action continuation) { continuation(); return null; }")
         (output / name).write_text(source, encoding="utf-8")
-    (output / "Probe.csproj").write_text(PROJECT, encoding="utf-8")
+    (output / "Probe.csproj").write_text(project_source, encoding="utf-8")
     (output / "Program.cs").write_text(probe_source, encoding="utf-8")
     result = subprocess.run([dotnet, "build", "Probe.csproj", "--nologo", "-v:minimal"], cwd=output, capture_output=True, text=True, timeout=120)
     (output / "build.log").write_text(result.stdout + result.stderr, encoding="utf-8")

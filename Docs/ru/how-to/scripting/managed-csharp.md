@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/scripting/managed-csharp.html
 ---
 
 # Скрипты Managed C#
-<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"dce87ddb982ce0420b87f2eed0d52a6533fcc9441890b80c6a574d46bbb23f59"} -->
+<!-- docs-translation: {"document_id":"managed-csharp-scripting","locale":"ru","source_path":"Docs/en/how-to/scripting/managed-csharp.md","source_sha256":"c85a4ed433171005e48de60cf910b3cf0845d785d6722e9c373e73e557035f97"} -->
 > Документация движка. Это руководство описывает переиспользуемый backend Managed C#, его контракт authoring, сгенерированный API, lifecycle, синхронизацию, сборку, доставку и проверку. Игровые модули и политика конкретного проекта принадлежат подключающему проекту.
 
 ## Статус контракта
@@ -202,6 +202,12 @@ Native ref types являются явными borrowed wrappers. Если пр�
 
 Обычные аргументы и результаты `List<T>` пересекают native/managed границу одним блоком байтов для `byte`, `sbyte`, `short`, `ushort`, `int`, `uint`, `long`, `ulong`, `float` и `double`. Другие типы элементов сохраняют поэлементное преобразование. Принимающая сторона отклоняет блок, длина которого не кратна размеру элемента; порядок списка и сигнатура метода не меняются.
 
+### Изменяемые коллекции событий
+
+Синхронный обработчик `[Event]` может изменить или заменить аргумент `ref List<T>` либо `ref Dictionary<K, V>`, если мост поддерживает типы элементов, ключей и значений. После возврата обработчика backend преобразует все записи этого аргумента до очистки коллекции вызывающей стороны, затем записывает результат через её `DataAccessor`. Пустой результат очищает коллекцию. Следующий подписчик видит полученные записи; порядок списка и правила вставки и обхода нативного словаря сохраняются.
+
+Нативные прокси коллекций заимствуют контейнер вызывающей стороны, а не временные значения преобразования. Доступ к массиву следует за актуальным хранилищем вектора после роста. Чтение размера словаря обновляет представление записей из текущего контейнера перед обходом; добавление и очистка через прокси инвалидируют это представление. Для const-контейнера обе операции отклоняются без изменения представления. Преобразование коллекции не меняет ABI scalar event frame и не приобретает отсутствующий cover сущностей.
+
 ### Миграция свойств документа
 
 Общие правила также поддерживают [миграции документов AngelScript](style-and-refactoring.md#миграции-документов); синтаксис callback и контекста отличается.
@@ -341,15 +347,20 @@ Managed backend передаёт фиксированный native context, mana
 | Изменение | Обязательные доказательства |
 | --- | --- |
 | Managed CoreScripts или backend | C# format/style checks, CoreScripts tests, generated project build и focused native unit tests. |
+| Динамические сборки или live compiler | `test_managed_dynamic_assemblies.py`, `test_managed_script_compiler.py`, проверка target package/closure и проектная runtime-проверка авторизации и выполнения. |
 | Patch-point weaving или live patches | `test_managed_patch_points.py`, входы managed baker/incremental build, bake точного target и проектные проверки применения, отката и авторизации каждой включённой стороны; производительность каждого runtime измеряется отдельно. |
+| Ошибки синхронизации | `FOnline.Sync.Tests.csproj`, тесты анализатора и поведение проектных подписчиков/журналов. |
 | Generated API shape или native export | Codegen, managed baker, generated diff, API contract diff и tests обоих backend для общего контракта. |
 | Attribute, event, callback, timer или named call | Managed reflection/registration test и owning native/runtime dispatch. |
+| Изменяемые коллекции аргументов событий | `test_managed_event_collections.py` с настоящими native-входами, unit-тесты нативных прокси коллекций и затронутое событие инструмента/игры. |
 | Async scheduler | `test_managed_async_callbacks.py`, tests isolation/frame pump и awaited gameplay path подключающего проекта. |
 | Entity-cover contract | Tests Roslyn analyzer, warning-free managed build и owning synchronized server behavior. |
 | Runtime/cache/thread attachment | Native tests baker/backend и повторный multi-instance startup/shutdown. |
 | Indexed ABI, callback adapters или wrapper caches | `Test_ManagedScriptBaker`, aligned-frame/native backend tests, `InteropProbe.VerifyTransports`, allocation counters и runtime точного target. |
 | Package или updater | Tests runtime payload/packaging, проверка точного target package, startup из artifact и update replacement. |
 | Platform claim | Configure/build, target payload, process/device/browser smoke и project acceptance этой платформы. |
+
+Необязательная проба `test_managed_event_collections.py` собирает обе сборки, entry и host, из исходников Engine и компилирует полный production backend на входах существующей unit-сборки GCC/Clang с генератором Ninja. Задайте `FO_MANAGED_EVENT_BUILD` для этой сборки с включённым Managed и `FO_MANAGED_EVENT_RUNTIME` для её подготовленного runtime хоста, включая `runtime.manifest`; `FO_MANAGED_EVENT_CONFIG` выбирает конфигурацию multi-config сборки, по умолчанию `RelWithDebInfo`. Запустите `python -m pytest -q BuildTools/tests/test_managed_event_collections.py` из корня Engine. Без выбранной сборки native-тесты пропускаются; неполные явно заданные входы сборки/runtime не проходят квалификацию. Один поведенческий тест проверяет замену списков и словарей, следующего подписчика, очистку, нативный порядок, запрет записи в const, принудительный GC, внешний context `BaseEngine` и чистый shutdown. Временная копия backend без обратной записи коллекций обязана дать отказ. Проба покрывает целочисленные списки и словари строк/целых чисел; entity payload, серверная синхронизация и другие платформенные toolchain требуют своих runtime-тестов.
 
 Как минимум запустите focused Python suites `BuildTools/tests/test_managed_*.py`, test project analyzer, CoreScripts tests, `Test_ManagedScriptBaker.cpp`, generated unit-test target подключающего проекта, `CompileManagedScripts` и затронутый bake/package/runtime path. Dry-run marker baker, успешный `dotnet build` и native process-start smoke доказывают разные слои и должны отчитываться отдельно.
 

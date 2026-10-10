@@ -16,10 +16,32 @@ Paired changes/migrations. [VERSION](https://github.com/cvet/fonline/blob/master
 
 ### Changed
 
+- Merge published collection-event support `cfa468f17b` with retained integration `24da100693`, preserving both histories and all version 21 migration notes.
+
+### Migration
+
+- Adopt the version 21 collection writeback and full-context budget changes below. Rebuild native backends and matching embedding roles, rebake scripts and metadata, and regenerate documentation, translation state, site/search/routes and AI delivery. Handler signatures, scalar ABI, saved values and `0.0.69` remain unchanged by this merge. Keep safety copies through embedding validation.
+
+## 2026.1.21-dev - 2026-10-10
+
+### Fixed
+
+- Write back mutable Managed event lists and dictionaries through the caller's collection accessor after converting their entries. Native collection proxies retain container-owned addresses after additions and vector growth, refresh dictionary order, and preserve duplicate-key insertion semantics and const write rejection.
+- Add a reusable Engine-source native probe for boxed collection events, including GC, the outer script context, shutdown, and an identical negative control without writeback. It uses a configured GCC/Clang Ninja Managed unit build and prepared host runtime; unsupported payload/toolchain qualification remains separate.
+- Store synchronous AngelScript and Managed database-document contexts as guaranteed non-null `ptr<const AnyData::Document>` borrows. Document reads, callback lifetime checks and migration behavior are unchanged.
+- Explicitly discard document-migration change flags during entity and globals restore. Both callers still persist the updates output and propagate migration exceptions; remove the two Clang `nodiscard` warnings.
+- Apply the owning clang-format 20 layout to AngelScript backend includes and Managed document-migration bindings; formatting CI no longer produces a diff for these files.
+- Review the complete 112-document AI context after version 20 reached 2,228,855 bytes. Extend its hard limit by 32 KiB to 2,260,992 bytes; retain whole documents, migration history and the existing membership policy.
+
+### Changed
+
 - Merge `8b6a5f6020`/`c991f3e99e` histories.
 
 ### Migration
 
+- Rebuild native script backends and rebake affected script roles. Existing `ref List<T>` and `ref Dictionary<K, V>` event handlers now propagate their resulting collections to the caller and subsequent subscribers; no handler signature or scalar ABI changes are required.
+- AI delivery consumers must honor the manifest's `full_context.max_bytes` increase from 2,228,224 to 2,260,992 bytes. Regenerate documentation outputs with `python BuildTools/docs_prepare.py` before source/freshness tests, then run the complete site/browser gates. Oversized bundles still fail instead of being truncated.
+- No script/native API, runtime configuration, serialized data, network, ABI, resource schema or save conversion changes. Rebuild version metadata for this revision; documentation dependency pins and publication routes are unchanged.
 - No new contracts/migration. Rebuild binaries/version, regenerate docs/delivery and run browser gates; keep safety copies through validation.
 
 ## 2026.1.20-dev - 2026-10-09
