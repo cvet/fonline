@@ -103,6 +103,8 @@ public:
     auto Process() -> bool;
 
 private:
+    friend class UpdaterTransferFixture;
+
     struct UpdateFile
     {
         int32_t Index {};
@@ -111,6 +113,7 @@ private:
         uint64_t RemaningSize {};
         uint64_t Hash {};
         bool IsClientBinary {};
+        bool RetriedWholeFile {};
         bool TryPatch {true};
         ResourcePackHeader PackHeader {};
     };
@@ -163,6 +166,7 @@ private:
     void ProcessResourceVerification();
     void FinishPackVerification(const PackVerification& verification);
     void GetNextFile();
+    auto RemoveNativeTempFile(string_view path) -> bool;
     void FinishResourcesUpdate();
     void RebuildResourceIndex() const;
     auto ReadLocalMetadataVersion() const -> string;
@@ -198,6 +202,7 @@ private:
 
     ptr<ClientSettings> _settings;
     ClientConnection _conn;
+    function<bool(string_view)> _nativeTempRemoveOverride {};
     CacheStorage _cache;
     string _binaryDir;
     string _serverMetadataVersion {};
