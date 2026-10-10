@@ -151,6 +151,7 @@ VALIDATION_TARGETS: dict[str, ValidationTarget] = {
 	**make_validation_target_set('win64', 'win64', COMMON_VALIDATION_TARGET_NAMES),
 	**make_validation_target_set('win64-clang', 'win64-clang', WIN64_CLANG_VALIDATION_TARGET_NAMES),
 	'unit-tests': make_validation_target('native', 'unit-tests', 'Release', run_target_name='RunUnitTests'),
+	'managed-unit-tests': make_validation_target('native', 'unit-tests', 'Release', run_target_name='RunUnitTests', cmake_args=MANAGED_VALIDATION_CMAKE_ARGS),
 	'unit-tests-san-address': make_validation_target('linux', 'unit-tests', 'San_Address', run_target_name='RunUnitTests'),
 	'unit-tests-san-memory': make_validation_target('linux', 'unit-tests', 'San_Memory', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
 	'unit-tests-san-memory-with-origins': make_validation_target('linux', 'unit-tests', 'San_MemoryWithOrigins', run_target_name='RunUnitTests', workspace_parts=('msan-libcxx',), msan_libcxx=True),
