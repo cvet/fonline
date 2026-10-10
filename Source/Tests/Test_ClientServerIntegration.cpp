@@ -2430,6 +2430,135 @@ TEST_CASE("ClientUpdaterResourcePatchLifecycle")
 #endif
 }
 
+TEST_CASE("ClientUpdaterRepairsAStalePartialNativeDownloadBeforeResourcesReady")
+{
+    using namespace TestClientServerIntegration;
+
+    if (!CanSelfUpdateNativeModules(GetCurrentUpdatePlatform())) {
+        return;
+    }
+
+    const bool in_memory = GENERATE(false, true);
+    string install = PrepareClientUpdaterBakeOutput();
+    string published = MakeTempClientUpdaterBakeDir("native-published");
+    string writable = MakeTempClientUpdaterBakeDir("native-writable");
+    auto cleanup = scope_exit([&]() noexcept {
+        (void)fs::remove_dir_tree(install);
+        (void)fs::remove_dir_tree(published);
+        (void)fs::remove_dir_tree(writable);
+    });
+    REQUIRE(fs::create_directories(published));
+    REQUIRE(fs::create_directories(writable));
+    vector<uint8_t> metadata = BakerTests::MakeMetadataBlob({});
+
+    for (const string& directory : {install, published}) {
+        ResourcePackWriter writer {strex(directory).combine_path("Metadata.fores").str()};
+        writer.AddFile("Metadata.fometa-client", metadata);
+        writer.Finish();
+    }
+
+    string binary_dir = strex(published).combine_path("Binaries").str();
+    string platform_dir = strex(binary_dir).combine_path(GetCurrentBinaryUpdateTargetName()).str();
+    REQUIRE(fs::create_directories(platform_dir));
+    string pdb_name = strex("{}.pdb", GetCurrentClientRuntimeLibraryName()).str();
+    string server_prefix = GetPackagedRuntimeName();
+
+    if (server_prefix.empty()) {
+        server_prefix = GetCurrentClientRuntimeLibraryName();
+    }
+
+    string source_path = strex(platform_dir).combine_path(strex("{}.pdb", server_prefix)).str();
+    string live_path = strex(writable).combine_path(pdb_name).str();
+    string temp_path = strex(writable).combine_path(strex("~{}", pdb_name)).str();
+    string staged_path = strex("{}-staging", live_path).str();
+    string expected(8192, 'n');
+    string obsolete(8192, 'o');
+    REQUIRE(fs::write_file(source_path, expected));
+    auto expected_hash = fs::hash_file(source_path);
+    REQUIRE(expected_hash);
+    bool corrupt_delivery = false;
+    bool keep_existing = false;
+
+    SECTION("StalePartialPrefixIsRecoveredInTheSameLaunch")
+    {
+        REQUIRE(fs::write_file(temp_path, string_view(obsolete).substr(0, 2048)));
+    }
+    SECTION("ValidPartialPrefixStillResumes")
+    {
+        REQUIRE(fs::write_file(temp_path, string_view(expected).substr(0, 2048)));
+    }
+    SECTION("CompleteWrongTempIsDownloadedAgain")
+    {
+        REQUIRE(fs::write_file(temp_path, obsolete));
+    }
+    SECTION("ExistingHostSymbolsAreNotReplaced")
+    {
+        REQUIRE(fs::write_file(live_path, obsolete));
+        keep_existing = true;
+    }
+#if !FO_WINDOWS
+    SECTION("AnotherInvalidFullPayloadFailsWithoutPromotion")
+    {
+        if (in_memory) {
+            return;
+        }
+
+        REQUIRE(fs::write_file(temp_path, string_view(obsolete).substr(0, 2048)));
+        corrupt_delivery = true;
+    }
+#endif
+
+    uint16_t port = IntegrationTestPort.fetch_add(1);
+    GlobalSettings server_settings = MakeServerTestSettings(port);
+    BakerTests::OverrideSetting(server_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(server_settings.Baking.ClientResources, published);
+    BakerTests::OverrideSetting(server_settings.Baking.PlatformBinaries, binary_dir);
+    BakerTests::OverrideSetting(server_settings.ServerNetwork.UpdateFilesInMemory, in_memory);
+    auto server_pack_config = ConfigFile("[ResourcePack]\nName = Metadata\nClientOnly = True\n");
+    server_settings.ApplyConfigFile(server_pack_config, "");
+    auto server = MakeServerEngine(server_settings);
+    auto shutdown = scope_exit([&]() noexcept { safe_call([&] { server->Shutdown(); }); });
+    string error = WaitForServerStart(server);
+    INFO(error);
+    REQUIRE(error.empty());
+
+#if !FO_WINDOWS
+    if (corrupt_delivery) {
+        // The backend retains the advertised hash while its positional reader sees these altered bytes
+        REQUIRE(fs::write_file(source_path, obsolete));
+    }
+#endif
+
+    GlobalSettings client_settings = MakeClientTestSettings(port);
+    BakerTests::OverrideSetting(client_settings.Common.Packaged, true);
+    BakerTests::OverrideSetting(client_settings.Baking.ClientResources, install);
+    auto client_pack_config = ConfigFile("[ResourcePack]\nName = Embedded\nClientOnly = True\n[ResourcePack]\nName = Metadata\nClientOnly = True\n");
+    client_settings.ApplyConfigFile(client_pack_config, "");
+    client_settings.ApplyWritableRoot(writable);
+    Updater updater {&client_settings, &GetApp()->MainWindow};
+    REQUIRE(WaitForUpdaterResult(updater));
+
+    if (corrupt_delivery) {
+        CHECK(updater.GetResult() == UpdaterResult::Failed);
+        CHECK(updater.IsAborted());
+        CHECK_FALSE(fs::exists(live_path));
+        CHECK_FALSE(fs::exists(staged_path));
+        REQUIRE(fs::exists(temp_path));
+        CHECK(fs::hash_file(temp_path) != expected_hash);
+    }
+    else {
+        CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);
+        CHECK_FALSE(updater.IsAborted());
+        CHECK(fs::read_file(live_path) == optional<string> {keep_existing ? obsolete : expected});
+
+        if (!keep_existing) {
+            CHECK(fs::hash_file(live_path) == expected_hash);
+            CHECK_FALSE(fs::exists(temp_path));
+            CHECK_FALSE(fs::exists(staged_path));
+        }
+    }
+}
+
 TEST_CASE("ClientUpdaterConsumesReportedHashListDuringHandshake")
 {
     using namespace TestClientServerIntegration;
