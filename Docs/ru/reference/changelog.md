@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4bb095bb0e297917889fa3282be81035442b4cb954d108e315ab8770e6cb95fa"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"ff8f5d1b2989e6865191074ff11edc1496916859ded898d9f2de2e397c6afa11"} -->
 [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт текущую версию разработки. [Правила выпусков](../how-to/release/versioning.md) определяют CalVer, даты, неизменяемые теги и совместимость. Изменения и заметки о миграции ниже двуязычные.
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Исправлено
+
+- Enum-метаданные, заканчивающиеся на `= -`, отклоняются без чтения отсутствующего токена. Регрессия настоящего baker охватывает `.cs`/`.fos`, конец файла, перевод строки и комментарий.
+
+### Миграция
+
+- Миграция API, конфигурации, сохранений, сети, ABI и формата ресурсов не требуется; кодирование допустимых enum, маркер совместимости и версия файла метаданных сохраняются.
+- Завершите или удалите ошибочное объявление, пересоберите baker/метаданные версии; выполните `MetadataBakerRejectsTruncatedNegativeEnum`, прежние enum round-trip тесты и проектный bake метаданных для каждого backend. Перегенерируйте затронутую документацию и выходы доставки в порядке зависимостей.
+
+## 2026.1.21-dev - 2026-10-09
 
 ### Исправлено
 

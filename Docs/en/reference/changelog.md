@@ -12,7 +12,18 @@ permalink: /Docs/en/reference/changelog.html
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Fixed
+
+- Reject enum metadata ending at `= -` without a missing-token read. The baker regression covers `.cs`/`.fos` at EOF, newline and comment.
+
+### Migration
+
+- API, config, saves, network, ABI, resource format, valid enum encoding and compatibility/file versions are unchanged.
+- Complete/remove `= -`; rebuild baker/version metadata. Run `MetadataBakerRejectsTruncatedNegativeEnum`, enum round-trip tests and per-backend project bake, then regenerate docs/delivery in dependency order.
+
+## 2026.1.21-dev - 2026-10-09
 
 ### Fixed
 
