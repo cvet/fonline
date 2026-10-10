@@ -1203,7 +1203,8 @@ void Critter::SendAndBroadcast_Attachments()
 {
     FO_TRACE_ZONE(Entity);
 
-    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
+    // DetachFromCritter publishes both endpoints while either one may be draining during DestroyCritter
+    FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED);
 
     Send_Attachments(this);
 

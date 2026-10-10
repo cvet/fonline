@@ -7740,6 +7740,42 @@
       "release_note": "Docs/en/reference/changelog.md and Docs/ru/reference/changelog.md, Current 2026-10-10 / Engine 2026.1.24-dev.",
       "compatibility": "Retain incoming compatibility marker 69 without an additional bump. AppWindow gains virtual methods, so native vtable consumers require coordinated rebuilds and matching baked resources; mixed native libraries must not be used. No persisted schema or network meaning changes are introduced by the queries.",
       "owner": "frontend-and-rendering"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.532e5d3d8da0c71d",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "79729286f9e3766a71917e2559c3c6a14ba59fa84e3b49dfa3c3ca73c25bafbc",
+      "classification": "breaking",
+      "rationale": "Reconcile the complete retained version 22 to published version 24 range: replace the two boolean grid selectors with exact string selectors and add optional experimental display queries. Other declarations and meanings are unchanged.",
+      "migration": "Apply Docs/en/reference/changelog.md versions 22, 23 and 24 in order. Replace Server.ProtoMapStaticGrid=false/true with Server.ProtoMapGridType=Dynamic/Static and MapInstanceStaticGrid=false/true with MapInstanceGridType=Dynamic/Static. Chunked is an explicit new selection; unpublished chunk keys have no aliases. Native StaticMap construction uses (size, grid_type). Invalid selectors reject startup. Regenerate bindings, rebuild coordinated native roles and bake matching metadata. GetDisplaySize/GetDisplayModes need no existing caller or saved-data conversion; callers handle zero/empty results.",
+      "release_note": "Docs/en/reference/changelog.md and its reviewed Russian pair retain the exhaustive incoming versions 22–24 and explain integration version 25, dated 2026-10-10.",
+      "compatibility": "Native MapView layout and IAppWindow vtable consumers require a coordinated rebuild; preserve network marker 0.0.69, map/save/database formats and resource schemas. Never mix old native objects with new headers. Roll back using the previous complete native/resource package; this range requires no database conversion.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.230f93cb20b2407c",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "79729286f9e3766a71917e2559c3c6a14ba59fa84e3b49dfa3c3ca73c25bafbc",
+      "classification": "breaking",
+      "rationale": "Reconcile the complete retained version 22 to published version 24 range: replace the two boolean grid selectors with exact string selectors and add optional experimental display queries. Other declarations and meanings are unchanged.",
+      "migration": "Apply Docs/en/reference/changelog.md versions 22, 23 and 24 in order. Replace Server.ProtoMapStaticGrid=false/true with Server.ProtoMapGridType=Dynamic/Static and MapInstanceStaticGrid=false/true with MapInstanceGridType=Dynamic/Static. Chunked is an explicit new selection; unpublished chunk keys have no aliases. Native StaticMap construction uses (size, grid_type). Invalid selectors reject startup. Regenerate bindings, rebuild coordinated native roles and bake matching metadata. GetDisplaySize/GetDisplayModes need no existing caller or saved-data conversion; callers handle zero/empty results.",
+      "release_note": "Docs/en/reference/changelog.md and its reviewed Russian pair retain the exhaustive incoming versions 22–24 and explain integration version 25, dated 2026-10-10.",
+      "compatibility": "Native MapView layout and IAppWindow vtable consumers require a coordinated rebuild; preserve network marker 0.0.69, map/save/database formats and resource schemas. Never mix old native objects with new headers. Roll back using the previous complete native/resource package; this range requires no database conversion.",
+      "owner": "native-api"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.removed.13f1a8f798cd0814",
+      "baseline_contract_sha256": "6011e51fb80fbf506283f1254828ffda878cbdea935de49782a22727a1a2c395",
+      "current_contract_sha256": "79729286f9e3766a71917e2559c3c6a14ba59fa84e3b49dfa3c3ca73c25bafbc",
+      "classification": "breaking",
+      "rationale": "Reconcile the complete retained version 22 to published version 24 range: replace the two boolean grid selectors with exact string selectors and add optional experimental display queries. Other declarations and meanings are unchanged.",
+      "migration": "Apply Docs/en/reference/changelog.md versions 22, 23 and 24 in order. Replace Server.ProtoMapStaticGrid=false/true with Server.ProtoMapGridType=Dynamic/Static and MapInstanceStaticGrid=false/true with MapInstanceGridType=Dynamic/Static. Chunked is an explicit new selection; unpublished chunk keys have no aliases. Native StaticMap construction uses (size, grid_type). Invalid selectors reject startup. Regenerate bindings, rebuild coordinated native roles and bake matching metadata. GetDisplaySize/GetDisplayModes need no existing caller or saved-data conversion; callers handle zero/empty results.",
+      "release_note": "Docs/en/reference/changelog.md and its reviewed Russian pair retain the exhaustive incoming versions 22–24 and explain integration version 25, dated 2026-10-10.",
+      "compatibility": "Native MapView layout and IAppWindow vtable consumers require a coordinated rebuild; preserve network marker 0.0.69, map/save/database formats and resource schemas. Never mix old native objects with new headers. Roll back using the previous complete native/resource package; this range requires no database conversion.",
+      "owner": "native-api"
     }
   ]
 }

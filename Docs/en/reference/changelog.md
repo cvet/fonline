@@ -14,6 +14,17 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Changed
+
+- Merge published display-query and map-grid updates `9ca3e5c986` with retained collection-event integration `f684889580`, preserving both histories. The published `2026.1.24-dev` tip is the first parent; retained integration notes are preserved under version 22.
+
+### Migration
+
+- Apply versions 22–24 below in order. Replace removed boolean map-grid settings with their exact string selectors, regenerate bindings and rebuild native clients, embedded clients, Mapper, servers and tests; bake matching metadata before packaging. Existing coordinates, field results, collection writeback, saved values, network marker `0.0.69` and resource schemas retain their meanings. Display information remains optional and embedding projects own the fallback.
+- This merge introduces no additional API, setting, stored-data conversion or ABI change beyond those incoming versions. Regenerate source-owned references and public index, then snippets, localization, site/search/routes, AI evaluation and delivery. Keep safety copies until both repositories validate.
+
+## 2026.1.24-dev - 2026-10-10
+
 ### Added
 
 - Client scripts can query the desktop dimensions and display modes of the monitor containing the current window through `Game.GetDisplaySize` and `Game.GetDisplayModes`. SDL results exclude invalid and duplicate dimensions; unavailable display information returns zero dimensions or an empty list. Headless and stub windows provide the same unavailable result.
@@ -45,6 +56,14 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
   rules are unchanged; no data conversion is needed.
 
 ## 2026.1.22-dev - 2026-10-10
+
+### Changed
+
+- Merge published collection-event support `cfa468f17b` with retained integration `24da100693`, preserving both histories and all version 21 migration notes.
+
+### Migration
+
+- Adopt the version 21 collection writeback and full-context budget changes below. Rebuild native backends and matching embedding roles, rebake scripts and metadata, and regenerate documentation, translation state, site/search/routes and AI delivery. Handler signatures, scalar ABI, saved values and `0.0.69` remain unchanged by this merge. Keep safety copies through embedding validation.
 
 ### Added
 

@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"afb4d473355a7b4ac5947d87c2acb2a745c098bded2b3cec918e219e44f8e258"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"df1b8f92cc378f884b9087dedb7c567054e18768807567741fe88ff40a1cbf6a"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -233,6 +233,8 @@ catch (...) {
    inventory, inner items/entities, visibility и maps живут до деструктора.
 3. Методы destroy/transfer cascade должны принимать `IsDestroying`, потому
    что transfer является частью уничтожения.
+   Отсоединение рассылает состояние обоих концов, включая уничтожаемые;
+   `SendAndBroadcast_Attachments` сохраняет `LOCKED, NOT_DESTROYED`.
 4. Post-event re-validation, которая сначала делает
    `if (IsDestroyed()) return`, принимает только `LOCKED`; ранний выход и есть
    контракт для retained, но уже уничтоженного объекта.
@@ -341,10 +343,10 @@ for (size_t prev_deps = std::numeric_limits<size_t>::max(); cr->HasItems() || cr
 
 ## 7. Тесты
 
-Контракты закреплены `Source/Tests/Test_EntityLifecycle.cpp` и
-`Source/Tests/Test_ServerMapOperations.cpp`. При изменении lifecycle или
-инвариантов запускайте сгенерированную цель unit-тестов проекта-встраивателя и
-расширяйте эти suites, не ослабляя assertions.
+В `Source/Tests/` инварианты lifecycle закреплены `Test_EntityLifecycle.cpp`
+(события/реестры), `Test_ServerEntityLifetime.cpp` (отсоединение/retained owners)
+и `Test_ServerMapOperations.cpp` (события карты). Расширяйте эти suites и запускайте
+native unit-цель проекта-встраивателя; assertions остаются строгими.
 
 ## 8. Классификация безопасности исключений по функциям (уровни ES)
 

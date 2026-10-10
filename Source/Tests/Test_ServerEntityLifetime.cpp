@@ -743,6 +743,82 @@ TEST_CASE("ServerGeneratedWorldDrawsEntityIdsAboveTheConfiguredStart", "[server]
     CHECK(server->GetLastEntityId().underlying_value() >= cr->GetId().underlying_value());
 }
 
+TEST_CASE("ServerCritterAttachmentsDetachDuringFinish", "[server][entity][lifetime]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources());
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+    REQUIRE(server->Lock(timespan {std::chrono::seconds {10}}));
+    auto unlock = scope_exit([&server]() noexcept { safe_call([&server] { server->Unlock(); }); });
+
+    hstring proto = server->Hashes.to_hashed_string("LifetimeCritter");
+    auto master = server->CreateCritter(proto, false).hold_ref();
+    auto attached = server->CreateCritter(proto, false).hold_ref();
+    REQUIRE_NOTHROW(attached->AttachToCritter(master));
+    REQUIRE(attached->GetIsAttached());
+    REQUIRE(master->HasAttachedCritters());
+
+    SECTION("OrdinaryDetach")
+    {
+        REQUIRE_NOTHROW(attached->DetachFromCritter());
+        CHECK_FALSE(attached->GetIsAttached());
+        CHECK_FALSE(attached->GetAttachMaster());
+        CHECK_FALSE(master->HasAttachedCritters());
+    }
+    SECTION("DestroyAttachedCritter")
+    {
+        bool finish_called = false;
+        bool detached = false;
+        Entity::EventCallbackData callback;
+        callback.Callback = [&attached, &finish_called, &detached](FuncCallData&) {
+            finish_called = attached->IsDestroying() && !attached->IsDestroyed();
+            attached->DetachFromCritter();
+            detached = true;
+            return Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
+        server->OnCritterFinish.Subscribe(std::move(callback));
+        auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+
+        REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(attached));
+        CHECK(finish_called);
+        CHECK(detached);
+        CHECK(attached->IsDestroyed());
+        CHECK_FALSE(master->HasAttachedCritters());
+    }
+    SECTION("DestroyMasterCritter")
+    {
+        bool finish_called = false;
+        bool detached = false;
+        Entity::EventCallbackData callback;
+        callback.Callback = [&master, &attached, &finish_called, &detached](FuncCallData&) {
+            finish_called = master->IsDestroying() && !master->IsDestroyed();
+            attached->DetachFromCritter();
+            detached = true;
+            return Entity::EventResult::ContinueChain;
+        };
+        callback.SubscriptionPtr = reinterpret_cast<uintptr_t>(&finish_called);
+        server->OnCritterFinish.Subscribe(std::move(callback));
+        auto unsubscribe = scope_exit([&server, &finish_called]() noexcept { server->OnCritterFinish.Unsubscribe(reinterpret_cast<uintptr_t>(&finish_called)); });
+
+        REQUIRE_NOTHROW(server->CrMngr.DestroyCritter(master));
+        CHECK(finish_called);
+        CHECK(detached);
+        CHECK(master->IsDestroyed());
+        CHECK_FALSE(attached->GetIsAttached());
+        CHECK_FALSE(attached->GetAttachMaster());
+    }
+
+    if (!attached->IsDestroyed()) {
+        server->CrMngr.DestroyCritter(attached);
+    }
+    if (!master->IsDestroyed()) {
+        server->CrMngr.DestroyCritter(master);
+    }
+}
+
 TEST_CASE("ServerEntityOwnersReleaseBeforeShutdown", "[server][entity][lifetime]")
 {
     GlobalSettings settings = MakeServerEntityLifetimeSettings();
