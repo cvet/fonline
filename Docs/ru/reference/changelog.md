@@ -7,30 +7,41 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"2ca282c2a0007760cc232567cfce7329a1f710611238578e5badac59af7599f3"} -->
-Изменения и заметки о миграции ведутся парой на английском/русском. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт версию разработки; [правила выпусков](../how-to/release/versioning.md) определяют CalVer, даты, неизменяемые теги и совместимость.
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"4497c30815b3dbd6141dcdff2c8f5dea666871223435b65b04ec5ecc0e37c421"} -->
+Парные изменения/миграции. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) и [правила выпусков](../how-to/release/versioning.md) задают версии, даты, теги и совместимость.
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Изменено
+
+- Объединены истории `8b6a5f6020`/`c991f3e99e`.
+
+### Миграция
+
+- Новых контрактов/миграции нет. Пересоберите бинарные роли/версию, перегенерируйте docs/delivery и запустите браузерные проверки; safety-копии сохраняйте до проверок.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Исправлено
 
 - Рассылка прикреплений допускает уничтожение; результаты миграции явно игнорируются там, где это намеренно.
+- Проверка ждёт ленивый SVG; CI проверяет задержанное/отсутствующее изображение в трёх профилях, отклоняя отсутствующее.
 
 ### Миграция
 
-- Пересоберите сервер: API, данные, ресурсы, сетевой формат, ABI и совместимость прежние; выпечка не нужна.
+- Пересоберите сервер/версию; выпечка не нужна, runtime/форматы прежние. Сохраните браузерные зависимости/маршруты/профили; после установки Chromium запустите `npm --prefix BuildTools/docs-browser run test:diagram`, полный аудит и docs/delivery.
 
 ## 2026.1.19-dev - 2026-10-09
 
 ### Изменено
 
-- Объединены `e463e04879` и `59611cf628`, обе истории сохранены.
+- Объединены истории `e463e04879`/`59611cf628`; исправлена пунктуация комментариев миграций.
 
 ### Миграция
 
-- Выполните миграции 16–18, подготовьте docs и пересоберите/перепеките роли. Новых миграций нет: `0.0.69`, ABI, схемы и допустимый смысл прежние. Safety-копии сохраняйте до проверок.
+- Выполните миграции 16–18; пересоберите/перепеките роли и docs. Допустимый смысл, `0.0.69`, ABI/схемы прежние. Комментарии не требуют конвертации API/сохранений. Сохраните safety-копии.
 
 ## 2026.1.18-dev - 2026-10-09
 
@@ -39,9 +50,9 @@ permalink: /Docs/ru/reference/changelog.html
 - Добавлен `MigrationRule Property <Owner> Remove <Old>` как постоянный запрет имени. Старое значение в документе/тексте пропускается; живое объявление под этим именем отклоняется, включая поля RefType.
 - Добавлена поддержка документных Property/Proto Transform в AngelScript: `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, типизированное значение `&inout`, `const DatabaseDocument&inout`, автоматическая проверка исходников/байткода и связывание, синхронная атомарная подготовка результатов. Квалифицированное имя функции — `Namespace::Function`; AngelScript-скрипты нужно перепечь для нового зарегистрированного типа и callbacks. Массивы/словари RefType освобождаются путями своих контейнеров.
 
-- Добавлен перенос значений свойств на уровне документа через `MigrationRule Property <Owner> Transform <Property> <Function>`, native `PropertyMigratorCallback` и Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>`, `DatabaseDocument`. Все функции видят исходный загруженный документ; успешные результаты подготавливаются целиком и ставятся в очередь записи изменённых канонических полей до загрузки свойств сущности.
+- Добавлены атомарные обработчики Property Transform: native `PropertyMigratorCallback`, Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>` и контекст исходного `DatabaseDocument`. Канонические поля подготавливаются до загрузки сущности.
 
-- Добавлен `MigrationRule Proto <Owner> Transform <Source> <Function>` с `[ProtoMigrator] bool Function(ref hstring value, DatabaseDocument document)`. Условные цепочки разрешаются на исходном документе до поиска прототипа, циклы отклоняются, `_Proto` записывается вместе со свойствами; обычный lookup и bake применяют только Rename/Remove.
+- Добавлены документные обработчики `[ProtoMigrator]` для Proto Transform. Цепочки исходного документа разрешаются до поиска с обнаружением циклов и подготовкой `_Proto`; обычный lookup и bake применяют только Rename/Remove.
 
 ### Изменено
 

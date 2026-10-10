@@ -8,29 +8,40 @@ permalink: /Docs/en/reference/changelog.html
 
 # Engine Changelog
 
-Changes and migration notes are paired in English/Russian. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the development version; [release rules](../how-to/release/versioning.md) define CalVer, dates, immutable tags and compatibility.
+Paired changes/migrations. [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) and [release rules](../how-to/release/versioning.md) own versions, dates, tags and compatibility.
 
 ## Unreleased
 
-## Current - 2026-10-09
+## Current - 2026-10-10
+
+### Changed
+
+- Merge `8b6a5f6020`/`c991f3e99e` histories.
+
+### Migration
+
+- No new contracts/migration. Rebuild binaries/version, regenerate docs/delivery and run browser gates; keep safety copies through validation.
+
+## 2026.1.20-dev - 2026-10-09
 
 ### Fixed
 
 - Allow attachment teardown broadcasts; mark intentional migration-result discards.
+- Wait for lazy SVG; CI tests delayed/missing images in three profiles, rejecting missing images.
 
 ### Migration
 
-- Rebuild servers; no API, data, resource, wire, ABI or compatibility change, no rebake.
+- Rebuild server/version; no rebake or runtime/format change. Keep browser pins/routes/profiles; after Chromium setup run `npm --prefix BuildTools/docs-browser run test:diagram`, full audit and docs/delivery.
 
 ## 2026.1.19-dev - 2026-10-09
 
 ### Changed
 
-- Merge `e463e04879` and `59611cf628`, preserving both histories.
+- Merge `e463e04879`/`59611cf628` histories; normalize migration comments.
 
 ### Migration
 
-- Apply versions 16–18; prepare docs and rebuild/rebake matching roles. No new migration; `0.0.69`, ABI, schemas and valid meanings persist. Retain safety copies through validation.
+- Apply 16–18; rebuild/rebake roles and docs. Keep valid meanings, `0.0.69`, ABI/schemas. Comments need no API/save conversion. Retain safety copies.
 
 ## 2026.1.18-dev - 2026-10-09
 
@@ -39,9 +50,9 @@ Changes and migration notes are paired in English/Russian. [VERSION](https://git
 - Add `MigrationRule Property <Owner> Remove <Old>` as a permanent name tombstone. Skip its historical document/text value and reject a live declaration under that name, including RefType fields.
 - Add AngelScript document Property/Proto Transform support with `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, typed `&inout` values and `const DatabaseDocument&inout`, automatic source/bytecode validation and binding, and synchronous atomic staging. Namespace-qualified function names use `Namespace::Function`; rebake AngelScript scripts for the new registered type and callbacks. Release RefType arrays/dictionaries through their container cleanup paths.
 
-- Add document-level property value migration through `MigrationRule Property <Owner> Transform <Property> <Function>`, native `PropertyMigratorCallback`, and Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>`, and `DatabaseDocument`. All functions see the original loaded document; successful results are staged and queued as changed canonical fields before entity property loading.
+- Add atomic Property Transform callbacks: native `PropertyMigratorCallback`, Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>` and original `DatabaseDocument` contexts. Stage canonical fields before entity loading.
 
-- Add `MigrationRule Proto <Owner> Transform <Source> <Function>` with `[ProtoMigrator] bool Function(ref hstring value, DatabaseDocument document)`. Resolve conditional proto chains on the original document before lookup, detect cycles, and stage `_Proto` with property changes; ordinary lookup and baking apply only Rename/Remove.
+- Add `[ProtoMigrator]` document callbacks for Proto Transform. Resolve original-document chains before lookup, detect cycles and stage `_Proto`; ordinary lookup and baking apply only Rename/Remove.
 
 ### Changed
 

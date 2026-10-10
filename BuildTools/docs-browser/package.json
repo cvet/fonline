@@ -8,7 +8,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "audit": "node audit.mjs"
+    "audit": "node audit.mjs",
+    "test:diagram": "node --test test_diagram_rendering.mjs"
   },
   "dependencies": {
     "axe-core": "4.12.1",

@@ -4,7 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-// A migrator edits a detached property value. False retains the original serialized value exactly.
+// A migrator edits a detached property value. False retains the original serialized value exactly
 public delegate bool PropertyMigrator<T>(ref T value, DatabaseDocument document);
 
 [AttributeUsage(AttributeTargets.Method)]
@@ -17,8 +17,8 @@ public sealed class ProtoMigratorAttribute : Attribute
 {
 }
 
-// Read-only original document, valid only during the synchronous migrator call.
-// Property reads include prototype defaults when the stored document omits a value.
+// Read-only original document, valid only during the synchronous migrator call
+// Property reads include prototype defaults when the stored document omits a value
 public sealed class DatabaseDocument
 {
     private readonly IntPtr Context;
@@ -33,7 +33,7 @@ public sealed class DatabaseDocument
         EntityType = entityType;
     }
 
-    // Owned documents support isolated migration fixtures without creating an entity.
+    // Owned documents support isolated migration fixtures without creating an entity
     public DatabaseDocument(string entityType, IReadOnlyDictionary<string, object> values)
     {
         EntityType = entityType;
