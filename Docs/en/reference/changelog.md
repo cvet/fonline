@@ -14,6 +14,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ## Current - 2026-10-10
 
+### Fixed
+
+- Regenerate the complete MinimalMultiplayer, ContentShowcase and PackagingMatrix
+  configurations after the server grid settings replacement. All three now use
+  `Server.ProtoMapGridType = Dynamic` and `Server.MapInstanceGridType = Dynamic`,
+  preserving their previous dynamic-grid defaults. Existing example freshness
+  and package tests validate these generated inputs. See
+  [generated content](../how-to/build/generated-content.md).
+
+### Migration
+
+- Upgrade from `2026.1.22-dev` at `bf673df1818c10aaf77c586077caf60cbd2e904f`.
+  No additional project migration is required: this refreshes Engine-owned
+  example configs for settings already introduced in that version. Follow its
+  migration notes when upgrading from an older Engine. Native behavior, host/runtime
+  ABI, network compatibility, resource schemas, map/save formats and database
+  rules are unchanged; no data conversion is needed.
+
+## 2026.1.22-dev - 2026-10-10
+
 ### Added
 
 - Hidden `ServerMapGridMemoryDynamic` and `ServerMapGridMemoryChunked`

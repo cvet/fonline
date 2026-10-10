@@ -46,6 +46,14 @@ Generated output is evidence, not an editing surface. Fix the source annotation,
 
 ## Configure and generate native sources
 
+The complete example configurations in `Examples/MinimalMultiplayer`,
+`Examples/ContentShowcase` and `Examples/PackagingMatrix` are generated from
+`Source/Common/Settings.inc`. After changing Engine settings, run
+`python generate_config.py` in each directory and include the resulting
+`.fomain` changes. Verify each with `python generate_config.py --check` and run
+`python BuildTools/tests/test_docs_examples.py` from the Engine root before
+packaging or staging those examples.
+
 The embedding project calls the staged BuildTools pipeline:
 
 ```cmake

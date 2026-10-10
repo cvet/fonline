@@ -7,12 +7,33 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"f8b5c90948558d6df89b65388461edef743d9156b6d85049189f3697ff562ac1"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"391b4c4de12c53f0a1863394d6367b49aa80f7a195d3115d487698c960049cd3"} -->
 Здесь ведутся значимые для разработчиков изменения FOnline и заметки о миграции на русском и английском. Текущую версию разработки задаёт [VERSION](https://github.com/cvet/fonline/blob/master/VERSION). [Правила версий и выпусков](../how-to/release/versioning.md) определяют CalVer, даты выпусков, неизменяемые теги и границы совместимости.
 
 ## Unreleased
 
 ## Current - 2026-10-10
+
+### Исправлено
+
+- Пересозданы полные конфигурации MinimalMultiplayer, ContentShowcase и
+  PackagingMatrix после замены серверных настроек сеток. Все три используют
+  `Server.ProtoMapGridType = Dynamic` и `Server.MapInstanceGridType = Dynamic`,
+  сохраняя прежний динамический режим по умолчанию. Существующие проверки
+  актуальности и пакетов примеров контролируют эти сгенерированные входы. См.
+  [generated content](../how-to/build/generated-content.md).
+
+### Миграция
+
+- Предыдущая версия — `2026.1.22-dev`, ревизия
+  `bf673df1818c10aaf77c586077caf60cbd2e904f`. Дополнительная миграция проекта
+  не требуется: обновлены конфигурации примеров Engine для настроек,
+  введённых в указанной версии. При переходе с более старого Engine соблюдайте
+  её заметки о миграции. Native-поведение, host/runtime ABI, сетевая совместимость,
+  схемы ресурсов, форматы карт и сохранений, правила базы данных не меняются;
+  преобразование данных не требуется.
+
+## 2026.1.22-dev - 2026-10-10
 
 ### Добавлено
 
