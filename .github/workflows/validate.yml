@@ -393,6 +393,26 @@ jobs:
       with:
         token: ${{secrets.CODECOV_TOKEN}}
         fail_ci_if_error: true
+  windows-unit-tests:
+    if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
+    name: Run common unit tests on Windows (${{ matrix.profile }})
+    runs-on: windows-2025
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [unit-tests, managed-unit-tests]
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.13'
+    - uses: actions/setup-dotnet@v5
+      if: matrix.profile == 'managed-unit-tests'
+      with:
+        dotnet-version: 10.0.x
+    - name: Build and run the common unit executable
+      run: BuildTools/validate.cmd ${{ matrix.profile }}
   windows-file-io:
     if: ${{github.event_name != 'workflow_dispatch' || !inputs.job || inputs.job == 'all'}}
     name: Probe native Windows file paths

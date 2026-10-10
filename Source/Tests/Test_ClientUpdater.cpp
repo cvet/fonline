@@ -42,6 +42,7 @@
 #include "Test_BakerHelpers.h"
 #include "Updater.h"
 #include "UpdaterBackend.h"
+#include "WinApi.h"
 
 FO_BEGIN_NAMESPACE
 
@@ -490,6 +491,17 @@ TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
     bool valid_partial = false;
     bool complete = false;
     bool cleanup_denied = false;
+    bool os_cleanup_denied = false;
+    string denied_contents;
+
+#if FO_WINDOWS
+    int32_t exclusive_fd = -1;
+    auto release_native_temp = scope_exit([&exclusive_fd]() noexcept {
+        if (exclusive_fd >= 0) {
+            winapi::close_exclusive_file(exclusive_fd);
+        }
+    });
+#endif
 
     SECTION("A stale partial prefix retries within this launch")
     {
@@ -539,6 +551,31 @@ TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
         cleanup_denied = true;
     }
 
+#if FO_WINDOWS
+    SECTION("A Windows exclusive handle refuses cleanup of a complete wrong file")
+    {
+        denied_contents = obsolete;
+        REQUIRE(fs::write_file(temp, denied_contents));
+        complete = true;
+        os_cleanup_denied = true;
+    }
+    SECTION("A Windows exclusive handle refuses cleanup of an oversized file")
+    {
+        denied_contents = obsolete + obsolete;
+        REQUIRE(fs::write_file(temp, denied_contents));
+        complete = true;
+        os_cleanup_denied = true;
+    }
+
+    if (os_cleanup_denied) {
+        exclusive_fd = winapi::open_exclusive_file(temp);
+        REQUIRE(exclusive_fd >= 0);
+        bool removed_while_held = fs::remove_file(temp);
+        REQUIRE_FALSE(removed_while_held);
+        REQUIRE(fs::exists(temp));
+    }
+#endif
+
     uint16_t port = OfflineServerPort.fetch_add(1);
     GlobalSettings server_settings(false);
     server_settings.ApplyDefaultSettings();
@@ -580,6 +617,15 @@ TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
     }
 
     REQUIRE(finished);
+
+#if FO_WINDOWS
+    // Release before reading retained bytes or removing the file, including on a failing assertion
+    if (exclusive_fd >= 0) {
+        winapi::close_exclusive_file(exclusive_fd);
+        exclusive_fd = -1;
+    }
+#endif
+
     fs::disk_directory_lock released_lock {GetClientWritableResourceDir(client_settings)};
     CHECK(static_cast<bool>(released_lock));
 
@@ -587,7 +633,7 @@ TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
         CHECK(fixture.GetOffsets().empty());
         CHECK(fs::read_file(live) == optional<string> {obsolete});
     }
-    else if (cleanup_denied && complete) {
+    else if ((cleanup_denied || os_cleanup_denied) && complete) {
         CHECK(fixture.GetOffsets().empty());
     }
     else {
@@ -598,13 +644,20 @@ TEST_CASE("ClientUpdaterRepairsNativeTempThroughTheBackendTransfer")
 
     CHECK(fixture.GetRemovalAttempts() == (cleanup_denied ? 1 : 0));
 
-    if (repeated_bad || cleanup_denied) {
+    if (repeated_bad || cleanup_denied || os_cleanup_denied) {
         CHECK(updater.GetResult() == UpdaterResult::Failed);
         CHECK(updater.IsAborted());
         CHECK_FALSE(fs::exists(live));
         CHECK_FALSE(fs::exists(staged));
         REQUIRE(fs::exists(temp));
         CHECK(fs::hash_file(temp) != expected_hash);
+
+        if (os_cleanup_denied) {
+            CHECK(fs::read_file(temp) == optional<string> {denied_contents});
+            bool removed_after_release = fs::remove_file(temp);
+            CHECK(removed_after_release);
+            CHECK_FALSE(fs::exists(temp));
+        }
     }
     else {
         CHECK(updater.GetResult() == UpdaterResult::ResourcesReady);

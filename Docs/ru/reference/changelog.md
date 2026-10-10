@@ -7,12 +7,23 @@ permalink: /Docs/ru/reference/changelog.html
 ---
 
 # История изменений движка
-<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"418ea1bdb9ae1480f71b0ff9d4f0954c2bf3e0dc0a2ae31719920e6735ce33b8"} -->
+<!-- docs-translation: {"document_id":"engine-changelog","locale":"ru","source_path":"Docs/en/reference/changelog.md","source_sha256":"1a89ed5de0245ec14c2fb18ab8633c7a86ecbc0af5cd45ed6aa5a91d1b64f926"} -->
 [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) задаёт текущую версию разработки. [Правила выпусков](../how-to/release/versioning.md) определяют CalVer, даты, неизменяемые теги и совместимость. Изменения и заметки о миграции ниже двуязычные.
 
 ## Unreleased
 
 ## Current - 2026-10-10
+
+### Тесты
+
+- Добавлены Windows common unit lanes для AngelScript и Managed и проверки реального отказа очистки native temp при exclusive handle в обоих способах доставки.
+
+### Миграция
+
+- Только тесты, CI и парные инструкции; API, конфигурация, сохранения, сеть, формат ресурсов, ABI и маркер updater сохраняются. Пересоберите метаданные версии и unit binaries; перегенерируйте docs/delivery, затем выполните prepare, contract, format и точную историю.
+- Исполнение Windows OS denial, пакеты/перезапуск/откат и оставшаяся causal приёмка ещё требуются.
+
+## 2026.1.22-dev - 2026-10-10
 
 ### Исправлено
 

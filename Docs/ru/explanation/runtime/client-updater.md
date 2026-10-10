@@ -5,7 +5,7 @@ locale: ru
 document_id: client-updater
 permalink: /Docs/ru/explanation/runtime/client-updater.html
 ---
-<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"b332eaf0ad75b4e6eaf4cb538f6268259ed1a55d69c356305d459a6246936a6d"} -->
+<!-- docs-translation: {"document_id":"client-updater","locale":"ru","source_path":"Docs/en/explanation/runtime/client-updater.md","source_sha256":"7db37ae68edac3cdfb462cec13c68e8e699a1c1350cb4f3aadea34e7671bc458"} -->
 # Разделение клиентской среды выполнения и обновление
 
 > Документация движка по переиспользуемому ABI между клиентским host и runtime,
@@ -180,10 +180,6 @@ executable path для загружаемого sibling module. Поскольк
 `--Client.ForceEmbeddedRuntime`; значение только из `.fomain` или SubConfig не влияет на
 этот pre-init выбор.
 
-Загруженную по live path DLL нельзя безопасно заменить и снова загрузить в том
-же процессе. Поэтому host только продвигает staged-файл и завершается. Новый
-runtime получает ровно один `InitApp` уже в следующем процессе.
-
 Обычная загрузка bundled DLL специально не сравнивает игровую compatibility
 строку runtime со встроенной строкой старого host. Host в установленном клиенте
 заморожен, а runtime обновляется; такое сравнение отвергало бы правильный новый
@@ -211,9 +207,9 @@ Host executable заморожен и updater его не доставляет. 
 
 ## Восстановление временного native-файла
 
-Native temp продолжается по размеру. Неверный итоговый хеш вызывает очистку и один полный повтор за запуск; полный неверный/слишком большой temp расходует тот же лимит. Отказ очистки или снова неверный payload прерывает update без продвижения. Размер/хеш читаются без кэша; PDB host/resource правила прежние. Повтор сбрасывает остаток/принятые байты; backend range/hash и синхронный borrowed callback сохранены, public API не добавлен.
+Native temp продолжается по размеру. Неверный хеш, полный неверный или слишком большой temp: очистка и один полный повтор за запуск; отказ очистки или повтора прерывает обновление без продвижения. Размер/хеш без кэша; PDB/ресурсы, range/hash backend и синхронные borrowed callbacks прежние; повтор сбрасывает остаток/принятые байты. API прежний.
 
-Настоящий secure-channel fixture проверяет оба способа доставки и terminal lock. Friend-отказ очистки не доказывает OS denial. Включение Managed RunUnitTests не доказывает исполнения: AS/Managed, OS и пакеты требуют реальной приёмки.
+Обе доставки: terminal lock и исходные байты. Exclusive handle Windows: отказ удаления до освобождения, успех после. Нужен прогон Windows AS/Managed: включение или friend-отказ не доказывают результат ОС. Пакеты/перезапуск/откат — отдельно.
 
 ## Интерфейс командной строки host
 
@@ -489,7 +485,7 @@ command line. MSI packager добавляет marker только во врем�
 - Managed resource payload пересобирается для каждого распространяемого client target и размещается под `PlatformBinaries/<target>/`; если несколько native binary variants разделяют updater target, один target-wide pack получает payload наименее квалифицированной подходящей entry, обычно default Release, а независимо собранные эквивалентные CoreLib не обязаны быть byte-identical;
 - Windows Client с `Wix` строит обязательный MSI из staged Raw payload, временно добавляет `INSTALLED`, регистрирует URI scheme через HKCU и падает при отсутствии toolset или ошибке generator; Windows `light` повторяется один раз с `-sval` только для точного сообщения о недоступности Windows Installer service, а прочие linker/ICE failures и failed fallback остаются фатальными;
 - Windows runtime PDB называется `<runtime_dll>.pdb`, а host PDB сохраняет `<host_name>.pdb`; package patch CodeView `RSDS` меняет embedded PDB path на итоговое имя, и отсутствие input или неудачный patch считаются ошибкой;
-- host PDB staged вместе с runtime payload, но client скачивает его только при отсутствии локального файла и никогда не clobber существующую подходящую копию.
+- **Размещение host PDB.** `package_all_client_runtime_update_payloads` помещает `<name>.pdb` рядом с runtime DLL и `<name>.dll.pdb` под `PlatformBinaries/<target>/`. Восстановление отсутствующей копии и совпадение symbols с замороженным host описаны в [ABI среды выполнения](#abi-среды-выполнения).
 
 Bundled runtime и server-staged runtime проходят тот же package-time patch, что и
 обычные executable: embedded resources, internal config и packaged mark.
