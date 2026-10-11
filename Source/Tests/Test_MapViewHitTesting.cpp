@@ -40,6 +40,10 @@
 
 FO_BEGIN_NAMESPACE
 
+auto Client_Map_GetItems(ptr<MapView> self) -> vector<ptr<ItemView>>;
+auto Client_Map_GetItem(ptr<MapView> self, ident_t item_id) -> nptr<ItemView>;
+auto Client_Map_GetItemsOnHex(ptr<MapView> self, mpos hex) -> vector<ptr<ItemView>>;
+
 namespace
 {
     auto MakeMapViewHitTestResources() -> FileSystem
@@ -113,6 +117,115 @@ TEST_CASE("MapViewItemHitTestingCanSelectTransparentEggOccluders")
     CHECK_FALSE(map->GetEntityAtScreen(ipos32 {-10000, -10000}, 0, true, true).first);
     map->ClearTransparentEgg(TransparentEggSlot::Secondary);
     CHECK(map->GetEntityAtScreen(pixel, 0, true).first == wall);
+
+    SECTION("BoundedViewFiltersStaticItemsAndScreenQueries")
+    {
+        ipos32 edge {8, 8};
+        GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
+        GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
+        mpos edge_hex = map->GetSize().from_raw_pos(edge);
+        GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
+        mpos outside_hex = map->GetSize().from_raw_pos(edge);
+        ptr<ItemHexView> outside = map->AddMapperItem(client->Hashes.to_hashed_string("HitTestFloor"), outside_hex, nullptr);
+        map->SetViewArea(mpos {8, 8}, 2);
+        CHECK(map->IsHexInViewArea(edge_hex));
+        CHECK_FALSE(map->IsHexInViewArea(outside_hex));
+        CHECK(Client_Map_GetItems(map).size() == 2);
+        CHECK_FALSE(Client_Map_GetItem(map, outside->GetId()));
+        CHECK(Client_Map_GetItemsOnHex(map, outside_hex).empty());
+        map->RebuildMap();
+        auto outside_sprite = outside->GetMapSprite();
+        auto outside_rect = outside_sprite->GetDrawRect();
+        auto outside_pixel = map->MapToScreenPos({outside_rect.x + outside_rect.width / 2, outside_rect.y + outside_rect.height / 2});
+        CHECK_FALSE(map->GetEntityAtScreen(outside_pixel, 0, false).first);
+        mpos hit_hex {};
+        CHECK_FALSE(map->GetHexAtScreen(outside_pixel, hit_hex, nullptr));
+        map->SetScreenSize(isize32 {1024, 768});
+        CHECK_FALSE(map->IsHexInViewArea(outside_hex));
+        CHECK(Client_Map_GetItems(map).size() == 2);
+        map->SetViewArea(mpos {8, 8}, 0);
+        CHECK(Client_Map_GetItems(map).size() == 3);
+        CHECK(Client_Map_GetItem(map, outside->GetId()) == outside);
+    }
+
+    SECTION("BoundedViewRespectsAuthoredScrollArea")
+    {
+        map->SetScrollAxialArea(irect32 {0, 0, 38, 20});
+        map->SetScrollCheck(true);
+        auto check_viewport = [&map](isize32 size) {
+            fpos32 viewport_origin = fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset();
+            fpos32 viewport_end = viewport_origin + fpos32(numeric_cast<float32_t>(size.width), numeric_cast<float32_t>(size.height)) / map->GetSpritesZoom();
+            CHECK(viewport_origin.x >= GameSettings::MAP_HEX_WIDTH - 0.01f);
+            CHECK(viewport_origin.y >= GameSettings::MAP_HEX_LINE_HEIGHT - 0.01f);
+            CHECK(viewport_end.x <= 20 * GameSettings::MAP_HEX_WIDTH + 0.01f);
+            CHECK(viewport_end.y <= 21 * GameSettings::MAP_HEX_LINE_HEIGHT + 0.01f);
+        };
+
+        for (mpos focus : {mpos {1, 1}, mpos {18, 18}}) {
+            CAPTURE(focus);
+            map->SetViewArea(focus, 0);
+            map->SetScreenSize(isize32 {320, 200});
+            map->InstantZoom(1.0f, {0.5f, 0.5f});
+            map->InstantScrollTo(focus);
+            ipos32 ordinary_focus_pixel = map->MapToScreenPos(map->GetHexMapPos(focus));
+            check_viewport({320, 200});
+            map->SetViewArea(focus, 2);
+            CHECK(map->MapToScreenPos(map->GetHexMapPos(focus)) == ordinary_focus_pixel);
+            check_viewport({320, 200});
+            map->InstantScrollTo(focus);
+            check_viewport({320, 200});
+            map->InstantScroll(fpos32 {-1000.0f, -1000.0f});
+            check_viewport({320, 200});
+            map->InstantScroll(fpos32 {1000.0f, 1000.0f});
+            check_viewport({320, 200});
+            map->SetScreenSize(isize32 {480, 220});
+            check_viewport({480, 220});
+            map->InstantZoom(2.0f, {0.5f, 0.5f});
+            map->InstantScrollTo(focus);
+            check_viewport({480, 220});
+            map->InstantZoom(1.0f, {0.5f, 0.5f});
+            map->InstantScrollTo(focus);
+            check_viewport({480, 220});
+            CHECK(map->IsHexInViewArea(focus));
+            CHECK_FALSE(map->IsHexInViewArea(mpos {8, 8}));
+            CHECK(map->IsScrollCheck());
+        }
+    }
+
+    SECTION("BoundedViewCanScrollWithoutMovingVisibility")
+    {
+        map->SetScrollAxialArea(irect32 {-38, 0, 76, 40});
+        map->SetScrollCheck(true);
+        map->SetViewArea(mpos {8, 8}, 2);
+        auto camera_position = [&map]() { return fpos32(GeometryHelper::GetHexPos(map->GetScreenRawHex())) + map->GetScrollOffset(); };
+        fpos32 initial_position = camera_position();
+        map->ScrollToHex(mpos {12, 12}, {}, 10000, true);
+        CHECK(map->IsAutoScrolling());
+        map->SetManualScroll(ScrollDirection::Right);
+
+        for (int32_t frame = 0; frame < 10; frame++) {
+            coarse_sleep(std::chrono::milliseconds {10});
+            client->GameTime.FrameAdvance(false);
+            map->Process();
+        }
+
+        CHECK_FALSE(map->IsAutoScrolling());
+        fpos32 scrolled_position = camera_position();
+        CHECK(scrolled_position.x > initial_position.x);
+        map->SetManualScroll(ScrollDirection::None);
+
+        for (int32_t frame = 0; frame < 10; frame++) {
+            coarse_sleep(std::chrono::milliseconds {10});
+            client->GameTime.FrameAdvance(false);
+            map->Process();
+        }
+
+        CHECK(camera_position() == scrolled_position);
+        map->SetScreenSize(isize32 {480, 220});
+        CHECK(camera_position() == scrolled_position);
+        CHECK(map->IsHexInViewArea(mpos {8, 8}));
+        CHECK_FALSE(map->IsHexInViewArea(mpos {12, 12}));
+    }
 }
 
 FO_END_NAMESPACE

@@ -169,6 +169,36 @@ FO_SCRIPT_API void Server_Player_ViewMap(ptr<Player> self, ptr<Map> map, mpos he
     self->Send_PlaceToGameComplete();
 }
 
+// SyncScope: requires self + map + its location; a controlled critter must remain on the global map
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ViewMapArea(ptr<Player> self, ptr<Map> map, mpos hex, int32_t radius)
+{
+    ValidateEntityAccess(map);
+    if (self->IsDestroying() || !map->GetSize().is_valid_pos(hex) || radius <= 0 || radius > std::numeric_limits<int16_t>::max()) {
+        throw ScriptException("Invalid bounded map view", self->GetId(), hex, radius);
+    }
+    auto loc = map->GetLocation();
+    FO_VERIFY_AND_THROW(loc, "Missing location instance");
+    ValidateEntityAccess(loc);
+    self->SetViewMap(map, hex, radius);
+    self->Send_LoadMap(map);
+    self->GetEngine()->MapMngr.ViewMap(self, map);
+    self->Send_ViewMap();
+    self->Send_PlaceToGameComplete();
+}
+
+// SyncScope: requires self + the controlled critter's initial-info graph; restores its ordinary display
+///@ ExportMethod
+FO_SCRIPT_API void Server_Player_ReturnFromViewMap(ptr<Player> self)
+{
+    auto cr = self->GetControlledCritter();
+    if (!cr) {
+        throw ScriptException("Map view return requires a controlled critter", self->GetId());
+    }
+    ValidateEntityAccess(cr);
+    self->GetEngine()->ReturnPlayerFromViewMap(self);
+}
+
 // SyncScope: requires self; clears view-map state, no entity reparent
 ///@ ExportMethod
 FO_SCRIPT_API void Server_Player_ResetViewMap(ptr<Player> self)

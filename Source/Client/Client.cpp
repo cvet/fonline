@@ -2027,12 +2027,14 @@ void ClientEngine::Net_OnViewMap()
     FO_TRACE_ZONE(Script);
 
     auto hex = _conn.InBuf->Read<mpos>();
+    auto radius = _conn.InBuf->Read<int32_t>();
 
     if (!_curMap) {
         break_into_debugger();
         return;
     }
 
+    _curMap->SetViewArea(hex, radius);
     OnMapView.Fire(hex);
 }
 

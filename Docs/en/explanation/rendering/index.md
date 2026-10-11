@@ -8,6 +8,12 @@ permalink: /Docs/en/explanation/rendering/
 
 # Frontend and Rendering
 
+## Bounded map view presentation
+
+The `ViewMap` packet carries a focal hex and signed 32-bit radius. Zero preserves a full map view; a positive radius initially centers the camera on that hex while keeping the visibility area anchored to it. Manual and automatic camera scrolling remain available and respect authored scroll boundaries, including after zoom and screen-size changes. Resizing clamps the current camera position instead of returning it to the focal hex. Moving the camera does not move or expand the visibility area.
+
+After map sprites and fog, before the final map flush, `MapView` draws the bounded-view fog with `Effects/Primitive_ViewAreaFog.fofx`. The core effect smoothly fades inward from the inclusive hex boundary and stays opaque outside, independently of regular fog settings, under both direct and offscreen map drawing. An embedding project may override the same effect path. Vertex color red encodes the hex radius fraction (zero at the center, one at the boundary and outside); texture coordinates encode the normalized ellipse position; egg coordinates encode absolute world pixels for camera-independent edge noise. Any override must preserve full opacity outside the hex boundary. Dynamic subject visibility is enforced separately by the server; static baked resources remain in the client package. Hex and item screen queries, together with the map item lookup APIs, exclude cells and items outside the radius, including statically baked items.
+
 For the experimental Ogg/Theora decoder, fullscreen draw order, embedded
 `RenderIface` presentation, texture upload, aspect behavior, and visible
 acceptance boundary, see [Video](../../how-to/content/video.md). This page owns the generic

@@ -19378,6 +19378,14 @@
         "/symbols/@id=script.method.client.Game.GetDisplaySize/description": {
           "source_sha256": "7b2ac372ca3eb2404fee4e794e1d947b973f55b2aca64d7575acc610bf8a80ed",
           "translation": "Возвращает размеры рабочего стола в пикселях для дисплея с окном клиента или нулевой размер, если данные недоступны."
+        },
+        "/symbols/@id=script.method.server.Player.ReturnFromViewMap/description": {
+          "source_sha256": "f15411494f57ce36c6092dee2d835798ea8fa2b26c0ba78889f044ce18425873",
+          "translation": "SyncScope: требуются self и граф начальной выдачи управляемого персонажа; восстанавливает его обычное отображение"
+        },
+        "/symbols/@id=script.method.server.Player.ViewMapArea/description": {
+          "source_sha256": "0d982fc7967c8fabc1830287ef26b58e35e797bc1a60edff3c0162e64147f96b",
+          "translation": "SyncScope: требуются self, карта и её локация; управляемый персонаж должен оставаться на глобальной карте"
         }
       }
     }

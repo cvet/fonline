@@ -2234,6 +2234,16 @@ namespace ScriptMethodsTest
         catch {
         }
 
+        notLoggedIn.ViewMapArea(map, mpos(10, 10), 3);
+        if (notLoggedIn.GetControlledCritter() !is cr) return -10;
+        notLoggedIn.ReturnFromViewMap();
+        if (notLoggedIn.GetViewMapTarget() !is null) return -11;
+        try {
+            notLoggedIn.ViewMapArea(map, mpos(10, 10), 0);
+            return -12;
+        }
+        catch {
+        }
         notLoggedIn.SwitchCritter(null);
 
         Critter mapCr = map.AddCritter("TestCritter".hstr(), mpos(11, 10), mdir(0));

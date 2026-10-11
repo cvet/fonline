@@ -3103,6 +3103,9 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-server-player-resetviewmap-0e49d3eb65"></a>
 - [`symbol-script-method-server-player-resetviewmap-0e49d3eb65`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-resetviewmap-0e49d3eb65)
 
+<a id="symbol-script-method-server-player-returnfromviewmap-86fb7a90ec"></a>
+- [`symbol-script-method-server-player-returnfromviewmap-86fb7a90ec`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-returnfromviewmap-86fb7a90ec)
+
 <a id="symbol-script-method-server-player-setname-9862aea20c"></a>
 - [`symbol-script-method-server-player-setname-9862aea20c`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-setname-9862aea20c)
 
@@ -3114,3 +3117,6 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 
 <a id="symbol-script-method-server-player-viewmap-0f1932f067"></a>
 - [`symbol-script-method-server-player-viewmap-0f1932f067`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-viewmap-0f1932f067)
+
+<a id="symbol-script-method-server-player-viewmaparea-e8e897f789"></a>
+- [`symbol-script-method-server-player-viewmaparea-e8e897f789`](../../en/reference/script-api/methods.md#symbol-script-method-server-player-viewmaparea-e8e897f789)

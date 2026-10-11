@@ -8,6 +8,14 @@ permalink: /Docs/en/explanation/runtime/server.html
 
 # Server Runtime
 
+## Bounded map views
+
+`Player.ViewMapArea(map, hex, radius)` observes an inclusive hex-radius area without placing a critter on that map. A controlled critter may remain on the global map; detached callers are also supported. `ViewMap` retains its existing detached, full-map behavior. Both APIs require the player, target map and location under cover. Bounds and subscriptions are runtime-only.
+
+The map owns each bounded recipient's visible subject IDs under `_spectatorLock`. Initial snapshots, critter broadcasts and map-item changes use that membership; movement and item events add or remove subjects at the boundary. Position fan-out also checks the current hex before enqueueing, so a teleport cannot disclose an outside position before the removal event. Bounded recipients receive current positions at hex transitions, not future movement paths. `Send_AddObservedCritter` serializes an unowned full-visibility subject under its cover without reading recipient visibility state, so boundary grants require no unrelated recipient entity lock.
+
+`Player.ReturnFromViewMap()` clears the subscription and sends the controlled critter's ordinary initial information. The caller covers the complete initial-info graph before the call and revalidates after yielding callbacks. Projects resend global-map group state under the group cover and own access, cancellation and UI rules. Disconnect and map destruction remove native subscriptions; projects also clear their session state.
+
 > Engine-owned documentation. This page describes reusable server runtime behavior in `Source/Server/`; game rules, world content, concrete balance, quests, and project-specific deployment policy remain in the embedding project.
 
 ## Purpose

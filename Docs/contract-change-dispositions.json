@@ -9312,6 +9312,66 @@
       "release_note": "Docs/en/reference/changelog.md Current and its Russian mirror describe the built-in ACM owner, channel semantics, opt-in, diagnostics, baking fingerprint and complete project migration.",
       "compatibility": "No additional network marker change (upstream 0.0.71), persisted entity/database migration, sprite/resource schema change or host/runtime ABI change. Existing runtime reads the same Vorbis payload at the preserved authored path. FO_AUDIO_ACM is baking-impacting and requires reconfiguration/rebaking on changes.",
       "owner": "audio-baking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.b0f9086af4e8af43",
+      "baseline_contract_sha256": "cbc46881cbc724744ca3a8701e178e59f94cb83a27aaf707fcf223e127d53e7f",
+      "current_contract_sha256": "c7f1bf4fbc8494390b85cc988f7cdd4f438626b3f5c1c758feaf34ea49b720fd",
+      "classification": "breaking",
+      "rationale": "Add bounded Player.ViewMapArea and ReturnFromViewMap without changing full administrative ViewMap. ViewMap wire messages now include the observation radius.",
+      "migration": "Rebuild client and server together, regenerate bindings and rebake metadata. No persisted entity-data migration is required. See Docs/en/explanation/runtime/server.md.",
+      "release_note": "Docs/en/reference/changelog.md#unreleased and its Russian counterpart document the observation APIs and wire migration.",
+      "compatibility": "Compatibility version 0.0.69 rejects peers using 0.0.68 or earlier. Ship matching client/server binaries and metadata; updater and frozen host ABI boundaries are unchanged.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.1b0daeb8cd215ba2",
+      "baseline_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "current_contract_sha256": "da6930ad0aff5eb0def27d14c8391f48e4867b496e3035e964c9d7bb2e55e174",
+      "classification": "breaking",
+      "rationale": "Add bounded Player.ViewMapArea and ReturnFromViewMap while preserving detached full-map ViewMap. Its wire message now carries the observation radius.",
+      "migration": "Rebuild matching client/server binaries, regenerate bindings and rebake metadata and Primitive_ViewAreaFog resources. No persisted entity conversion is required. See Docs/en/reference/changelog.md#current---2026-10-11 and the server/runtime and rendering guides.",
+      "release_note": "The dated 2026.1.29-dev entry in Docs/en/reference/changelog.md and its Russian mirror own the bounded-view migration.",
+      "compatibility": "Advance from published 0.0.70 to 0.0.71; reject mixed peers and deploy matching binaries/resources. Updater, host/runtime ABI and resource schema identifiers do not change.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.73561700590cefcf",
+      "baseline_contract_sha256": "2928db49002acc9ecfcfce164e8827934e97b087285b48347a1c2caa1c769b0f",
+      "current_contract_sha256": "da6930ad0aff5eb0def27d14c8391f48e4867b496e3035e964c9d7bb2e55e174",
+      "classification": "breaking",
+      "rationale": "Add bounded Player.ViewMapArea and ReturnFromViewMap while preserving detached full-map ViewMap. Its wire message now carries the observation radius.",
+      "migration": "Rebuild matching client/server binaries, regenerate bindings and rebake metadata and Primitive_ViewAreaFog resources. No persisted entity conversion is required. See Docs/en/reference/changelog.md#current---2026-10-11 and the server/runtime and rendering guides.",
+      "release_note": "The dated 2026.1.29-dev entry in Docs/en/reference/changelog.md and its Russian mirror own the bounded-view migration.",
+      "compatibility": "Advance from published 0.0.70 to 0.0.71; reject mixed peers and deploy matching binaries/resources. Updater, host/runtime ABI and resource schema identifiers do not change.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.model-scope.1b0daeb8cd215ba2",
+      "baseline_contract_sha256": "4f0bd4b4da87a2b73c019c5e606298f12a76b29ceb6cc6cfad4b15b39eb01aa4",
+      "current_contract_sha256": "c23562b19340f80d665db7419e7b6a8aff97b55e459256f56ef47c6262928881",
+      "classification": "breaking",
+      "rationale": "Add bounded Player.ViewMapArea and ReturnFromViewMap without changing full administrative ViewMap. ViewMap wire messages now include the observation radius.",
+      "migration": "Rebuild client and server together, regenerate bindings and rebake metadata. No persisted entity-data migration is required. See Docs/en/explanation/runtime/server.md.",
+      "release_note": "The dated 2026.1.31-dev entry in Docs/en/reference/changelog.md and its Russian mirror own the rebased bounded-view migration.",
+      "compatibility": "Advance from published 0.0.71 to 0.0.72; reject mixed peers and deploy matching binaries/resources. Managed ABI generator identity remains 9; host/runtime ABI and resource schema identifiers do not change.",
+      "owner": "networking"
+    },
+    {
+      "domain": "api",
+      "change_id": "api-change.modified.54fff1a2fe4544bb",
+      "baseline_contract_sha256": "4f0bd4b4da87a2b73c019c5e606298f12a76b29ceb6cc6cfad4b15b39eb01aa4",
+      "current_contract_sha256": "c23562b19340f80d665db7419e7b6a8aff97b55e459256f56ef47c6262928881",
+      "classification": "breaking",
+      "rationale": "Add bounded Player.ViewMapArea and ReturnFromViewMap without changing full administrative ViewMap. ViewMap wire messages now include the observation radius.",
+      "migration": "Rebuild client and server together, regenerate bindings and rebake metadata. No persisted entity-data migration is required. See Docs/en/explanation/runtime/server.md.",
+      "release_note": "The dated 2026.1.31-dev entry in Docs/en/reference/changelog.md and its Russian mirror own the rebased bounded-view migration.",
+      "compatibility": "Advance from published 0.0.71 to 0.0.72; reject mixed peers and deploy matching binaries/resources. Managed ABI generator identity remains 9; host/runtime ABI and resource schema identifiers do not change.",
+      "owner": "networking"
     }
   ]
 }

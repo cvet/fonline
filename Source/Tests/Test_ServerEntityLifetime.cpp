@@ -1271,4 +1271,73 @@ TEST_CASE("ServerSyncRetainedCoverRefreshesReparentedAncestors", "[server][sync]
     CHECK_FALSE(took_map.load());
 }
 
+TEST_CASE("BoundedMapSpectatorsTrackVisibility", "[server][map][observation]")
+{
+    GlobalSettings settings = MakeServerEntityLifetimeSettings();
+    StaticMap static_map {msize {32, 32}, "Dynamic"};
+    auto server = safe_alloc::make_refcounted<ServerEngine>(&settings, MakeServerEntityLifetimeResources(false, msize {32, 32}));
+    auto shutdown_guard = scope_exit([&server]() noexcept { safe_call([&server] { server->Shutdown(); }); });
+    REQUIRE(WaitForServerEntityLifetimeStartup(server));
+
+    REQUIRE(server->RunInQuiescence(std::chrono::seconds {10}, [&](const ServerQuiescenceState&) {
+        auto owners = MakeServerEntityLifetimeOwners(server, &static_map);
+        ptr<Critter> cr = owners[0].dyn_cast<Critter>();
+        ptr<Item> item = owners[1].dyn_cast<Item>();
+        ptr<Map> map = owners[2].dyn_cast<Map>();
+        ptr<Player> full = owners[4].dyn_cast<Player>();
+        auto network = NetworkServer::CreateDummyConnection(server->Settings);
+        auto connection = safe_alloc::make_unique<ServerConnection>(server->Settings, std::move(network), BakerTests::MakeTestChannelIdentity());
+        auto bounded = safe_alloc::make_refcounted<Player>(server, ident_t {6}, std::move(connection));
+        auto second = safe_alloc::make_refcounted<Player>(server, ident_t {7}, safe_alloc::make_unique<ServerConnection>(server->Settings, NetworkServer::CreateDummyConnection(server->Settings), BakerTests::MakeTestChannelIdentity()));
+        SyncContext ctx;
+        ctx.Activate();
+        auto release = scope_exit([&ctx]() noexcept {
+            ctx.Release();
+            ctx.Deactivate();
+        });
+        vector<ptr<ServerEntity>> roots {cr, item, map, full, bounded, second};
+        ctx.SyncEntities(roots);
+        cr->SetHex(mpos {10, 10});
+        map->AddCritter(cr);
+        map->AddItem(item, mpos {10, 10}, nullptr);
+        auto clear = scope_exit([&]() noexcept {
+            safe_call([&] {
+                full->ResetViewMap();
+                bounded->ResetViewMap();
+                second->ResetViewMap();
+                map->RemoveCritter(cr);
+                map->RemoveItem(item->GetId());
+            });
+        });
+        full->SetViewMap(map, mpos {10, 10});
+        bounded->SetViewMap(map, mpos {10, 10}, 3);
+        second->SetViewMap(map, mpos {20, 20}, 2);
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), cr->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
+        CHECK_FALSE(map->IsSpectatorEntityVisible(second->GetId(), cr->GetId()));
+        ipos32 edge {10, 10};
+        for (int32_t i = 0; i < 3; i++) {
+            GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
+        }
+        cr->SetHex(map->GetSize().from_raw_pos(edge));
+        map->RefreshAreaSpectators(cr);
+        CHECK(map->GetSpectatorPlayersForSend(cr->GetId(), cr->GetHex()).size() == 2);
+        GeometryHelper::MoveHexByDirUnsafe(edge, hdir::East);
+        cr->SetHex(map->GetSize().from_raw_pos(edge));
+        CHECK(map->GetSpectatorPlayersForSend(cr->GetId(), cr->GetHex()).size() == 1);
+        map->RefreshAreaSpectators(cr);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(bounded->GetId(), cr->GetId()));
+        CHECK(map->IsSpectatorEntityVisible(full->GetId(), cr->GetId()));
+        cr->SetHex(mpos {10, 10});
+        map->RefreshAreaSpectators(cr);
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), cr->GetId()));
+        item->SetHidden(true);
+        map->RefreshAreaSpectators(item);
+        CHECK_FALSE(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
+        item->SetHidden(false);
+        map->RefreshAreaSpectators(item);
+        CHECK(map->IsSpectatorEntityVisible(bounded->GetId(), item->GetId()));
+    }));
+}
+
 FO_END_NAMESPACE

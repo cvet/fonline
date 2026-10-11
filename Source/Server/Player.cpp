@@ -192,10 +192,13 @@ void Player::SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const P
     _sendIgnoreProperty.store(prop.get(), std::memory_order_release);
 }
 
-void Player::SetViewMap(ptr<Map> map, mpos hex)
+void Player::SetViewMap(ptr<Map> map, mpos hex, int32_t radius)
 {
     FO_VALIDATE_ENTITY(LOCKED, NOT_DESTROYED, NOT_DESTROYING);
-    FO_VERIFY_AND_THROW(!_controlledCr.load(std::memory_order_acquire), "Controlled cr is already set");
+    auto controlled_cr = GetControlledCritter();
+    FO_VERIFY_AND_THROW(!controlled_cr || (radius > 0 && !controlled_cr->GetMapId()), "Map view requires a detached or global-map critter");
+    ValidateEntityAccess(map);
+    FO_VERIFY_AND_THROW(!map->IsDestroyed() && !map->IsDestroying(), "Cannot view an unavailable map", map->GetId());
 
     if (_viewMapTarget != map) {
         if (_viewMapTarget) {
@@ -206,7 +209,15 @@ void Player::SetViewMap(ptr<Map> map, mpos hex)
         _viewMapTarget->AddSpectatorPlayer(this);
     }
 
-    _viewMap.emplace(ViewMapContext {.MapId = map->GetId(), .Hex = hex});
+    map->SetSpectatorArea(this, hex, radius);
+    _viewMap.emplace(ViewMapContext {.MapId = map->GetId(), .Hex = hex, .Radius = radius});
+    _viewMapRadius.store(radius, std::memory_order_release);
+}
+
+bool Player::IsAreaView() const noexcept
+{
+    FO_VALIDATE_ENTITY(NONE);
+    return _viewMapRadius.load(std::memory_order_acquire) > 0;
 }
 
 void Player::ResetViewMap() noexcept
@@ -219,6 +230,7 @@ void Player::ResetViewMap() noexcept
     }
 
     _viewMap.reset();
+    _viewMapRadius.store(0, std::memory_order_release);
 }
 
 void Player::Send_LoginSuccess()
@@ -258,6 +270,22 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
     nptr<const Critter> cr_lookup = cr;
     bool is_chosen = controlled_cr == cr_lookup;
 
+    CritterVisibilityMode vis_mode = controlled_cr ? controlled_cr->GetVisibleCritterMode(cr->GetId()) : CritterVisibilityMode::Full;
+    SendCritter(cr, is_chosen, vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full, true);
+}
+
+void Player::Send_AddObservedCritter(ptr<const Critter> cr)
+{
+    FO_VALIDATE_ENTITY(NONE);
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
+    SendCritter(cr, false, CritterVisibilityMode::Full, !IsAreaView());
+}
+
+void Player::SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement)
+{
+    FO_VALIDATE_ENTITY(NONE);
+    FO_VALIDATE_ENTITY_ACCESS_VALUE(cr);
+
     auto cr_data = cr->StoreData(is_chosen);
 
     auto inv_items = cr->GetInvItems();
@@ -293,16 +321,7 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
         SendItem(*out_buf, item, is_chosen, true, true);
     }
 
-    {
-        auto receiver_cr = GetControlledCritter();
-        CritterVisibilityMode vis_mode = CritterVisibilityMode::Full;
-
-        if (receiver_cr) {
-            vis_mode = receiver_cr->GetVisibleCritterMode(cr->GetId());
-        }
-
-        out_buf->Write(vis_mode != CritterVisibilityMode::None ? vis_mode : CritterVisibilityMode::Full);
-    }
+    out_buf->Write(vis_mode);
 
     auto cr_attached = cr->GetAttachedCritters();
 
@@ -313,7 +332,7 @@ void Player::Send_AddCritter(ptr<const Critter> cr)
         out_buf->Write(attached_cr->GetId());
     }
 
-    if (cr->IsMoving()) {
+    if (send_movement && cr->IsMoving()) {
         out_buf->Write(true);
         SendCritterMoving(*out_buf, cr);
     }
@@ -476,7 +495,7 @@ void Player::Send_Moving(ptr<const Critter> from_cr)
 
     scoped_lock conn_lock {_connectionLock};
 
-    if (from_cr->IsMoving()) {
+    if (!IsAreaView() && from_cr->IsMoving()) {
         auto out_buf = _connection->WriteMsg(NetMessage::CritterMove);
 
         out_buf->Write(from_cr->GetId());
@@ -497,6 +516,10 @@ void Player::Send_MovingSpeed(ptr<const Critter> from_cr)
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
 
+    if (IsAreaView()) {
+        return;
+    }
+
     scoped_lock conn_lock {_connectionLock};
 
     auto out_buf = _connection->WriteMsg(NetMessage::CritterMoveSpeed);
@@ -512,6 +535,10 @@ void Player::Send_MovingLease(ptr<const Critter> from_cr)
 {
     FO_VALIDATE_ENTITY(NONE);
     FO_VALIDATE_ENTITY_ACCESS_VALUE(from_cr);
+
+    if (IsAreaView()) {
+        return;
+    }
 
     auto moving = from_cr->GetMoving();
 
@@ -814,6 +841,7 @@ void Player::Send_ViewMap()
     auto out_buf = _connection->WriteMsg(NetMessage::ViewMap);
 
     out_buf->Write(view_map->Hex);
+    out_buf->Write(view_map->Radius);
 }
 
 void Player::Send_PlaceToGameComplete()

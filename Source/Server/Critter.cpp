@@ -1074,7 +1074,7 @@ auto Critter::GetMapSpectators() -> vector<refcount_ptr<Player>>
     auto map = GetParent<Map>();
 
     if (map) {
-        return map->GetSpectatorPlayersForSend();
+        return map->GetSpectatorPlayersForSend(GetId(), GetHex());
     }
 
     return {};

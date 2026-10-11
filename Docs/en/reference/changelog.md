@@ -16,6 +16,26 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 ### Added
 
+- `Player.ViewMapArea(map, hex, radius)` provides a live, fixed, bounded map view while retaining a controlled global-map critter. Dynamic subjects are filtered by inclusive hex distance; entering and leaving subjects are updated from movement and item events. Clients initially center the camera and mask the exterior independently of regular fog settings.
+- `Player.ReturnFromViewMap()` restores the controlled critter's normal display. Existing detached `ViewMap` remains a full-map administrative view.
+
+### Fixed
+
+- Bounded map cameras accept normal scrolling without moving their visibility area. Resizing preserves the camera position within authored scroll boundaries. The exterior mask uses an overridable primitive fog effect with an inward smooth edge and full exterior opacity.
+- Bounded map views respect authored camera scroll boundaries when centering, zooming and resizing. The visibility area remains centered on its focal hex even when the camera must stop at a map edge.
+
+### Migration
+
+The `ViewMap` network message now carries an `int32` radius after its focal hex (zero for the existing full-map view). Network compatibility advances from `0.0.71` to `0.0.72`; rebuild both endpoints and their script metadata together. No persisted map, item or critter data migration is required: view subscriptions and bounds are runtime-only. Bounded views send current positions at hex transitions and omit future movement paths. Returning requires the complete controlled-critter initial-info graph; global-map group information is sent by the project under its group cover.
+
+Rebake resources to include `Effects/Primitive_ViewAreaFog.fofx` when adopting the smooth bounded-view edge. Embedding projects can override that effect and must keep the exterior opaque. Camera scrolling requires the project's normal input handlers on its bounded-view screen; the visibility center and radius remain server-owned.
+
+Baseline: `e1a3815ff96c7d88f47314984e9d9242e37bc585` (`2026.1.30-dev`); this rebased bounded-view update is `2026.1.31-dev`. Apply the preceding Managed RefType ownership migration and rebuild/rebake all roles together.
+
+## 2026.1.30-dev - 2026-10-11
+
+### Added
+
 - Add the optional built-in Interplay ACM audio importer as `FO_AUDIO_ACM`, OFF by default. `AudioBaker-Acm.*` owns the per-decoder unpacker state and Fallout channel convention; `AudioBaker` registers it only when enabled. Move the decoder regression fixtures into Engine and test automatic Vorbis baking plus disabled requests.
 
 ### Migration

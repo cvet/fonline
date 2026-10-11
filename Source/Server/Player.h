@@ -54,6 +54,7 @@ struct ViewMapContext
 {
     ident_t MapId {};
     mpos Hex {};
+    int32_t Radius {};
 };
 
 class Player final : public ServerEntity, public PlayerProperties
@@ -83,7 +84,8 @@ public:
     void DetachCritter();
     void SwapConnection(ptr<Player> other) noexcept;
     void SetIgnoreSendEntityProperty(nptr<const Entity> entity, nptr<const Property> prop) noexcept;
-    void SetViewMap(ptr<Map> map, mpos hex);
+    void SetViewMap(ptr<Map> map, mpos hex, int32_t radius = 0);
+    [[nodiscard]] bool IsAreaView() const noexcept;
     void ResetViewMap() noexcept;
     void ClearAllAssociations() noexcept;
 
@@ -93,6 +95,7 @@ public:
     void Send_MovingLease(ptr<const Critter> from_cr);
     void Send_Dir(ptr<const Critter> from_cr);
     void Send_AddCritter(ptr<const Critter> cr);
+    void Send_AddObservedCritter(ptr<const Critter> cr);
     void Send_RemoveCritter(ptr<const Critter> cr);
     void Send_CritterVisibilityMode(ptr<const Critter> cr, CritterVisibilityMode mode);
     void Send_LoadMap(nptr<const Map> map);
@@ -130,6 +133,7 @@ public:
     FO_ENTITY_EVENT(OnLogout);
 
 private:
+    void SendCritter(ptr<const Critter> cr, bool is_chosen, CritterVisibilityMode vis_mode, bool send_movement);
     void SendItem(NetOutBuffer& out_buf, ptr<const Item> item, bool owned, bool with_slot, bool with_inner_entities);
     void SendInnerEntities(NetOutBuffer& out_buf, ptr<const Entity> holder, bool owned);
     void SendCritterMoving(NetOutBuffer& out_buf, ptr<const Critter> cr);
@@ -142,6 +146,7 @@ private:
     std::atomic<const Entity*> _sendIgnoreEntity {};
     std::atomic<const Property*> _sendIgnoreProperty {};
     optional<ViewMapContext> _viewMap {};
+    std::atomic<int32_t> _viewMapRadius {};
     nptr<Map> _viewMapTarget {};
     EntityLock _ownedLock {};
 };

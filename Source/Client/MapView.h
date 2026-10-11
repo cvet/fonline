@@ -266,6 +266,8 @@ public:
     void SetManualScroll(ScrollDirection dirs) noexcept { _manualScroll = dirs; }
     void InstantScroll(fpos32 scroll);
     void InstantScrollTo(mpos center_hex);
+    void SetViewArea(mpos hex, int32_t radius);
+    auto IsHexInViewArea(mpos hex) const -> bool;
     void SetVisibleLayers(MapLayers layers) noexcept;
 
     // Critters
@@ -329,6 +331,9 @@ public:
     auto SaveToText(string_view save_name) const -> string;
 
 private:
+    void DrawViewAreaMask(const irect32& draw_area);
+    optional<pair<mpos, int32_t>> _viewArea {};
+    array<ipos32, GameSettings::MAP_DIR_COUNT> _viewAreaBoundary {};
     struct TransparentEggInfo
     {
         mpos Hex {};

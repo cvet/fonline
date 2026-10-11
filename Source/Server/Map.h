@@ -105,6 +105,11 @@ public:
     [[nodiscard]] span<ptr<Player>> GetSpectatorPlayers() noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] const_span<ptr<Player>> GetSpectatorPlayers() const noexcept FO_TSA_NO_ANALYSIS;
     [[nodiscard]] auto GetSpectatorPlayersForSend() -> vector<refcount_ptr<Player>>;
+    [[nodiscard]] auto GetSpectatorPlayersForSend(ident_t entity_id, mpos hex) -> vector<refcount_ptr<Player>>;
+    [[nodiscard]] bool IsSpectatorEntityVisible(ident_t player_id, ident_t entity_id);
+    void SetSpectatorArea(ptr<Player> player, mpos hex, int32_t radius);
+    void RefreshAreaSpectators(ptr<const Critter> cr, bool removed = false);
+    void RefreshAreaSpectators(ptr<const Item> item, bool removed = false);
     [[nodiscard]] auto GetStaticItem(ident_t id) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItemOnHex(mpos hex, hstring pid) const noexcept -> nptr<StaticItem>;
     [[nodiscard]] auto GetStaticItems() const noexcept -> const_span<ptr<StaticItem>>;
@@ -150,6 +155,12 @@ public:
     FO_ENTITY_EVENT(OnCheckTrapLook, ptr<Critter> /*cr*/, ptr<Item> /*item*/);
 
 private:
+    struct SpectatorArea
+    {
+        mpos Hex {};
+        int32_t Radius {};
+        unordered_set<ident_t> VisibleEntities {};
+    };
     struct Field
     {
         bool HasCritter {};
@@ -195,6 +206,7 @@ private:
     // _spectatorLock protects lock-free snapshots and mutations outside entity cover.
     // Entity-covered getters and teardown use FO_TSA_NO_ANALYSIS
     vector<ptr<Player>> _spectatorPlayers FO_TSA_GUARDED_BY(_spectatorLock) {};
+    unordered_map<ident_t, SpectatorArea> _spectatorAreas FO_TSA_GUARDED_BY(_spectatorLock) {};
     EntityLock _ownedLock {};
 };
 

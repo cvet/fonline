@@ -2619,6 +2619,7 @@ void MapView::DrawMap()
             }
 
             _engine->OnRenderMap_AfterSpritesAndFog.Fire(this, draw_area);
+            DrawViewAreaMask(draw_area);
 
             // Draw streched render target
             if (!direct_draw) {
@@ -2974,6 +2975,74 @@ auto MapView::IsOutsideArea(mpos hex) const -> bool
     }
 
     return false;
+}
+
+void MapView::SetViewArea(mpos hex, int32_t radius)
+{
+    _viewArea.reset();
+    if (radius <= 0) {
+        return;
+    }
+    FO_VERIFY_AND_THROW(_mapSize.is_valid_pos(hex) && radius <= std::numeric_limits<int16_t>::max(), "Invalid map view area", hex, radius);
+    for (int32_t dir = 0; dir < GameSettings::MAP_DIR_COUNT; dir++) {
+        ipos32 corner(hex);
+        for (int32_t step = 0; step < radius; step++) {
+            GeometryHelper::MoveHexByDirUnsafe(corner, mdir(hdir(dir)));
+        }
+        _viewAreaBoundary[numeric_cast<size_t>(dir)] = corner;
+    }
+    _viewArea.emplace(hex, radius);
+    InstantScrollTo(hex);
+}
+
+auto MapView::IsHexInViewArea(mpos hex) const -> bool
+{
+    return !_viewArea || GeometryHelper::GetDistance(_viewArea->first, hex) <= _viewArea->second;
+}
+
+void MapView::DrawViewAreaMask(const irect32& draw_area)
+{
+    if (!_viewArea) {
+        return;
+    }
+    ipos32 center = GeometryHelper::GetHexOffset(_screenRawHex, ipos32(_viewArea->first));
+    ipos32 world_center = GeometryHelper::GetHexPos(_viewArea->first);
+    array<PrimitivePoint, (GameSettings::MAP_DIR_COUNT + 1) * 2> points {};
+    array<PrimitivePoint, (GameSettings::MAP_DIR_COUNT + 1) * 2> interior {};
+    fpos32 semi_axes {};
+    fpos32 texture_offset {numeric_cast<float32_t>(draw_area.x), numeric_cast<float32_t>(draw_area.y)};
+    float32_t scale = (numeric_cast<float32_t>(_viewArea->second) + 0.5f) / numeric_cast<float32_t>(_viewArea->second);
+
+    for (const auto& boundary : _viewAreaBoundary) {
+        fpos32 ray = fpos32(GeometryHelper::GetHexOffset(_screenRawHex, boundary) - center) * scale;
+        semi_axes.x = std::max(semi_axes.x, std::abs(ray.x));
+        semi_axes.y = std::max(semi_axes.y, std::abs(ray.y));
+    }
+
+    for (size_t i = 0; i <= numeric_cast<size_t>(GameSettings::MAP_DIR_COUNT); i++) {
+        ipos32 corner = GeometryHelper::GetHexOffset(_screenRawHex, _viewAreaBoundary[i % _viewAreaBoundary.size()]);
+        fpos32 ray = fpos32(corner - center) * scale;
+        float32_t reach = 1.0f + numeric_cast<float32_t>(draw_area.width + draw_area.height) * 4.0f / std::max(1.0f, std::max(std::abs(ray.x), std::abs(ray.y)));
+        points[i * 2].PointPos = center + (ray * reach).round<int32_t>();
+        points[i * 2 + 1].PointPos = center + ray.round<int32_t>();
+        points[i * 2].PointColor = ucolor {255, 0, 0, 255};
+        points[i * 2 + 1].PointColor = ucolor {255, 0, 0, 255};
+        fpos32 normalized_ray {ray.x / semi_axes.x, ray.y / semi_axes.y};
+        points[i * 2].TexUV = normalized_ray * reach - texture_offset;
+        points[i * 2 + 1].TexUV = normalized_ray - texture_offset;
+        points[i * 2].EggData = fpos32(world_center) + ray * reach;
+        points[i * 2 + 1].EggData = fpos32(world_center) + ray;
+        interior[i * 2] = points[i * 2 + 1];
+        interior[i * 2 + 1].PointPos = center;
+        interior[i * 2 + 1].PointColor = ucolor {0, 0, 0, 255};
+        interior[i * 2 + 1].TexUV = -texture_offset;
+        interior[i * 2 + 1].EggData = fpos32(world_center);
+    }
+
+    auto effect = _engine->EffectMngr.LoadEffect(EffectUsage::Primitive, "Effects/Primitive_ViewAreaFog.fofx");
+    FO_VERIFY_AND_THROW(effect, "Bounded view fog effect is null");
+    _engine->SprMngr.DrawPoints(interior, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
+    _engine->SprMngr.DrawPoints(points, RenderPrimitiveType::TriangleStrip, &draw_area, effect);
 }
 
 void MapView::ProcessScroll(float32_t dt)
@@ -3585,7 +3654,7 @@ auto MapView::GetHexAtScreen(ipos32 screen_pos, mpos& hex, nptr<ipos32> hex_offs
     ipos32 offset;
     ipos32 raw_hex = GeometryHelper::GetHexPosCoord(screen_offset + pos - hex_center, &offset);
 
-    if (_mapSize.is_valid_pos(raw_hex)) {
+    if (_mapSize.is_valid_pos(raw_hex) && IsHexInViewArea(_mapSize.from_raw_pos(raw_hex))) {
         hex = _mapSize.from_raw_pos(raw_hex);
 
         if (hex_offset) {
@@ -3610,6 +3679,9 @@ auto MapView::GetItemAtScreen(ipos32 screen_pos, bool& item_egg, int32_t extra_r
     int32_t best_egg_sort = std::numeric_limits<int32_t>::min();
 
     auto process_sprite = [&](ptr<ItemHexView> item, ptr<const MapSprite> mspr) {
+        if (!IsHexInViewArea(item->GetHex())) {
+            return;
+        }
         int32_t sort_value = mspr->GetSortValue();
 
         if (sort_value <= best_sort && sort_value <= best_egg_sort) {
@@ -4021,6 +4093,9 @@ void MapView::SetScreenSize(isize32 size)
     }
 
     RebuildMapNow();
+    if (_viewArea) {
+        InstantScroll({});
+    }
 }
 
 void MapView::AddFastPid(hstring pid)
