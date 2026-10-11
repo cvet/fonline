@@ -2,6 +2,12 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-11 - Rebase unpublished reconciliation onto the final published master
+
+- Preserve published client tip `775c3a8cff2d2e8e4d7def6c3cf56db60ffa3ea6` and master `6a1f03880a84e097cfedee6d331178aad89e390d` as the two parents of the recreated integration merge. Rebase the unpublished example-config commit over that merge; no published commit is rewritten.
+- Review the additional master step from `5ef9334595f45522c8d580c25e22ed4556ab137b`: metadata locals, test constness/analyzer annotations, EOF cleanup and paired configuration/image-import documentation. Adopt `2026.1.28-dev`; the compatibility marker remains `0.0.70`.
+- Retain the combined branch's 472 snippets, 312 normative snippets and 160 evidence snippets rather than adopting master-only counts. Keep all five worker settings and normalize the changelog translation marker to one current source digest.
+
 ## 2026-10-11 - Refresh complete example configs after worker reconciliation
 
 - Regenerate MinimalMultiplayer, ContentShowcase and PackagingMatrix from the combined Settings.inc. Each was missing exactly five optional worker settings; retain serial mode, caps 8/2, headroom 4 and minimum batch 4. No source/runtime default changes.

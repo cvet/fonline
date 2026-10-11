@@ -17,13 +17,13 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 ### Changed
 
 - Regenerate the complete MinimalMultiplayer, ContentShowcase and PackagingMatrix configs with all five optional client batching settings. Their serial defaults and worker limits match Settings.inc.
-- Reconcile the published client-worker branch with master 2026.1.27-dev, preserving all five client batching settings and 2,576 classified native-codegen symbols. Increase the reviewed complete-corpus search capacity by 32 KiB to 1,900,544 bytes per locale; retrieval rules and overflow rejection are unchanged.
+- Reconcile the published client-worker branch with master 2026.1.28-dev, preserving all five client batching settings and 2,576 classified native-codegen symbols. Increase the reviewed complete-corpus search capacity by 32 KiB to 1,900,544 bytes per locale; retrieval rules and overflow rejection are unchanged.
 
 - Review the complete AI context after branch integration and raise its hard capacity by 32 KiB to 2,326,528 bytes. Whole-document membership and oversize rejection remain unchanged.
 
 ### Migration
 
-- Apply the intervening 2026.1.14-dev through 2026.1.27-dev migration records below. Reconfigure and rebuild matching binaries, regenerate contracts with their current experimental labels, prepare documentation outputs, and fully rebake the project. No additional database or protocol conversion is introduced by this branch reconciliation.
+- Apply the intervening 2026.1.14-dev through 2026.1.28-dev migration records below. Reconfigure and rebuild matching binaries, regenerate contracts with their current experimental labels, prepare documentation outputs, and fully rebake the project. No additional database or protocol conversion is introduced by this branch reconciliation.
 
 ## Current - 2026-10-11
 
