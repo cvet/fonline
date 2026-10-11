@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/coding-contracts/exception-safety.html
 ---
 
 # Безопасность исключений и устойчивость инвариантов движка
-<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"afb4d473355a7b4ac5947d87c2acb2a745c098bded2b3cec918e219e44f8e258"} -->
+<!-- docs-translation: {"document_id":"exception-safety","locale":"ru","source_path":"Docs/en/contributing/coding-contracts/exception-safety.md","source_sha256":"dd327906a2cedcb53105117dded22033a9699c9bbd7270efa948d4049af0f62d"} -->
 Этот документ объясняет, как движок сохраняет согласованное состояние при
 исключениях. Главное требование: исключение посреди составного изменения
 состояния (создание, регистрация, уничтожение и инвалидирование сущности,
@@ -176,6 +176,10 @@ catch (...) {
 `MapManager::DestroyMapContent`, `DestroyMapInternal` и внутренний цикл
 `DestroyLocation`, а также `EntityManager::DestroyInnerEntities` и внутренний
 цикл `DestroyCustomEntity`.
+
+Отсоединение сначала снимает связь на обоих концах, затем публикует состояния. `Critter::DetachFromCritter` уведомляет каждый конец только вне фазы уничтожения; `SendAndBroadcast_Attachments` сохраняет guard `NOT_DESTROYING`. Живой peer получает состояние без связи, а уничтожаемый конец удаляется обычным путём удаления сущности. `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` проверяет оба направления уничтожения, обычное отсоединение, native-отчёты и пакет attachments игроку, управляющему оставшимся существом.
+
+Клиентская финализация также очищает attachment IDs представления. Это кеш идентификаторов, а не владение криттерами; удаляемое представление не обязано получать последний attachment snapshot. `CritterView::OnDestroySelf` освобождает этот кеш вместе с владением инвентарём, а проверки destructor остаются включёнными. `ClientCritterFinalizationDropsAttachmentIds` закрепляет очистку без уничтожения оставшегося peer и без native-отчёта об исключении.
 
 Цикл может не сходиться по трем причинам:
 

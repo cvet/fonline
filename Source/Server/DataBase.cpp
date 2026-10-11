@@ -32,17 +32,18 @@
 //
 
 #include "DataBase.h"
+#include "DataBase-Json.h"
+#include "DataBase-Memory.h"
+#include "DataBase-Mongo.h"
+#include "DataBase-SQLite.h"
+#include "DataBaseSerialization.h"
 #include "ImGuiStuff.h"
 
 FO_DISABLE_WARNINGS_PUSH()
-#include <bson/bson.h>
 #include <json.hpp>
 FO_DISABLE_WARNINGS_POP()
 
 #include "WinApiUndef.inc"
-
-FO_CLANG_IGNORE_WARNINGS_PUSH("-Walign-mismatch")
-FO_GCC_IGNORE_WARNINGS_PUSH("-Wignored-attributes")
 
 FO_BEGIN_NAMESPACE
 
@@ -52,8 +53,6 @@ namespace osfile = winapi;
 namespace osfile = posix;
 #endif
 
-static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json;
-static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document;
 static void ValidateFiniteAnyValue(const AnyData::Value& value);
 static void ValidateFiniteAnyDocument(const AnyData::Document& doc);
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool;
@@ -68,53 +67,6 @@ static auto EncodeDbStringKey(string_view value, DataBaseStringKeyEscaping escap
 static auto DecodeDbStringKey(string_view value, DataBaseStringKeyEscaping escaping) -> string;
 static auto ShouldEscapeDbStringByte(uint8_t byte, DataBaseStringKeyEscaping escaping) noexcept -> bool;
 static auto DecodeHexDigit(char ch) -> uint8_t;
-
-static auto BsonMalloc(size_t size) noexcept -> void*
-{
-    return safe_alloc::malloc_raw(size).get();
-}
-
-static auto BsonCalloc(size_t num, size_t size) noexcept -> void*
-{
-    return safe_alloc::calloc_raw(num, size).get();
-}
-
-static auto BsonRealloc(void* mem, size_t size) noexcept -> void*
-{
-    return safe_alloc::realloc_raw(mem, size).get();
-}
-
-static void BsonFree(void* mem) noexcept
-{
-    safe_alloc::free_raw(mem);
-}
-
-// bson frees every block through the plain free member, so the aligned path must stay free()-compatible — on
-// Windows without rpmalloc it is not, which is why bson's own vtable also falls back to plain malloc
-static auto BsonAlignedAlloc(size_t alignment, size_t size) noexcept -> void*
-{
-#if FO_HAVE_RPMALLOC || !FO_WINDOWS
-    return safe_alloc::malloc_aligned_raw(size, alignment).get();
-#else
-    ignore_unused(alignment);
-
-    return safe_alloc::malloc_raw(size).get();
-#endif
-}
-
-void InitializeBsonMemory() noexcept
-{
-    static std::once_flag once;
-    std::call_once(once, [] {
-        bson_mem_vtable_t vtable {};
-        vtable.malloc = &BsonMalloc;
-        vtable.calloc = &BsonCalloc;
-        vtable.realloc = &BsonRealloc;
-        vtable.free = &BsonFree;
-        vtable.aligned_alloc = &BsonAlignedAlloc;
-        bson_mem_set_vtable(&vtable);
-    });
-}
 
 DataBase::DataBase() = default;
 
@@ -478,7 +430,7 @@ void DataBaseImpl::RestorePendingChanges()
                 }
             }
             else {
-                auto doc = JsonToAnyDocument(nlohmann::json::parse(other));
+                auto doc = DataBaseSerialization::FromJson(nlohmann::json::parse(other));
 
                 if (command == "insert") {
                     if (current_doc.Empty()) {
@@ -1220,13 +1172,13 @@ void DataBaseImpl::CommitNextChange() noexcept
 
             switch (op->Type) {
             case CommitOperationType::Insert: {
-                auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json = DataBaseSerialization::ToJson(op->Doc).dump();
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database insert oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
                 string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("insert {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
             } break;
             case CommitOperationType::Update: {
-                auto doc_json = AnyDocumentToJson(op->Doc).dump();
+                auto doc_json = DataBaseSerialization::ToJson(op->Doc).dump();
                 FO_VERIFY_AND_THROW(doc_json.find_first_of("\r\n") == string::npos, "Database update oplog JSON contains a newline and cannot be stored as a single log command", op->CollectionName, doc_json.size(), doc_json.find_first_of("\r\n"));
                 string key = EncodeStorageDbKey(op->RecordId, GetCollectionKeyType(op->CollectionName), GetStringKeyEscaping());
                 log_data += strex("update {} {} {}\n", op->CollectionName.as_str(), key, doc_json).str();
@@ -1557,238 +1509,39 @@ auto ConnectToDataBase(ptr<DataBaseSettings> db_settings, string_view connection
     if (auto options = strvex(connection_info).split(' '); !options.empty()) {
         logging::write("Connect to {} data base", options.front());
 
+#if FO_DATABASE_JSON
         if (options.front() == "JSON" && options.size() == 2) {
-            return finish_connect(CreateJsonDataBase(db_settings, options[1], std::move(panic_callback)));
+            return finish_connect(DataBaseJson::Create(db_settings, options[1], std::move(panic_callback)));
         }
-#if FO_HAVE_SQLITE
-        if (options.front() == "DbSQLite" && options.size() == 2) {
-            return finish_connect(CreateSQLiteDataBase(db_settings, options[1], std::move(panic_callback)));
+#else
+        if (options.front() == "JSON") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_JSON");
         }
 #endif
-#if FO_HAVE_MONGO
+#if FO_DATABASE_SQLITE
+        if (options.front() == "DbSQLite" && options.size() == 2) {
+            return finish_connect(DataBaseSQLite::Create(db_settings, options[1], std::move(panic_callback)));
+        }
+#else
+        if (options.front() == "DbSQLite") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_SQLITE");
+        }
+#endif
+#if FO_DATABASE_MONGO
         if (options.front() == "Mongo" && options.size() == 3) {
-            return finish_connect(CreateMongoDataBase(db_settings, options[1], options[2], std::move(panic_callback)));
+            return finish_connect(DataBaseMongo::Create(db_settings, options[1], options[2], std::move(panic_callback)));
+        }
+#else
+        if (options.front() == "Mongo") {
+            throw DataBaseException("Database provider is disabled; enable FO_DATABASE_MONGO");
         }
 #endif
         if (options.front() == "Memory" && options.size() == 1) {
-            return finish_connect(CreateMemoryDataBase(db_settings, std::move(panic_callback)));
+            return finish_connect(DataBaseMemory::Create(db_settings, std::move(panic_callback)));
         }
     }
 
     throw DataBaseException("Wrong storage options", connection_info);
-}
-
-static void ValueToBson(string_view key, const AnyData::Value& value, ptr<bson_t> bson, char escape_dot)
-{
-    strex key_buf = strex(key);
-    string_view escaped_key = escape_dot != 0 ? key_buf.replace('.', escape_dot).strv() : key;
-    string_view key_data = escaped_key;
-    int32_t key_len = numeric_cast<int32_t>(escaped_key.length());
-    auto key_ptr = make_nptr(key_data.data());
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
-
-    if (value.Type() == AnyData::ValueType::Int64) {
-        if (!bson_append_int64(aligned_bson, key_ptr.get(), key_len, value.AsInt64())) {
-            throw DataBaseException("ValueToBson bson_append_int64", key, value.AsInt64());
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Float64) {
-        float64_t double_value = value.AsDouble();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("ValueToBson non-finite double", key, double_value);
-        }
-        if (!bson_append_double(aligned_bson, key_ptr.get(), key_len, double_value)) {
-            throw DataBaseException("ValueToBson bson_append_double", key, double_value);
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Bool) {
-        if (!bson_append_bool(aligned_bson, key_ptr.get(), key_len, value.AsBool())) {
-            throw DataBaseException("ValueToBson bson_append_bool", key, value.AsBool());
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::String) {
-        string_view value_str = value.AsString();
-
-        if (!bson_append_utf8(aligned_bson, key_ptr.get(), key_len, value_str.data(), numeric_cast<int32_t>(value_str.length()))) {
-            throw DataBaseException("ValueToBson bson_append_utf8", key, value_str);
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Array) {
-        bson_t bson_arr;
-
-        if (!bson_append_array_unsafe_begin(aligned_bson, key_ptr.get(), key_len, &bson_arr)) {
-            throw DataBaseException("ValueToBson bson_append_array_unsafe_begin", key);
-        }
-
-        const auto& arr = value.AsArray();
-        size_t arr_index = 0;
-
-        for (const auto& arr_entry : arr) {
-            string arr_key = strex("{}", arr_index++);
-            ValueToBson(arr_key, arr_entry, &bson_arr, escape_dot);
-        }
-
-        if (!bson_append_array_end(aligned_bson, &bson_arr)) {
-            throw DataBaseException("ValueToBson bson_append_array_end");
-        }
-    }
-    else if (value.Type() == AnyData::ValueType::Dict) {
-        bson_t bson_doc;
-
-        if (!bson_append_document_begin(aligned_bson, key_ptr.get(), key_len, &bson_doc)) {
-            throw DataBaseException("ValueToBson bson_append_bool", key);
-        }
-
-        const auto& dict = value.AsDict();
-
-        for (auto&& [dict_key, dict_value] : dict) {
-            ValueToBson(dict_key, dict_value, &bson_doc, escape_dot);
-        }
-
-        if (!bson_append_document_end(aligned_bson, &bson_doc)) {
-            throw DataBaseException("ValueToBson bson_append_document_end");
-        }
-    }
-    else {
-        FO_UNREACHABLE_PLACE();
-    }
-}
-
-void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot)
-{
-    for (auto&& [doc_key, doc_value] : doc) {
-        ValueToBson(doc_key, doc_value, bson, escape_dot);
-    }
-}
-
-static auto BsonToValue(bson_iter_t* iter, char escape_dot) -> AnyData::Value
-{
-    auto value = make_ptr(bson_iter_value(iter));
-
-    if (value->value_type == BSON_TYPE_INT32) {
-        return numeric_cast<int64_t>(value->value.v_int32);
-    }
-    else if (value->value_type == BSON_TYPE_INT64) {
-        return value->value.v_int64;
-    }
-    else if (value->value_type == BSON_TYPE_DOUBLE) {
-        float64_t double_value = value->value.v_double;
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("BsonToValue non-finite double", bson_iter_key(iter), double_value);
-        }
-
-        return double_value;
-    }
-    else if (value->value_type == BSON_TYPE_BOOL) {
-        return value->value.v_bool;
-    }
-    else if (value->value_type == BSON_TYPE_UTF8) {
-        return string(value->value.v_utf8.str, value->value.v_utf8.len);
-    }
-    else if (value->value_type == BSON_TYPE_ARRAY) {
-        bson_iter_t arr_iter;
-
-        if (!bson_iter_recurse(iter, &arr_iter)) {
-            throw DataBaseException("BsonToValue bson_iter_recurse");
-        }
-
-        AnyData::Array arr;
-
-        while (bson_iter_next(&arr_iter)) {
-            auto arr_entry = BsonToValue(&arr_iter, escape_dot);
-            arr.EmplaceBack(std::move(arr_entry));
-        }
-
-        return std::move(arr);
-    }
-    else if (value->value_type == BSON_TYPE_DOCUMENT) {
-        bson_iter_t doc_iter;
-
-        if (!bson_iter_recurse(iter, &doc_iter)) {
-            throw DataBaseException("BsonToValue bson_iter_recurse");
-        }
-
-        AnyData::Dict dict;
-
-        while (bson_iter_next(&doc_iter)) {
-            auto key = make_ptr(bson_iter_key(&doc_iter));
-            string unescaped_key = escape_dot != 0 ? strex(key.get()).replace(escape_dot, '.') : string(key.get());
-            auto dict_value = BsonToValue(&doc_iter, escape_dot);
-            dict.Emplace(std::move(unescaped_key), std::move(dict_value));
-        }
-
-        return std::move(dict);
-    }
-    else {
-        throw DataBaseException("BsonToValue Invalid type", value->value_type);
-    }
-}
-
-void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot)
-{
-    bson_iter_t iter;
-    auto aligned_bson = std::assume_aligned<BSON_ALIGN_OF_PTR>(bson.get());
-
-    if (!bson_iter_init(&iter, aligned_bson)) {
-        throw DataBaseException("BsonToDocument bson_iter_init");
-    }
-
-    while (bson_iter_next(&iter)) {
-        auto key = make_ptr(bson_iter_key(&iter));
-        string_view key_text {key.get()};
-
-        if (key_text == "_id") {
-            continue;
-        }
-
-        auto value = BsonToValue(&iter, escape_dot);
-        string unescaped_key = escape_dot != 0 ? strex(key_text).replace(escape_dot, '.').str() : string(key_text);
-        doc.Emplace(std::move(unescaped_key), std::move(value));
-    }
-}
-
-static auto AnyValueToJson(const AnyData::Value& value) -> nlohmann::json
-{
-    switch (value.Type()) {
-    case AnyData::ValueType::Int64:
-        return value.AsInt64();
-    case AnyData::ValueType::Float64: {
-        float64_t double_value = value.AsDouble();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("AnyValueToJson non-finite double", double_value);
-        }
-
-        return double_value;
-    }
-    case AnyData::ValueType::Bool:
-        return value.AsBool();
-    case AnyData::ValueType::String:
-        return string(value.AsString());
-    case AnyData::ValueType::Array: {
-        auto arr_json = nlohmann::json::array();
-
-        for (const auto& arr_entry : value.AsArray()) {
-            arr_json.emplace_back(AnyValueToJson(arr_entry));
-        }
-
-        return arr_json;
-    }
-    case AnyData::ValueType::Dict: {
-        auto dict_json = nlohmann::json::object();
-
-        for (auto&& [dict_key, dict_value] : value.AsDict()) {
-            auto dict_key_cstr = make_ptr(dict_key.c_str());
-            dict_json[dict_key_cstr.get()] = AnyValueToJson(dict_value);
-        }
-
-        return dict_json;
-    }
-    }
-
-    throw DataBaseException("Invalid AnyData value type for pending database json", static_cast<int>(value.Type()));
 }
 
 static void ValidateFiniteAnyValue(const AnyData::Value& value)
@@ -1823,75 +1576,6 @@ static void ValidateFiniteAnyDocument(const AnyData::Document& doc)
     for (const auto& doc_entry : doc) {
         ValidateFiniteAnyValue(doc_entry.second);
     }
-}
-
-static auto JsonToAnyValue(const nlohmann::json& value) -> AnyData::Value
-{
-    if (value.is_number_integer() || value.is_number_unsigned()) {
-        return numeric_cast<int64_t>(value.get<int64_t>());
-    }
-    if (value.is_number_float()) {
-        float64_t double_value = value.get<float64_t>();
-
-        if (!std::isfinite(double_value)) {
-            throw DataBaseException("JsonToAnyValue non-finite double", double_value);
-        }
-
-        return double_value;
-    }
-    if (value.is_boolean()) {
-        return value.get<bool>();
-    }
-    if (value.is_string()) {
-        return value.get<string>();
-    }
-    if (value.is_array()) {
-        AnyData::Array arr;
-
-        for (const auto& arr_entry : value) {
-            arr.EmplaceBack(JsonToAnyValue(arr_entry));
-        }
-
-        return std::move(arr);
-    }
-    if (value.is_object()) {
-        AnyData::Dict dict;
-
-        for (auto&& [dict_key, dict_value] : value.items()) {
-            dict.Emplace(string(dict_key), JsonToAnyValue(dict_value));
-        }
-
-        return std::move(dict);
-    }
-
-    throw DataBaseException("Invalid pending database json value type");
-}
-
-static auto AnyDocumentToJson(const AnyData::Document& doc) -> nlohmann::json
-{
-    auto doc_json = nlohmann::json::object();
-
-    for (auto&& [doc_key, doc_value] : doc) {
-        auto doc_key_cstr = make_ptr(doc_key.c_str());
-        doc_json[doc_key_cstr.get()] = AnyValueToJson(doc_value);
-    }
-
-    return doc_json;
-}
-
-static auto JsonToAnyDocument(const nlohmann::json& doc_json) -> AnyData::Document
-{
-    if (!doc_json.is_object()) {
-        throw DataBaseException("Invalid pending database json document");
-    }
-
-    AnyData::Document doc;
-
-    for (auto&& [doc_key, doc_value] : doc_json.items()) {
-        doc.Emplace(string(doc_key), JsonToAnyValue(doc_value));
-    }
-
-    return doc;
 }
 
 static auto AreDocumentsEqual(const AnyData::Document& left, const AnyData::Document& right) -> bool
@@ -2174,6 +1858,3 @@ static auto DecodeHexDigit(char ch) -> uint8_t
 }
 
 FO_END_NAMESPACE
-
-FO_GCC_IGNORE_WARNINGS_POP()
-FO_CLANG_IGNORE_WARNINGS_POP()

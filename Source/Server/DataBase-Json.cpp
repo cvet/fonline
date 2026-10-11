@@ -31,13 +31,15 @@
 // SOFTWARE.
 //
 
-#include "DataBase.h"
+#include "DataBase-Json.h"
+
+#if FO_DATABASE_JSON
 
 FO_DISABLE_WARNINGS_PUSH()
-#include <bson/bson.h>
 #include <json.hpp>
 FO_DISABLE_WARNINGS_POP()
 
+#include "DataBaseSerialization.h"
 #include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
@@ -168,22 +170,10 @@ protected:
             throw DataBaseException("DbJson File exists for inserting", path);
         }
 
-        bson_t bson;
-        bson_init(&bson);
-        DocumentToBson(doc, &bson);
-
-        size_t length = 0;
-        auto json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &length));
-
-        if (!json_lookup) {
-            throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
-        }
-
-        auto json = make_unique_del_ptr(json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
-        bson_destroy(&bson);
-
-        auto pretty_json = nlohmann::json::parse(json.get());
+        auto pretty_json = DataBaseSerialization::ToJson(doc);
         auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+
+        FO_VERIFY_AND_THROW(pretty_json_dump.size() <= DataBaseSerialization::MAX_DOCUMENT_BYTES, "Database document size limit exceeded", pretty_json_dump.size());
 
         string dir = strex(path).extract_dir().str();
 
@@ -214,33 +204,21 @@ protected:
 
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, GetCollectionKeyType(collection_name)));
 
-        auto json = fs::read_file(path);
+        auto json = fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
 
         if (!json) {
             throw DataBaseException("DbJson Can't open file for reading", path);
         }
 
-        bson_t bson;
-        bson_error_t error;
+        AnyData::Document existing = DataBaseSerialization::FromJsonText(string_view {json->data(), json->size()});
 
-        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
-            throw DataBaseException("DbJson bson_init_from_json", path);
+        for (const auto& [key, value] : doc) {
+            existing.Assign(key, value.Copy());
         }
 
-        DocumentToBson(doc, &bson);
+        auto pretty_json_dump = DataBaseSerialization::ToJson(existing).dump(_jsonIndent > 0 ? _jsonIndent : -1);
 
-        size_t new_length = 0;
-        auto new_json_lookup = make_nptr(bson_as_canonical_extended_json(&bson, &new_length));
-
-        if (!new_json_lookup) {
-            throw DataBaseException("DbJson bson_as_canonical_extended_json", path);
-        }
-
-        auto new_json = make_unique_del_ptr(new_json_lookup, [](ptr<char> text) FO_DEFERRED { bson_free(text.get()); });
-        bson_destroy(&bson);
-
-        auto pretty_json = nlohmann::json::parse(new_json.get());
-        auto pretty_json_dump = pretty_json.dump(_jsonIndent > 0 ? _jsonIndent : -1);
+        FO_VERIFY_AND_THROW(pretty_json_dump.size() <= DataBaseSerialization::MAX_DOCUMENT_BYTES, "Database document size limit exceeded", pretty_json_dump.size());
 
         string dir = strex(path).extract_dir().str();
 
@@ -278,24 +256,17 @@ private:
     AnyData::Document ReadRecordFile(hstring collection_name, DataBaseKeyType key_type, const DataBaseKey& id) const FO_TSA_REQUIRES(_storageLocker)
     {
         string path = strex("{}/{}/{}.json", _storageDir, collection_name, FormatJsonStorageDbKey(id, key_type));
-        auto json = fs::read_file(path);
+        auto json = fs::read_file_bounded(path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
 
         if (!json) {
+            if (fs::exists(path)) {
+                throw DataBaseException("DbJson Can't read a bounded record file", path, DataBaseSerialization::MAX_DOCUMENT_BYTES);
+            }
+
             return {};
         }
 
-        bson_t bson;
-        bson_error_t error;
-
-        if (!bson_init_from_json(&bson, json->c_str(), numeric_cast<ssize_t>(json->length()), &error)) {
-            throw DataBaseException("DbJson bson_init_from_json", path);
-        }
-
-        auto destroy_bson = scope_exit([&bson]() noexcept { bson_destroy(&bson); });
-
-        AnyData::Document doc;
-        BsonToDocument(&bson, doc);
-        return doc;
+        return DataBaseSerialization::FromJsonText(string_view {json->data(), json->size()});
     }
 
     static auto FormatJsonStorageDbKey(const DataBaseKey& key, DataBaseKeyType key_type) -> string
@@ -327,10 +298,10 @@ private:
     int32_t _jsonIndent {};
 };
 
-auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto DataBaseJson::Create(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    InitializeBsonMemory();
     return safe_alloc::make_unique<DbJson>(db_settings, storage_dir, std::move(panic_callback));
 }
 
 FO_END_NAMESPACE
+#endif

@@ -57,7 +57,7 @@ class Map final : public ServerEntity, public EntityWithProto, public MapPropert
 {
 public:
     Map() = delete;
-    Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props = nullptr) noexcept;
+    Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props = nullptr);
     Map(const Map&) = delete;
     Map(Map&&) noexcept = delete;
     auto operator=(const Map&) = delete;
@@ -165,7 +165,7 @@ private:
         bool ManualBlockFull {};
     };
 
-    static auto CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
+    static auto CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>;
 
     auto GetStaticField(mpos hex) const noexcept -> const StaticMap::Field&;
     void RebuildStaticOverlay();

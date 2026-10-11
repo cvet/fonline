@@ -65,6 +65,8 @@ if(FO_ANGELSCRIPT_SCRIPTING)
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptContext.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDict.h"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDocumentMigrations.cpp"
+        "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDocumentMigrations.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.cpp"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptDebugger.h"
         "${FO_ANGELSCRIPT_SCRIPTING_DIR}/AngelScriptEntity.cpp"

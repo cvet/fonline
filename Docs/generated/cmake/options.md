@@ -63,6 +63,9 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7"></a>
 - [`entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7`](../../en/reference/cmake/options.md#entry-cmake-option-fo-string-inline-capacity-f76fb3bdc7)
 
+<a id="entry-cmake-option-fo-trace-categories-728085cc69"></a>
+- [`entry-cmake-option-fo-trace-categories-728085cc69`](../../en/reference/cmake/options.md#entry-cmake-option-fo-trace-categories-728085cc69)
+
 <a id="entry-cmake-option-fo-msan-libcxx-root-645fe5d9af"></a>
 - [`entry-cmake-option-fo-msan-libcxx-root-645fe5d9af`](../../en/reference/cmake/options.md#entry-cmake-option-fo-msan-libcxx-root-645fe5d9af)
 
@@ -96,11 +99,44 @@ The canonical generated reference moved to locale-specific paths.
 <a id="entry-cmake-option-fo-disable-rpmalloc-32bd067e30"></a>
 - [`entry-cmake-option-fo-disable-rpmalloc-32bd067e30`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-rpmalloc-32bd067e30)
 
-<a id="entry-cmake-option-fo-disable-mongo-93a97ad4ec"></a>
-- [`entry-cmake-option-fo-disable-mongo-93a97ad4ec`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-mongo-93a97ad4ec)
+<a id="entry-cmake-option-fo-data-source-dat-e7c4879938"></a>
+- [`entry-cmake-option-fo-data-source-dat-e7c4879938`](../../en/reference/cmake/options.md#entry-cmake-option-fo-data-source-dat-e7c4879938)
 
-<a id="entry-cmake-option-fo-disable-sqlite-9c7adf45d0"></a>
-- [`entry-cmake-option-fo-disable-sqlite-9c7adf45d0`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-sqlite-9c7adf45d0)
+<a id="entry-cmake-option-fo-data-source-zip-43c475dd2b"></a>
+- [`entry-cmake-option-fo-data-source-zip-43c475dd2b`](../../en/reference/cmake/options.md#entry-cmake-option-fo-data-source-zip-43c475dd2b)
+
+<a id="entry-cmake-option-fo-database-json-227ffaff64"></a>
+- [`entry-cmake-option-fo-database-json-227ffaff64`](../../en/reference/cmake/options.md#entry-cmake-option-fo-database-json-227ffaff64)
+
+<a id="entry-cmake-option-fo-database-sqlite-68593d3c05"></a>
+- [`entry-cmake-option-fo-database-sqlite-68593d3c05`](../../en/reference/cmake/options.md#entry-cmake-option-fo-database-sqlite-68593d3c05)
+
+<a id="entry-cmake-option-fo-database-mongo-14a49240d3"></a>
+- [`entry-cmake-option-fo-database-mongo-14a49240d3`](../../en/reference/cmake/options.md#entry-cmake-option-fo-database-mongo-14a49240d3)
+
+<a id="entry-cmake-option-fo-image-frm-1dfd9fbf0c"></a>
+- [`entry-cmake-option-fo-image-frm-1dfd9fbf0c`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-frm-1dfd9fbf0c)
+
+<a id="entry-cmake-option-fo-image-rix-5a661d533d"></a>
+- [`entry-cmake-option-fo-image-rix-5a661d533d`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-rix-5a661d533d)
+
+<a id="entry-cmake-option-fo-image-art-d16640554e"></a>
+- [`entry-cmake-option-fo-image-art-d16640554e`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-art-d16640554e)
+
+<a id="entry-cmake-option-fo-image-spr-469e87c5a8"></a>
+- [`entry-cmake-option-fo-image-spr-469e87c5a8`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-spr-469e87c5a8)
+
+<a id="entry-cmake-option-fo-image-zar-f209d3213d"></a>
+- [`entry-cmake-option-fo-image-zar-f209d3213d`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-zar-f209d3213d)
+
+<a id="entry-cmake-option-fo-image-til-6ade91ccfc"></a>
+- [`entry-cmake-option-fo-image-til-6ade91ccfc`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-til-6ade91ccfc)
+
+<a id="entry-cmake-option-fo-image-mos-1a1a47be08"></a>
+- [`entry-cmake-option-fo-image-mos-1a1a47be08`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-mos-1a1a47be08)
+
+<a id="entry-cmake-option-fo-image-bam-2538e775b6"></a>
+- [`entry-cmake-option-fo-image-bam-2538e775b6`](../../en/reference/cmake/options.md#entry-cmake-option-fo-image-bam-2538e775b6)
 
 <a id="entry-cmake-option-fo-disable-asio-849d7e6a1f"></a>
 - [`entry-cmake-option-fo-disable-asio-849d7e6a1f`](../../en/reference/cmake/options.md#entry-cmake-option-fo-disable-asio-849d7e6a1f)

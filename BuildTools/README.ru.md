@@ -5,7 +5,7 @@ permalink: /BuildTools/README.ru.html
 locale: ru
 document_id: buildtools-readme
 ---
-<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"875f60ff2201c7fa0d0682d5939cbe42bfefda52fd5fb012a08ba6bc85cd50cb"} -->
+<!-- docs-translation: {"document_id":"buildtools-readme","locale":"ru","source_path":"BuildTools/README.md","source_sha256":"225cd8b63ac134e516a3602ae86ded7636c61c9bfbc1f9ba18110814714ddc41"} -->
 # Инструменты сборки FOnline Engine
 
 ## Скрипты сборки
@@ -200,7 +200,7 @@ SDK используйте [Проектные зависимости](../Docs/r
 - `docs_reference.py` отображает каноническую модель API в совместимый с GitHub Pages Markdown в `Docs/generated/api/`.
 - `docs_metadata.py` строго декодирует project-baked `Metadata.fometa-server/client`, проверяет согласованность обеих сторон и записывает/проверяет принадлежащий проекту JSON/Markdown catalog remote calls.
 - `docs_inventory.py` записывает/проверяет независимый inventory export methods, native tests и setting declarations.
-- `docs_localization.py` обеспечивает полное двуязычное покрытие, проверяет glossary, стабильные locale targets, нормализованные English hashes, точные переведённые fences и language-preserving links, затем записывает/проверяет `Docs/generated/translation-status.json`.
+- `docs_localization.py` обеспечивает полное двуязычное покрытие, проверяет glossary, стабильные locale targets, нормализованные English hashes, точные переведённые fences и language-preserving links, затем записывает/проверяет `docs-manifest.json#/translation_status`.
 - `docs_description_translations.py` инвентаризирует обращённый к читателю текст в 20 генерируемых контрактных моделях, применяет проверенный русский overlay со стабильными ID, отклоняет повторяющиеся, неизвестные, устаревшие, меняющие тип или код записи и записывает/проверяет `Docs/generated/description-translation-status.json`. Отсутствующие записи остаются явными, пока семантический каталог не сможет перейти из `registered-translations-current` в `complete`.
 - `docs_ai_delivery.py` проецирует `Docs/documentation-manifest.json` и канонический Markdown в корневые `llms.txt`, ограниченный `llms-full.txt` и публичный `docs-manifest.json`; он нормализует content hashes и отклоняет stale, oversized или non-deterministic output.
 - `docs_site.py` разрешает manifest-owned stable document IDs в проверенные localized Jekyll navigation data, ограниченные статические English/Russian search indexes и публичный version/locale/legacy-route catalog; он отклоняет неизвестные, дублированные или пропущенные top-level pages, route collisions, неоднозначные canonical targets, отсутствующие locale pairs, cross-locale search ownership и oversized или stale output.
@@ -748,12 +748,12 @@ forms AngelScript, которые clang-format разбирает как C++. П
 
 ## Срок временной совместимости
 
-Код, распознающий старые сборки или данные, помечается `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` в native-части либо `[TemporaryCompat("Id", "YYYY-MM-DD")]` в managed-части; см. [временную совместимость](../Docs/ru/reference/native/essentials.md#временная-совместимость). `temporary_compat.py` сообщает все места с данным идентификатором и падает после истечения срока:
+Native/managed обработка старых сборок и временные отказы/исключения CMake используют общий датированный маркер; все три формы перечислены во [временной совместимости](../Docs/ru/reference/native/essentials.md#временная-совместимость). `temporary_compat.py` сообщает все места с данным идентификатором и падает после истечения срока:
 
 ```bash
-python3 BuildTools/temporary_compat.py                                        # the engine Source tree
-python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
-python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+python3 BuildTools/temporary_compat.py # engine Source and BuildTools/cmake, including inactive branches
+python3 Engine/BuildTools/temporary_compat.py Engine/Source Engine/BuildTools/cmake CMakeLists.txt SourceExt Scripts
+python3 BuildTools/temporary_compat.py --report # every marker and the days it has left
 ```
 
 `--today YYYY-MM-DD` фиксирует дату для проверки. Сценарию достаточно стандартной библиотеки Python; его тесты находятся в `tests/test_temporary_compat.py`, а workflow `validate` запускает и тесты, и саму проверку.

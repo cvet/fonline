@@ -13,6 +13,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/../helpers/EngineVersion.cmake")
 ReadEngineVersion("${engineVersionRoot}" FO_ENGINE_VERSION engineGitDependencies)
 message(STATUS "FOnline Engine version: ${FO_ENGINE_VERSION}")
 
+ComputeBakingConfigHash(FO_BAKING_CONFIG_HASH)
+StatusMessage("Baking configuration: ${FO_BAKING_CONFIG_HASH}")
+
 AppendList(FO_CODEGEN_COMMAND_ARGS -maincfg "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -buildhash "${FO_BUILD_HASH}")
 AppendList(FO_CODEGEN_COMMAND_ARGS -genoutput "${CMAKE_CURRENT_BINARY_DIR}/GeneratedSource")
@@ -41,6 +44,7 @@ else()
 endif()
 
 AppendList(FO_CODEGEN_COMMAND_ARGS
+	-enginedefine "FO_BAKING_CONFIG_HASH=\"${FO_BAKING_CONFIG_HASH}\""
 	-enginedefine "FO_MAIN_CONFIG=\"${FO_MAIN_CONFIG}\""
 	-enginedefine "FO_GEOMETRY=${foGeometryValue}"
 	-enginedefine "FO_MAP_HEX_WIDTH=${FO_MAP_HEX_WIDTH}"

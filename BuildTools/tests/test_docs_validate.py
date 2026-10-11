@@ -33,6 +33,7 @@ import docs_helper_cli  # noqa: E402
 import docs_image_format  # noqa: E402
 import docs_inventory  # noqa: E402
 import docs_localization  # noqa: E402
+import documentation_metadata  # noqa: E402
 import docs_map_format  # noqa: E402
 import docs_model_format  # noqa: E402
 import docs_native_extension  # noqa: E402
@@ -50,9 +51,11 @@ import docs_video  # noqa: E402
 class DocumentationValidatorTests(unittest.TestCase):
     def _create_tree(self) -> tuple[tempfile.TemporaryDirectory[str], Path]:
         temporary_directory = tempfile.TemporaryDirectory()
-        root = Path(temporary_directory.name)
+        root = Path(temporary_directory.name).resolve()
+        (root / "Docs/Site").mkdir(parents=True)
+        (root / documentation_metadata.BUILD_OUTPUT_DIR).mkdir(parents=True)
         (root / "VERSION").write_text("2026.1.1-dev\n", encoding="utf-8")
-        (root / "Docs").mkdir()
+        (root / "Docs").mkdir(exist_ok=True)
         (root / "BuildTools").mkdir()
         (root / docs_description_translations.DEFAULT_CATALOG).write_text(
             json.dumps(
@@ -82,20 +85,21 @@ class DocumentationValidatorTests(unittest.TestCase):
             'SETTING(vector<string>, Baking, ProtoFileExtensions, "fopro");\n',
             encoding="utf-8",
         )
-        (root / "CNAME").write_text("fonline.ru\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, "CNAME")).write_text("fonline.ru\n", encoding="utf-8")
         (root / ".github/workflows").mkdir(parents=True)
-        (root / ".ruby-version").write_text("3.3.4\n", encoding="utf-8")
-        (root / "Gemfile").write_text(
+        (documentation_metadata.output_path(root, ".ruby-version")).write_text("3.3.4\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, "Gemfile")).write_text(
             'source "https://rubygems.org"\n\ngem "github-pages", "= 232", group: :jekyll_plugins\n',
             encoding="utf-8",
         )
-        (root / "_config.yml").write_text(
+        (root / "Docs/Site/_config.yml").write_text(
             "url: https://fonline.ru\n"
             'baseurl: ""\n'
             "repository: cvet/fonline\n"
             "theme: jekyll-theme-slate\n"
             "strict_front_matter: true\n"
             "layouts_dir: Docs/Site/Layouts\n"
+            "includes_dir: .\n"
             "data_dir: Docs/Site/Data\n"
             "plugins:\n"
             "  - jekyll-relative-links\n"
@@ -114,7 +118,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             "Docs/Site/Assets/images/fonline-mark.png": "fixture image\n",
         }
         for relative_path, content in fixture_assets.items():
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
         (root / ".github/workflows/validate.yml").write_text(
@@ -204,16 +208,17 @@ class DocumentationValidatorTests(unittest.TestCase):
             "    - run: python3 BuildTools/docs_snippets.py --check --external\n"
             "  documentation-site:\n"
             "    steps:\n"
-            "    - uses: actions/jekyll-build-pages@v1\n"
+            "    - uses: ruby/setup-ruby@v1\n"
             "      with:\n"
-            "        destination: ./_site\n"
-            "    - run: python3 BuildTools/docs_site_artifact.py --site-dir _site "
+            "        working-directory: Workspace/Documentation\n"
+            "    - run: python3 BuildTools/docs_site_build.py --site-dir Workspace/DocumentationSite\n"
+            "    - run: python3 BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite "
             "--json-output Workspace/docs-site-artifact-report.json\n"
             "    - run: npx playwright install --with-deps chromium\n"
             "    - run: npm run audit\n"
             "    - uses: actions/upload-artifact@v4\n"
             "      with:\n"
-            "        path: _site/\n",
+            "        path: Workspace/DocumentationSite/\n",
             encoding="utf-8",
         )
         return temporary_directory, root
@@ -251,14 +256,14 @@ class DocumentationValidatorTests(unittest.TestCase):
                 "production_url": "https://fonline.ru",
                 "repository": "cvet/fonline",
                 "theme": "jekyll-theme-slate",
-                "cname": "CNAME",
-                "config": "_config.yml",
-                "gemfile": "Gemfile",
-                "ruby_version_file": ".ruby-version",
+                "cname": "Workspace/Documentation/CNAME",
+                "config": "Docs/Site/_config.yml",
+                "gemfile": "Workspace/Documentation/Gemfile",
+                "ruby_version_file": "Workspace/Documentation/.ruby-version",
                 "ruby_version": "3.3.4",
                 "pages_gem_version": "232",
                 "workflow": ".github/workflows/validate.yml",
-                "site_artifact": "_site",
+                "site_artifact": "Workspace/DocumentationSite",
                 "source": {
                     "status": "pending-admin-verification",
                     "branch": None,
@@ -1197,7 +1202,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         model_format_source_paths.discard(docs_cmake.DEFAULT_MANIFEST)
         for relative_path in sorted(model_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
         model_format_model_path = root / docs_model_format.DEFAULT_MODEL
@@ -1241,7 +1246,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     )
         for relative_path in sorted(text_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             if relative_path.startswith("Source/Scripting/"):
                 target_path.write_text(
@@ -1297,7 +1302,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     )
         for relative_path in sorted(effect_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             if relative_path.startswith("Source/Scripting/"):
                 existing = (
@@ -1353,7 +1358,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     image_format_source_paths.add(source["path"])
         for relative_path in sorted(image_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_text(
                 source_path.read_text(encoding="utf-8"), encoding="utf-8"
@@ -1393,7 +1398,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     )
         for relative_path in sorted(particle_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             if relative_path == docs_cli.DEFAULT_SOURCE:
                 continue
@@ -1451,7 +1456,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     font_format_source_paths.add(source["path"])
         for relative_path in sorted(font_format_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             source_text = source_path.read_text(encoding="utf-8")
             if relative_path.startswith("Source/"):
@@ -1549,7 +1554,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             ),
         }
         for relative_path in sorted(audio_source_paths):
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             source_text = audio_fixtures.get(relative_path, "")
             source_text += "\n".join(
@@ -1569,7 +1574,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             exist_ok=True,
         )
         for relative_path in audio_outputs["native_test_files"]:
-            native_test_path = root / relative_path
+            native_test_path = documentation_metadata.output_path(root, relative_path)
             native_test_path.parent.mkdir(parents=True, exist_ok=True)
             if not native_test_path.exists():
                 native_test_path.write_text("// Audio fixture.\n", encoding="utf-8")
@@ -1648,7 +1653,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             ),
         }
         for relative_path in sorted(video_source_paths):
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             source_text = video_fixtures.get(relative_path, "")
             source_text += "\n".join(
@@ -1696,7 +1701,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             ai_control_source_paths.update(source["path"] for source in entry["source"])
         for relative_path in sorted(ai_control_source_paths):
             source_path = BUILDTOOLS_DIR.parent / relative_path
-            target_path = root / relative_path
+            target_path = documentation_metadata.output_path(root, relative_path)
             target_path.parent.mkdir(parents=True, exist_ok=True)
             target_path.write_text(source_path.read_text(encoding="utf-8"), encoding="utf-8")
         ai_control_model_path = root / docs_ai_control_protocol.DEFAULT_MODEL
@@ -1737,7 +1742,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     "caption": diagram_caption,
                     "width": 640,
                     "height": 360,
-                    "source_paths": ["Source/example.txt", "CNAME"],
+                    "source_paths": ["Source/example.txt", "Docs/Site/_config.yml"],
                     "bands": [
                         {
                             "x": 20,
@@ -1806,7 +1811,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             encoding="utf-8",
         )
         for relative_path, content in docs_diagrams.render_outputs(root).items():
-            output_path = root / relative_path
+            output_path = documentation_metadata.output_path(root, relative_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
 
@@ -1865,7 +1870,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                     },
                     "source_paths": [
                         "Source/example.txt",
-                        "CNAME",
+                        "Docs/Site/_config.yml",
                         "Docs/Site/Layouts/default.html",
                     ],
                     "recapture_triggers": [
@@ -1906,7 +1911,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             encoding="utf-8",
         )
         for relative_path, content in docs_screenshots.render_outputs(root).items():
-            output_path = root / relative_path
+            output_path = documentation_metadata.output_path(root, relative_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8")
 
@@ -1967,16 +1972,17 @@ class DocumentationValidatorTests(unittest.TestCase):
             json.dumps(snippet_report, indent=2, ensure_ascii=True) + "\n",
             encoding="utf-8",
         )
-        (root / docs_localization.DEFAULT_OUTPUT).write_text(
-            docs_localization.render_localization_status(root),
-            encoding="utf-8",
-        )
+        documentation_metadata.write_section(root, docs_localization.DEFAULT_OUTPUT,
+                                             docs_localization.generate_localization_status(root))
         (root / docs_description_translations.DEFAULT_OUTPUT).write_text(
             docs_description_translations.render_status(root),
             encoding="utf-8",
         )
         for relative_path, content in docs_site.render_outputs(root).items():
-            output_path = root / relative_path
+            if relative_path == documentation_metadata.ROUTING_OUTPUT:
+                documentation_metadata.write_section(root, relative_path, json.loads(content))
+                continue
+            output_path = documentation_metadata.output_path(root, relative_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
         primary_document_id = start_document_ids[0] if start_document_ids else "missing"
@@ -2064,7 +2070,7 @@ class DocumentationValidatorTests(unittest.TestCase):
             encoding="utf-8",
         )
         for relative_path, content in docs_ai_delivery.render_outputs(root).items():
-            (root / relative_path).write_text(content, encoding="utf-8", newline="\n")
+            documentation_metadata.output_path(root, relative_path).write_text(content, encoding="utf-8", newline="\n")
 
     def _document(self, document_id: str = "guide") -> dict[str, object]:
         return {
@@ -2146,12 +2152,13 @@ class DocumentationValidatorTests(unittest.TestCase):
             + "\n\n# Руководство\n",
             encoding="utf-8",
         )
-        (root / docs_localization.DEFAULT_OUTPUT).write_text(
-            docs_localization.render_localization_status(root),
-            encoding="utf-8",
-        )
+        documentation_metadata.write_section(root, docs_localization.DEFAULT_OUTPUT,
+                                             docs_localization.generate_localization_status(root))
         for relative_path, content in docs_site.render_outputs(root).items():
-            output_path = root / relative_path
+            if relative_path == documentation_metadata.ROUTING_OUTPUT:
+                documentation_metadata.write_section(root, relative_path, json.loads(content))
+                continue
+            output_path = documentation_metadata.output_path(root, relative_path)
             output_path.parent.mkdir(parents=True, exist_ok=True)
             output_path.write_text(content, encoding="utf-8", newline="\n")
         for relative_path, content in docs_ai_delivery.render_outputs(root).items():
@@ -2191,7 +2198,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         temporary_directory, root = self._create_tree()
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
-        (root / "CNAME").write_text("docs.example.com\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, "CNAME")).write_text("docs.example.com\n", encoding="utf-8")
         self._write_manifest(root, {"Docs/Guide.md": self._document()})
 
         errors, _ = docs_validate.validate_documentation(root)
@@ -2201,6 +2208,7 @@ class DocumentationValidatorTests(unittest.TestCase):
     def test_site_source_directories_must_match_documentation_layout(self) -> None:
         for key, expected, obsolete in (
             ("layouts_dir", "Docs/Site/Layouts", "_layouts"),
+            ("includes_dir", ".", "_includes"),
             ("data_dir", "Docs/Site/Data", "_data"),
         ):
             with self.subTest(key=key):
@@ -2208,7 +2216,7 @@ class DocumentationValidatorTests(unittest.TestCase):
                 self.addCleanup(temporary_directory.cleanup)
                 (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
                 self._write_manifest(root, {"Docs/Guide.md": self._document()})
-                config_path = root / "_config.yml"
+                config_path = root / "Docs/Site/_config.yml"
                 config = config_path.read_text(encoding="utf-8")
                 config_path.write_text(
                     config.replace(f"{key}: {expected}", f"{key}: {obsolete}"),
@@ -2226,7 +2234,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         temporary_directory, root = self._create_tree()
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
-        (root / "Gemfile").write_text('gem "github-pages", "= 231"\n', encoding="utf-8")
+        (documentation_metadata.output_path(root, "Gemfile")).write_text('gem "github-pages", "= 231"\n', encoding="utf-8")
         self._write_manifest(root, {"Docs/Guide.md": self._document()})
 
         errors, _ = docs_validate.validate_documentation(root)
@@ -2282,7 +2290,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         errors, _ = docs_validate.validate_documentation(root)
 
         self.assertIn(
-            "GitHub Pages validation workflow is missing: uses: actions/jekyll-build-pages@v1",
+            "GitHub Pages validation workflow is missing: uses: ruby/setup-ruby@v1",
             errors,
         )
 
@@ -2321,7 +2329,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         workflow_path = root / ".github/workflows/validate.yml"
         workflow_path.write_text(
             workflow_path.read_text(encoding="utf-8").replace(
-                "    - run: python3 BuildTools/docs_site_artifact.py --site-dir _site "
+                "    - run: python3 BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite "
                 "--json-output Workspace/docs-site-artifact-report.json\n",
                 "",
             ),
@@ -2561,7 +2569,7 @@ class DocumentationValidatorTests(unittest.TestCase):
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
         self._write_manifest(root, {"Docs/Guide.md": self._document()})
-        (root / docs_ai_delivery.DEFAULT_LLMS_OUTPUT).write_text("stale\n", encoding="utf-8")
+        (documentation_metadata.output_path(root, docs_ai_delivery.DEFAULT_LLMS_OUTPUT)).write_text("stale\n", encoding="utf-8")
 
         errors, _ = docs_validate.validate_documentation(root)
 
@@ -2644,13 +2652,13 @@ class DocumentationValidatorTests(unittest.TestCase):
         self.addCleanup(temporary_directory.cleanup)
         (root / "Docs/Guide.md").write_text("# Guide\n", encoding="utf-8")
         self._write_manifest(root, {"Docs/Guide.md": self._document()})
-        (root / docs_site.DEFAULT_ROUTES_OUTPUT).write_text("stale\n", encoding="utf-8")
+        documentation_metadata.write_section(root, docs_site.DEFAULT_ROUTES_OUTPUT, {"stale": True})
 
         errors, _ = docs_validate.validate_documentation(root)
 
         self.assertIn(
             "generated documentation site artifact is stale: "
-            "Docs/generated/document-routes.json; "
+            "docs-manifest.json#/routing; "
             "run python BuildTools/docs_site.py --write",
             errors,
         )

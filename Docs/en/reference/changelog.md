@@ -14,6 +14,297 @@ Developer-visible FOnline changes and migration notes are maintained here in Eng
 
 - Add the hidden `ClientPoseBatchCost` experiment for paired direct/worker evaluation of supplied baked animation rigs, with exact output checks and raw timing samples. See the [input contract](../../../Source/Tests/README.md#opt-in-pose-batch-cost). Normal unit runs and runtime defaults are unchanged.
 
+### Changed
+
+- Reconcile the published client-worker branch with master 2026.1.27-dev, preserving all five client batching settings and 2,576 classified native-codegen symbols. Increase the reviewed complete-corpus search capacity by 32 KiB to 1,900,544 bytes per locale; retrieval rules and overflow rejection are unchanged.
+
+- Review the complete AI context after branch integration and raise its hard capacity by 32 KiB to 2,326,528 bytes. Whole-document membership and oversize rejection remain unchanged.
+
+### Migration
+
+- Apply the intervening 2026.1.14-dev through 2026.1.27-dev migration records below. Reconfigure and rebuild matching binaries, regenerate contracts with their current experimental labels, prepare documentation outputs, and fully rebake the project. No additional database or protocol conversion is introduced by this branch reconciliation.
+
+## Current - 2026-10-11
+
+### Fixed
+
+- Normalize six display-query EOFs and make metadata `hstring` locals explicit; keep both read-only proxy const containers and analyzer reasons.
+- Sync the snippet regression with the reviewed 470-example/311-normative corpus; condense config prose and normalize four CMake comments. Full normative coverage and rejection tests remain enabled.
+- Reconcile image-import source ownership and native custom-loader migration guidance with the extracted modules.
+
+### Migration
+
+- Base: `2026.1.27-dev`, `5ef9334595f45522c8d580c25e22ed4556ab137b`; apply its locking/build-glue migration first. No runtime/API/options/ABI/resource/save change; compatibility stays `0.0.70`. For `2026.1.28-dev`, reconfigure/rebuild matching hosts and rebake role metadata/scripts; regenerate EN/RU, snippets, site/routes and AI delivery. Check formatting, native/process-lock tests and versioning.
+
+## 2026.1.27-dev - 2026-10-11
+
+### Added
+
+- Add move-only `fs::exclusive_file_lock` and non-blocking `fs::try_lock_file`, with non-truncating acquisition, Unicode/long paths, explicit release, move transfer and non-inherited native descriptors. Web returns an unavailable lock.
+
+### Fixed
+
+- Own the canonical baking output with a sibling file lock before report/hash deletion and through final reporting. A refused run preserves the previous output, even when reusing a MasterBaker. Forced rebuilds leave the lock inode in place.
+- Serialize AngelScript role and script-order pack compilation only under `AS_DEBUG`; acquire the working directory's diagnostic lock across Baker processes. Release keeps configured parallelism.
+- Let the native baker alone write the compiled resource build hash inside the output lock. Remove the unlocked CMake write after the baker exits; native binary hash generation is unchanged.
+
+### Migration
+
+- Engine version is `2026.1.27-dev`, the next minor after published master `2026.1.26-dev`. Reconfigure and rebuild native bakers and version metadata, then run the normal bake. No script binding, network marker, sprite format, database or save conversion changes.
+- Leave `<BakeOutput>.lock` beside the output directory and `AS_DEBUG.lock` in the working directory. Ignore these generated files in embedding repositories; their existence is harmless. Do not delete them to recover contention. Stop or wait for the owner, check permissions and retry. Lock failures occur before output/report/hash mutation; filesystem roots are rejected as BakeOutput.
+- `fs::try_lock_file` does not create parents, truncate content or wait. A closed lock also represents unavailable paths and unsupported Web, not only another owner. On POSIX the exclusion is advisory and requires participants to use the same file inode. Keep the lock owner alive until protected work and reporting finish.
+- Debug bakes with AngelScript need a writable diagnostic-lock location; separate working directories permit independent debug bakes. Ordinary Release compilation remains parallel. This guard applies to MasterBaker, not arbitrary external AngelScript processes.
+- Custom CMake bake wrappers must not write Resources.build-hash after native Baker returns. The compiled baker writes it before lock release; retain WriteBuildHash only for native binary markers. The revision/hash contract stays compiled-source based. On rollback restore the old baker and build glue together, and complete a bake before consuming its outputs.
+
+## 2026.1.26-dev - 2026-10-11
+
+### Changed
+
+- CMake `TemporaryCompat` dates restrictions, including inactive branches. Database selection has no Web veto.
+- Projects select adjacent guarded archive/database/image modules with positive `SetOptionValues`; source/header registration is unconditional. Memory and PNG/TGA/FOFRM remain mandatory. ZAR/TIL share their guarded decoder with preserved channel order.
+- JSON files use ordinary JSON, SQLite BLOBs use CBOR, BSON belongs only to Mongo. External ZIP/BOS is optional; Embedded/APK retain zlib/minizip. Declared baking-impact options invalidate resources independently of project revision; database and service options are excluded.
+
+### Migration
+
+- Include `Engine/BuildTools/cmake` and project CMake files in explicit `temporary_compat.py` inputs. Mark restrictions with `TemporaryCompat(Id "YYYY-MM-DD")`; CI owns expiry, keeping configuration reproducible.
+- Baseline: `2026.1.25-dev`, `16f1608794eafeb6c05001b997071105dbc403b9`. [Component selection](../how-to/build/project-configuration.md#optional-native-components) lists all options, roles, dependencies and diagnostics; [persistence](../explanation/persistence/index.md#storage-formats-and-upgrade-boundary) defines the new schema/limits.
+- Remove `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` from CMake, presets, environment and cache (`cmake -UFO_DISABLE_MONGO -UFO_DISABLE_SQLITE ...`). Explicitly enable used `FO_DATABASE_JSON`, `FO_DATABASE_SQLITE`, `FO_DATABASE_MONGO`, `FO_DATA_SOURCE_DAT`, `FO_DATA_SOURCE_ZIP` and `FO_IMAGE_*` through `SetOptionValues`. All optional defaults are OFF; retired options and disabled requests fail, with no aliases/fallback.
+- Search native callers for `ImageBaker::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc`, `MAX_DIRS_MINUS_ONE`: replace the prefix with `ImageImport::`. Loader argument four becomes `const ImageImport::Context&`; use `context.Files` and `context.Resolve(path)`. `AddLoader` argument three optionally maps output paths. Include adjacent `DataBase-{Memory,Json,SQLite,Mongo}.h`; factories become `DataBaseMemory::Create`, `DataBaseJson::Create`, `DataBaseSQLite::Create`, `DataBaseMongo::Create`, initialization becomes `DataBaseSQLite::InitializeRuntime`. BSON converters/allocator initialization are Mongo-private.
+- Use new empty JSON/SQLite directories. Old Extended JSON/BSON BLOBs have no reader or migration; retain old binaries/storage together for rollback. Mongo representation remains unchanged. No entity/property conversion rule is introduced; codecs preserve current AnyData values as documented in persistence.
+- Reconfigure, regenerate bindings/metadata, rebuild affected native roles together, fully rebake and package matching outputs. `Resources.baking-config-hash`/report `bakingConfigHash` are separate from `Resources.build-hash`; missing/changed baking configuration removes stale outputs. The [fingerprint contract](../how-to/build/project-configuration.md#baking-configuration-fingerprint) includes geometry, models/effects, scripting and particles as well as archive/image loaders. Compatibility advances `0.0.69` → `0.0.70`: no mixed binaries/snapshots; deploy matching client/server metadata and roll back complete binaries/resources/storage sets. Updater protocol, client-runtime ABI identifier and baked sprite version stay unchanged.
+- Regenerate contracts/snippets, EN/RU, site/routes and AI delivery. Validate minimal/full database/archive/image/baker suites, provider reopen/recovery and disabled-use failures; report platform/runtime proof separately. No publication is implied.
+
+## 2026.1.25-dev - 2026-10-10
+
+### Fixed
+
+- Detach critter links during destruction without publishing an attachment snapshot from either endpoint that is already being destroyed. Live endpoints still receive their normal notification, and entity-state guards remain enabled.
+- Release cached attachment identifiers when a client critter view is finalized, preserving the live peers and the destructor's cleanup checks. Native regressions cover live detach, destruction of either endpoint, outgoing attachment notifications and exception reports.
+
+### Migration
+
+- Reconfigure and rebuild native clients, servers and unit tests, then rebake the embedding project's resources before validation. No project caller or data conversion is required. API, settings, network compatibility `0.0.69`, ABI, resource schemas and saves retain their current meanings; no migration rule is needed.
+- Regenerate documentation snippets, translation state, site/search/routes, AI evaluation and AI delivery after integrating this update.
+
+## 2026.1.24-dev - 2026-10-10
+
+### Added
+
+- Client scripts can query the desktop dimensions and display modes of the monitor containing the current window through `Game.GetDisplaySize` and `Game.GetDisplayModes`. SDL results exclude invalid and duplicate dimensions; unavailable display information returns zero dimensions or an empty list. Headless and stub windows provide the same unavailable result.
+
+### Migration
+
+- Upgrade from `2026.1.23-dev` at `e08ca424e4f24561d6610686b2b9f9548b9365db`. The preceding example configuration refresh is retained; no additional project settings conversion is introduced by these display queries.
+- Existing script calls, settings and stored data keep their meaning; no caller or persisted-data conversion is required. Regenerate bindings and rebake scripts before using the two new queries. The caller owns its resolution bounds, standard presets and fallback when display information is unavailable.
+- Rebuild Engine and embedding-project native binaries together for the additional `IAppWindow` virtual methods, and deploy matching baked metadata. Network compatibility remains `0.0.69`; network formats, resource schemas and saves do not change. Reconfigure native version/revision metadata for `2026.1.24-dev` and regenerate the API references, translation state, site/search/routes and AI delivery.
+
+## 2026.1.23-dev - 2026-10-10
+
+### Fixed
+
+- Regenerate the complete MinimalMultiplayer, ContentShowcase and PackagingMatrix
+  configurations after the server grid settings replacement. All three now use
+  `Server.ProtoMapGridType = Dynamic` and `Server.MapInstanceGridType = Dynamic`,
+  preserving their previous dynamic-grid defaults. Existing example freshness
+  and package tests validate these generated inputs. See
+  [generated content](../how-to/build/generated-content.md).
+
+### Migration
+
+- Upgrade from `2026.1.22-dev` at `bf673df1818c10aaf77c586077caf60cbd2e904f`.
+  No additional project migration is required: this refreshes Engine-owned
+  example configs for settings already introduced in that version. Follow its
+  migration notes when upgrading from an older Engine. Native behavior, host/runtime
+  ABI, network compatibility, resource schemas, map/save formats and database
+  rules are unchanged; no data conversion is needed.
+
+## 2026.1.22-dev - 2026-10-10
+
+### Added
+
+- Hidden `ServerMapGridMemoryDynamic` and `ServerMapGridMemoryChunked`
+  measurements for empty/populated runtime maps, increasing field-write history,
+  destruction and shutdown. Fresh-process comparisons report process-private
+  bytes and check identical entity counts/field behavior without memory thresholds.
+  See [testing](../contributing/testing/).
+- Hidden `ServerMapGridOperationsCost` benchmark for production server path,
+  reachability, trace, field-read and block-write operations across all nine
+  dense/chunked/hash prototype and instance combinations. It checks identical
+  results and reports five warmed wall/CPU samples without timing thresholds.
+  See [testing](../contributing/testing/).
+- Independent string selectors for shared map prototype and runtime instance
+  grids: `Server.ProtoMapGridType` and `Server.MapInstanceGridType` default to
+  `Dynamic` and accept exactly `Static`, `Chunked` or `Dynamic`. Unknown or empty
+  values reject server startup. These select three sibling implementations;
+  chunked grids do not inherit from static grids. Block side comes from
+  `GameSettings::SERVER_MAP_CHUNK_SIDE` (16). See
+  [server field storage](../explanation/runtime/server.md#server-map-field-storage).
+
+### Fixed
+
+- Replace the client's full-map field allocation with directly indexed 16x16
+  dense blocks, created on first write. Large maps no longer need one contiguous
+  allocation containing every field. Missing reads, scrolling, overlapping
+  Mapper resize and unload preserve their behavior; light buffers remain dense.
+  Add actual large-map memory regressions, block-boundary/ownership tests and
+  a hidden comparison of native field-access costs. See
+  [client field storage](../explanation/runtime/client.md#client-map-field-storage).
+  Block side is a template parameter; `MapView` selects it through the
+  compile-time `GameSettings::CLIENT_MAP_CHUNK_SIDE` constant (16).
+
+### Migration
+
+- Upgrade from `2026.1.21-dev` at `cfa468f17bd5dff82cebc6f05b568620fc34163c`.
+  `ChunkedTwoDimensionalGrid` is a new native storage type;
+  `StaticTwoDimensionalGrid` and `DynamicTwoDimensionalGrid` retain their existing
+  contracts. Private `MapView::_hexField` uses the new type. Native clients,
+  embedded clients and Mapper on all platforms/backends must rebuild every
+  consumer of `MapView` headers because the private C++ layout changes. No
+  existing hex-coordinate meaning, map format, save or database
+  conversion is required. Do not mix old native objects with new headers.
+- Follow the [generated-content order](../how-to/build/generated-content.md):
+  configure/codegen, rebuild affected native applications and tests, bake
+  matching metadata/resources, then repackage the matching host/runtime.
+  Host/runtime ABI version, resource schemas, network compatibility `0.0.69`
+  and database `MigrationRule` remain unchanged. Replace the published boolean
+  settings `ProtoMapStaticGrid` and `MapInstanceStaticGrid` with the corresponding
+  `ProtoMapGridType` and `MapInstanceGridType` strings. For each layer, the former
+  static/chunk flag combination maps to `Dynamic` when static was false,
+  `Static` when static was true and chunked false, and `Chunked` when both were
+  true. Earlier unpublished `ProtoMapChunkedGrid`, `MapInstanceChunkedGrid`,
+  `ProtoMapStaticGridChunked` and `MapInstanceStaticGridChunked` keys are removed;
+  no aliases remain. Regenerate bindings and bake matching metadata. Native
+  `StaticMap` callers now pass `(size, grid_type)`; `Map` construction is no longer
+  `noexcept` and invalid selectors throw `SettingsException`. Rollback uses the previous complete native package;
+  no database restore is needed.
+- Run `ClientLargeMap*`, `TwoDimensionalGrid`, client-map/lifetime and
+  `ServerMapGridSelectionPreservesFieldBehavior`, invalid-selector and
+  constructor-unwind checks plus server-map/lifetime,
+  sprite/atlas/roof regressions, compare repeated `ClientMapFieldAccessCost`
+  runs and `ServerMapGridOperationsCost`, and qualify the embedding project's
+  ordinary rendered map-entry route.
+  Constructor-memory and access-cost fixtures do not establish long-session
+  32-bit OOM freedom, whole-game FPS or server tick throughput. Regenerate snippets, translation state,
+  site/search/routes, AI evaluation and AI delivery after integration.
+
+## 2026.1.21-dev - 2026-10-10
+
+### Fixed
+
+- Write back mutable Managed event lists and dictionaries through the caller's collection accessor after converting their entries. Native collection proxies retain container-owned addresses after additions and vector growth, refresh dictionary order, and preserve duplicate-key insertion semantics and const write rejection.
+- Add a reusable Engine-source native probe for boxed collection events, including GC, the outer script context, shutdown, and an identical negative control without writeback. It uses a configured GCC/Clang Ninja Managed unit build and prepared host runtime; unsupported payload/toolchain qualification remains separate.
+- Store synchronous AngelScript and Managed database-document contexts as guaranteed non-null `ptr<const AnyData::Document>` borrows. Document reads, callback lifetime checks and migration behavior are unchanged.
+- Explicitly discard document-migration change flags during entity and globals restore. Both callers still persist the updates output and propagate migration exceptions; remove the two Clang `nodiscard` warnings.
+- Apply the owning clang-format 20 layout to AngelScript backend includes and Managed document-migration bindings; formatting CI no longer produces a diff for these files.
+- Review the complete 112-document AI context after version 20 reached 2,228,855 bytes. Extend its hard limit by 32 KiB to 2,260,992 bytes; retain whole documents, migration history and the existing membership policy.
+
+### Migration
+
+- Rebuild native script backends and rebake affected script roles. Existing `ref List<T>` and `ref Dictionary<K, V>` event handlers now propagate their resulting collections to the caller and subsequent subscribers; no handler signature or scalar ABI changes are required.
+- AI delivery consumers must honor the manifest's `full_context.max_bytes` increase from 2,228,224 to 2,260,992 bytes. Regenerate documentation outputs with `python BuildTools/docs_prepare.py` before source/freshness tests, then run the complete site/browser gates. Oversized bundles still fail instead of being truncated.
+- No script/native API, runtime configuration, serialized data, network, ABI, resource schema or save conversion changes. Rebuild version metadata for this revision; documentation dependency pins and publication routes are unchanged.
+
+## 2026.1.20-dev - 2026-10-09
+
+### Fixed
+
+- Wait for lazy architecture-diagram images before browser rendering checks and screenshots. Delayed SVG responses no longer cause false audit failures; missing images still fail in every profile.
+- Run the real-browser delayed/missing-image regression in documentation CI.
+
+### Migration
+
+- No script/native API, configuration, serialized data, network, ABI, resource schema, or save conversion changes. Rebuild version metadata when adopting this revision. Browser dependency pins and the full route/profile scope are unchanged.
+- After the existing pinned Chromium setup, run `npm --prefix BuildTools/docs-browser run test:diagram` and the complete browser audit. Regenerate documentation, translations, site/search/routes, and AI delivery for the new version.
+
+## 2026.1.19-dev - 2026-10-09
+
+### Fixed
+
+- Normalize document migration comments.
+
+### Migration
+
+- Comments only; no API or save conversion. Rebuild version metadata and regenerate documentation outputs.
+
+## 2026.1.18-dev - 2026-10-09
+
+### Added
+
+- Add `MigrationRule Property <Owner> Remove <Old>` as a permanent name tombstone. Skip its historical document/text value and reject a live declaration under that name, including RefType fields.
+- Add AngelScript document Property/Proto Transform support with `[[PropertyMigrator]]`/`[[ProtoMigrator]]`, typed `&inout` values and `const DatabaseDocument&inout`, automatic source/bytecode validation and binding, and synchronous atomic staging. Namespace-qualified function names use `Namespace::Function`; rebake AngelScript scripts for the new registered type and callbacks. Release RefType arrays/dictionaries through their container cleanup paths.
+
+- Add atomic Property Transform callbacks: native `PropertyMigratorCallback`, Managed C# `[PropertyMigrator]`, `PropertyMigrator<T>` and original `DatabaseDocument` contexts. Stage canonical fields before entity loading.
+
+- Add `[ProtoMigrator]` document callbacks for Proto Transform. Resolve original-document chains before lookup, detect cycles and stage `_Proto`; ordinary lookup and baking apply only Rename/Remove.
+
+### Changed
+
+- Require the explicit `Rename` action for property-name rules and an existing destination. Validate that `Transform` targets an existing Persistent property; server-only dynamic owners and their rules follow metadata role filtering.
+
+### Migration
+
+- For a deleted property, retain `///@ MigrationRule Property Owner Remove Old` with no replacement. Rename and Transform keep their five-part forms; both Property and Proto Remove use four parts. Name reuse is forbidden regardless of the new property type.
+- Replace every `///@ MigrationRule Property Owner Old New` declaration with `///@ MigrationRule Property Owner Rename Old New` in native/script source, generated consumers, tooling, and fixtures. Historical source names must point to existing live fields, including nested RefType fields. The old four-part property form is rejected; Proto rules also require an explicit action: use Rename Old New, Remove Old, or Transform Old QualifiedType.Function. The old __remove__ replacement is rejected; Enum, Entity, EntityHolder and Version retain their forms.
+- For value migration, register `///@ MigrationRule Property Owner Transform Property QualifiedType.Function` and implement a static synchronous `[PropertyMigrator]` method returning `bool` with parameters `ref T` and `DatabaseDocument`, where `T` exactly matches the property's managed type. `false` keeps the original serialized value; `true` serializes the result. Do not retain the context, perform entity mutations, issue rewards, or infer the identity type from matching text. Projects must supply semantic conditions, collision policy, idempotency, and old-save/restart fixtures. Managed C# binds functions automatically; unbound callbacks refuse migration.
+- Rebuild native binaries and rebake all metadata and managed roles together. Property and Proto Rename/Transform records now contain five parts; Remove contains four for either kind; the outer metadata file header is unchanged. The manual compatibility marker advances from 68 to 69, so mixed old/new executable and resource sets are unsupported. No database schema, field storage type, transport message, platform payload, or unrelated property behavior is changed; the added native callback API requires rebuilding embedding binaries.
+- Database loading applies conversions to Game, Player, ordinary and custom entities, including batched loads. An exception during preparation leaves the document and update queue untouched; this guarantee covers one document, not a transaction over all world documents. Retain migration rules for the supported save horizon and verify a database copy before production adoption. Regenerate API/reference, snippet, translation, site/search, and AI delivery artifacts.
+
+## 2026.1.17-dev - 2026-10-09
+
+### Fixed
+
+- Validate existing READY trees, downloaded workspace caches, prebuilt inputs and freshly published managed runtimes against the nonempty embedding headers, managed entry assemblies and target-specific link archives. Recover incomplete trees through the existing cache/republication route instead of reporting a runtime ready with missing linker inputs.
+
+### Migration
+
+- No script/native API, configuration-key, serialized-data, network, ABI, resource-schema or save migration is required: this change verifies build-preparation inputs and preserves the meaning of complete runtimes. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+- Run the normal `SetupManagedRuntime` target (or BuildTools `setup-mono <os> <arch> <config>`) to recover an incomplete READY tree. Without a workspace cache, existing valid source/object markers permit republication without recompiling Mono; configured caches accept complete entries and rebuild incomplete hits. Complete trees retain their existing cache identity and marker names.
+- `FO_MANAGED_RUNTIME_PREBUILT` must name a complete target tree containing the headers used by the managed backend, CoreLib and `System.Runtime.dll`, the platform's static archives, and browser JavaScript glue when applicable. Replace incomplete prebuilt input with a complete published target tree; it is rejected before copying or writing READY. Regenerate localization, site/search/routes, AI evaluation and AI delivery after updating the owning guide.
+
+## 2026.1.16-dev - 2026-10-09
+
+### Changed
+
+- Move the authored Jekyll config to `Docs/Site/_config.yml`. Generate Ruby dependency/domain files and public root endpoints under ignored `Workspace/Documentation/`; render and export with `docs_site_build.py` into `Workspace/DocumentationSite/`. Public URLs are preserved.
+
+- Generate documentation delivery indexes and validation catalogs at build time instead of committing them. This includes `docs-manifest.json`, both `llms` endpoints, site navigation/search, and six generated reports. `AGENTS.md` remains the source-checkout maintainer entry point; the website retains its public retrieval URLs.
+- Prepare documentation outputs before CI validation and site rendering. Publish the validated Pages artifact only after the master-push version and documentation gates pass.
+
+### Fixed
+
+- Apply declared Engine defaults before ordinary application configuration is loaded. Settings omitted from a project or packaged config retain their `Settings.inc` defaults; explicit config, sub-config, cached local-config and command-line values keep their existing precedence, including explicit zeroes.
+
+### Migration
+
+- Replace bare Jekyll commands with `python BuildTools/docs_site_build.py`; install dependencies using `bundle install --gemfile Workspace/Documentation/Gemfile` after preparation. `Gemfile`, `.ruby-version` and `CNAME` are derived from the source manifest, with no versioned root copies.
+
+- Run `python BuildTools/docs_prepare.py` before local documentation checks or Jekyll. Public contract models, Markdown, policies, translations and SVG/PNG remain versioned and must still pass their freshness checks. Do not stage the ignored delivery outputs.
+- Before the first master push with this change, select GitHub Actions as the repository's Pages build source; the former branch build cannot generate ignored files. Verify the first deployed artifact and existing public endpoints. The worktree change does not switch remote settings or deploy a site.
+- Reconfigure and rebuild affected native applications, then bake and validate the embedding project's startup profiles. Review settings previously omitted from configuration: they now receive their declared defaults instead of value-initialized zeroes. No setting name or declared default changes, and explicit values retain their meaning.
+- Native/script API, network compatibility `0.0.68`, ABI, resource schemas and saved data are unchanged. No project-source or persisted-data conversion is required.
+
+## 2026.1.15-dev - 2026-10-09
+
+### Changed
+
+- Consolidate route and translation reports in `docs-manifest.json`. Navigation and AI delivery reference `VERSION`; the Jekyll build reads its value rather than committing version copies. Search excludes technical HTML comments, and the AI full-context bundle leaves document hashes in the public index.
+
+### Migration
+
+- Documentation consumers must replace `Docs/generated/document-routes.json` with `docs-manifest.json#/routing` and `Docs/generated/translation-status.json` with `docs-manifest.json#/translation_status`. These are JSON sections of one file, not filesystem paths. AI delivery schema is `3`; site delivery schema is `4`; report field meanings and translation review hashes are preserved. The obsolete standalone reports are removed.
+- Regenerate localization, site/search/routes, AI evaluation when affected, then AI delivery. The Jekyll layout includes `VERSION` directly; retain `includes_dir: .` in `_config.yml` for local and GitHub Pages builds. Publish root `VERSION` verbatim. No native/script API, configuration, serialized data, network, ABI, resource-schema or save migration is required.
+- Reconfigure and rebuild native version/revision metadata when adopting this Engine revision.
+
+## 2026.1.14-dev - 2026-10-08
+
+### Fixed
+
+- Recover model picking after an SDL_GPU readback submission or wait failure. Failed requests report an error without exposing unconfirmed pixels; model alpha masks discard the failed reader and retry while preserving the last completed mask.
+
+### Migration
+
+- No configuration, caller, serialized data, network or resource-format migration is required. Rebuild the client to adopt the readback recovery. Existing alpha thresholds and successful readback results retain their meanings; network compatibility, ABI, resource schemas and saves are unchanged. Reconfigure and rebuild native version/revision metadata when adopting this Engine revision, then regenerate translation state, site/search/routes, AI evaluation and AI delivery.
+
 ## 2026.1.13-dev - 2026-10-06
 
 ### Fixed

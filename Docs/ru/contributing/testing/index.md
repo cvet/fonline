@@ -7,7 +7,7 @@ permalink: /Docs/ru/contributing/testing/
 ---
 
 # Тестирование
-<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"3f730cb33f44ceda654d01be52daed4e8ac2ea0d9468b4796932b6bcb95b9420"} -->
+<!-- docs-translation: {"document_id":"testing","locale":"ru","source_path":"Docs/en/contributing/testing/index.md","source_sha256":"0f6195764ddfa7c01fcf4edb9ec97531c45678a7052627d9d814690ad54e7a13"} -->
 > Документация принадлежит движку. Страница описывает текущий test executable,
 > сгенерированные test/coverage targets и полный набор suites из
 > `Source/Tests/Test_*.cpp`.
@@ -84,12 +84,78 @@ runtime-типы. `ModelSpriteHitTestReadsItsMaskFromTheAtlas` требует о
 макросов использует фиксированные версию и ревизию Engine и проверяет
 `FO_ENGINE_VERSION` и `FO_ENGINE_REVISION` независимо от текущей рабочей копии.
 
+`ClientLargeMapFieldsStayWithinMemoryBudget` проверяет рост приватной памяти
+реального конструктора `MapView` 1200x1200 в пределах 64 MiB, если на платформе
+доступен счётчик, затем проверяет перестроения камеры, стабильность адресов
+полей при создании других блоков, resize Mapper и уничтожение.
+`ClientLargeMapScrollBoundsStayWithinMemoryBudget` задаёт той же большой карте
+аксиальный прямоугольник прокрутки. Это отдельные проверки, отличные от замера
+allocator для удержанных уничтоженных карт. `Test_TwoDimensionalGrid.cpp`
+охватывает границы блоков, shrink/growth частичных краёв, нулевой размер и
+перенос владения некопируемых ячеек, включая явные стороны шаблона 1, 8, 16 и 32.
+`ServerMapGridSelectionPreservesFieldBehavior` запускает настоящий серверный
+загрузчик и создаёт карты для всех девяти независимых сочетаний `Static`,
+`Chunked` и `Dynamic` для прототипа и экземпляра.
+Проверяются общие поля прототипа на границах блоков, стабильность адресов,
+ручная блокировка движения/прострела и изоляция экземпляров, затем предметы
+и криттеры добавляются через нативные менеджеры. Заготовка находится в
+`Test_ServerEntityLifetime.cpp` и выполняется с обоими скриптовыми backend.
+`ServerMapGridTypesRejectInvalidSettings` отклоняет пустые, неизвестные значения
+и неверный регистр для обеих настроек до загрузки файлов карт.
+`ServerMapInvalidGridConstructionUnwindsEntityOwner` проверяет освобождение
+владельца сущности при отказе конструктора. Это проверки функционального
+контракта, а не пределы производительности сервера.
+
+Скрытый `ServerMapGridOperationsCost` измеряет настоящие операции `MapManager`
+и `Map` на детерминированной карте 600x600 с препятствиями, закрытыми
+помещениями, 256 криттерами и 1024 предметами. Он сравнивает все девять
+независимых сочетаний плотной статической, чанковой и хеш-сетки
+прототипа и экземпляра. Каждый сценарий прогревается, один раз калибруется
+на пакет примерно 200 мс в плотном режиме и повторяется пять раз с чередованием
+и разворотом порядка режимов. Старт, наполнение, логирование и проверки Catch2
+не входят в измеряемые циклы. Строки `SERVER_GRID_CSV` содержат номер замера,
+режим прототипа и экземпляра, сценарий, число повторений и операций,
+миллисекунды стены и CPU процесса, контрольную сумму. Полные результаты
+маршрутов и другие ответы должны совпадать между режимами.
+
+Запускайте скрытый тест по точному имени из оптимизированного бинарника
+на свободной машине. Сравнивайте медианы и диапазоны; разрешение CPU-счётчиков
+может быть грубым. Замер включает хеширование результата и обычную проверку
+entity cover под quiescence сервера. Это стоимость native операций, а не
+пропускная способность скриптов или тиков, масштабирование конкуренции,
+память старта или карты конкретной игры. Настройки относятся только к серверам
+заготовки.
+
+Скрытые `ServerMapGridMemoryDynamic` и `ServerMapGridMemoryChunked` сравнивают
+хранение экземпляров на шестнадцати серверных картах 600x600 с одним общим
+пустым прототипом на `Dynamic`. Каждая карта получает 1024 неблокирующих
+предмета и 256 криттеров в одинаковых разнесённых координатах. Следующие
+этапы включают и снимают блокировку 10% и 90% различных полей без добавления
+живых сущностей. Медиана берётся из пяти замеров приватной памяти процесса
+на каждом этапе. Колонки `SERVER_GRID_MEMORY_CSV`: тип сетки, этап, private bytes
+и необязательные committed active pages аллокатора (ноль означает недоступность).
+Запускайте каждый тест по точному имени в новом оптимизированном процессе,
+чередуйте режимы и повторяйте. Вычитайте базовый расход каждого процесса,
+сохраняйте абсолютные значения и диапазоны; отдельно учитывайте состояние после
+уничтожения карт и освобождения покрытия и после остановки сервера. Проверки
+подтверждают число сущностей и поведение полей без зависящего от машины лимита
+памяти. Это контролируемый нативный мир, а не восстановленная игровая БД
+или измерение полного каталога прототипов проекта.
+
+Скрытый `ClientMapFieldAccessCost` сообщает
+медиану семи замеров доступа к настоящим полям клиента в заполненной,
+смешанной, пустой и разнесённой областях. Сравнивайте повторные запуски одного
+оптимизированного бинарника; нестабильного порога pass/fail у времени нет,
+производительность отрисованных кадров этим тестом не доказывается.
+
 Сравнение памяти при повторных unload сначала прогревает один полный цикл
 загрузки/выгрузки карты, затем читает счётчик committed active pages rpmalloc.
 Двенадцать уничтоженных карт, сохранённых через native handles, должны остаться
 в прежнем лимите 8 MiB. Владение render targets проверяется на каждом цикле,
 включая прогрев: инициализация allocator отделена от памяти удержанных карт,
 но это не проверка GPU memory или process working set.
+
+Та же джоба выполняет регрессии подготовки managed runtime из `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` и `test_managed_runtime_byproducts.py`. Файловые фикстуры покрывают обязательные входы Windows, Linux, Web, Android и Apple независимо от хоста; список архивов сверяется выполнением реального блока выбора входов линковки CMake. Отсутствующие/пустые файлы должны вызывать восстановление либо явный отказ, а комплектные деревья — сохранять ключ кэша и готовые выходы исходной сборки. Небольшим пробам producer Ninja нужны POSIX CMake, Ninja и C toolchain; эти тесты устанавливают поведение setup, а не native-сборку runtime каждой платформы.
 
 `Test_ClientEntityLifetime.cpp` проверяет повторную выгрузку карт с удерживаемыми handles, отложенных владельцев предметов, ошибку конструктора и очистку atlas с занятыми/пустыми pages. `Test_MapSprite.cpp` закрепляет отсоединение holders и повторное использование после `Clear()`; `Test_ResourceIndex.cpp` — передачу владения decoded vector. Предел памяти уничтоженных карт требует debug/profiling allocator statistics. Headless проверки владения не являются приёмкой памяти физического GPU, working-set trends или долгого сеанса с OOM на целевой платформе.
 
@@ -220,6 +286,8 @@ Coverage зависит от platform и environment. Sources, не скомпи
 
 ### Шаблоны focused harness
 
+- **Отсоединение при уничтожении:** `CritterAttachmentTeardown` в `Test_ServerEntityLifetime.cpp` использует автономный сервер при любом scripting backend. Он проверяет обычное отсоединение и уничтожение любого конца связи, считает native-отчёты через штатный callback исключений с сохранением прежнего обработчика и декодирует пакет `CritterAttachments` игрока, управляющего оставшимся существом. `ClientCritterFinalizationDropsAttachmentIds` в `Test_ClientEntityLifetime.cpp` проверяет финализацию представления с кешированными attachment IDs и живым peer. Одного конечного состояния недостаточно: после пойманного native-исключения повторная попытка может завершить удаление.
+
 - **ImGui panels:** создайте backend-less context, задайте `ImGuiBackendFlags_RendererHasTextures` и используйте `ImGui::LogToBuffer(depth)` для auto-open tree nodes и доказательства nested text. Collapsing headers требуют ручной записи IDs в `StateStorage`. Context уничтожается на scope exit. Для widget branch `ImGuiTestHarness::ActivateItem` требует два frame; controls в child windows адресуются через `ActivateChildItem`, а между presses очищается stale active ID.
 - **Server diagnostics:** sync point сам не покрывает entities. Snapshot ещё не вошедших players берётся под publication lock; lock освобождается до entity locks, после чего один replacement cover охватывает snapshot и registered world. Fixture должен содержать настоящего not-logged-in player.
 - **Inbound remote calls:** entry покрывает calling player и controlled critter. Любая вторая entity требует явного `Game.Sync`; ожидаемый cover violation нельзя проверять под script `try/catch`, потому что session завершится до следующего probe.
@@ -234,7 +302,7 @@ Coverage зависит от platform и environment. Sources, не скомпи
 
 Полный отсортированный список и authoritative count генерируются из
 `Source/Tests/Test_*.cpp` в
-[source-inventory.json](../../../generated/source-inventory.json). Не копируйте
+[source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Не копируйте
 полный список или total в prose.
 
 ```bash
@@ -265,6 +333,8 @@ movement/pathfinding, text packs, timers и two-dimensional grids. Основн�
 location/entity management.
 
 ### Scripting и script-visible API
+
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — миграции документов через скомпилированный байткод на настоящем сервере: отклонение сигнатур, типизированные отделённые значения/контекст, условные домены имён, идемпотентность, атомарность при исключении и цепочки/значения прототипов.
 
 AngelScript compiler/runtime, bytecode, calls, attributes, builtins, entities и native script methods покрывают `Test_AngelScript*`, `Test_ScriptBuiltins`, `Test_ScriptEntityOps`, `Test_CommonScriptMethods` и `Test_ServerScriptMethods`.
 

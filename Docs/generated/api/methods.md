@@ -342,6 +342,12 @@ Continue with the [canonical reference](../../en/reference/script-api/methods.md
 <a id="symbol-script-method-client-game-getcritters-e79de6b56cb9f3b3-358aa1386b"></a>
 - [`symbol-script-method-client-game-getcritters-e79de6b56cb9f3b3-358aa1386b`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getcritters-e79de6b56cb9f3b3-358aa1386b)
 
+<a id="symbol-script-method-client-game-getdisplaymodes-1b3ead475f"></a>
+- [`symbol-script-method-client-game-getdisplaymodes-1b3ead475f`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getdisplaymodes-1b3ead475f)
+
+<a id="symbol-script-method-client-game-getdisplaysize-3920b92407"></a>
+- [`symbol-script-method-client-game-getdisplaysize-3920b92407`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getdisplaysize-3920b92407)
+
 <a id="symbol-script-method-client-game-getdistance-1be05ad1508d9bdf-d7891cb456"></a>
 - [`symbol-script-method-client-game-getdistance-1be05ad1508d9bdf-d7891cb456`](../../en/reference/script-api/methods.md#symbol-script-method-client-game-getdistance-1be05ad1508d9bdf-d7891cb456)
 

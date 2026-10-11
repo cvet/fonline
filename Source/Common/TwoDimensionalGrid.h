@@ -134,6 +134,91 @@ private:
     const TCell _emptyCell {};
 };
 
+template<typename TCell, pos_type TPos, size_type TSize, size_t ChunkSide>
+class ChunkedTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TSize>
+{
+    static_assert(ChunkSide > 0 && (ChunkSide & (ChunkSide - 1)) == 0, "Chunk side must be a nonzero power of two");
+
+    using base = TwoDimensionalGrid<TCell, TPos, TSize>;
+    using Chunk = array<TCell, ChunkSide * ChunkSide>;
+
+public:
+    explicit ChunkedTwoDimensionalGrid(TSize size) noexcept :
+        base(size),
+        _chunksPerRow((static_cast<size_t>(base::_size.width) + ChunkSide - 1) / ChunkSide)
+    {
+        _chunks.resize(_chunksPerRow * ((static_cast<size_t>(base::_size.height) + ChunkSide - 1) / ChunkSide));
+    }
+
+    [[nodiscard]] auto GetCellForReading(TPos pos) const noexcept -> const TCell& override
+    {
+        if (!base::_size.is_valid_pos(pos)) {
+            return _emptyCell;
+        }
+
+        const auto& chunk = _chunks[GetChunkIndex(pos)];
+
+        if (!chunk) {
+            return _emptyCell;
+        }
+
+        return (*chunk)[GetCellIndex(pos)];
+    }
+
+    [[nodiscard]] auto GetCellForWriting(TPos pos) -> ptr<TCell> override
+    {
+        FO_VERIFY_AND_THROW(base::_size.is_valid_pos(pos), "Chunked two-dimensional grid write position is outside the grid bounds", pos, base::_size);
+
+        auto& chunk = _chunks[GetChunkIndex(pos)];
+
+        if (!chunk) {
+            chunk = safe_alloc::make_unique<Chunk>();
+        }
+
+        return &(*chunk)[GetCellIndex(pos)];
+    }
+
+    void Resize(TSize size) override
+    {
+        FO_VERIFY_AND_THROW(size.width >= 0, "Size width is negative", size.width);
+        FO_VERIFY_AND_THROW(size.height >= 0, "Size height is negative", size.height);
+
+        ChunkedTwoDimensionalGrid replacement {size};
+
+        for (size_t chunk_index = 0; chunk_index < _chunks.size(); chunk_index++) {
+            auto& chunk = _chunks[chunk_index];
+
+            if (!chunk) {
+                continue;
+            }
+
+            for (size_t cell_index = 0; cell_index < chunk->size(); cell_index++) {
+                auto& cell = (*chunk)[cell_index];
+
+                size_t x = chunk_index % _chunksPerRow * ChunkSide + cell_index % ChunkSide;
+                size_t y = chunk_index / _chunksPerRow * ChunkSide + cell_index / ChunkSide;
+
+                if (x < static_cast<size_t>(size.width) && y < static_cast<size_t>(size.height)) {
+                    TPos pos {numeric_cast<decltype(pos.x)>(x), numeric_cast<decltype(pos.y)>(y)};
+                    *replacement.GetCellForWriting(pos) = std::move(cell);
+                }
+            }
+        }
+
+        base::_size = size;
+        _chunksPerRow = replacement._chunksPerRow;
+        _chunks = std::move(replacement._chunks);
+    }
+
+private:
+    [[nodiscard]] auto GetChunkIndex(TPos pos) const noexcept -> size_t { return static_cast<size_t>(pos.y) / ChunkSide * _chunksPerRow + static_cast<size_t>(pos.x) / ChunkSide; }
+    [[nodiscard]] static auto GetCellIndex(TPos pos) noexcept -> size_t { return static_cast<size_t>(pos.y) % ChunkSide * ChunkSide + static_cast<size_t>(pos.x) % ChunkSide; }
+
+    size_t _chunksPerRow {};
+    vector<unique_nptr<Chunk>> _chunks {};
+    const TCell _emptyCell {};
+};
+
 template<typename TCell, pos_type TPos, size_type TSize>
 class StaticTwoDimensionalGrid final : public TwoDimensionalGrid<TCell, TPos, TSize>
 {

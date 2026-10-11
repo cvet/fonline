@@ -2,6 +2,503 @@
 
 This report records source-grounded documentation verification passes for the engine docs in this checkout. It is not a replacement for the backlog; it records what was checked and which limitations remain. Dated entries preserve intermediate implementation evidence; when an older entry conflicts with a later reconciliation or the checked-out source, the later evidence and current source are authoritative.
 
+## 2026-10-11 - Reconcile published client workers with master
+
+- Merge published client tip `775c3a8cff2d2e8e4d7def6c3cf56db60ffa3ea6` with master `5ef9334595f45522c8d580c25e22ed4556ab137b`, preserving both ancestries and all five optional client batching settings. Adopt master version `2026.1.27-dev`; this feature-branch integration is not a new published master step.
+- Audit the complete fourteen-commit incoming range: readback recovery, startup defaults, ignored documentation outputs, runtime readiness, document migrations/event collection writeback, map grid selectors, display queries, attachment teardown, optional components/codecs, baking fingerprints and exclusive output locks. Preserve the existing worker kernels and owner-thread GPU boundary.
+- Merge reviewed Russian overlays/disposition histories, regenerate the 2,576-symbol API pin, paired references and public index. The old-client-tip comparison passes 109 changes with all 89 required dispositions; the master comparison contains only five additive client settings plus the scope-pin change, separately disposed. No symbol is promoted from experimental/internal.
+- Keep removed delivery reports untracked and prepare them through `docs_prepare.py`. Reviewed complete search sizes are 1,342,918 English and 1,872,594 Russian bytes; raise capacity by 32 KiB to 1,900,544 per locale. The complete AI context is 2,294,518 bytes; raise its capacity to the next 32 KiB boundary, 2,326,528. Preserve all membership, token and overflow-rejection rules and update both owning policy locales and budget regressions.
+- Documentation validation passes 413 Markdown entries; version/changelog and public-index checks pass. Focused API, description, snippet, AI-delivery and version tests pass 48 cases. The embedding exception-safety audit passes 7,423 functions without errors or warnings. Native rebuild, bake and runtime acceptance are tracked by the embedding integration plan and are not claimed by these documentation gates.
+
+## 2026-10-11 - Restore Baker ownership on updated master
+
+- Integrate published `cfa468f17bd5dff82cebc6f05b568620fc34163c` through
+  `1f56dafc48504da2e2b12736a7bf5fbf10b45de2` by fast-forward, preserving
+  all five migration entries and the unpublished file-lock/Baker work.
+  Recalculate its draft version to `2026.1.27-dev` from published minor 26.
+- Reconcile grid selectors/client blocks, display queries, attachment teardown,
+  optional archive/image/database modules and the baking fingerprint against
+  their source, tests, owning guides and generated models. The configuration
+  fingerprint remains written by native Baker while its output lock is held.
+  Network marker 70 and the JSON/SQLite encoding boundary belong to the
+  published update; the restored ownership block adds no serialization change.
+- Review full-context delivery after merging both documentation sets: the
+  complete eligible bundle is 2,271,194 bytes, 6,106 over the preceding budget.
+  Raise the explicit manifest budget to the next 32 KiB boundary, 2,293,760 bytes,
+  retaining indexes-only generated delivery and all reviewed exclusions.
+  Synchronize its repository-budget regression with the manifest; retain the
+  independent oversize-rejection fixture. No document truncation or omitted
+  current migration record is used to satisfy the limit.
+- Rebuild the Engine test applications and Baker without compiler warnings.
+  The full embedding Release suite passes 548 cases and 664,111 assertions;
+  the focused AngelScript Debug suite passes 80 cases and 67,289 assertions,
+  including enabled archive and JSON/SQLite provider checks. Native process
+  exclusion passes three Debug cases and two Release cases; the Release
+  diagnostic-only case is skipped for its non-AngelScript configuration.
+- Affected Python suites pass 189 tests and 100 subtests. API/CMake/image/map
+  models, 57-option CMake validation, temporary compatibility and draft/published
+  version-history checks pass. The complete incoming contract diff passes 80
+  changes across seventeen domains with 61 required dispositions and none
+  missing; the restored local block has no additional model delta.
+- Documentation preparation, 411-page source validation, complete translation,
+  site/search data and AI delivery pass. Retrieval retains 28 tasks, 67 checks,
+  100% success and 0.930 MRR. Ruby/Bundler are unavailable for rendered-site
+  acceptance. Full content/runtime acceptance is still running; prior entries
+  remain historical evidence and no publication or platform-wide result is implied.
+
+## 2026-10-10 - Reconcile window display queries with rebased attachment teardown
+
+- Audit the complete published range from `e08ca424e4f24561d6610686b2b9f9548b9365db`
+  through `9ca3e5c986a38713cacf1a01661649861b9934ed`, including all native,
+  headless/stub, scripting, regression and documentation changes. Rebase the
+  unpublished attachment fix from `a4ef7759705df16e5b345ce3d6a563a3c7b40828`
+  to `700e1acff8633eb03944a25efadfe386954f1f47`, version `2026.1.25-dev`.
+  Preserve the published version 24 display-query note and all older migration
+  records; retain compatibility marker 69 in the rebased fix's migration note.
+- Match `GetDisplaySize` and `GetDisplayModes` against the rendering guide and
+  generated client API. Queries preserve existing window/logical-resolution
+  semantics, use the current display, deduplicate positive dimensions and return
+  empty values when unavailable. Virtual windows delegate to the main window.
+  Rebuild all consumers of the expanded `IAppWindow` virtual interface together.
+- Preserve both the incoming audit/contract dispositions and all 31 uncommitted
+  dispositions from the preceding reconciliation. Regenerate/check the API and
+  public index. The exact prior-local/current contract diff passes three changes
+  across seventeen domains, one required disposition and none missing.
+- Prepare ignored documentation delivery in dependency order: source inventory,
+  snippets, translation state, site/search/routes, AI evaluation and delivery.
+  Preparation passes; retrieval checks retain 28 tasks, 67 checks, 100% success
+  and 0.930 MRR. All 37 affected API, description-translation, version and
+  public-index fixtures pass. Aggregate documentation validation passes 411
+  Markdown entries; version history validates both publication steps.
+- Build all six affected embedding native targets without compiler warnings.
+  The full fresh engine unit suite passes 553 cases and 667318 assertions,
+  including current-display headless/stub and attachment teardown regressions.
+  Fresh embedding bake succeeds with a full rebuild triggered by the changed
+  build hash: 33 packs, 26948 inputs, 19040 submitted outputs and 662 maps from
+  the complete available corpus. All three managed roles compile successfully
+  with analyzers retained; dialog composition reports no errors. Baker host,
+  runtime and resource hashes match the committed embedding revision
+  `a8e101890bca53d40137bf7cd6d7d0cb79c18d30`.
+- Fresh embedding gameplay validation passes 9/9 cases and 21 expectations,
+  with no timeouts, skips or global exception delta. It exercises display-mode
+  selection, custom-resolution validation and Apply/Cancel handlers, GUI scroll
+  layout, and attachment teardown. A visible Windows DirectX scene and both
+  options/custom-resolution captures were inspected; a physical Cancel click
+  closed the custom dialog. The log identifies Engine `2026.1.25-dev` and the
+  exact rebased Engine SHA; the owned process was stopped after capture.
+- Published tips remain ancestors of both local tips, with one unpublished
+  commit each; the embedding gitlink matches this Engine revision. Safety refs
+  and stashes remain retained. This records source, native and embedding
+  acceptance; it does not qualify a rendered Jekyll/browser site, SDL/Vulkan,
+  other platforms, multiple-monitor transitions, performance or publication.
+
+## 2026-10-10 - Rebase unpublished attachment teardown onto current master
+
+- Integrate published master range `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+  through `e08ca424e4f24561d6610686b2b9f9548b9365db`. Preserve the unpublished
+  attachment fix from `af94a71b6c83a699f397f819d34d4b719a46e918` by rebasing it
+  to `a4ef7759705df16e5b345ce3d6a563a3c7b40828`, version `2026.1.24-dev`.
+  Published ancestry and every migration entry through version 23 are retained.
+- Reconcile defaults, READY runtime validation, explicit Property/Proto migration
+  actions, synchronous document callbacks, collection writeback/proxies and
+  client/server field grids with their owning guides. Retain both incoming grid
+  regressions and the attachment teardown/finalization tests; do not restore
+  deleted generated delivery catalogs to version control.
+- Prepare ignored documentation outputs in dependency order. The preparation
+  passes 310 normative snippets, 4,841 description translations and 28 tasks /
+  67 retrieval checks. Version/publication validation and standalone source
+  validation pass, including 411 Markdown entries and nine publication steps.
+- Append 31 API dispositions for the exact aggregate baseline/current digest
+  pair without changing historical entries. The full incoming contract diff
+  passes 35 changes in 17 domains, with 32 required dispositions and none missing.
+  Regenerate/check API, prototype/map format, examples and public-index outputs;
+  all three complete example configurations remain current. Reconcile the
+  rebased attachment fix's current EN/RU migration note with marker 69 from its
+  new base; preserve every dated historical migration.
+- Documentation fixtures pass 569 tests. Focused managed fixtures pass 550 tests
+  after isolating the document-migrator probe outside the embedding repository's
+  analyzer configuration; 5 optional native probes are skipped. Additional
+  async/context/GC fixtures pass 26 tests, with 11 platform-dependent skips.
+  Windows does not qualify the GCC/Clang native probe or Linux Mono cases.
+- Build the embedding project's native server, client, baker, Mapper and unit
+  targets. The fresh native run passes 552 of 553 cases and 667,314 assertions;
+  one precise-sleep timing assertion exceeds its bound during concurrent script
+  compilation. Its isolated post-compilation rerun passes all 11 assertions.
+  Attachment teardown, document
+  migrations, collection proxies and all nine server grid combinations pass.
+  Full forced resource baking passes with complete-corpus coverage, matching
+  version 24 binaries and compatibility marker 69. The embedding project passes
+  40 fresh gameplay cases with 584 expectations and zero exception delta; its
+  visible DevTest DirectX map/HUD capture passes and the owned process is stopped.
+  Two subsequently integrated published operations-only commits change none of
+  the verified code, resource inputs, settings, version or Engine pin; retain
+  the original artifact build hash as provenance. Ruby/Bundler/npm are unavailable
+  in PATH, so no local rendered Jekyll/browser qualification or publication is
+  claimed. No fresh SDL GPU/Vulkan or long-session/32-bit qualification is claimed.
+
+## 2026-10-10 - Display-query replay after example configuration refresh
+
+- Replay unpublished `09f33955b9f47018843db309c2bff8b3ebc270d5` onto published `e08ca424e4f24561d6610686b2b9f9548b9365db`. The complete incoming range is one commit and eight paths: three complete example `.fomain` configurations replace the retired boolean grid keys with the two explicit Dynamic selectors; both generated-content guides, both changelogs and VERSION match that change. No source, tooling or test implementation changes are incoming. Preserve all published files and release entries.
+- Advance the local step to `2026.1.24-dev`, freeze published Current as `2026.1.23-dev`, and retain compatibility marker 69. The display-query methods and their exact API inventory remain unchanged; the existing scope disposition still binds the identical API digests, with its release note referring to the new local version. Prepare ignored documentation outputs using their current owners. Previous native/runtime qualification retains its revision boundaries.
+
+- Verification: all three example configuration freshness checks and 24 selected version/example tests passed. Current native API/references/public index, example model, inventory, site/search/AI outputs, 194 locale pairs and 4843 descriptions pass freshness/completeness checks. docs_prepare validated 310 normative snippets, 159 evidence entries and 183 external-parser checks. Aggregate diff passes across 17 domains with three API changes, one required exact reviewed scope disposition and none missing; the master version step and aggregate Markdown validation (411 entries) pass. Retrieval passes 28 tasks/67 checks with MRR 0.930. Source/tool/test and API-model comparisons against the original local revision are empty; incoming config/guide comparisons against the published baseline are empty, and all published EN/RU release notes are retained. Native builds, baking, runtime tests and rendered-site qualification were not repeated.
+
+## 2026-10-10 - Display-query reconciliation after master updates
+
+- Replay unpublished `60352bf4fbdfaecb8df15c9fd8b753cd3702622b` onto published `bf673df1818c10aaf77c586077caf60cbd2e904f`; preserve all seven incoming master commits and their 187 changed paths. Native startup defaults, document migrations and managed collection writeback, chunked client fields and server grid selectors retain the published source implementations. The display-query implementation has no overlapping runtime source changes.
+- Prepare `2026.1.23-dev` with a Current entry dated 2026-10-10 UTC. Freeze published Current as `2026.1.22-dev` and preserve every preceding migration record. The incoming Property/Proto migration grammar and compatibility marker `0.0.69` are retained; this additive display-query change does not advance compatibility again. Native vtable users still require coordinated rebuilds and matching baked metadata.
+- Preserve the removal of tracked delivery/search/status files. Generate build outputs through the current `docs_prepare.py` owners; root endpoints stay in ignored `Workspace/Documentation`. Reconcile the native-codegen inventory and review the exact baseline/current disposition. Earlier native/runtime qualification remains tied to its tested revisions; this pass verifies history, source preservation and current documentation contracts.
+
+- Verification: all 77 selected API/reference/contract/version, generated-description, site preparation, site and AI-delivery test cases pass after correcting the merged API-description inventory expectation (2574). Current model/reference, inventory, site/AI projections, 194 locale pairs, 4843 descriptions and 310 normative snippets with 159 evidence/183 external-parser checks pass. Aggregate contract diff passes across 17 domains with three additive/scope changes, one exact reviewed disposition and none missing; version/migration validation and aggregate Markdown validation pass. Compared 88 incoming source/tool paths and nine local source/test paths with their owning revisions; only the reviewed inventory annotation and description-count expectations differ from the upstream/local sources. Published EN/RU release history is unchanged apart from freezing the previous Current heading. Native/runtime and rendered-site qualification are not repeated.
+
+## 2026-10-09 - Display-query version reconciliation
+
+- Rebase unpublished display-query commit `69c5396c89ae480f7c793fc8afbd182b60d6bdde` onto published `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`. Preserve both incoming commits: SDL_GPU readback failure/retry and model hit-mask regression coverage, then consolidated documentation metadata and VERSION-backed current release notes. The native display-query sources retain their tested implementation.
+- Prepare the next master step as `2026.1.16-dev`. Freeze the published Current entry as `2026.1.15-dev`; preserve the published `2026.1.14-dev` readback-recovery entry and add the display-query Current entry dated 2026-10-09 in both locales. Existing caller/data semantics and network compatibility `0.0.68` are unchanged; the added IAppWindow methods still require coordinated native rebuilds.
+- Keep routing and translation state in `docs-manifest.json` sections. Do not restore the deleted standalone reports or the old delivery schema. Regenerate affected models/references, snippets, reviewed translation metadata, site/search, retrieval evaluation and AI delivery through their current owners. Earlier native/runtime evidence retains its original revision scope; this rebase does not claim fresh runtime or platform qualification.
+
+- Verification: 169 selected API/reference/contract, localization, source-inventory, snippet, versioning, site/artifact/layout/browser and validator tests passed; 1 platform case was skipped. Current models/references/site/AI projections, 194/194 locale pairs and 4840/4840 descriptions passed freshness/completeness checks; 309 normative snippets, 159 evidence entries and 183 external-parser checks passed. The aggregate contract diff reports three API changes across seventeen domains, one required reviewed disposition and none missing; the master version step passes against the published baseline. Aggregate Markdown validation and 28 retrieval tasks/67 checks also passed. Native/runtime and rendered-site qualification were not repeated.
+
+## 2026-10-08 - Display-query rebase onto published master
+
+- Replay unpublished `5ad88208d59f027d3f89ad78dc82fa667ca25099` onto published `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`. Preserve upstream movement settings, checked managed arithmetic, native compatibility `0.0.68`, versioning policy and all published changelog entries. Combine the native-codegen inventory with the two additional client display queries and regenerate its exact count/fingerprint; retain upstream test expectations with the two additions.
+- Prepare the single publication step as `2026.1.14-dev`, dated 2026-10-08 UTC. Document the additive script contract, unavailable-display result and coordinated rebuild required by the `IAppWindow` vtable extension in both changelog locales. Existing calls, settings, wire formats and stored data retain their meaning.
+- Retain the removal of the old root `assets/docs-search*.json` paths. Generate search data in the current `Docs/Site/Assets/` owner directory, then regenerate source models, references, snippets, translation state, site/routes, retrieval evaluation and AI delivery. Preserve prior verification entries from both histories.
+- This pass verifies history and source/documentation reconciliation. Earlier native builds and visible-client checks retain their original tested revisions; they are not fresh runtime or platform qualification of the rebased tree. Safety refs and worktree/index snapshots remain in the embedding checkout.
+
+
+## 2026-10-10 - Reconcile document migrations and collection proxies with local map-grid work
+
+- Fast-forward published master from `6db09ef1d49a44307dbdadf747087247d5f5e78b`
+  to `cfa468f17bd5dff82cebc6f05b568620fc34163c`; audit all 95 incoming paths.
+  Retain the uncommitted grid implementation, defaults, regressions and prior
+  measurements in named safety copies. Twelve native files match the original
+  work after line-ending normalization and adoption of the incoming marker 69.
+- Keep all published `2026.1.18-dev` through `2026.1.21-dev` migration records;
+  continue the local grid work as `2026.1.22-dev`. Preserve both verification
+  histories and reconcile Russian review hashes against the combined sources.
+  Correct the Managed guide's obsolete single-backend Transform statement:
+  both implemented backends now bind document callbacks automatically.
+- Regenerate canonical API/map/prototype/public-contract projections, then
+  prepare ignored delivery outputs in dependency order. Source validation passes
+  411 documents, all 4,841 description translations, 310 normative snippets and
+  the 28-task/67-check retrieval gate. Publication history and the local version
+  pass; the seventeen-domain contract diff has five changes, three reviewed grid
+  dispositions and no missing entries against the adopted published baseline.
+- Focused migration/metadata/documentation fixtures pass 50 tests and 69
+  subtests; async/snippet/description/AI fixtures pass another 49 tests and 34
+  subtests. The delayed/missing lazy SVG browser regression passes its three
+  tests across desktop, mobile and 200-percent profiles. Eleven optional native
+  probes are skipped: nine require Linux Mono embedding and two require a
+  configured GCC/Clang Ninja Managed build. This Windows integration does not
+  qualify those payload/toolchain paths, the AngelScript runtime, or a full
+  Jekyll site deployment.
+- The embedding Windows Managed build completes the unit executable, baker,
+  client host/runtime, headless server and Mapper without compiler warnings.
+  The fresh ordinary native run passes 551 cases and 667,262 assertions,
+  including the new migration/metadata/property and container-proxy regressions
+  together with the retained grid and lifetime checks.
+
+## 2026-10-09 - Reconcile master updates with local map-grid work
+
+- Integrate the complete published range from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`
+  to `6db09ef1d49a44307dbdadf747087247d5f5e78b`. Review startup-default application,
+  managed-runtime input validation, documentation preparation/output ownership,
+  consumers, fixtures, publication wiring, source manifest and paired guides.
+  Keep published `2026.1.16-dev` and `2026.1.17-dev` entries intact; continue
+  the uncommitted grid work as `2026.1.18-dev`. Twelve changed native source/test
+  files match their pre-update backup after line-ending normalization.
+- Regenerate source-owned API, references, map-format and public-contract indexes,
+  then use `docs_prepare.py` for ignored delivery outputs in dependency order.
+  Source validation passes 411 Markdown entries, all 4,838 generated-description
+  translations, 309 normative snippets and the 28-task/67-check retrieval gate.
+  Root endpoints live under `Workspace/Documentation/`; removed delivery files
+  are not returned to the index.
+- Affected documentation/version tools pass 139 tests and 71 subtests. Runtime
+  preparation/recovery fixtures pass 535 tests with two POSIX-only link fixtures
+  skipped on Windows. Version validation accepts the current minor and both
+  published update steps. The aggregate contract diff retains five changes in
+  seventeen domains, with all three required dispositions present.
+- Fresh Windows native configuration, unit/baker/client/server builds complete
+  without compiler warnings. The complete native unit suite passes 542 cases
+  and 667,042 assertions, including `ApplicationSettings` and map-grid regressions.
+  Smart-pointer, allocator and exception-safety audits have no findings.
+- A complete affected embedding-project resource bake finishes successfully
+  after the native rebuild, with matching `2026.1.18-dev` metadata and current
+  revision, 658 maps and no dialog-composition errors. Source documentation
+  validation is repeated after this verification entry and passes all 411 pages.
+- This records source/tool/native acceptance. A rendered Jekyll/browser audit,
+  other platform builds, production rollout and a live rendered gameplay route
+  were not performed in this reconciliation. Historical measurements retain
+  their original revision and workload boundaries.
+
+## 2026-10-09 - Measure dynamic and chunked server grid memory
+
+- Add the hidden `ServerMapGridMemoryDynamic` and
+  `ServerMapGridMemoryChunked` cases to the native server lifetime suite.
+  Sixteen 600x600 maps share one empty dynamic prototype; each receives
+  1,024 nonblocking items and 256 critters at identical spread coordinates.
+  Toggle and clear 10% and 90% of fields while preserving entity counts.
+- Record five-sample process-private medians at startup, empty/populated
+  maps, both write-history densities, destroyed-location/cover release and
+  shutdown. Optional allocator active-page values are unavailable in the
+  measured binary and are represented as unavailable in the external report.
+  Process commitment includes entities and allocator caches; it is not an
+  exact container-allocation or leak measurement.
+- Run each case in a fresh optimized process, three times per mode with
+  alternating order. All six cases pass 894 assertions in total, record
+  42 stage medians and stop cleanly once each, without synchronization or
+  fatal/script diagnostics. Fix a duplicate shutdown in the preparation
+  fixture before rebuilding and recording the final comparison; exclude
+  the pilot and incomplete first series from the final medians.
+- Across the sixteen maps, private growth from baseline is 53.9766 MiB for
+  dynamic versus 249.4883 MiB for chunked after sparse population, and
+  526.2734 versus 414.8086 MiB after writing and clearing 90% of fields.
+  Cleared dynamic cells and chunk blocks persist until grid destruction;
+  retained write history can reverse the sparse-world memory advantage.
+- Reconcile EN/RU runtime, testing and current changelog descriptions.
+  The focused native grid/selection/lifetime/large-map regression passes
+  772 assertions in nine cases. Source allocator and exception-safety
+  audits have no findings. The existing development version and selector
+  migration remain applicable; these hidden fixtures add no public contract.
+- Regenerated documentation inventory, references, paired translation state,
+  site/search/routes and AI delivery pass source validation for 410 Markdown
+  entries and the deterministic 28-task, 67-check retrieval gate. Focused
+  testing/inventory/version tooling passes eighteen tests. Aggregate contract
+  diff retains the five existing selector changes across seventeen domains,
+  with all three required dispositions present.
+
+## 2026-10-09 - Select server grids by string type
+
+- Replace boolean static/chunk flag pairs with the independent read-only
+  string settings `Server.ProtoMapGridType` and `Server.MapInstanceGridType`.
+  Both default to `Dynamic`; exact values `Static`, `Chunked` and `Dynamic`
+  select three sibling grid implementations at construction time.
+- Validate both strings before loading maps, including resource sets without
+  map blobs. Native constructors reject invalid values too. Remove `Map`'s
+  `noexcept` so `SettingsException` unwinds the partially constructed entity;
+  RAII balances its engine owner count. Field reads and pathfinding keep their
+  existing interface and perform no string selection.
+- The optimized native selection/lifetime/grid/large-map subset passes 772
+  assertions in nine test cases, with all nine grid combinations and ten
+  expected invalid-selector startup failures. All 23 fixture servers stop
+  cleanly. The first constructor-unwind fixture needed explicit current-context
+  coverage before reading its unpublished map; rebuild and repeat the complete
+  subset after correcting it. The final run has no synchronization diagnostics.
+- Reconcile runtime/testing/changelog in English and Russian, replace retired
+  descriptions and explain migration for both removed published boolean keys.
+  API inventory contains 2,569 symbols. Contract diff covers five changes in
+  seventeen domains with all three required dispositions present. Native API
+  tests pass twelve cases, codegen tests eight, and contract/description tests
+  seventeen plus twenty-two subtests.
+- Adapt the hidden benchmark to the new selector keys without changing any
+  container or workload algorithm. Earlier performance samples retain their
+  measured-revision meaning; do not infer a new timing result from this change.
+  Network compatibility, resource schemas, database migration and host/runtime
+  ABI markers remain unchanged; bindings and matching packages must be rebuilt.
+- The matching optimized Windows native applications and complete resource
+  bake succeed without compiler diagnostics; configuration and managed scripts
+  are regenerated and baking reports completion. Source validation passes 410
+  Markdown documents, 194/194 translations and 4,838/4,838 generated descriptions.
+  The embedding allocator gate checks 591 files and 348 markers with no findings;
+  its exception-safety gate checks 7,341 functions without errors or warnings.
+
+## 2026-10-09 - Compare production server map operations
+
+- Add the hidden `ServerMapGridOperationsCost` fixture to the existing native
+  server suite. The deterministic 600x600 map contains 45,368 obstacle fields,
+  1,024 runtime items and 256 critters. Use the production MapManager/Map paths
+  under quiescence, without managed assemblies or external networking/database.
+- Compare all nine independent dense/chunked/hash prototype and instance modes
+  over fourteen workloads, five warmed samples each. Rotate/reverse mode order;
+  use identical request/result checksums and fixed calibrated batch sizes.
+  Startup, population, output and assertions are outside timed loops. Separate
+  nearby reachable targets from a deliberately unreachable flood workload.
+- The optimized Windows native build completes without compiler diagnostics.
+  The full benchmark passes 1,665 assertions, all 630 recorded samples have
+  matching checksums, and every fixture shuts down cleanly. Functional grid
+  tests pass 1,024 assertions; separate entity-lifetime tests pass 48 assertions.
+- Host preflight passes five consecutive samples below 25% CPU. During the
+  comparison host CPU averages 23.9%, peaks at 66.2%, and process CPU median is
+  99.9% of one core. Aggregate measured process CPU/wall ratio is 0.9972. Retain
+  wall ranges and coarse process-CPU counters instead of timing pass thresholds.
+  These are warmed native-operation costs on one controlled map; they do not
+  qualify game-script/tick throughput, many-map cache pressure or worker scaling.
+- Reconcile EN/RU testing inventory and current development changelog. No
+  production API, compatibility, configuration or game behavior changes are
+  introduced by the benchmark; existing chunk-grid implementation is unchanged.
+- Regenerate affected documentation models, paired translation state, site,
+  search, routes and AI delivery. Source validation passes 410 Markdown entries;
+  194/194 translations are current. Focused testing/inventory/version fixtures
+  pass eighteen tests and fifty-eight subtests. Aggregate contract diff retains
+  three existing changes across seventeen domains with no missing disposition;
+  the benchmark itself changes no generated public contract.
+
+## 2026-10-09 - Refine static-grid chunk selection
+
+- Rename the unpublished server selectors to `Server.ProtoMapStaticGridChunked`
+  and `Server.MapInstanceStaticGridChunked`. Both default to false. Each is
+  effective only when its parent static-grid flag is enabled; otherwise storage
+  remains dynamic. Replace the draft keys without aliases and reconcile both
+  changelog locales, runtime guides, API inventory and Russian descriptions.
+- Rebuilt native tests pass 1,165 assertions in ten focused cases, including
+  all sixteen independent parent/chunk flag combinations. API/codegen fixtures
+  pass twenty tests and seventeen subtests. Documentation validation passes
+  410 Markdown entries with all 4,840 Russian generated descriptions current;
+  aggregate contract diff has no missing dispositions. Allocation audit covers
+  591 files with no errors or warnings; exception-safety audit covers 7,341
+  functions with no errors or warnings. Constructor/factory guarantees remain
+  unchanged. Matching resource baking, headless server, client host and client
+  runtime builds complete successfully.
+- The embedding project qualifies prototype storage with four sequential fresh
+  in-memory server startups on identical resources, with parent prototype static
+  storage enabled and instance flags fixed. Median process-private memory is
+  7.063 GiB dense versus 4.233 GiB chunked (40.07% lower). Both worlds contain no
+  runtime maps or player entities. This is process-level startup evidence, not
+  requested allocation bytes, active-instance memory or hot-access performance.
+  Startup-time medians are 11.608 versus 11.509 seconds on a loaded host; the
+  difference is within run variation and does not establish a speed improvement.
+
+## 2026-10-09 - Reconcile published readback and documentation metadata updates
+
+- Fast-forward published master from `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9`
+  to `cb33d42c7e4e2678e9b34ccf913d7b88186f979b`, preserving named safety
+  stashes in both repositories. Audit both incoming commits and all changed
+  native sources, tests and BuildTools consumers. The embedding project's
+  published gitlink already selects the fetched Engine tip.
+- Preserve every stashed native chunk-grid source and API fixture exactly.
+  Prepare the still-uncommitted storage work as `2026.1.16-dev`; retain the
+  published readback fix (`2026.1.14-dev`) and archive the metadata update's
+  `Current` notes as `2026.1.15-dev` before adding the new current entry.
+- Incoming model picking releases failed requests and retries while retaining
+  the last completed mask. SDL GPU submission/wait failures poison associated
+  fences rather than exposing unconfirmed pixels. Existing thresholds and
+  successful-readback behavior are unchanged; no wire/save/schema migration.
+- Adopt the incoming shared `docs-manifest.json` routing/translation sections
+  and their owning generators. Do not restore the two retired standalone JSON
+  files from the stash. Keep the Jekyll VERSION include and remove duplicate
+  version values through the incoming generators; preserve translation hashes.
+- Fresh generation and aggregate validation pass for 410 Markdown entries;
+  all 4,840 Russian generated descriptions are current. Changed documentation,
+  version, API and codegen fixtures pass 137 tests and 82 subtests. Version and
+  published-history checks pass; contract diff has no missing dispositions.
+- The embedding project's rebuilt native runner passes 701 assertions in ten
+  focused grid, entity-lifetime and rendering cases, including both incoming
+  hit-mask regressions. Exception-safety audit reports 7,341 functions and no
+  errors or warnings. Full resource baking succeeds for the updated project
+  hash, including 658 maps and zero dialog-composition errors. Client host,
+  client runtime and headless server builds complete with exit code zero.
+- Source-preservation, published-ancestor, gitlink and empty-index checks pass;
+  retain both safety stashes. Prior client screenshots and benchmark evidence
+  below retain their historical revision scope; this update makes no new GPU
+  scene, site-browser, platform or performance qualification claim.
+
+## 2026-10-08 - Bound client field allocations with directly indexed blocks
+
+- Keep published master `671a19e60f498534e9cf38c6cfbc0dfc48c14fb9` unchanged;
+  prepare `2026.1.14-dev` with dated EN/RU change and migration notes.
+  Add `ChunkedTwoDimensionalGrid` and use it in private `MapView` storage.
+  Existing dense/hash grids and public/serialized contracts are unchanged.
+- Withdraw the hash-grid experiment after owner feedback about access cost.
+  Compare actual `MapView::Field` from one optimized binary in three processes,
+  each pinned to logical CPU 7 with seven samples per workload. Each sample
+  performs 786432 accesses. Median populated reads: dense 2.693 ms, blocks
+  3.002 ms, hash 20.255 ms; mixed reads: 2.696/3.027/11.736 ms.
+  Blocks retain an approximately 11-12% read penalty in these workloads;
+  populated writes and empty/scattered reads are faster. This is access-cost
+  evidence, not whole-frame qualification or a platform-wide performance bound.
+- Real empty 1200x1200 constructor private-byte growth: 403496960 before,
+  34127872 after; the axial-scroll fixture grows by 37814272. Both 64 MiB
+  budgets pass. Focused native validation: 28 cases, 1989 assertions, exit 0;
+  includes boundary/partial-resize and move-only ownership checks. Reviewed
+  template allocation/resize invariants; pointer audit reports 0/0 and the
+  existing exception-safety audit checks 7338 functions with 0/0.
+- Fresh native applications and embedding-project bake pass with no compiler
+  warnings. Ordinary rendered global-map entry and movement to the reported
+  door pass twice; final image inspected. Early entry attempts did not qualify
+  map loading; one was rejected before client construction for distance.
+  No functional crash/script-exception/assert markers in the final game log;
+  execution overruns remain visible. Adapter termination does not prove graceful
+  shutdown. Original fragmented 32-bit address space is not reproduced.
+- Reconcile client runtime and testing docs in both locales. API/inventory and
+  Engine-version checks pass; regenerate snippets, translations, site/search,
+  routes, AI evaluation and delivery. Validation: 410 Markdown pages,
+  309 normative/159 evidence/183 external-parser snippets; AI retrieval
+  28 tasks/67 checks, 100% success, MRR 0.930.
+- Owner refinement: make `ChunkSide` a required compile-time template parameter;
+  `MapView` and its access benchmark supply `GameSettings::CLIENT_MAP_CHUNK_SIDE`
+  (16). Reject zero and non-power-of-two values at compilation. Fresh native
+  unit build passes without compiler warnings; focused execution passes four
+  cases and 123 assertions, including sides 1/8/16/32, both real-map memory
+  budgets and benchmark checksum equality. The first build failed with MSVC
+  PDB/RPC C1090; a process-local PDB endpoint completed the retry. Previous
+  rendered-route evidence precedes this refinement with the same block side.
+- Reconcile EN/RU runtime/testing/changelog and regenerate source-line references
+  and dependent delivery artifacts. Documentation validation passes 410 pages;
+  contract comparison reports zero changes across seventeen domains.
+- Server extension: independently opt into chunks for prototype and instance
+  grids using `Server.ProtoMapChunkedGrid` and `Server.MapInstanceChunkedGrid`.
+  Both default to false; existing static-grid flags retain dense precedence.
+  `GameSettings::SERVER_MAP_CHUNK_SIDE` supplies the required template side (16).
+  Eight native fixture combinations cover loader selection, boundary allocation,
+  shared prototype data, per-instance blocking, items and critters. The fixture
+  uses native managers in the always-built entity-lifetime source, covering both
+  scripting backends. A fresh unit build and focused execution pass six cases
+  and 618 assertions with normal fixture shutdown. The embedding project's
+  `LF_UnitTests`, `BakeResources` and `LF_ServerHeadless` targets complete with
+  exit 0 and no compiler warnings; the bake reports `Baking complete!`.
+- API/codegen regressions pass 20 tests and 17 subtests. Pointer audit covers
+  eight files with zero warnings/errors; five reviewed exception classifications
+  preserve allocation-only NoThrow or the loader's existing Basic guarantee,
+  and the complete audit passes 7338 functions with zero warnings/errors.
+  Documentation validation passes 410 entries and 4840 current generated Russian
+  descriptions. The seventeen-domain diff has two additive settings and one
+  reviewed inventory-fingerprint disposition. Mapper screenshot pixels and their
+  capture conditions are unaffected by server-only settings; only the derived
+  whole-file settings hash changes, and no new rendered capture is claimed.
+
+## 2026-10-09 - Reconcile document migrations with startup and documentation preparation
+
+- Fast-forward published master from `cb33d42c7e4e2678e9b34ccf913d7b88186f979b` to
+  `3edc33f7d774b43d50c200f204a833adbacc4b59`, retaining the unpublished document-migration
+  work in a named safety stash and restoring it over the fetched tip. No commits or publication are performed.
+- Audit all 80 incoming paths. The runtime change calls `ApplyDefaultSettings()` before ordinary
+  application configuration; `ApplicationSettings` pins omitted defaults, project and sub-config values,
+  cached local values and explicit command-line zero. Existing setting keys and declared defaults remain unchanged.
+- Retain the incoming documentation preparation/output-path implementation, site-build command and tests,
+  CI ordering, authored config, publishing manifest and bilingual instructions. Remove conflicted delivery
+  projections from the index and regenerate them through `docs_prepare.py`; root endpoints are prepared
+  under ignored `Workspace/Documentation/`. Versioned contract models and translations remain reviewed inputs.
+- Preserve published `2026.1.16-dev` notes verbatim and prepare the document-migration step as
+  `2026.1.17-dev`. Reconcile the two Russian review-hash conflicts against the combined English sources.
+  The compatibility marker remains the local document-migration value 69; the incoming defaults fix
+  does not introduce another transport or persisted-data conversion.
+- Prepared documentation passes 410-entry validation, all 4838 generated descriptions are current,
+  and retrieval passes 28 tasks / 67 checks at 100% success and 0.930 MRR. The contract comparison
+  against the fetched tip reports 29 changes across 17 domains, 29 reviewed dispositions and none missing.
+  Native/runtime qualification is recorded separately after the embedding build and isolated save tests finish.
+- During qualification, published master advances to `6db09ef1d49a44307dbdadf747087247d5f5e78b`.
+  Audit the complete two-commit range (88 paths), fast-forward to that tip with another named safety stash,
+  and prepare the local migration step as `2026.1.18-dev`, preserving published 17 and 16 notes separately.
+  The added runtime-readiness validation preserves complete tree semantics and rejects incomplete build inputs;
+  review BuildTools, filesystem fixtures, target archive checks and both locale owners together.
+- The incoming testing guide contains its translated new paragraph with an outdated Russian review hash.
+  Review both paragraphs and refresh that hash; do not change the meaning or weaken completeness enforcement.
+- Final prepared documentation passes 411-entry validation, all 4838 descriptions and the same 28-task /
+  67-check retrieval gate. Version 18 and all 29 contract dispositions pass against the fetched tip.
+  Runtime-readiness checks cover 535 cases across two runs: 532 pass initially; three Ninja compiler
+  probes pass when repeated in the installed Visual Studio developer environment, with no test changes.
+- Fresh Windows embedding builds of baker, headless/interactive servers, client and native tests finish
+  without compiler warnings. The final full native run passes 541 cases / 666464 assertions.
+  The earlier intermediate run has one 8.2928 ms timing sample against the unchanged 8 ms limit;
+  the isolated 11-assertion Threading case and the final full run both pass without changing that limit.
+- Full Server/Client/Mapper and content baking completes in 15:05. Six semantic document-migration
+  gameplay cases and both real two-process SQLite restarts pass with no failures, timeouts, global
+  exceptions or overruns. Observed committed BSON preserves read/notified flags while jointly changing
+  `_Proto` and a nested typed reference. Repeat payout reconciliation remains inert; shutdown is graceful.
+  These are embedding integration results, not a production database restore, website deployment or
+  qualification of additional native runtime platforms. Local changes and safety stashes remain uncommitted.
+
 ## 2026-10-06 - Complete the paused checked-arithmetic rebase
 
 - Resolve the paused replay of unpublished `2d77a62473` onto published master
@@ -2258,7 +2755,7 @@ Source areas checked:
 Results:
 
 - Added `BuildTools/docs_ai_delivery.py` and ADR 0003. The source manifest now owns the canonical locale, source ref, curated starting IDs, generated-page policy, and hard 1 MiB context budget.
-- Generated root [llms.txt](../../llms.txt) with all public current documentation routes, [llms-full.txt](../../llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](../../docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
+- Generated root [llms.txt](https://fonline.ru/llms.txt) with all public current documentation routes, [llms-full.txt](https://fonline.ru/llms-full.txt) with public current authored pages plus generated indexes only, and [docs-manifest.json](https://fonline.ru/docs-manifest.json) with stable IDs, audiences, Diataxis type, ownership/state/stability, canonical/site/source URLs, normalized SHA-256 hashes, sizes, and artifact metadata.
 - The full-context artifact is assembled from whole documents only and fails rather than truncating content when the budget is exceeded. Placeholder, internal, and generated detail pages are excluded according to the recorded policy.
 - The three files are ordinary repository-root static artifacts, so the existing GitHub Pages/Jekyll deployment serves them at stable `fonline.ru` URLs without a separate renderer or documentation source.
 - Last Frontier maintenance guidance now requires same-change reconciliation and generator checks when an Engine update changes inventoried Markdown, manifest metadata, public paths, generated models, or publication policy.
@@ -2473,7 +2970,7 @@ Results:
 
 - Added [ADR-0006](../Decisions/0006-documentation-version-locale-routing.md). The unversioned site is now explicitly the rolling `current` channel on `master`; tagged snapshots remain deferred until supported release lines and a support matrix exist.
 - Added source-owned `versioning` and `localization` sections to the documentation manifest. English remains canonical, Russian remains planned, `Docs/en` targets mirror to `Docs/ru`, and five README-style entry points have explicit locale pairs.
-- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](../generated/document-routes.json). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
+- Extended `BuildTools/docs_site.py` to schema 2 and generated [document-routes.json](https://fonline.ru/docs-manifest.json#/routing). The model records current URLs, canonical future owners, planned English/Russian paths, availability, and every legacy route that must survive a move.
 - Multiple old pages may converge only when exactly one non-`replace` document owns the future target. The current public API routes correctly converge on the generated API index.
 - Added a validated `redirect` document state with `> Legacy route.` marker, non-human/non-search classification, stable target ID, shared canonical target, a direct Markdown link to that canonical file, and generated redirect ownership. This lets old Markdown URLs remain readable in GitHub and Jekyll after a move without generated HTML or another redirect plugin.
 - Site navigation data and public `docs-manifest.json` now expose the same rolling version and locale policy. The layout labels `Current master` from generated data instead of maintaining an independent version string.
@@ -3636,7 +4133,7 @@ Implemented and corrected:
 - Added [AiEvaluation.md](../AiEvaluation.md), the versioned
   `Docs/ai-evaluation.json` source, `BuildTools/docs_ai_eval.py`, focused
   tests, and the deterministic
-  [generated/ai-evaluation-report.json](../generated/ai-evaluation-report.json).
+  [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json).
   The source owns 12 tasks across architecture, scripting, content,
   debugging, migration, and release, with 24 retrieval checks plus current
   answer-evidence and forbidden-assumption checks.
@@ -3711,7 +4208,7 @@ Implemented and corrected:
 - Added [SnippetValidation.md](../SnippetValidation.md),
   `BuildTools/SnippetPolicy.json`, `BuildTools/docs_snippets.py`, focused
   tests, and the deterministic
-  [generated/snippets.json](../generated/snippets.json). The inventory records
+  [generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). The inventory records
   document/heading/line ownership, language, contract, harness, normalized
   hash, template status, and result for every public fence.
 - Added strict parsers for C-family delimiter/comment/string structure, CMake
@@ -3791,7 +4288,7 @@ Implemented and corrected:
   [Documentation Site Publication](../SitePublication.md). Each has a horizontal
   desktop variant and an automatically derived vertical mobile variant, so
   mobile text is not a scaled-down desktop canvas.
-- Added [generated/diagrams.json](../generated/diagrams.json) with the source
+- Added [generated/diagrams.json](https://fonline.ru/Docs/generated/diagrams.json) with the source
   manifest hash, owning document, dimensions, alt/caption text, complete
   source paths, variant paths, and exact SVG hashes. The six SVG variants live
   under `Docs/assets/diagrams/` and contain native `title`/`desc` metadata,

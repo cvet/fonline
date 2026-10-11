@@ -527,8 +527,13 @@ def _append_migration_symbols(
     entries: list[tuple[codegen.MigrationRuleTag, codegen.SourceLocation | None]],
 ) -> None:
     for tag, source in entries:
-        rule_kind, scope, old_name, replacement = tag.args
-        family_id = f"migration.{rule_kind}.{scope}.{old_name}"
+        if tag.args[0] in ("Property", "Proto"):
+            rule_kind, scope, action, old_name = tag.args[:4]
+            replacement = tag.args[4] if len(tag.args) == 5 else ""
+        else:
+            rule_kind, scope, old_name, replacement = tag.args
+            action = "Rename"
+        family_id = f"migration.{rule_kind}.{scope}.{old_name}" if action == "Rename" else f"migration.{rule_kind}.{scope}.{action}.{old_name}"
         symbol = _base_symbol(
             root,
             symbol_id=family_id,
@@ -543,6 +548,8 @@ def _append_migration_symbols(
         symbol["rule_kind"] = rule_kind
         symbol["scope"] = scope
         symbol["replacement"] = replacement
+        if rule_kind in ("Property", "Proto"):
+            symbol["action"] = action
         symbols.append(symbol)
 
 

@@ -44,10 +44,10 @@ FO_BEGIN_NAMESPACE
 
 // The native-codegen surface is offered for evaluation only, and stays revision-pinned until supported release lines exist.
 // SymbolCount and InventorySha256 force owner review of every addition, removal or stable-ID change
-///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2574 InventorySha256=c550a5295e1786447151336e94258036c65c2fe6ec55d2c7fc0b60636fb03998
+///@ ApiContract scope:native-codegen experimental Since=2022.1.0.wip SymbolCount=2576 InventorySha256=f450041e1e3e7e7c970546f3840fde2c4eb8af21c4e3acd4be1771cd8cc798dc
 
 // Force change of compatability version
-///@ MigrationRule Version 0 0 68
+///@ MigrationRule Version 0 0 70
 
 auto IsPackaged() -> bool;
 auto GetPackagedRuntimeName() -> string;
@@ -404,6 +404,8 @@ struct GameSettings
     static constexpr int32_t DEFAULT_MAP_SIZE = 200;
     static constexpr int32_t MIN_MAP_SIZE = 10;
     static constexpr int32_t MAX_MAP_SIZE = 4000;
+    static constexpr size_t CLIENT_MAP_CHUNK_SIDE = 16;
+    static constexpr size_t SERVER_MAP_CHUNK_SIDE = 16;
 };
 
 // Stable text-message identifiers for connection, authentication, loading, and runtime status feedback. The generic info-message transport treats them as opaque values; embedding projects own their text and dispatch policy

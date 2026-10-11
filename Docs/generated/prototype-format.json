@@ -324,14 +324,29 @@
     {
       "id": "prototype-format.rule.proto-migration",
       "name": "Prototype migration",
-      "requirement": "Proto migration rules are applied to declared ids, parent ids, lookups, and persisted references before final resolution.",
+      "requirement": "Proto Rename and Remove rules apply to declared ids, parent ids, lookups, and persisted references; Proto Transform runs only on a loaded database document before prototype resolution.",
       "stability": "experimental",
-      "description": "Author migrations in native/project metadata with ///@ MigrationRule Proto <Type> <Old> <NewOrRemove>.",
+      "description": "Declare MigrationRule Proto <Type> Rename <Old> <New>, Remove <Old>, or Transform <Old> <Migrator>. Remove has no replacement; Transform receives the original prototype name and whole document context.",
       "source": {
         "path": "Source/Tools/ProtoBaker.cpp",
         "anchors": [
           "CheckMigrationRule(proto_rule_name, type_name, pid)",
           "CheckMigrationRule(proto_rule_name, type_name, parent_pid)"
+        ]
+      }
+    },
+    {
+      "id": "prototype-format.rule.property-migration",
+      "name": "Property migration actions",
+      "requirement": "Property Rename requires an existing destination; Transform requires an existing Persistent property; Remove permanently retires an absent name on the same owner, including RefType fields.",
+      "stability": "experimental",
+      "description": "Declare MigrationRule Property <Owner> Rename <Old> <New>, Transform <Property> <Migrator>, or Remove <Old>. Property and Proto share five-part Rename/Transform and four-part Remove records. Retired values are skipped on document/text load, while baking and metadata finalization reject a reintroduced name.",
+      "source": {
+        "path": "Source/Common/EngineBase.cpp",
+        "anchors": [
+          "RegisterPropertyMigrationRule",
+          "Property Rename migration destination does not exist",
+          "Migration rule retires a name that is still registered"
         ]
       }
     },
@@ -3600,7 +3615,7 @@
   "summary": {
     "section_form_count": 3,
     "directive_count": 2,
-    "rule_count": 14,
+    "rule_count": 15,
     "entity_type_count": 4,
     "property_count": 112,
     "authorable_property_count": 91,
@@ -3618,5 +3633,5 @@
       "Map": 15
     }
   },
-  "contract_digest": "c64f7648fda0f3013bebb941061880467aa4f276e8316872eb988cdcf53edd6a"
+  "contract_digest": "74bc2b1ab3093dc6d252f634e42dd9c37992f7749701c6932f47a9350b25bec0"
 }

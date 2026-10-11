@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/project-configuration.html
 ---
 
 # Конфигурация игрового проекта
-<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"35098b15063ce35ad3615b9f7d04a08d42bf81898cbf0a2e4a98000c08fb7314"} -->
+<!-- docs-translation: {"document_id":"project-configuration","locale":"ru","source_path":"Docs/en/how-to/build/project-configuration.md","source_sha256":"dc9520bda1fe39fda1afce0b4d30edd4bf23f4b13ce8dd191871648c96fa511d"} -->
 Руководство показывает, как embedding project должен создавать `.fomain`,
 resource packs и именованные sub-configs. Точная runtime model описана в
 [Конфигурация и источники данных](../../reference/settings/configuration-and-data-sources.md), а
@@ -268,3 +268,42 @@ parents применяются слева направо: поздние parents
 options, baking stages и диапазона project `.fomain`. В том же change обновляйте
 руководство, project config, tests и generated references, если изменились
 precedence, fields, defaults, pack routing или launch profiles.
+
+<a id="optional-native-components"></a>
+## Опциональные native-компоненты
+
+Перечислите используемые компоненты через `SetOptionValues` до `StartProjectGeneration`. Каждая опция — BOOL, по умолчанию OFF, с числовым дефайном 0/1. Общего списка выбора нет. Исходники и Engine-заголовки регистрируются и подключаются всегда; опциональное содержимое закрыто guards внутри файлов.
+
+```cmake
+SetOptionValues(
+    FO_DATABASE_SQLITE ON
+    FO_DATA_SOURCE_DAT ON
+    FO_IMAGE_FRM ON)
+```
+
+| Опция | Роль и зависимость |
+| --- | --- |
+| `FO_DATA_SOURCE_DAT` | Common; DAT 2.0/2.1 и zlib |
+| `FO_DATA_SOURCE_ZIP` | Common; внешние ZIP/BOS и bundled minizip |
+| `FO_DATABASE_JSON` | Server; обычный JSON, существующая JSON-зависимость |
+| `FO_DATABASE_SQLITE` | Server; SQLite и CBOR, без BSON |
+| `FO_DATABASE_MONGO` | Server; mongoc и libbson |
+| `FO_IMAGE_FRM` | Baker; FRM и FRx, Fallout-палитра под guard |
+| `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; отдельные legacy importers |
+| `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; независимые importers и общий decoder под guard |
+| `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; отдельные legacy importers |
+
+Memory обязательна в Server; PNG/TGA/FOFRM и libpng принадлежат Baker. Embedded/APK сохраняют minizip при внешнем ZIP OFF. Stock client читает baked sprites без importers и драйверов БД.
+
+Старые `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` завершаются ошибкой; удалите их из кеша/окружения и выберите положительные опции.
+
+<a id="baking-configuration-fingerprint"></a>
+## Отпечаток конфигурации бейкинга
+
+Объявление опции регистрирует её тип и влияние на бейкинг. `BAKING` в `DeclareBoolOption`/`DeclareValueOption` или в начале группы `Declare*Options` включает опции в `FO_BAKING_CONFIG_HASH`. Опции без отметки исключаются; [справочник опций](../../reference/cmake/options.md) показывает каждое решение.
+
+Хеш учитывает идентичность проекта и выбор конфига, геометрию, лимиты моделей/эффектов, 3D, частицы, scripting backend и импортеры архивов/изображений. Провайдеры БД, диагностика, allocator, пути вывода и выбор native-целей не инвалидируют ресурсы.
+
+CMake считает SHA-256 непосредственно перед генерацией кода, после предыдущих стадий и Codegen Pre hook. Имена сортируются, BOOL нормализуются в 0/1, границы строк сохраняются. Новые отмеченные проектные опции включаются автоматически; завершите их настройку до потребления значений в `SetupCodeGeneration`.
+
+Baker пишет `Resources.baking-config-hash` и поле отчёта `bakingConfigHash`. Отсутствие/изменение отпечатка очищает устаревшие outputs и требует full bake независимо от `FO_BUILD_HASH`; прежние значения допускают incremental bake. Оба маркера удаляются до работы и записываются лишь после успешного запекания ресурсов. До упаковки повторите configure/build/bake.

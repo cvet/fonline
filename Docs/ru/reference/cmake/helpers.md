@@ -5,7 +5,7 @@ locale: ru
 generated: true
 ---
 
-<!-- docs-translation: {"document_id":"generated-cmake-helpers","locale":"ru","source_path":"Docs/en/reference/cmake/helpers.md","source_sha256":"1b109ad6675a8bed5ed065c5432513316f2681ab7378a63784e5cc571af4779b"} -->
+<!-- docs-translation: {"document_id":"generated-cmake-helpers","locale":"ru","source_path":"Docs/en/reference/cmake/helpers.md","source_sha256":"1234a69ad4db967bc8cfe2ee4c7bddfa4754c41970e1872effe3c96e059d9fa1"} -->
 
 # Проектные helper-команды CMake
 
@@ -23,3 +23,4 @@ generated: true
 | <a id="entry-cmake-helper-addenginesources-8a1a5c856f"></a><code>cmake.helper.AddEngineSources</code> | <code>AddEngineSources(&lt;role&gt; &lt;path-or-glob&gt; [&lt;role&gt; &lt;path-or-glob&gt; ...])</code> | <code>macro</code> | <code>COMMON</code>, <code>SERVER</code>, <code>CLIENT</code>, <code>MAPPER</code>, <code>BAKER</code>, <code>TESTS</code> | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Добавляет нативные исходники подключающего проекта с разделением по ролям до RegisterEngineSources. |
 | <a id="entry-cmake-helper-addnativeincludedir-60a1b8f1db"></a><code>cmake.helper.AddNativeIncludeDir</code> | <code>AddNativeIncludeDir(&lt;directory&gt; [...])</code> | <code>macro</code> | - | [BuildTools/cmake/helpers/Build.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Build.cmake) | Добавляет относительные к проекту каталоги include, когда включены нативные скрипты. |
 | <a id="entry-cmake-helper-addbakingtarget-5d644391c3"></a><code>cmake.helper.AddBakingTarget</code> | <code>AddBakingTarget(&lt;target&gt; [SUB_CONFIG &lt;name&gt;] [FORCE] [COMMENT &lt;text&gt;])</code> | <code>function</code> | - | [BuildTools/cmake/stages/ScriptsAndBaking.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/stages/ScriptsAndBaking.cmake) | Создаёт проектную цель запекания с необязательным subconfig, принудительным режимом и обновлением build hash после SetupScriptsAndBaking. |
+| <a id="entry-cmake-helper-temporarycompat-7b9b14f99a"></a><code>cmake.helper.TemporaryCompat</code> | <code>TemporaryCompat(&lt;id&gt; &quot;YYYY-MM-DD&quot;)</code> | <code>function</code> | - | [BuildTools/cmake/helpers/Commands.cmake](https://github.com/cvet/fonline/blob/master/BuildTools/cmake/helpers/Commands.cmake) | Помечает временные отказы сборки или платформенные ограничения общей датой удаления совместимости; temporary_compat.py проверяет истечение срока, включая неактивные ветки. |

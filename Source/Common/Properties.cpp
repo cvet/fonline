@@ -306,6 +306,21 @@ void Property::SetGetter(PropertyGetCallback getter) const
     _getter = std::move(getter);
 }
 
+void Property::SetMigratorName(string_view name) const
+{
+    FO_VERIFY_AND_THROW(IsPersistent(), "Property migrator requires a Persistent property", _registrar->GetTypeName(), GetName());
+    FO_VERIFY_AND_THROW(_migratorName.empty() && !name.empty(), "Property migrator is empty or already registered", GetName(), name);
+
+    _migratorName = name;
+}
+
+void Property::SetMigrator(PropertyMigratorCallback migrator) const
+{
+    FO_VERIFY_AND_THROW(!_migratorName.empty() && !_migrator && migrator, "Property migrator binding is missing or duplicated", GetName());
+
+    _migrator = std::move(migrator);
+}
+
 void Property::AddSetter(PropertySetCallback setter) const
 {
     _setters.emplace(_setters.begin(), std::move(setter));
@@ -1345,6 +1360,12 @@ void Properties::ApplyFromText(const map<string_view, string_view>& key_values)
         auto prop = registrar->FindPersistedProperty(key);
 
         if (!prop) {
+            auto migration = registrar->_nameResolver->CheckMigrationRule(registrar->_propMigrationRuleName, registrar->_typeName, registrar->_hashResolver->to_hashed_string(key));
+
+            if (migration.has_value() && !*migration) {
+                continue;
+            }
+
             logging::write("Failed to load unknown property {}", key);
             errors++;
             continue;

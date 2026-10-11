@@ -179,9 +179,11 @@ Windows builds retain the `_WIN32_WINNT=0x0601` compile baseline. One Windows bu
 
 #### Temporary compatibility
 
-`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` in `BasicCore.h` marks necessary code that recognizes older builds or data, including a refusal path. Its `static_assert` checks the date's shape and can stand at namespace, class, or block scope; it does not make the build expire. Managed code uses `[TemporaryCompat("Id", "YYYY-MM-DD")]` from `CoreScripts/Attributes.cs`. Repeat the same identifier and last-valid date on every related implementation, member, and test.
+Old-build/data handling uses `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native, `BasicCore.h`) or `[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed, `CoreScripts/Attributes.cs`). Use one id/date across implementations, members and tests. Native `static_assert` checks date shape at namespace/class/block scope.
 
-`BuildTools/temporary_compat.py` scans Engine `Source/` by default, rejects malformed or inconsistent markers and dates more than 366 days ahead, and fails from the day after expiration with all marked locations. The Engine validation workflow runs its tests and scan. An embedding project can pass its own source directories alongside `Engine/Source`; the marker never substitutes for a reviewed reason to retain old-format handling. At expiry, remove the code or move the date in a reviewed change if the reason remains. Keeping expiry in CI rather than the macro leaves old release builds reproducible.
+CMake uses `TemporaryCompat(Id "YYYY-MM-DD")` from `BuildTools/cmake/helpers/Commands.cmake`. Mark temporary refusals/dependency exclusions; permanent gates need no date. It checks argument/date shape. Remove only the temporary exclusion after validating platform support.
+
+`BuildTools/temporary_compat.py` and its tests run in CI. Defaults scan `Source/` and `BuildTools/cmake/` (`.cmake`, `CMakeLists.txt`, inactive branches); projects pass files/directories. Comments/CMake strings are ignored. Malformed/inconsistent dates or dates over 366 days ahead fail; expiry fails the next day with every location. Remove expired code/constraints or review an extension. Builds remain reproducible.
 
 ### Diagnostics and failure handling
 
@@ -280,11 +282,11 @@ allocations as Engine-heap or Tracy allocation events.
 | ufbx | `SafeAllocator` | compile-time `UFBX_EXTERNAL_MALLOC` plus `extern "C" ufbx_malloc/realloc/free` in `Tools/ModelMeshBaker.cpp` |
 | SDL | `safe_alloc::*_raw` | `Frontend/Application.cpp` |
 | Effekseer | `safe_alloc::*_raw` + aligned | `Client/EffekseerExtension.cpp`, declared in its header; both owners (client runtime and `Tools/ParticleBaker.cpp`) install through that one definition |
-| libpng | `safe_alloc::*_raw` | `Tools/ImageBaker.cpp`, via `png_create_read_struct_2` |
-| libbson / mongo-c | `safe_alloc::*_raw` + aligned | shared `Server/DataBase.cpp`; every BSON-backed factory (JSON, SQLite, Mongo) installs the process-global vtable before constructing its backend |
+| libpng | `safe_alloc::*_raw` | `Tools/ImageBaker-Png.cpp`, via `png_create_read_struct_2` |
+| libbson / mongo-c | `safe_alloc::*_raw` + aligned | `Server/DataBase-Mongo.cpp`; only the Mongo factory installs the process-global vtable before constructing its backend |
 | SQLite | `safe_alloc::*_raw` | `Server/DataBase-SQLite.cpp`, via `sqlite3_config(SQLITE_CONFIG_MALLOC)` before `sqlite3_initialize()` |
 
-The bson vtable is worth reading before copying its shape elsewhere: it supplies `aligned_alloc` but releases those blocks through the plain `free` member, never recording the alignment. That is sound only while both paths end in the same release function. Under rpmalloc they do (`rpaligned_alloc` and `rpmalloc` both end in `rpfree`), and so do they on POSIX without it (`posix_memalign` blocks are `free()`-able by definition). The one combination that breaks is Windows without rpmalloc — the sanitizer configs, where `expr_RpmallocEnabled` turns the allocator off so the sanitizer can interpose — because there the aligned path is `_aligned_malloc`/`_aligned_free`. `BsonAlignedAlloc` therefore falls back to plain `safe_alloc::malloc_raw` in exactly that case, which is what bson's own default vtable does on MSVC and for the same stated reason (`_aligned_alloc_impl` in libbson `memory.c` deliberately does not use `_aligned_malloc`); every aligned request in mongoc is a `BSON_ALIGNOF` of an ordinary C struct, so malloc's fundamental alignment covers them. The vtable is process-global, so every BSON-backed factory installs the same callbacks before its backend can allocate; changing it later could pair an old allocation with a new free callback. Dropping `aligned_alloc` from the vtable is not an alternative — bson then substitutes an internal fallback that discards the requested alignment on every platform, not just the one that needs it.
+The bson vtable is worth reading before copying its shape elsewhere: it supplies `aligned_alloc` but releases those blocks through the plain `free` member, never recording the alignment. That is sound only while both paths end in the same release function. Under rpmalloc they do (`rpaligned_alloc` and `rpmalloc` both end in `rpfree`), and so do they on POSIX without it (`posix_memalign` blocks are `free()`-able by definition). The one combination that breaks is Windows without rpmalloc — the sanitizer configs, where `expr_RpmallocEnabled` turns the allocator off so the sanitizer can interpose — because there the aligned path is `_aligned_malloc`/`_aligned_free`. `BsonAlignedAlloc` therefore falls back to plain `safe_alloc::malloc_raw` in exactly that case, which is what bson's own default vtable does on MSVC and for the same stated reason (`_aligned_alloc_impl` in libbson `memory.c` deliberately does not use `_aligned_malloc`); every aligned request in mongoc is a `BSON_ALIGNOF` of an ordinary C struct, so malloc's fundamental alignment covers them. The vtable is process-global, so the Mongo factory installs the same callbacks before its backend can allocate; changing it later could pair an old allocation with a new free callback. Dropping `aligned_alloc` from the vtable is not an alternative — bson then substitutes an internal fallback that discards the requested alignment on every platform, not just the one that needs it.
 
 SQLite's hook needs an `xSize` callback and hands the free/realloc/size functions only a pointer, so each block carries an 8-byte size header. Its configuration must also be installed *before* `sqlite3_initialize`, which is why the library is built with `SQLITE_OMIT_AUTOINIT` and every caller goes through one exported initializer.
 
@@ -429,6 +431,19 @@ See [Testing](../../contributing/testing/) for the complete test-suite map and t
 - Cross-platform random sequences: `Source/Essentials/RandomGenerator.*`; coarse and precise waits: `Threading.*`.
 - File bytes and low-level writable-path composition on disk: `Source/Essentials/DiskFileSystem.*`; mounted engine resources and installed-client overlays: [Configuration and Data Sources](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol/command/network runtime: [Networking](../../explanation/authority-and-networking/).
+
+
+
+`fs::try_lock_file(path)` returns a move-only `fs::exclusive_file_lock` with
+`owns_lock()` and idempotent `reset()`. It opens or creates without truncation,
+never waits, and returns a closed owner for busy/invalid/unavailable paths or
+Web builds. Parent directories must already exist. Windows uses wide paths,
+long-path normalization and denied sharing; POSIX uses an advisory exclusive
+`flock`. Moves transfer ownership, replacement releases the previous lock,
+and destruction/process exit releases it. Descriptors are not inherited by
+child executions. The lock file stays on disk; never unlink it while a
+participant can still hold it. Baker ownership is described in
+[the baking guide](../../explanation/content-pipeline/baking.md#output-ownership-and-competing-processes).
 
 ## Validation checklist
 

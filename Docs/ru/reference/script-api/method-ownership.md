@@ -7,7 +7,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 ---
 
 # Карта методов скриптового API
-<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"b6c90ffeebeb1098a6f9e52e719a81735379319a7ca54be7921714d20b5d19ec"} -->
+<!-- docs-translation: {"document_id":"script-methods-map","locale":"ru","source_path":"Docs/en/reference/script-api/method-ownership.md","source_sha256":"02a72a6ea025bcebeb0452f7bf001f450ed25f4a1c02e1e0aaa320083001b36b"} -->
 > Документация движка. Эта страница сопоставляет нативные файлы `///@ ExportMethod` в `Source/Scripting/` с их обязанностями в скриптовом интерфейсе. Она дополняет страницу [Скриптовый runtime](../../explanation/scripting-runtime/), но не является полным сгенерированным справочником API.
 
 ## Назначение
@@ -21,7 +21,7 @@ permalink: /Docs/ru/reference/script-api/method-ownership.html
 
 ## Инвентарь исходного кода
 
-Авторитетный список файлов и число объявлений `///@ ExportMethod` в каждом из `Source/Scripting/*ScriptMethods.cpp` генерируются в [source-inventory.json](../../../generated/source-inventory.json). Полные разобранные записи методов находятся в [канонической модели API](../../../generated/api.json), а [сгенерированный справочник методов](../../../generated/api/methods.md) показывает ID перегрузок, сигнатуры, значения по умолчанию, nullable-признаки, стороны runtime, фактические receiver, стабильность и исходные позиции. Эта страница отвечает за понятное человеку объяснение семейств методов и границ стороны/receiver; она не дублирует сгенерированные итоги и сигнатуры.
+Авторитетный список файлов и число объявлений `///@ ExportMethod` в каждом из `Source/Scripting/*ScriptMethods.cpp` генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Полные разобранные записи методов находятся в [канонической модели API](../../../generated/api.json), а [сгенерированный справочник методов](../../../generated/api/methods.md) показывает ID перегрузок, сигнатуры, значения по умолчанию, nullable-признаки, стороны runtime, фактические receiver, стабильность и исходные позиции. Эта страница отвечает за понятное человеку объяснение семейств методов и границ стороны/receiver; она не дублирует сгенерированные итоги и сигнатуры.
 
 После добавления, удаления или перемещения export обновите инвентарь:
 

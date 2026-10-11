@@ -42,14 +42,14 @@
 
 FO_BEGIN_NAMESPACE
 
-Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) noexcept :
+Map::Map(ptr<ServerEngine> engine, ident_t id, ptr<const ProtoMap> proto, nptr<Location> location, ptr<StaticMap> static_map, nptr<const Properties> props) :
     ServerEntity(engine, id, engine->GetPropertyRegistrar(ENTITY_TYPE_NAME), props ? props : nptr<const Properties> {proto->GetProperties()}, proto->GetProperties()),
     EntityWithProto(proto),
     MapProperties(*GetInitRef()),
     _protoMap {proto},
     _staticMap {static_map},
     _mapSize {GetSize()},
-    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceStaticGrid)},
+    _hexField {CreateHexField(_mapSize, engine->Settings->Server.MapInstanceGridType)},
     _mapLocation {location}
 {
     FO_VALIDATE_ENTITY(NONE);
@@ -88,13 +88,18 @@ void Map::ClearAllAssociations() noexcept
     _itemsMap.clear();
 }
 
-auto Map::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+auto Map::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
-    if (static_grid) {
+    if (grid_type == "Static") {
         return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
-
-    return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    if (grid_type == "Chunked") {
+        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(map_size);
+    }
+    if (grid_type == "Dynamic") {
+        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    }
+    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.MapInstanceGridType", grid_type);
 }
 
 auto Map::GetName() const noexcept -> string_view

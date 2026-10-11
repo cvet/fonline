@@ -5,7 +5,7 @@ locale: ru
 document_id: image-format-guide
 permalink: /Docs/ru/how-to/content/image-format.html
 ---
-<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"7677cbe13a997e201531807611dbd70830341ebe3aa65d594090a3090abad56f"} -->
+<!-- docs-translation: {"document_id":"image-format-guide","locale":"ru","source_path":"Docs/en/how-to/content/image-format.md","source_sha256":"1bbbbb836eacc4c11f3551e0c0ffc1fee9cd2efad35fe1ae8895b0b6ef4eca49"} -->
 # Форматы изображений и спрайтов
 
 FOnline запекает авторские и устаревшие изображения в компактный клиентский
@@ -32,8 +32,17 @@ FOnline запекает авторские и устаревшие изобра
 Поведение принадлежит следующим исходникам:
 
 - `Source/Tools/ImageBaker.cpp` и `ImageBaker.h`: обнаружение источников,
-  декодирование форматов, композиция FOFRM, имена выходов, `SpriteInfo` каждого
-  пакета, интеграция mesh и сериализация;
+  диспетчеризация импортера, имена выходов, `SpriteInfo` каждого пакета,
+  интеграция mesh и сериализация;
+- `Source/Tools/ImageImport.cpp` и `ImageImport.h`: общие типы кадров и
+  контекста, диагностика отключённых импортеров;
+- `Source/Tools/ImageBaker-Fofrm.cpp`, `ImageBaker-Png.cpp` и
+  `ImageBaker-Tga.cpp`: обязательные композиция и импорт RGBA;
+- соседние `ImageBaker-Art.cpp`, `ImageBaker-Bam.cpp`, `ImageBaker-Frm.cpp`,
+  `ImageBaker-Mos.cpp`, `ImageBaker-Rix.cpp`, `ImageBaker-Spr.cpp`,
+  `ImageBaker-Til.cpp` и `ImageBaker-Zar.cpp`: опциональные импортеры;
+  `ImageBaker-ZarDecoder.cpp` объединяет декодер ZAR/TIL с сохранением
+  порядка красного и синего каналов каждого формата;
 - `Source/Tools/SpriteMeshing.cpp` и `SpriteMeshing.h`: построение маски,
   генерация и оценка кандидатов, триангуляция и проверка покрытия;
 - `Source/Common/SpriteResource.cpp` и `SpriteResource.h`: общий
@@ -53,6 +62,15 @@ FOnline запекает авторские и устаревшие изобра
 сериализованном результате, и строит сгенерированный справочник. Изменение
 импортера, descriptor, контейнера, factory, atlas или cache должно обновлять эту
 модель в той же правке.
+
+Пользовательские native-загрузчики, передаваемые в `ImageBaker::AddLoader`,
+получают `const ImageImport::Context&`. Читайте текущий пакет через
+`*context.Files`, а вложенные изображения разрешайте через
+`context.Resolve(path)`: так сохраняются проверки выбранных импортеров и
+опции имени файла. `FrameShot`, `FrameSequence`, `FrameCollection` и
+`MAX_DIRS_MINUS_ONE` принадлежат `ImageImport`; при переходе на выделенные
+модули перенесите прежние ссылки на типы `ImageBaker` и параметры загрузчика
+`FileCollection`. Смысл полей кадров и запечённого контейнера сохраняется.
 
 Эта страница описывает переиспользуемый Engine. Встраиваемый проект владеет
 своим каталогом ресурсов, лицензиями, приоритетом resource pack, политикой
@@ -535,3 +553,9 @@ clickability или воспринимаемое скольжение ног.
   policy, integration и изменений видимой проверки;
 - закрепляйте public examples на точной ревизии Engine и не обещайте поддержку
   формата или option, которую не исполняет их validation route.
+
+## Состав importers и native-расширения
+
+PNG/TGA/FOFRM обязательны. Другие importers требуют отдельных `FO_IMAGE_*` [опций](../build/project-configuration.md#optional-native-components). Известный выключенный вход, включая nested FOFRM, сообщает путь и опцию. Соседние `ImageBaker-*.h/.cpp` закрывают палитры/helpers вместе; `ImageBaker-ZarDecoder` разделяют ZAR/TIL при включении любого из них.
+
+Native callbacks используют `ImageImport::FrameShot`, `FrameSequence`, `FrameCollection`, `LoadFunc` и `(string_view name, string_view options, FileReader reader, const ImageImport::Context& context)`. `context.Files` предоставляет соседние assets, `context.Resolve(path)` — nesting, третий аргумент `AddLoader` — выходное имя. Scheduling, meshes и serialization остаются у координатора. Stock client читает baked containers без source-декодеров; runtime extensions/container version сохраняются.

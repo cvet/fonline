@@ -23,7 +23,7 @@ The executable target uses the embedding project's development-name prefix (`<Pr
 
 ## Current test suites
 
-The complete source-backed filename list and count are generated in [source-inventory.json](../../Docs/generated/source-inventory.json). [Testing](../../Docs/en/contributing/testing/) provides the maintained ownership groups and validation routing.
+The complete source-backed filename list and count are generated in [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). [Testing](../../Docs/en/contributing/testing/) provides the maintained ownership groups and validation routing.
 
 `Test_ClientEntityLifetime.cpp` runs with either scripting backend. It verifies that registry lookups
 retain their result across another thread's final release and that an older entity cannot unregister
@@ -142,6 +142,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -213,6 +214,10 @@ boundary.
 The documentation CI job rejects stale generated inventory. The headings above
 mirror the current source files for navigation but do not replace the generated
 complete list.
+
+The attachment teardown regressions run with either scripting backend: `CritterAttachmentTeardown`
+checks server links, native reports and delivery to the surviving player; `ClientCritterFinalizationDropsAttachmentIds`
+checks client cache release while keeping the peer alive. They live in the existing server/client entity-lifetime suites.
 
 ## Running tests
 

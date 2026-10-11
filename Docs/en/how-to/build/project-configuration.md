@@ -8,7 +8,7 @@ permalink: /Docs/en/how-to/build/project-configuration.html
 
 # Configure a Game Project
 
-This guide shows how an embedding project should author its `.fomain` file, resource packs, and named sub-configs. Use [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) for the exact runtime model and [generated settings reference](../../../generated/api/settings.md) for current built-in setting names.
+Author `.fomain`, resource packs and sub-configs here. [Configuration and Data Sources](../../reference/settings/configuration-and-data-sources.md) owns runtime rules; [generated settings](../../../generated/api/settings.md) lists built-in names.
 
 ## Source paths inspected
 
@@ -25,7 +25,7 @@ This guide shows how an embedding project should author its `.fomain` file, reso
 
 ## Start from an executable baseline
 
-Copy structure from [MinimalProject](../../../../Examples/MinimalProject/README.md) for a headless first run or [MinimalMultiplayer](../../../../Examples/MinimalMultiplayer/README.md) for a client/server game. Keep the game repository as the CMake root and set the master config explicitly:
+Start with [MinimalProject](../../../../Examples/MinimalProject/README.md) (headless) or [MinimalMultiplayer](../../../../Examples/MinimalMultiplayer/README.md) (client/server). Keep the game as CMake root and select its master config:
 
 ```cmake
 include(Engine/BuildTools/Init.cmake)
@@ -35,11 +35,11 @@ SetOption(FO_DEV_NAME "MYGAME")
 SetOption(FO_NICE_NAME "My Game")
 ```
 
-`FO_MAIN_CONFIG` is a configure-time project option. The `.fomain` contents are runtime and baking settings. Do not move product values into Engine defaults merely to avoid maintaining the project file.
+`FO_MAIN_CONFIG` selects the project config at configure time; `.fomain` owns runtime/baking settings. Keep product values in the project, not Engine defaults.
 
 ## Understand precedence
 
-For an unpackaged application, settings are applied in this order:
+Unpackaged settings apply in this order:
 
 1. defaults declared in `Source/Common/Settings.inc`;
 2. the selected `.fomain`, found from `-ApplyConfig` or by walking upward for `FO_MAIN_CONFIG`;
@@ -48,21 +48,9 @@ For an unpackaged application, settings are applied in this order:
 5. ordinary command-line setting overrides;
 6. platform/build auto-settings.
 
-Packaged applications use the generated internal config in place of the external
-`.fomain`. Its patch area is fixed by the Engine at 20000 bytes. A packaged
-build has no sub-config table and rejects `-ApplySubConfig` instead of silently
-ignoring it; select the sub-config when constructing the package. Game-setting
-root values also travel in metadata; the internal config carries only selected
-sub-config deltas for them, including explicit false or empty overrides. The
-command line still applies after local config. Later layers override earlier
-scalar settings.
+Packaged applications replace `.fomain` with generated internal config and a fixed 20000-byte patch area. They have no sub-config table and reject `-ApplySubConfig`; choose it when packaging. Root game-setting values travel in metadata; internal config holds selected sub-config deltas, including false/empty overrides. Command-line overrides follow local config; later layers replace earlier scalar values.
 
-Metadata is applied only after `BaseEngine` construction. If project code reads
-a declared game setting from `ApplicationInitHook` or an earlier startup path,
-list its fully qualified name in `Baking.BootstrapGameSettings`. The config
-baker then writes that setting in full to every internal config and rejects
-unknown or misspelled names. Do not list ordinary runtime settings: they belong
-in metadata and consuming the fixed patch area for them can make packaging fail.
+Metadata loads after `BaseEngine` construction. List fully qualified game settings read by `ApplicationInitHook` or earlier startup code in `Baking.BootstrapGameSettings`; config Baker writes their full values into every internal config and rejects unknown/misspelled names. Keep ordinary runtime settings in metadata; exhausting the fixed patch area can break packaging.
 
 Use fully qualified names such as `Server.DbStorage` in authored files and operational commands. The parser accepts short built-in names, but qualified names make ownership and review unambiguous.
 
@@ -218,4 +206,43 @@ Use the `win64-` equivalents on Windows.
 
 ## Update discipline
 
-When Engine or the embedding project is updated, inspect changes to `Settings.inc`, `Settings.cpp`, `ApplicationInit.cpp`, BuildTools project options, baking stages, and the project's `.fomain` range. Update this guide, the project config, tests, and generated references in the same change when precedence, fields, defaults, pack routing, or launch profiles change.
+On Engine/project updates, inspect `Settings.inc`, `Settings.cpp`, `ApplicationInit.cpp`, BuildTools options/baking stages and project `.fomain`. Reconcile this guide, project config, tests and generated references in the same change when precedence, fields/defaults, pack routing or launch profiles change.
+
+<a id="optional-native-components"></a>
+## Optional native components
+
+Select components with `SetOptionValues` before `StartProjectGeneration`: BOOL, OFF by default, numeric 0/1 definitions, no aggregate selector. Register/include all Engine sources/headers unconditionally; files guard optional contents.
+
+```cmake
+SetOptionValues(
+    FO_DATABASE_SQLITE ON
+    FO_DATA_SOURCE_DAT ON
+    FO_IMAGE_FRM ON)
+```
+
+| Option | Owning role and dependency |
+| --- | --- |
+| `FO_DATA_SOURCE_DAT` | Common; DAT 2.0/2.1 and zlib |
+| `FO_DATA_SOURCE_ZIP` | Common; external ZIP/BOS and bundled minizip |
+| `FO_DATABASE_JSON` | Server; plain JSON, existing JSON dependency |
+| `FO_DATABASE_SQLITE` | Server; SQLite and CBOR, no BSON |
+| `FO_DATABASE_MONGO` | Server; mongoc and libbson |
+| `FO_IMAGE_FRM` | Baker; FRM and split FRx, guarded Fallout palette |
+| `FO_IMAGE_RIX`, `FO_IMAGE_ART`, `FO_IMAGE_SPR` | Baker; individual legacy importers |
+| `FO_IMAGE_ZAR`, `FO_IMAGE_TIL` | Baker; independent importers and a shared guarded decoder |
+| `FO_IMAGE_MOS`, `FO_IMAGE_BAM` | Baker; individual legacy importers |
+
+Server requires Memory; Baker requires PNG/TGA/FOFRM and libpng. Embedded/APK keep minizip with external ZIP OFF. Clients read baked sprites without importers/database drivers.
+
+Retired `FO_DISABLE_MONGO`/`FO_DISABLE_SQLITE` inputs fail; clear their cache/environment and choose positive options.
+
+<a id="baking-configuration-fingerprint"></a>
+## Baking configuration fingerprint
+
+Declarations register type and baking impact. Mark `DeclareBoolOption`/`DeclareValueOption`, or a leading plural `Declare*Options` argument, with `BAKING` for inclusion in `FO_BAKING_CONFIG_HASH`. Unmarked options are excluded; [option reference](../../reference/cmake/options.md) lists each decision.
+
+Hash inputs: project identity/config, geometry, model/effect limits, 3D, particles, scripting and archive/image importers. Database providers, diagnostics, allocators, output paths and native targets are excluded.
+
+CMake computes SHA-256 just before codegen, after preceding stages and Codegen Pre. Registered names are sorted, BOOLs become 0/1 and string boundaries remain distinct. Marked project options join automatically; finalize values before `SetupCodeGeneration`.
+
+Successful resource baking writes `Resources.baking-config-hash` and report `bakingConfigHash`. Missing/changed fingerprints clear stale outputs and force full bake independently of `FO_BUILD_HASH`; unchanged fingerprints allow incremental bake. Both markers are removed before work and written only on success. Reconfigure/rebuild/rebake before packaging.

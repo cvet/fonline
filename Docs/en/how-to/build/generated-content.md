@@ -46,6 +46,14 @@ Generated output is evidence, not an editing surface. Fix the source annotation,
 
 ## Configure and generate native sources
 
+The complete example configurations in `Examples/MinimalMultiplayer`,
+`Examples/ContentShowcase` and `Examples/PackagingMatrix` are generated from
+`Source/Common/Settings.inc`. After changing Engine settings, run
+`python generate_config.py` in each directory and include the resulting
+`.fomain` changes. Verify each with `python generate_config.py --check` and run
+`python BuildTools/tests/test_docs_examples.py` from the Engine root before
+packaging or staging those examples.
+
 The embedding project calls the staged BuildTools pipeline:
 
 ```cmake
@@ -147,16 +155,12 @@ Each checked interface owns its generator. Run the affected generator with `--wr
 
 ```bash
 python BuildTools/docs_diagrams.py --write
-python BuildTools/docs_screenshots.py --write
 python BuildTools/docs_reference.py --write
-python BuildTools/docs_snippets.py --write --external
-python BuildTools/docs_description_translations.py --write
-python BuildTools/docs_localization.py --write
-python BuildTools/docs_site.py --write
-python BuildTools/docs_ai_eval.py --write
-python BuildTools/docs_ai_delivery.py --write
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_validate.py
 ```
+
+Preparation writes public root endpoints and Ruby dependency/domain files into ignored `Workspace/Documentation/`. Use `python BuildTools/docs_site_build.py` for rendering and endpoint export to `Workspace/DocumentationSite/`; the authored Jekyll config is `Docs/Site/_config.yml`. Contract models and reviewed images still require their owning generators.
 
 Focused format/CLI/CMake generators are listed in [Generated API and Metadata](../../reference/metadata/index.md). `docs_validate.py` checks byte-for-byte freshness; it is not a replacement for the focused semantic test.
 

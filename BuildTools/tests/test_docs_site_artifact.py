@@ -9,6 +9,7 @@ from pathlib import Path
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
+import documentation_metadata  # noqa: E402
 import docs_site_artifact  # noqa: E402
 
 
@@ -59,11 +60,11 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
                         "ru": "Docs/Site/Assets/docs-search.ru.json",
                     },
                 },
-                "routing": {"path": "Docs/generated/document-routes.json"},
+                "routing": {"path": "docs-manifest.json#/routing"},
             },
             "generated_artifacts": {
                 "support_matrix": {"model": "Docs/generated/support-matrix.json"},
-                "localization_status": {"path": "Docs/generated/translation-status.json"},
+                "localization_status": {"path": "docs-manifest.json#/translation_status"},
             },
         }
         routes = {
@@ -93,20 +94,20 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         russian_search = {"locale": "ru", "documents": []}
         source_files: dict[str, str] = {
             "CNAME": "fonline.ru\n",
+            "VERSION": "2026.1.1-dev\n",
             "llms.txt": "# Docs\n",
             "llms-full.txt": "# Full docs\n",
-            "docs-manifest.json": json.dumps({"documents": []}) + "\n",
+            "docs-manifest.json": json.dumps({"documents": [], "routing": routes,
+                                             "translation_status": {"documents": []}}) + "\n",
             "Docs/Site/Assets/docs-search.json": json.dumps(search) + "\n",
             "Docs/Site/Assets/docs-search.ru.json": json.dumps(russian_search) + "\n",
             "Docs/Site/Assets/css/docs.css": "body { color: black; }\n",
             "Docs/Site/Assets/js/docs.js": "'use strict';\n",
             "Docs/Site/Assets/images/fonline-mark.png": "image\n",
-            "Docs/generated/document-routes.json": json.dumps(routes) + "\n",
             "Docs/generated/support-matrix.json": json.dumps({"profiles": []}) + "\n",
-            "Docs/generated/translation-status.json": json.dumps({"documents": []}) + "\n",
         }
         for relative_path, content in source_files.items():
-            source_path = root / relative_path
+            source_path = documentation_metadata.output_path(root, relative_path)
             rendered_path = site / relative_path
             source_path.parent.mkdir(parents=True, exist_ok=True)
             rendered_path.parent.mkdir(parents=True, exist_ok=True)
@@ -141,7 +142,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         self.assertEqual(report["error_count"], 0)
         self.assertEqual(report["route_count"], 2)
         self.assertEqual(report["rendered_route_count"], 2)
-        self.assertEqual(report["static_endpoint_count"], 12)
+        self.assertEqual(report["static_endpoint_count"], 11)
         self.assertGreater(report["checked_local_reference_count"], 0)
 
     def test_markdown_link_resolves_to_rendered_html(self) -> None:
@@ -267,10 +268,11 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         route_paths = (
-            root / "Docs/generated/document-routes.json",
-            root / "_site/Docs/generated/document-routes.json",
+            documentation_metadata.output_path(root, "docs-manifest.json"),
+            root / "_site/docs-manifest.json",
         )
-        routes = json.loads(route_paths[0].read_text(encoding="utf-8"))
+        metadata = json.loads(route_paths[0].read_text(encoding="utf-8"))
+        routes = metadata["routing"]
         routes["routes"][1]["locale_routes"] = [
             {
                 "locale": "ru",
@@ -279,7 +281,7 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
                 "availability": "available",
             }
         ]
-        rendered_routes = json.dumps(routes) + "\n"
+        rendered_routes = json.dumps(metadata) + "\n"
         for route_path in route_paths:
             route_path.write_text(rendered_routes, encoding="utf-8")
         russian_page = root / "_site/Docs/ru/Guide.html"
@@ -318,17 +320,17 @@ class DocumentationSiteArtifactTests(unittest.TestCase):
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
         for path in (
-            root / "Docs/generated/document-routes.json",
-            root / "_site/Docs/generated/document-routes.json",
+            documentation_metadata.output_path(root, "docs-manifest.json"),
+            root / "_site/docs-manifest.json",
         ):
-            routes = json.loads(path.read_text(encoding="utf-8"))
-            routes["routes"].append({
+            metadata = json.loads(path.read_text(encoding="utf-8"))
+            metadata["routing"]["routes"].append({
                 "id": "retired-russian-guide",
                 "current_locale": "ru",
                 "current_path": "/Docs/ru/Legacy.html",
                 "current_url": "https://fonline.ru/Docs/ru/Legacy.html",
             })
-            path.write_text(json.dumps(routes) + "\n", encoding="utf-8")
+            path.write_text(json.dumps(metadata) + "\n", encoding="utf-8")
         page = root / "_site/Docs/ru/Legacy.html"
         page.parent.mkdir(parents=True)
         page.write_text(

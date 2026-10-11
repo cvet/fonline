@@ -31,7 +31,7 @@
 // SOFTWARE.
 //
 
-#include "DataBase.h"
+#include "DataBase-Memory.h"
 
 #include "ImGuiStuff.h"
 
@@ -281,7 +281,7 @@ private:
     DataBase::Collections _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
-auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto DataBaseMemory::Create(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
     return safe_alloc::make_unique<DbMemory>(db_settings, std::move(panic_callback));
 }

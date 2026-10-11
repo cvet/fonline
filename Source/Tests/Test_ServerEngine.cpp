@@ -887,6 +887,7 @@ TEST_CASE("ServerEngineSnapshotEligibilityRejectsRuntimeOnlyState")
     }
 }
 
+#if FO_DATABASE_SQLITE
 TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
 {
     auto storage_root = std::filesystem::temp_directory_path() / std::format("fo_engine_server_snapshot_{}", std::chrono::steady_clock::now().time_since_epoch().count());
@@ -1008,6 +1009,8 @@ TEST_CASE("ServerEngineSnapshotRoundTripsThroughFreshSQLiteSession")
         CHECK(next_location->GetId() == expected_next_location_id);
     }
 }
+
+#endif
 
 TEST_CASE("ServerEngineClearsTheStartingUpFlagOnceItServes")
 {
@@ -1236,6 +1239,7 @@ TEST_CASE("ServerEngineShutdownIsSafeAfterStartupFailure")
     CheckServerStartupFailsSafely(settings);
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
 {
     // File-backed storage is what makes the restart world-load path reachable at all: the rest of the suite is
@@ -1317,6 +1321,8 @@ TEST_CASE("ServerReloadsAPersistedWorldFromDisk")
         ignore_unused(critter_id);
     }
 }
+
+#endif
 
 TEST_CASE("ServerEngineStopsStartupWhenInitEventStopsChain")
 {

@@ -5,7 +5,7 @@ locale: ru
 document_id: documentation-home
 permalink: /Docs/ru/
 ---
-<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"3959f87b602fc131c81b92fd5796b6a508f154934daefdefb3b1ec8b96eed307"} -->
+<!-- docs-translation: {"document_id":"documentation-home","locale":"ru","source_path":"Docs/en/index.md","source_sha256":"271b630970abd62fde56814620b8775a9e370d93e1b301ffd7f0277ec7c33015"} -->
 # Документация движка FOnline
 
 [Правила версий движка](how-to/release/versioning.md) и [история изменений](reference/changelog.md) определяют выпуски и обязательную работу по миграции.
@@ -142,10 +142,10 @@ FOnline. Она предназначена для разработчиков и�
   доказательства для заявлений о поддержке.
 
 Канонические машиночитаемые модели находятся в
-[`Docs/generated/`](../generated/). ИИ-клиентам следует начинать с
-[`llms.txt`](../../llms.txt), использовать
-[`docs-manifest.json`](../../docs-manifest.json) для стабильных метаданных
-документов и загружать [`llms-full.txt`](../../llms-full.txt), только когда
+[`Docs/generated/`](../generated/). ИИ-клиентам, читающим сайт, следует начинать с
+[`llms.txt`](https://fonline.ru/llms.txt), использовать
+[`docs-manifest.json`](https://fonline.ru/docs-manifest.json) для стабильных метаданных
+документов и загружать [`llms-full.txt`](https://fonline.ru/llms-full.txt), только когда
 нужен ограниченный самостоятельный корпус.
 
 ## Сопровождение движка и документации
@@ -189,3 +189,5 @@ helpers и регрессионные тесты, на которых основ
 находиться в этом репозитории.
 
 - [Многопоточность клиента](explanation/runtime/client-multithreading.md).
+
+Агенты с checkout начинают с [AGENTS.md](../../AGENTS.md) и исходных руководств; сборники для читателей сайта — необязательные результаты сборки.

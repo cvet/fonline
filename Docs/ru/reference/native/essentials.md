@@ -5,7 +5,7 @@ locale: ru
 document_id: native-essentials
 permalink: /Docs/ru/reference/native/essentials.html
 ---
-<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"af288529c00cb552626535a9ccb17ef6b05698f16d8bef343a6b473c7268f7af"} -->
+<!-- docs-translation: {"document_id":"native-essentials","locale":"ru","source_path":"Docs/en/reference/native/essentials.md","source_sha256":"3a17c5e29bc01d94a6db042f38558a86d7482053979829011067f4d59b375606"} -->
 # Базовый слой Essentials
 
 > Документация движка. Эта страница описывает низкоуровневый слой `Source/Essentials/`: требования к платформе и компилятору, вспомогательные средства жизненного цикла процесса, журналирование, память, строки, сериализацию, файловую систему, сокеты и базовые типы, используемые всеми вышележащими слоями движка.
@@ -180,9 +180,11 @@ Windows builds сохраняют compile baseline `_WIN32_WINNT=0x0601`. Еди
 
 #### Временная совместимость
 
-`FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` из `BasicCore.h` помечает необходимый код, распознающий старые сборки или данные, в том числе путь отказа. Его `static_assert` проверяет форму даты и допустим в namespace, классе или блоке; сама сборка по календарю не перестаёт работать. Для managed-кода есть `[TemporaryCompat("Id", "YYYY-MM-DD")]` из `CoreScripts/Attributes.cs`. Во всех связанных реализациях, полях и тестах повторяются один идентификатор и одна дата — последний день действия.
+Код обработки старых сборок/данных использует `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native, `BasicCore.h`) или `[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed, `CoreScripts/Attributes.cs`). Один идентификатор и дата повторяются в реализациях, полях и тестах. Native `static_assert` проверяет форму даты в namespace/классе/блоке.
 
-`BuildTools/temporary_compat.py` по умолчанию сканирует Engine `Source/`, отвергает неверно записанные маркеры, несовпадающие даты и срок более 366 дней; со следующего после истечения дня проверка падает с перечнем всех мест. Workflow проверки движка запускает тесты и сканер. Подключающий проект может передать свои каталоги исходников вместе с `Engine/Source`. Маркер не заменяет обоснования сохранённой совместимости. По истечении срока код удаляют либо дату переносят отдельным проверенным изменением, если причина ещё сохраняется. Срок проверяется в CI, а не во время компиляции, чтобы старую сборку можно было воспроизвести.
+CMake использует `TemporaryCompat(Id "YYYY-MM-DD")` из `BuildTools/cmake/helpers/Commands.cmake`. Помечайте временные отказы/исключения зависимостей; постоянные условия не требуют даты. Helper проверяет форму аргументов и даты. Удаляйте только временное исключение после проверки поддержки платформы.
+
+`BuildTools/temporary_compat.py` и его тесты запускаются в CI. По умолчанию сканируются `Source/` и `BuildTools/cmake/` (`.cmake`, `CMakeLists.txt`, неактивные ветки); проекты передают файлы/каталоги. Комментарии/строки CMake пропускаются. Неверные/несовпадающие даты и сроки более 366 дней вызывают ошибку; после истечения проверка падает со следующего дня с перечнем всех мест. Просроченный код/условия удаляют либо продлевают срок проверенным изменением. Сборки сохраняют воспроизводимость.
 
 ### Диагностика и обработка сбоев
 
@@ -286,13 +288,13 @@ Vendored vkd3d-shader не предоставляет allocator hook. Его в�
 | ufbx | `SafeAllocator` | compile-time `UFBX_EXTERNAL_MALLOC` и `extern "C" ufbx_malloc/realloc/free` в `Tools/ModelMeshBaker.cpp` |
 | SDL | `safe_alloc::*_raw` | `Frontend/Application.cpp` |
 | Effekseer | `safe_alloc::*_raw` + aligned | `Client/EffekseerExtension.cpp`, объявление в его header; оба владельца, client runtime и `Tools/ParticleBaker.cpp`, устанавливают callbacks через одно определение |
-| libpng | `safe_alloc::*_raw` | `Tools/ImageBaker.cpp` через `png_create_read_struct_2` |
-| libbson / mongo-c | `safe_alloc::*_raw` + aligned | общий `Server/DataBase.cpp`; каждая BSON-backed factory для JSON, SQLite и Mongo устанавливает process-global vtable до создания backend |
+| libpng | `safe_alloc::*_raw` | `Tools/ImageBaker-Png.cpp` через `png_create_read_struct_2` |
+| libbson / mongo-c | `safe_alloc::*_raw` + aligned | `Server/DataBase-Mongo.cpp`; только фабрика Mongo устанавливает process-global vtable до создания backend |
 | SQLite | `safe_alloc::*_raw` | `Server/DataBase-SQLite.cpp` через `sqlite3_config(SQLITE_CONFIG_MALLOC)` до `sqlite3_initialize()` |
 
 Форму bson vtable нужно изучить до её копирования в другую интеграцию. Она предоставляет `aligned_alloc`, но освобождает полученные блоки через обычный member `free`, не запоминая alignment. Это корректно, только пока оба пути используют одну release-функцию. В rpmalloc это так: `rpaligned_alloc` и `rpmalloc` завершаются в `rpfree`. То же верно на POSIX без rpmalloc, где блоки `posix_memalign` по определению освобождаются через `free()`. Ломается только Windows без rpmalloc, то есть sanitizer configurations, в которых `expr_RpmallocEnabled` отключает allocator ради interposition sanitizer: aligned-путь там использует `_aligned_malloc` / `_aligned_free`.
 
-Поэтому `BsonAlignedAlloc` ровно в этом случае переходит к обычному `safe_alloc::malloc_raw`. Так делает и default vtable bson под MSVC по той же явно указанной причине: `_aligned_alloc_impl` в libbson `memory.c` намеренно не вызывает `_aligned_malloc`. Все aligned-запросы mongoc используют `BSON_ALIGNOF` обычной C-структуры, для которой fundamental alignment `malloc` достаточен. Vtable является process-global, поэтому каждая BSON-backed factory устанавливает одинаковые callbacks до того, как backend сможет выделить память; поздняя замена могла бы сопоставить старый allocation новому free callback. Удаление `aligned_alloc` из vtable не является решением: bson подставит внутренний fallback, отбрасывающий требуемое alignment на всех платформах, а не только на проблемной.
+Поэтому `BsonAlignedAlloc` ровно в этом случае переходит к обычному `safe_alloc::malloc_raw`. Так делает и default vtable bson под MSVC по той же явно указанной причине: `_aligned_alloc_impl` в libbson `memory.c` намеренно не вызывает `_aligned_malloc`. Все aligned-запросы mongoc используют `BSON_ALIGNOF` обычной C-структуры, для которой fundamental alignment `malloc` достаточен. Vtable является process-global, поэтому фабрика Mongo устанавливает одинаковые callbacks до того, как backend сможет выделить память; поздняя замена могла бы сопоставить старый allocation новому free callback. Удаление `aligned_alloc` из vtable не является решением: bson подставит внутренний fallback, отбрасывающий требуемое alignment на всех платформах, а не только на проблемной.
 
 Hook SQLite требует callback `xSize` и передаёт функциям free/realloc/size только указатель, поэтому каждый блок несёт 8-байтовый заголовок размера. Конфигурация должна быть установлена до `sqlite3_initialize`, из-за чего библиотека собирается с `SQLITE_OMIT_AUTOINIT`, а каждый вызывающий код проходит через один экспортированный initializer.
 
@@ -440,6 +442,20 @@ standard stream копируется через `make_stream_string`,
 - Cross-platform random sequences: `Source/Essentials/RandomGenerator.*`; coarse/precise waits: `Threading.*`.
 - Байты файлов и низкоуровневая сборка writable path на диске: `Source/Essentials/DiskFileSystem.*`; смонтированные ресурсы движка и overlays установленного клиента: [Конфигурация и источники данных](../settings/configuration-and-data-sources.md).
 - Socket primitives: `Source/Essentials/NetSockets.*`; protocol, command и network runtime: [Сеть](../../explanation/authority-and-networking/).
+
+
+
+`fs::try_lock_file(path)` возвращает перемещаемый `fs::exclusive_file_lock`
+с `owns_lock()` и идемпотентным `reset()`. Открывает или создаёт файл без
+усечения, не ожидает и возвращает незахваченного владельца для занятых,
+некорректных или недоступных путей и в Web. Родительские каталоги уже должны
+существовать. Windows использует wide paths, нормализацию длинных путей и
+запрет совместного открытия; POSIX — advisory exclusive `flock`. Перемещение
+передаёт владение, присваивание освобождает прежний lock, деструктор и выход
+процесса освобождают захват. Дескрипторы не наследуются при запуске дочерних
+исполняемых программ. Файл остаётся на диске; не удаляйте его, пока участник
+может удерживать захват. Владение Baker описано в
+[руководстве по запеканию](../../explanation/content-pipeline/baking.md#владение-выходным-каталогом-и-конкурирующие-процессы).
 
 ## Контрольный список проверки
 

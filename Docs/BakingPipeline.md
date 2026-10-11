@@ -18,6 +18,10 @@ Continue with the [canonical English explanation](en/explanation/content-pipelin
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#what-baking-does).
 
+## Output ownership and competing processes
+
+Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#output-ownership-and-competing-processes).
+
 ## CMake entry points
 
 Continue with the [canonical English explanation](en/explanation/content-pipeline/baking.md#cmake-entry-points).

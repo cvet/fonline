@@ -36,6 +36,8 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         self.assertIn("site.data.docs-site.version.channel", layout)
         self.assertIn("site.data.docs-site.version.label", layout)
         self.assertIn("site.data.docs-site.version.value", layout)
+        self.assertIn("{% include VERSION %}", layout)
+        self.assertIn("{{ engine_version | strip | escape }}", layout)
         self.assertIn("site.data.docs-site.source_ref", layout)
         self.assertIn("site.data.docs-site.locale_pairs", layout)
         self.assertIn("aria-current=\"page\"", layout)
@@ -725,7 +727,7 @@ class DocumentationSiteLayoutTests(unittest.TestCase):
         self.assertNotIn("Docs/Plans/2026-06-27-client-av-heuristics-audit.md", readme)
 
     def test_jekyll_applies_the_custom_layout_to_pages(self) -> None:
-        config = (ROOT / "_config.yml").read_text(encoding="utf-8")
+        config = (ROOT / "Docs/Site/_config.yml").read_text(encoding="utf-8")
 
         self.assertRegex(config, r"(?ms)^defaults:\s*\n\s*- scope:.*?type:\s*pages.*?layout:\s*default")
         self.assertIn("theme: jekyll-theme-slate", config)

@@ -32,16 +32,9 @@ function(AddBakingTarget target)
         "${FO_DEV_NAME}_Baker"
         -ApplyConfig "${CMAKE_CURRENT_SOURCE_DIR}/${FO_MAIN_CONFIG}"
         -ApplySubConfig "${BAKING_TARGET_SUB_CONFIG}")
-    SetValue(resourceBuildHashCommand
-        ${CMAKE_COMMAND}
-        "-DHASH_FILE=${FO_OUTPUT_PATH}/Baking/Resources.build-hash"
-        "-DBUILD_HASH=${FO_BUILD_HASH}"
-        -P "${CMAKE_CURRENT_SOURCE_DIR}/${FO_ENGINE_ROOT}/BuildTools/cmake/helpers/WriteBuildHash.cmake")
-
     AddCommandTarget(${target}
         COMMAND_ARGS
         COMMAND ${bakeResources} -Baking.ForceBaking ${forceBaking}
-        COMMAND ${resourceBuildHashCommand}
         VERBATIM
         DEPENDS ForceCodeGeneration
         WORKING_DIRECTORY ${FO_OUTPUT_PATH}

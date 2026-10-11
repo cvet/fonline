@@ -3,6 +3,8 @@ from __future__ import annotations
 import datetime
 import importlib.util
 import os
+import shutil
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -111,9 +113,123 @@ class TemporaryCompatTests(unittest.TestCase):
         self.assertEqual((markers, issues), ([], []))
 
     def test_the_engine_tree_is_read_without_malformed_markers(self):
-        _, issues = temporary_compat.collect([temporary_compat.ENGINE_SOURCE])
+        _, issues = temporary_compat.collect(temporary_compat.DEFAULT_INPUTS)
 
         self.assertEqual(issues, [])
+
+    def test_cmake_markers_include_inactive_branches_and_cmakelists(self):
+        markers, issues = self.check({
+            "Source/CMakeLists.txt": 'if(FALSE)\n    TemporaryCompat(WebDatabase "2026-12-31")\nendif()\n',
+            "Project/Providers.cmake": 'temporarycompat (\n    WebDatabase # Same restriction\n    "2026-12-31"\n)\n',
+        })
+
+        self.assertEqual(issues, [])
+        self.assertEqual(sorted((m.path, m.line, m.id) for m in markers), [
+            ("Project/Providers.cmake", 1, "WebDatabase"),
+            ("Source/CMakeLists.txt", 2, "WebDatabase"),
+        ])
+
+    def test_cmake_comments_strings_and_definitions_are_not_markers(self):
+        markers, issues = self.check({
+            "Project/Markers.cmake": '''# TemporaryCompat(Comment "2020-01-01")
+#[=[ TemporaryCompat(Block "2020-01-01")
+#[[ nested text ]] ]=]
+set(example "TemporaryCompat(Quoted \\"2020-01-01\\") # text")
+set(example [==[ TemporaryCompat(Bracket "2020-01-01") ]==])
+function(TemporaryCompat id until)
+endfunction()
+TemporaryCompat(Live "2026-12-31") # TemporaryCompat(Comment "2020-01-01")
+''',
+        })
+
+        self.assertEqual(issues, [])
+        self.assertEqual([(m.id, m.line) for m in markers], [("Live", 8)])
+
+    def test_cmake_malformed_markers_are_refused(self):
+        _, issues = self.check({
+            "Project/Bad.cmake": '''TemporaryCompat("QuotedId" "2026-12-31")
+TemporaryCompat(Comma, "2026-12-31")
+TemporaryCompat(InvalidDate "2026-02-30")
+TemporaryCompat(VariableDate "${until}")
+TemporaryCompat(Extra "2026-12-31" extra)
+TemporaryCompat(Missing)
+''',
+        })
+
+        self.assertEqual([issue.line for issue in issues], list(range(1, 7)))
+
+    def test_cmake_and_native_markers_share_expiry_and_date_consistency(self):
+        files = {
+            "Source/A.cpp": 'FO_TEMPORARY_COMPAT(Shared, "2026-09-25");\n',
+            "Project/A.cmake": 'TemporaryCompat(Shared "2026-09-25")\n',
+        }
+        _, issues = self.check(files)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("Shared expired after 2026-09-25", issues[0].message)
+        self.assertIn("Source/A.cpp:1", issues[0].message)
+        self.assertIn("Project/A.cmake:1", issues[0].message)
+
+        files["Project/A.cmake"] = 'TemporaryCompat(Shared "2026-09-26")\n'
+        _, issues = self.check(files)
+        self.assertEqual(len(issues), 1)
+        self.assertIn("carries different dates", issues[0].message)
+
+    def test_input_files_and_overlapping_directories_are_scanned_once(self):
+        markers, issues = self.check({
+            "Project/CMakeLists.txt": 'TemporaryCompat(ProjectGuard "2026-12-31")\n',
+        }, dirs=("Project/CMakeLists.txt", "Project", "Project/CMakeLists.txt"))
+
+        self.assertEqual(issues, [])
+        self.assertEqual(len(markers), 1)
+
+    def test_cmake_last_valid_day_and_horizon(self):
+        _, issues = self.check({"Project/A.cmake": 'TemporaryCompat(Live "2026-09-26")\n'})
+        self.assertEqual(issues, [])
+        _, issues = self.check({"Project/A.cmake": 'TemporaryCompat(Forever "2099-01-01")\n'})
+        self.assertEqual(len(issues), 1)
+        self.assertIn("more than 366 days ahead", issues[0].message)
+
+    def run_cmake(self, source: str) -> subprocess.CompletedProcess[str]:
+        cmake = shutil.which("cmake")
+        self.assertIsNotNone(cmake, "CMake is required to validate the temporary compatibility helper")
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script = Path(temp_dir) / "Check.cmake"
+            script.write_text("cmake_minimum_required(VERSION 3.22)\n" + source, encoding="utf-8")
+            return subprocess.run([cmake, "-P", str(script)], capture_output=True, text=True, timeout=30)
+
+    def test_cmake_helper_checks_shape_without_calendar_expiry(self):
+        commands = (temporary_compat.ENGINE_CMAKE / "helpers/Commands.cmake").as_posix()
+        include = f'include("{commands}")\n'
+        result = self.run_cmake(include + 'TemporaryCompat(Expired "2000-01-01")\n')
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+        for arguments in ('"Bad Id" "2026-12-31"', 'Id "31.12.2026"', 'Id "2026-12-31" extra', 'Id'):
+            with self.subTest(arguments=arguments):
+                result = self.run_cmake(include + f"TemporaryCompat({arguments})\n")
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_web_database_options_have_no_platform_veto(self):
+        commands = (temporary_compat.ENGINE_CMAKE / "helpers/Commands.cmake").as_posix()
+        stage = (temporary_compat.ENGINE_CMAKE / "stages/ProjectOptions.cmake").as_posix()
+        prefix = f'''include("{commands}")
+function(AbortMessage text)
+    message(FATAL_ERROR "${{text}}")
+endfunction()
+set(FO_FORCE_ENABLE_3D "")
+'''
+
+        for web, server, mongo, sqlite in ((0, 1, 1, 1), (1, 0, 1, 1), (1, 1, 0, 0), (1, 1, 1, 0), (1, 1, 0, 1), (1, 1, 1, 1)):
+            with self.subTest(web=web, server=server, mongo=mongo, sqlite=sqlite):
+                source = prefix + f'''set(FO_WEB {web})
+set(FO_BUILD_SERVER_LIB {server})
+set(FO_DATABASE_MONGO {mongo})
+set(FO_DATABASE_SQLITE {sqlite})
+include("{stage}")
+'''
+                result = self.run_cmake(source)
+
+                self.assertEqual(result.returncode, 0, result.stderr)
 
 
 if __name__ == "__main__":

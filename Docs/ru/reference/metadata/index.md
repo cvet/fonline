@@ -5,12 +5,14 @@ locale: ru
 document_id: generated-api-metadata
 permalink: /Docs/ru/reference/metadata/
 ---
-<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"d148e260d8383baeb3f23ffd4dfafd9ad996e299a99db4edbf80603d6a72b4cd"} -->
+<!-- docs-translation: {"document_id":"generated-api-metadata","locale":"ru","source_path":"Docs/en/reference/metadata/index.md","source_sha256":"122b9cd8112c83b5831e3dc67b67424dc178d8480cd9a7c6a294bde4976d7477"} -->
 # Сгенерированный API и метаданные
 
 Этот документ описывает потоки генерации кода и регистрации метаданных движка. Используйте его при изменении generated source, metadata annotations, определений свойств и видимых скриптам API contracts.
 
 Практический порядок регенерации configure-time codegen, скриптов, запечённых ресурсов, метаданных, документации, сайта и AI-артефактов приведён в разделе [Работа со сгенерированным содержимым](../../how-to/build/generated-content.md).
+
+`docs-manifest.json` — общий генерируемый индекс технических данных. `docs_localization.py` владеет `#/translation_status`, а `docs_site.py` — `#/routing`. Каждый генератор сохраняет остальные разделы и проверяет актуальность собственного раздела. Порядок: локализация, сайт/поиск/маршруты, оценка ИИ при необходимости, затем данные для ИИ; последний шаг обновляет публичные хэши документов и артефактов. Хэши проверенных русских переводов сохраняются в комментариях исходников. Не редактируйте генерируемые разделы вручную. Индекс и навигация указывают `VERSION` как источник версии, не храня копию его значения.
 
 ## Модель владения
 
@@ -170,7 +172,7 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/generated/snippets.json`
 - `Docs/generated/support-matrix.json`
 - `Docs/ru/reference/platforms/generated-matrix.md`
-- `Docs/generated/translation-status.json`
+- `docs-manifest.json#/translation_status`
 - `Docs/generated/external-project-evidence.json`
 - `Docs/generated/external-project-evidence/index.md`
 - `Docs/generated/diagrams.json`
@@ -180,7 +182,7 @@ Generated files являются build artifacts. Документируйте �
 - `Docs/Site/Data/docs-site.json`
 - `Docs/Site/Assets/docs-search.json`
 - `Docs/Site/Assets/docs-search.ru.json`
-- `Docs/generated/document-routes.json`
+- `docs-manifest.json#/routing`
 - `Source/Common/MetadataRegistration.h`
 - `Source/Common/MetadataRegistration.cpp`
 - `Source/Common/MetadataRegistration.template.cpp`
@@ -699,7 +701,7 @@ python BuildTools/docs_examples.py --check
 `BuildTools/SnippetPolicy.json` объявляет полную карту поддерживаемых fence languages
 и parser harnesses. `BuildTools/docs_snippets.py` сканирует каждый public/current/human
 документ manifest, включая generated reference pages, и записывает
-[generated/snippets.json](../../../generated/snippets.json). Для каждого fenced block
+[generated/snippets.json](https://fonline.ru/Docs/generated/snippets.json). Для каждого fenced block
 report содержит стабильного owner документа, heading/line, normalized content hash,
 template status, contract, harness и result.
 
@@ -759,7 +761,7 @@ python BuildTools/docs_screenshots.py --write
 
 `BuildTools/SupportMatrix.json` является reviewed source текущих profiles host, target, architecture, compiler, application и evidence. `BuildTools/docs_support_matrix.py` проверяет указанные targets BuildTools и workflow lanes, затем создаёт [generated/support-matrix.json](../../../generated/support-matrix.json) и [сгенерированную матрицу поддержки](../platforms/generated-matrix.md). Модель отличает source capability от обязательных build, process smoke и qualification встраиваемого проекта или device; она не заявляет, что выполнена каждая комбинация targets.
 
-`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [generated/translation-status.json](../../../generated/translation-status.json). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
+`BuildTools/docs_localization.py` проецирует канонический inventory human documents, [translation-glossary.json](../../../translation-glossary.json), normalized source hashes и существующие locale counterparts в [docs-manifest.json#/translation_status](https://fonline.ru/docs-manifest.json#/translation_status). Существующая translation обязана содержать ожидаемые document ID, locale, source path/hash, byte-identical fenced code и internal links, сохраняющие язык. Отсутствующие counterparts показываются в pre-production migration и становятся ошибкой при `--enforce-complete`.
 
 Регенерация и проверка из корня движка:
 
@@ -774,13 +776,15 @@ python BuildTools/docs_localization.py --check
 
 ## Доставка документации для AI
 
+Три публичных корневых endpoint локально генерируются в игнорируемом `Workspace/Documentation/`. `docs_prepare.py` также создаёт `Gemfile`, `.ruby-version` и `CNAME` из исходного manifest. `docs_site_build.py` экспортирует endpoints в корень собранного `Workspace/DocumentationSite/`; публичные URL и логические имена артефактов сохраняются.
+
 Machine-oriented entry layer создаётся из того же [documentation-manifest.json](../../../documentation-manifest.json), который владеет human pages. `BuildTools/docs_ai_delivery.py` не разбирает source движка и не изобретает вторую API model. Он проецирует reviewed document metadata и канонический Markdown в:
 
 - root `llms.txt`, который маршрутизирует public current documents через source-ref-pinned clean Markdown URLs, связывает canonical HTML routes и перечисляет все канонические generated JSON models;
 - root `llms-full.txt`, содержащий authored public current documents и generated reference indexes в строгом byte budget;
 - root `docs-manifest.json`, публикующий rolling/current version channel, deferred state release snapshot, locale policy, public stable IDs, owner/state/disposition, source, clean Markdown, raw и canonical HTML URLs, source provenance, normalized content hashes и hashes generated artifacts.
 
-[ai-evaluation.json](../../../ai-evaluation.json) является reviewed versioned source задач по architecture, scripting, content, debugging, migration и release. `BuildTools/docs_ai_eval.py` проверяет ownership задач и sentinels answer evidence, пропускает каждый retrieval query через тот же ranking contract `docs_site.search_documents`, что использует browser search, и записывает [generated/ai-evaluation-report.json](../../../generated/ai-evaluation-report.json). Детерминированный report доказывает только выбор route и текущее evidence; runs ответов model family остаются отдельным reviewed evidence по разделу [Оценка AI-документации](../../contributing/documentation/ai-evaluation.md).
+[ai-evaluation.json](../../../ai-evaluation.json) является reviewed versioned source задач по architecture, scripting, content, debugging, migration и release. `BuildTools/docs_ai_eval.py` проверяет ownership задач и sentinels answer evidence, пропускает каждый retrieval query через тот же ranking contract `docs_site.search_documents`, что использует browser search, и записывает [generated/ai-evaluation-report.json](https://fonline.ru/Docs/generated/ai-evaluation-report.json). Детерминированный report доказывает только выбор route и текущее evidence; runs ответов model family остаются отдельным reviewed evidence по разделу [Оценка AI-документации](../../contributing/documentation/ai-evaluation.md).
 
 Full-context output намеренно исключает generated detail pages. Их канонические JSON models точнее и компактнее несут полные inventories methods, types, properties, settings, CMake, CLI, native extensions, prototypes, maps, models, text, effects, images, particles, fonts, audio, video, GUI runtime, protocol AiControl, packages и public examples. Generated indexes остаются в bundle, чтобы agent мог выбрать правильные model и source.
 
@@ -800,11 +804,11 @@ Public files являются discovery/transport artifacts, а не owners ко
 
 ## Данные сайта документации
 
-Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `Docs/Site/Data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `Docs/generated/document-routes.json` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
+Human navigation сайта, search, identity version/locale и migration routes используют те же records manifest, не становясь generated API domains. `BuildTools/docs_site.py` разрешает стабильные document IDs в `Docs/Site/Data/docs-site.json` для Jekyll/Liquid, токенизирует public current human Markdown в независимые ограниченные English и Russian indexes browser search и записывает `docs-manifest.json#/routing` для текущих URLs, канонических future owners, доступных locale pairs и обязательных legacy redirects.
 
 Navigation model требует точного покрытия top-level reader pages, оставляя generated detail pages за их generated indexes. Search включает detail pages, повышает вес titles/headings относительно body tokens, сохраняет technical identifiers и хранит только compact postings и result metadata. Он не копирует полные Markdown bodies в browser artifact и не создаёт hosted search contract.
 
-После render репозитория Jekyll инструмент `BuildTools/docs_site_artifact.py` проверяет готовое дерево `_site` по route и artifact models. Этот post-build layer доказывает, что обещанные routes, доступные locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets и publishable local links пережили processing Jekyll. Его JSON report является CI evidence, а не ещё одним checked-in generated reference.
+После render репозитория Jekyll инструмент `BuildTools/docs_site_artifact.py` проверяет готовое дерево `Workspace/DocumentationSite` по route и artifact models. Этот post-build layer доказывает, что обещанные routes, доступные locale pages, static JSON/text/assets, canonical metadata, accessibility landmarks/names, search targets и publishable local links пережили processing Jekyll. Его JSON report является CI evidence, а не ещё одним checked-in generated reference.
 
 Затем `BuildTools/docs-browser/audit.mjs` обслуживает точное дерево через ephemeral loopback port. Зафиксированный lock file Playwright Chromium посещает каждый route generated catalog в размерах 1440 x 1000 и 390 x 844, внедряет pinned engine axe-core для заявленных tags WCAG 2.2 A/AA и записывает findings runtime/resources, responsive layout, page overflow и accessibility. Отдельные interaction profiles доказывают skip navigation, modal search, persistence theme, status code copy, semantics mobile drawer, containment focus и restoration по Escape. JSON report и desktop/mobile screenshots являются CI evidence; ни один из них не является generated compatibility model движка.
 
@@ -817,7 +821,7 @@ python BuildTools/tests/test_docs_site_artifact.py
 python BuildTools/tests/test_docs_browser.py
 python BuildTools/docs_site.py --write
 python BuildTools/docs_site.py --check
-python BuildTools/docs_site_artifact.py --site-dir _site
+python BuildTools/docs_site_artifact.py --site-dir Workspace/DocumentationSite
 npm ci --prefix BuildTools/docs-browser
 npx --prefix BuildTools/docs-browser playwright install chromium
 npm --prefix BuildTools/docs-browser run audit
@@ -921,6 +925,10 @@ shapes не появится явный conversion contract.
 
 Это runtime side metadata, которую можно загрузить из generated/baked data вместо одной только compiled static registration.
 
+Правила миграции свойств содержат действие: `Property <Owner> Rename <Old> <New>` проверяет текущее целевое поле; `Property <Owner> Transform <Property> <Function>` проверяет существующее Persistent-свойство. Функция работает с документом БД до загрузки свойств сущности и получает исходный документ как контекст чтения. Связывание, подготовка результатов и запись описаны в [Managed C#](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа). Для удалённого свойства задайте `///@ MigrationRule Property Critter Remove MyPropOld` без замены. Финализация метаданных и bake отклоняют свойство, всё ещё объявленное под этим именем у того же владельца, включая поля RefType. Загрузка документа и текста свойств пропускает его старое значение; исторический ключ верхнего уровня может оставаться в БД. Правило сохраняется как постоянный запрет имени. Property и Proto имеют общую грамматику действий: Rename/Transform содержат пять частей, Remove — четыре; лишний аргумент Remove отклоняется.
+
+AngelScript связывает те же правила с `T&inout` и `const DatabaseDocument&inout`; см. [его контракт миграций](../../how-to/scripting/style-and-refactoring.md#миграции-документов).
+
 ### Версия metadata
 
 **Server и каждый подключённый client обязаны использовать metadata из одной bake.** Entity payload адресует properties по registration order этих metadata, поэтому в разных bakes один index может означать разные properties. Такое расхождение отклоняется как дефект build или deployment и не считается поддерживаемым compatibility mode.
@@ -961,6 +969,8 @@ targets, tag changes и отказ от старого file layout), `Test_Prope
 (`PropertiesRestoreRejectsForeignMetadata`) и
 `Test_ClientServerIntegration.cpp`
 (`ServerReportsMetadataMismatchInHandshake`).
+
+Правила Proto используют явные действия `Rename`, `Remove` или `Transform`. Rename/Remove остаются правилами lookup без контекста; `Remove` не принимает замену. Transform задаёт имя-источник у владельца, поддерживающего прототипы, и получает исходный документ БД до поиска прототипа. У источника допускается одно действие; неизвестные действия, повтор источника и прежний токен удаления отклоняются. Правила Property и Proto Rename/Transform создают записи метаданных из пяти частей; Remove у обоих видов содержит четыре. См. [контракт миграции документов Managed](../../how-to/scripting/managed-csharp.md#миграция-свойств-документа).
 
 Migration rules являются generic remaps `(kind, extra-info, target → replacement)` с transitive resolution и задаются как `///@ MigrationRule <Kind> ...`. Помимо `Proto` / `Property`, применяемых при lookup proto и resolution property name, kind `Enum` используется `PropertiesSerializer`, когда сохранённое **имя** enum value больше не разрешается при load. Вместо `EnumResolveException` rule сопоставляет старое имя текущему значению как для scalar enum properties, так и для enum keys словаря. Удалённые или переименованные enum values не делают старые saves непригодными.
 

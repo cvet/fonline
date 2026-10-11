@@ -127,6 +127,48 @@ The expected names come from `BakeChecker`, so a baker whose output differs from
 
 Reconciliation runs once per bake over the outputs the bakers already produced. It neither adds per-write work nor deletes and recreates content, and it also repairs outputs skipped as up to date. On a case-sensitive filesystem the ordinary outdated sweep removes the old name and reconciliation has nothing to do. `BakerMasterRenamesStaleCasedOutputAfterCaseOnlyInputRename`, `BakerMasterRenamesStaleCasedOutputDirAfterCaseOnlyInputDirRename`, and `DiskFileSystemNameCase` pin both the pipeline and filesystem contracts.
 
+## Output ownership and competing processes
+
+`MasterBaker::BakeAll` acquires an exclusive `<output-directory>.lock` before
+creating a report or deleting the previous report, success marker or outputs.
+Existing path components are canonicalized, so relative, trailing-separator and
+directory-alias paths share the same lock. The output must name a directory
+below a filesystem root. The owner retains the lock through error handling and
+both report writes; RAII releases it on return, including failed baking.
+
+The sibling file survives a forced output rebuild. Leave it in place: its
+existence does not mean a bake is running. Removing a held POSIX lock file can
+let another process lock a new inode at the same name. A competing or otherwise
+unavailable lock fails immediately with `Resource baking output lock is
+unavailable` and leaves the previous reports, hash and resources unchanged,
+including a repeat call on a previously used `MasterBaker`. Check the running
+owner and directory permissions, then retry after it exits. Parent directories
+and the empty sibling lock may be created even when acquisition fails.
+
+The native baker alone writes `Resources.build-hash`, using its compiled
+`FO_BUILD_HASH`, before releasing the output lock. `AddBakingTarget` has no
+post-process resource-marker writer; an unlocked CMake write could otherwise
+mark another process's incomplete rebuild as successful. Native binary markers
+still use the configured hash helper. Reconfigure and rebuild for a new revision.
+
+In builds with `AS_DEBUG`, an AngelScript pack also requires the working
+directory's `AS_DEBUG.lock` before output mutation. Baker processes using that
+same directory refuse concurrent debug compilation even for different resource
+outputs. AngelScript role compilers and packs at their script-baking order run
+sequentially because bytecode diagnostic filenames are shared. Other pack
+orders retain their configured mode. Release builds retain ordinary pack and
+role parallelism and do not acquire the diagnostic lock. Use separate working
+directories for independent debug bakes; this lock does not govern arbitrary
+external AngelScript compilers. Both lock files are process-owned handles and
+are released by the OS on process exit; they are not PID sentinels.
+
+`DiskFileSystem` lock/move/Unicode tests, `BakerMasterRawCopy`, its failure and
+forced-rebuild cases, and `BakerMasterAngelScriptMultiplePacks` cover these
+boundaries. Process integration must additionally verify a refused second
+owner, byte-identical protected outputs, and successful reuse after normal or
+abrupt owner exit. A lock protects cooperating bakers; it is not a transaction
+over the produced resource set.
+
 ## CMake entry points
 
 `BuildTools/cmake/stages/ScriptsAndBaking.cmake` defines `AddBakingTarget` as a validated project-interface helper and uses it to create the standard baking commands after application targets are available.
@@ -136,7 +178,7 @@ Current target responsibilities:
 - `BakeResources` is created through `AddBakingTarget(BakeResources)` and runs the project baker with `-Baking.ForceBaking False`.
 - `ForceBakeResources` is created through `AddBakingTarget(ForceBakeResources FORCE)` and runs it with `-Baking.ForceBaking True`.
 - Both standard targets apply the embedding project's main config through `-ApplyConfig <FO_MAIN_CONFIG>` and use the default subconfig `NONE`.
-- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and writes `Baking/Resources.build-hash` through `BuildTools/cmake/helpers/WriteBuildHash.cmake`. The marker uses the same configured `FO_BUILD_HASH` as the native baker and applications; a later Git HEAD change cannot relabel the completed bake. Reconfigure, rebuild and rebake when the source revision changes.
+- Every target created by `AddBakingTarget` works from `FO_OUTPUT_PATH`, depends on `ForceCodeGeneration`, and lets the native baker write `Baking/Resources.build-hash` while holding its output lock. The marker uses the same configured `FO_BUILD_HASH` as the native baker and applications; a later Git HEAD change cannot relabel the completed bake. Reconfigure, rebuild and rebake when the source revision changes.
 - `CompileAngelScript` and `CompileManagedScripts` depend on `ForceCodeGeneration`, so metadata and generated code cannot lag behind either script backend or a bake invocation.
 
 After `SetupScriptsAndBaking()` has run, an embedding project can add a target for a project-owned subconfig without copying the baker command:
@@ -202,6 +244,8 @@ finalizes the report after either success or failure.
 
 Before parallel pack preparation, `MountSharedInputDirs()` mounts each distinct configured `InputDirs` path once. Every pack context borrows the resulting read-only source through `DataSourceRef`, and the owning registry lives for exactly that `BakeAllInternal()` pass. Packs still apply their own include/exclude filters and preserve configured output semantics, but packs sharing a large authored tree no longer walk and cache that directory independently. Source-local name filtering preserves first-seen order while using a set of already-added names, so duplicate suppression is linear rather than repeatedly scanning the accumulated result.
 
+Before preparing packs, the master checks `Resources.baking-config-hash` against `FO_BAKING_CONFIG_HASH`. Missing/changed baking-impact options clear the output tree and force a complete rebuild; unchanged options permit incremental reuse. The [configuration fingerprint](../../how-to/build/project-configuration.md#baking-configuration-fingerprint) owns option registration and scope.
+
 ### `BakingReport`
 
 `BakingReport` is defined in its own `Source/Tools/BakingReport.h` / `.cpp`
@@ -255,10 +299,10 @@ The top-level lifecycle fields are:
 
 - `schemaVersion`, currently `1`;
 - `status` and `failureMessage`;
-- `buildHash`, `bakeOutput`, and total `durationMs`;
+- `buildHash`, `bakingConfigHash`, `bakeOutput`, and total `durationMs`;
 - `mode.forceRequested`, `mode.fullRebuild`, `mode.rebuildReason`, and
   `mode.singleThread`. Rebuild reasons are `incremental`, `requested`,
-  `build_hash_changed`, or `missing_build_hash`.
+  `build_hash_changed`, `baking_config_changed`, or `missing_build_hash`.
 
 `measurementScope` prevents incremental samples from being mistaken for corpus
 statistics. Input counts always describe the complete configured input
@@ -661,7 +705,7 @@ triangulation, validation, scoring, and the diagnostic result. `ImageBaker`
 owns image-format decoding, frame sequences and shared frames, adaptive
 per-frame padding and cropping, mesh serialization, and baking-report
 integration. This
-keeps polygonization independent of `ImageBaker::FrameShot` and allows the
+keeps polygonization independent of `ImageImport::FrameShot` and allows the
 geometry builder to be exercised without an image-resource container.
 
 Geometric safety is internal policy rather than project tuning. The baker uses
@@ -1158,7 +1202,7 @@ Use the smallest test that matches the baker you changed. If CMake target names 
 
 - New baker type: add/modify `Source/Tools/*Baker.*`, register it in `BaseBaker::SetupBakers()` or through `SetupBakersHook()`, and add focused tests.
 - Baking command arguments: update `BuildTools/cmake/stages/ScriptsAndBaking.cmake`.
-- Resource build hash behavior: update `BuildTools/cmake/helpers/WriteBuildHash.cmake` and related tests/build validation.
+- Resource build hash behavior: update `MasterBaker::BakeAllInternal` in `Source/Tools/Baker.cpp` and related tests/build validation; the marker must remain inside the output lock.
 - Metadata baking: update `Source/Tools/MetadataBaker.*` and [Generated API and Metadata](../../reference/metadata/index.md).
 - Prototype format/property loading: update `BuildTools/PrototypeFormatInterface.json`, [Prototype Format](../../how-to/content/prototype-format.md), regenerate its model/reference, run `test_docs_prototype_format.py`, and include it in the aggregate contract diff.
 - Map parsing/baking/materialization: update `BuildTools/MapFormatInterface.json`, [Map Format](../../how-to/content/map-format.md), regenerate its model/reference, run `test_docs_map_format.py`, include it in the aggregate contract diff, run the affected map unit tests, and rebake an embedding project.

@@ -3406,10 +3406,11 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 	# The published tree is the product; the clone and build markers only make an unfinished build resumable, so a tree
 	# restored from the cache has neither, and a second build directory sharing the workspace must not rebuild beneath it
 	if layout.ready_marker.exists():
-		if layout.output_dir.is_dir():
+		if is_published_mono_tree(layout.output_dir, os_name):
 			log(f'Runtime {layout.publish_triplet} is ready!')
 			return
 
+		log('Recover incomplete managed runtime:', layout.output_dir)
 		reset_marker(layout.ready_marker)
 
 	# The runtime build takes most of a CI build job and nothing the cache name leaves out changes its output, so a job
@@ -3431,6 +3432,11 @@ def setup_mono(os_name: str, arch: str, config: str, env: Mapping[str, str]) -> 
 
 	remove_incomplete_runtime_bootstrap(layout.runtime_root)
 	build_mono(os_name, arch, config, env)
+
+	missing = missing_mono_runtime_files(layout.output_dir, os_name)
+	if missing:
+		reset_marker(layout.ready_marker)
+		raise SystemExit(f'Incomplete published managed runtime for {layout.publish_triplet}: {", ".join(missing)}')
 
 	if cache_name:
 		workspace_cache_store_tree(cache_name, layout.workspace / cache_name, layout.output_dir, 'managed runtime')
@@ -3582,12 +3588,18 @@ def adopt_prebuilt_mono(prebuilt_root: Path, workspace: Path, publish_triplet: s
 	# straight at a single triplet's directory is accepted as well
 	source_dir = prebuilt_root / publish_triplet if (prebuilt_root / publish_triplet).is_dir() else prebuilt_root
 
-	if not (source_dir / 'lib').is_dir() or not (source_dir / 'include').is_dir():
-		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir}')
+	os_name = publish_triplet.split('.')[0]
+	missing = missing_mono_runtime_files(source_dir, os_name)
+	if missing:
+		raise SystemExit(f'Prebuilt managed runtime for {publish_triplet} is not a published runtime tree: {source_dir} (missing or empty: {", ".join(missing)})')
 
 	output_dir = workspace / 'output' / 'mono' / publish_triplet
 	log('Copy prebuilt runtime from', source_dir, 'to', output_dir)
 	copy_directory(source_dir, output_dir, dirs_exist_ok=True)
+	missing = missing_mono_runtime_files(output_dir, os_name)
+	if missing:
+		reset_marker(ready_marker)
+		raise SystemExit(f'Incomplete published managed runtime for {publish_triplet}: {", ".join(missing)}')
 	ready_marker.touch()
 
 
@@ -3774,11 +3786,50 @@ def restore_mono_workspace_cache(cache_name: str, layout: MonoLayout) -> bool:
 		return False
 
 	log('Unpack cached managed runtime:', cached_path)
-	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', is_published_mono_tree)
+	os_name = layout.publish_triplet.split('.')[0]
+	return restore_workspace_cache_tree(cached_path, layout.output_dir.parent, layout.output_dir.name, 'managed runtime', lambda tree: is_published_mono_tree(tree, os_name))
 
 
-def is_published_mono_tree(tree: Path) -> bool:
-	return (tree / 'include' / 'mono-2.0').is_dir() and (tree / 'lib' / 'netcoreapp' / 'System.Private.CoreLib.dll').is_file()
+def missing_mono_runtime_files(tree: Path, os_name: str) -> list[str]:
+	# Match the embedding headers and target archives consumed by the native backend and CMake
+	headers = (
+		'jit/jit.h', 'metadata/appdomain.h', 'metadata/assembly.h', 'metadata/class.h',
+		'metadata/debug-helpers.h', 'metadata/loader.h', 'metadata/mono-config.h',
+		'metadata/mono-debug.h', 'metadata/mono-gc.h', 'metadata/object.h',
+		'metadata/reflection.h', 'metadata/threads.h', 'metadata/profiler.h',
+		'utils/mono-publib.h', 'utils/mono-dl-fallback.h')
+	archives = [
+		'monosgen-2.0', 'mono-component-debugger-stub-static',
+		'mono-component-diagnostics_tracing-stub-static', 'mono-component-hot_reload-stub-static',
+		'mono-component-marshal-ilgen-stub-static', 'minipal']
+	if os_name != 'windows':
+		archives.append('System.Native')
+		if os_name != 'browser':
+			archives.append('System.Globalization.Native')
+		if os_name == 'linux':
+			archives.append('System.Security.Cryptography.Native.OpenSsl')
+		if os_name == 'browser':
+			archives.extend(('mono-ee-interp', 'mono-icall-table', 'mono-wasm-eh-js', 'mono-wasm-simd'))
+	prefix, suffix = ('', '.lib') if os_name == 'windows' else ('lib', '.a')
+	required = [f'include/mono-2.0/mono/{header}' for header in headers]
+	required.extend(f'lib/{prefix}{archive}{suffix}' for archive in archives)
+	required.extend(('lib/netcoreapp/System.Private.CoreLib.dll', 'lib/netcoreapp/System.Runtime.dll'))
+
+	def present(relative: str) -> bool:
+		path = tree / relative
+		try:
+			return path.is_file() and path.stat().st_size > 0
+		except OSError:
+			return False
+
+	missing = [relative for relative in required if not present(relative)]
+	if os_name == 'browser' and not any(present(path.relative_to(tree).as_posix()) for path in (tree / 'lib' / 'es6').glob('dotnet.es6.*.js')):
+		missing.append('lib/es6/dotnet.es6.*.js')
+	return missing
+
+
+def is_published_mono_tree(tree: Path, os_name: str) -> bool:
+	return not missing_mono_runtime_files(tree, os_name)
 
 
 def discover_clang_format() -> str:

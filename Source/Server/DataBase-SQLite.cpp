@@ -31,23 +31,18 @@
 // SOFTWARE.
 //
 
-#include "DataBase.h"
+#include "DataBase-SQLite.h"
 
-FO_DISABLE_WARNINGS_PUSH()
-#include <bson/bson.h>
-FO_DISABLE_WARNINGS_POP()
+#if FO_DATABASE_SQLITE
 
-#if FO_HAVE_SQLITE
 FO_DISABLE_WARNINGS_PUSH()
 #include "sqlite3.h"
 FO_DISABLE_WARNINGS_POP()
-#endif
 
+#include "DataBaseSerialization.h"
 #include "WinApiUndef.inc"
 
 FO_BEGIN_NAMESPACE
-
-#if FO_HAVE_SQLITE
 
 // SQLite hands xFree/xRealloc/xSize only the pointer, so the usable size is carried in a header ahead
 // of every block. Eight bytes keeps the payload on the alignment plain malloc would have given
@@ -150,7 +145,7 @@ static void SqliteMemShutdown(void* app_data)
     ignore_unused(app_data);
 }
 
-void InitializeSQLiteRuntime()
+void DataBaseSQLite::InitializeRuntime()
 {
     static std::once_flag once;
     static int32_t init_result = SQLITE_OK;
@@ -194,7 +189,7 @@ public:
         DataBaseImpl(db_settings, std::move(panic_callback)),
         _storageDir {fs::make_writable_path(db_settings->Common.UserWritablePath, storage_dir)}
     {
-        InitializeSQLiteRuntime();
+        DataBaseSQLite::InitializeRuntime();
         fs::create_directories(_storageDir);
         OpenDataBase();
         StartCommitThread();
@@ -621,21 +616,11 @@ private:
 
     void WriteDocument(string_view sql, hstring collection_name, const DataBaseKey& id, const vector<uint8_t>& key, const AnyData::Document& doc) FO_TSA_REQUIRES(_storageLocker)
     {
-        bson_t bson;
-        bson_init(&bson);
-        auto destroy_bson = scope_exit([&]() noexcept { bson_destroy(&bson); });
-
-        DocumentToBson(doc, &bson);
-
-        auto bson_data = make_nptr(bson_get_data(&bson));
-
-        if (!bson_data) {
-            throw DataBaseException("DbSQLite bson_get_data", collection_name);
-        }
+        vector<uint8_t> data = DataBaseSerialization::ToCbor(doc);
 
         Statement stmt {*this, sql, collection_name};
         stmt.BindBlob(1, key);
-        stmt.BindBlob(2, make_const_span(bson_data.get(), numeric_cast<size_t>(bson.len)));
+        stmt.BindBlob(2, data);
 
         while (stmt.Step()) {
             // No rows are produced by INSERT/UPDATE
@@ -665,15 +650,9 @@ private:
 
     [[nodiscard]] static auto DecodeRecordValue(hstring collection_name, const_span<uint8_t> value) -> AnyData::Document
     {
-        bson_t bson;
+        ignore_unused(collection_name);
 
-        if (!bson_init_static(&bson, value.data(), value.size())) {
-            throw DataBaseException("DbSQLite bson_init_static", collection_name);
-        }
-
-        AnyData::Document doc;
-        BsonToDocument(&bson, doc);
-        return doc;
+        return DataBaseSerialization::FromCbor(value);
     }
 
     void VerifyCollection(hstring collection_name) const FO_TSA_REQUIRES(_storageLocker)
@@ -770,12 +749,10 @@ private:
     set<hstring> _collections FO_TSA_GUARDED_BY(_storageLocker) {};
 };
 
-auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
+auto DataBaseSQLite::Create(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>
 {
-    InitializeBsonMemory();
     return safe_alloc::make_unique<DbSQLite>(db_settings, storage_dir, std::move(panic_callback));
 }
 
-#endif
-
 FO_END_NAMESPACE
+#endif

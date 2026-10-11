@@ -45,7 +45,7 @@ Sprite root motion is presentation data. It does not move the entity, choose a p
 
 ## Authoring per-frame offsets
 
-`ImageBaker::FrameShot` stores:
+`ImageImport::FrameShot` stores:
 
 ```cpp
 int16_t NextX;

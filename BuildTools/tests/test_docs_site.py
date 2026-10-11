@@ -9,22 +9,50 @@ from pathlib import Path
 
 BUILDTOOLS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BUILDTOOLS_DIR))
+import documentation_metadata  # noqa: E402
 import docs_ai_delivery  # noqa: E402
 import docs_localization  # noqa: E402
 import docs_site  # noqa: E402
 
 
 class DocumentationSiteTests(unittest.TestCase):
-    def test_version_file_updates_site_and_routes_without_changing_channel(self) -> None:
+    def test_version_source_does_not_rewrite_site_artifacts(self) -> None:
         temporary_directory, root = self._create_fixture()
         self.addCleanup(temporary_directory.cleanup)
+        previous = None
         for version in ("2026.1.1-dev", "2026.1.2-dev"):
             (root / "VERSION").write_text(version + "\n", encoding="utf-8")
             outputs = docs_site.render_outputs(root)
             for path in (docs_site.DEFAULT_NAVIGATION_OUTPUT, docs_site.DEFAULT_ROUTES_OUTPUT):
                 artifact = json.loads(outputs[path])
-                self.assertEqual(artifact["engine"], {**docs_ai_delivery.ENGINE_VERSION_POLICY, "value": version})
+                self.assertEqual(artifact["engine"], docs_ai_delivery.ENGINE_VERSION_POLICY)
                 self.assertEqual(artifact["version"]["value"], "master")
+            if previous is not None:
+                self.assertEqual(previous, outputs)
+            previous = outputs
+
+    def test_translation_review_hashes_do_not_enter_search(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        path = root / "Docs/Guide.md"
+        before = docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT]
+        path.write_text(path.read_text(encoding="utf-8") +
+                        '\n<!-- docs-translation: {"source_sha256":"technicalhash"} -->\n',
+                        encoding="utf-8")
+        after = docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT]
+        self.assertEqual(json.loads(before)["documents"], json.loads(after)["documents"])
+        self.assertNotIn("technicalhash", after)
+
+    def test_visible_comment_examples_remain_searchable(self) -> None:
+        temporary_directory, root = self._create_fixture()
+        self.addCleanup(temporary_directory.cleanup)
+        path = root / "Docs/Guide.md"
+        path.write_text(path.read_text(encoding="utf-8") +
+                        '\n```html\n<!-- visiblefenceexample -->\n```\n\n`<!-- visibleinlineexample -->`\n',
+                        encoding="utf-8")
+        search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])
+        self.assertIn("visiblefenceexample", search["terms"])
+        self.assertIn("visibleinlineexample", search["terms"])
 
     def test_repository_search_uses_reviewed_budget(self) -> None:
         root = BUILDTOOLS_DIR.parent
@@ -102,7 +130,7 @@ class DocumentationSiteTests(unittest.TestCase):
             "AGENTS.md": "# Agents\n\nAI route.\n",
         }
         for relative_path, content in files.items():
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(content, encoding="utf-8")
 
@@ -154,7 +182,7 @@ class DocumentationSiteTests(unittest.TestCase):
                 "translation_hash": "normalized-sha256",
                 "translation_pending": "pre-production-only",
                 "glossary": "Docs/translation-glossary.json",
-                "status_output": "Docs/generated/translation-status.json",
+                "status_output": "docs-manifest.json#/translation_status",
                 "enforcement": "existing-translations-current",
                 "entrypoint_targets": {},
             },
@@ -381,7 +409,7 @@ class DocumentationSiteTests(unittest.TestCase):
         manifest["documents"]["Docs/Guide.md"]["title"] = "Tools"
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         for relative_path in manifest["documents"]:
-            path = root / relative_path
+            path = documentation_metadata.output_path(root, relative_path)
             if path.is_file():
                 with path.open("a", encoding="utf-8") as output:
                     output.write("\nTools are shared across workflows.\n")
@@ -444,7 +472,7 @@ class DocumentationSiteTests(unittest.TestCase):
                 and classification["human"]
                 and document["state"] == "current"
             ):
-                path = root / relative_path
+                path = documentation_metadata.output_path(root, relative_path)
                 path.write_text(path.read_text(encoding="utf-8") + "\nCorpusWideMarker\n", encoding="utf-8")
 
         search = json.loads(docs_site.render_outputs(root)[docs_site.DEFAULT_SEARCH_OUTPUT])

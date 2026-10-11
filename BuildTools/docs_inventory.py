@@ -62,7 +62,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--output", default=DEFAULT_OUTPUT)
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--write", action="store_true", help="write the generated inventory")
-    mode.add_argument("--check", action="store_true", help="fail when committed inventory is stale")
+    mode.add_argument("--check", action="store_true", help="fail when prepared inventory is stale")
     args = parser.parse_args(argv)
 
     root = args.root.resolve()

@@ -53,7 +53,69 @@ default arguments and binding metadata. The macro-only configuration fixture
 uses fixed Engine version/revision inputs and checks `FO_ENGINE_VERSION` and
 `FO_ENGINE_REVISION` independently of the checkout's current identity.
 
+The same job runs the managed runtime preparation regressions in `test_managed_runtime_ready_validation.py`, `test_managed_runtime_workspace_cache.py`, `test_buildtools_prebuilt_managed_runtime.py` and `test_managed_runtime_byproducts.py`. Filesystem fixtures cover required Windows, Linux, Web, Android and Apple inputs independently of the host; the archive inventory is checked by executing the actual CMake link-selection block. Missing/empty files must cause recovery or explicit refusal, while complete trees keep their cache identity and already built source outputs. The small Ninja producer probes require POSIX CMake, Ninja and a C toolchain; these tests establish setup behavior, not a native runtime build on every target.
+
 `Test_ClientEntityLifetime.cpp` covers repeated map unloads with retained handles, pending item owners, failed construction and atlas cleanup with live/empty pages. `Test_MapSprite.cpp` pins holder detachment and reuse after `Clear()`; `Test_ResourceIndex.cpp` pins decoded-vector ownership transfer. The destroyed-map storage bound requires debug/profiling allocator statistics. Headless ownership checks do not qualify physical GPU memory, working-set trends or a platform's long-session OOM behavior.
+
+`ClientLargeMapFieldsStayWithinMemoryBudget` checks a real 1200x1200 `MapView`
+constructor against a 64 MiB process-private-memory growth limit when the
+platform counter is available, then checks camera rebuilds, stable field
+addresses across block allocations, Mapper resize and destruction.
+`ClientLargeMapScrollBoundsStayWithinMemoryBudget` applies an axial scroll
+rectangle to the same large-map fixture. These are separate from the retained
+destroyed-map allocator check. `Test_TwoDimensionalGrid.cpp` covers chunk
+boundaries, partial-edge shrink/growth, zero size and move-only cell ownership,
+including explicit template sides of 1, 8, 16 and 32.
+The hidden `ClientMapFieldAccessCost` reports seven-sample median access times
+for actual client fields in populated, mixed, empty and scattered workloads.
+Compare repeated runs from the same optimized binary; timings have no flaky
+pass/fail threshold and do not claim rendered frame performance.
+
+`ServerMapGridSelectionPreservesFieldBehavior` starts the real server loader
+and constructs runtime maps for all nine independent `Static`, `Chunked` and
+`Dynamic` prototype/instance combinations.
+It checks shared prototype fields across chunk boundaries, stable field
+addresses, manual movement/shooting blocks and isolation between instances,
+then adds items and critters through the native managers. The fixture lives in
+`Test_ServerEntityLifetime.cpp` and runs with either scripting backend.
+`ServerMapGridTypesRejectInvalidSettings` rejects empty, unknown and wrong-case
+values for both selectors before any map blobs are loaded.
+`ServerMapInvalidGridConstructionUnwindsEntityOwner` checks cleanup after a
+constructor rejects a selector. These are functional contract fixtures, not
+server performance bounds.
+
+The hidden `ServerMapGridOperationsCost` measures production `MapManager` and
+`Map` operations on a deterministic 600x600 fixture with obstacles, sealed
+rooms, 256 critters and 1024 items. It compares all nine independent prototype
+and instance combinations of dense static, chunked and hash storage.
+Each workload is warmed, calibrated once to an approximately 200 ms dense
+batch and repeated five times with rotated/reversed mode order. Startup,
+population, logging and Catch2 assertions are outside the timed loops.
+`SERVER_GRID_CSV` rows contain sample, prototype mode, instance mode, workload,
+iterations, operation count, wall milliseconds, process CPU milliseconds and
+checksum. Full route results and other outputs must match across modes.
+
+Run the explicitly named hidden case from an optimized test binary on a quiet
+host. Compare medians and ranges; CPU counters may have coarse resolution.
+The measured workloads include result hashing and normal entity-cover
+validation under server quiescence. This measures native operation cost, not
+game-script/tick throughput, contention scalability, startup memory or a
+particular embedding game's maps. Settings apply only to the fixture servers.
+
+The hidden `ServerMapGridMemoryDynamic` and `ServerMapGridMemoryChunked` cases
+compare runtime storage on sixteen 600x600 server maps sharing one empty
+prototype with `Dynamic` storage. Each map receives 1024 nonblocking items
+and 256 critters at identical spread coordinates. Subsequent stages toggle
+and clear 10% and 90% of distinct fields without adding live entities.
+Five process-private samples per stage yield a median; the
+`SERVER_GRID_MEMORY_CSV` columns are grid type, stage, private bytes and optional
+allocator committed active-page bytes (zero means unavailable).
+Run each exact case in a fresh optimized process, alternate modes and repeat.
+Subtract each process's baseline, keep absolute values and ranges, and separate
+destroyed-map/cover-release storage from post-shutdown storage. Assertions check
+entity counts and field behavior, without a machine-dependent memory threshold.
+This is a controlled native world, not a restored embedding-game database or
+a measurement of its full prototype catalog.
 
 The repeated-unload storage comparison warms one complete map load/unload
 cycle before reading rpmalloc's committed active-page counter. Twelve destroyed
@@ -212,6 +274,8 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 
 ### Focused harness patterns
 
+- **Attachment teardown:** `CritterAttachmentTeardown` in `Test_ServerEntityLifetime.cpp` uses a self-contained server with either scripting backend. It covers ordinary detach and destruction of either endpoint, counts native exception reports through the existing exception callback while preserving the previous reporter, and decodes the surviving player's `CritterAttachments` packet. `ClientCritterFinalizationDropsAttachmentIds` in `Test_ClientEntityLifetime.cpp` checks view finalization with cached attachment IDs and a surviving peer. Final entity state alone cannot prove clean teardown: a caught native exception may be followed by a successful retry.
+
 - **ImGui panels:** create a backend-less context, set `ImGuiBackendFlags_RendererHasTextures`, and use `ImGui::LogToBuffer(depth)` to auto-open tree nodes and prove nested text rendered. Collapsing headers opt out and need their IDs seeded in `StateStorage`. Destroy the context at scope exit. To cover widget branches, `ImGuiTestHarness::ActivateItem` needs two frames; address controls under child windows with `ActivateChildItem`, draw only the owning panel so another window's focus request cannot erase activation, and clear stale active IDs between presses.
 - **Server diagnostics:** a sync point does not itself cover entities. Snapshot not-logged-in players under the publication lock, release it before entity locks, and then acquire one replacement cover for the snapshot and registered world. Keep a real not-logged-in fixture in the test.
 - **Inbound remote calls:** entry covers the calling player and its controlled critter. Any second entity needs explicit `Game.Sync`; do not probe an operation expected to violate cover behind script `try/catch`, because the session is torn down before the next probe arrives.
@@ -224,7 +288,7 @@ Coverage is platform- and environment-specific. Sources not compiled in the curr
 
 ## Current test inventory
 
-The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](../../../generated/source-inventory.json). Do not copy the total or full list into prose.
+The authoritative test-file count and complete sorted filename list are generated from `Source/Tests/Test_*.cpp` into [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). Do not copy the total or full list into prose.
 
 Regenerate and verify it from the engine root:
 
@@ -293,6 +357,7 @@ Use these ownership groups to choose a starting area; the filenames are represen
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp` — compiled-bytecode document migrations on a real server: signature rejection, typed detached values/context, conditional identity domains, idempotency, atomic exceptions, and prototype chains/defaults.
 - `Source/Tests/Test_ManagedScriptBaker.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`

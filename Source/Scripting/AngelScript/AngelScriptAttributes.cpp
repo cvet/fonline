@@ -172,6 +172,8 @@ static constexpr array DIRECT_CALL_BLOCKING_ATTRIBUTES {
     string_view {"AnimCallback"},
     string_view {"PropertyGetter"},
     string_view {"PropertySetter"},
+    string_view {"PropertyMigrator"},
+    string_view {"ProtoMigrator"},
     string_view {"ServerRemoteCall"},
     string_view {"ClientRemoteCall"},
     string_view {"AdminRemoteCall"},

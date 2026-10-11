@@ -156,6 +156,7 @@ public:
 
         void Emplace(string key, Value value) noexcept { _value.emplace(std::move(key), std::move(value)); }
         void Assign(const string& key, Value value) noexcept { _value.insert_or_assign(key, std::move(value)); }
+        void Erase(const string& key) noexcept { _value.erase(key); }
 
     private:
         map<string, Value> _value {};

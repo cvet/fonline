@@ -44,6 +44,7 @@ FO_DECLARE_EXCEPTION(PropertySerializationException);
 
 namespace PropertiesSerializer
 {
+    [[nodiscard]] auto MigrateDocument(ptr<const PropertyRegistrar> registrar, AnyData::Document& doc, nptr<AnyData::Document> updates = nullptr, optional<AnyData::Value> prototype = std::nullopt) -> bool;
     [[nodiscard]] auto SaveToDocument(ptr<const Properties> props, nptr<const Properties> base, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Document;
     [[nodiscard]] auto LoadFromDocument(ptr<Properties> props, const AnyData::Document& doc, hash_resolver& hashes, NameResolver& name_resolver) noexcept -> bool;
     [[nodiscard]] auto SavePropertyToValue(ptr<const Properties> props, ptr<const Property> prop, hash_resolver& hashes, NameResolver& name_resolver) -> AnyData::Value;

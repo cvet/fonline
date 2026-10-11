@@ -5,7 +5,7 @@ permalink: /Source/Tests/README.ru.html
 locale: ru
 document_id: unit-tests-readme
 ---
-<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"f84ebe81b7ebd21a0cce58701066fa4304e537e704dc44b88fd06a3861fb18b6"} -->
+<!-- docs-translation: {"document_id":"unit-tests-readme","locale":"ru","source_path":"Source/Tests/README.md","source_sha256":"2d06d99e5b952d790226748b56afcf97364d050905ed60ff8974bb9eece75c16"} -->
 # Модульные тесты
 
 Этот каталог содержит детерминированные тесты движка, встроенные в генерируемое тестовое приложение. Полная актуальная карта тестов, маршрутизация проверок и сведения о целях покрытия приведены в разделе [Тестирование](../../Docs/ru/contributing/testing/).
@@ -23,7 +23,7 @@ document_id: unit-tests-readme
 
 ## Текущие наборы тестов
 
-Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](../../Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
+Полный список имён файлов и их количество, полученные из исходного кода, генерируются в [source-inventory.json](https://fonline.ru/Docs/generated/source-inventory.json). В разделе [Тестирование](../../Docs/ru/contributing/testing/) приведены актуальные группы владения и маршрутизация проверок.
 
 После добавления, удаления или переименования файла `Test_*.cpp` перегенерируйте инвентарь из корня движка:
 
@@ -132,6 +132,7 @@ python BuildTools/docs_inventory.py --check
 - `Source/Tests/Test_AngelScriptAttributes.cpp`
 - `Source/Tests/Test_AngelScriptBytecode.cpp`
 - `Source/Tests/Test_AngelScriptCall.cpp`
+- `Source/Tests/Test_AngelScriptDocumentMigrations.cpp`
 - `Source/Tests/Test_CommonScriptMethods.cpp`
 - `Source/Tests/Test_ScriptBuiltins.cpp`
 - `Source/Tests/Test_ScriptEntityOps.cpp`
@@ -189,6 +190,10 @@ procedural, skeleton-compatibility и Ozz покрывают производс�
 - `Source/Tests/Test_Rendering.cpp`
 
 CI-задача документации отклоняет устаревший сгенерированный инвентарь. Заголовки выше отражают текущие исходные файлы для навигации, но не заменяют полный сгенерированный список.
+
+Регрессии отсоединения при уничтожении выполняются при любом scripting backend: `CritterAttachmentTeardown`
+проверяет связи сервера, native-отчёты и доставку оставшемуся игроку; `ClientCritterFinalizationDropsAttachmentIds`
+проверяет очистку клиентского кеша с сохранением живого peer. Они входят в существующие наборы жизненного цикла сущностей сервера и клиента.
 
 ## Запуск тестов
 

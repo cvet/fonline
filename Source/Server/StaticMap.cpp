@@ -34,12 +34,13 @@
 #include "StaticMap.h"
 #include "Critter.h"
 #include "Item.h"
+#include "Settings.h"
 
 FO_BEGIN_NAMESPACE
 
-StaticMap::StaticMap(msize map_size, bool static_grid) :
+StaticMap::StaticMap(msize map_size, string_view grid_type) :
     _mapSize {map_size},
-    _hexField {CreateHexField(map_size, static_grid)}
+    _hexField {CreateHexField(map_size, grid_type)}
 {
 }
 
@@ -183,13 +184,19 @@ void StaticMap::ShrinkToFit()
     _staticItems.shrink_to_fit();
 }
 
-auto StaticMap::CreateHexField(msize map_size, bool static_grid) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
+auto StaticMap::CreateHexField(msize map_size, string_view grid_type) -> unique_ptr<TwoDimensionalGrid<Field, mpos, msize>>
 {
-    if (static_grid) {
+    if (grid_type == "Static") {
         return safe_alloc::make_unique<StaticTwoDimensionalGrid<Field, mpos, msize>>(map_size);
     }
+    if (grid_type == "Chunked") {
+        return safe_alloc::make_unique<ChunkedTwoDimensionalGrid<Field, mpos, msize, GameSettings::SERVER_MAP_CHUNK_SIDE>>(map_size);
+    }
+    if (grid_type == "Dynamic") {
+        return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    }
 
-    return safe_alloc::make_unique<DynamicTwoDimensionalGrid<Field, mpos, msize>>(map_size);
+    throw SettingsException("Unknown server map grid type; expected Static, Chunked or Dynamic", "Server.ProtoMapGridType", grid_type);
 }
 
 void StaticMap::ApplyItemToField(ptr<StaticItem> item, ptr<Field> field)

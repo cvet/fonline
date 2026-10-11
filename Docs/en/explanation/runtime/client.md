@@ -352,6 +352,35 @@ The reusable map presentation API includes `SetExtraScrollOffset()` for script-o
 
 ## Resources, sprites, effects, and render targets
 
+### Client map field storage
+
+`MapView` stores fields in `ChunkedTwoDimensionalGrid`: a directly indexed
+table of nullable owners of dense blocks. The grid's `ChunkSide` template
+parameter must be a nonzero power of two. `MapView` supplies
+`GameSettings::CLIENT_MAP_CHUNK_SIDE`, currently 16, so its blocks are 16x16.
+Changing this compile-time setting requires rebuilding native consumers;
+it is not a runtime configuration key. The first write to a block constructs
+its `ChunkSide * ChunkSide` default fields. Reading a missing block returns the
+shared empty field without allocating. Access uses coordinate division/remainder
+by the compile-time block side and array indexing; it does not hash coordinates or allocate per-field
+nodes. Existing field addresses survive allocations of other blocks. Mapper
+resize preserves overlapping coordinates, discards removed fields, and may
+invalidate field addresses. Unload releases the table and every block.
+
+This removes the single full-map field allocation. With the current side of
+16, a 1200x1200 map initially
+needs 5625 owner entries rather than 1440000 field slots; each field allocation
+is bounded to `256 * sizeof(MapView::Field)`. Populated blocks consume their
+full capacity, so a map with writes in every block can still approach dense
+field storage. Light and view buffers retain their existing representations.
+
+`ClientLargeMapFieldsStayWithinMemoryBudget` and
+`ClientLargeMapScrollBoundsStayWithinMemoryBudget` measure the real constructor
+on an empty 1200x1200 map, including its view/light buffers and scroll bounds.
+The hidden `ClientMapFieldAccessCost` compares actual field reads/writes with
+dense and hash-based storage. Its timings qualify only those workloads, not
+whole-game FPS or a fragmented 32-bit long session; see [Testing](../../contributing/testing/).
+
 ### Map unload and native storage lifetime
 
 `ClientEngine::UnloadMap()` destroys the previous `MapView` before the next map is constructed. A script handle can retain the destroyed entity shell: Managed wrappers release native references only at finalization, and either backend can retain an explicit handle. Unload, not final object destruction, therefore releases the cell grid, view/light buffers, entity collections, deferred item owners, fog data and scratch capacity. `MapSpriteList::InvalidateAll()` preserves the pool for camera rebuilds; permanent teardown uses `Clear()` to detach sprite holders and release the pool.

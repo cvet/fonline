@@ -192,12 +192,10 @@ namespace NativeDataProvider
         // Mutable array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> value) FO_DEFERRED { cont.emplace_back(*cast_from_void<typename T::value_type*>(value.get())); };
         }
@@ -205,23 +203,23 @@ namespace NativeDataProvider
         // Const array
         template<typename T>
             requires(vector_collection<T>)
-        explicit ArrayDataProxy(const T& cont) :
-            _ptrs {to_vector(vec_transform(cont, [](auto&& e) -> ptr<void> {
-                auto element = make_ptr(&e).void_cast();
-                return element;
-            }))}
+        explicit ArrayDataProxy(const T& cont)
         {
+            _sizeCallback = [&]() { return cont.size(); };
+            _getCallback = [&](size_t index) -> ptr<void> { return make_ptr(&cont[index]).void_cast(); };
             _clearCallback = [&]() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [&](ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> ptr<void> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> value) { _addCallback(value), _ptrs.emplace_back(value); }
+        [[nodiscard]] auto Size() const noexcept -> size_t { return _sizeCallback(); }
+        [[nodiscard]] auto Get(size_t index) const noexcept -> ptr<void> { return _getCallback(index); }
+
+        void Add(ptr<void> value) { _addCallback(value); }
+        void Clear() { _clearCallback(); }
 
     private:
-        vector<ptr<void>> _ptrs;
+        function<size_t()> _sizeCallback {};
+        function<ptr<void>(size_t)> _getCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>)> _addCallback {};
     };
@@ -232,9 +230,16 @@ namespace NativeDataProvider
         // Mutable dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
             _clearCallback = [&]() FO_DEFERRED { cont.clear(); };
             _addCallback = [&](ptr<void> key, ptr<void> value) FO_DEFERRED { cont.emplace(*cast_from_void<const typename T::key_type*>(key.get()), *cast_from_void<typename T::mapped_type*>(value.get())); };
         }
@@ -242,20 +247,58 @@ namespace NativeDataProvider
         // Const dict
         template<typename T>
             requires(map_collection<T>)
-        explicit DictDataProxy(const T& cont) :
-            _ptrs {vec_transform(cont, [](auto&& e) -> pair<ptr<void>, ptr<void>> { return {make_ptr(&e.first).void_cast(), make_ptr(&e.second).void_cast()}; })}
+        explicit DictDataProxy(const T& cont)
         {
+            _refreshCallback = [&](vector<pair<ptr<void>, ptr<void>>>& entries) {
+                entries.clear();
+                entries.reserve(cont.size());
+
+                for (auto&& entry : cont) {
+                    entries.emplace_back(make_ptr(&entry.first).void_cast(), make_ptr(&entry.second).void_cast());
+                }
+            };
             _clearCallback = []() FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
             _addCallback = [](ptr<void> /*key*/, ptr<void> /*value*/) FO_DEFERRED { throw InvalidCallException(FO_LINE_STR); };
         }
 
-        auto Size() const noexcept -> size_t { return _ptrs.size(); }
-        auto Get(size_t index) const noexcept -> pair<ptr<void>, ptr<void>> { return _ptrs[index]; }
-        void Clear() { _ptrs.clear(), _clearCallback(); }
-        void Add(ptr<void> key, ptr<void> value) { _addCallback(key, value), _ptrs.emplace_back(key, value); }
+        [[nodiscard]] auto Size() const -> size_t
+        {
+            Refresh();
+            return _ptrs.size();
+        }
+
+        [[nodiscard]] auto Get(size_t index) const -> pair<ptr<void>, ptr<void>>
+        {
+            if (_dirty) {
+                Refresh();
+            }
+
+            return _ptrs[index];
+        }
+
+        void Add(ptr<void> key, ptr<void> value)
+        {
+            _addCallback(key, value);
+            _dirty = true;
+        }
+
+        void Clear()
+        {
+            _clearCallback();
+            _ptrs.clear();
+            _dirty = true;
+        }
 
     private:
-        vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        void Refresh() const
+        {
+            _refreshCallback(_ptrs);
+            _dirty = false;
+        }
+
+        mutable vector<pair<ptr<void>, ptr<void>>> _ptrs;
+        mutable bool _dirty {true};
+        function<void(vector<pair<ptr<void>, ptr<void>>>&)> _refreshCallback {};
         function<void()> _clearCallback {};
         function<void(ptr<void>, ptr<void>)> _addCallback {};
     };

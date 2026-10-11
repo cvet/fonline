@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 
 const SCHEMA_VERSION = 1;
 const GENERATED_BY = "BuildTools/docs-browser/audit.mjs";
-const DEFAULT_SITE_DIR = "_site";
+const DEFAULT_SITE_DIR = "Workspace/DocumentationSite";
 const DEFAULT_REPORT = "Workspace/docs-browser-audit-report.json";
 const DEFAULT_SCREENSHOTS = "Workspace/docs-browser-screenshots";
 const WCAG_TAGS = [
@@ -123,8 +123,11 @@ function displayPath(root, value) {
 }
 
 async function loadRoutes(siteDir) {
-  const catalogPath = join(siteDir, "Docs", "generated", "document-routes.json");
-  const catalog = JSON.parse(await readFile(catalogPath, "utf8"));
+  const catalogPath = join(siteDir, "docs-manifest.json");
+  const catalog = JSON.parse(await readFile(catalogPath, "utf8")).routing;
+  if (!catalog || !Array.isArray(catalog.routes)) {
+    throw new Error("rendered docs-manifest.json is missing its routing section");
+  }
   const routes = [];
   const seen = new Set();
   for (const document of catalog.routes || []) {
@@ -993,6 +996,7 @@ async function auditDiagramRendering(browser, baseUrl, routePath, screenshotDir,
     const page = await context.newPage();
     try {
       await page.goto(`${baseUrl}${routePath}`, { waitUntil: "load" });
+      await decodeContentImages(page);
       const diagram = page.locator(".docs-diagram").first();
       if (await diagram.count() !== 1) {
         errors.push(`${profile.id} architecture page does not expose one primary documentation diagram`);
@@ -1314,4 +1318,8 @@ async function main() {
   return 0;
 }
 
-process.exitCode = await main();
+export { auditDiagramRendering };
+
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  process.exitCode = await main();
+}

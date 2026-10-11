@@ -38,10 +38,6 @@
 #include "AnyData.h"
 #include "Settings.h"
 
-// ReSharper disable once CppInconsistentNaming
-struct _bson_t;
-using bson_t = _bson_t;
-
 FO_BEGIN_NAMESPACE
 
 FO_DECLARE_EXCEPTION(DataBaseException);
@@ -263,19 +259,6 @@ private:
     unordered_map<hstring, DataBaseKeyType> _collectionKeyTypes {};
 };
 
-void InitializeBsonMemory() noexcept;
-auto CreateJsonDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
-#if FO_HAVE_SQLITE
-void InitializeSQLiteRuntime();
-auto CreateSQLiteDataBase(ptr<DataBaseSettings> db_settings, string_view storage_dir, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
-#endif
-#if FO_HAVE_MONGO
-auto CreateMongoDataBase(ptr<DataBaseSettings> db_settings, string_view uri, string_view db_name, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
-#endif
-auto CreateMemoryDataBase(ptr<DataBaseSettings> db_settings, DataBasePanicCallback panic_callback) -> unique_ptr<DataBaseImpl>;
-
-void DocumentToBson(const AnyData::Document& doc, ptr<bson_t> bson, char escape_dot = 0);
-void BsonToDocument(ptr<const bson_t> bson, AnyData::Document& doc, char escape_dot = 0);
 auto GetDbKeyType(const DataBaseKey& key) noexcept -> DataBaseKeyType;
 
 FO_END_NAMESPACE

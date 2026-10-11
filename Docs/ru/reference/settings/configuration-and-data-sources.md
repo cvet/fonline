@@ -5,7 +5,7 @@ locale: ru
 document_id: configuration-data-sources
 permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 ---
-<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"d4bde46f2b7f5f5ad0d109b9c78557be91c918b8d302c07c882a69357f2886ab"} -->
+<!-- docs-translation: {"document_id":"configuration-data-sources","locale":"ru","source_path":"Docs/en/reference/settings/configuration-and-data-sources.md","source_sha256":"ee60969f87b1335d0b07cf65f2804c9e48faf3d3a2479ea87e196eca5705280e"} -->
 # Конфигурация и источники данных
 
 > Документация движка. Эта страница описывает переиспользуемые механизмы разбора конфигурации, runtime settings, смонтированные источники данных, поиск файлов и хранение кэша. Конкретные значения конфигурации и правила размещения контента принадлежат встраивающему проекту.
@@ -97,7 +97,7 @@ permalink: /Docs/ru/reference/settings/configuration-and-data-sources.html
 - `ApplySubConfigSection()` для именованных overlays;
 - `ApplyDefaultSettings()` и `ApplyAutoSettings()` для defaults движка и производных значений.
 
-При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. `Source/Tests/Test_Settings.cpp` защищает как default baseline, так и приоритет project override.
+При обычном запуске приложения создается non-baking `GlobalSettings`, а defaults движка применяются до чтения входов проекта. Итоговый runtime order таков: defaults, конфигурация проекта или упакованный internal config, выбранные sub-configs, writable local-config cache, переопределения командной строки, затем производные auto settings. Поэтому проектный `.fomain` фиксирует намеренно заданные значения, а пропущенный setting получает объявленный Engine default, а не нулевое инициализированное значение. Явно заданный ноль остаётся override. Тест `ApplicationSettings` в `Source/Tests/Test_Settings.cpp` проверяет обычный путь `LoadAppSettings()` на изолированных файлах конфигурации и кэша: default baseline и каждый слой override вплоть до командной строки.
 
 `ConfigBaker` из `Source/Tools/ConfigBaker.cpp` заново выводит каждый sub-config
 из root. Metadata хранит настроенное root-значение каждого game setting и служит
@@ -247,3 +247,9 @@ Snapshot нового источника снимается до его публ
 3. Если изменилось поведение command line или sub-config, проверьте конфигурацию встраивающего проекта, которая его использует, но оставьте project-specific values в документации проекта.
 4. Если изменился packaging или resource staging, при необходимости повторно проверьте [Web build, packaging и browser debugging](../../how-to/platforms/web-debugging.md), [Android build, packaging и device debugging](../../how-to/platforms/android-debugging.md) и [разделение client runtime и updater](../../explanation/runtime/client-updater.md).
 5. При изменении владения build stages обновите [конвейер baking](../../explanation/content-pipeline/baking.md) или [конвейер BuildTools](../cmake-and-buildtools/pipeline.md).
+
+## Опциональные провайдеры архивов
+
+`DataSource.cpp` владеет dispatch; соседние пары `DataSource-Directory`, `DataSource-Embedded` обязательны, `DataSource-Dat` требует `FO_DATA_SOURCE_DAT`, `DataSource-Zip` — `FO_DATA_SOURCE_ZIP`. Регистрация/includes безусловны, guards внутренние. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) описывает роли/зависимости.
+
+Приоритет: Embedded / `.fores` / `.zip` / `.bos` / `.dat`. Существующий выключенный архив сообщает путь/опцию даже при `maybe_not_available=true`; пустой источник — только для отсутствующего optional pack. Повреждённый приоритетный pack не подменяется следующим. Embedded/APK сохраняют bundled minizip при внешнем ZIP OFF; `.fores`/updater patches остаются базовыми.

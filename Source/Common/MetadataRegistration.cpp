@@ -380,9 +380,21 @@ static void RegisterDynamicMetadataMigrationRules(ptr<EngineMetadata> meta, cons
     FO_TRACE_ZONE(Engine);
 
     for (const auto& tokens : engine_data) {
-        FO_VERIFY_AND_THROW(tokens.size() == 4, "Invalid MigrationRule metadata record", tokens.size());
+        if (!tokens.empty() && (tokens[0] == "Property" || tokens[0] == "Proto")) {
+            FO_VERIFY_AND_THROW((tokens.size() == 4 && tokens[2] == "Remove") || (tokens.size() == 5 && tokens[2] != "Remove"), "Invalid MigrationRule action metadata record", tokens[0], tokens.size());
+            string_view replacement = tokens.size() == 5 ? tokens[4] : string_view {};
 
-        meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
+            if (tokens[0] == "Property") {
+                meta->RegisterPropertyMigrationRule(tokens[1], tokens[2], tokens[3], replacement);
+            }
+            else {
+                meta->RegisterProtoMigrationRule(tokens[1], tokens[2], tokens[3], replacement);
+            }
+        }
+        else {
+            FO_VERIFY_AND_THROW(tokens.size() == 4, "Invalid MigrationRule metadata record", tokens.size());
+            meta->RegisterMigrationRule(tokens[0], tokens[1], tokens[2], tokens[3]);
+        }
     }
 }
 

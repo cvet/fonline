@@ -879,6 +879,7 @@ auto BakingReport::Serialize() const -> string
         {"status", _status},
         {"failureMessage", _failureMessage},
         {"buildHash", FO_BUILD_HASH},
+        {"bakingConfigHash", FO_BAKING_CONFIG_HASH},
         {"bakeOutput", _bakeOutput},
         {"durationMs", _status == "running" ? _duration.get_duration().milliseconds() : _completedDurationMs},
         {"mode", {{"forceRequested", _forceRequested}, {"fullRebuild", _fullRebuild}, {"rebuildReason", _rebuildReason}, {"singleThread", _singleThread}}},

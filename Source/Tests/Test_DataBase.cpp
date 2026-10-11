@@ -33,10 +33,13 @@
 
 #include "catch_amalgamated.hpp"
 
+#include "DataBase-Mongo.h"
+#include "DataBase-SQLite.h"
 #include "DataBase.h"
+#include "DataBaseSerialization.h"
 #include "DiskFileSystem.h"
 
-#if FO_HAVE_SQLITE
+#if FO_DATABASE_SQLITE
 FO_DISABLE_WARNINGS_PUSH()
 #include "sqlite3.h"
 FO_DISABLE_WARNINGS_POP()
@@ -674,14 +677,14 @@ namespace
         CHECK(string_docs[3]["value"].AsInt64() == 1);
     }
 
-#if FO_HAVE_SQLITE
+#if FO_DATABASE_SQLITE
     // Writes straight into the storage file, bypassing the backend, so the key-validation paths can be
     // exercised against data the backend would never have produced itself
     void StoreRawSQLiteRecord(const std::filesystem::path& storage_dir, string_view collection_name, const vector<uint8_t>& key_data, string_view value)
     {
         // sqlite3_config only applies before initialization, so initializing directly here would silently lose the
         // engine allocator for the backend created later
-        InitializeSQLiteRuntime();
+        DataBaseSQLite::InitializeRuntime();
 
         REQUIRE(fs::create_directories(fs::path_to_string(storage_dir)));
 
@@ -1585,6 +1588,7 @@ TEST_CASE("DataBaseGetAllDocumentIdsRelistsKeysCommittedDuringListing")
     CHECK(ids == vector<DataBaseKey> {DataBaseKey {ident_t {5}}});
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
 {
     GlobalSettings settings {false};
@@ -1606,6 +1610,7 @@ TEST_CASE("DataBaseJsonGetAllStringIdsDecodesStoredKeys")
     CHECK(all_ids.front() == std::get<string>(record_id));
     CHECK(db.Valid(collection, record_id));
 }
+#endif
 
 TEST_CASE("DataBaseTypedGetAllIdsRejectCollectionTypeMismatch")
 {
@@ -1652,6 +1657,7 @@ TEST_CASE("DataBaseGetAllIdsRejectsInvalidUtf8BackendStringKey")
     REQUIRE_THROWS_AS(db.GetAllIds(string_collection), DataBaseException);
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
 {
     GlobalSettings settings {false};
@@ -1671,6 +1677,7 @@ TEST_CASE("DataBaseJsonGetAllStringIdsRejectsInvalidEscapedKey")
 
     REQUIRE_THROWS_AS(db.GetAllStringIds(collection), DataBaseException);
 }
+#endif
 
 TEST_CASE("DataBaseRejectsInvalidUtf8StringKeys")
 {
@@ -1952,6 +1959,7 @@ TEST_CASE("DataBaseReconnectRestoresHexStringKeysFromOplog")
     CheckRecoveryLogsCleared(recovery_logs);
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
 {
     GlobalSettings settings {false};
@@ -1975,7 +1983,9 @@ TEST_CASE("JsonDataBaseStorageFollowsTheWritableRoot")
     CHECK(fs::exists(fs::path_to_string(*writable_root_scope.Dir() / "WorldData" / "test_collection" / "2001.json")));
     CHECK_FALSE(fs::exists("WorldData"));
 }
+#endif
 
+#if FO_DATABASE_JSON
 TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
@@ -2030,7 +2040,9 @@ TEST_CASE("JsonDataBaseRoundTripsDocumentsAndIds")
     CHECK(std::ranges::find(ids, complex_id) != ids.end());
     CHECK_FALSE(fs::exists(fs::path_to_string(*storage_dir_scope.Dir() / "storage" / "test_collection" / "1002.json")));
 }
+#endif
 
+#if FO_DATABASE_JSON
 TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
 {
     GlobalSettings settings {false};
@@ -2051,6 +2063,7 @@ TEST_CASE("JsonDataBaseRejectsBrokenStorageFiles")
     REQUIRE(fs::write_file(fs::path_to_string(collection_dir / "1001.json"), "{"));
     REQUIRE_THROWS_AS(db.Get(collection, ident_t {1001}), DataBaseException);
 }
+#endif
 
 TEST_CASE("MemoryDataBaseRoundTripsDocumentsAndIds")
 {
@@ -2113,6 +2126,7 @@ TEST_CASE("MemoryDataBaseBatchReadMatchesSingleReads")
     CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 1100);
 }
 
+#if FO_DATABASE_JSON
 TEST_CASE("JsonDataBaseBatchReadMatchesSingleReads")
 {
     GlobalSettings settings {false};
@@ -2127,7 +2141,9 @@ TEST_CASE("JsonDataBaseBatchReadMatchesSingleReads")
     db.StartCommitChanges();
     CheckBatchReadMatchesSingleReads(db, int_collection, string_collection, 30);
 }
+#endif
 
+#if FO_DATABASE_JSON
 TEST_CASE("DataBaseConnectionValidationAndMetrics")
 {
     GlobalSettings settings {false};
@@ -2154,8 +2170,9 @@ TEST_CASE("DataBaseConnectionValidationAndMetrics")
     CHECK_THROWS_AS(db.RestoreSnapshot(vector<uint8_t> {1, 2, 3}), DataBaseException);
     CHECK_THROWS_AS(db.RestoreSnapshot(vector<uint8_t> {}), DataBaseException);
 }
+#endif
 
-#if FO_HAVE_SQLITE
+#if FO_DATABASE_SQLITE
 TEST_CASE("SQLiteDataBaseRoundTripsDocumentsAndIds")
 {
     GlobalSettings settings {false};
@@ -2395,7 +2412,7 @@ TEST_CASE("SQLiteDataBaseBatchReadMatchesSingleReads")
 }
 #endif
 
-#if FO_HAVE_MONGO
+#if FO_DATABASE_MONGO
 TEST_CASE("MongoDataBaseCanBeCreatedAgainAfterAFailedStart")
 {
     // The driver's init and cleanup are one-shot each. A database that cleaned up after failing to start left
@@ -2405,8 +2422,195 @@ TEST_CASE("MongoDataBaseCanBeCreatedAgainAfterAFailedStart")
     string_view unreachable_uri = "mongodb://127.0.0.1:1/?serverSelectionTimeoutMS=200&connectTimeoutMS=200";
 
     for (int32_t attempt = 0; attempt < 3; attempt++) {
-        CHECK_THROWS_AS(CreateMongoDataBase(db_settings, unreachable_uri, "lf_unit_tests", [] { }), DataBaseException);
+        CHECK_THROWS_AS(DataBaseMongo::Create(db_settings, unreachable_uri, "lf_unit_tests", [] { }), DataBaseException);
     }
+}
+#endif
+
+TEST_CASE("DatabaseSerializationPreservesAnyDataTypesAndIntegerLimits")
+{
+    AnyData::Document doc = MakeComplexDoc();
+    doc.Emplace("minimum", std::numeric_limits<int64_t>::min());
+    doc.Emplace("maximum", std::numeric_limits<int64_t>::max());
+    doc.Emplace("precise", int64_t {9007199254740993});
+    doc.Emplace(string {"nul\0key", 7}, string {"nul\0value", 9});
+
+    auto json = DataBaseSerialization::ToJson(doc);
+    CHECK(DataBaseSerialization::FromJson(json) == doc);
+    auto text = json.dump();
+    CHECK(DataBaseSerialization::FromJsonText(string_view {text.data(), text.size()}) == doc);
+
+#if FO_DATABASE_SQLITE
+    auto cbor = DataBaseSerialization::ToCbor(doc);
+    CHECK(DataBaseSerialization::FromCbor(cbor) == doc);
+
+    // A CBOR record is independent of BSON and must survive close/reopen byte-for-byte
+    ScopedRecoveryLogs storage {"cbor-codec"};
+    string record_path = fs::path_to_string(*storage.Dir() / "record.cbor");
+    REQUIRE(fs::write_file(record_path, cbor));
+    auto stored = fs::read_file(record_path);
+    REQUIRE(stored);
+    CHECK(DataBaseSerialization::FromCbor(make_span(stored->data(), stored->size())) == doc);
+#endif
+}
+
+TEST_CASE("DatabaseSerializationRoundTripsEmptyContainersAtTheDepthLimit")
+{
+    AnyData::Value nested {AnyData::Array {}};
+
+    SECTION("Arrays")
+    {
+        for (size_t depth = 1; depth < DataBaseSerialization::MAX_DOCUMENT_DEPTH; depth++) {
+            AnyData::Array parent;
+            parent.EmplaceBack(std::move(nested));
+            nested = AnyData::Value {std::move(parent)};
+        }
+    }
+    SECTION("Dictionaries")
+    {
+        nested = AnyData::Value {AnyData::Dict {}};
+
+        for (size_t depth = 1; depth < DataBaseSerialization::MAX_DOCUMENT_DEPTH; depth++) {
+            AnyData::Dict parent;
+            parent.Emplace("child", std::move(nested));
+            nested = AnyData::Value {std::move(parent)};
+        }
+    }
+
+    AnyData::Document doc;
+    doc.Emplace("x", std::move(nested));
+    auto json = DataBaseSerialization::ToJson(doc);
+    CHECK(DataBaseSerialization::FromJson(json) == doc);
+    auto text = json.dump();
+    CHECK(DataBaseSerialization::FromJsonText(string_view {text.data(), text.size()}) == doc);
+
+#if FO_DATABASE_SQLITE
+    CHECK(DataBaseSerialization::FromCbor(DataBaseSerialization::ToCbor(doc)) == doc);
+#endif
+}
+
+TEST_CASE("DatabaseSerializationRejectsUnrepresentableAndCorruptDocuments")
+{
+    CHECK_THROWS(DataBaseSerialization::FromJsonText("[]"));
+    CHECK_THROWS(DataBaseSerialization::FromJsonText("{\"x\":null}"));
+    CHECK_THROWS(DataBaseSerialization::FromJsonText("{\"x\":18446744073709551615}"));
+    CHECK_THROWS(DataBaseSerialization::FromJsonText("{\"x\":"));
+
+    string deep = "{\"x\":";
+    deep.append(DataBaseSerialization::MAX_DOCUMENT_DEPTH + 1, '[');
+    deep += "1";
+    deep.append(DataBaseSerialization::MAX_DOCUMENT_DEPTH + 1, ']');
+    deep += "}";
+    CHECK_THROWS(DataBaseSerialization::FromJsonText(deep));
+
+#if FO_DATABASE_SQLITE
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa1, 0x61, 'x'}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa1, 0x61, 'x', 0xf6}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa1, 0x61, 'x', 0x41, 0x00}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa1, 0x61, 'x', 0x1b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa1, 0x61, 'x', 0x9b, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xfe}));
+    CHECK_THROWS(DataBaseSerialization::FromCbor(vector<uint8_t> {0xa0, 0x00}));
+
+    vector<uint8_t> deep_cbor {0xa1, 0x61, 'x'};
+    deep_cbor.insert(deep_cbor.end(), DataBaseSerialization::MAX_DOCUMENT_DEPTH + 1, 0x81);
+    deep_cbor.emplace_back(1);
+    CHECK_THROWS(DataBaseSerialization::FromCbor(deep_cbor));
+#endif
+}
+
+#if !FO_DATABASE_JSON || !FO_DATABASE_SQLITE || !FO_DATABASE_MONGO
+TEST_CASE("DisabledDatabaseProvidersIdentifyTheirRequiredOptions")
+{
+    GlobalSettings settings {false};
+    DataBaseCollectionSchemas schemas;
+
+#if !FO_DATABASE_JSON
+    CHECK_THROWS_WITH(ConnectToDataBase(&settings, "JSON WorldData", schemas, {}), Catch::Matchers::ContainsSubstring("FO_DATABASE_JSON"));
+#endif
+#if !FO_DATABASE_SQLITE
+    CHECK_THROWS_WITH(ConnectToDataBase(&settings, "DbSQLite WorldData", schemas, {}), Catch::Matchers::ContainsSubstring("FO_DATABASE_SQLITE"));
+#endif
+#if !FO_DATABASE_MONGO
+    CHECK_THROWS_WITH(ConnectToDataBase(&settings, "Mongo mongodb://127.0.0.1:1 test", schemas, {}), Catch::Matchers::ContainsSubstring("FO_DATABASE_MONGO"));
+#endif
+}
+#endif
+
+#if FO_DATABASE_MONGO
+TEST_CASE("MongoDataBaseRecoversAfterIsolatedServerRestart", "[.MongoIntegration]")
+{
+    nptr<const char> uri_env = std::getenv("FO_TEST_MONGO_URI");
+    nptr<const char> control_env = std::getenv("FO_TEST_MONGO_CONTROL");
+
+    if (!uri_env || !control_env) {
+        SKIP("Set FO_TEST_MONGO_URI and FO_TEST_MONGO_CONTROL for an isolated local mongod");
+    }
+
+    string uri {uri_env.get()};
+    REQUIRE(strvex(uri).starts_with("mongodb://127.0.0.1:"));
+    string control_dir {control_env.get()};
+    string pending_path = strex(control_dir).combine_path("pending.oplog").str();
+    string database_name = strex("fo_optional_components_{}", std::chrono::steady_clock::now().time_since_epoch().count()).str();
+    GlobalSettings settings {false};
+    *FixedSettingForOverride(settings.DataBase.OpLogPath) = pending_path;
+    *FixedSettingForOverride(settings.DataBase.OpLogEnabled) = true;
+    *FixedSettingForOverride(settings.DataBase.ReconnectRetryPeriod) = 100;
+    *FixedSettingForOverride(settings.DataBase.PanicOpLogSizeThreshold) = 1024 * 1024;
+    *FixedSettingForOverride(settings.DataBase.PanicShutdownTimeout) = 60000;
+    hash_storage hashes;
+    hstring collection = hashes.to_hashed_string("codec_records");
+    DataBaseCollectionSchemas schemas {{collection, DataBaseKeyType::IntId}};
+    ident_t id {1};
+    string connection = strex("Mongo {} {}", uri, database_name).str();
+
+    {
+        auto db = ConnectToDataBase(&settings, connection, schemas, {});
+        db.StartCommitChanges();
+        db.Insert(collection, id, MakeComplexDoc());
+        db.WaitCommitChanges();
+        CheckComplexDoc(db.Get(collection, id));
+        REQUIRE(fs::write_file(strex(control_dir).combine_path("ready").str(), database_name));
+
+        string stopped_path = strex(control_dir).combine_path("stopped").str();
+        auto stop_deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
+        while (!fs::exists(stopped_path) && std::chrono::steady_clock::now() < stop_deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        REQUIRE(fs::exists(stopped_path));
+        db.Update(collection, id, "after_restart", int64_t {9007199254740993});
+        auto spill_deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
+        while (fs::file_size(pending_path).value_or(0) == 0 && std::chrono::steady_clock::now() < spill_deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        REQUIRE(fs::file_size(pending_path).value_or(0) > 0);
+        REQUIRE_FALSE(db.InValidState());
+        REQUIRE(fs::write_file(strex(control_dir).combine_path("spilled").str(), database_name));
+        string restarted_path = strex(control_dir).combine_path("restarted").str();
+        auto recovery_deadline = std::chrono::steady_clock::now() + std::chrono::seconds {30};
+
+        while ((!fs::exists(restarted_path) || !db.InValidState()) && std::chrono::steady_clock::now() < recovery_deadline) {
+            std::this_thread::sleep_for(std::chrono::milliseconds {20});
+        }
+
+        REQUIRE(fs::exists(restarted_path));
+        REQUIRE(db.InValidState());
+        db.WaitCommitChanges();
+        auto recovered = db.Get(collection, id);
+        CHECK(recovered["after_restart"].AsInt64() == int64_t {9007199254740993});
+        CheckComplexDoc(recovered);
+    }
+
+    auto db = ConnectToDataBase(&settings, connection, schemas, {});
+    CHECK(db.Get(collection, id)["after_restart"].AsInt64() == int64_t {9007199254740993});
+    db.Delete(collection, id);
+    db.WaitCommitChanges();
+    CHECK_FALSE(db.Valid(collection, id));
+    REQUIRE(fs::write_file(strex(control_dir).combine_path("complete").str(), database_name));
 }
 #endif
 

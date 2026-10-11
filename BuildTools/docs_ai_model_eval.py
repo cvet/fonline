@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Callable
 
 import docs_validate
+import documentation_metadata
 
 
 SCHEMA_VERSION = 2
@@ -917,8 +918,8 @@ def run_evaluation(
     root = root.resolve()
     source_path = root / DEFAULT_SOURCE
     static_report_path = root / DEFAULT_STATIC_REPORT
-    manifest_path = root / DEFAULT_PUBLIC_MANIFEST
-    llms_path = root / DEFAULT_LLMS
+    manifest_path = documentation_metadata.output_path(root, DEFAULT_PUBLIC_MANIFEST)
+    llms_path = documentation_metadata.output_path(root, DEFAULT_LLMS)
     source = _load_json(source_path, "AI evaluation source")
     static_report = _load_json(static_report_path, "static AI evaluation report")
     public_manifest = _load_json(manifest_path, "public documentation manifest")

@@ -73,6 +73,7 @@ void CritterView::OnDestroySelf()
     }
 
     _invItems.clear();
+    _attachedCritters.clear();
 }
 
 void CritterView::SetName(string_view name)

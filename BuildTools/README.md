@@ -105,7 +105,7 @@ The executable opt-in starter project lives under `Engine/Examples/MinimalProjec
 - `docs_reference.py` renders the canonical API model into GitHub Pages-compatible Markdown under `Docs/generated/api/`.
 - `docs_metadata.py` strictly decodes project-baked `Metadata.fometa-server/client`, verifies both sides agree, and writes/checks a project-owned remote-call JSON/Markdown catalog.
 - `docs_inventory.py` writes/checks the independent export-method, native-test, and setting declaration inventory.
-- `docs_localization.py` enforces complete bilingual coverage, the glossary, stable locale targets, normalized English hashes, exact translated fences, and language-preserving links, then writes/checks `Docs/generated/translation-status.json`.
+- `docs_localization.py` enforces complete bilingual coverage, the glossary, stable locale targets, normalized English hashes, exact translated fences, and language-preserving links, then writes/checks `docs-manifest.json#/translation_status`.
 - `docs_description_translations.py` inventories reader-facing prose in 20 generated contract models, applies the reviewed stable-ID Russian overlay, rejects duplicate/unknown/stale/type-changing/code-changing records, and writes/checks `Docs/generated/description-translation-status.json`. Missing entries remain explicit until the semantic catalog can move from `registered-translations-current` to `complete`.
 - `docs_ai_delivery.py` projects `Docs/documentation-manifest.json` and canonical Markdown into root `llms.txt`, bounded `llms-full.txt`, and public `docs-manifest.json`; it normalizes content hashes and rejects stale, oversized, or non-deterministic output.
 - `docs_site.py` resolves manifest-owned stable document IDs into checked localized Jekyll navigation data, bounded English and Russian static search indexes, and the public version/locale/legacy-route catalog; it rejects unknown/duplicate/omitted top-level pages, route collisions, ambiguous canonical targets, missing locale pairs, cross-locale search ownership, and oversized or stale output.
@@ -589,14 +589,14 @@ key that clients pin; `public` prints it again later. The script needs nothing b
 
 ## Temporary compatibility dates
 
-Code kept only for older builds or data carries `FO_TEMPORARY_COMPAT(Id, "YYYY-MM-DD");` (native) or
-`[TemporaryCompat("Id", "YYYY-MM-DD")]` (managed), see [temporary compatibility](../Docs/en/reference/native/essentials.md#temporary-compatibility).
+Native/managed old-build handling and temporary CMake refusals/exclusions share a dated marker; see
+[temporary compatibility](../Docs/en/reference/native/essentials.md#temporary-compatibility) for all three spellings.
 `temporary_compat.py` fails once a date has passed and lists every place of that id:
 
 ```bash
-python3 BuildTools/temporary_compat.py                                        # the engine Source tree
-python3 Engine/BuildTools/temporary_compat.py Engine/Source SourceExt Scripts # an embedding project's directories
-python3 BuildTools/temporary_compat.py --report                               # every marker and the days it has left
+python3 BuildTools/temporary_compat.py # engine Source and BuildTools/cmake, including inactive branches
+python3 Engine/BuildTools/temporary_compat.py Engine/Source Engine/BuildTools/cmake CMakeLists.txt SourceExt Scripts
+python3 BuildTools/temporary_compat.py --report # every marker and the days it has left
 ```
 
 `--today YYYY-MM-DD` pins the date. It needs nothing beyond the Python standard library; its tests are

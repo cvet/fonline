@@ -65,7 +65,7 @@ The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is d
 ### Locale ownership
 
 1. English (`en`) is canonical. Unmigrated flat English files remain the source until their reviewed group moves; migrated pages are canonical below `Docs/en`.
-2. Russian (`ru`) is a whole-document mirror populated in reviewed groups. `Docs/generated/translation-status.json` is the authoritative coverage snapshot; no ADR paragraph owns a manually maintained translation count.
+2. Russian (`ru`) is a whole-document mirror populated in reviewed groups. `docs-manifest.json#/translation_status` is the authoritative coverage snapshot; no ADR paragraph owns a manually maintained translation count.
 3. Human pages moving under `Docs/en` derive their Russian path by replacing `Docs/en/` with `Docs/ru/`.
 4. Repository and subsystem README entry points use manifest-declared paired paths such as `README.md` and `README.ru.md`.
 5. Stable document IDs, not translated titles, join English and Russian pages.
@@ -75,7 +75,7 @@ The [Engine CalVer](../../how-to/release/versioning.md) from root `VERSION` is d
 ### Stable routes and migration
 
 1. `Docs/documentation-manifest.json` owns versioning, localization, current source paths, stable document IDs, migration dispositions, and planned targets.
-2. `BuildTools/docs_site.py` generates `Docs/generated/document-routes.json`.
+2. `BuildTools/docs_site.py` generates `docs-manifest.json#/routing`.
 3. The route catalog records every public page's current URL, canonical future owner, planned English URL, Russian mirror path, migration state, and required legacy redirect.
 4. A future target shared by multiple legacy pages must have exactly one non-`replace` canonical owner. Other records are aliases that redirect to that owner.
 5. A move is not allowed until the old route remains as a durable Markdown pointer page. This preserves both GitHub repository reading and GitHub Pages/Jekyll navigation without depending on an unsupported redirect plugin or checked-in HTML.

@@ -40,7 +40,7 @@ class DocumentationBrowserAuditTests(unittest.TestCase):
         script = (TOOL_DIR / "audit.mjs").read_text(encoding="utf-8")
 
         for marker in (
-            '"document-routes.json"',
+            '"docs-manifest.json"',
             'id: "desktop"',
             'id: "mobile"',
             'id: "zoom-200"',
@@ -143,7 +143,7 @@ class DocumentationBrowserAuditTests(unittest.TestCase):
         workflow = (ROOT / ".github/workflows/validate.yml").read_text(
             encoding="utf-8"
         )
-        config = (ROOT / "_config.yml").read_text(encoding="utf-8")
+        config = (ROOT / "Docs/Site/_config.yml").read_text(encoding="utf-8")
 
         for marker in (
             "navigationSidebar.inert = hidden",

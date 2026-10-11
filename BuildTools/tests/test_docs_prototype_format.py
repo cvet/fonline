@@ -47,7 +47,11 @@ class PrototypeFormatDocumentationTests(unittest.TestCase):
             "prototype-format.rule.identifier-characters",
             {entry["id"] for entry in self.model["rules"]},
         )
-        self.assertEqual(self.model["summary"]["rule_count"], 14)
+        self.assertIn(
+            "prototype-format.rule.property-migration",
+            {entry["id"] for entry in self.model["rules"]},
+        )
+        self.assertEqual(self.model["summary"]["rule_count"], 15)
 
         identities = [
             entry["id"]

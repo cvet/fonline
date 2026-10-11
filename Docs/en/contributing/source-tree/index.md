@@ -111,3 +111,7 @@ The tests are the executable knowledge base for many engine subsystems. File nam
 - Do not put game-specific behavior into engine docs unless clearly labelled as an example.
 - Do not document generated output as hand-authored source.
 - Do not change source-tree READMEs into large manuals; use focused `Docs/` pages and link to them.
+
+## Adjacent optional modules
+
+`Common/DataSource-*`, `Server/DataBase-*` and `Tools/ImageBaker-*` are adjacent `.h/.cpp` pairs with internal numeric guards and unconditional registration/includes. Coordinators retain dispatch; `ImageImport` owns frames/context, `DataBaseSerialization` owns JSON/CBOR, and Mongo owns BSON. [Component selection](../../how-to/build/project-configuration.md#optional-native-components) lists modules, roles and dependencies.

@@ -10,6 +10,8 @@ permalink: /Docs/en/how-to/release/versioning.html
 
 The root [VERSION](https://github.com/cvet/fonline/blob/master/VERSION) owns the Engine identifier. This year-based CalVer policy, [ADR-0002](../../contributing/decisions/0002-public-api-stability-contract.md), and the [contract-change workflow](../../contributing/contract-change-management.md) are mandatory for every master update. Read the [changelog](../../reference/changelog.md) before upgrading a game.
 
+Navigation, routes and AI delivery reference `VERSION` without copying its value. The Jekyll layout includes the root file directly at build time.
+
 ## Notation
 
 Fields are `YEAR.MAJOR.MINOR.PATCH`: `YEAR` is the four-digit UTC year; `MAJOR` is the positive release-line ordinal for that year, starting at `1`, not a month or SemVer promise. `MINOR` counts master updates within the line; `PATCH` is release-only. No leading zeroes; minor/patch start at `0`.
@@ -34,7 +36,7 @@ Each first-parent master commit owns one minor increment and dated bilingual not
 1. Record the exact baseline and target, audit the complete source/test/doc range, and identify every affected surface and existing-value semantic invariant.
 2. Preserve the meaning of all existing valid inputs. Additions/extensions preserve old cases; replacements use a distinct name, type, key, or explicit format boundary and remove the obsolete API. Supply compile/bake/validation errors for affected old usage. Follow ADR-0002; a compatibility label does not waive this rule.
 3. Increment `VERSION` from the current master tip. The first adoption of this policy replaces the historical `2022.1.0.wip` with `2026.1.1-dev`; it is not a reconstructed release history.
-4. Add `## 2026.1.21-dev - 2026-10-04` in both changelog locales for the exact new identifier. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
+4. Freeze the preceding `## Current - <date>` heading with its old `VERSION` identifier, then add `## Current - <UTC date>` in both changelog locales. The validator resolves only this newest entry from `VERSION`; historical headings keep their exact identifiers. Date each master note by the UTC commit date. Every entry has a non-empty `### Migration` / `### Миграция` section; explicitly say when no project migration is required and why. `Unreleased` is a drafting area, not a substitute for the dated published-step entry. Retain preceding entries so skipped versions can be migrated in order.
 5. For every removal/replacement, write the exhaustive migration record below and bind any required generated-contract disposition to its exact base/current digests. Review semantic changes even when the static diff is empty.
 6. Update each owning guide, examples, both locales, and `AGENTS.md` routing in the same change. Regenerate affected source-owned models/references, diagrams/screenshots, snippets, translation state, site/search/routes, AI evaluation, and AI delivery in dependency order. [Documentation maintenance](../../contributing/documentation/) owns the complete route.
 7. Run affected native/script/configuration/content/package checks plus negative old-usage and positive unaffected/new-usage tests. Run version/changelog and full relevant documentation/site gates. Record exact results, compatibility/ABI/resource decisions, and residual limits; a version bump alone never changes runtime compatibility.
@@ -95,7 +97,7 @@ An upgrade without project migration either preserves all used contracts or fail
 | `FO_COMPATIBILITY_VERSION` | Runtime contract digest including the separate manual migration marker |
 | ABI/resource-schema versions | Their source-owned serialization/protocol contracts |
 
-`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery share the version; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
+`BuildTools/engine_version.py` serves CMake, native codegen and docs. `VERSION`/Engine Git-ref changes invalidate generated metadata. Startup identifies Engine separately from game metadata; nested archives cannot inherit parent Git identity. Site navigation/routes and AI delivery reference `VERSION` without copying its value. the Jekyll layout includes the root file directly at build time; its site link opens the selected locale's changelog. Docs roll on `current`/`master`; [ADR-0006](../../contributing/decisions/0006-documentation-version-locale-routing.md) owns snapshots. Historical `Since` stays unchanged. Project branding, Android/installer versions and package hashes remain project-owned.
 
 ## Source ownership
 

@@ -46,6 +46,30 @@ namespace fs
 {
     using file_visitor = function<void(string_view, size_t, uint64_t)>;
 
+    class exclusive_file_lock final
+    {
+    public:
+        exclusive_file_lock() noexcept = default;
+        exclusive_file_lock(const exclusive_file_lock&) = delete;
+        exclusive_file_lock(exclusive_file_lock&& other) noexcept;
+        auto operator=(const exclusive_file_lock&) -> exclusive_file_lock& = delete;
+        auto operator=(exclusive_file_lock&& other) noexcept -> exclusive_file_lock&;
+        ~exclusive_file_lock() noexcept;
+
+        [[nodiscard]] auto owns_lock() const noexcept -> bool { return _descriptor >= 0; }
+
+        void reset() noexcept;
+
+    private:
+        friend auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
+        explicit exclusive_file_lock(int32_t descriptor) noexcept :
+            _descriptor {descriptor}
+        {
+        }
+
+        int32_t _descriptor {-1};
+    };
+
     // Filesystem helpers
     auto make_path(string_view path) -> std::u8string;
     auto path_to_string(const std::filesystem::path& path) -> string;
@@ -63,6 +87,7 @@ namespace fs
     auto available_space(string_view path) noexcept -> optional<uint64_t>;
     auto hash_file(string_view path) -> optional<uint64_t>;
     auto hash_data(const_span<uint8_t> data) noexcept -> uint64_t;
+    auto try_lock_file(string_view path) noexcept -> exclusive_file_lock;
     auto read_file(string_view path) -> optional<string>;
     auto read_file_bounded(string_view path, size_t max_size) -> optional<string>;
     auto compare_file_content(string_view path, const_span<uint8_t> content) -> bool;

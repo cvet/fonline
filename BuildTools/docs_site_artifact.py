@@ -8,10 +8,12 @@ from html.parser import HTMLParser
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urljoin, urlsplit
 
+import documentation_metadata
+
 
 SCHEMA_VERSION = 1
 DEFAULT_MANIFEST = "Docs/documentation-manifest.json"
-DEFAULT_SITE_DIR = "_site"
+DEFAULT_SITE_DIR = documentation_metadata.SITE_OUTPUT_DIR
 DEFAULT_REPORT = "Workspace/docs-site-artifact-report.json"
 MAX_CONSOLE_ERRORS = 50
 GENERATED_BY = "BuildTools/docs_site_artifact.py"
@@ -48,10 +50,10 @@ def _required_string(value: object, label: str) -> str:
 
 def _repository_path(value: object, label: str) -> str:
     text = _required_string(value, label)
-    path = PurePosixPath(text)
+    path = PurePosixPath(text.split("#/", 1)[0])
     if path.is_absolute() or ".." in path.parts or "\\" in text:
         raise ValueError(f"{label} must be a repository-relative forward-slash path")
-    return text
+    return str(path)
 
 
 def _load_json(path: Path, label: str) -> dict[str, object]:
@@ -187,7 +189,7 @@ class RenderedPageParser(HTMLParser):
 
 
 def _expected_static_paths(manifest: dict[str, object]) -> list[str]:
-    paths = {"CNAME", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png"}
+    paths = {"CNAME", "VERSION", "Docs/Site/Assets/css/docs.css", "Docs/Site/Assets/js/docs.js", "Docs/Site/Assets/images/fonline-mark.png"}
     ai_delivery = _required_object(manifest.get("ai_delivery"), "documentation manifest ai_delivery")
     for field in ("llms", "full_context", "public_manifest"):
         config = _required_object(ai_delivery.get(field), f"documentation manifest ai_delivery.{field}")
@@ -334,11 +336,7 @@ def audit_site(
         ),
         "documentation manifest site_delivery.routing",
     )
-    route_model_path = _repository_path(
-        routing.get("path"),
-        "documentation manifest site_delivery.routing.path",
-    )
-    route_model = _load_json(root / route_model_path, "documentation route model")
+    route_model = documentation_metadata.read_section(root, routing["path"])
     base_url = _required_string(route_model.get("canonical_base_url"), "route model canonical_base_url")
     canonical_host = urlsplit(base_url).netloc.casefold()
     routes = route_model.get("routes")
@@ -421,7 +419,7 @@ def audit_site(
 
     endpoint_paths = _expected_static_paths(manifest)
     for relative_path in endpoint_paths:
-        source_path = root / relative_path
+        source_path = documentation_metadata.output_path(root, relative_path)
         rendered_path = site_dir / Path(*PurePosixPath(relative_path).parts)
         if not source_path.is_file():
             errors.append(f"source endpoint is missing: {relative_path}")

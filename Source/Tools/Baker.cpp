@@ -229,8 +229,39 @@ auto MasterBaker::BakeAll() noexcept -> bool
     bool success = false;
     string failure_message;
     string report_path;
+    fs::exclusive_file_lock output_lock;
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+    fs::exclusive_file_lock diagnostics_lock;
+#endif
+    _report.reset();
 
     try {
+        FO_VERIFY_AND_THROW(!_settings->Baking.BakeOutput.empty(), "Resource baker cannot lock an empty output path");
+        std::error_code path_error;
+        auto output_path = std::filesystem::weakly_canonical(std::filesystem::path {fs::make_path(fs::resolve_path(_settings->Baking.BakeOutput))}, path_error);
+        FO_VERIFY_AND_THROW(!path_error, "Unable to resolve resource baking output", _settings->Baking.BakeOutput, path_error.message());
+
+        if (output_path.filename().empty()) {
+            output_path = output_path.parent_path();
+        }
+
+        FO_VERIFY_AND_THROW(!output_path.filename().empty(), "Resource baking output must be below a filesystem root");
+        string parent_path = fs::path_to_string(output_path.parent_path());
+        bool parent_created = fs::create_directories(parent_path);
+        FO_VERIFY_AND_THROW(parent_created, "Unable to create resource baking output parent", parent_path);
+        auto lock_path = output_path;
+        lock_path += ".lock";
+        string lock_name = fs::path_to_string(lock_path);
+        output_lock = fs::try_lock_file(lock_name);
+        FO_VERIFY_AND_THROW(output_lock.owns_lock(), "Resource baking output lock is unavailable", lock_name);
+
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+        if (std::ranges::any_of(_settings->GetResourcePacks(), [](const auto& pack) { return vec_exists(pack.Bakers, AngelScriptBaker::NAME); })) {
+            diagnostics_lock = fs::try_lock_file("AS_DEBUG.lock");
+            FO_VERIFY_AND_THROW(diagnostics_lock.owns_lock(), "AngelScript debug output lock is unavailable", fs::resolve_path("AS_DEBUG.lock"));
+        }
+#endif
+
         _report = safe_alloc::make_shared<BakingReport>(_settings);
         report_path = GetBakingReportPath(_settings->Baking.BakeOutput);
 
@@ -349,6 +380,10 @@ void MasterBaker::BakeAllInternal()
     logging::write("Time {}", backing_time.get_duration());
     logging::write("Baking complete!");
 
+    string baking_config_hash_path = MakeOutputPath("Resources.baking-config-hash");
+    bool baking_config_hash_write_ok = fs::write_file(baking_config_hash_path, FO_BAKING_CONFIG_HASH);
+    FO_VERIFY_AND_THROW(baking_config_hash_write_ok, "Unable to write the baking configuration hash file", baking_config_hash_path);
+
     bool build_hash_write_ok = fs::write_file(build_hash_path, FO_BUILD_HASH);
     FO_VERIFY_AND_THROW(build_hash_write_ok, "Unable to write the build hash file", build_hash_path);
 }
@@ -365,6 +400,11 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
     FO_TRACE_ZONE(Baking);
 
     auto prev_build_hash = fs::read_file(build_hash_path);
+    string baking_config_hash_path = MakeOutputPath("Resources.baking-config-hash");
+    auto prev_baking_config_hash = fs::read_file(baking_config_hash_path);
+    bool baking_config_hash_deleted = fs::remove_file(baking_config_hash_path);
+    FO_VERIFY_AND_THROW(baking_config_hash_deleted, "Unable to delete the previous baking configuration hash file", baking_config_hash_path);
+
     bool build_hash_deleted = fs::remove_file(build_hash_path);
     FO_VERIFY_AND_THROW(build_hash_deleted, "Unable to delete the previous build hash file", build_hash_path);
 
@@ -381,18 +421,22 @@ auto MasterBaker::ResolveRebuildMode(string_view build_hash_path) -> bool
         force_baking = true;
         rebuild_reason = "build_hash_changed";
     }
+    else if (!prev_baking_config_hash.has_value() || prev_baking_config_hash.value() != FO_BAKING_CONFIG_HASH) {
+        logging::write("Force rebuild all resources due to baking configuration changed");
+        force_baking = true;
+        rebuild_reason = "baking_config_changed";
+    }
 
     if (force_baking) {
         bool delete_output_ok = fs::remove_dir_tree(_settings->Baking.BakeOutput);
         FO_VERIFY_AND_THROW(delete_output_ok, "Unable to delete baking output dir");
     }
 
-    // A missing hash means the previous run never finished, so the tree is rebuilt - but not deleted, since the
-    // partial output is still a valid starting point once every file is re-checked
+    // A missing build hash also marks an incomplete run; configuration invalidation above discards its stale outputs
     if (!prev_build_hash.has_value()) {
         force_baking = true;
 
-        if (rebuild_reason == "incremental") {
+        if (rebuild_reason == "incremental" || rebuild_reason == "baking_config_changed") {
             rebuild_reason = "missing_build_hash";
         }
     }
@@ -563,7 +607,14 @@ void MasterBaker::RunPackBakers(vector<unique_ptr<PackBakeContext>>& pack_bake_c
         for (auto& bake_context_holder : pack_bake_contexts) {
             if (!bake_context_holder->Done) {
                 auto bake_context = bake_context_holder.as_ptr();
-                res_bakings.emplace_back(run_async(async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [bake_context, bake_order]() FO_DEFERRED { BakePackOrder(bake_context, bake_order); }));
+                async_launch_mode pack_async_mode = async_mode;
+#if FO_ANGELSCRIPT_SCRIPTING && defined(AS_DEBUG)
+                // AS_DEBUG diagnostics use shared filenames across roles and packs
+                if (std::ranges::any_of(bake_context->Bakers, [bake_order](const auto& baker) { return baker->GetOrder() == bake_order && baker->GetName() == AngelScriptBaker::NAME; })) {
+                    pack_async_mode = launch_deferred_only;
+                }
+#endif
+                res_bakings.emplace_back(run_async(pack_async_mode, strex("BakePack-{}-order{}", bake_context->PackName, bake_order), [bake_context, bake_order]() FO_DEFERRED { BakePackOrder(bake_context, bake_order); }));
             }
         }
 

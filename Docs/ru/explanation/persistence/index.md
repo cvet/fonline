@@ -7,7 +7,7 @@ permalink: /Docs/ru/explanation/persistence/
 ---
 
 # Сохранение данных
-<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"863e10c06da05c2ff1f23f966df65dbaf8bc3bb9c4a7a4d86d2c1a2c65a1db86"} -->
+<!-- docs-translation: {"document_id":"persistence","locale":"ru","source_path":"Docs/en/explanation/persistence/index.md","source_sha256":"b137502daf5d854293632522e2470ff502837ff48192a64d0f427804553d5a10"} -->
 Этот документ описывает серверную абстракцию базы данных, модель коллекций и ключей, очередь commit, согласованные с backend снимки, журналы восстановления и реализации backend.
 
 Используйте его при изменении `Source/Server/DataBase.*`, настроек базы данных, кода загрузки и сохранения сущностей или тестов persistence.
@@ -75,18 +75,14 @@ Backend может переопределять:
 
 Фабрики из `DataBase.h`:
 
-- `CreateJsonDataBase()`;
-- `CreateSQLiteDataBase()` при `FO_HAVE_SQLITE`;
-- `CreateMongoDataBase()` при `FO_HAVE_MONGO`;
-- `CreateMemoryDataBase()`.
+Фабрики находятся в соседних парах заголовок/реализация под guards:
 
-Файлы реализаций:
+- `DataBaseMemory::Create()` в `DataBase-Memory.h`, доступна всегда;
+- `DataBaseJson::Create()` в `DataBase-Json.h`, при `FO_DATABASE_JSON`;
+- `DataBaseSQLite::Create()` в `DataBase-SQLite.h`, при `FO_DATABASE_SQLITE`;
+- `DataBaseMongo::Create()` в `DataBase-Mongo.h`, при `FO_DATABASE_MONGO`.
 
-- `Source/Server/DataBase-Json.cpp`
-- `Source/Server/DataBase-SQLite.cpp`
-- `Source/Server/DataBase-Mongo.cpp`
-- `Source/Server/DataBase-Memory.cpp`
-- общая логика в `Source/Server/DataBase.cpp`
+`DataBase.cpp` владеет dispatch, commit/recovery, ключами и метриками. Все заголовки провайдеров подключены без условий; выключенный провайдер не содержит объявлений и реализации. Нейтральное преобразование JSON/CBOR находится в `DataBaseSerialization.h/.cpp`. См. [выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components).
 
 ## Очередь commit
 
@@ -155,11 +151,18 @@ Backend без байтового представления бросает `Dat
 ## Особенности backend
 
 - JSON backend: файловое и каталоговое хранилище с escaping строковых ключей, подходящим для путей файловой системы.
-- SQLite backend: доступен только при `FO_HAVE_SQLITE` и только серверу — клиент не связывает встроенную базу. Каждая коллекция является таблицей в едином `Storage.sqlite`, журналируемом в WAL; SQLite выделяет память через систему памяти движка посредством `SQLITE_CONFIG_MALLOC`, а `CreateSnapshot()` возвращает сериализованный образ страниц, а не копию живых файлов.
-- Mongo backend: доступен только при `FO_HAVE_MONGO`; использует общие с JSON и SQLite преобразование BSON и настройку allocator.
+- SQLite backend: доступен только при `FO_DATABASE_SQLITE` и только серверу — клиент не связывает встроенную базу. Каждая коллекция является таблицей в едином `Storage.sqlite`, журналируемом в WAL; SQLite выделяет память через систему памяти движка посредством `SQLITE_CONFIG_MALLOC`, а `CreateSnapshot()` возвращает сериализованный образ страниц, а не копию живых файлов.
+- Mongo backend: доступен только при `FO_DATABASE_MONGO`; только этот провайдер владеет преобразованием BSON и настройкой allocator в `DataBase-Mongo.cpp`.
 - Memory backend: подходит для тестов и недолговечных runtime-путей.
 
-`DocumentToBson()` и `BsonToDocument()` преобразуют `AnyData::Document` и BSON payload, используемый JSON, SQLite и Mongo. `GetDbKeyType()` сообщает, основан runtime-ключ на integer или string.
+`DocumentToBson()` и `BsonToDocument()` — приватные функции Mongo. JSON использует обычный текст JSON, SQLite — CBOR BLOB через `DataBaseSerialization`. `GetDbKeyType()` сообщает, основан runtime-ключ на integer или string.
+
+<a id="storage-formats-and-upgrade-boundary"></a>
+## Форматы хранения и граница обновления
+
+JSON-файлы содержат обычные UTF-8 objects, BLOB записи SQLite — CBOR objects. Сохраняются знаковый Int64 (пределы и числа выше 2^53), конечный Float64, Bool, String, Array, Dict, включая NUL строк/ключей. Null/binary, unsigned overflow, другой корень, испорченный/усечённый вход и байты после CBOR отвергаются. Пределы: 64 МиБ на запись, 64 уровня вложенности. SAX проверяет типы/глубину/объявленные размеры до выделения DOM; валидация предшествует записи.
+
+Используйте новые пустые JSON/SQLite. Для старых Extended JSON/BSON BLOB нет reader, преобразования и fallback; для отката храните старые binaries/storage вместе. Mongo BSON и Memory сохраняются. SQLite сохраняет таблицы/ключи, WAL, snapshot/restore; Engine snapshots требуют согласованных `0.0.70` metadata/binaries. [Выбор компонентов](../../how-to/build/project-configuration.md#optional-native-components) описывает defaults, роли/зависимости, ошибки выключенных провайдеров; [backup/recovery](../../how-to/release/backup-and-recovery.md) — согласованные комплекты/изолированный restore. Fixtures `Test_DataBase.cpp` под guards проверяют типы, integer/NUL/depth/corruption, reopen/update/delete, snapshots и recovery/oplog.
 
 ## Связь с состоянием сущности
 
@@ -190,12 +193,14 @@ Persistence хранит документы; состояние сущности
 - тесты управления сущностями, например `Test_LocationAndEntityMgmt.cpp`, когда persistence влияет на сохраняемые сущности;
 - зависящие от backend тесты при включённых сборочных параметрах.
 
+Скрытый тест `MongoDataBaseRecoversAfterIsolatedServerRestart` требует `FO_TEST_MONGO_URI` (loopback) и `FO_TEST_MONGO_CONTROL` (изолированный каталог с правом записи). Координатор ждёт `ready`, останавливает свой mongod, пишет `stopped`, ждёт `spilled`, перезапускает этот экземпляр и пишет `restarted`; `complete` подтверждает replay и повторное открытие.
+
 ## Маршрутизация изменений
 
 - Открытый фасад и общая логика commit/recovery: `Source/Server/DataBase.h` и `Source/Server/DataBase.cpp`.
 - JSON backend: `Source/Server/DataBase-Json.cpp`.
 - SQLite backend: `Source/Server/DataBase-SQLite.cpp`.
-- Общий BSON allocator и преобразование: `Source/Server/DataBase.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, `BsonToDocument()`; Mongo-операции остаются в `Source/Server/DataBase-Mongo.cpp`.
+- BSON allocator и преобразование только Mongo: `Source/Server/DataBase-Mongo.cpp`, `InitializeBsonMemory()`, `DocumentToBson()`, `BsonToDocument()`; Mongo-операции остаются в `Source/Server/DataBase-Mongo.cpp`.
 - Memory backend: `Source/Server/DataBase-Memory.cpp`.
 - Сериализация сущностей и свойств: [модель сущностей](../entity-and-property-model/) и `PropertiesSerializer.*`.
 - Переключатели возможностей сборки: [процесс сборки](../../how-to/build/) и [конвейер BuildTools](../../reference/cmake-and-buildtools/pipeline.md).

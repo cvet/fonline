@@ -7,7 +7,7 @@ permalink: /Docs/ru/how-to/build/generated-content.html
 ---
 
 # Работа с генерируемым содержимым
-<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"ff4e5e7088279b49e5b1b23502739d6a45ab0fbb6f933b135eb2506f9ebc2c0c"} -->
+<!-- docs-translation: {"document_id":"generated-content-workflow","locale":"ru","source_path":"Docs/en/how-to/build/generated-content.md","source_sha256":"6326d838bf3935668f07f13bbe10e30fb9e50d219721ceb641588015293b1c18"} -->
 Это руководство объясняет, что нужно перегенерировать после изменения
 исходников Engine или игры, какие данные являются authoritative и как
 проверять generated output, не редактируя его вручную.
@@ -49,6 +49,14 @@ annotation, interface model, project config, generator или authored asset,
 </figure>
 
 ## Configure и генерация native-исходников
+
+Полные конфигурации примеров в `Examples/MinimalMultiplayer`,
+`Examples/ContentShowcase` и `Examples/PackagingMatrix` создаются из
+`Source/Common/Settings.inc`. После изменения настроек Engine выполните
+`python generate_config.py` в каждом каталоге и включите полученные изменения
+`.fomain`. Проверьте каждый результат через `python generate_config.py --check`
+и запустите `python BuildTools/tests/test_docs_examples.py` из корня Engine
+перед упаковкой или подготовкой этих примеров.
 
 Embedding project вызывает staged BuildTools pipeline:
 
@@ -176,16 +184,12 @@ generator с `--write`, затем проверьте все outputs:
 
 ```bash
 python BuildTools/docs_diagrams.py --write
-python BuildTools/docs_screenshots.py --write
 python BuildTools/docs_reference.py --write
-python BuildTools/docs_snippets.py --write --external
-python BuildTools/docs_description_translations.py --write
-python BuildTools/docs_localization.py --write
-python BuildTools/docs_site.py --write
-python BuildTools/docs_ai_eval.py --write
-python BuildTools/docs_ai_delivery.py --write
+python BuildTools/docs_prepare.py --external
 python BuildTools/docs_validate.py
 ```
+
+Подготовка записывает публичные корневые endpoint и файлы зависимостей Ruby/домена в игнорируемый `Workspace/Documentation/`. Для сборки и экспорта endpoints в `Workspace/DocumentationSite/` используйте `python BuildTools/docs_site_build.py`; авторская конфигурация Jekyll — `Docs/Site/_config.yml`. Модели контрактов и проверенные изображения по-прежнему требуют своих генераторов.
 
 Focused format/CLI/CMake generators перечислены в
 [Generated API and Metadata](../../reference/metadata/index.md).

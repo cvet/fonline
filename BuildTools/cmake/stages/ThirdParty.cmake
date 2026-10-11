@@ -550,9 +550,9 @@ else()
         FO_HAVE_WEB_SOCKETS=0)
 endif()
 
-# MongoDB & Bson
-if(FO_BUILD_SERVER_LIB)
-    StatusMessage("+ Bson")
+# MongoDB and its private BSON dependency
+if(FO_DATABASE_MONGO AND FO_BUILD_SERVER_LIB)
+    StatusMessage("+ MongoDB and BSON")
     SetValue(FO_MONGODB_DIR "${FO_ENGINE_ROOT}/ThirdParty/mongo-c-driver")
 
     SetCacheValues(
@@ -579,14 +579,7 @@ if(FO_BUILD_SERVER_LIB)
         SetCacheValues(BSON_HAVE_STRLCPY 0)
     endif()
 
-    if(NOT FO_DISABLE_MONGO)
-        StatusMessage("+ MongoDB")
-        SetCacheValues(ENABLE_MONGOC ON)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=1)
-    else()
-        SetCacheValues(ENABLE_MONGOC OFF)
-        AddCompileDefinitionsList(FO_HAVE_MONGO=0)
-    endif()
+    SetCacheValues(ENABLE_MONGOC ON)
 
     AddSubdirectory("${FO_MONGODB_DIR}" FOLDER "ThirdParty" EXCLUDE_FROM_ALL)
     if(TARGET utf8proc_obj)
@@ -613,7 +606,7 @@ if(FO_BUILD_SERVER_LIB)
 endif()
 
 # SQLite
-if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
+if(FO_DATABASE_SQLITE AND FO_BUILD_SERVER_LIB)
     StatusMessage("+ SQLite")
     SetValue(FO_SQLITE_DIR "${FO_ENGINE_ROOT}/ThirdParty/sqlite")
     SetValue(FO_SQLITE_SOURCE
@@ -638,9 +631,6 @@ if(NOT FO_DISABLE_SQLITE AND NOT FO_WEB AND FO_BUILD_SERVER_LIB)
         "SQLITE_OMIT_AUTOINIT"
         "SQLITE_DQS=0"
         "SQLITE_USE_URI=0")
-    AddCompileDefinitionsList(FO_HAVE_SQLITE=1)
-else()
-    AddCompileDefinitionsList(FO_HAVE_SQLITE=0)
 endif()
 
 # Dear ImGui
